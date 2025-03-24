@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -144,7 +143,7 @@ const ClientProfile = () => {
             time_zone: clientData.time_zone,
             treatment_goal: clientData.treatment_goal,
             status: 'Active',
-            minor: clientData.minor === true || clientData.minor === 'Yes',
+            minor: Boolean(clientData.minor),
             referral_source: clientData.referral_source
           })
           .select()
@@ -180,7 +179,7 @@ const ClientProfile = () => {
             state: clientData.state,
             time_zone: clientData.time_zone,
             treatment_goal: clientData.treatment_goal,
-            minor: clientData.minor === true || clientData.minor === 'Yes',
+            minor: Boolean(clientData.minor),
             referral_source: clientData.referral_source,
             status: clientData.status,
             assigned_therapist: clientData.assigned_therapist
