@@ -11,6 +11,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Calendar from "./pages/Calendar";
 import Clients from "./pages/Clients";
+import ClientProfile from "./pages/ClientProfile";
 import Analytics from "./pages/Analytics";
 import Activity from "./pages/Activity";
 import Settings from "./pages/Settings";
@@ -35,6 +36,7 @@ const App = () => (
             <Route element={<ProtectedRoute />}>
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/clients" element={<Clients />} />
+              <Route path="/clients/:id" element={<ClientProfile />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/activity" element={<Activity />} />
               <Route path="/settings" element={<Settings />} />
