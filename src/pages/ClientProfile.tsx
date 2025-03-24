@@ -102,28 +102,29 @@ const ClientProfile = () => {
     setSaving(true);
     try {
       if (isNewClient) {
-        // Create a new user in auth
+        // Create a new user in auth with user metadata
+        // This will trigger the database function to create profiles and clients records
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: clientData.email,
           password: 'temppass1234',
           options: {
             data: {
               first_name: clientData.first_name,
-              last_name: clientData.last_name
+              last_name: clientData.last_name,
+              role: 'client'
             }
           }
         });
         
         if (authError) throw authError;
         
-        // The profile is created automatically by the database trigger
-        // No need to insert into profiles table manually
+        // The profile and client records are created automatically by the database trigger
+        // No need to insert into profiles or clients tables manually
         
-        // Insert into clients table
-        const { data: client, error: clientError } = await supabase
+        // Now update the client record with additional fields
+        const { error: updateError } = await supabase
           .from('clients')
-          .insert({
-            id: authData.user.id,
+          .update({
             preferred_name: clientData.preferred_name,
             date_of_birth: clientData.date_of_birth,
             age: clientData.age ? parseInt(clientData.age) : null,
@@ -137,10 +138,9 @@ const ClientProfile = () => {
             minor: Boolean(clientData.minor),
             referral_source: clientData.referral_source
           })
-          .select()
-          .single();
+          .eq('id', authData.user.id);
           
-        if (clientError) throw clientError;
+        if (updateError) throw updateError;
         
         toast.success('Client created successfully');
         navigate(`/clients/${authData.user.id}`);
@@ -559,4 +559,3 @@ const ClientProfile = () => {
 };
 
 export default ClientProfile;
-
