@@ -1,9 +1,14 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { ArrowLeft, User, Activity } from 'lucide-react';
 
 const ClientProfile = () => {
   const { id } = useParams();
@@ -30,7 +35,11 @@ const ClientProfile = () => {
     medication: '',
     insurance: '',
     emergency_contact: '',
-    treatment_goal: ''
+    treatment_goal: '',
+    minor: false,
+    referral_source: '',
+    status: 'Active',
+    assigned_therapist: ''
   });
   
   useEffect(() => {
@@ -41,24 +50,34 @@ const ClientProfile = () => {
   
   const fetchClientData = async () => {
     try {
-      const { data: client, error } = await supabase
+      // First get client data
+      const { data: client, error: clientError } = await supabase
         .from('clients')
-        .select('*, profiles(first_name, last_name, email)')
+        .select('*')
         .eq('id', id)
         .single();
       
-      if (error) throw error;
+      if (clientError) throw clientError;
+      
+      // Then get profile data
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email')
+        .eq('id', id)
+        .single();
+      
+      if (profileError) throw profileError;
       
       // Convert any null or number values to strings for the form
       setClientData({
-        first_name: client.profiles?.first_name || '',
-        last_name: client.profiles?.last_name || '',
+        first_name: profile?.first_name || '',
+        last_name: profile?.last_name || '',
         preferred_name: client.preferred_name || '',
         date_of_birth: client.date_of_birth || '',
         age: client.age ? String(client.age) : '',
         gender: client.gender || '',
         gender_identity: client.gender_identity || '',
-        email: client.profiles?.email || '',
+        email: profile?.email || '',
         phone: client.phone || '',
         state: client.state || '',
         time_zone: client.time_zone || '',
@@ -66,7 +85,11 @@ const ClientProfile = () => {
         medication: client.medication || '',
         insurance: client.insurance || '',
         emergency_contact: client.emergency_contact || '',
-        treatment_goal: client.treatment_goal || ''
+        treatment_goal: client.treatment_goal || '',
+        minor: client.minor || false,
+        referral_source: client.referral_source || '',
+        status: client.status || 'Active',
+        assigned_therapist: client.assigned_therapist || ''
       });
     } catch (error) {
       console.error('Error fetching client:', error);
@@ -132,7 +155,9 @@ const ClientProfile = () => {
             insurance: clientData.insurance,
             emergency_contact: clientData.emergency_contact,
             treatment_goal: clientData.treatment_goal,
-            status: 'Active'
+            status: 'Active',
+            minor: clientData.minor === 'Yes',
+            referral_source: clientData.referral_source
           })
           .select()
           .single();
@@ -170,7 +195,11 @@ const ClientProfile = () => {
             medication: clientData.medication,
             insurance: clientData.insurance,
             emergency_contact: clientData.emergency_contact,
-            treatment_goal: clientData.treatment_goal
+            treatment_goal: clientData.treatment_goal,
+            minor: clientData.minor === 'Yes',
+            referral_source: clientData.referral_source,
+            status: clientData.status,
+            assigned_therapist: clientData.assigned_therapist
           })
           .eq('id', id);
           
@@ -439,7 +468,7 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Minor</label>
                 <select
                   name="minor"
-                  value={clientData.minor}
+                  value={clientData.minor ? 'Yes' : 'No'}
                   onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -461,7 +490,7 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Referral Source</label>
                 <select
                   name="referral_source"
-                  value={clientData.referral_source}
+                  value={clientData.referral_source || ''}
                   onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -479,7 +508,7 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Client Status</label>
                 <select
                   name="status"
-                  value={clientData.status}
+                  value={clientData.status || 'Active'}
                   onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
