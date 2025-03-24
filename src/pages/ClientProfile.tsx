@@ -31,10 +31,6 @@ const ClientProfile = () => {
     phone: '',
     state: '',
     time_zone: '',
-    diagnosis: '',
-    medication: '',
-    insurance: '',
-    emergency_contact: '',
     treatment_goal: '',
     minor: false,
     referral_source: '',
@@ -81,10 +77,6 @@ const ClientProfile = () => {
         phone: client.phone || '',
         state: client.state || '',
         time_zone: client.time_zone || '',
-        diagnosis: client.diagnosis || '',
-        medication: client.medication || '',
-        insurance: client.insurance || '',
-        emergency_contact: client.emergency_contact || '',
         treatment_goal: client.treatment_goal || '',
         minor: client.minor || false,
         referral_source: client.referral_source || '',
@@ -150,13 +142,9 @@ const ClientProfile = () => {
             phone: clientData.phone,
             state: clientData.state,
             time_zone: clientData.time_zone,
-            diagnosis: clientData.diagnosis,
-            medication: clientData.medication,
-            insurance: clientData.insurance,
-            emergency_contact: clientData.emergency_contact,
             treatment_goal: clientData.treatment_goal,
             status: 'Active',
-            minor: clientData.minor === 'Yes',
+            minor: clientData.minor === true || clientData.minor === 'Yes',
             referral_source: clientData.referral_source
           })
           .select()
@@ -191,12 +179,8 @@ const ClientProfile = () => {
             phone: clientData.phone,
             state: clientData.state,
             time_zone: clientData.time_zone,
-            diagnosis: clientData.diagnosis,
-            medication: clientData.medication,
-            insurance: clientData.insurance,
-            emergency_contact: clientData.emergency_contact,
             treatment_goal: clientData.treatment_goal,
-            minor: clientData.minor === 'Yes',
+            minor: clientData.minor === true || clientData.minor === 'Yes',
             referral_source: clientData.referral_source,
             status: clientData.status,
             assigned_therapist: clientData.assigned_therapist
@@ -468,8 +452,13 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Minor</label>
                 <select
                   name="minor"
-                  value={clientData.minor ? 'Yes' : 'No'}
-                  onChange={handleChange}
+                  value={clientData.minor === true ? 'Yes' : 'No'}
+                  onChange={(e) => {
+                    setClientData(prev => ({
+                      ...prev,
+                      minor: e.target.value === 'Yes'
+                    }));
+                  }}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="No">No</option>
