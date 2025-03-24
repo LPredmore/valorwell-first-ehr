@@ -1,24 +1,20 @@
-
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import Layout from '../components/layout/Layout';
-import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, User, Activity, Pencil } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
-import { Card } from '@/components/ui/card';
+import { useParams, useNavigate } from 'react-router-dom';
+import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const ClientProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('profile');
   const isNewClient = id === 'new';
   
-  // Client information state
-  const [client, setClient] = useState({
+  const [activeTab, setActiveTab] = useState('personal');
+  const [loading, setLoading] = useState(!isNewClient);
+  const [saving, setSaving] = useState(false);
+  
+  const [clientData, setClientData] = useState({
     first_name: '',
     last_name: '',
     preferred_name: '',
@@ -30,133 +26,163 @@ const ClientProfile = () => {
     phone: '',
     state: '',
     time_zone: '',
-    minor: 'No',
-    referral_source: '',
-    status: 'Waiting',
-    assigned_therapist: '',
+    diagnosis: '',
+    medication: '',
+    insurance: '',
+    emergency_contact: '',
     treatment_goal: ''
   });
-
-  // Fetch client data if editing an existing client
+  
   useEffect(() => {
-    const fetchClient = async () => {
-      if (isNewClient) return;
-      
-      setLoading(true);
-      try {
-        // First fetch the client
-        const { data: clientData, error: clientError } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (clientError) throw clientError;
-        
-        // Then fetch their profile info for name and email
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', id)
-          .single();
-          
-        if (profileError) throw profileError;
-        
-        // Combine the data
-        setClient({
-          ...client,
-          ...clientData,
-          first_name: profileData.first_name || '',
-          last_name: profileData.last_name || '',
-          email: profileData.email || '',
-          minor: clientData.minor ? 'Yes' : 'No',
-        });
-      } catch (error) {
-        console.error('Error fetching client:', error);
-        toast.error('Error loading client information');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchClient();
+    if (!isNewClient) {
+      fetchClientData();
+    }
   }, [id]);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setClient({ ...client, [name]: value });
-  };
-
-  const handleSave = async () => {
-    setLoading(true);
+  
+  const fetchClientData = async () => {
     try {
-      let userId = id;
+      const { data: client, error } = await supabase
+        .from('clients')
+        .select('*, profiles(first_name, last_name, email)')
+        .eq('id', id)
+        .single();
       
-      // If creating a new user, first create auth user
+      if (error) throw error;
+      
+      // Convert any null or number values to strings for the form
+      setClientData({
+        first_name: client.profiles?.first_name || '',
+        last_name: client.profiles?.last_name || '',
+        preferred_name: client.preferred_name || '',
+        date_of_birth: client.date_of_birth || '',
+        age: client.age ? String(client.age) : '',
+        gender: client.gender || '',
+        gender_identity: client.gender_identity || '',
+        email: client.profiles?.email || '',
+        phone: client.phone || '',
+        state: client.state || '',
+        time_zone: client.time_zone || '',
+        diagnosis: client.diagnosis || '',
+        medication: client.medication || '',
+        insurance: client.insurance || '',
+        emergency_contact: client.emergency_contact || '',
+        treatment_goal: client.treatment_goal || ''
+      });
+    } catch (error) {
+      console.error('Error fetching client:', error);
+      toast.error('Failed to load client data');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setClientData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
+  const handleSave = async () => {
+    setSaving(true);
+    try {
       if (isNewClient) {
-        // Create auth user
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email: client.email,
+        // Create a new user in auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: clientData.email,
           password: 'temppass1234',
-          email_confirm: true,
-          user_metadata: {
-            first_name: client.first_name,
-            last_name: client.last_name
+          options: {
+            data: {
+              first_name: clientData.first_name,
+              last_name: clientData.last_name
+            }
           }
         });
         
         if (authError) throw authError;
-        userId = authData.user.id;
         
-        // The user and profile will be created by a Supabase trigger,
-        // but we need to ensure we have the ID for the client table update
+        // Insert into profiles table
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            first_name: clientData.first_name,
+            last_name: clientData.last_name,
+            email: clientData.email
+          });
+          
+        if (profileError) throw profileError;
+        
+        // Insert into clients table
+        const { data: client, error: clientError } = await supabase
+          .from('clients')
+          .insert({
+            id: authData.user.id,
+            preferred_name: clientData.preferred_name,
+            date_of_birth: clientData.date_of_birth,
+            age: clientData.age ? parseInt(clientData.age) : null,
+            gender: clientData.gender,
+            gender_identity: clientData.gender_identity,
+            phone: clientData.phone,
+            state: clientData.state,
+            time_zone: clientData.time_zone,
+            diagnosis: clientData.diagnosis,
+            medication: clientData.medication,
+            insurance: clientData.insurance,
+            emergency_contact: clientData.emergency_contact,
+            treatment_goal: clientData.treatment_goal,
+            status: 'Active'
+          })
+          .select()
+          .single();
+          
+        if (clientError) throw clientError;
+        
+        toast.success('Client created successfully');
+        navigate(`/clients/${authData.user.id}`);
+      } else {
+        // Update profiles
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            first_name: clientData.first_name,
+            last_name: clientData.last_name,
+            email: clientData.email
+          })
+          .eq('id', id);
+          
+        if (profileError) throw profileError;
+        
+        // Update clients
+        const { error: clientError } = await supabase
+          .from('clients')
+          .update({
+            preferred_name: clientData.preferred_name,
+            date_of_birth: clientData.date_of_birth,
+            age: clientData.age ? parseInt(clientData.age) : null,
+            gender: clientData.gender,
+            gender_identity: clientData.gender_identity,
+            phone: clientData.phone,
+            state: clientData.state,
+            time_zone: clientData.time_zone,
+            diagnosis: clientData.diagnosis,
+            medication: clientData.medication,
+            insurance: clientData.insurance,
+            emergency_contact: clientData.emergency_contact,
+            treatment_goal: clientData.treatment_goal
+          })
+          .eq('id', id);
+          
+        if (clientError) throw clientError;
+        
+        toast.success('Client updated successfully');
       }
-      
-      // Update or create client record
-      const clientData = {
-        id: userId,
-        preferred_name: client.preferred_name,
-        date_of_birth: client.date_of_birth || null,
-        age: client.age ? parseInt(client.age) : null,
-        gender: client.gender,
-        gender_identity: client.gender_identity,
-        phone: client.phone,
-        state: client.state,
-        time_zone: client.time_zone,
-        minor: client.minor === 'Yes',
-        referral_source: client.referral_source,
-        status: client.status,
-        assigned_therapist: client.assigned_therapist || null,
-        treatment_goal: client.treatment_goal
-      };
-      
-      const { error: clientError } = await supabase
-        .from('clients')
-        .upsert([clientData], { onConflict: 'id' });
-        
-      if (clientError) throw clientError;
-      
-      // Update profile information
-      const profileData = {
-        id: userId,
-        first_name: client.first_name,
-        last_name: client.last_name,
-        email: client.email
-      };
-      
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert([profileData], { onConflict: 'id' });
-        
-      if (profileError) throw profileError;
-      
-      toast.success(isNewClient ? 'Client created successfully' : 'Client updated successfully');
-      navigate('/clients');
     } catch (error) {
       console.error('Error saving client:', error);
-      toast.error(error.message || 'Error saving client information');
+      toast.error('Failed to save client data');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -174,22 +200,22 @@ const ClientProfile = () => {
             <span>Back to Clients</span>
           </Button>
           <h1 className="text-2xl font-semibold">
-            {isNewClient ? 'New Client' : `${client.first_name} ${client.last_name}`}
+            {isNewClient ? 'New Client' : `${clientData.first_name} ${clientData.last_name}`}
           </h1>
         </div>
         
-        <Button onClick={handleSave} disabled={loading}>
+        <Button onClick={handleSave} disabled={loading || saving}>
           {isNewClient ? 'Create Client' : 'Save Changes'}
         </Button>
       </div>
       
-      <Tabs defaultValue="profile" className="w-full" value={activeTab} onValueChange={setActiveTab}>
+      <Tabs defaultValue="personal" className="w-full" value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4 border-b w-full justify-start rounded-none bg-transparent p-0">
           <TabsTrigger 
-            value="profile" 
+            value="personal" 
             className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-valorwell-700 data-[state=active]:text-valorwell-700 px-4 py-2"
           >
-            Profile
+            Personal Information
           </TabsTrigger>
           <TabsTrigger 
             value="insurance" 
@@ -217,8 +243,7 @@ const ClientProfile = () => {
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="profile" className="space-y-6">
-          {/* Personal Information Section */}
+        <TabsContent value="personal" className="space-y-6">
           <Card className="p-6">
             <div className="flex items-center mb-4">
               <User className="mr-2 h-5 w-5" />
@@ -230,8 +255,8 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">First Name</label>
                 <Input 
                   name="first_name"
-                  value={client.first_name}
-                  onChange={handleInputChange}
+                  value={clientData.first_name}
+                  onChange={handleChange}
                   placeholder="First Name"
                 />
               </div>
@@ -240,8 +265,8 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Preferred Name</label>
                 <Input 
                   name="preferred_name"
-                  value={client.preferred_name}
-                  onChange={handleInputChange}
+                  value={clientData.preferred_name}
+                  onChange={handleChange}
                   placeholder="Preferred Name"
                 />
               </div>
@@ -250,8 +275,8 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Last Name</label>
                 <Input 
                   name="last_name"
-                  value={client.last_name}
-                  onChange={handleInputChange}
+                  value={clientData.last_name}
+                  onChange={handleChange}
                   placeholder="Last Name"
                 />
               </div>
@@ -261,8 +286,8 @@ const ClientProfile = () => {
                 <Input 
                   name="date_of_birth"
                   type="date"
-                  value={client.date_of_birth}
-                  onChange={handleInputChange}
+                  value={clientData.date_of_birth}
+                  onChange={handleChange}
                 />
               </div>
               
@@ -271,8 +296,8 @@ const ClientProfile = () => {
                 <Input 
                   name="age"
                   type="number"
-                  value={client.age}
-                  onChange={handleInputChange}
+                  value={clientData.age}
+                  onChange={handleChange}
                   placeholder="Age"
                 />
               </div>
@@ -281,8 +306,8 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Birth Gender</label>
                 <select
                   name="gender"
-                  value={client.gender}
-                  onChange={handleInputChange}
+                  value={clientData.gender}
+                  onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">Select Gender</option>
@@ -296,8 +321,8 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Gender Identity</label>
                 <select
                   name="gender_identity"
-                  value={client.gender_identity}
-                  onChange={handleInputChange}
+                  value={clientData.gender_identity}
+                  onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">Select Gender Identity</option>
@@ -314,8 +339,8 @@ const ClientProfile = () => {
                 <Input 
                   name="email"
                   type="email"
-                  value={client.email}
-                  onChange={handleInputChange}
+                  value={clientData.email}
+                  onChange={handleChange}
                   placeholder="Email"
                 />
               </div>
@@ -324,8 +349,8 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Phone</label>
                 <Input 
                   name="phone"
-                  value={client.phone}
-                  onChange={handleInputChange}
+                  value={clientData.phone}
+                  onChange={handleChange}
                   placeholder="Phone Number"
                 />
               </div>
@@ -334,8 +359,8 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">State</label>
                 <select
                   name="state"
-                  value={client.state}
-                  onChange={handleInputChange}
+                  value={clientData.state}
+                  onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">Select State</option>
@@ -396,8 +421,8 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Time Zone</label>
                 <select
                   name="time_zone"
-                  value={client.time_zone}
-                  onChange={handleInputChange}
+                  value={clientData.time_zone}
+                  onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">Select Time Zone</option>
@@ -414,8 +439,8 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Minor</label>
                 <select
                   name="minor"
-                  value={client.minor}
-                  onChange={handleInputChange}
+                  value={clientData.minor}
+                  onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="No">No</option>
@@ -425,7 +450,6 @@ const ClientProfile = () => {
             </div>
           </Card>
           
-          {/* Clinical Information Section */}
           <Card className="p-6">
             <div className="flex items-center mb-4">
               <Activity className="mr-2 h-5 w-5" />
@@ -437,8 +461,8 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Referral Source</label>
                 <select
                   name="referral_source"
-                  value={client.referral_source}
-                  onChange={handleInputChange}
+                  value={clientData.referral_source}
+                  onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">Select Referral Source</option>
@@ -455,8 +479,8 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Client Status</label>
                 <select
                   name="status"
-                  value={client.status}
-                  onChange={handleInputChange}
+                  value={clientData.status}
+                  onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="Waiting">Waiting</option>
@@ -471,8 +495,8 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Assigned Therapist</label>
                 <select
                   name="assigned_therapist"
-                  value={client.assigned_therapist || ''}
-                  onChange={handleInputChange}
+                  value={clientData.assigned_therapist || ''}
+                  onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">None</option>
@@ -484,8 +508,8 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Treatment Goal</label>
                 <textarea
                   name="treatment_goal"
-                  value={client.treatment_goal || ''}
-                  onChange={handleInputChange}
+                  value={clientData.treatment_goal || ''}
+                  onChange={handleChange}
                   placeholder="Client's treatment goal"
                   className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 />

@@ -40,7 +40,12 @@ const Clients = () => {
       
       // Combine the data
       const combinedData = clientsData.map(client => {
-        const profile = profilesData.find(p => p.id === client.id) || {};
+        const profile = profilesData.find(p => p.id === client.id) || { 
+          first_name: '',
+          last_name: '',
+          email: ''
+        };
+        
         return {
           ...client,
           first_name: profile.first_name || '',
