@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Layout from '../components/layout/Layout';
 import { Pencil, Plus } from 'lucide-react';
+import StaffMemberForm from '../components/StaffMemberForm';
 
 const SettingsTabs = {
   PRACTICE: 'practice',
@@ -15,6 +16,7 @@ const SettingsTabs = {
 const Settings = () => {
   const [activeTab, setActiveTab] = useState(SettingsTabs.PRACTICE);
   const [activeBillingTab, setActiveBillingTab] = useState('cpt');
+  const [isStaffFormOpen, setIsStaffFormOpen] = useState(false);
 
   return (
     <Layout>
@@ -174,7 +176,10 @@ const Settings = () => {
           <div className="p-6 animate-fade-in">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold">Staff Management</h2>
-              <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800">
+              <button 
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800"
+                onClick={() => setIsStaffFormOpen(true)}
+              >
                 <Plus size={16} />
                 <span>Add Staff Member</span>
               </button>
@@ -213,6 +218,12 @@ const Settings = () => {
                 </div>
               </div>
             </div>
+            
+            {/* Staff Member Form */}
+            <StaffMemberForm 
+              isOpen={isStaffFormOpen} 
+              onClose={() => setIsStaffFormOpen(false)} 
+            />
           </div>
         )}
         

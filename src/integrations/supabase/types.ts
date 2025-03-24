@@ -287,30 +287,24 @@ export type Database = {
         Row: {
           clinician_id: string
           created_at: string
-          expiration_date: string | null
           id: string
           license_number: string
-          start_date: string | null
           state: string
           updated_at: string
         }
         Insert: {
           clinician_id: string
           created_at?: string
-          expiration_date?: string | null
           id?: string
           license_number: string
-          start_date?: string | null
           state: string
           updated_at?: string
         }
         Update: {
           clinician_id?: string
           created_at?: string
-          expiration_date?: string | null
           id?: string
           license_number?: string
-          start_date?: string | null
           state?: string
           updated_at?: string
         }
