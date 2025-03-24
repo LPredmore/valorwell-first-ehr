@@ -116,17 +116,8 @@ const ClientProfile = () => {
         
         if (authError) throw authError;
         
-        // Insert into profiles table
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            first_name: clientData.first_name,
-            last_name: clientData.last_name,
-            email: clientData.email
-          });
-          
-        if (profileError) throw profileError;
+        // The profile is created automatically by the database trigger
+        // No need to insert into profiles table manually
         
         // Insert into clients table
         const { data: client, error: clientError } = await supabase
@@ -568,3 +559,4 @@ const ClientProfile = () => {
 };
 
 export default ClientProfile;
+
