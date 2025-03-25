@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { Pencil, Plus, Trash, Phone, Mail } from 'lucide-react';
@@ -64,6 +65,21 @@ const Settings = () => {
   const [currentClinicianPage, setCurrentClinicianPage] = useState(1);
   const itemsPerPage = 10;
   const navigate = useNavigate();
+  
+  // Calculate total pages for users and clinicians
+  const totalUserPages = useMemo(() => Math.max(1, Math.ceil(users.length / itemsPerPage)), [users.length]);
+  const totalClinicianPages = useMemo(() => Math.max(1, Math.ceil(clinicians.length / itemsPerPage)), [clinicians.length]);
+  
+  // Calculate current page items for users and clinicians
+  const currentUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return users.slice(startIndex, startIndex + itemsPerPage);
+  }, [users, currentPage]);
+  
+  const currentClinicians = useMemo(() => {
+    const startIndex = (currentClinicianPage - 1) * itemsPerPage;
+    return clinicians.slice(startIndex, startIndex + itemsPerPage);
+  }, [clinicians, currentClinicianPage]);
 
   const fetchUsers = async () => {
     setIsLoading(true);
