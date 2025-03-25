@@ -140,63 +140,63 @@ export type Database = {
       }
       clinicians: {
         Row: {
-          accepting_new_clients: string | null
-          bio: string | null
+          clinician_accepting_new_clients: string | null
+          clinician_bio: string | null
+          clinician_email: string | null
+          clinician_first_name: string | null
+          clinician_image_url: string | null
+          clinician_last_name: string | null
+          clinician_license_type: string | null
+          clinician_min_client_age: number | null
+          clinician_npi_number: string | null
+          clinician_phone: string | null
+          clinician_professional_name: string | null
+          clinician_state: string | null
+          clinician_taxonomy_code: string | null
+          clinician_treatment_approaches: string[] | null
           clinician_type: string | null
           created_at: string
-          email: string | null
-          first_name: string | null
           id: string
-          image_url: string | null
-          last_name: string | null
-          license_type: string | null
-          min_client_age: number | null
-          npi_number: string | null
-          phone: string | null
-          professional_name: string | null
-          state: string | null
-          taxonomy_code: string | null
-          treatment_approaches: string[] | null
           updated_at: string
         }
         Insert: {
-          accepting_new_clients?: string | null
-          bio?: string | null
+          clinician_accepting_new_clients?: string | null
+          clinician_bio?: string | null
+          clinician_email?: string | null
+          clinician_first_name?: string | null
+          clinician_image_url?: string | null
+          clinician_last_name?: string | null
+          clinician_license_type?: string | null
+          clinician_min_client_age?: number | null
+          clinician_npi_number?: string | null
+          clinician_phone?: string | null
+          clinician_professional_name?: string | null
+          clinician_state?: string | null
+          clinician_taxonomy_code?: string | null
+          clinician_treatment_approaches?: string[] | null
           clinician_type?: string | null
           created_at?: string
-          email?: string | null
-          first_name?: string | null
           id: string
-          image_url?: string | null
-          last_name?: string | null
-          license_type?: string | null
-          min_client_age?: number | null
-          npi_number?: string | null
-          phone?: string | null
-          professional_name?: string | null
-          state?: string | null
-          taxonomy_code?: string | null
-          treatment_approaches?: string[] | null
           updated_at?: string
         }
         Update: {
-          accepting_new_clients?: string | null
-          bio?: string | null
+          clinician_accepting_new_clients?: string | null
+          clinician_bio?: string | null
+          clinician_email?: string | null
+          clinician_first_name?: string | null
+          clinician_image_url?: string | null
+          clinician_last_name?: string | null
+          clinician_license_type?: string | null
+          clinician_min_client_age?: number | null
+          clinician_npi_number?: string | null
+          clinician_phone?: string | null
+          clinician_professional_name?: string | null
+          clinician_state?: string | null
+          clinician_taxonomy_code?: string | null
+          clinician_treatment_approaches?: string[] | null
           clinician_type?: string | null
           created_at?: string
-          email?: string | null
-          first_name?: string | null
           id?: string
-          image_url?: string | null
-          last_name?: string | null
-          license_type?: string | null
-          min_client_age?: number | null
-          npi_number?: string | null
-          phone?: string | null
-          professional_name?: string | null
-          state?: string | null
-          taxonomy_code?: string | null
-          treatment_approaches?: string[] | null
           updated_at?: string
         }
         Relationships: []
