@@ -70,12 +70,12 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       // Create user in Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
-        password: generateRandomPassword(), // We'll generate a random password
+        password: generateRandomPassword(),
         options: {
           data: {
             first_name: data.firstName,
             last_name: data.lastName,
-            phone: data.phone,
+            phone: data.phone || "",
             role: data.role
           }
         }
@@ -97,7 +97,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       console.error("Error adding user:", error);
       toast({
         title: "Error",
-        description: "Failed to add user. Please try again.",
+        description: `Failed to add user: ${error.message || "Please try again."}`,
         variant: "destructive",
       });
     } finally {
