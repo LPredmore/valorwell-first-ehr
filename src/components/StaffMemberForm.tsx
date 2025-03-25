@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -43,7 +42,13 @@ const staffMemberFormSchema = z.object({
   taxonomy_code: z.string().optional(),
 });
 
+const licenseFormSchema = z.object({
+  licenseState: z.string().min(1, "State is required"),
+  licenseNumber: z.string().min(1, "License number is required"),
+});
+
 type StaffFormData = z.infer<typeof staffMemberFormSchema>;
+type LicenseFormData = z.infer<typeof licenseFormSchema>;
 
 const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
   const { toast } = useToast();
@@ -51,12 +56,10 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("personal");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [licenseState, setLicenseState] = useState("");
-  const [licenseNumber, setLicenseNumber] = useState("");
   const [addingLicense, setAddingLicense] = useState(false);
   const [licenses, setLicenses] = useState<{ state: string; number: string }[]>([]);
 
-  const form = useForm<StaffFormData>({
+  const staffForm = useForm<StaffFormData>({
     resolver: zodResolver(staffMemberFormSchema),
     defaultValues: {
       first_name: '',
@@ -70,11 +73,17 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
     }
   });
 
+  const licenseForm = useForm<LicenseFormData>({
+    resolver: zodResolver(licenseFormSchema),
+    defaultValues: {
+      licenseState: '',
+      licenseNumber: '',
+    }
+  });
+
   const onSubmit = async (data: StaffFormData) => {
     setSaving(true);
     try {
-      // Create a new user in auth with user metadata
-      // This will trigger the database function to create profiles and clinicians records
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: 'temppass1234',
@@ -89,8 +98,6 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
       
       if (authError) throw authError;
       
-      // The profile and clinician records are created automatically by the database trigger
-      // Now update the clinician record with additional fields
       const { error: updateError } = await supabase
         .from('clinicians')
         .update({
@@ -108,7 +115,6 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
         description: "Staff member added successfully. You can now add licenses.",
       });
       
-      // Switch to the license tab
       setActiveTab("license");
     } catch (error: any) {
       console.error('Error adding staff member:', error);
@@ -122,11 +128,11 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
     }
   };
 
-  const addLicense = async () => {
-    if (!licenseState || !licenseNumber || !currentUserId) {
+  const addLicense = async (data: LicenseFormData) => {
+    if (!currentUserId) {
       toast({
         title: "Error",
-        description: "Please fill in all license fields and ensure a staff member is selected",
+        description: "Please create a staff member first",
         variant: "destructive"
       });
       return;
@@ -138,18 +144,18 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
         .from('licenses')
         .insert({
           clinician_id: currentUserId,
-          license_number: licenseNumber,
-          state: licenseState
+          license_number: data.licenseNumber,
+          state: data.licenseState
         });
         
       if (error) throw error;
       
-      // Add to local state for display
-      setLicenses([...licenses, { state: licenseState, number: licenseNumber }]);
+      setLicenses([...licenses, { state: data.licenseState, number: data.licenseNumber }]);
       
-      // Clear the form fields
-      setLicenseState("");
-      setLicenseNumber("");
+      licenseForm.reset({
+        licenseState: '',
+        licenseNumber: '',
+      });
       
       toast({
         title: "Success",
@@ -170,7 +176,6 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
 
   const completeStaffMemberCreation = () => {
     onClose();
-    // Refresh the staff list
     window.location.reload();
   };
 
@@ -191,12 +196,12 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
           </TabsList>
           
           <TabsContent value="personal">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <Form {...staffForm}>
+              <form onSubmit={staffForm.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
-                      control={form.control}
+                      control={staffForm.control}
                       name="first_name"
                       render={({ field }) => (
                         <FormItem>
@@ -210,7 +215,7 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
                     />
                     
                     <FormField
-                      control={form.control}
+                      control={staffForm.control}
                       name="last_name"
                       render={({ field }) => (
                         <FormItem>
@@ -225,7 +230,7 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
                   </div>
                   
                   <FormField
-                    control={form.control}
+                    control={staffForm.control}
                     name="professional_name"
                     render={({ field }) => (
                       <FormItem>
@@ -241,7 +246,7 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
                   
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
-                      control={form.control}
+                      control={staffForm.control}
                       name="email"
                       render={({ field }) => (
                         <FormItem>
@@ -255,7 +260,7 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
                     />
                     
                     <FormField
-                      control={form.control}
+                      control={staffForm.control}
                       name="phone"
                       render={({ field }) => (
                         <FormItem>
@@ -270,7 +275,7 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
                   </div>
                   
                   <FormField
-                    control={form.control}
+                    control={staffForm.control}
                     name="bio"
                     render={({ field }) => (
                       <FormItem>
@@ -293,7 +298,7 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
                   
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
-                      control={form.control}
+                      control={staffForm.control}
                       name="npi_number"
                       render={({ field }) => (
                         <FormItem>
@@ -307,7 +312,7 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
                     />
                     
                     <FormField
-                      control={form.control}
+                      control={staffForm.control}
                       name="taxonomy_code"
                       render={({ field }) => (
                         <FormItem>
@@ -360,36 +365,47 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
                   </div>
                 )}
                 
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormItem>
-                      <FormLabel>License State</FormLabel>
-                      <Input 
-                        placeholder="CA" 
-                        value={licenseState}
-                        onChange={(e) => setLicenseState(e.target.value)}
+                <Form {...licenseForm}>
+                  <form onSubmit={licenseForm.handleSubmit(addLicense)} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={licenseForm.control}
+                        name="licenseState"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>License State</FormLabel>
+                            <FormControl>
+                              <Input placeholder="CA" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </FormItem>
+                      
+                      <FormField
+                        control={licenseForm.control}
+                        name="licenseNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>License Number</FormLabel>
+                            <FormControl>
+                              <Input placeholder="ABC12345" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                     
-                    <FormItem>
-                      <FormLabel>License Number</FormLabel>
-                      <Input 
-                        placeholder="ABC12345" 
-                        value={licenseNumber}
-                        onChange={(e) => setLicenseNumber(e.target.value)}
-                      />
-                    </FormItem>
-                  </div>
-                  
-                  <Button 
-                    type="button"
-                    onClick={addLicense}
-                    disabled={addingLicense || !licenseState || !licenseNumber}
-                    className="w-full"
-                  >
-                    {addingLicense ? "Adding..." : "Add License"}
-                  </Button>
-                </div>
+                    <Button 
+                      type="submit"
+                      disabled={addingLicense}
+                      className="w-full"
+                    >
+                      {addingLicense ? "Adding..." : "Add License"}
+                    </Button>
+                  </form>
+                </Form>
               </div>
               
               <SheetFooter>
