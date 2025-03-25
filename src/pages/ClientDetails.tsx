@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -38,6 +39,13 @@ interface ClientDetails {
   client_treatment_goal: string | null;
 }
 
+interface Clinician {
+  id: string;
+  clinician_professional_name: string | null;
+  clinician_first_name: string | null;
+  clinician_last_name: string | null;
+}
+
 const ClientDetails = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const [client, setClient] = useState<ClientDetails | null>(null);
@@ -46,6 +54,8 @@ const ClientDetails = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedClient, setEditedClient] = useState<ClientDetails | null>(null);
   const [dateInputText, setDateInputText] = useState('');
+  const [clinicians, setClinicians] = useState<Clinician[]>([]);
+  const [loadingClinicians, setLoadingClinicians] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -54,6 +64,12 @@ const ClientDetails = () => {
       fetchClientDetails(clientId);
     }
   }, [clientId]);
+
+  useEffect(() => {
+    if (isEditing) {
+      fetchClinicians();
+    }
+  }, [isEditing]);
 
   const fetchClientDetails = async (id: string) => {
     try {
@@ -80,6 +96,32 @@ const ClientDetails = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchClinicians = async () => {
+    try {
+      setLoadingClinicians(true);
+      
+      const { data, error } = await supabase
+        .from('clinicians')
+        .select('id, clinician_professional_name, clinician_first_name, clinician_last_name')
+        .order('clinician_last_name', { ascending: true });
+      
+      if (error) {
+        throw error;
+      }
+      
+      setClinicians(data || []);
+    } catch (error) {
+      console.error('Error fetching clinicians:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load clinicians list.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingClinicians(false);
     }
   };
 
@@ -239,6 +281,17 @@ const ClientDetails = () => {
     "Other Social Media", 
     "Other"
   ];
+
+  // Helper function to display clinician name
+  const getClinicianDisplayName = (clinician: Clinician) => {
+    if (clinician.clinician_professional_name) {
+      return clinician.clinician_professional_name;
+    } else if (clinician.clinician_first_name && clinician.clinician_last_name) {
+      return `${clinician.clinician_first_name} ${clinician.clinician_last_name}`;
+    } else {
+      return `Clinician ${clinician.id.substring(0, 8)}`;
+    }
+  };
 
   return (
     <Layout>
@@ -592,9 +645,32 @@ const ClientDetails = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Therapist</label>
-                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    {client.client_assigned_therapist || 'None'}
-                  </div>
+                  {isEditing ? (
+                    <Select
+                      value={editedClient?.client_assigned_therapist || ''}
+                      onValueChange={(value) => handleSelectChange('client_assigned_therapist', value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select therapist" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        {loadingClinicians ? (
+                          <SelectItem value="loading" disabled>Loading clinicians...</SelectItem>
+                        ) : (
+                          clinicians.map((clinician) => (
+                            <SelectItem key={clinician.id} value={getClinicianDisplayName(clinician)}>
+                              {getClinicianDisplayName(clinician)}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                      {client.client_assigned_therapist || 'None'}
+                    </div>
+                  )}
                 </div>
                 <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Goal</label>
@@ -649,4 +725,3 @@ const ClientDetails = () => {
 };
 
 export default ClientDetails;
-
