@@ -210,6 +210,30 @@ export type Database = {
         }
         Relationships: []
       }
+      cpt_codes: {
+        Row: {
+          code: string
+          created_at: string
+          fee: number
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          fee: number
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          fee?: number
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       document_assignments: {
         Row: {
           assigned_by: string | null

@@ -70,3 +70,71 @@ export const formatDateForDB = (date: Date | null): string | null => {
   
   return `${year}-${month}-${day}`;
 };
+
+// Helper functions for CPT codes
+export interface CPTCode {
+  code: string;
+  name: string;
+  fee: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Fetch all CPT codes
+export const fetchCPTCodes = async (): Promise<CPTCode[]> => {
+  const { data, error } = await supabase
+    .from('cpt_codes')
+    .select('*')
+    .order('code');
+    
+  if (error) {
+    console.error('Error fetching CPT codes:', error);
+    return [];
+  }
+  
+  return data || [];
+};
+
+// Add a new CPT code
+export const addCPTCode = async (cptCode: CPTCode): Promise<{ success: boolean; error?: any }> => {
+  const { error } = await supabase
+    .from('cpt_codes')
+    .insert(cptCode);
+    
+  if (error) {
+    console.error('Error adding CPT code:', error);
+    return { success: false, error };
+  }
+  
+  return { success: true };
+};
+
+// Update an existing CPT code
+export const updateCPTCode = async (code: string, updates: Partial<CPTCode>): Promise<{ success: boolean; error?: any }> => {
+  const { error } = await supabase
+    .from('cpt_codes')
+    .update(updates)
+    .eq('code', code);
+    
+  if (error) {
+    console.error('Error updating CPT code:', error);
+    return { success: false, error };
+  }
+  
+  return { success: true };
+};
+
+// Delete a CPT code
+export const deleteCPTCode = async (code: string): Promise<{ success: boolean; error?: any }> => {
+  const { error } = await supabase
+    .from('cpt_codes')
+    .delete()
+    .eq('code', code);
+    
+  if (error) {
+    console.error('Error deleting CPT code:', error);
+    return { success: false, error };
+  }
+  
+  return { success: true };
+};
