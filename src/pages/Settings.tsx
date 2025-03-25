@@ -1,7 +1,11 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import { Pencil, Plus, Users } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { AddUserDialog } from '@/components/AddUserDialog';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from "@/hooks/use-toast";
 
 const SettingsTabs = {
   PRACTICE: 'practice',
@@ -16,6 +20,67 @@ const SettingsTabs = {
 const Settings = () => {
   const [activeTab, setActiveTab] = useState(SettingsTabs.PRACTICE);
   const [activeBillingTab, setActiveBillingTab] = useState('cpt');
+  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch users when the Users tab is active
+  useEffect(() => {
+    if (activeTab === SettingsTabs.USERS) {
+      fetchUsers();
+    }
+  }, [activeTab]);
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*');
+      
+      if (error) {
+        throw error;
+      }
+      
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load users',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this user?')) return;
+    
+    try {
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Remove user from local state
+      setUsers(users.filter(user => user.id !== userId));
+      
+      toast({
+        title: 'Success',
+        description: 'User deleted successfully',
+      });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete user',
+        variant: 'destructive',
+      });
+    }
+  };
 
   return (
     <Layout>
@@ -227,45 +292,55 @@ const Settings = () => {
           <div className="p-6 animate-fade-in">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold">User Management</h2>
-              <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800">
+              <button 
+                onClick={() => setIsAddUserDialogOpen(true)}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800"
+              >
                 <Plus size={16} />
                 <span>Add User</span>
               </button>
             </div>
             
-            <div className="space-y-4">
-              <div className="border rounded-lg p-4 relative">
-                <div className="flex items-start">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full mr-4"></div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold mb-1">Jane Smith</h3>
-                    <div className="text-sm text-gray-600">
-                      <p>Email: jane.smith@example.com</p>
-                      <p>Role: standard user</p>
+            {loading ? (
+              <div className="text-center py-8">Loading users...</div>
+            ) : users.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No users found. Click the button above to add your first user.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {users.map((user) => (
+                  <div key={user.id} className="border rounded-lg p-4 relative">
+                    <div className="flex items-start">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full mr-4 flex items-center justify-center text-white font-semibold">
+                        {user.first_name?.[0]}{user.last_name?.[0]}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold mb-1">
+                          {user.first_name} {user.last_name}
+                        </h3>
+                        <div className="text-sm text-gray-600">
+                          <p>Email: {user.email}</p>
+                          {user.phone && <p>Phone: {user.phone}</p>}
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
-                  <button className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600">
-                    Delete
-                  </button>
-                </div>
+                ))}
               </div>
-              
-              <div className="border rounded-lg p-4 relative">
-                <div className="flex items-start">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full mr-4"></div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold mb-1">John Davis</h3>
-                    <div className="text-sm text-gray-600">
-                      <p>Email: john.davis@example.com</p>
-                      <p>Role: standard user</p>
-                    </div>
-                  </div>
-                  <button className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600">
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
+            )}
+            
+            <AddUserDialog 
+              open={isAddUserDialogOpen} 
+              onOpenChange={setIsAddUserDialogOpen}
+              onUserAdded={fetchUsers}
+            />
           </div>
         )}
         
