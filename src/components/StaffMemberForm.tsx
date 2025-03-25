@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -158,9 +159,19 @@ const StaffMemberForm = ({ isOpen, onClose, staffId }: StaffMemberFormProps) => 
 
       if (licenseError) throw licenseError;
 
-      const clinicianData: ClinicianData | null = data.clinicians && data.clinicians.length > 0 
-        ? data.clinicians[0] as ClinicianData
-        : null;
+      // Fix the type issue by properly handling the clinicians array
+      let clinicianData: ClinicianData | null = null;
+      
+      if (data.clinicians && Array.isArray(data.clinicians) && data.clinicians.length > 0) {
+        clinicianData = {
+          phone: data.clinicians[0].phone || null,
+          clinician_type: data.clinicians[0].clinician_type || null,
+          license_type: data.clinicians[0].license_type || null,
+          bio: data.clinicians[0].bio || null,
+          npi_number: data.clinicians[0].npi_number || null,
+          taxonomy_code: data.clinicians[0].taxonomy_code || null
+        };
+      }
 
       staffForm.reset({
         first_name: data.first_name || '',
