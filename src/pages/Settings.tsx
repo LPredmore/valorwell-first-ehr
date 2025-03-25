@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import { Pencil, Plus, Users } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AddUserDialog } from '@/components/AddUserDialog';
+import { AddClinicianDialog } from '@/components/AddClinicianDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "@/hooks/use-toast";
 import {
@@ -18,7 +18,7 @@ import {
 
 const SettingsTabs = {
   PRACTICE: 'practice',
-  STAFF: 'staff',
+  CLINICIANS: 'clinicians',
   USERS: 'users',
   BILLING: 'billing',
   TEMPLATES: 'templates',
@@ -30,15 +30,43 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState(SettingsTabs.PRACTICE);
   const [activeBillingTab, setActiveBillingTab] = useState('cpt');
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+  const [isAddClinicianDialogOpen, setIsAddClinicianDialogOpen] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
+  const [clinicians, setClinicians] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingClinicians, setLoadingClinicians] = useState(false);
 
-  // Fetch users when the Users tab is active
   useEffect(() => {
     if (activeTab === SettingsTabs.USERS) {
       fetchUsers();
+    } else if (activeTab === SettingsTabs.CLINICIANS) {
+      fetchClinicians();
     }
   }, [activeTab]);
+
+  const fetchClinicians = async () => {
+    setLoadingClinicians(true);
+    try {
+      const { data, error } = await supabase
+        .from('clinicians')
+        .select('*');
+      
+      if (error) {
+        throw error;
+      }
+      
+      setClinicians(data || []);
+    } catch (error) {
+      console.error('Error fetching clinicians:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load clinicians',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingClinicians(false);
+    }
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -68,7 +96,6 @@ const Settings = () => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     
     try {
-      // First delete the profile record
       const { error: profileError } = await supabase
         .from('profiles')
         .delete()
@@ -78,14 +105,12 @@ const Settings = () => {
         throw profileError;
       }
       
-      // Then delete the auth user
       const { error } = await supabase.auth.admin.deleteUser(userId);
       
       if (error) {
         throw error;
       }
       
-      // Remove user from local state
       setUsers(users.filter(user => user.id !== userId));
       
       toast({
@@ -102,6 +127,35 @@ const Settings = () => {
     }
   };
 
+  const handleDeleteClinician = async (clinicianId: string) => {
+    if (!confirm('Are you sure you want to delete this clinician?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('clinicians')
+        .delete()
+        .eq('id', clinicianId);
+      
+      if (error) {
+        throw error;
+      }
+      
+      setClinicians(clinicians.filter(clinician => clinician.id !== clinicianId));
+      
+      toast({
+        title: 'Success',
+        description: 'Clinician deleted successfully',
+      });
+    } catch (error) {
+      console.error('Error deleting clinician:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete clinician',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <Layout>
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -113,10 +167,10 @@ const Settings = () => {
             Practice
           </button>
           <button 
-            className={`settings-tab ${activeTab === SettingsTabs.STAFF ? 'active' : ''}`}
-            onClick={() => setActiveTab(SettingsTabs.STAFF)}
+            className={`settings-tab ${activeTab === SettingsTabs.CLINICIANS ? 'active' : ''}`}
+            onClick={() => setActiveTab(SettingsTabs.CLINICIANS)}
           >
-            Staff
+            Clinicians
           </button>
           <button 
             className={`settings-tab ${activeTab === SettingsTabs.USERS ? 'active' : ''}`}
@@ -262,49 +316,70 @@ const Settings = () => {
           </div>
         )}
         
-        {activeTab === SettingsTabs.STAFF && (
+        {activeTab === SettingsTabs.CLINICIANS && (
           <div className="p-6 animate-fade-in">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Staff Management</h2>
-              <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800">
+              <h2 className="text-xl font-semibold">Clinician Management</h2>
+              <button 
+                onClick={() => setIsAddClinicianDialogOpen(true)}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800"
+              >
                 <Plus size={16} />
-                <span>Add Staff Member</span>
+                <span>Add Clinician</span>
               </button>
             </div>
             
-            <div className="space-y-4">
-              <div className="border rounded-lg p-4 relative">
-                <div className="flex items-start">
-                  <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-blue-500 rounded-full mr-4"></div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold mb-1">Test Therapist</h3>
-                    <div className="text-sm text-gray-600">
-                      <p>Email: info+test@valorwell.org</p>
-                      <p>Role: clinician</p>
+            {loadingClinicians ? (
+              <div className="text-center py-8">Loading clinicians...</div>
+            ) : clinicians.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No clinicians found. Click the button above to add your first clinician.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {clinicians.map((clinician) => (
+                  <div key={clinician.id} className="border rounded-lg p-4 relative">
+                    <div className="flex items-start">
+                      <div className="w-12 h-12 overflow-hidden rounded-full mr-4">
+                        {clinician.clinician_image_url ? (
+                          <img 
+                            src={clinician.clinician_image_url} 
+                            alt={`${clinician.clinician_first_name} ${clinician.clinician_last_name}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center text-white font-semibold">
+                            {clinician.clinician_first_name?.[0]}{clinician.clinician_last_name?.[0]}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold mb-1">
+                          {clinician.clinician_professional_name || `${clinician.clinician_first_name} ${clinician.clinician_last_name}`}
+                        </h3>
+                        <div className="text-sm text-gray-600">
+                          <p>Email: {clinician.clinician_email}</p>
+                          <p>Type: {clinician.clinician_type}</p>
+                          <p>License: {clinician.clinician_license_type}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => handleDeleteClinician(clinician.id)}
+                        className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
-                  <button className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600">
-                    Delete
-                  </button>
-                </div>
+                ))}
               </div>
-              
-              <div className="border rounded-lg p-4 relative">
-                <div className="flex items-start">
-                  <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-blue-500 rounded-full mr-4"></div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold mb-1">Luke Predmore</h3>
-                    <div className="text-sm text-gray-600">
-                      <p>Email: info@valorwell.org</p>
-                      <p>Role: admin</p>
-                    </div>
-                  </div>
-                  <button className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600">
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
+            )}
+            
+            <AddClinicianDialog 
+              open={isAddClinicianDialogOpen} 
+              onOpenChange={setIsAddClinicianDialogOpen}
+              onClinicianAdded={fetchClinicians}
+            />
           </div>
         )}
         
