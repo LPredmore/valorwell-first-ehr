@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -282,7 +281,6 @@ const ClientDetails = () => {
     "Other"
   ];
 
-  // Helper function to display clinician name
   const getClinicianDisplayName = (clinician: Clinician) => {
     if (clinician.clinician_professional_name) {
       return clinician.clinician_professional_name;
@@ -647,14 +645,14 @@ const ClientDetails = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Therapist</label>
                   {isEditing ? (
                     <Select
-                      value={editedClient?.client_assigned_therapist || ''}
-                      onValueChange={(value) => handleSelectChange('client_assigned_therapist', value)}
+                      value={editedClient?.client_assigned_therapist || 'none'}
+                      onValueChange={(value) => handleSelectChange('client_assigned_therapist', value === 'none' ? '' : value)}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select therapist" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         {loadingClinicians ? (
                           <SelectItem value="loading" disabled>Loading clinicians...</SelectItem>
                         ) : (
