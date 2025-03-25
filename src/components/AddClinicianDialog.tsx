@@ -202,43 +202,6 @@ export function AddClinicianDialog({ open, onOpenChange, onClinicianAdded }: Add
     setImageUrl(objectUrl);
   };
 
-  // Function to upload image to Supabase Storage
-  const uploadImageToStorage = async (file: File, clinicianId: string) => {
-    try {
-      setUploading(true);
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${uuidv4()}.${fileExt}`;
-      const filePath = `clinicians/${clinicianId}/${fileName}`;
-
-      // Create storage bucket if it doesn't exist
-      // Note: In a production app, you might want to create this bucket via SQL
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const clinicianBucket = buckets?.find(bucket => bucket.name === 'clinicians');
-      
-      if (!clinicianBucket) {
-        await supabase.storage.createBucket('clinicians', {
-          public: true,
-        });
-      }
-
-      const { error: uploadError } = await supabase.storage
-        .from('clinicians')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data } = supabase.storage.from('clinicians').getPublicUrl(filePath);
-      return data.publicUrl;
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      throw error;
-    } finally {
-      setUploading(false);
-    }
-  };
-
   // Form submission handler
   const onSubmit = async (data: z.infer<typeof clinicianFormSchema>) => {
     try {
@@ -265,24 +228,10 @@ export function AddClinicianDialog({ open, onOpenChange, onClinicianAdded }: Add
 
       if (error) throw error;
 
-      const clinicianId = clinician[0].id;
-
-      // Upload image if selected
-      let imagePublicUrl = null;
-      if (imageFile) {
-        imagePublicUrl = await uploadImageToStorage(imageFile, clinicianId);
+      // Add licenses if any
+      if (licenses.length > 0 && clinician && clinician.length > 0) {
+        const clinicianId = clinician[0].id;
         
-        // Update clinician with image URL
-        const { error: updateError } = await supabase
-          .from('clinicians')
-          .update({ clinician_image_url: imagePublicUrl })
-          .eq('id', clinicianId);
-
-        if (updateError) throw updateError;
-      }
-
-      // Add licenses
-      if (licenses.length > 0) {
         const licenseRecords = licenses.map(license => ({
           clinician_id: clinicianId,
           state: license.state,

@@ -96,16 +96,10 @@ const Settings = () => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     
     try {
-      const { error: profileError } = await supabase
+      const { error } = await supabase
         .from('profiles')
         .delete()
         .eq('id', userId);
-      
-      if (profileError) {
-        throw profileError;
-      }
-      
-      const { error } = await supabase.auth.admin.deleteUser(userId);
       
       if (error) {
         throw error;

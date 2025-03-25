@@ -56,30 +56,10 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
     setIsSubmitting(true);
 
     try {
-      // Create user with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: data.email,
-        password: "temppass1234",
-        email_confirm: true,
-        user_metadata: {
-          first_name: data.firstName,
-          last_name: data.lastName,
-        },
-      });
-
-      if (authError) {
-        throw new Error(authError.message);
-      }
-
-      if (!authData.user) {
-        throw new Error("Failed to create user");
-      }
-      
-      // Manually create the profile record since we no longer have a trigger
-      const { error: profileError } = await supabase
+      // Create user directly in the profiles table instead
+      const { error } = await supabase
         .from('profiles')
         .insert({
-          id: authData.user.id,
           email: data.email,
           first_name: data.firstName,
           last_name: data.lastName,
@@ -87,10 +67,10 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
           profile_type: 'user'
         });
 
-      if (profileError) {
-        throw new Error(`Error creating profile: ${profileError.message}`);
+      if (error) {
+        throw new Error(error.message);
       }
-
+      
       toast({
         title: "Success",
         description: "User added successfully",
@@ -117,7 +97,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
           <DialogDescription>
-            Enter user details below. A temporary password will be created automatically.
+            Enter user details below.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
