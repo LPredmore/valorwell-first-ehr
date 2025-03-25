@@ -75,13 +75,8 @@ const deleteUser = async (userId: string): Promise<UserResponse> => {
   }
 };
 
-// Extend the admin object with our custom methods
-const originalAdmin = supabaseClient.auth.admin;
 // Add our custom methods to the admin object
-supabaseClient.auth.admin = {
-  ...originalAdmin,
-  createUser,
-  deleteUser
-};
+supabaseClient.auth.admin.createUser = createUser;
+supabaseClient.auth.admin.deleteUser = deleteUser;
 
 export const supabase = supabaseClient;
