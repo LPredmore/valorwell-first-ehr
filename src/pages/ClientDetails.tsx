@@ -1,16 +1,15 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Pencil, Save, X } from 'lucide-react';
+import { ArrowLeft, Pencil, Save, X, Calendar as CalendarIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { format, differenceInYears } from 'date-fns';
+import { format, differenceInYears, parse, isValid } from 'date-fns';
 import {
   Select,
   SelectContent,
@@ -46,6 +45,7 @@ const ClientDetails = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [editedClient, setEditedClient] = useState<ClientDetails | null>(null);
+  const [dateInputText, setDateInputText] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -89,12 +89,12 @@ const ClientDetails = () => {
 
   const handleEditToggle = () => {
     if (isEditing) {
-      // Cancel edit mode and revert changes
       setEditedClient(client);
+      setDateInputText(client?.client_date_of_birth ? format(new Date(client.client_date_of_birth), 'yyyy-MM-dd') : '');
       setIsEditing(false);
     } else {
-      // Enter edit mode
       setIsEditing(true);
+      setDateInputText(editedClient?.client_date_of_birth ? format(new Date(editedClient.client_date_of_birth), 'yyyy-MM-dd') : '');
     }
   };
 
@@ -123,11 +123,35 @@ const ClientDetails = () => {
     const formattedDate = format(date, 'yyyy-MM-dd');
     const age = differenceInYears(new Date(), date);
     
+    setDateInputText(formattedDate);
     setEditedClient({
       ...editedClient,
       client_date_of_birth: formattedDate,
       client_age: age,
     });
+  };
+
+  const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    setDateInputText(inputValue);
+    
+    if (inputValue) {
+      try {
+        const parsedDate = parse(inputValue, 'yyyy-MM-dd', new Date());
+        
+        if (isValid(parsedDate) && editedClient) {
+          const age = differenceInYears(new Date(), parsedDate);
+          
+          setEditedClient({
+            ...editedClient,
+            client_date_of_birth: format(parsedDate, 'yyyy-MM-dd'),
+            client_age: age,
+          });
+        }
+      } catch (error) {
+        console.error('Invalid date format', error);
+      }
+    }
   };
 
   const handleSaveChanges = async () => {
@@ -143,7 +167,6 @@ const ClientDetails = () => {
         throw error;
       }
       
-      // Update the client state with the edited values
       setClient(editedClient);
       setIsEditing(false);
       
@@ -187,7 +210,6 @@ const ClientDetails = () => {
     );
   }
 
-  // US time zones including Hawaii and Alaska
   const timeZones = [
     "Hawaii-Aleutian Standard Time (HST)",
     "Alaska Standard Time (AKST)",
@@ -197,7 +219,6 @@ const ClientDetails = () => {
     "Eastern Standard Time (EST)",
   ];
 
-  // US states in alphabetical order
   const states = [
     "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", 
     "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", 
@@ -209,7 +230,6 @@ const ClientDetails = () => {
     "Wisconsin", "Wyoming"
   ];
 
-  // Referral sources
   const referralSources = [
     "Family or Friend", 
     "Veterans Organization", 
@@ -268,7 +288,6 @@ const ClientDetails = () => {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="border-b mb-6">
         <div className="flex">
           {['profile', 'insurance', 'documents', 'appointments', 'notes'].map((tab) => (
@@ -285,7 +304,6 @@ const ClientDetails = () => {
 
       {activeTab === 'profile' && (
         <>
-          {/* Personal Information Section */}
           <Card className="mb-6">
             <CardContent className="p-6">
               <div className="flex items-center mb-4">
@@ -344,27 +362,32 @@ const ClientDetails = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
                   {isEditing ? (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button 
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal"
-                        >
-                          {editedClient?.client_date_of_birth ? 
-                            format(new Date(editedClient.client_date_of_birth), 'PP') : 
-                            'Select date'}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 pointer-events-auto">
-                        <Calendar
-                          mode="single"
-                          selected={editedClient?.client_date_of_birth ? new Date(editedClient.client_date_of_birth) : undefined}
-                          onSelect={handleDateChange}
-                          initialFocus
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <div className="flex gap-2">
+                      <Input
+                        value={dateInputText}
+                        onChange={handleDateInputChange}
+                        placeholder="yyyy-mm-dd"
+                        className="w-full"
+                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button 
+                            variant="outline"
+                            className="px-3"
+                          >
+                            <CalendarIcon className="h-5 w-5" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 pointer-events-auto">
+                          <Calendar
+                            mode="single"
+                            selected={editedClient?.client_date_of_birth ? new Date(editedClient.client_date_of_birth) : undefined}
+                            onSelect={handleDateChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   ) : (
                     <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
                       {client.client_date_of_birth ? new Date(client.client_date_of_birth).toLocaleDateString() : '-'}
@@ -520,7 +543,6 @@ const ClientDetails = () => {
             </CardContent>
           </Card>
 
-          {/* Clinical Information Section */}
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center mb-4">
@@ -627,3 +649,4 @@ const ClientDetails = () => {
 };
 
 export default ClientDetails;
+
