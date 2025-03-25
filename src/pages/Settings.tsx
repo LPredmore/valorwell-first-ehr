@@ -1,11 +1,12 @@
-
 import { useState } from 'react';
 import Layout from '../components/layout/Layout';
-import { Pencil, Plus } from 'lucide-react';
+import { Pencil, Plus, Users } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const SettingsTabs = {
   PRACTICE: 'practice',
   STAFF: 'staff',
+  USERS: 'users',
   BILLING: 'billing',
   TEMPLATES: 'templates',
   SECURITY: 'security',
@@ -31,6 +32,12 @@ const Settings = () => {
             onClick={() => setActiveTab(SettingsTabs.STAFF)}
           >
             Staff
+          </button>
+          <button 
+            className={`settings-tab ${activeTab === SettingsTabs.USERS ? 'active' : ''}`}
+            onClick={() => setActiveTab(SettingsTabs.USERS)}
+          >
+            Users
           </button>
           <button 
             className={`settings-tab ${activeTab === SettingsTabs.BILLING ? 'active' : ''}`}
@@ -205,6 +212,52 @@ const Settings = () => {
                     <div className="text-sm text-gray-600">
                       <p>Email: info@valorwell.org</p>
                       <p>Role: admin</p>
+                    </div>
+                  </div>
+                  <button className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600">
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {activeTab === SettingsTabs.USERS && (
+          <div className="p-6 animate-fade-in">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">User Management</h2>
+              <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800">
+                <Plus size={16} />
+                <span>Add User</span>
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="border rounded-lg p-4 relative">
+                <div className="flex items-start">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full mr-4"></div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold mb-1">Jane Smith</h3>
+                    <div className="text-sm text-gray-600">
+                      <p>Email: jane.smith@example.com</p>
+                      <p>Role: standard user</p>
+                    </div>
+                  </div>
+                  <button className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600">
+                    Delete
+                  </button>
+                </div>
+              </div>
+              
+              <div className="border rounded-lg p-4 relative">
+                <div className="flex items-start">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full mr-4"></div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold mb-1">John Davis</h3>
+                    <div className="text-sm text-gray-600">
+                      <p>Email: john.davis@example.com</p>
+                      <p>Role: standard user</p>
                     </div>
                   </div>
                   <button className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600">
