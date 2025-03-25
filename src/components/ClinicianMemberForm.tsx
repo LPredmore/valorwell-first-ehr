@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { v4 as uuidv4 } from 'uuid';
 
 interface ClinicianMemberFormProps {
   isOpen: boolean;
@@ -126,10 +127,12 @@ const ClinicianMemberForm = ({ isOpen, onClose, clinicianId }: ClinicianMemberFo
         
         toast.success('Clinician updated successfully');
       } else {
-        // Create new clinician
+        // Create new clinician with a UUID
+        const newClinicianId = uuidv4();
         const { error } = await supabase
           .from('clinicians')
           .insert({
+            id: newClinicianId, // Add the required id field
             clinician_first_name: formData.clinician_first_name,
             clinician_last_name: formData.clinician_last_name,
             clinician_email: formData.clinician_email,
