@@ -515,7 +515,7 @@ const ClinicianDetails = () => {
                 </label>
                 {isEditing ? (
                   <Select 
-                    value={editedClinician?.clinician_type || 'Mental Health'}
+                    value={editedClinician?.clinician_type || ''}
                     onValueChange={(value) => handleInputChange('clinician_type', value)}
                   >
                     <SelectTrigger>
@@ -531,7 +531,7 @@ const ClinicianDetails = () => {
                   </Select>
                 ) : (
                   <p className="p-2 border rounded-md bg-gray-50">
-                    {clinician.clinician_type || 'Mental Health'}
+                    {clinician.clinician_type || '—'}
                   </p>
                 )}
               </div>
@@ -541,7 +541,7 @@ const ClinicianDetails = () => {
                 </label>
                 {isEditing ? (
                   <Select 
-                    value={editedClinician?.clinician_license_type || 'LPC'}
+                    value={editedClinician?.clinician_license_type || ''}
                     onValueChange={(value) => handleInputChange('clinician_license_type', value)}
                   >
                     <SelectTrigger>
