@@ -23,20 +23,12 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 const userFormSchema = z.object({
   firstName: z.string().min(2, { message: "First name is required" }),
   lastName: z.string().min(2, { message: "Last name is required" }),
   email: z.string().email({ message: "Invalid email address" }),
   phone: z.string().optional(),
-  role: z.enum(["client", "clinician", "admin"], { message: "Role is required" }),
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
@@ -57,7 +49,6 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       lastName: "",
       email: "",
       phone: "",
-      role: "client",
     },
   });
 
@@ -65,21 +56,40 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
     setIsSubmitting(true);
 
     try {
-      // Use the admin.createUser from our client wrapper
-      const { data: result, error } = await supabase.auth.admin.createUser({
+      // Create user with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: data.email,
-        password: "temppass1234", // Temporary password
-        firstName: data.firstName,
-        lastName: data.lastName,
-        phone: data.phone || null,
-        role: data.role
+        password: "temppass1234",
+        email_confirm: true,
+        user_metadata: {
+          first_name: data.firstName,
+          last_name: data.lastName,
+        },
       });
 
-      if (error) {
-        throw error;
+      if (authError) {
+        throw new Error(authError.message);
       }
 
-      console.log("User created successfully:", result);
+      if (!authData.user) {
+        throw new Error("Failed to create user");
+      }
+      
+      // Manually create the profile record since we no longer have a trigger
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: authData.user.id,
+          email: data.email,
+          first_name: data.firstName,
+          last_name: data.lastName,
+          phone: data.phone || null,
+          profile_type: 'user'
+        });
+
+      if (profileError) {
+        throw new Error(`Error creating profile: ${profileError.message}`);
+      }
 
       toast({
         title: "Success",
@@ -160,31 +170,6 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
                   <FormControl>
                     <Input placeholder="Enter phone number" {...field} />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>User Role</FormLabel>
-                  <Select 
-                    onValueChange={field.onChange} 
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="client">Client</SelectItem>
-                      <SelectItem value="clinician">Clinician</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

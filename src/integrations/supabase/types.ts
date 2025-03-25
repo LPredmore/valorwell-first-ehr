@@ -147,13 +147,11 @@ export type Database = {
           clinician_image_url: string | null
           clinician_last_name: string | null
           clinician_license_type: string | null
-          clinician_licensed_states: string[] | null
           clinician_min_client_age: number | null
           clinician_npi_number: string | null
           clinician_phone: string | null
           clinician_professional_name: string | null
-          clinician_state: string[] | null
-          clinician_status: string | null
+          clinician_state: string | null
           clinician_taxonomy_code: string | null
           clinician_treatment_approaches: string[] | null
           clinician_type: string | null
@@ -169,13 +167,11 @@ export type Database = {
           clinician_image_url?: string | null
           clinician_last_name?: string | null
           clinician_license_type?: string | null
-          clinician_licensed_states?: string[] | null
           clinician_min_client_age?: number | null
           clinician_npi_number?: string | null
           clinician_phone?: string | null
           clinician_professional_name?: string | null
-          clinician_state?: string[] | null
-          clinician_status?: string | null
+          clinician_state?: string | null
           clinician_taxonomy_code?: string | null
           clinician_treatment_approaches?: string[] | null
           clinician_type?: string | null
@@ -191,13 +187,11 @@ export type Database = {
           clinician_image_url?: string | null
           clinician_last_name?: string | null
           clinician_license_type?: string | null
-          clinician_licensed_states?: string[] | null
           clinician_min_client_age?: number | null
           clinician_npi_number?: string | null
           clinician_phone?: string | null
           clinician_professional_name?: string | null
-          clinician_state?: string[] | null
-          clinician_status?: string | null
+          clinician_state?: string | null
           clinician_taxonomy_code?: string | null
           clinician_treatment_approaches?: string[] | null
           clinician_type?: string | null
@@ -318,7 +312,6 @@ export type Database = {
           last_name: string | null
           phone: string | null
           profile_type: string | null
-          role: Database["public"]["Enums"]["app_role"]
           updated_at: string
         }
         Insert: {
@@ -329,7 +322,6 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           profile_type?: string | null
-          role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
         }
         Update: {
@@ -340,7 +332,6 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           profile_type?: string | null
-          role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
         }
         Relationships: []
@@ -383,7 +374,6 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      app_role: "admin" | "client" | "clinician"
       document_category:
         | "medical_record"
         | "consent_form"
