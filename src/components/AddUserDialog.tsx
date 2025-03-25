@@ -1,10 +1,9 @@
-
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, createUser } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -78,16 +77,8 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       
       console.log("User metadata to be saved:", userData);
       
-      // Create user in Supabase Auth with a fixed default password
-      // Using signUp instead of admin.createUser as it doesn't require admin privileges
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: "temppass1234",
-        options: {
-          data: userData,
-          emailRedirectTo: window.location.origin,
-        }
-      });
+      // Create user using our helper function
+      const { data: authData, error: authError } = await createUser(data.email, userData);
 
       if (authError) {
         console.error("Auth error:", authError);

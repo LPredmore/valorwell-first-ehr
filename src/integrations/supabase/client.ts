@@ -12,3 +12,20 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 const supabaseClient = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 export const supabase = supabaseClient;
+
+// Helper function to create a new user with a default password
+export const createUser = async (
+  email: string,
+  userData: any,
+  password = "temppass1234"
+) => {
+  return supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: userData,
+      emailRedirectTo: window.location.origin,
+    }
+  });
+};
+
