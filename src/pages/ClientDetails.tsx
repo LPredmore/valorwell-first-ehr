@@ -6,7 +6,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Pencil } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import EditClientDialog from '@/components/EditClientDialog';
 
 interface ClientDetails {
   id: string;
@@ -33,7 +32,6 @@ const ClientDetails = () => {
   const [client, setClient] = useState<ClientDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -72,20 +70,6 @@ const ClientDetails = () => {
 
   const goBackToClients = () => {
     navigate('/clients');
-  };
-
-  const handleEditClient = () => {
-    setIsEditDialogOpen(true);
-  };
-
-  const handleCloseEditDialog = () => {
-    setIsEditDialogOpen(false);
-  };
-
-  const handleClientUpdated = () => {
-    if (clientId) {
-      fetchClientDetails(clientId);
-    }
   };
 
   if (loading) {
@@ -131,10 +115,7 @@ const ClientDetails = () => {
           Back to Clients
         </button>
 
-        <button 
-          className="px-4 py-2 bg-valorwell-700 text-white rounded-md flex items-center"
-          onClick={handleEditClient}
-        >
+        <button className="px-4 py-2 bg-valorwell-700 text-white rounded-md flex items-center">
           <Pencil size={16} className="mr-2" />
           Edit Client
         </button>
@@ -311,16 +292,6 @@ const ClientDetails = () => {
           <h2 className="text-lg font-semibold mb-4">Notes</h2>
           <p className="text-gray-500">Client notes will be displayed here.</p>
         </div>
-      )}
-
-      {/* Edit Client Dialog */}
-      {isEditDialogOpen && client && (
-        <EditClientDialog 
-          isOpen={isEditDialogOpen} 
-          onClose={handleCloseEditDialog} 
-          client={client}
-          onClientUpdated={handleClientUpdated}
-        />
       )}
     </Layout>
   );
