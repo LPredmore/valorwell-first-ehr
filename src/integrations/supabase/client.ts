@@ -13,7 +13,14 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 const supabaseClient = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 // Create custom admin functions
-const createUser = async (userDetails: AdminUserAttributes): Promise<UserResponse> => {
+const createUser = async (userDetails: {
+  email: string;
+  password?: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  role: string;
+}): Promise<UserResponse> => {
   const session = await supabaseClient.auth.getSession();
   if (!session.data.session) {
     const authError = new AuthError('Not authenticated');
@@ -27,7 +34,14 @@ const createUser = async (userDetails: AdminUserAttributes): Promise<UserRespons
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.data.session.access_token}`
       },
-      body: JSON.stringify(userDetails)
+      body: JSON.stringify({
+        email: userDetails.email,
+        password: userDetails.password || "temppass1234", // Default temporary password
+        firstName: userDetails.firstName,
+        lastName: userDetails.lastName,
+        phone: userDetails.phone || null,
+        role: userDetails.role
+      })
     });
 
     if (!response.ok) {
@@ -103,11 +117,25 @@ const deleteUser = async (userId: string): Promise<UserResponse> => {
   }
 };
 
-// Add our custom methods to the admin object
-supabaseClient.auth.admin = {
-  ...supabaseClient.auth.admin,
-  createUser,
-  deleteUser
+// Add our custom methods to the auth object in a type-safe way
+// Use type assertion to add our custom admin functions without TypeScript errors
+const supabase = {
+  ...supabaseClient,
+  auth: {
+    ...supabaseClient.auth,
+    admin: {
+      ...supabaseClient.auth.admin,
+      createUser,
+      deleteUser
+    }
+  }
+} as typeof supabaseClient & {
+  auth: typeof supabaseClient.auth & {
+    admin: typeof supabaseClient.auth.admin & {
+      createUser: typeof createUser;
+      deleteUser: typeof deleteUser;
+    }
+  }
 };
 
-export const supabase = supabaseClient;
+export { supabase };

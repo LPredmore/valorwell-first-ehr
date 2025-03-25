@@ -65,25 +65,10 @@ const Settings = () => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     
     try {
-      const session = await supabase.auth.getSession();
-      if (!session.data.session) {
-        throw new Error('You must be logged in to delete users');
-      }
-
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://gqlkritspnhjxfejvgfg.supabase.co";
+      const { data, error } = await supabase.auth.admin.deleteUser(userId);
       
-      const response = await fetch(`${supabaseUrl}/functions/v1/admin-api/delete-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.data.session.access_token}`
-        },
-        body: JSON.stringify({ userId })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete user');
+      if (error) {
+        throw error;
       }
       
       setUsers(users.filter(user => user.id !== userId));

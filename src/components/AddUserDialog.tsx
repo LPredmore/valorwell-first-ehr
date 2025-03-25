@@ -65,59 +65,20 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
     setIsSubmitting(true);
 
     try {
-      const session = await supabase.auth.getSession();
-      if (!session.data.session) {
-        throw new Error("You must be logged in to add users");
-      }
-
-      // Get the Supabase URL from the environment or use the Supabase client URL
-      const supabaseUrl = supabase.supabaseUrl;
-      
-      console.log("Using Supabase URL:", supabaseUrl);
-      console.log("Creating user with data:", {
+      // Use the admin.createUser from our client wrapper
+      const { data: result, error } = await supabase.auth.admin.createUser({
         email: data.email,
-        role: data.role,
+        password: "temppass1234", // Temporary password
         firstName: data.firstName,
-        lastName: data.lastName
-      });
-      
-      // Call our admin API to create a user
-      const response = await fetch(`${supabaseUrl}/functions/v1/admin-api/create-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.data.session.access_token}`
-        },
-        body: JSON.stringify({
-          email: data.email,
-          password: "temppass1234", // Temporary password
-          firstName: data.firstName,
-          lastName: data.lastName,
-          phone: data.phone || null,
-          role: data.role
-        })
+        lastName: data.lastName,
+        phone: data.phone || null,
+        role: data.role
       });
 
-      // Handle non-OK responses
-      if (!response.ok) {
-        const responseText = await response.text();
-        let errorMessage = "Failed to create user";
-        
-        try {
-          // Try to parse as JSON, but don't fail if it's not valid JSON
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.error || errorMessage;
-        } catch (e) {
-          // If parsing fails, use the raw text if available
-          if (responseText) {
-            errorMessage = `Server error: ${responseText}`;
-          }
-        }
-        
-        throw new Error(errorMessage);
+      if (error) {
+        throw error;
       }
 
-      const result = await response.json();
       console.log("User created successfully:", result);
 
       toast({

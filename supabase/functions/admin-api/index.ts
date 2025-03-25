@@ -79,6 +79,9 @@ serve(async (req) => {
 
       console.log('User created successfully:', data.user.id);
       
+      // The app_role error likely happens here when inserting into profiles
+      // This is handled by the database trigger, not in this function
+      
       return new Response(JSON.stringify({ success: true, user: data.user }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
