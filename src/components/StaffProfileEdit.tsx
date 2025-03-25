@@ -43,38 +43,83 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
   const fetchStaffMember = async (id: string) => {
     setIsLoading(true);
     try {
-      console.log('Fetching staff member with ID:', id);
+      console.log('Fetching clinician with ID:', id);
       
-      // Only get the clinician data
-      const { data: clinicianData, error: clinicianError } = await supabase
+      // First check if the clinician exists in the clinicians table
+      const { data, error } = await supabase
         .from('clinicians')
-        .select('id, email, first_name, last_name, professional_name, phone, bio, clinician_type, license_type, npi_number, taxonomy_code')
+        .select('*')
         .eq('id', id)
-        .single();
-
-      if (clinicianError) {
-        console.error('Error fetching clinician data:', clinicianError);
-        throw clinicianError;
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error fetching clinician data:', error);
+        throw error;
       }
       
-      console.log('Clinician data fetched:', clinicianData);
-
-      setProfile({
-        id: clinicianData.id,
-        email: clinicianData.email,
-        first_name: clinicianData.first_name,
-        last_name: clinicianData.last_name,
-        professional_name: clinicianData.professional_name,
-        phone: clinicianData.phone,
-        bio: clinicianData.bio,
-        clinician_type: clinicianData.clinician_type,
-        license_type: clinicianData.license_type,
-        npi_number: clinicianData.npi_number,
-        taxonomy_code: clinicianData.taxonomy_code
-      });
+      if (data) {
+        console.log('Clinician data found:', data);
+        setProfile({
+          id: data.id,
+          email: data.email,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          professional_name: data.professional_name,
+          phone: data.phone,
+          bio: data.bio,
+          clinician_type: data.clinician_type,
+          license_type: data.license_type,
+          npi_number: data.npi_number,
+          taxonomy_code: data.taxonomy_code
+        });
+      } else {
+        // If clinician doesn't exist in clinicians table, create a new record
+        console.log('No clinician found with ID:', id);
+        
+        // Get basic info from profiles to create the clinician record
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('email, first_name, last_name')
+          .eq('id', id)
+          .single();
+        
+        if (profileError) {
+          throw profileError;
+        }
+        
+        // Create an empty profile with the basic data
+        setProfile({
+          id: id,
+          email: profileData.email,
+          first_name: profileData.first_name,
+          last_name: profileData.last_name,
+          professional_name: null,
+          phone: null,
+          bio: null,
+          clinician_type: null,
+          license_type: null,
+          npi_number: null,
+          taxonomy_code: null
+        });
+        
+        // Create a new clinician record in the database
+        const { error: insertError } = await supabase
+          .from('clinicians')
+          .insert({
+            id: id,
+            email: profileData.email,
+            first_name: profileData.first_name,
+            last_name: profileData.last_name
+          });
+          
+        if (insertError) {
+          console.error('Error creating clinician record:', insertError);
+          toast.error('Failed to create clinician record');
+        }
+      }
     } catch (error) {
-      console.error('Error fetching staff member:', error);
-      toast.error('Failed to load staff member details');
+      console.error('Error setting up clinician profile:', error);
+      toast.error('Failed to load or create clinician profile');
     } finally {
       setIsLoading(false);
     }
@@ -94,8 +139,9 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
     
     setIsSaving(true);
     try {
-      // Update clinician information only
-      const { error: updateError } = await supabase
+      console.log('Saving clinician data:', profile);
+      
+      const { error } = await supabase
         .from('clinicians')
         .update({
           first_name: profile.first_name,
@@ -111,13 +157,16 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
         })
         .eq('id', profile.id);
 
-      if (updateError) throw updateError;
+      if (error) {
+        console.error('Error updating clinician:', error);
+        throw error;
+      }
 
-      toast.success('Staff profile updated successfully');
+      toast.success('Clinician profile updated successfully');
       onClose();
     } catch (error) {
-      console.error('Error updating staff profile:', error);
-      toast.error('Failed to update staff profile');
+      console.error('Error updating clinician profile:', error);
+      toast.error('Failed to update clinician profile');
     } finally {
       setIsSaving(false);
     }
