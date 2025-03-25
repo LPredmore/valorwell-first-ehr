@@ -17,10 +17,10 @@ type StaffProfileEditProps = {
 
 type StaffProfile = {
   id: string;
-  email: string | null;
   first_name: string | null;
   last_name: string | null;
   professional_name: string | null;
+  email: string | null;
   phone: string | null;
   bio: string | null;
   clinician_type: string | null;
@@ -36,16 +36,16 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
 
   useEffect(() => {
     if (isOpen && staffId) {
-      fetchStaffMember(staffId);
+      fetchClinicianData(staffId);
     }
   }, [isOpen, staffId]);
 
-  const fetchStaffMember = async (id: string) => {
+  const fetchClinicianData = async (id: string) => {
     setIsLoading(true);
     try {
       console.log('Fetching clinician with ID:', id);
       
-      // First check if the clinician exists in the clinicians table
+      // Directly query the clinicians table only
       const { data, error } = await supabase
         .from('clinicians')
         .select('*')
@@ -61,10 +61,10 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
         console.log('Clinician data found:', data);
         setProfile({
           id: data.id,
-          email: data.email,
           first_name: data.first_name,
           last_name: data.last_name,
           professional_name: data.professional_name,
+          email: data.email,
           phone: data.phone,
           bio: data.bio,
           clinician_type: data.clinician_type,
@@ -73,43 +73,31 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
           taxonomy_code: data.taxonomy_code
         });
       } else {
-        // If clinician doesn't exist in clinicians table, create a new record
+        // If clinician doesn't exist in clinicians table, create a new empty record
         console.log('No clinician found with ID:', id);
         
-        // Get basic info from profiles to create the clinician record
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('email, first_name, last_name')
-          .eq('id', id)
-          .single();
-        
-        if (profileError) {
-          throw profileError;
-        }
-        
-        // Create an empty profile with the basic data
-        setProfile({
+        // Create an empty profile
+        const emptyProfile: StaffProfile = {
           id: id,
-          email: profileData.email,
-          first_name: profileData.first_name,
-          last_name: profileData.last_name,
+          first_name: null,
+          last_name: null,
           professional_name: null,
+          email: null,
           phone: null,
           bio: null,
           clinician_type: null,
           license_type: null,
           npi_number: null,
           taxonomy_code: null
-        });
+        };
+        
+        setProfile(emptyProfile);
         
         // Create a new clinician record in the database
         const { error: insertError } = await supabase
           .from('clinicians')
           .insert({
-            id: id,
-            email: profileData.email,
-            first_name: profileData.first_name,
-            last_name: profileData.last_name
+            id: id
           });
           
         if (insertError) {
