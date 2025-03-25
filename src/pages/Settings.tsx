@@ -6,6 +6,15 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AddUserDialog } from '@/components/AddUserDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "@/hooks/use-toast";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const SettingsTabs = {
   PRACTICE: 'practice',
@@ -319,31 +328,38 @@ const Settings = () => {
                 No users found. Click the button above to add your first user.
               </div>
             ) : (
-              <div className="space-y-4">
-                {users.map((user) => (
-                  <div key={user.id} className="border rounded-lg p-4 relative">
-                    <div className="flex items-start">
-                      <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full mr-4 flex items-center justify-center text-white font-semibold">
-                        {user.first_name?.[0]}{user.last_name?.[0]}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold mb-1">
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Phone Number</TableHead>
+                      <TableHead>User ID</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">
                           {user.first_name} {user.last_name}
-                        </h3>
-                        <div className="text-sm text-gray-600">
-                          <p>Email: {user.email}</p>
-                          {user.phone && <p>Phone: {user.phone}</p>}
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => handleDeleteUser(user.id)}
-                        className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                        </TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>{user.phone || "—"}</TableCell>
+                        <TableCell className="font-mono text-xs text-gray-500">{user.id}</TableCell>
+                        <TableCell className="text-right">
+                          <button 
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                          >
+                            Delete
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
             
