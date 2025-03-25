@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, parseDateString, formatDateForDB } from "@/integrations/supabase/client";
 import { 
   Card, 
   CardContent,
@@ -200,7 +200,7 @@ const ClientDetails = () => {
       client_preferred_name: clientData?.client_preferred_name || "",
       client_email: clientData?.client_email || "",
       client_phone: clientData?.client_phone || "",
-      client_date_of_birth: clientData?.client_date_of_birth ? new Date(clientData.client_date_of_birth) : null,
+      client_date_of_birth: clientData?.client_date_of_birth ? parseDateString(clientData.client_date_of_birth) : null,
       client_age: clientData?.client_age ? String(clientData.client_age) : null,
       client_gender: clientData?.client_gender || "",
       client_gender_identity: clientData?.client_gender_identity || "",
@@ -217,21 +217,21 @@ const ClientDetails = () => {
       client_group_number_primary: clientData?.client_group_number_primary || "",
       client_subscriber_name_primary: clientData?.client_subscriber_name_primary || "",
       client_insurance_type_primary: clientData?.client_insurance_type_primary || "",
-      client_subscriber_dob_primary: clientData?.client_subscriber_dob_primary ? new Date(clientData.client_subscriber_dob_primary) : null,
+      client_subscriber_dob_primary: clientData?.client_subscriber_dob_primary ? parseDateString(clientData.client_subscriber_dob_primary) : null,
       client_subscriber_relationship_primary: clientData?.client_subscriber_relationship_primary || "",
       client_insurance_company_secondary: clientData?.client_insurance_company_secondary || "",
       client_policy_number_secondary: clientData?.client_policy_number_secondary || "",
       client_group_number_secondary: clientData?.client_group_number_secondary || "",
       client_subscriber_name_secondary: clientData?.client_subscriber_name_secondary || "",
       client_insurance_type_secondary: clientData?.client_insurance_type_secondary || "",
-      client_subscriber_dob_secondary: clientData?.client_subscriber_dob_secondary ? new Date(clientData.client_subscriber_dob_secondary) : null,
+      client_subscriber_dob_secondary: clientData?.client_subscriber_dob_secondary ? parseDateString(clientData.client_subscriber_dob_secondary) : null,
       client_subscriber_relationship_secondary: clientData?.client_subscriber_relationship_secondary || "",
       client_insurance_company_tertiary: clientData?.client_insurance_company_tertiary || "",
       client_policy_number_tertiary: clientData?.client_policy_number_tertiary || "",
       client_group_number_tertiary: clientData?.client_group_number_tertiary || "",
       client_subscriber_name_tertiary: clientData?.client_subscriber_name_tertiary || "",
       client_insurance_type_tertiary: clientData?.client_insurance_type_tertiary || "",
-      client_subscriber_dob_tertiary: clientData?.client_subscriber_dob_tertiary ? new Date(clientData.client_subscriber_dob_tertiary) : null,
+      client_subscriber_dob_tertiary: clientData?.client_subscriber_dob_tertiary ? parseDateString(clientData.client_subscriber_dob_tertiary) : null,
       client_subscriber_relationship_tertiary: clientData?.client_subscriber_relationship_tertiary || "",
     },
   });
@@ -244,7 +244,7 @@ const ClientDetails = () => {
         client_preferred_name: clientData.client_preferred_name || "",
         client_email: clientData.client_email || "",
         client_phone: clientData.client_phone || "",
-        client_date_of_birth: clientData.client_date_of_birth ? new Date(clientData.client_date_of_birth) : null,
+        client_date_of_birth: clientData.client_date_of_birth ? parseDateString(clientData.client_date_of_birth) : null,
         client_age: clientData.client_age ? String(clientData.client_age) : null,
         client_gender: clientData.client_gender || "",
         client_gender_identity: clientData.client_gender_identity || "",
@@ -261,21 +261,21 @@ const ClientDetails = () => {
         client_group_number_primary: clientData.client_group_number_primary || "",
         client_subscriber_name_primary: clientData.client_subscriber_name_primary || "",
         client_insurance_type_primary: clientData.client_insurance_type_primary || "",
-        client_subscriber_dob_primary: clientData.client_subscriber_dob_primary ? new Date(clientData.client_subscriber_dob_primary) : null,
+        client_subscriber_dob_primary: clientData.client_subscriber_dob_primary ? parseDateString(clientData.client_subscriber_dob_primary) : null,
         client_subscriber_relationship_primary: clientData.client_subscriber_relationship_primary || "",
         client_insurance_company_secondary: clientData.client_insurance_company_secondary || "",
         client_policy_number_secondary: clientData.client_policy_number_secondary || "",
         client_group_number_secondary: clientData.client_group_number_secondary || "",
         client_subscriber_name_secondary: clientData.client_subscriber_name_secondary || "",
         client_insurance_type_secondary: clientData.client_insurance_type_secondary || "",
-        client_subscriber_dob_secondary: clientData.client_subscriber_dob_secondary ? new Date(clientData.client_subscriber_dob_secondary) : null,
+        client_subscriber_dob_secondary: clientData.client_subscriber_dob_secondary ? parseDateString(clientData.client_subscriber_dob_secondary) : null,
         client_subscriber_relationship_secondary: clientData.client_subscriber_relationship_secondary || "",
         client_insurance_company_tertiary: clientData.client_insurance_company_tertiary || "",
         client_policy_number_tertiary: clientData.client_policy_number_tertiary || "",
         client_group_number_tertiary: clientData.client_group_number_tertiary || "",
         client_subscriber_name_tertiary: clientData.client_subscriber_name_tertiary || "",
         client_insurance_type_tertiary: clientData.client_insurance_type_tertiary || "",
-        client_subscriber_dob_tertiary: clientData.client_subscriber_dob_tertiary ? new Date(clientData.client_subscriber_dob_tertiary) : null,
+        client_subscriber_dob_tertiary: clientData.client_subscriber_dob_tertiary ? parseDateString(clientData.client_subscriber_dob_tertiary) : null,
         client_subscriber_relationship_tertiary: clientData.client_subscriber_relationship_tertiary || "",
       });
     }
@@ -286,10 +286,10 @@ const ClientDetails = () => {
       // Convert date objects to ISO strings for database
       const formattedValues = {
         ...values,
-        client_date_of_birth: values.client_date_of_birth ? values.client_date_of_birth.toISOString().split('T')[0] : null,
-        client_subscriber_dob_primary: values.client_subscriber_dob_primary ? values.client_subscriber_dob_primary.toISOString().split('T')[0] : null,
-        client_subscriber_dob_secondary: values.client_subscriber_dob_secondary ? values.client_subscriber_dob_secondary.toISOString().split('T')[0] : null,
-        client_subscriber_dob_tertiary: values.client_subscriber_dob_tertiary ? values.client_subscriber_dob_tertiary.toISOString().split('T')[0] : null,
+        client_date_of_birth: values.client_date_of_birth ? formatDateForDB(values.client_date_of_birth) : null,
+        client_subscriber_dob_primary: values.client_subscriber_dob_primary ? formatDateForDB(values.client_subscriber_dob_primary) : null,
+        client_subscriber_dob_secondary: values.client_subscriber_dob_secondary ? formatDateForDB(values.client_subscriber_dob_secondary) : null,
+        client_subscriber_dob_tertiary: values.client_subscriber_dob_tertiary ? formatDateForDB(values.client_subscriber_dob_tertiary) : null,
         client_age: values.client_age ? parseInt(values.client_age) : null,
       };
 

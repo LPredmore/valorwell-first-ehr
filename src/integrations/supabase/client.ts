@@ -46,3 +46,27 @@ export const getClinicianIdByName = async (professionalName: string) => {
   
   return data.id;
 };
+
+// Helper function to parse ISO date strings to local Date objects
+export const parseDateString = (dateString: string | null): Date | null => {
+  if (!dateString) return null;
+  
+  // Create date with explicit year, month, day to avoid timezone issues
+  const [year, month, day] = dateString.split('-').map(Number);
+  if (!year || !month || !day) return null;
+  
+  // Create a date using local timezone (months are 0-indexed in JS Date)
+  return new Date(year, month - 1, day);
+};
+
+// Format date for database storage (YYYY-MM-DD)
+export const formatDateForDB = (date: Date | null): string | null => {
+  if (!date) return null;
+  
+  const year = date.getFullYear();
+  // Add 1 to month because getMonth() is 0-indexed
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+};
