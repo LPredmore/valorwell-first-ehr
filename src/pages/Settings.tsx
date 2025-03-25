@@ -1,5 +1,5 @@
-
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { Pencil, Plus, Trash, Phone, Mail } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -63,7 +63,8 @@ const Settings = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [currentClinicianPage, setCurrentClinicianPage] = useState(1);
   const itemsPerPage = 10;
-  
+  const navigate = useNavigate();
+
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
@@ -185,17 +186,9 @@ const Settings = () => {
     }
   };
 
-  // Pagination calculations for users
-  const indexOfLastUser = currentPage * itemsPerPage;
-  const indexOfFirstUser = indexOfLastUser - itemsPerPage;
-  const currentUsers = users.slice(indexOfFirstUser, indexOfLastUser);
-  const totalUserPages = Math.ceil(users.length / itemsPerPage);
-
-  // Pagination calculations for clinicians
-  const indexOfLastClinician = currentClinicianPage * itemsPerPage;
-  const indexOfFirstClinician = indexOfLastClinician - itemsPerPage;
-  const currentClinicians = clinicians.slice(indexOfFirstClinician, indexOfLastClinician);
-  const totalClinicianPages = Math.ceil(clinicians.length / itemsPerPage);
+  const handleClinicianClick = (clinicianId: string) => {
+    navigate(`/clinicians/${clinicianId}`);
+  };
 
   const formatName = (firstName: string | null, lastName: string | null) => {
     if (!firstName && !lastName) return "—";
@@ -402,7 +395,12 @@ const Settings = () => {
                     currentClinicians.map((clinician) => (
                       <TableRow key={clinician.id}>
                         <TableCell className="font-medium">
-                          {formatName(clinician.clinician_first_name, clinician.clinician_last_name)}
+                          <button
+                            onClick={() => handleClinicianClick(clinician.id)}
+                            className="hover:text-valorwell-700 hover:underline focus:outline-none text-left"
+                          >
+                            {formatName(clinician.clinician_first_name, clinician.clinician_last_name)}
+                          </button>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">

@@ -18,6 +18,7 @@ import Reminders from "./pages/Reminders";
 import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
+import ClinicianDetails from "./pages/ClinicianDetails";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App: React.FC = () => {
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/clients" element={<Clients />} />
               <Route path="/clients/:clientId" element={<ClientDetails />} />
+              <Route path="/clinicians/:clinicianId" element={<ClinicianDetails />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/activity" element={<Activity />} />
               <Route path="/settings" element={<Settings />} />
