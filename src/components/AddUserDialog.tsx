@@ -65,26 +65,35 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
 
   async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
+    console.log("Submitting user data:", data);
 
     try {
+      // When creating a user, the role should be a string, not an enum object
+      const userData = {
+        first_name: data.firstName,
+        last_name: data.lastName,
+        phone: data.phone || "",
+        role: data.role
+      };
+      
+      console.log("User metadata to be saved:", userData);
+      
       // Create user in Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: generateRandomPassword(),
         options: {
-          data: {
-            first_name: data.firstName,
-            last_name: data.lastName,
-            phone: data.phone || "",
-            role: data.role
-          }
+          data: userData
         }
       });
 
       if (authError) {
+        console.error("Auth error:", authError);
         throw authError;
       }
 
+      console.log("User created successfully:", authData);
+      
       toast({
         title: "Success",
         description: "User added successfully",
