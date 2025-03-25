@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -31,13 +30,13 @@ const ClientProfile = () => {
     preferred_name: '',
     date_of_birth: '',
     age: '',
-    birth_gender: '',
+    gender: '',
     gender_identity: '',
     phone: '',
     state: '',
     time_zone: '',
     treatment_goal: '',
-    is_minor: false,
+    minor: false,
     referral_source: '',
     status: 'Active',
     assigned_therapist: '',
@@ -131,13 +130,13 @@ const ClientProfile = () => {
         preferred_name: client.preferred_name || '',
         date_of_birth: client.date_of_birth || '',
         age: client.age ? String(client.age) : '',
-        birth_gender: client.birth_gender || '',
+        gender: client.gender || '',
         gender_identity: client.gender_identity || '',
         phone: client.phone || '',
         state: client.state || '',
         time_zone: client.time_zone || '',
         treatment_goal: client.treatment_goal || '',
-        is_minor: client.is_minor || false,
+        minor: client.minor || false,
         referral_source: client.referral_source || '',
         status: client.status || 'Active',
         assigned_therapist: client.assigned_therapist || '',
@@ -215,14 +214,14 @@ const ClientProfile = () => {
             preferred_name: clientData.preferred_name,
             date_of_birth: clientData.date_of_birth,
             age: clientData.age ? parseInt(clientData.age) : null,
-            birth_gender: clientData.birth_gender,
+            gender: clientData.gender,
             gender_identity: clientData.gender_identity,
             phone: clientData.phone,
             state: clientData.state,
             time_zone: clientData.time_zone,
             treatment_goal: clientData.treatment_goal,
             status: 'Active',
-            is_minor: Boolean(clientData.is_minor),
+            minor: Boolean(clientData.minor),
             referral_source: clientData.referral_source,
             
             // Insurance data - Primary
@@ -282,13 +281,13 @@ const ClientProfile = () => {
             preferred_name: clientData.preferred_name,
             date_of_birth: clientData.date_of_birth,
             age: clientData.age ? parseInt(clientData.age) : null,
-            birth_gender: clientData.birth_gender,
+            gender: clientData.gender,
             gender_identity: clientData.gender_identity,
             phone: clientData.phone,
             state: clientData.state,
             time_zone: clientData.time_zone,
             treatment_goal: clientData.treatment_goal,
-            is_minor: Boolean(clientData.is_minor),
+            minor: Boolean(clientData.minor),
             referral_source: clientData.referral_source,
             status: clientData.status,
             assigned_therapist: clientData.assigned_therapist,
@@ -451,10 +450,10 @@ const ClientProfile = () => {
               </div>
               
               <div className="space-y-2">
-                <label className="text-sm font-medium">Birth Gender</label>
+                <label className="text-sm font-medium">Gender</label>
                 <select
-                  name="birth_gender"
-                  value={clientData.birth_gender || ''}
+                  name="gender"
+                  value={clientData.gender || ''}
                   onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -586,12 +585,12 @@ const ClientProfile = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Minor</label>
                 <select
-                  name="is_minor"
-                  value={clientData.is_minor === true ? 'Yes' : 'No'}
+                  name="minor"
+                  value={clientData.minor === true ? 'Yes' : 'No'}
                   onChange={(e) => {
                     setClientData(prev => ({
                       ...prev,
-                      is_minor: e.target.value === 'Yes'
+                      minor: e.target.value === 'Yes'
                     }));
                   }}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -727,235 +726,4 @@ const ClientProfile = () => {
                     name="subscriber_relationship_primary"
                     value={clientData.subscriber_relationship_primary || ''}
                     onChange={handleChange}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="">Select Relationship</option>
-                    <option value="Self">Self</option>
-                    <option value="Spouse">Spouse</option>
-                    <option value="Child">Child</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Subscriber Date of Birth</label>
-                  <Input 
-                    name="subscriber_dob_primary"
-                    type="date"
-                    value={clientData.subscriber_dob_primary || ''}
-                    onChange={handleChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Plan Type</label>
-                  <Input 
-                    name="insurance_type_primary"
-                    value={clientData.insurance_type_primary || ''}
-                    onChange={handleChange}
-                    placeholder="Plan Type"
-                  />
-                </div>
-              </div>
-            </Card>
-            
-            {/* Secondary Insurance */}
-            <Card className="p-6">
-              <div className="flex items-center mb-4">
-                <Activity className="mr-2 h-5 w-5" />
-                <h2 className="font-semibold text-lg">Secondary Insurance</h2>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Insurance Company</label>
-                  <Input 
-                    name="insurance_company_secondary"
-                    value={clientData.insurance_company_secondary || ''}
-                    onChange={handleChange}
-                    placeholder="Insurance Company"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Policy Number</label>
-                  <Input 
-                    name="policy_number_secondary"
-                    value={clientData.policy_number_secondary || ''}
-                    onChange={handleChange}
-                    placeholder="Policy Number"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Group Number</label>
-                  <Input 
-                    name="group_number_secondary"
-                    value={clientData.group_number_secondary || ''}
-                    onChange={handleChange}
-                    placeholder="Group Number"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Policy Holder Name</label>
-                  <Input 
-                    name="subscriber_name_secondary"
-                    value={clientData.subscriber_name_secondary || ''}
-                    onChange={handleChange}
-                    placeholder="Policy Holder Name"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Relationship to Subscriber</label>
-                  <select
-                    name="subscriber_relationship_secondary"
-                    value={clientData.subscriber_relationship_secondary || ''}
-                    onChange={handleChange}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="">Select Relationship</option>
-                    <option value="Self">Self</option>
-                    <option value="Spouse">Spouse</option>
-                    <option value="Child">Child</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Subscriber Date of Birth</label>
-                  <Input 
-                    name="subscriber_dob_secondary"
-                    type="date"
-                    value={clientData.subscriber_dob_secondary || ''}
-                    onChange={handleChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Plan Type</label>
-                  <Input 
-                    name="insurance_type_secondary"
-                    value={clientData.insurance_type_secondary || ''}
-                    onChange={handleChange}
-                    placeholder="Plan Type"
-                  />
-                </div>
-              </div>
-            </Card>
-            
-            {/* Tertiary Insurance */}
-            <Card className="p-6">
-              <div className="flex items-center mb-4">
-                <Activity className="mr-2 h-5 w-5" />
-                <h2 className="font-semibold text-lg">Tertiary Insurance</h2>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Insurance Company</label>
-                  <Input 
-                    name="insurance_company_tertiary"
-                    value={clientData.insurance_company_tertiary || ''}
-                    onChange={handleChange}
-                    placeholder="Insurance Company"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Policy Number</label>
-                  <Input 
-                    name="policy_number_tertiary"
-                    value={clientData.policy_number_tertiary || ''}
-                    onChange={handleChange}
-                    placeholder="Policy Number"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Group Number</label>
-                  <Input 
-                    name="group_number_tertiary"
-                    value={clientData.group_number_tertiary || ''}
-                    onChange={handleChange}
-                    placeholder="Group Number"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Policy Holder Name</label>
-                  <Input 
-                    name="subscriber_name_tertiary"
-                    value={clientData.subscriber_name_tertiary || ''}
-                    onChange={handleChange}
-                    placeholder="Policy Holder Name"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Relationship to Subscriber</label>
-                  <select
-                    name="subscriber_relationship_tertiary"
-                    value={clientData.subscriber_relationship_tertiary || ''}
-                    onChange={handleChange}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="">Select Relationship</option>
-                    <option value="Self">Self</option>
-                    <option value="Spouse">Spouse</option>
-                    <option value="Child">Child</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Subscriber Date of Birth</label>
-                  <Input 
-                    name="subscriber_dob_tertiary"
-                    type="date"
-                    value={clientData.subscriber_dob_tertiary || ''}
-                    onChange={handleChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Plan Type</label>
-                  <Input 
-                    name="insurance_type_tertiary"
-                    value={clientData.insurance_type_tertiary || ''}
-                    onChange={handleChange}
-                    placeholder="Plan Type"
-                  />
-                </div>
-              </div>
-            </Card>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="documents">
-          <div className="bg-gray-50 p-8 rounded-lg text-center">
-            <h3 className="text-lg font-medium text-gray-500 mb-2">Client Documents</h3>
-            <p className="text-gray-500">Document management will be displayed here.</p>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="appointments">
-          <div className="bg-gray-50 p-8 rounded-lg text-center">
-            <h3 className="text-lg font-medium text-gray-500 mb-2">Client Appointments</h3>
-            <p className="text-gray-500">Appointment information will be displayed here.</p>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="notes">
-          <div className="bg-gray-50 p-8 rounded-lg text-center">
-            <h3 className="text-lg font-medium text-gray-500 mb-2">Client Notes</h3>
-            <p className="text-gray-500">Clinical notes will be displayed here.</p>
-          </div>
-        </TabsContent>
-      </Tabs>
-    </Layout>
-  );
-};
-
-export default ClientProfile;
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-
