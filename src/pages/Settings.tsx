@@ -1,9 +1,10 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
-import { Pencil, Plus } from 'lucide-react';
+import { Pencil, Plus, Trash } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AddUserDialog } from '@/components/AddUserDialog';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 import {
   Table,
   TableBody,
@@ -12,6 +13,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+
+interface User {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+  phone: string | null;
+  role: string | null;
+}
 
 const SettingsTabs = {
   PRACTICE: 'practice',
@@ -27,13 +45,78 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState(SettingsTabs.PRACTICE);
   const [activeBillingTab, setActiveBillingTab] = useState('cpt');
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const usersPerPage = 10;
   
-  // Sample mock data
-  const mockUsers = [
-    { id: '1', first_name: 'John', last_name: 'Doe', email: 'john@example.com', phone: '555-123-4567' },
-    { id: '2', first_name: 'Jane', last_name: 'Smith', email: 'jane@example.com', phone: '555-987-6543' },
-    { id: '3', first_name: 'Robert', last_name: 'Johnson', email: 'robert@example.com', phone: '555-456-7890' },
-  ];
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email, phone, role')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        throw error;
+      }
+      
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load users. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === SettingsTabs.USERS) {
+      fetchUsers();
+    }
+  }, [activeTab]);
+
+  const handleUserAdded = () => {
+    fetchUsers();
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    const confirmed = window.confirm('Are you sure you want to delete this user? This action cannot be undone.');
+    
+    if (!confirmed) return;
+    
+    try {
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (error) {
+        throw error;
+      }
+      
+      setUsers(users.filter(user => user.id !== userId));
+      
+      toast({
+        title: 'Success',
+        description: 'User deleted successfully',
+      });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete user. You may not have permission to perform this action.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const indexOfLastUser = currentPage * usersPerPage;
+  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const currentUsers = users.slice(indexOfFirstUser, indexOfLastUser);
+  const totalPages = Math.ceil(users.length / usersPerPage);
 
   return (
     <Layout>
@@ -233,36 +316,82 @@ const Settings = () => {
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Phone Number</TableHead>
-                    <TableHead>User ID</TableHead>
+                    <TableHead>Role</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">
-                        {user.first_name} {user.last_name}
-                      </TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>{user.phone || "—"}</TableCell>
-                      <TableCell className="font-mono text-xs text-gray-500">{user.id}</TableCell>
-                      <TableCell className="text-right">
-                        <button 
-                          className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
-                        >
-                          Delete
-                        </button>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                        Loading users...
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : users.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                        No users found. Click the button above to add your first user.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    currentUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">
+                          {user.first_name} {user.last_name}
+                        </TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>{user.phone || "—"}</TableCell>
+                        <TableCell className="capitalize">{user.role || "—"}</TableCell>
+                        <TableCell className="text-right">
+                          <button 
+                            className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                            onClick={() => handleDeleteUser(user.id)}
+                          >
+                            Delete
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
             
+            {users.length > usersPerPage && (
+              <Pagination className="mt-4">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        isActive={currentPage === page}
+                        onClick={() => setCurrentPage(page)}
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
+            
             <AddUserDialog 
               open={isAddUserDialogOpen} 
               onOpenChange={setIsAddUserDialogOpen}
-              onUserAdded={() => {}}
+              onUserAdded={handleUserAdded}
             />
           </div>
         )}
