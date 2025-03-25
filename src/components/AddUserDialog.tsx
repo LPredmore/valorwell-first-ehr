@@ -23,12 +23,20 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const userFormSchema = z.object({
   firstName: z.string().min(2, { message: "First name is required" }),
   lastName: z.string().min(2, { message: "Last name is required" }),
   email: z.string().email({ message: "Invalid email address" }),
   phone: z.string().optional(),
+  role: z.enum(["client", "clinician", "admin"], { message: "Role is required" }),
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
@@ -49,6 +57,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       lastName: "",
       email: "",
       phone: "",
+      role: "client",
     },
   });
 
@@ -64,6 +73,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
         user_metadata: {
           first_name: data.firstName,
           last_name: data.lastName,
+          role: data.role
         },
       });
 
@@ -84,7 +94,8 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
           first_name: data.firstName,
           last_name: data.lastName,
           phone: data.phone || null,
-          profile_type: 'user'
+          profile_type: data.role,
+          role: data.role
         });
 
       if (profileError) {
@@ -170,6 +181,31 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
                   <FormControl>
                     <Input placeholder="Enter phone number" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>User Role</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="client">Client</SelectItem>
+                      <SelectItem value="clinician">Clinician</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
