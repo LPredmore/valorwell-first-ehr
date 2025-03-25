@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -55,6 +56,7 @@ const ClientDetails = () => {
   const [dateInputText, setDateInputText] = useState('');
   const [clinicians, setClinicians] = useState<Clinician[]>([]);
   const [loadingClinicians, setLoadingClinicians] = useState(false);
+  const [selectedClinicianId, setSelectedClinicianId] = useState<string>('');
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -112,6 +114,16 @@ const ClientDetails = () => {
       }
       
       setClinicians(data || []);
+      
+      // Find the ID of the currently assigned therapist
+      if (client?.client_assigned_therapist) {
+        const currentTherapist = data?.find(
+          (c) => getClinicianDisplayName(c) === client.client_assigned_therapist
+        );
+        if (currentTherapist) {
+          setSelectedClinicianId(currentTherapist.id);
+        }
+      }
     } catch (error) {
       console.error('Error fetching clinicians:', error);
       toast({
@@ -155,6 +167,20 @@ const ClientDetails = () => {
         ...editedClient,
         [field]: value,
       });
+      
+      // If the assigned therapist changed, update the selected clinician ID
+      if (field === 'client_assigned_therapist' && value) {
+        const selectedClinician = clinicians.find(
+          (c) => getClinicianDisplayName(c) === value
+        );
+        if (selectedClinician) {
+          setSelectedClinicianId(selectedClinician.id);
+        } else {
+          setSelectedClinicianId('');
+        }
+      } else if (field === 'client_assigned_therapist' && !value) {
+        setSelectedClinicianId('');
+      }
     }
   };
 
@@ -641,34 +667,42 @@ const ClientDetails = () => {
                     </div>
                   )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Therapist</label>
-                  {isEditing ? (
-                    <Select
-                      value={editedClient?.client_assigned_therapist || 'none'}
-                      onValueChange={(value) => handleSelectChange('client_assigned_therapist', value === 'none' ? '' : value)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select therapist" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {loadingClinicians ? (
-                          <SelectItem value="loading" disabled>Loading clinicians...</SelectItem>
-                        ) : (
-                          clinicians.map((clinician) => (
-                            <SelectItem key={clinician.id} value={getClinicianDisplayName(clinician)}>
-                              {getClinicianDisplayName(clinician)}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                      {client.client_assigned_therapist || 'None'}
+                <div className="flex flex-row gap-2">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Therapist</label>
+                    {isEditing ? (
+                      <Select
+                        value={editedClient?.client_assigned_therapist || 'none'}
+                        onValueChange={(value) => handleSelectChange('client_assigned_therapist', value === 'none' ? '' : value)}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select therapist" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {loadingClinicians ? (
+                            <SelectItem value="loading" disabled>Loading clinicians...</SelectItem>
+                          ) : (
+                            clinicians.map((clinician) => (
+                              <SelectItem key={clinician.id} value={getClinicianDisplayName(clinician)}>
+                                {getClinicianDisplayName(clinician)}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                        {client.client_assigned_therapist || 'None'}
+                      </div>
+                    )}
+                  </div>
+                  <div className="w-1/3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Therapist ID</label>
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200 text-gray-500 text-sm font-mono">
+                      {selectedClinicianId ? selectedClinicianId.substring(0, 8) + '...' : '-'}
                     </div>
-                  )}
+                  </div>
                 </div>
                 <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Goal</label>
