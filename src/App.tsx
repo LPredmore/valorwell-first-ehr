@@ -16,28 +16,31 @@ import Reminders from "./pages/Reminders";
 import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 
+// Create a client
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/clients" element={<Clients />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/activity" element={<Activity />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/reminders" element={<Reminders />} />
-          <Route path="/messages" element={<Messages />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  return (
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/calendar" element={<Calendar />} />
+            <Route path="/clients" element={<Clients />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/activity" element={<Activity />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/reminders" element={<Reminders />} />
+            <Route path="/messages" element={<Messages />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
+  );
+};
 
 export default App;
