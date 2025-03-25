@@ -55,15 +55,16 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
       
       console.log('Profile data fetched:', profileData);
 
-      // Then get the clinician data - ensure we're only querying fields that exist
+      // Then get the clinician data
       const { data: clinicianData, error: clinicianError } = await supabase
         .from('clinicians')
         .select('phone, clinician_type, license_type')
         .eq('id', id)
         .maybeSingle();
 
-      if (clinicianError) {
+      if (clinicianError && clinicianError.code !== 'PGRST116') {
         console.error('Error fetching clinician data:', clinicianError);
+        // We don't throw here as the clinician record might not exist yet
       }
       
       console.log('Clinician data fetched:', clinicianData);
@@ -111,14 +112,12 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
 
       if (profileError) throw profileError;
 
-      // Check if clinician record exists before updating
-      const { data: clinicianExists, error: checkError } = await supabase
+      // Check if clinician record exists
+      const { data: clinicianExists } = await supabase
         .from('clinicians')
         .select('id')
         .eq('id', profile.id)
         .maybeSingle();
-        
-      if (checkError) throw checkError;
 
       if (clinicianExists) {
         // Update existing clinician record
