@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ArrowLeft, User, Activity } from 'lucide-react';
 import ClientInsuranceTab from '@/components/ClientInsuranceTab';
+import { format, differenceInYears } from 'date-fns';
 
 const ClientProfile = () => {
   const { id } = useParams();
@@ -21,23 +22,75 @@ const ClientProfile = () => {
   const [saving, setSaving] = useState(false);
   
   const [clientData, setClientData] = useState({
+    // Profile data
     first_name: '',
     last_name: '',
+    email: '',
+    
+    // Client specific data
     preferred_name: '',
     date_of_birth: '',
     age: '',
-    gender: '',
+    birth_gender: '',
     gender_identity: '',
-    email: '',
     phone: '',
     state: '',
     time_zone: '',
     treatment_goal: '',
-    minor: false,
+    is_minor: false,
     referral_source: '',
     status: 'Active',
-    assigned_therapist: ''
+    assigned_therapist: '',
+    
+    // Insurance data - Primary
+    insurance_company_primary: '',
+    insurance_type_primary: '',
+    policy_number_primary: '',
+    group_number_primary: '',
+    subscriber_name_primary: '',
+    subscriber_relationship_primary: '',
+    subscriber_dob_primary: '',
+    
+    // Insurance data - Secondary
+    insurance_company_secondary: '',
+    insurance_type_secondary: '',
+    policy_number_secondary: '',
+    group_number_secondary: '',
+    subscriber_name_secondary: '',
+    subscriber_relationship_secondary: '',
+    subscriber_dob_secondary: '',
+    
+    // Insurance data - Tertiary
+    insurance_company_tertiary: '',
+    insurance_type_tertiary: '',
+    policy_number_tertiary: '',
+    group_number_tertiary: '',
+    subscriber_name_tertiary: '',
+    subscriber_relationship_tertiary: '',
+    subscriber_dob_tertiary: ''
   });
+  
+  // Calculate age automatically based on date of birth
+  const calculatedAge = useMemo(() => {
+    if (!clientData.date_of_birth) return '';
+    try {
+      const dob = new Date(clientData.date_of_birth);
+      return differenceInYears(new Date(), dob).toString();
+    } catch (e) {
+      console.error('Error calculating age:', e);
+      return '';
+    }
+  }, [clientData.date_of_birth]);
+  
+  // Update age whenever date of birth changes
+  useEffect(() => {
+    if (calculatedAge) {
+      setClientData(prev => ({
+        ...prev,
+        age: calculatedAge
+      }));
+    }
+  }, [calculatedAge]);
   
   useEffect(() => {
     if (!isNewClient) {
@@ -47,6 +100,8 @@ const ClientProfile = () => {
   
   const fetchClientData = async () => {
     try {
+      setLoading(true);
+      
       // First get client data
       const { data: client, error: clientError } = await supabase
         .from('clients')
@@ -59,30 +114,60 @@ const ClientProfile = () => {
       // Then get profile data
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('first_name, last_name, email')
+        .select('*')
         .eq('id', id)
         .single();
       
       if (profileError) throw profileError;
       
-      // Convert any null or number values to strings for the form
+      // Combine the data
       setClientData({
+        // Profile data
         first_name: profile?.first_name || '',
         last_name: profile?.last_name || '',
+        email: profile?.email || '',
+        
+        // Client specific data
         preferred_name: client.preferred_name || '',
         date_of_birth: client.date_of_birth || '',
         age: client.age ? String(client.age) : '',
-        gender: client.gender || '',
+        birth_gender: client.birth_gender || '',
         gender_identity: client.gender_identity || '',
-        email: profile?.email || '',
         phone: client.phone || '',
         state: client.state || '',
         time_zone: client.time_zone || '',
         treatment_goal: client.treatment_goal || '',
-        minor: client.minor || false,
+        is_minor: client.is_minor || false,
         referral_source: client.referral_source || '',
         status: client.status || 'Active',
-        assigned_therapist: client.assigned_therapist || ''
+        assigned_therapist: client.assigned_therapist || '',
+        
+        // Insurance data - Primary
+        insurance_company_primary: client.insurance_company_primary || '',
+        insurance_type_primary: client.insurance_type_primary || '',
+        policy_number_primary: client.policy_number_primary || '',
+        group_number_primary: client.group_number_primary || '',
+        subscriber_name_primary: client.subscriber_name_primary || '',
+        subscriber_relationship_primary: client.subscriber_relationship_primary || '',
+        subscriber_dob_primary: client.subscriber_dob_primary || '',
+        
+        // Insurance data - Secondary
+        insurance_company_secondary: client.insurance_company_secondary || '',
+        insurance_type_secondary: client.insurance_type_secondary || '',
+        policy_number_secondary: client.policy_number_secondary || '',
+        group_number_secondary: client.group_number_secondary || '',
+        subscriber_name_secondary: client.subscriber_name_secondary || '',
+        subscriber_relationship_secondary: client.subscriber_relationship_secondary || '',
+        subscriber_dob_secondary: client.subscriber_dob_secondary || '',
+        
+        // Insurance data - Tertiary
+        insurance_company_tertiary: client.insurance_company_tertiary || '',
+        insurance_type_tertiary: client.insurance_type_tertiary || '',
+        policy_number_tertiary: client.policy_number_tertiary || '',
+        group_number_tertiary: client.group_number_tertiary || '',
+        subscriber_name_tertiary: client.subscriber_name_tertiary || '',
+        subscriber_relationship_tertiary: client.subscriber_relationship_tertiary || '',
+        subscriber_dob_tertiary: client.subscriber_dob_tertiary || ''
       });
     } catch (error) {
       console.error('Error fetching client:', error);
@@ -93,10 +178,10 @@ const ClientProfile = () => {
   };
   
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setClientData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
   
@@ -105,7 +190,6 @@ const ClientProfile = () => {
     try {
       if (isNewClient) {
         // Create a new user in auth with user metadata
-        // This will trigger the database function to create profiles and clients records
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: clientData.email,
           password: 'temppass1234',
@@ -121,24 +205,52 @@ const ClientProfile = () => {
         if (authError) throw authError;
         
         // The profile and client records are created automatically by the database trigger
-        // No need to insert into profiles or clients tables manually
-        
         // Now update the client record with additional fields
         const { error: updateError } = await supabase
           .from('clients')
           .update({
+            first_name: clientData.first_name,
+            last_name: clientData.last_name,
+            email: clientData.email,
             preferred_name: clientData.preferred_name,
             date_of_birth: clientData.date_of_birth,
             age: clientData.age ? parseInt(clientData.age) : null,
-            gender: clientData.gender,
+            birth_gender: clientData.birth_gender,
             gender_identity: clientData.gender_identity,
             phone: clientData.phone,
             state: clientData.state,
             time_zone: clientData.time_zone,
             treatment_goal: clientData.treatment_goal,
             status: 'Active',
-            minor: Boolean(clientData.minor),
-            referral_source: clientData.referral_source
+            is_minor: Boolean(clientData.is_minor),
+            referral_source: clientData.referral_source,
+            
+            // Insurance data - Primary
+            insurance_company_primary: clientData.insurance_company_primary,
+            insurance_type_primary: clientData.insurance_type_primary,
+            policy_number_primary: clientData.policy_number_primary,
+            group_number_primary: clientData.group_number_primary,
+            subscriber_name_primary: clientData.subscriber_name_primary,
+            subscriber_relationship_primary: clientData.subscriber_relationship_primary,
+            subscriber_dob_primary: clientData.subscriber_dob_primary,
+            
+            // Insurance data - Secondary
+            insurance_company_secondary: clientData.insurance_company_secondary,
+            insurance_type_secondary: clientData.insurance_type_secondary,
+            policy_number_secondary: clientData.policy_number_secondary,
+            group_number_secondary: clientData.group_number_secondary,
+            subscriber_name_secondary: clientData.subscriber_name_secondary,
+            subscriber_relationship_secondary: clientData.subscriber_relationship_secondary,
+            subscriber_dob_secondary: clientData.subscriber_dob_secondary,
+            
+            // Insurance data - Tertiary
+            insurance_company_tertiary: clientData.insurance_company_tertiary,
+            insurance_type_tertiary: clientData.insurance_type_tertiary,
+            policy_number_tertiary: clientData.policy_number_tertiary,
+            group_number_tertiary: clientData.group_number_tertiary,
+            subscriber_name_tertiary: clientData.subscriber_name_tertiary,
+            subscriber_relationship_tertiary: clientData.subscriber_relationship_tertiary,
+            subscriber_dob_tertiary: clientData.subscriber_dob_tertiary
           })
           .eq('id', authData.user.id);
           
@@ -147,35 +259,66 @@ const ClientProfile = () => {
         toast.success('Client created successfully');
         navigate(`/clients/${authData.user.id}`);
       } else {
-        // Update profiles
+        // Update profiles - sync the duplicated fields
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
             first_name: clientData.first_name,
             last_name: clientData.last_name,
-            email: clientData.email
+            email: clientData.email,
+            profile_type: 'client'
           })
           .eq('id', id);
           
         if (profileError) throw profileError;
         
-        // Update clients
+        // Update clients with all fields
         const { error: clientError } = await supabase
           .from('clients')
           .update({
+            first_name: clientData.first_name,
+            last_name: clientData.last_name,
+            email: clientData.email,
             preferred_name: clientData.preferred_name,
             date_of_birth: clientData.date_of_birth,
             age: clientData.age ? parseInt(clientData.age) : null,
-            gender: clientData.gender,
+            birth_gender: clientData.birth_gender,
             gender_identity: clientData.gender_identity,
             phone: clientData.phone,
             state: clientData.state,
             time_zone: clientData.time_zone,
             treatment_goal: clientData.treatment_goal,
-            minor: Boolean(clientData.minor),
+            is_minor: Boolean(clientData.is_minor),
             referral_source: clientData.referral_source,
             status: clientData.status,
-            assigned_therapist: clientData.assigned_therapist
+            assigned_therapist: clientData.assigned_therapist,
+            
+            // Insurance data - Primary
+            insurance_company_primary: clientData.insurance_company_primary,
+            insurance_type_primary: clientData.insurance_type_primary,
+            policy_number_primary: clientData.policy_number_primary,
+            group_number_primary: clientData.group_number_primary,
+            subscriber_name_primary: clientData.subscriber_name_primary,
+            subscriber_relationship_primary: clientData.subscriber_relationship_primary,
+            subscriber_dob_primary: clientData.subscriber_dob_primary,
+            
+            // Insurance data - Secondary
+            insurance_company_secondary: clientData.insurance_company_secondary,
+            insurance_type_secondary: clientData.insurance_type_secondary,
+            policy_number_secondary: clientData.policy_number_secondary,
+            group_number_secondary: clientData.group_number_secondary,
+            subscriber_name_secondary: clientData.subscriber_name_secondary,
+            subscriber_relationship_secondary: clientData.subscriber_relationship_secondary,
+            subscriber_dob_secondary: clientData.subscriber_dob_secondary,
+            
+            // Insurance data - Tertiary
+            insurance_company_tertiary: clientData.insurance_company_tertiary,
+            insurance_type_tertiary: clientData.insurance_type_tertiary,
+            policy_number_tertiary: clientData.policy_number_tertiary,
+            group_number_tertiary: clientData.group_number_tertiary,
+            subscriber_name_tertiary: clientData.subscriber_name_tertiary,
+            subscriber_relationship_tertiary: clientData.subscriber_relationship_tertiary,
+            subscriber_dob_tertiary: clientData.subscriber_dob_tertiary
           })
           .eq('id', id);
           
@@ -297,21 +440,21 @@ const ClientProfile = () => {
               </div>
               
               <div className="space-y-2">
-                <label className="text-sm font-medium">Age</label>
+                <label className="text-sm font-medium">Age (auto-calculated)</label>
                 <Input 
                   name="age"
                   type="number"
                   value={clientData.age}
-                  onChange={handleChange}
-                  placeholder="Age"
+                  readOnly
+                  className="bg-gray-100 cursor-not-allowed"
                 />
               </div>
               
               <div className="space-y-2">
                 <label className="text-sm font-medium">Birth Gender</label>
                 <select
-                  name="gender"
-                  value={clientData.gender}
+                  name="birth_gender"
+                  value={clientData.birth_gender || ''}
                   onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -326,7 +469,7 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Gender Identity</label>
                 <select
                   name="gender_identity"
-                  value={clientData.gender_identity}
+                  value={clientData.gender_identity || ''}
                   onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -364,7 +507,7 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">State</label>
                 <select
                   name="state"
-                  value={clientData.state}
+                  value={clientData.state || ''}
                   onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -426,7 +569,7 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Time Zone</label>
                 <select
                   name="time_zone"
-                  value={clientData.time_zone}
+                  value={clientData.time_zone || ''}
                   onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -443,12 +586,12 @@ const ClientProfile = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Minor</label>
                 <select
-                  name="minor"
-                  value={clientData.minor === true ? 'Yes' : 'No'}
+                  name="is_minor"
+                  value={clientData.is_minor === true ? 'Yes' : 'No'}
                   onChange={(e) => {
                     setClientData(prev => ({
                       ...prev,
-                      minor: e.target.value === 'Yes'
+                      is_minor: e.target.value === 'Yes'
                     }));
                   }}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -529,10 +672,265 @@ const ClientProfile = () => {
         </TabsContent>
         
         <TabsContent value="insurance">
-          <ClientInsuranceTab 
-            clientId={id || ''} 
-            disabled={isNewClient} 
-          />
+          <div className="space-y-6">
+            {/* Primary Insurance */}
+            <Card className="p-6">
+              <div className="flex items-center mb-4">
+                <Activity className="mr-2 h-5 w-5" />
+                <h2 className="font-semibold text-lg">Primary Insurance</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Insurance Company</label>
+                  <Input 
+                    name="insurance_company_primary"
+                    value={clientData.insurance_company_primary || ''}
+                    onChange={handleChange}
+                    placeholder="Insurance Company"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Policy Number</label>
+                  <Input 
+                    name="policy_number_primary"
+                    value={clientData.policy_number_primary || ''}
+                    onChange={handleChange}
+                    placeholder="Policy Number"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Group Number</label>
+                  <Input 
+                    name="group_number_primary"
+                    value={clientData.group_number_primary || ''}
+                    onChange={handleChange}
+                    placeholder="Group Number"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Policy Holder Name</label>
+                  <Input 
+                    name="subscriber_name_primary"
+                    value={clientData.subscriber_name_primary || ''}
+                    onChange={handleChange}
+                    placeholder="Policy Holder Name"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Relationship to Subscriber</label>
+                  <select
+                    name="subscriber_relationship_primary"
+                    value={clientData.subscriber_relationship_primary || ''}
+                    onChange={handleChange}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Select Relationship</option>
+                    <option value="Self">Self</option>
+                    <option value="Spouse">Spouse</option>
+                    <option value="Child">Child</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Subscriber Date of Birth</label>
+                  <Input 
+                    name="subscriber_dob_primary"
+                    type="date"
+                    value={clientData.subscriber_dob_primary || ''}
+                    onChange={handleChange}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Plan Type</label>
+                  <Input 
+                    name="insurance_type_primary"
+                    value={clientData.insurance_type_primary || ''}
+                    onChange={handleChange}
+                    placeholder="Plan Type"
+                  />
+                </div>
+              </div>
+            </Card>
+            
+            {/* Secondary Insurance */}
+            <Card className="p-6">
+              <div className="flex items-center mb-4">
+                <Activity className="mr-2 h-5 w-5" />
+                <h2 className="font-semibold text-lg">Secondary Insurance</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Insurance Company</label>
+                  <Input 
+                    name="insurance_company_secondary"
+                    value={clientData.insurance_company_secondary || ''}
+                    onChange={handleChange}
+                    placeholder="Insurance Company"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Policy Number</label>
+                  <Input 
+                    name="policy_number_secondary"
+                    value={clientData.policy_number_secondary || ''}
+                    onChange={handleChange}
+                    placeholder="Policy Number"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Group Number</label>
+                  <Input 
+                    name="group_number_secondary"
+                    value={clientData.group_number_secondary || ''}
+                    onChange={handleChange}
+                    placeholder="Group Number"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Policy Holder Name</label>
+                  <Input 
+                    name="subscriber_name_secondary"
+                    value={clientData.subscriber_name_secondary || ''}
+                    onChange={handleChange}
+                    placeholder="Policy Holder Name"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Relationship to Subscriber</label>
+                  <select
+                    name="subscriber_relationship_secondary"
+                    value={clientData.subscriber_relationship_secondary || ''}
+                    onChange={handleChange}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Select Relationship</option>
+                    <option value="Self">Self</option>
+                    <option value="Spouse">Spouse</option>
+                    <option value="Child">Child</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Subscriber Date of Birth</label>
+                  <Input 
+                    name="subscriber_dob_secondary"
+                    type="date"
+                    value={clientData.subscriber_dob_secondary || ''}
+                    onChange={handleChange}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Plan Type</label>
+                  <Input 
+                    name="insurance_type_secondary"
+                    value={clientData.insurance_type_secondary || ''}
+                    onChange={handleChange}
+                    placeholder="Plan Type"
+                  />
+                </div>
+              </div>
+            </Card>
+            
+            {/* Tertiary Insurance */}
+            <Card className="p-6">
+              <div className="flex items-center mb-4">
+                <Activity className="mr-2 h-5 w-5" />
+                <h2 className="font-semibold text-lg">Tertiary Insurance</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Insurance Company</label>
+                  <Input 
+                    name="insurance_company_tertiary"
+                    value={clientData.insurance_company_tertiary || ''}
+                    onChange={handleChange}
+                    placeholder="Insurance Company"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Policy Number</label>
+                  <Input 
+                    name="policy_number_tertiary"
+                    value={clientData.policy_number_tertiary || ''}
+                    onChange={handleChange}
+                    placeholder="Policy Number"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Group Number</label>
+                  <Input 
+                    name="group_number_tertiary"
+                    value={clientData.group_number_tertiary || ''}
+                    onChange={handleChange}
+                    placeholder="Group Number"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Policy Holder Name</label>
+                  <Input 
+                    name="subscriber_name_tertiary"
+                    value={clientData.subscriber_name_tertiary || ''}
+                    onChange={handleChange}
+                    placeholder="Policy Holder Name"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Relationship to Subscriber</label>
+                  <select
+                    name="subscriber_relationship_tertiary"
+                    value={clientData.subscriber_relationship_tertiary || ''}
+                    onChange={handleChange}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Select Relationship</option>
+                    <option value="Self">Self</option>
+                    <option value="Spouse">Spouse</option>
+                    <option value="Child">Child</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Subscriber Date of Birth</label>
+                  <Input 
+                    name="subscriber_dob_tertiary"
+                    type="date"
+                    value={clientData.subscriber_dob_tertiary || ''}
+                    onChange={handleChange}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Plan Type</label>
+                  <Input 
+                    name="insurance_type_tertiary"
+                    value={clientData.insurance_type_tertiary || ''}
+                    onChange={handleChange}
+                    placeholder="Plan Type"
+                  />
+                </div>
+              </div>
+            </Card>
+          </div>
         </TabsContent>
         
         <TabsContent value="documents">

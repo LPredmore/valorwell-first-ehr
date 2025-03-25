@@ -29,40 +29,14 @@ const Clients = () => {
   const fetchClients = async () => {
     setLoading(true);
     try {
-      // First get client IDs
+      // Get client data directly from the clients table which now has all the fields
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
-        .select('id, date_of_birth, phone, status, assigned_therapist, preferred_name');
+        .select('*');
       
       if (clientsError) throw clientsError;
       
-      // Then get profile information for each client
-      const clientIds = clientsData.map(client => client.id);
-      
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email')
-        .in('id', clientIds);
-        
-      if (profilesError) throw profilesError;
-      
-      // Combine the data
-      const combinedData = clientsData.map(client => {
-        const profile = profilesData.find(p => p.id === client.id) || { 
-          first_name: '',
-          last_name: '',
-          email: ''
-        };
-        
-        return {
-          ...client,
-          first_name: profile.first_name || '',
-          last_name: profile.last_name || '',
-          email: profile.email || ''
-        };
-      });
-      
-      setClients(combinedData);
+      setClients(clientsData || []);
     } catch (error) {
       console.error('Error fetching clients:', error);
     } finally {

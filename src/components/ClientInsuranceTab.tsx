@@ -17,28 +17,31 @@ interface InsuranceTabProps {
 const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }: InsuranceTabProps) => {
   const [insuranceData, setInsuranceData] = useState({
     // Primary Insurance
-    insurance_name_primary: '',
+    insurance_company_primary: '',
     policy_number_primary: '',
     group_number_primary: '',
     subscriber_name_primary: '',
     subscriber_relationship_primary: '',
     insurance_type_primary: '',
+    subscriber_dob_primary: '',
     
     // Secondary Insurance
-    insurance_name_secondary: '',
+    insurance_company_secondary: '',
     policy_number_secondary: '',
     group_number_secondary: '',
     subscriber_name_secondary: '',
     subscriber_relationship_secondary: '',
     insurance_type_secondary: '',
+    subscriber_dob_secondary: '',
     
     // Tertiary Insurance
-    insurance_name_tertiary: '',
+    insurance_company_tertiary: '',
     policy_number_tertiary: '',
     group_number_tertiary: '',
     subscriber_name_tertiary: '',
     subscriber_relationship_tertiary: '',
-    insurance_type_tertiary: ''
+    insurance_type_tertiary: '',
+    subscriber_dob_tertiary: ''
   });
   
   const [loading, setLoading] = useState(true);
@@ -48,28 +51,31 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
     if (initialData) {
       setInsuranceData({
         // Primary Insurance
-        insurance_name_primary: initialData.insurance_name_primary || '',
+        insurance_company_primary: initialData.insurance_company_primary || '',
         policy_number_primary: initialData.policy_number_primary || '',
         group_number_primary: initialData.group_number_primary || '',
         subscriber_name_primary: initialData.subscriber_name_primary || '',
         subscriber_relationship_primary: initialData.subscriber_relationship_primary || '',
         insurance_type_primary: initialData.insurance_type_primary || '',
+        subscriber_dob_primary: initialData.subscriber_dob_primary || '',
         
         // Secondary Insurance
-        insurance_name_secondary: initialData.insurance_name_secondary || '',
+        insurance_company_secondary: initialData.insurance_company_secondary || '',
         policy_number_secondary: initialData.policy_number_secondary || '',
         group_number_secondary: initialData.group_number_secondary || '',
         subscriber_name_secondary: initialData.subscriber_name_secondary || '',
         subscriber_relationship_secondary: initialData.subscriber_relationship_secondary || '',
         insurance_type_secondary: initialData.insurance_type_secondary || '',
+        subscriber_dob_secondary: initialData.subscriber_dob_secondary || '',
         
         // Tertiary Insurance
-        insurance_name_tertiary: initialData.insurance_name_tertiary || '',
+        insurance_company_tertiary: initialData.insurance_company_tertiary || '',
         policy_number_tertiary: initialData.policy_number_tertiary || '',
         group_number_tertiary: initialData.group_number_tertiary || '',
         subscriber_name_tertiary: initialData.subscriber_name_tertiary || '',
         subscriber_relationship_tertiary: initialData.subscriber_relationship_tertiary || '',
-        insurance_type_tertiary: initialData.insurance_type_tertiary || ''
+        insurance_type_tertiary: initialData.insurance_type_tertiary || '',
+        subscriber_dob_tertiary: initialData.subscriber_dob_tertiary || ''
       });
       setLoading(false);
     } else if (clientId && clientId !== 'new') {
@@ -85,24 +91,27 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
       const { data, error } = await supabase
         .from('clients')
         .select(`
-          insurance_name_primary,
+          insurance_company_primary,
           policy_number_primary,
           group_number_primary,
           subscriber_name_primary,
           subscriber_relationship_primary,
           insurance_type_primary,
-          insurance_name_secondary,
+          subscriber_dob_primary,
+          insurance_company_secondary,
           policy_number_secondary,
           group_number_secondary,
           subscriber_name_secondary,
           subscriber_relationship_secondary,
           insurance_type_secondary,
-          insurance_name_tertiary,
+          subscriber_dob_secondary,
+          insurance_company_tertiary,
           policy_number_tertiary,
           group_number_tertiary,
           subscriber_name_tertiary,
           subscriber_relationship_tertiary,
-          insurance_type_tertiary
+          insurance_type_tertiary,
+          subscriber_dob_tertiary
         `)
         .eq('id', clientId)
         .single();
@@ -112,28 +121,31 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
       if (data) {
         setInsuranceData({
           // Primary Insurance
-          insurance_name_primary: data.insurance_name_primary || '',
+          insurance_company_primary: data.insurance_company_primary || '',
           policy_number_primary: data.policy_number_primary || '',
           group_number_primary: data.group_number_primary || '',
           subscriber_name_primary: data.subscriber_name_primary || '',
           subscriber_relationship_primary: data.subscriber_relationship_primary || '',
           insurance_type_primary: data.insurance_type_primary || '',
+          subscriber_dob_primary: data.subscriber_dob_primary || '',
           
           // Secondary Insurance
-          insurance_name_secondary: data.insurance_name_secondary || '',
+          insurance_company_secondary: data.insurance_company_secondary || '',
           policy_number_secondary: data.policy_number_secondary || '',
           group_number_secondary: data.group_number_secondary || '',
           subscriber_name_secondary: data.subscriber_name_secondary || '',
           subscriber_relationship_secondary: data.subscriber_relationship_secondary || '',
           insurance_type_secondary: data.insurance_type_secondary || '',
+          subscriber_dob_secondary: data.subscriber_dob_secondary || '',
           
           // Tertiary Insurance
-          insurance_name_tertiary: data.insurance_name_tertiary || '',
+          insurance_company_tertiary: data.insurance_company_tertiary || '',
           policy_number_tertiary: data.policy_number_tertiary || '',
           group_number_tertiary: data.group_number_tertiary || '',
           subscriber_name_tertiary: data.subscriber_name_tertiary || '',
           subscriber_relationship_tertiary: data.subscriber_relationship_tertiary || '',
-          insurance_type_tertiary: data.insurance_type_tertiary || ''
+          insurance_type_tertiary: data.insurance_type_tertiary || '',
+          subscriber_dob_tertiary: data.subscriber_dob_tertiary || ''
         });
       }
     } catch (error) {
@@ -161,28 +173,31 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
         .from('clients')
         .update({
           // Primary Insurance
-          insurance_name_primary: insuranceData.insurance_name_primary,
+          insurance_company_primary: insuranceData.insurance_company_primary,
           policy_number_primary: insuranceData.policy_number_primary,
           group_number_primary: insuranceData.group_number_primary,
           subscriber_name_primary: insuranceData.subscriber_name_primary,
           subscriber_relationship_primary: insuranceData.subscriber_relationship_primary,
           insurance_type_primary: insuranceData.insurance_type_primary,
+          subscriber_dob_primary: insuranceData.subscriber_dob_primary,
           
           // Secondary Insurance
-          insurance_name_secondary: insuranceData.insurance_name_secondary,
+          insurance_company_secondary: insuranceData.insurance_company_secondary,
           policy_number_secondary: insuranceData.policy_number_secondary,
           group_number_secondary: insuranceData.group_number_secondary,
           subscriber_name_secondary: insuranceData.subscriber_name_secondary,
           subscriber_relationship_secondary: insuranceData.subscriber_relationship_secondary,
           insurance_type_secondary: insuranceData.insurance_type_secondary,
+          subscriber_dob_secondary: insuranceData.subscriber_dob_secondary,
           
           // Tertiary Insurance
-          insurance_name_tertiary: insuranceData.insurance_name_tertiary,
+          insurance_company_tertiary: insuranceData.insurance_company_tertiary,
           policy_number_tertiary: insuranceData.policy_number_tertiary,
           group_number_tertiary: insuranceData.group_number_tertiary,
           subscriber_name_tertiary: insuranceData.subscriber_name_tertiary,
           subscriber_relationship_tertiary: insuranceData.subscriber_relationship_tertiary,
-          insurance_type_tertiary: insuranceData.insurance_type_tertiary
+          insurance_type_tertiary: insuranceData.insurance_type_tertiary,
+          subscriber_dob_tertiary: insuranceData.subscriber_dob_tertiary
         })
         .eq('id', clientId);
         
@@ -215,8 +230,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Insurance Company</label>
             <Input 
-              name="insurance_name_primary"
-              value={insuranceData.insurance_name_primary}
+              name="insurance_company_primary"
+              value={insuranceData.insurance_company_primary}
               onChange={handleChange}
               placeholder="Insurance Company"
               disabled={disabled}
@@ -246,12 +261,40 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           </div>
           
           <div className="space-y-2">
-            <label className="text-sm font-medium">Policy Holder Name</label>
+            <label className="text-sm font-medium">Subscriber Name</label>
             <Input 
               name="subscriber_name_primary"
               value={insuranceData.subscriber_name_primary}
               onChange={handleChange}
-              placeholder="Policy Holder Name"
+              placeholder="Subscriber Name"
+              disabled={disabled}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Relationship to Subscriber</label>
+            <select
+              name="subscriber_relationship_primary"
+              value={insuranceData.subscriber_relationship_primary}
+              onChange={handleChange}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={disabled}
+            >
+              <option value="">Select Relationship</option>
+              <option value="Self">Self</option>
+              <option value="Spouse">Spouse</option>
+              <option value="Child">Child</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Subscriber Date of Birth</label>
+            <Input 
+              name="subscriber_dob_primary"
+              type="date"
+              value={insuranceData.subscriber_dob_primary}
+              onChange={handleChange}
               disabled={disabled}
             />
           </div>
@@ -280,8 +323,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Insurance Company</label>
             <Input 
-              name="insurance_name_secondary"
-              value={insuranceData.insurance_name_secondary}
+              name="insurance_company_secondary"
+              value={insuranceData.insurance_company_secondary}
               onChange={handleChange}
               placeholder="Insurance Company"
               disabled={disabled}
@@ -311,12 +354,40 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           </div>
           
           <div className="space-y-2">
-            <label className="text-sm font-medium">Policy Holder Name</label>
+            <label className="text-sm font-medium">Subscriber Name</label>
             <Input 
               name="subscriber_name_secondary"
               value={insuranceData.subscriber_name_secondary}
               onChange={handleChange}
-              placeholder="Policy Holder Name"
+              placeholder="Subscriber Name"
+              disabled={disabled}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Relationship to Subscriber</label>
+            <select
+              name="subscriber_relationship_secondary"
+              value={insuranceData.subscriber_relationship_secondary}
+              onChange={handleChange}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={disabled}
+            >
+              <option value="">Select Relationship</option>
+              <option value="Self">Self</option>
+              <option value="Spouse">Spouse</option>
+              <option value="Child">Child</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Subscriber Date of Birth</label>
+            <Input 
+              name="subscriber_dob_secondary"
+              type="date"
+              value={insuranceData.subscriber_dob_secondary}
+              onChange={handleChange}
               disabled={disabled}
             />
           </div>
@@ -345,8 +416,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Insurance Company</label>
             <Input 
-              name="insurance_name_tertiary"
-              value={insuranceData.insurance_name_tertiary}
+              name="insurance_company_tertiary"
+              value={insuranceData.insurance_company_tertiary}
               onChange={handleChange}
               placeholder="Insurance Company"
               disabled={disabled}
@@ -376,12 +447,40 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           </div>
           
           <div className="space-y-2">
-            <label className="text-sm font-medium">Policy Holder Name</label>
+            <label className="text-sm font-medium">Subscriber Name</label>
             <Input 
               name="subscriber_name_tertiary"
               value={insuranceData.subscriber_name_tertiary}
               onChange={handleChange}
-              placeholder="Policy Holder Name"
+              placeholder="Subscriber Name"
+              disabled={disabled}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Relationship to Subscriber</label>
+            <select
+              name="subscriber_relationship_tertiary"
+              value={insuranceData.subscriber_relationship_tertiary}
+              onChange={handleChange}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={disabled}
+            >
+              <option value="">Select Relationship</option>
+              <option value="Self">Self</option>
+              <option value="Spouse">Spouse</option>
+              <option value="Child">Child</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Subscriber Date of Birth</label>
+            <Input 
+              name="subscriber_dob_tertiary"
+              type="date"
+              value={insuranceData.subscriber_dob_tertiary}
+              onChange={handleChange}
               disabled={disabled}
             />
           </div>

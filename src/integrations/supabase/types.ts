@@ -22,9 +22,9 @@ export type Database = {
           group_number_secondary: string | null
           group_number_tertiary: string | null
           id: string
-          insurance_name_primary: string | null
-          insurance_name_secondary: string | null
-          insurance_name_tertiary: string | null
+          insurance_company_primary: string | null
+          insurance_company_secondary: string | null
+          insurance_company_tertiary: string | null
           insurance_type_primary: string | null
           insurance_type_secondary: string | null
           insurance_type_tertiary: string | null
@@ -64,9 +64,9 @@ export type Database = {
           group_number_secondary?: string | null
           group_number_tertiary?: string | null
           id: string
-          insurance_name_primary?: string | null
-          insurance_name_secondary?: string | null
-          insurance_name_tertiary?: string | null
+          insurance_company_primary?: string | null
+          insurance_company_secondary?: string | null
+          insurance_company_tertiary?: string | null
           insurance_type_primary?: string | null
           insurance_type_secondary?: string | null
           insurance_type_tertiary?: string | null
@@ -106,9 +106,9 @@ export type Database = {
           group_number_secondary?: string | null
           group_number_tertiary?: string | null
           id?: string
-          insurance_name_primary?: string | null
-          insurance_name_secondary?: string | null
-          insurance_name_tertiary?: string | null
+          insurance_company_primary?: string | null
+          insurance_company_secondary?: string | null
+          insurance_company_tertiary?: string | null
           insurance_type_primary?: string | null
           insurance_type_secondary?: string | null
           insurance_type_tertiary?: string | null
@@ -170,6 +170,7 @@ export type Database = {
           phone: string | null
           professional_name: string | null
           specialties: string[] | null
+          state: string | null
           taxonomy_code: string | null
           treatment_approaches: string[] | null
           updated_at: string
@@ -190,6 +191,7 @@ export type Database = {
           phone?: string | null
           professional_name?: string | null
           specialties?: string[] | null
+          state?: string | null
           taxonomy_code?: string | null
           treatment_approaches?: string[] | null
           updated_at?: string
@@ -210,6 +212,7 @@ export type Database = {
           phone?: string | null
           professional_name?: string | null
           specialties?: string[] | null
+          state?: string | null
           taxonomy_code?: string | null
           treatment_approaches?: string[] | null
           updated_at?: string
