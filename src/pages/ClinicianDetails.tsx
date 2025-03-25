@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -143,7 +142,18 @@ const ClinicianDetails = () => {
 
   useEffect(() => {
     if (clinician?.clinician_licensed_states) {
-      setSelectedStates(clinician.clinician_licensed_states);
+      // Convert any state abbreviations to full names
+      const fullStateNames = clinician.clinician_licensed_states.map(state => {
+        // Check if state is already a full name
+        if (states.some(s => s.name === state)) {
+          return state;
+        }
+        
+        // Otherwise, try to find the full name
+        const stateObj = states.find(s => s.code === state);
+        return stateObj ? stateObj.name : state;
+      });
+      setSelectedStates(fullStateNames);
     }
   }, [clinician]);
 
@@ -164,7 +174,18 @@ const ClinicianDetails = () => {
       setClinician(data);
       setEditedClinician(data);
       if (data.clinician_licensed_states) {
-        setSelectedStates(data.clinician_licensed_states);
+        // Convert any state abbreviations to full names
+        const fullStateNames = data.clinician_licensed_states.map(state => {
+          // Check if state is already a full name
+          if (states.some(s => s.name === state)) {
+            return state;
+          }
+          
+          // Otherwise, try to find the full name
+          const stateObj = states.find(s => s.code === state);
+          return stateObj ? stateObj.name : state;
+        });
+        setSelectedStates(fullStateNames);
       }
     } catch (error) {
       console.error('Error fetching clinician:', error);
@@ -194,7 +215,7 @@ const ClinicianDetails = () => {
       
       const updatedClinicianData = {
         ...editedClinician,
-        clinician_licensed_states: selectedStates,
+        clinician_licensed_states: selectedStates, // Store full state names
         clinician_type: editedClinician.clinician_type,
         clinician_license_type: editedClinician.clinician_license_type
       };
