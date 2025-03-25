@@ -15,7 +15,8 @@ type StaffProfileEditProps = {
   staffId: string | null;
 };
 
-type StaffProfile = {
+// This type directly maps to columns in the clinicians table
+type ClinicianProfile = {
   id: string;
   first_name: string | null;
   last_name: string | null;
@@ -30,7 +31,7 @@ type StaffProfile = {
 };
 
 const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) => {
-  const [profile, setProfile] = useState<StaffProfile | null>(null);
+  const [profile, setProfile] = useState<ClinicianProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -45,7 +46,7 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
     try {
       console.log('Fetching clinician with ID:', id);
       
-      // Directly query the clinicians table only
+      // Query ONLY the clinicians table
       const { data, error } = await supabase
         .from('clinicians')
         .select('*')
@@ -59,6 +60,7 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
       
       if (data) {
         console.log('Clinician data found:', data);
+        // Map database columns directly to our form fields
         setProfile({
           id: data.id,
           first_name: data.first_name,
@@ -73,11 +75,11 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
           taxonomy_code: data.taxonomy_code
         });
       } else {
-        // If clinician doesn't exist in clinicians table, create a new empty record
+        // If clinician doesn't exist, create a new empty record
         console.log('No clinician found with ID:', id);
         
-        // Create an empty profile
-        const emptyProfile: StaffProfile = {
+        // Initialize an empty profile with just the ID
+        const emptyProfile: ClinicianProfile = {
           id: id,
           first_name: null,
           last_name: null,
@@ -93,16 +95,16 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
         
         setProfile(emptyProfile);
         
-        // Create a new clinician record in the database
+        // Create a new clinician record in the database with just the ID
         const { error: insertError } = await supabase
           .from('clinicians')
-          .insert({
-            id: id
-          });
+          .insert({ id: id });
           
         if (insertError) {
           console.error('Error creating clinician record:', insertError);
           toast.error('Failed to create clinician record');
+        } else {
+          console.log('Created new clinician record with ID:', id);
         }
       }
     } catch (error) {
@@ -127,15 +129,16 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
     
     setIsSaving(true);
     try {
-      console.log('Saving clinician data:', profile);
+      console.log('Saving clinician data to clinicians table:', profile);
       
+      // Update the clinicians table with all profile fields
       const { error } = await supabase
         .from('clinicians')
         .update({
           first_name: profile.first_name,
           last_name: profile.last_name,
-          email: profile.email,
           professional_name: profile.professional_name,
+          email: profile.email,
           phone: profile.phone,
           bio: profile.bio,
           clinician_type: profile.clinician_type,
