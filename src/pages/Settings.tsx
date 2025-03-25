@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import StaffMemberForm from '../components/StaffMemberForm';
+import StaffProfileEdit from '../components/StaffProfileEdit';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -42,6 +43,8 @@ const Settings = () => {
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+  const [isStaffProfileOpen, setIsStaffProfileOpen] = useState(false);
 
   // Fetch staff members from database
   useEffect(() => {
@@ -111,11 +114,14 @@ const Settings = () => {
   };
 
   const handleStaffClick = (id: string) => {
-    // Navigate to a staff detail page when clicking on their name
-    // For now, we'll just show an alert, but you could navigate to a detail page
-    toast.info("Navigating to staff member details would go here");
-    // Uncomment this when you have a staff detail page ready
-    // navigate(`/staff/${id}`);
+    setSelectedStaffId(id);
+    setIsStaffProfileOpen(true);
+  };
+
+  const handleCloseStaffProfile = () => {
+    setIsStaffProfileOpen(false);
+    setSelectedStaffId(null);
+    fetchStaffMembers(); // Refresh the list after editing
   };
 
   return (
@@ -339,6 +345,13 @@ const Settings = () => {
                 setIsStaffFormOpen(false);
                 fetchStaffMembers(); // Refresh the list when the form is closed
               }} 
+            />
+
+            {/* Staff Profile Edit */}
+            <StaffProfileEdit
+              isOpen={isStaffProfileOpen}
+              onClose={handleCloseStaffProfile}
+              staffId={selectedStaffId}
             />
           </div>
         )}
