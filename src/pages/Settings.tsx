@@ -1,18 +1,7 @@
-import { useState, useEffect } from 'react';
+
+import { useState } from 'react';
 import Layout from '../components/layout/Layout';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
-import StaffMemberForm from '../components/StaffMemberForm';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table';
+import { Pencil } from 'lucide-react';
 
 const SettingsTabs = {
   PRACTICE: 'practice',
@@ -23,104 +12,9 @@ const SettingsTabs = {
   LICENSES: 'licenses'
 };
 
-// Define the structure for staff member data
-type StaffMember = {
-  id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  phone: string | null;
-  role: string;
-  clinician_type: string | null;
-  license_type: string | null;
-};
-
 const Settings = () => {
   const [activeTab, setActiveTab] = useState(SettingsTabs.PRACTICE);
-  const [activeBillingTab, setActiveBillingTab] = useState('cpt');
-  const [isStaffFormOpen, setIsStaffFormOpen] = useState(false);
-  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
-  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
-
-  // Fetch staff members from database
-  useEffect(() => {
-    if (activeTab === SettingsTabs.STAFF) {
-      fetchStaffMembers();
-    }
-  }, [activeTab]);
-
-  const fetchStaffMembers = async () => {
-    setIsLoading(true);
-    try {
-      // Query clinicians and join with profiles to get all necessary data
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          email,
-          first_name,
-          last_name,
-          role,
-          clinicians(phone, clinician_type, license_type)
-        `)
-        .eq('role', 'clinician')
-        .order('last_name', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
-      // Format the data to include the phone number from the clinicians table
-      const formattedStaff = data.map(profile => ({
-        id: profile.id,
-        email: profile.email,
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        phone: profile.clinicians?.[0]?.phone || null,
-        role: profile.role,
-        clinician_type: profile.clinicians?.[0]?.clinician_type || null,
-        license_type: profile.clinicians?.[0]?.license_type || null
-      }));
-
-      setStaffMembers(formattedStaff);
-    } catch (error) {
-      console.error('Error fetching staff members:', error);
-      toast.error('Failed to load staff members');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteStaffMember = async (id: string) => {
-    try {
-      // When deleting a staff member, we need to delete from clinicians and profiles
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      toast.success('Staff member deleted successfully');
-      fetchStaffMembers(); // Refresh the list
-    } catch (error) {
-      console.error('Error deleting staff member:', error);
-      toast.error('Failed to delete staff member');
-    }
-  };
-
-  const handleStaffClick = (id: string) => {
-    setSelectedStaffId(id);
-    setIsStaffFormOpen(true);
-  };
-
-  const handleCloseStaffForm = () => {
-    setIsStaffFormOpen(false);
-    setSelectedStaffId(null);
-    fetchStaffMembers(); // Refresh the list after editing
-  };
+  const [activeBillingTab] = useState('cpt');
 
   return (
     <Layout>
@@ -280,70 +174,11 @@ const Settings = () => {
           <div className="p-6 animate-fade-in">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold">Staff Management</h2>
-              <button 
-                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800"
-                onClick={() => {
-                  setSelectedStaffId(null);
-                  setIsStaffFormOpen(true);
-                }}
-              >
-                <Plus size={16} />
-                <span>Add Staff Member</span>
-              </button>
             </div>
             
-            {isLoading ? (
-              <div className="py-10 text-center text-gray-500">Loading staff members...</div>
-            ) : staffMembers.length === 0 ? (
-              <div className="text-center py-10 border rounded bg-gray-50 text-gray-500">
-                No staff members found. Click the button above to add your first staff member.
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>License Type</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {staffMembers.map((staff) => (
-                    <TableRow key={staff.id}>
-                      <TableCell className="font-medium">
-                        <button 
-                          onClick={() => handleStaffClick(staff.id)}
-                          className="text-left hover:text-valorwell-700 hover:underline focus:outline-none"
-                        >
-                          {staff.first_name} {staff.last_name}
-                        </button>
-                      </TableCell>
-                      <TableCell>{staff.email}</TableCell>
-                      <TableCell>{staff.phone || "—"}</TableCell>
-                      <TableCell>{staff.clinician_type || "—"}</TableCell>
-                      <TableCell>{staff.license_type || "—"}</TableCell>
-                      <TableCell className="text-right">
-                        <button 
-                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-full"
-                          onClick={() => handleDeleteStaffMember(staff.id)}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-            
-            <StaffMemberForm 
-              isOpen={isStaffFormOpen} 
-              onClose={handleCloseStaffForm} 
-              staffId={selectedStaffId}
-            />
+            <div className="text-center py-10 border rounded bg-gray-50 text-gray-500">
+              Staff management functionality has been removed.
+            </div>
           </div>
         )}
         
@@ -351,10 +186,6 @@ const Settings = () => {
           <div className="p-6 animate-fade-in">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold">CPT Codes</h2>
-              <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white border rounded hover:bg-gray-50">
-                <Plus size={16} />
-                <span>Add CPT Code</span>
-              </button>
             </div>
             
             <div className="overflow-x-auto mb-8">
@@ -397,28 +228,20 @@ const Settings = () => {
             <div className="mb-8">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">Chart Templates</h2>
-                <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white border rounded hover:bg-gray-50">
-                  <Plus size={16} />
-                  <span>Add Template</span>
-                </button>
               </div>
               
               <div className="text-center py-10 border rounded bg-gray-50 text-gray-500">
-                No chart templates available. Click the button above to create your first template.
+                No chart templates available.
               </div>
             </div>
             
             <div>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">Online Forms</h2>
-                <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white border rounded hover:bg-gray-50">
-                  <Plus size={16} />
-                  <span>Add Form</span>
-                </button>
               </div>
               
               <div className="text-center py-10 border rounded bg-gray-50 text-gray-500">
-                No online forms available. Click the button above to create your first form.
+                No online forms available.
               </div>
             </div>
           </div>

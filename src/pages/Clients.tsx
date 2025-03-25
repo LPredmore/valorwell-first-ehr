@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
-import { Search, Filter, RotateCcw, MoreHorizontal, Download, Upload, Plus } from 'lucide-react';
+import { Search, Filter, RotateCcw, MoreHorizontal, Download, Upload } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -29,7 +29,6 @@ const Clients = () => {
   const fetchClients = async () => {
     setLoading(true);
     try {
-      // Get client data directly from the clients table which now has all the fields
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select('*');
@@ -45,17 +44,12 @@ const Clients = () => {
   };
 
   const handleSearch = () => {
-    // Implement search functionality here
     console.log('Searching for:', searchQuery);
   };
 
   const clearSearch = () => {
     setSearchQuery('');
     fetchClients();
-  };
-
-  const handleNewClient = () => {
-    navigate('/clients/new');
   };
 
   const handleEditClient = (id) => {
@@ -99,15 +93,9 @@ const Clients = () => {
             <Upload size={16} />
             <span>Import</span>
           </Button>
-          <Button 
-            variant="default" 
-            size="sm"
-            className="bg-valorwell-700 hover:bg-valorwell-800 flex items-center gap-2"
-            onClick={handleNewClient}
-          >
-            <Plus size={16} />
-            <span>New Client</span>
-          </Button>
+          <div className="text-sm text-gray-500">
+            Client creation functionality has been removed
+          </div>
         </div>
       </div>
       
@@ -241,13 +229,7 @@ const Clients = () => {
                                 className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
                                 onClick={() => handleEditClient(client.id)}
                               >
-                                Edit
-                              </button>
-                              <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">
                                 View
-                              </button>
-                              <button className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
-                                Delete
                               </button>
                             </div>
                           </PopoverContent>
