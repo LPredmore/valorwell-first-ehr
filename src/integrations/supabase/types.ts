@@ -28,9 +28,9 @@ export type Database = {
           insurance_type_primary: string | null
           insurance_type_secondary: string | null
           insurance_type_tertiary: string | null
-          is_profile_complete: string | null
+          is_profile_complete: boolean | null
           last_name: string | null
-          minor: string | null
+          minor: boolean | null
           phone: string | null
           policy_number_primary: string | null
           policy_number_secondary: string | null
@@ -70,9 +70,9 @@ export type Database = {
           insurance_type_primary?: string | null
           insurance_type_secondary?: string | null
           insurance_type_tertiary?: string | null
-          is_profile_complete?: string | null
+          is_profile_complete?: boolean | null
           last_name?: string | null
-          minor?: string | null
+          minor?: boolean | null
           phone?: string | null
           policy_number_primary?: string | null
           policy_number_secondary?: string | null
@@ -112,9 +112,9 @@ export type Database = {
           insurance_type_primary?: string | null
           insurance_type_secondary?: string | null
           insurance_type_tertiary?: string | null
-          is_profile_complete?: string | null
+          is_profile_complete?: boolean | null
           last_name?: string | null
-          minor?: string | null
+          minor?: boolean | null
           phone?: string | null
           policy_number_primary?: string | null
           policy_number_secondary?: string | null
@@ -136,11 +136,26 @@ export type Database = {
           treatment_goal?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clients_assigned_therapist_fkey"
+            columns: ["assigned_therapist"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       clinicians: {
         Row: {
-          accepting_new_clients: string | null
+          accepting_new_clients: boolean | null
           bio: string | null
           clinician_type: string | null
           created_at: string
@@ -154,13 +169,14 @@ export type Database = {
           npi_number: string | null
           phone: string | null
           professional_name: string | null
+          specialties: string[] | null
           state: string | null
           taxonomy_code: string | null
           treatment_approaches: string[] | null
           updated_at: string
         }
         Insert: {
-          accepting_new_clients?: string | null
+          accepting_new_clients?: boolean | null
           bio?: string | null
           clinician_type?: string | null
           created_at?: string
@@ -174,13 +190,14 @@ export type Database = {
           npi_number?: string | null
           phone?: string | null
           professional_name?: string | null
+          specialties?: string[] | null
           state?: string | null
           taxonomy_code?: string | null
           treatment_approaches?: string[] | null
           updated_at?: string
         }
         Update: {
-          accepting_new_clients?: string | null
+          accepting_new_clients?: boolean | null
           bio?: string | null
           clinician_type?: string | null
           created_at?: string
@@ -194,12 +211,21 @@ export type Database = {
           npi_number?: string | null
           phone?: string | null
           professional_name?: string | null
+          specialties?: string[] | null
           state?: string | null
           taxonomy_code?: string | null
           treatment_approaches?: string[] | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clinicians_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       document_assignments: {
         Row: {
@@ -241,7 +267,29 @@ export type Database = {
           status?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "document_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_assignments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_assignments_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       documents: {
         Row: {
@@ -274,7 +322,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       insurance: {
         Row: {
@@ -316,7 +372,15 @@ export type Database = {
           subscriber_relationship?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "insurance_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       licenses: {
         Row: {
@@ -343,7 +407,15 @@ export type Database = {
           state?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "licenses_clinician_id_fkey"
+            columns: ["clinician_id"]
+            isOneToOne: false
+            referencedRelation: "clinicians"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -406,7 +478,15 @@ export type Database = {
           profile_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "staff_licenses_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
