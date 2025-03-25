@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import StaffMemberForm from '../components/StaffMemberForm';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -41,6 +41,7 @@ const Settings = () => {
   const [isStaffFormOpen, setIsStaffFormOpen] = useState(false);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   // Fetch staff members from database
   useEffect(() => {
@@ -107,6 +108,14 @@ const Settings = () => {
       console.error('Error deleting staff member:', error);
       toast.error('Failed to delete staff member');
     }
+  };
+
+  const handleStaffClick = (id: string) => {
+    // Navigate to a staff detail page when clicking on their name
+    // For now, we'll just show an alert, but you could navigate to a detail page
+    toast.info("Navigating to staff member details would go here");
+    // Uncomment this when you have a staff detail page ready
+    // navigate(`/staff/${id}`);
   };
 
   return (
@@ -298,7 +307,12 @@ const Settings = () => {
                   {staffMembers.map((staff) => (
                     <TableRow key={staff.id}>
                       <TableCell className="font-medium">
-                        {staff.first_name} {staff.last_name}
+                        <button 
+                          onClick={() => handleStaffClick(staff.id)}
+                          className="text-left hover:text-valorwell-700 hover:underline focus:outline-none"
+                        >
+                          {staff.first_name} {staff.last_name}
+                        </button>
                       </TableCell>
                       <TableCell>{staff.email}</TableCell>
                       <TableCell>{staff.phone || "—"}</TableCell>
