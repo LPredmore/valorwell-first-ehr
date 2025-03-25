@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
-import { Search, Filter, RotateCcw, MoreHorizontal, Download, Upload, Plus } from 'lucide-react';
+import { Search, Filter, RotateCcw, MoreHorizontal } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
@@ -102,21 +101,6 @@ const Clients = () => {
         <div className="flex items-center gap-2">
           <h2 className="text-2xl font-semibold">Clients</h2>
           <span className="bg-valorwell-700 text-white text-xs px-2 py-0.5 rounded-full">{clients.length}</span>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-3 py-2 text-gray-600 bg-white rounded border hover:bg-gray-50">
-            <Download size={16} />
-            <span>Export</span>
-          </button>
-          <button className="flex items-center gap-2 px-3 py-2 text-gray-600 bg-white rounded border hover:bg-gray-50">
-            <Upload size={16} />
-            <span>Import</span>
-          </button>
-          <button className="flex items-center gap-2 px-3 py-2 text-white bg-valorwell-700 rounded hover:bg-valorwell-800 transition-colors">
-            <Plus size={16} />
-            <span>New Client</span>
-          </button>
         </div>
       </div>
       
