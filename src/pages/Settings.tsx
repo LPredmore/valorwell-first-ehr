@@ -1,11 +1,13 @@
 
 import { useState } from 'react';
 import Layout from '../components/layout/Layout';
-import { Pencil } from 'lucide-react';
+import { Pencil, Plus } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const SettingsTabs = {
   PRACTICE: 'practice',
-  STAFF: 'staff',
+  CLINICIANS: 'clinicians',
+  USERS: 'users',
   BILLING: 'billing',
   TEMPLATES: 'templates',
   SECURITY: 'security',
@@ -14,8 +16,7 @@ const SettingsTabs = {
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState(SettingsTabs.PRACTICE);
-  const [activeBillingTab] = useState('cpt');
-
+  
   return (
     <Layout>
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -27,10 +28,16 @@ const Settings = () => {
             Practice
           </button>
           <button 
-            className={`settings-tab ${activeTab === SettingsTabs.STAFF ? 'active' : ''}`}
-            onClick={() => setActiveTab(SettingsTabs.STAFF)}
+            className={`settings-tab ${activeTab === SettingsTabs.CLINICIANS ? 'active' : ''}`}
+            onClick={() => setActiveTab(SettingsTabs.CLINICIANS)}
           >
-            Staff
+            Clinicians
+          </button>
+          <button 
+            className={`settings-tab ${activeTab === SettingsTabs.USERS ? 'active' : ''}`}
+            onClick={() => setActiveTab(SettingsTabs.USERS)}
+          >
+            Users
           </button>
           <button 
             className={`settings-tab ${activeTab === SettingsTabs.BILLING ? 'active' : ''}`}
@@ -170,14 +177,34 @@ const Settings = () => {
           </div>
         )}
         
-        {activeTab === SettingsTabs.STAFF && (
+        {activeTab === SettingsTabs.CLINICIANS && (
           <div className="p-6 animate-fade-in">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Staff Management</h2>
+              <h2 className="text-xl font-semibold">Clinician Management</h2>
+              <button className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                <Plus size={16} />
+                <span>Add Clinician</span>
+              </button>
             </div>
             
             <div className="text-center py-10 border rounded bg-gray-50 text-gray-500">
-              Staff management functionality has been removed.
+              Clinician management functionality has been removed.
+            </div>
+          </div>
+        )}
+
+        {activeTab === SettingsTabs.USERS && (
+          <div className="p-6 animate-fade-in">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">User Management</h2>
+              <button className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                <Plus size={16} />
+                <span>Add User</span>
+              </button>
+            </div>
+            
+            <div className="text-center py-10 border rounded bg-gray-50 text-gray-500">
+              User management functionality has been removed.
             </div>
           </div>
         )}

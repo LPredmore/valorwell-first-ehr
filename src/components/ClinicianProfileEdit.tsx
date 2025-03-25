@@ -1,25 +1,24 @@
 
-import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-type StaffProfileEditProps = {
+type ClinicianProfileEditProps = {
   isOpen: boolean;
   onClose: () => void;
-  staffId: string | null;
+  clinicianId: string | null;
 };
 
-const StaffProfileEdit = ({ isOpen, onClose }: StaffProfileEditProps) => {
+const ClinicianProfileEdit = ({ isOpen, onClose }: ClinicianProfileEditProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Staff Profile Functionality Removed</DialogTitle>
+          <DialogTitle>Clinician Profile Functionality Removed</DialogTitle>
         </DialogHeader>
         
         <div className="py-6">
           <p className="text-center text-gray-600">
-            Staff profile creation and editing functionality has been removed.
+            Clinician profile creation and editing functionality has been removed.
           </p>
         </div>
         
@@ -31,4 +30,4 @@ const StaffProfileEdit = ({ isOpen, onClose }: StaffProfileEditProps) => {
   );
 };
 
-export default StaffProfileEdit;
+export default ClinicianProfileEdit;

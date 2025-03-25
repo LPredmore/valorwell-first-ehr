@@ -9,23 +9,23 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
-interface StaffMemberFormProps {
+interface ClinicianMemberFormProps {
   isOpen: boolean;
   onClose: () => void;
-  staffId?: string | null;
+  clinicianId?: string | null;
 }
 
-const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
+const ClinicianMemberForm = ({ isOpen, onClose }: ClinicianMemberFormProps) => {
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent className="sm:max-w-lg">
         <SheetHeader className="mb-6">
-          <SheetTitle>Staff Member Functionality Removed</SheetTitle>
+          <SheetTitle>Clinician Member Functionality Removed</SheetTitle>
         </SheetHeader>
         
         <div className="flex items-center justify-center h-64">
           <p className="text-center text-gray-600">
-            Staff member creation and editing functionality has been removed.
+            Clinician member creation and editing functionality has been removed.
           </p>
         </div>
         
@@ -37,4 +37,4 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
   );
 };
 
-export default StaffMemberForm;
+export default ClinicianMemberForm;
