@@ -25,7 +25,6 @@ const UserMemberForm = ({ isOpen, onClose, userId }: UserMemberFormProps) => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    professionalName: '',
     email: '',
     phone: '',
   });
@@ -40,16 +39,16 @@ const UserMemberForm = ({ isOpen, onClose, userId }: UserMemberFormProps) => {
     setLoading(true);
 
     try {
-      // Step 1: Create the user account with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      // Step 1: Create the user account with standard Supabase Auth signup
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: 'temppass1234',
-        email_confirm: true,
-        user_metadata: {
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          professional_name: formData.professionalName,
-          role: 'user'
+        options: {
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            role: 'user'
+          }
         }
       });
 
@@ -63,7 +62,6 @@ const UserMemberForm = ({ isOpen, onClose, userId }: UserMemberFormProps) => {
           id: authData.user.id,
           first_name: formData.firstName,
           last_name: formData.lastName,
-          professional_name: formData.professionalName,
           email: formData.email,
           phone: formData.phone
         });
@@ -80,7 +78,6 @@ const UserMemberForm = ({ isOpen, onClose, userId }: UserMemberFormProps) => {
       setFormData({
         firstName: '',
         lastName: '',
-        professionalName: '',
         email: '',
         phone: '',
       });
@@ -127,16 +124,6 @@ const UserMemberForm = ({ isOpen, onClose, userId }: UserMemberFormProps) => {
                   required
                 />
               </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="professionalName">Professional Name</Label>
-              <Input 
-                id="professionalName"
-                name="professionalName"
-                value={formData.professionalName}
-                onChange={handleChange}
-              />
             </div>
             
             <div className="space-y-2">
