@@ -70,7 +70,9 @@ const Settings = () => {
         throw new Error('You must be logged in to delete users');
       }
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-api/delete-user`, {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://gqlkritspnhjxfejvgfg.supabase.co";
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/admin-api/delete-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -70,8 +70,11 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
         throw new Error("You must be logged in to add users");
       }
 
+      // Get the Supabase URL from the environment or the client
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://gqlkritspnhjxfejvgfg.supabase.co";
+      
       // Call our admin API to create a user
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-api/create-user`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/admin-api/create-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -91,6 +94,9 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to create user");
       }
+
+      const result = await response.json();
+      console.log("User created successfully:", result);
 
       toast({
         title: "Success",
