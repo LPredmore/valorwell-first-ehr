@@ -52,7 +52,7 @@ serve(async (req) => {
     const body = await req.json();
 
     if (path === 'create-user') {
-      const { email, password, firstName, lastName, phone } = body;
+      const { email, password, firstName, lastName, phone, role } = body;
       
       // Create the user
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
@@ -61,7 +61,8 @@ serve(async (req) => {
         email_confirm: true,
         user_metadata: { 
           first_name: firstName,
-          last_name: lastName
+          last_name: lastName,
+          role: role || 'client'
         }
       });
 
