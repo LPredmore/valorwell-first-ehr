@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -36,6 +37,22 @@ interface ClientDetails {
   client_assigned_therapist: string | null;
   client_referral_source: string | null;
   client_treatment_goal: string | null;
+  // Insurance fields
+  client_insurance_company_primary: string | null;
+  client_policy_number_primary: string | null;
+  client_group_number_primary: string | null;
+  client_subscriber_name_primary: string | null;
+  client_insurance_type_primary: string | null;
+  client_insurance_company_secondary: string | null;
+  client_policy_number_secondary: string | null;
+  client_group_number_secondary: string | null;
+  client_subscriber_name_secondary: string | null;
+  client_insurance_type_secondary: string | null;
+  client_insurance_company_tertiary: string | null;
+  client_policy_number_tertiary: string | null;
+  client_group_number_tertiary: string | null;
+  client_subscriber_name_tertiary: string | null;
+  client_insurance_type_tertiary: string | null;
 }
 
 interface Clinician {
@@ -325,6 +342,31 @@ const ClientDetails = () => {
     "Other"
   ];
 
+  const insuranceCompanies = [
+    "Aetna",
+    "Blue Cross Blue Shield",
+    "Cigna",
+    "Humana",
+    "Kaiser Permanente",
+    "Medicare",
+    "Medicaid",
+    "Tricare",
+    "UnitedHealthcare",
+    "Other"
+  ];
+
+  const insuranceTypes = [
+    "PPO",
+    "HMO",
+    "EPO",
+    "POS",
+    "HDHP",
+    "Medicare",
+    "Medicaid",
+    "Tricare",
+    "Other"
+  ];
+
   const getClinicianDisplayName = (clinician: Clinician) => {
     if (clinician.clinician_professional_name) {
       return clinician.clinician_professional_name;
@@ -333,6 +375,122 @@ const ClientDetails = () => {
     } else {
       return `Clinician ${clinician.id.substring(0, 8)}`;
     }
+  };
+
+  const renderInsuranceSection = (type: 'primary' | 'secondary' | 'tertiary') => {
+    const title = type.charAt(0).toUpperCase() + type.slice(1);
+    const companyField = `client_insurance_company_${type}` as keyof ClientDetails;
+    const policyField = `client_policy_number_${type}` as keyof ClientDetails;
+    const groupField = `client_group_number_${type}` as keyof ClientDetails;
+    const nameField = `client_subscriber_name_${type}` as keyof ClientDetails;
+    const typeField = `client_insurance_type_${type}` as keyof ClientDetails;
+
+    return (
+      <Card className="mb-6">
+        <CardContent className="p-6">
+          <div className="flex items-center mb-4">
+            <div className="w-6 h-6 bg-gray-100 rounded-full mr-2 flex items-center justify-center">
+              <span className="text-gray-600 text-sm">⚕️</span>
+            </div>
+            <h2 className="text-lg font-semibold">{title} Insurance</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Insurance Company</label>
+              {isEditing ? (
+                <Select
+                  value={editedClient?.[companyField] || ''}
+                  onValueChange={(value) => handleSelectChange(companyField as string, value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {insuranceCompanies.map((company) => (
+                      <SelectItem key={company} value={company}>{company}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                  {client[companyField] || '-'}
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Policy Number</label>
+              {isEditing ? (
+                <Input 
+                  name={policyField as string}
+                  value={editedClient?.[policyField] || ''}
+                  onChange={handleInputChange}
+                  className="w-full"
+                />
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                  {client[policyField] || '-'}
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Group Number</label>
+              {isEditing ? (
+                <Input 
+                  name={groupField as string}
+                  value={editedClient?.[groupField] || ''}
+                  onChange={handleInputChange}
+                  className="w-full"
+                />
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                  {client[groupField] || '-'}
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Policy Holder Name</label>
+              {isEditing ? (
+                <Input 
+                  name={nameField as string}
+                  value={editedClient?.[nameField] || ''}
+                  onChange={handleInputChange}
+                  className="w-full"
+                />
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                  {client[nameField] || '-'}
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Plan Type</label>
+              {isEditing ? (
+                <Select
+                  value={editedClient?.[typeField] || ''}
+                  onValueChange={(value) => handleSelectChange(typeField as string, value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select plan type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {insuranceTypes.map((type) => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                  {client[typeField] || '-'}
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
   return (
@@ -744,10 +902,11 @@ const ClientDetails = () => {
       )}
 
       {activeTab === 'insurance' && (
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Insurance Information</h2>
-          <p className="text-gray-500">Insurance details will be displayed here.</p>
-        </div>
+        <>
+          {renderInsuranceSection('primary')}
+          {renderInsuranceSection('secondary')}
+          {renderInsuranceSection('tertiary')}
+        </>
       )}
 
       {activeTab === 'documents' && (
