@@ -39,6 +39,8 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
   const fetchStaffMember = async (id: string) => {
     setIsLoading(true);
     try {
+      console.log('Fetching staff member with ID:', id);
+      
       // First get the profile data
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -46,7 +48,12 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
         .eq('id', id)
         .single();
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Error fetching profile data:', profileError);
+        throw profileError;
+      }
+      
+      console.log('Profile data fetched:', profileData);
 
       // Then get the clinician data - ensure we're only querying fields that exist
       const { data: clinicianData, error: clinicianError } = await supabase
@@ -58,6 +65,8 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
       if (clinicianError) {
         console.error('Error fetching clinician data:', clinicianError);
       }
+      
+      console.log('Clinician data fetched:', clinicianData);
 
       setProfile({
         id: profileData.id,
