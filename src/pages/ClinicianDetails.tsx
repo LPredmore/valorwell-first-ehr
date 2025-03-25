@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Save, X, Plus, Trash } from 'lucide-react';
+import { Pencil, Save, X } from 'lucide-react';
 import { 
   Card, 
   CardContent, 
@@ -21,6 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Clinician {
   id: string;
@@ -35,14 +41,7 @@ interface Clinician {
   clinician_license_type: string | null;
   clinician_status: string | null;
   clinician_type: string | null;
-}
-
-interface License {
-  id: string;
-  clinician_id: string;
-  license_number: string;
-  state: string;
-  created_at: string;
+  clinician_licensed_states: string[] | null;
 }
 
 const ClinicianDetails = () => {
@@ -54,12 +53,7 @@ const ClinicianDetails = () => {
   const [editedClinician, setEditedClinician] = useState<Clinician | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [licenses, setLicenses] = useState<License[]>([]);
-  const [newLicense, setNewLicense] = useState({
-    license_type: '',
-    state: '',
-    license_number: ''
-  });
+  const [selectedStates, setSelectedStates] = useState<string[]>([]);
 
   // Time zone options
   const timeZones = [
@@ -71,40 +65,87 @@ const ClinicianDetails = () => {
     "Hawaii-Aleutian Time (HAT)"
   ];
 
-  // Role options
-  const roleOptions = [
-    "Admin",
-    "Clinician",
-    "Staff",
-    "Supervisor"
+  // Clinician type options
+  const clinicianTypeOptions = [
+    "Mental Health",
+    "Speech Therapy"
   ];
 
   // License types
   const licenseTypes = [
     "LPC", 
     "LCSW", 
+    "LMHT", 
     "LMFT", 
-    "PhD", 
-    "PsyD", 
-    "MD", 
-    "NP"
+    "Psychologist", 
+    "SLP"
   ];
 
-  // States
+  // States with full names
   const states = [
-    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
-    "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
-    "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
-    "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
-    "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
+    { code: "AL", name: "Alabama" },
+    { code: "AK", name: "Alaska" },
+    { code: "AZ", name: "Arizona" },
+    { code: "AR", name: "Arkansas" },
+    { code: "CA", name: "California" },
+    { code: "CO", name: "Colorado" },
+    { code: "CT", name: "Connecticut" },
+    { code: "DE", name: "Delaware" },
+    { code: "FL", name: "Florida" },
+    { code: "GA", name: "Georgia" },
+    { code: "HI", name: "Hawaii" },
+    { code: "ID", name: "Idaho" },
+    { code: "IL", name: "Illinois" },
+    { code: "IN", name: "Indiana" },
+    { code: "IA", name: "Iowa" },
+    { code: "KS", name: "Kansas" },
+    { code: "KY", name: "Kentucky" },
+    { code: "LA", name: "Louisiana" },
+    { code: "ME", name: "Maine" },
+    { code: "MD", name: "Maryland" },
+    { code: "MA", name: "Massachusetts" },
+    { code: "MI", name: "Michigan" },
+    { code: "MN", name: "Minnesota" },
+    { code: "MS", name: "Mississippi" },
+    { code: "MO", name: "Missouri" },
+    { code: "MT", name: "Montana" },
+    { code: "NE", name: "Nebraska" },
+    { code: "NV", name: "Nevada" },
+    { code: "NH", name: "New Hampshire" },
+    { code: "NJ", name: "New Jersey" },
+    { code: "NM", name: "New Mexico" },
+    { code: "NY", name: "New York" },
+    { code: "NC", name: "North Carolina" },
+    { code: "ND", name: "North Dakota" },
+    { code: "OH", name: "Ohio" },
+    { code: "OK", name: "Oklahoma" },
+    { code: "OR", name: "Oregon" },
+    { code: "PA", name: "Pennsylvania" },
+    { code: "RI", name: "Rhode Island" },
+    { code: "SC", name: "South Carolina" },
+    { code: "SD", name: "South Dakota" },
+    { code: "TN", name: "Tennessee" },
+    { code: "TX", name: "Texas" },
+    { code: "UT", name: "Utah" },
+    { code: "VT", name: "Vermont" },
+    { code: "VA", name: "Virginia" },
+    { code: "WA", name: "Washington" },
+    { code: "WV", name: "West Virginia" },
+    { code: "WI", name: "Wisconsin" },
+    { code: "WY", name: "Wyoming" }
   ];
 
   useEffect(() => {
     if (clinicianId) {
       fetchClinicianData();
-      fetchLicenses();
     }
   }, [clinicianId]);
+
+  useEffect(() => {
+    if (clinician?.clinician_licensed_states) {
+      setSelectedStates(clinician.clinician_licensed_states);
+    }
+  }, [clinician]);
 
   const fetchClinicianData = async () => {
     setIsLoading(true);
@@ -121,6 +162,9 @@ const ClinicianDetails = () => {
       
       setClinician(data);
       setEditedClinician(data);
+      if (data.clinician_licensed_states) {
+        setSelectedStates(data.clinician_licensed_states);
+      }
     } catch (error) {
       console.error('Error fetching clinician:', error);
       toast({
@@ -133,29 +177,6 @@ const ClinicianDetails = () => {
     }
   };
 
-  const fetchLicenses = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('licenses')
-        .select('*')
-        .eq('clinician_id', clinicianId)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        throw error;
-      }
-      
-      setLicenses(data || []);
-    } catch (error) {
-      console.error('Error fetching licenses:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch license information.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleInputChange = (field: keyof Clinician, value: string) => {
     if (editedClinician) {
       setEditedClinician({
@@ -165,25 +186,26 @@ const ClinicianDetails = () => {
     }
   };
 
-  const handleNewLicenseChange = (field: string, value: string) => {
-    setNewLicense({
-      ...newLicense,
-      [field]: value
-    });
-  };
-
   const handleSave = async () => {
     try {
+      const updatedClinicianData = {
+        ...editedClinician,
+        clinician_licensed_states: selectedStates
+      };
+
       const { error } = await supabase
         .from('clinicians')
-        .update(editedClinician as any)
+        .update(updatedClinicianData)
         .eq('id', clinicianId);
       
       if (error) {
         throw error;
       }
       
-      setClinician(editedClinician);
+      setClinician({
+        ...editedClinician,
+        clinician_licensed_states: selectedStates
+      });
       setIsEditing(false);
       
       toast({
@@ -202,79 +224,20 @@ const ClinicianDetails = () => {
 
   const handleCancel = () => {
     setEditedClinician(clinician);
+    if (clinician?.clinician_licensed_states) {
+      setSelectedStates(clinician.clinician_licensed_states);
+    } else {
+      setSelectedStates([]);
+    }
     setIsEditing(false);
   };
 
-  const handleAddLicense = async () => {
-    if (!newLicense.license_type || !newLicense.state || !newLicense.license_number) {
-      toast({
-        title: "Error",
-        description: "Please fill out all license fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('licenses')
-        .insert({
-          clinician_id: clinicianId,
-          license_number: newLicense.license_number,
-          state: newLicense.state
-        })
-        .select();
-      
-      if (error) {
-        throw error;
-      }
-      
-      setLicenses([...licenses, data[0]]);
-      setNewLicense({
-        license_type: '',
-        state: '',
-        license_number: ''
-      });
-      
-      toast({
-        title: "Success",
-        description: "License added successfully.",
-      });
-    } catch (error) {
-      console.error('Error adding license:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add license.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteLicense = async (licenseId: string) => {
-    try {
-      const { error } = await supabase
-        .from('licenses')
-        .delete()
-        .eq('id', licenseId);
-      
-      if (error) {
-        throw error;
-      }
-      
-      setLicenses(licenses.filter(license => license.id !== licenseId));
-      
-      toast({
-        title: "Success",
-        description: "License deleted successfully.",
-      });
-    } catch (error) {
-      console.error('Error deleting license:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete license.",
-        variant: "destructive",
-      });
-    }
+  const toggleState = (stateCode: string) => {
+    setSelectedStates(current => 
+      current.includes(stateCode)
+        ? current.filter(s => s !== stateCode)
+        : [...current, stateCode]
+    );
   };
 
   if (isLoading) {
@@ -499,114 +462,43 @@ const ClinicianDetails = () => {
                   </p>
                 )}
               </div>
-            </div>
-
-            <div className="mb-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">State Licenses</h3>
-              {licenses.length === 0 ? (
-                <p className="text-sm text-gray-500 italic mb-4">No licenses added yet.</p>
-              ) : (
-                <div className="border rounded-md overflow-hidden mb-4">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="py-2 px-4 text-left">License Type</th>
-                        <th className="py-2 px-4 text-left">State</th>
-                        <th className="py-2 px-4 text-left">License Number</th>
-                        {isEditing && <th className="py-2 px-4 text-right">Actions</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {licenses.map((license) => (
-                        <tr key={license.id} className="border-t">
-                          <td className="py-2 px-4">{license.id.substring(0, 4)}</td>
-                          <td className="py-2 px-4">{license.state}</td>
-                          <td className="py-2 px-4">{license.license_number}</td>
-                          {isEditing && (
-                            <td className="py-2 px-4 text-right">
-                              <Button 
-                                variant="destructive" 
-                                size="sm"
-                                onClick={() => handleDeleteLicense(license.id)}
-                              >
-                                <Trash size={14} />
-                              </Button>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {isEditing && (
-                <div className="border rounded-md p-4 bg-gray-50">
-                  <h4 className="font-medium mb-3">Add License</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-xs text-gray-700 mb-1">
-                        License Type
-                      </label>
-                      <Select 
-                        value={newLicense.license_type}
-                        onValueChange={(value) => handleNewLicenseChange('license_type', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {licenseTypes.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {type}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-700 mb-1">
-                        State
-                      </label>
-                      <Select 
-                        value={newLicense.state}
-                        onValueChange={(value) => handleNewLicenseChange('state', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select state" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {states.map((state) => (
-                            <SelectItem key={state} value={state}>
-                              {state}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex items-end gap-2">
-                      <div className="flex-1">
-                        <label className="block text-xs text-gray-700 mb-1">
-                          License Number
-                        </label>
-                        <Input 
-                          type="text" 
-                          placeholder="License number" 
-                          value={newLicense.license_number}
-                          onChange={(e) => handleNewLicenseChange('license_number', e.target.value)}
-                        />
-                      </div>
-                      <Button 
-                        size="icon"
-                        onClick={handleAddLicense}
-                        className="mb-[2px]"
-                      >
-                        <Plus size={16} />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Licensed States
+                </label>
+                {isEditing ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start">
+                        {selectedStates.length > 0 ? 
+                          `${selectedStates.length} state${selectedStates.length > 1 ? 's' : ''} selected` : 
+                          'Select states'
+                        }
                       </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56 max-h-[300px] overflow-y-auto">
+                      {states.map((state) => (
+                        <DropdownMenuCheckboxItem
+                          key={state.code}
+                          checked={selectedStates.includes(state.code)}
+                          onCheckedChange={() => toggleState(state.code)}
+                        >
+                          {state.name}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <p className="p-2 border rounded-md bg-gray-50">
+                    {clinician.clinician_licensed_states && clinician.clinician_licensed_states.length > 0 
+                      ? clinician.clinician_licensed_states.map(code => 
+                          states.find(s => s.code === code)?.name
+                        ).filter(Boolean).join(', ')
+                      : '—'
+                    }
+                  </p>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -616,31 +508,59 @@ const ClinicianDetails = () => {
             <CardTitle>Role</CardTitle>
           </CardHeader>
           <CardContent>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Staff Role
-              </label>
-              {isEditing ? (
-                <Select 
-                  value={editedClinician?.clinician_type || 'Admin'}
-                  onValueChange={(value) => handleInputChange('clinician_type', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roleOptions.map((role) => (
-                      <SelectItem key={role} value={role}>
-                        {role}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="p-2 border rounded-md bg-gray-50">
-                  {clinician.clinician_type || 'Admin'}
-                </p>
-              )}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Clinician Type
+                </label>
+                {isEditing ? (
+                  <Select 
+                    value={editedClinician?.clinician_type || 'Mental Health'}
+                    onValueChange={(value) => handleInputChange('clinician_type', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select clinician type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clinicianTypeOptions.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="p-2 border rounded-md bg-gray-50">
+                    {clinician.clinician_type || 'Mental Health'}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Clinician License Type
+                </label>
+                {isEditing ? (
+                  <Select 
+                    value={editedClinician?.clinician_license_type || 'LPC'}
+                    onValueChange={(value) => handleInputChange('clinician_license_type', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select license type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {licenseTypes.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="p-2 border rounded-md bg-gray-50">
+                    {clinician.clinician_license_type || '—'}
+                  </p>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
