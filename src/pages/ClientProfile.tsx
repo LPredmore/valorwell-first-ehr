@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ArrowLeft, User, Activity } from 'lucide-react';
+import ClientInsuranceTab from '@/components/ClientInsuranceTab';
 
 const ClientProfile = () => {
   const { id } = useParams();
@@ -527,10 +529,10 @@ const ClientProfile = () => {
         </TabsContent>
         
         <TabsContent value="insurance">
-          <div className="bg-gray-50 p-8 rounded-lg text-center">
-            <h3 className="text-lg font-medium text-gray-500 mb-2">Insurance Information</h3>
-            <p className="text-gray-500">Insurance information will be displayed here.</p>
-          </div>
+          <ClientInsuranceTab 
+            clientId={id || ''} 
+            disabled={isNewClient} 
+          />
         </TabsContent>
         
         <TabsContent value="documents">

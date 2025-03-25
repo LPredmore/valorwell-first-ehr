@@ -15,16 +15,39 @@ export type Database = {
           assigned_therapist: string | null
           created_at: string
           date_of_birth: string | null
+          first_name: string | null
           gender: string | null
           gender_identity: string | null
+          group_number_primary: string | null
+          group_number_secondary: string | null
+          group_number_tertiary: string | null
           id: string
+          insurance_name_primary: string | null
+          insurance_name_secondary: string | null
+          insurance_name_tertiary: string | null
+          insurance_type_primary: string | null
+          insurance_type_secondary: string | null
+          insurance_type_tertiary: string | null
           is_profile_complete: boolean | null
+          last_name: string | null
           minor: boolean | null
           phone: string | null
+          policy_number_primary: string | null
+          policy_number_secondary: string | null
+          policy_number_tertiary: string | null
           preferred_name: string | null
           referral_source: string | null
           state: string | null
           status: string | null
+          subscriber_dob_primary: string | null
+          subscriber_dob_secondary: string | null
+          subscriber_dob_tertiary: string | null
+          subscriber_name_primary: string | null
+          subscriber_name_secondary: string | null
+          subscriber_name_tertiary: string | null
+          subscriber_relationship_primary: string | null
+          subscriber_relationship_secondary: string | null
+          subscriber_relationship_tertiary: string | null
           time_zone: string | null
           treatment_goal: string | null
           updated_at: string
@@ -34,16 +57,39 @@ export type Database = {
           assigned_therapist?: string | null
           created_at?: string
           date_of_birth?: string | null
+          first_name?: string | null
           gender?: string | null
           gender_identity?: string | null
+          group_number_primary?: string | null
+          group_number_secondary?: string | null
+          group_number_tertiary?: string | null
           id: string
+          insurance_name_primary?: string | null
+          insurance_name_secondary?: string | null
+          insurance_name_tertiary?: string | null
+          insurance_type_primary?: string | null
+          insurance_type_secondary?: string | null
+          insurance_type_tertiary?: string | null
           is_profile_complete?: boolean | null
+          last_name?: string | null
           minor?: boolean | null
           phone?: string | null
+          policy_number_primary?: string | null
+          policy_number_secondary?: string | null
+          policy_number_tertiary?: string | null
           preferred_name?: string | null
           referral_source?: string | null
           state?: string | null
           status?: string | null
+          subscriber_dob_primary?: string | null
+          subscriber_dob_secondary?: string | null
+          subscriber_dob_tertiary?: string | null
+          subscriber_name_primary?: string | null
+          subscriber_name_secondary?: string | null
+          subscriber_name_tertiary?: string | null
+          subscriber_relationship_primary?: string | null
+          subscriber_relationship_secondary?: string | null
+          subscriber_relationship_tertiary?: string | null
           time_zone?: string | null
           treatment_goal?: string | null
           updated_at?: string
@@ -53,16 +99,39 @@ export type Database = {
           assigned_therapist?: string | null
           created_at?: string
           date_of_birth?: string | null
+          first_name?: string | null
           gender?: string | null
           gender_identity?: string | null
+          group_number_primary?: string | null
+          group_number_secondary?: string | null
+          group_number_tertiary?: string | null
           id?: string
+          insurance_name_primary?: string | null
+          insurance_name_secondary?: string | null
+          insurance_name_tertiary?: string | null
+          insurance_type_primary?: string | null
+          insurance_type_secondary?: string | null
+          insurance_type_tertiary?: string | null
           is_profile_complete?: boolean | null
+          last_name?: string | null
           minor?: boolean | null
           phone?: string | null
+          policy_number_primary?: string | null
+          policy_number_secondary?: string | null
+          policy_number_tertiary?: string | null
           preferred_name?: string | null
           referral_source?: string | null
           state?: string | null
           status?: string | null
+          subscriber_dob_primary?: string | null
+          subscriber_dob_secondary?: string | null
+          subscriber_dob_tertiary?: string | null
+          subscriber_name_primary?: string | null
+          subscriber_name_secondary?: string | null
+          subscriber_name_tertiary?: string | null
+          subscriber_relationship_primary?: string | null
+          subscriber_relationship_secondary?: string | null
+          subscriber_relationship_tertiary?: string | null
           time_zone?: string | null
           treatment_goal?: string | null
           updated_at?: string
@@ -90,11 +159,18 @@ export type Database = {
           bio: string | null
           clinician_type: string | null
           created_at: string
+          email: string | null
+          first_name: string | null
           id: string
+          image_url: string | null
+          last_name: string | null
           license_type: string | null
           min_client_age: number | null
+          npi_number: string | null
           phone: string | null
+          professional_name: string | null
           specialties: string[] | null
+          taxonomy_code: string | null
           treatment_approaches: string[] | null
           updated_at: string
         }
@@ -103,11 +179,18 @@ export type Database = {
           bio?: string | null
           clinician_type?: string | null
           created_at?: string
+          email?: string | null
+          first_name?: string | null
           id: string
+          image_url?: string | null
+          last_name?: string | null
           license_type?: string | null
           min_client_age?: number | null
+          npi_number?: string | null
           phone?: string | null
+          professional_name?: string | null
           specialties?: string[] | null
+          taxonomy_code?: string | null
           treatment_approaches?: string[] | null
           updated_at?: string
         }
@@ -116,11 +199,18 @@ export type Database = {
           bio?: string | null
           clinician_type?: string | null
           created_at?: string
+          email?: string | null
+          first_name?: string | null
           id?: string
+          image_url?: string | null
+          last_name?: string | null
           license_type?: string | null
           min_client_age?: number | null
+          npi_number?: string | null
           phone?: string | null
+          professional_name?: string | null
           specialties?: string[] | null
+          taxonomy_code?: string | null
           treatment_approaches?: string[] | null
           updated_at?: string
         }
@@ -331,6 +421,7 @@ export type Database = {
           first_name: string | null
           id: string
           last_name: string | null
+          profile_type: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
@@ -340,6 +431,7 @@ export type Database = {
           first_name?: string | null
           id: string
           last_name?: string | null
+          profile_type?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
@@ -349,6 +441,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_name?: string | null
+          profile_type?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
