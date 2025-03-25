@@ -3,6 +3,9 @@ import { useState } from 'react';
 import Layout from '../components/layout/Layout';
 import { Pencil, Plus } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ClinicianMemberForm from '../components/ClinicianMemberForm';
+import ClinicianProfileEdit from '../components/ClinicianProfileEdit';
+import UserMemberForm from '../components/UserMemberForm';
 
 const SettingsTabs = {
   PRACTICE: 'practice',
@@ -16,6 +19,10 @@ const SettingsTabs = {
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState(SettingsTabs.PRACTICE);
+  const [isClinicianFormOpen, setIsClinicianFormOpen] = useState(false);
+  const [isUserFormOpen, setIsUserFormOpen] = useState(false);
+  const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(null);
+  const [isClinicianProfileOpen, setIsClinicianProfileOpen] = useState(false);
   
   return (
     <Layout>
@@ -181,7 +188,10 @@ const Settings = () => {
           <div className="p-6 animate-fade-in">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold">Clinician Management</h2>
-              <button className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md text-white bg-blue-600 hover:bg-blue-700">
+              <button 
+                className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                onClick={() => setIsClinicianFormOpen(true)}
+              >
                 <Plus size={16} />
                 <span>Add Clinician</span>
               </button>
@@ -197,7 +207,10 @@ const Settings = () => {
           <div className="p-6 animate-fade-in">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold">User Management</h2>
-              <button className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md text-white bg-blue-600 hover:bg-blue-700">
+              <button 
+                className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                onClick={() => setIsUserFormOpen(true)}
+              >
                 <Plus size={16} />
                 <span>Add User</span>
               </button>
@@ -296,6 +309,24 @@ const Settings = () => {
           </div>
         )}
       </div>
+
+      <ClinicianMemberForm 
+        isOpen={isClinicianFormOpen}
+        onClose={() => setIsClinicianFormOpen(false)}
+        clinicianId={null}
+      />
+      
+      <ClinicianProfileEdit 
+        isOpen={isClinicianProfileOpen}
+        onClose={() => setIsClinicianProfileOpen(false)}
+        clinicianId={selectedClinicianId}
+      />
+
+      <UserMemberForm
+        isOpen={isUserFormOpen}
+        onClose={() => setIsUserFormOpen(false)}
+        userId={null}
+      />
     </Layout>
   );
 };
