@@ -2,6 +2,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
 
+// CORS headers for browser requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+};
+
 // Create a Supabase client with the service role key
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -9,16 +15,10 @@ const supabaseAdmin = createClient(
 );
 
 serve(async (req) => {
-  // CORS headers
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
-  };
-
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, {
-      headers,
+      headers: corsHeaders,
       status: 204,
     });
   }
@@ -28,7 +28,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 401,
       });
     }
@@ -39,7 +39,7 @@ serve(async (req) => {
     
     if (verifyError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 401,
       });
     }
@@ -53,6 +53,8 @@ serve(async (req) => {
 
     if (path === 'create-user') {
       const { email, password, firstName, lastName, phone, role } = body;
+      
+      console.log(`Creating user with email: ${email}, role: ${role}`);
       
       // Create the user
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
@@ -69,31 +71,44 @@ serve(async (req) => {
 
       if (error) {
         console.error('Error creating user:', error);
-        throw error;
+        return new Response(JSON.stringify({ error: error.message || 'Failed to create user' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        });
       }
 
+      console.log('User created successfully:', data.user.id);
+      
       return new Response(JSON.stringify({ success: true, user: data.user }), {
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       });
     } 
     else if (path === 'delete-user') {
       const { userId } = body;
 
+      console.log(`Deleting user with ID: ${userId}`);
+      
       const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
       
       if (error) {
-        throw error;
+        console.error('Error deleting user:', error);
+        return new Response(JSON.stringify({ error: error.message || 'Failed to delete user' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        });
       }
 
+      console.log('User deleted successfully');
+      
       return new Response(JSON.stringify({ success: true }), {
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       });
     }
     else {
       return new Response(JSON.stringify({ error: 'Invalid endpoint' }), {
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       });
     }
@@ -101,7 +116,7 @@ serve(async (req) => {
     console.error('Error processing request:', error);
     
     return new Response(JSON.stringify({ error: error.message || 'An unexpected error occurred' }), {
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });
   }

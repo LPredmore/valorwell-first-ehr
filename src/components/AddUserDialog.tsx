@@ -70,8 +70,16 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
         throw new Error("You must be logged in to add users");
       }
 
-      // Get the Supabase URL from the environment or the client
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://gqlkritspnhjxfejvgfg.supabase.co";
+      // Get the Supabase URL from the environment or use the Supabase client URL
+      const supabaseUrl = supabase.supabaseUrl;
+      
+      console.log("Using Supabase URL:", supabaseUrl);
+      console.log("Creating user with data:", {
+        email: data.email,
+        role: data.role,
+        firstName: data.firstName,
+        lastName: data.lastName
+      });
       
       // Call our admin API to create a user
       const response = await fetch(`${supabaseUrl}/functions/v1/admin-api/create-user`, {
@@ -90,9 +98,23 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
         })
       });
 
+      // Handle non-OK responses
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create user");
+        const responseText = await response.text();
+        let errorMessage = "Failed to create user";
+        
+        try {
+          // Try to parse as JSON, but don't fail if it's not valid JSON
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If parsing fails, use the raw text if available
+          if (responseText) {
+            errorMessage = `Server error: ${responseText}`;
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();

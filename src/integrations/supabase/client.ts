@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { AuthError, AdminUserAttributes, UserResponse } from '@supabase/supabase-js';
 
-const SUPABASE_URL = "https://gqlkritspnhjxfejvgfg.supabase.co";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://gqlkritspnhjxfejvgfg.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxbGtyaXRzcG5oanhmZWp2Z2ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI3NjQ0NDUsImV4cCI6MjA1ODM0MDQ0NX0.BtnTfcjvHI55_fs_zor9ffQ9Aclg28RSfvgZrWpMuYs";
 
 // Import the supabase client like this:
@@ -30,13 +30,27 @@ const createUser = async (userDetails: AdminUserAttributes): Promise<UserRespons
       body: JSON.stringify(userDetails)
     });
 
-    const result = await response.json();
-    
     if (!response.ok) {
-      const authError = new AuthError(result.error || 'Failed to create user');
+      const responseText = await response.text();
+      let errorMessage = "Failed to create user";
+      
+      try {
+        // Try to parse as JSON, but don't fail if it's not valid JSON
+        const errorData = JSON.parse(responseText);
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        // If parsing fails, use the raw text if available
+        if (responseText) {
+          errorMessage = `Server error: ${responseText}`;
+        }
+      }
+      
+      const authError = new AuthError(errorMessage);
       return { data: { user: null }, error: authError };
     }
 
+    const result = await response.json();
+    
     return { data: result, error: null };
   } catch (error) {
     const authError = new AuthError(error instanceof Error ? error.message : 'Unknown error');
@@ -61,13 +75,27 @@ const deleteUser = async (userId: string): Promise<UserResponse> => {
       body: JSON.stringify({ userId })
     });
 
-    const result = await response.json();
-    
     if (!response.ok) {
-      const authError = new AuthError(result.error || 'Failed to delete user');
+      const responseText = await response.text();
+      let errorMessage = "Failed to delete user";
+      
+      try {
+        // Try to parse as JSON, but don't fail if it's not valid JSON
+        const errorData = JSON.parse(responseText);
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        // If parsing fails, use the raw text if available
+        if (responseText) {
+          errorMessage = `Server error: ${responseText}`;
+        }
+      }
+      
+      const authError = new AuthError(errorMessage);
       return { data: { user: null }, error: authError };
     }
 
+    const result = await response.json();
+    
     return { data: result, error: null };
   } catch (error) {
     const authError = new AuthError(error instanceof Error ? error.message : 'Unknown error');
@@ -76,7 +104,10 @@ const deleteUser = async (userId: string): Promise<UserResponse> => {
 };
 
 // Add our custom methods to the admin object
-supabaseClient.auth.admin.createUser = createUser;
-supabaseClient.auth.admin.deleteUser = deleteUser;
+supabaseClient.auth.admin = {
+  ...supabaseClient.auth.admin,
+  createUser,
+  deleteUser
+};
 
 export const supabase = supabaseClient;
