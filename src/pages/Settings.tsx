@@ -536,7 +536,7 @@ const Settings = () => {
               </Table>
             </div>
             
-            {users.length > usersPerPage && (
+            {users.length > itemsPerPage && (
               <Pagination className="mt-4">
                 <PaginationContent>
                   <PaginationItem>
@@ -546,7 +546,7 @@ const Settings = () => {
                     />
                   </PaginationItem>
                   
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  {Array.from({ length: totalUserPages }, (_, i) => i + 1).map((page) => (
                     <PaginationItem key={page}>
                       <PaginationLink
                         isActive={currentPage === page}
@@ -559,8 +559,8 @@ const Settings = () => {
                   
                   <PaginationItem>
                     <PaginationNext 
-                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalUserPages))}
+                      className={currentPage === totalUserPages ? "pointer-events-none opacity-50" : ""}
                     />
                   </PaginationItem>
                 </PaginationContent>
