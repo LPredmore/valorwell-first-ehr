@@ -10,6 +10,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Calendar from "./pages/Calendar";
 import Clients from "./pages/Clients";
+import ClientDetails from "./pages/ClientDetails";
 import Analytics from "./pages/Analytics";
 import Activity from "./pages/Activity";
 import Settings from "./pages/Settings";
@@ -33,6 +34,7 @@ const App: React.FC = () => {
               <Route path="/" element={<Index />} />
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/clients" element={<Clients />} />
+              <Route path="/clients/:clientId" element={<ClientDetails />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/activity" element={<Activity />} />
               <Route path="/settings" element={<Settings />} />

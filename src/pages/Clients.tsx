@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { Search, Filter, RotateCcw, MoreHorizontal } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,6 +23,7 @@ const Clients = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -93,6 +95,10 @@ const Clients = () => {
     } catch (e) {
       return dateString;
     }
+  };
+
+  const handleClientClick = (clientId: string) => {
+    navigate(`/clients/${clientId}`);
   };
 
   return (
@@ -195,14 +201,19 @@ const Clients = () => {
                         <input type="checkbox" className="w-4 h-4 rounded" />
                       </td>
                       <td className="px-4 py-3 font-medium text-gray-900">
-                        {client.client_first_name || ''} {client.client_last_name || ''}
+                        <button 
+                          onClick={() => handleClientClick(client.id)}
+                          className="hover:text-valorwell-700 hover:underline focus:outline-none"
+                        >
+                          {client.client_first_name || ''} {client.client_last_name || ''}
+                        </button>
                       </td>
                       <td className="px-4 py-3">{client.client_email || '-'}</td>
                       <td className="px-4 py-3">{client.client_phone || '-'}</td>
                       <td className="px-4 py-3">{formatDateOfBirth(client.client_date_of_birth)}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 ${
-                          client.client_status === 'Waiting' ? 'bg-waiting text-yellow-800' :
+                          client.client_status === 'Waiting' ? 'bg-yellow-100 text-yellow-800' :
                           client.client_status === 'Active' ? 'bg-green-100 text-green-800' :
                           client.client_status === 'Inactive' ? 'bg-gray-100 text-gray-800' :
                           'bg-gray-100 text-gray-800'
