@@ -83,56 +83,56 @@ const ClinicianDetails = () => {
 
   // States with full names
   const states = [
-    { code: "AL", name: "Alabama" },
-    { code: "AK", name: "Alaska" },
-    { code: "AZ", name: "Arizona" },
-    { code: "AR", name: "Arkansas" },
-    { code: "CA", name: "California" },
-    { code: "CO", name: "Colorado" },
-    { code: "CT", name: "Connecticut" },
-    { code: "DE", name: "Delaware" },
-    { code: "FL", name: "Florida" },
-    { code: "GA", name: "Georgia" },
-    { code: "HI", name: "Hawaii" },
-    { code: "ID", name: "Idaho" },
-    { code: "IL", name: "Illinois" },
-    { code: "IN", name: "Indiana" },
-    { code: "IA", name: "Iowa" },
-    { code: "KS", name: "Kansas" },
-    { code: "KY", name: "Kentucky" },
-    { code: "LA", name: "Louisiana" },
-    { code: "ME", name: "Maine" },
-    { code: "MD", name: "Maryland" },
-    { code: "MA", name: "Massachusetts" },
-    { code: "MI", name: "Michigan" },
-    { code: "MN", name: "Minnesota" },
-    { code: "MS", name: "Mississippi" },
-    { code: "MO", name: "Missouri" },
-    { code: "MT", name: "Montana" },
-    { code: "NE", name: "Nebraska" },
-    { code: "NV", name: "Nevada" },
-    { code: "NH", name: "New Hampshire" },
-    { code: "NJ", name: "New Jersey" },
-    { code: "NM", name: "New Mexico" },
-    { code: "NY", name: "New York" },
-    { code: "NC", name: "North Carolina" },
-    { code: "ND", name: "North Dakota" },
-    { code: "OH", name: "Ohio" },
-    { code: "OK", name: "Oklahoma" },
-    { code: "OR", name: "Oregon" },
-    { code: "PA", name: "Pennsylvania" },
-    { code: "RI", name: "Rhode Island" },
-    { code: "SC", name: "South Carolina" },
-    { code: "SD", name: "South Dakota" },
-    { code: "TN", name: "Tennessee" },
-    { code: "TX", name: "Texas" },
-    { code: "UT", name: "Utah" },
-    { code: "VT", name: "Vermont" },
-    { code: "VA", name: "Virginia" },
-    { code: "WA", name: "Washington" },
-    { code: "WV", name: "West Virginia" },
-    { code: "WI", name: "Wisconsin" },
-    { code: "WY", name: "Wyoming" }
+    { code: "Alabama", name: "Alabama" },
+    { code: "Alaska", name: "Alaska" },
+    { code: "Arizona", name: "Arizona" },
+    { code: "Arkansas", name: "Arkansas" },
+    { code: "California", name: "California" },
+    { code: "Colorado", name: "Colorado" },
+    { code: "Connecticut", name: "Connecticut" },
+    { code: "Delaware", name: "Delaware" },
+    { code: "Florida", name: "Florida" },
+    { code: "Georgia", name: "Georgia" },
+    { code: "Hawaii", name: "Hawaii" },
+    { code: "Idaho", name: "Idaho" },
+    { code: "Illinois", name: "Illinois" },
+    { code: "Indiana", name: "Indiana" },
+    { code: "Iowa", name: "Iowa" },
+    { code: "Kansas", name: "Kansas" },
+    { code: "Kentucky", name: "Kentucky" },
+    { code: "Louisiana", name: "Louisiana" },
+    { code: "Maine", name: "Maine" },
+    { code: "Maryland", name: "Maryland" },
+    { code: "Massachusetts", name: "Massachusetts" },
+    { code: "Michigan", name: "Michigan" },
+    { code: "Minnesota", name: "Minnesota" },
+    { code: "Mississippi", name: "Mississippi" },
+    { code: "Missouri", name: "Missouri" },
+    { code: "Montana", name: "Montana" },
+    { code: "Nebraska", name: "Nebraska" },
+    { code: "Nevada", name: "Nevada" },
+    { code: "New Hampshire", name: "New Hampshire" },
+    { code: "New Jersey", name: "New Jersey" },
+    { code: "New Mexico", name: "New Mexico" },
+    { code: "New York", name: "New York" },
+    { code: "North Carolina", name: "North Carolina" },
+    { code: "North Dakota", name: "North Dakota" },
+    { code: "Ohio", name: "Ohio" },
+    { code: "Oklahoma", name: "Oklahoma" },
+    { code: "Oregon", name: "Oregon" },
+    { code: "Pennsylvania", name: "Pennsylvania" },
+    { code: "Rhode Island", name: "Rhode Island" },
+    { code: "South Carolina", name: "South Carolina" },
+    { code: "South Dakota", name: "South Dakota" },
+    { code: "Tennessee", name: "Tennessee" },
+    { code: "Texas", name: "Texas" },
+    { code: "Utah", name: "Utah" },
+    { code: "Vermont", name: "Vermont" },
+    { code: "Virginia", name: "Virginia" },
+    { code: "Washington", name: "Washington" },
+    { code: "West Virginia", name: "West Virginia" },
+    { code: "Wisconsin", name: "Wisconsin" },
+    { code: "Wyoming", name: "Wyoming" }
   ];
 
   useEffect(() => {
@@ -160,6 +160,7 @@ const ClinicianDetails = () => {
         throw error;
       }
       
+      console.log("Fetched clinician data:", data);
       setClinician(data);
       setEditedClinician(data);
       if (data.clinician_licensed_states) {
@@ -179,6 +180,7 @@ const ClinicianDetails = () => {
 
   const handleInputChange = (field: keyof Clinician, value: string) => {
     if (editedClinician) {
+      console.log(`Updating ${field} to ${value}`);
       setEditedClinician({
         ...editedClinician,
         [field]: value
@@ -188,17 +190,24 @@ const ClinicianDetails = () => {
 
   const handleSave = async () => {
     try {
+      if (!editedClinician) return;
+      
       const updatedClinicianData = {
         ...editedClinician,
-        clinician_licensed_states: selectedStates
+        clinician_licensed_states: selectedStates,
+        clinician_type: editedClinician.clinician_type,
+        clinician_license_type: editedClinician.clinician_license_type
       };
-
+      
+      console.log("Saving clinician data:", updatedClinicianData);
+      
       const { error } = await supabase
         .from('clinicians')
         .update(updatedClinicianData)
         .eq('id', clinicianId);
       
       if (error) {
+        console.error("Error updating clinician:", error);
         throw error;
       }
       
@@ -212,11 +221,15 @@ const ClinicianDetails = () => {
         title: "Success",
         description: "Clinician details updated successfully.",
       });
+      
+      // Refresh data to ensure we have the latest version
+      fetchClinicianData();
+      
     } catch (error) {
       console.error('Error updating clinician:', error);
       toast({
         title: "Error",
-        description: "Failed to update clinician details.",
+        description: `Failed to update clinician details: ${error.message || "Unknown error"}`,
         variant: "destructive",
       });
     }
@@ -232,11 +245,11 @@ const ClinicianDetails = () => {
     setIsEditing(false);
   };
 
-  const toggleState = (stateCode: string) => {
+  const toggleState = (stateName: string) => {
     setSelectedStates(current => 
-      current.includes(stateCode)
-        ? current.filter(s => s !== stateCode)
-        : [...current, stateCode]
+      current.includes(stateName)
+        ? current.filter(s => s !== stateName)
+        : [...current, stateName]
     );
   };
 
@@ -479,9 +492,9 @@ const ClinicianDetails = () => {
                     <DropdownMenuContent className="w-56 max-h-[300px] overflow-y-auto">
                       {states.map((state) => (
                         <DropdownMenuCheckboxItem
-                          key={state.code}
-                          checked={selectedStates.includes(state.code)}
-                          onCheckedChange={() => toggleState(state.code)}
+                          key={state.name}
+                          checked={selectedStates.includes(state.name)}
+                          onCheckedChange={() => toggleState(state.name)}
                         >
                           {state.name}
                         </DropdownMenuCheckboxItem>
@@ -491,9 +504,7 @@ const ClinicianDetails = () => {
                 ) : (
                   <p className="p-2 border rounded-md bg-gray-50">
                     {clinician.clinician_licensed_states && clinician.clinician_licensed_states.length > 0 
-                      ? clinician.clinician_licensed_states.map(code => 
-                          states.find(s => s.code === code)?.name
-                        ).filter(Boolean).join(', ')
+                      ? clinician.clinician_licensed_states.join(', ')
                       : '—'
                     }
                   </p>
