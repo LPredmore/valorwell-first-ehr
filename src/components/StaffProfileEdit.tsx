@@ -39,30 +39,33 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
   const fetchStaffMember = async (id: string) => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      // First get the profile data
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select(`
-          id,
-          email,
-          first_name,
-          last_name,
-          role,
-          clinicians(phone, clinician_type, license_type)
-        `)
+        .select('id, email, first_name, last_name, role')
         .eq('id', id)
         .single();
 
-      if (error) throw error;
+      if (profileError) throw profileError;
+
+      // Then get the clinician data
+      const { data: clinicianData, error: clinicianError } = await supabase
+        .from('clinicians')
+        .select('phone, clinician_type, license_type')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (clinicianError) throw clinicianError;
 
       setProfile({
-        id: data.id,
-        email: data.email,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        role: data.role,
-        phone: data.clinicians?.[0]?.phone || null,
-        clinician_type: data.clinicians?.[0]?.clinician_type || null,
-        license_type: data.clinicians?.[0]?.license_type || null
+        id: profileData.id,
+        email: profileData.email,
+        first_name: profileData.first_name,
+        last_name: profileData.last_name,
+        role: profileData.role,
+        phone: clinicianData?.phone || null,
+        clinician_type: clinicianData?.clinician_type || null,
+        license_type: clinicianData?.license_type || null
       });
     } catch (error) {
       console.error('Error fetching staff member:', error);
