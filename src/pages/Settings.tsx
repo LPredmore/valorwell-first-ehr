@@ -31,6 +31,8 @@ type StaffMember = {
   last_name: string | null;
   phone: string | null;
   role: string;
+  clinician_type: string | null;
+  license_type: string | null;
 };
 
 const Settings = () => {
@@ -59,7 +61,7 @@ const Settings = () => {
           first_name,
           last_name,
           role,
-          clinicians(phone)
+          clinicians(phone, clinician_type, license_type)
         `)
         .eq('role', 'clinician')
         .order('last_name', { ascending: true });
@@ -75,7 +77,9 @@ const Settings = () => {
         first_name: profile.first_name,
         last_name: profile.last_name,
         phone: profile.clinicians?.[0]?.phone || null,
-        role: profile.role
+        role: profile.role,
+        clinician_type: profile.clinicians?.[0]?.clinician_type || null,
+        license_type: profile.clinicians?.[0]?.license_type || null
       }));
 
       setStaffMembers(formattedStaff);
@@ -285,7 +289,8 @@ const Settings = () => {
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Phone</TableHead>
-                    <TableHead>Role</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>License Type</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -297,7 +302,8 @@ const Settings = () => {
                       </TableCell>
                       <TableCell>{staff.email}</TableCell>
                       <TableCell>{staff.phone || "—"}</TableCell>
-                      <TableCell className="capitalize">{staff.role}</TableCell>
+                      <TableCell>{staff.clinician_type || "—"}</TableCell>
+                      <TableCell>{staff.license_type || "—"}</TableCell>
                       <TableCell className="text-right">
                         <button 
                           className="p-1.5 text-red-500 hover:bg-red-50 rounded-full"

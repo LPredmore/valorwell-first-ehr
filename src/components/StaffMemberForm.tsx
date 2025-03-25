@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -19,6 +20,13 @@ import {
   FormLabel, 
   FormMessage 
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +48,8 @@ const staffMemberFormSchema = z.object({
   professional_name: z.string().optional(),
   npi_number: z.string().optional(),
   taxonomy_code: z.string().optional(),
+  clinician_type: z.string().optional(),
+  license_type: z.string().optional(),
 });
 
 const licenseFormSchema = z.object({
@@ -70,6 +80,8 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
       professional_name: '',
       npi_number: '',
       taxonomy_code: '',
+      clinician_type: '',
+      license_type: '',
     }
   });
 
@@ -102,7 +114,9 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
         .from('clinicians')
         .update({
           bio: data.bio,
-          phone: data.phone
+          phone: data.phone,
+          clinician_type: data.clinician_type || null,
+          license_type: data.license_type || null
         })
         .eq('id', authData.user.id);
         
@@ -291,6 +305,62 @@ const StaffMemberForm = ({ isOpen, onClose }: StaffMemberFormProps) => {
                       </FormItem>
                     )}
                   />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={staffForm.control}
+                      name="clinician_type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Clinician Type</FormLabel>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Mental Health">Mental Health</SelectItem>
+                              <SelectItem value="Speech Therapy">Speech Therapy</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={staffForm.control}
+                      name="license_type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>License Type</FormLabel>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select license type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="LCP">LCP</SelectItem>
+                              <SelectItem value="LMHT">LMHT</SelectItem>
+                              <SelectItem value="LMFT">LMFT</SelectItem>
+                              <SelectItem value="LCSW">LCSW</SelectItem>
+                              <SelectItem value="Psychologist">Psychologist</SelectItem>
+                              <SelectItem value="Speech Therapy">Speech Therapy</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
                 
                 <div className="space-y-4">

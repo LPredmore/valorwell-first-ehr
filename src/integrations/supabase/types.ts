@@ -88,8 +88,10 @@ export type Database = {
         Row: {
           accepting_new_clients: boolean | null
           bio: string | null
+          clinician_type: string | null
           created_at: string
           id: string
+          license_type: string | null
           min_client_age: number | null
           phone: string | null
           specialties: string[] | null
@@ -99,8 +101,10 @@ export type Database = {
         Insert: {
           accepting_new_clients?: boolean | null
           bio?: string | null
+          clinician_type?: string | null
           created_at?: string
           id: string
+          license_type?: string | null
           min_client_age?: number | null
           phone?: string | null
           specialties?: string[] | null
@@ -110,8 +114,10 @@ export type Database = {
         Update: {
           accepting_new_clients?: boolean | null
           bio?: string | null
+          clinician_type?: string | null
           created_at?: string
           id?: string
+          license_type?: string | null
           min_client_age?: number | null
           phone?: string | null
           specialties?: string[] | null
