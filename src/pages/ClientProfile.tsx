@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -726,4 +727,138 @@ const ClientProfile = () => {
                     name="subscriber_relationship_primary"
                     value={clientData.subscriber_relationship_primary || ''}
                     onChange={handleChange}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Select Relationship</option>
+                    <option value="Self">Self</option>
+                    <option value="Spouse">Spouse</option>
+                    <option value="Child">Child</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Subscriber Date of Birth</label>
+                  <Input
+                    type="date"
+                    name="subscriber_dob_primary"
+                    value={clientData.subscriber_dob_primary || ''}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+            </Card>
+            
+            {/* Secondary Insurance */}
+            <Card className="p-6">
+              <div className="flex items-center mb-4">
+                <Activity className="mr-2 h-5 w-5" />
+                <h2 className="font-semibold text-lg">Secondary Insurance</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Insurance Company</label>
+                  <Input 
+                    name="insurance_company_secondary"
+                    value={clientData.insurance_company_secondary || ''}
+                    onChange={handleChange}
+                    placeholder="Insurance Company"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Policy Number</label>
+                  <Input 
+                    name="policy_number_secondary"
+                    value={clientData.policy_number_secondary || ''}
+                    onChange={handleChange}
+                    placeholder="Policy Number"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Group Number</label>
+                  <Input 
+                    name="group_number_secondary"
+                    value={clientData.group_number_secondary || ''}
+                    onChange={handleChange}
+                    placeholder="Group Number"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Policy Holder Name</label>
+                  <Input 
+                    name="subscriber_name_secondary"
+                    value={clientData.subscriber_name_secondary || ''}
+                    onChange={handleChange}
+                    placeholder="Policy Holder Name"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Relationship to Subscriber</label>
+                  <select
+                    name="subscriber_relationship_secondary"
+                    value={clientData.subscriber_relationship_secondary || ''}
+                    onChange={handleChange}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Select Relationship</option>
+                    <option value="Self">Self</option>
+                    <option value="Spouse">Spouse</option>
+                    <option value="Child">Child</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Subscriber Date of Birth</label>
+                  <Input
+                    type="date"
+                    name="subscriber_dob_secondary"
+                    value={clientData.subscriber_dob_secondary || ''}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+            </Card>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="documents">
+          <Card className="p-6">
+            <div className="flex items-center mb-4">
+              <User className="mr-2 h-5 w-5" />
+              <h2 className="font-semibold text-lg">Client Documents</h2>
+            </div>
+            <p className="text-muted-foreground">No documents available.</p>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="appointments">
+          <Card className="p-6">
+            <div className="flex items-center mb-4">
+              <User className="mr-2 h-5 w-5" />
+              <h2 className="font-semibold text-lg">Client Appointments</h2>
+            </div>
+            <p className="text-muted-foreground">No appointments scheduled.</p>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="notes">
+          <Card className="p-6">
+            <div className="flex items-center mb-4">
+              <User className="mr-2 h-5 w-5" />
+              <h2 className="font-semibold text-lg">Client Notes</h2>
+            </div>
+            <p className="text-muted-foreground">No notes available.</p>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </Layout>
+  );
+};
+
+export default ClientProfile;
