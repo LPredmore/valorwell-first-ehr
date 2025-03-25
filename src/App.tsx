@@ -16,6 +16,7 @@ import Settings from "./pages/Settings";
 import Reminders from "./pages/Reminders";
 import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/Login";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App: React.FC = () => {
               <Route path="/settings" element={<Settings />} />
               <Route path="/reminders" element={<Reminders />} />
               <Route path="/messages" element={<Messages />} />
+              <Route path="/login" element={<Login />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </TooltipProvider>

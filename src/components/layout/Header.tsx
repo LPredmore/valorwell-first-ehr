@@ -1,6 +1,15 @@
 
-import { Bell, Search } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { Bell, Search, LogOut, User } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { supabase } from "@/integrations/supabase/client";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import { toast } from "@/hooks/use-toast";
 
 interface HeaderProps {
   userName?: string;
@@ -12,6 +21,7 @@ const Header: React.FC<HeaderProps> = ({
   userAvatar 
 }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const path = location.pathname.substring(1);
   const title = path.charAt(0).toUpperCase() + path.slice(1) || 'Dashboard';
 
@@ -23,6 +33,27 @@ const Header: React.FC<HeaderProps> = ({
   } else if (hours >= 17) {
     greeting = 'Good evening';
   }
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast({
+        title: "Logged out successfully",
+        description: "You have been logged out of your account",
+      });
+      
+      navigate('/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast({
+        title: "Logout failed",
+        description: "There was a problem logging you out",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <header className="h-16 border-b bg-white flex items-center justify-between px-6">
@@ -50,17 +81,33 @@ const Header: React.FC<HeaderProps> = ({
             <p className="text-sm text-gray-500">{greeting},</p>
             <p className="text-sm font-medium text-valorwell-700">{userName}</p>
           </div>
-          <div className="w-10 h-10 bg-valorwell-700 rounded-full flex items-center justify-center text-white">
-            {userAvatar ? (
-              <img 
-                src={userAvatar} 
-                alt={userName} 
-                className="w-full h-full rounded-full object-cover" 
-              />
-            ) : (
-              <span>JN</span>
-            )}
-          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger className="focus:outline-none">
+              <div className="w-10 h-10 bg-valorwell-700 rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-valorwell-800 transition-colors">
+                {userAvatar ? (
+                  <img 
+                    src={userAvatar} 
+                    alt={userName} 
+                    className="w-full h-full rounded-full object-cover" 
+                  />
+                ) : (
+                  <span>JN</span>
+                )}
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 mt-1">
+              <DropdownMenuItem className="cursor-pointer flex items-center" onClick={() => navigate('/profile')}>
+                <User className="mr-2 h-4 w-4" />
+                <span>Profile</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="cursor-pointer flex items-center text-red-500 focus:text-red-500" onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
