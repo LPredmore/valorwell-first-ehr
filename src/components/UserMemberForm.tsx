@@ -25,6 +25,7 @@ const UserMemberForm = ({ isOpen, onClose, userId }: UserMemberFormProps) => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    professionalName: '',
     email: '',
     phone: '',
   });
@@ -47,6 +48,7 @@ const UserMemberForm = ({ isOpen, onClose, userId }: UserMemberFormProps) => {
         user_metadata: {
           first_name: formData.firstName,
           last_name: formData.lastName,
+          professional_name: formData.professionalName,
           role: 'user'
         }
       });
@@ -61,7 +63,9 @@ const UserMemberForm = ({ isOpen, onClose, userId }: UserMemberFormProps) => {
           id: authData.user.id,
           first_name: formData.firstName,
           last_name: formData.lastName,
-          email: formData.email
+          professional_name: formData.professionalName,
+          email: formData.email,
+          phone: formData.phone
         });
 
       if (profileError) throw profileError;
@@ -76,6 +80,7 @@ const UserMemberForm = ({ isOpen, onClose, userId }: UserMemberFormProps) => {
       setFormData({
         firstName: '',
         lastName: '',
+        professionalName: '',
         email: '',
         phone: '',
       });
@@ -122,6 +127,16 @@ const UserMemberForm = ({ isOpen, onClose, userId }: UserMemberFormProps) => {
                   required
                 />
               </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="professionalName">Professional Name</Label>
+              <Input 
+                id="professionalName"
+                name="professionalName"
+                value={formData.professionalName}
+                onChange={handleChange}
+              />
             </div>
             
             <div className="space-y-2">
