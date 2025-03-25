@@ -276,48 +276,6 @@ export type Database = {
         }
         Relationships: []
       }
-      insurance: {
-        Row: {
-          client_id: string
-          created_at: string
-          group_number: string | null
-          id: string
-          insurance_type: string
-          policy_number: string | null
-          provider: string
-          subscriber_dob: string | null
-          subscriber_name: string | null
-          subscriber_relationship: string | null
-          updated_at: string
-        }
-        Insert: {
-          client_id: string
-          created_at?: string
-          group_number?: string | null
-          id?: string
-          insurance_type: string
-          policy_number?: string | null
-          provider: string
-          subscriber_dob?: string | null
-          subscriber_name?: string | null
-          subscriber_relationship?: string | null
-          updated_at?: string
-        }
-        Update: {
-          client_id?: string
-          created_at?: string
-          group_number?: string | null
-          id?: string
-          insurance_type?: string
-          policy_number?: string | null
-          provider?: string
-          subscriber_dob?: string | null
-          subscriber_name?: string | null
-          subscriber_relationship?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       licenses: {
         Row: {
           clinician_id: string
@@ -353,7 +311,6 @@ export type Database = {
           id: string
           last_name: string | null
           profile_type: string | null
-          role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
         Insert: {
@@ -363,7 +320,6 @@ export type Database = {
           id: string
           last_name?: string | null
           profile_type?: string | null
-          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
         Update: {
@@ -373,7 +329,6 @@ export type Database = {
           id?: string
           last_name?: string | null
           profile_type?: string | null
-          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
         Relationships: []
@@ -432,7 +387,7 @@ export type Database = {
         | "consent_form"
         | "therapy_note"
         | "questionnaire"
-      user_role: "user" | "fake" | "admin"
+      user_role: "user" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
