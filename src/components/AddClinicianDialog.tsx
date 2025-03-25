@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -179,31 +178,30 @@ export function AddClinicianDialog({ open, onOpenChange, onClinicianAdded }: Add
   // Form submission handler
   const onSubmit = async (data: z.infer<typeof clinicianFormSchema>) => {
     try {
+      // Generate a UUID for the new clinician
+      const clinicianId = uuidv4();
+      
       // Create clinician record
-      const { data: clinician, error } = await supabase
+      const { error } = await supabase
         .from('clinicians')
-        .insert([
-          {
-            clinician_first_name: data.firstName,
-            clinician_last_name: data.lastName,
-            clinician_professional_name: data.professionalName || null,
-            clinician_email: data.email,
-            clinician_phone: data.phone || null,
-            clinician_type: data.type,
-            clinician_license_type: data.licenseType,
-            clinician_npi_number: data.npiNumber || null,
-            clinician_taxonomy_code: data.taxonomyCode || null,
-            clinician_bio: data.bio || null,
-            clinician_min_client_age: parseInt(data.minClientAge || "18"),
-            clinician_accepting_new_clients: data.acceptingNewClients ? "Yes" : "No",
-            clinician_treatment_approaches: data.treatmentApproaches || null,
-          },
-        ])
-        .select();
+        .insert({
+          id: clinicianId,
+          clinician_first_name: data.firstName,
+          clinician_last_name: data.lastName,
+          clinician_professional_name: data.professionalName || null,
+          clinician_email: data.email,
+          clinician_phone: data.phone || null,
+          clinician_type: data.type,
+          clinician_license_type: data.licenseType,
+          clinician_npi_number: data.npiNumber || null,
+          clinician_taxonomy_code: data.taxonomyCode || null,
+          clinician_bio: data.bio || null,
+          clinician_min_client_age: parseInt(data.minClientAge || "18"),
+          clinician_accepting_new_clients: data.acceptingNewClients ? "Yes" : "No",
+          clinician_treatment_approaches: data.treatmentApproaches || null,
+        });
 
       if (error) throw error;
-
-      const clinicianId = clinician[0].id;
 
       // Upload image if selected
       let imagePublicUrl = null;
