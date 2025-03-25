@@ -17,31 +17,31 @@ interface InsuranceTabProps {
 const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }: InsuranceTabProps) => {
   const [insuranceData, setInsuranceData] = useState({
     // Primary Insurance
-    insurance_company_primary: '',
-    policy_number_primary: '',
-    group_number_primary: '',
-    subscriber_name_primary: '',
-    subscriber_relationship_primary: '',
-    insurance_type_primary: '',
-    subscriber_dob_primary: '',
+    client_insurance_company_primary: '',
+    client_policy_number_primary: '',
+    client_group_number_primary: '',
+    client_subscriber_name_primary: '',
+    client_subscriber_relationship_primary: '',
+    client_insurance_type_primary: '',
+    client_subscriber_dob_primary: '',
     
     // Secondary Insurance
-    insurance_company_secondary: '',
-    policy_number_secondary: '',
-    group_number_secondary: '',
-    subscriber_name_secondary: '',
-    subscriber_relationship_secondary: '',
-    insurance_type_secondary: '',
-    subscriber_dob_secondary: '',
+    client_insurance_company_secondary: '',
+    client_policy_number_secondary: '',
+    client_group_number_secondary: '',
+    client_subscriber_name_secondary: '',
+    client_subscriber_relationship_secondary: '',
+    client_insurance_type_secondary: '',
+    client_subscriber_dob_secondary: '',
     
     // Tertiary Insurance
-    insurance_company_tertiary: '',
-    policy_number_tertiary: '',
-    group_number_tertiary: '',
-    subscriber_name_tertiary: '',
-    subscriber_relationship_tertiary: '',
-    insurance_type_tertiary: '',
-    subscriber_dob_tertiary: ''
+    client_insurance_company_tertiary: '',
+    client_policy_number_tertiary: '',
+    client_group_number_tertiary: '',
+    client_subscriber_name_tertiary: '',
+    client_subscriber_relationship_tertiary: '',
+    client_insurance_type_tertiary: '',
+    client_subscriber_dob_tertiary: ''
   });
   
   const [loading, setLoading] = useState(true);
@@ -51,31 +51,31 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
     if (initialData) {
       setInsuranceData({
         // Primary Insurance
-        insurance_company_primary: initialData.insurance_company_primary || '',
-        policy_number_primary: initialData.policy_number_primary || '',
-        group_number_primary: initialData.group_number_primary || '',
-        subscriber_name_primary: initialData.subscriber_name_primary || '',
-        subscriber_relationship_primary: initialData.subscriber_relationship_primary || '',
-        insurance_type_primary: initialData.insurance_type_primary || '',
-        subscriber_dob_primary: initialData.subscriber_dob_primary || '',
+        client_insurance_company_primary: initialData.client_insurance_company_primary || '',
+        client_policy_number_primary: initialData.client_policy_number_primary || '',
+        client_group_number_primary: initialData.client_group_number_primary || '',
+        client_subscriber_name_primary: initialData.client_subscriber_name_primary || '',
+        client_subscriber_relationship_primary: initialData.client_subscriber_relationship_primary || '',
+        client_insurance_type_primary: initialData.client_insurance_type_primary || '',
+        client_subscriber_dob_primary: initialData.client_subscriber_dob_primary || '',
         
         // Secondary Insurance
-        insurance_company_secondary: initialData.insurance_company_secondary || '',
-        policy_number_secondary: initialData.policy_number_secondary || '',
-        group_number_secondary: initialData.group_number_secondary || '',
-        subscriber_name_secondary: initialData.subscriber_name_secondary || '',
-        subscriber_relationship_secondary: initialData.subscriber_relationship_secondary || '',
-        insurance_type_secondary: initialData.insurance_type_secondary || '',
-        subscriber_dob_secondary: initialData.subscriber_dob_secondary || '',
+        client_insurance_company_secondary: initialData.client_insurance_company_secondary || '',
+        client_policy_number_secondary: initialData.client_policy_number_secondary || '',
+        client_group_number_secondary: initialData.client_group_number_secondary || '',
+        client_subscriber_name_secondary: initialData.client_subscriber_name_secondary || '',
+        client_subscriber_relationship_secondary: initialData.client_subscriber_relationship_secondary || '',
+        client_insurance_type_secondary: initialData.client_insurance_type_secondary || '',
+        client_subscriber_dob_secondary: initialData.client_subscriber_dob_secondary || '',
         
         // Tertiary Insurance
-        insurance_company_tertiary: initialData.insurance_company_tertiary || '',
-        policy_number_tertiary: initialData.policy_number_tertiary || '',
-        group_number_tertiary: initialData.group_number_tertiary || '',
-        subscriber_name_tertiary: initialData.subscriber_name_tertiary || '',
-        subscriber_relationship_tertiary: initialData.subscriber_relationship_tertiary || '',
-        insurance_type_tertiary: initialData.insurance_type_tertiary || '',
-        subscriber_dob_tertiary: initialData.subscriber_dob_tertiary || ''
+        client_insurance_company_tertiary: initialData.client_insurance_company_tertiary || '',
+        client_policy_number_tertiary: initialData.client_policy_number_tertiary || '',
+        client_group_number_tertiary: initialData.client_group_number_tertiary || '',
+        client_subscriber_name_tertiary: initialData.client_subscriber_name_tertiary || '',
+        client_subscriber_relationship_tertiary: initialData.client_subscriber_relationship_tertiary || '',
+        client_insurance_type_tertiary: initialData.client_insurance_type_tertiary || '',
+        client_subscriber_dob_tertiary: initialData.client_subscriber_dob_tertiary || ''
       });
       setLoading(false);
     } else if (clientId && clientId !== 'new') {
@@ -91,27 +91,27 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
       const { data, error } = await supabase
         .from('clients')
         .select(`
-          insurance_company_primary,
-          policy_number_primary,
-          group_number_primary,
-          subscriber_name_primary,
-          subscriber_relationship_primary,
-          insurance_type_primary,
-          subscriber_dob_primary,
-          insurance_company_secondary,
-          policy_number_secondary,
-          group_number_secondary,
-          subscriber_name_secondary,
-          subscriber_relationship_secondary,
-          insurance_type_secondary,
-          subscriber_dob_secondary,
-          insurance_company_tertiary,
-          policy_number_tertiary,
-          group_number_tertiary,
-          subscriber_name_tertiary,
-          subscriber_relationship_tertiary,
-          insurance_type_tertiary,
-          subscriber_dob_tertiary
+          client_insurance_company_primary,
+          client_policy_number_primary,
+          client_group_number_primary,
+          client_subscriber_name_primary,
+          client_subscriber_relationship_primary,
+          client_insurance_type_primary,
+          client_subscriber_dob_primary,
+          client_insurance_company_secondary,
+          client_policy_number_secondary,
+          client_group_number_secondary,
+          client_subscriber_name_secondary,
+          client_subscriber_relationship_secondary,
+          client_insurance_type_secondary,
+          client_subscriber_dob_secondary,
+          client_insurance_company_tertiary,
+          client_policy_number_tertiary,
+          client_group_number_tertiary,
+          client_subscriber_name_tertiary,
+          client_subscriber_relationship_tertiary,
+          client_insurance_type_tertiary,
+          client_subscriber_dob_tertiary
         `)
         .eq('id', clientId)
         .single();
@@ -121,31 +121,31 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
       if (data) {
         setInsuranceData({
           // Primary Insurance
-          insurance_company_primary: data.insurance_company_primary || '',
-          policy_number_primary: data.policy_number_primary || '',
-          group_number_primary: data.group_number_primary || '',
-          subscriber_name_primary: data.subscriber_name_primary || '',
-          subscriber_relationship_primary: data.subscriber_relationship_primary || '',
-          insurance_type_primary: data.insurance_type_primary || '',
-          subscriber_dob_primary: data.subscriber_dob_primary || '',
+          client_insurance_company_primary: data.client_insurance_company_primary || '',
+          client_policy_number_primary: data.client_policy_number_primary || '',
+          client_group_number_primary: data.client_group_number_primary || '',
+          client_subscriber_name_primary: data.client_subscriber_name_primary || '',
+          client_subscriber_relationship_primary: data.client_subscriber_relationship_primary || '',
+          client_insurance_type_primary: data.client_insurance_type_primary || '',
+          client_subscriber_dob_primary: data.client_subscriber_dob_primary || '',
           
           // Secondary Insurance
-          insurance_company_secondary: data.insurance_company_secondary || '',
-          policy_number_secondary: data.policy_number_secondary || '',
-          group_number_secondary: data.group_number_secondary || '',
-          subscriber_name_secondary: data.subscriber_name_secondary || '',
-          subscriber_relationship_secondary: data.subscriber_relationship_secondary || '',
-          insurance_type_secondary: data.insurance_type_secondary || '',
-          subscriber_dob_secondary: data.subscriber_dob_secondary || '',
+          client_insurance_company_secondary: data.client_insurance_company_secondary || '',
+          client_policy_number_secondary: data.client_policy_number_secondary || '',
+          client_group_number_secondary: data.client_group_number_secondary || '',
+          client_subscriber_name_secondary: data.client_subscriber_name_secondary || '',
+          client_subscriber_relationship_secondary: data.client_subscriber_relationship_secondary || '',
+          client_insurance_type_secondary: data.client_insurance_type_secondary || '',
+          client_subscriber_dob_secondary: data.client_subscriber_dob_secondary || '',
           
           // Tertiary Insurance
-          insurance_company_tertiary: data.insurance_company_tertiary || '',
-          policy_number_tertiary: data.policy_number_tertiary || '',
-          group_number_tertiary: data.group_number_tertiary || '',
-          subscriber_name_tertiary: data.subscriber_name_tertiary || '',
-          subscriber_relationship_tertiary: data.subscriber_relationship_tertiary || '',
-          insurance_type_tertiary: data.insurance_type_tertiary || '',
-          subscriber_dob_tertiary: data.subscriber_dob_tertiary || ''
+          client_insurance_company_tertiary: data.client_insurance_company_tertiary || '',
+          client_policy_number_tertiary: data.client_policy_number_tertiary || '',
+          client_group_number_tertiary: data.client_group_number_tertiary || '',
+          client_subscriber_name_tertiary: data.client_subscriber_name_tertiary || '',
+          client_subscriber_relationship_tertiary: data.client_subscriber_relationship_tertiary || '',
+          client_insurance_type_tertiary: data.client_insurance_type_tertiary || '',
+          client_subscriber_dob_tertiary: data.client_subscriber_dob_tertiary || ''
         });
       }
     } catch (error) {
@@ -173,31 +173,31 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
         .from('clients')
         .update({
           // Primary Insurance
-          insurance_company_primary: insuranceData.insurance_company_primary,
-          policy_number_primary: insuranceData.policy_number_primary,
-          group_number_primary: insuranceData.group_number_primary,
-          subscriber_name_primary: insuranceData.subscriber_name_primary,
-          subscriber_relationship_primary: insuranceData.subscriber_relationship_primary,
-          insurance_type_primary: insuranceData.insurance_type_primary,
-          subscriber_dob_primary: insuranceData.subscriber_dob_primary,
+          client_insurance_company_primary: insuranceData.client_insurance_company_primary,
+          client_policy_number_primary: insuranceData.client_policy_number_primary,
+          client_group_number_primary: insuranceData.client_group_number_primary,
+          client_subscriber_name_primary: insuranceData.client_subscriber_name_primary,
+          client_subscriber_relationship_primary: insuranceData.client_subscriber_relationship_primary,
+          client_insurance_type_primary: insuranceData.client_insurance_type_primary,
+          client_subscriber_dob_primary: insuranceData.client_subscriber_dob_primary,
           
           // Secondary Insurance
-          insurance_company_secondary: insuranceData.insurance_company_secondary,
-          policy_number_secondary: insuranceData.policy_number_secondary,
-          group_number_secondary: insuranceData.group_number_secondary,
-          subscriber_name_secondary: insuranceData.subscriber_name_secondary,
-          subscriber_relationship_secondary: insuranceData.subscriber_relationship_secondary,
-          insurance_type_secondary: insuranceData.insurance_type_secondary,
-          subscriber_dob_secondary: insuranceData.subscriber_dob_secondary,
+          client_insurance_company_secondary: insuranceData.client_insurance_company_secondary,
+          client_policy_number_secondary: insuranceData.client_policy_number_secondary,
+          client_group_number_secondary: insuranceData.client_group_number_secondary,
+          client_subscriber_name_secondary: insuranceData.client_subscriber_name_secondary,
+          client_subscriber_relationship_secondary: insuranceData.client_subscriber_relationship_secondary,
+          client_insurance_type_secondary: insuranceData.client_insurance_type_secondary,
+          client_subscriber_dob_secondary: insuranceData.client_subscriber_dob_secondary,
           
           // Tertiary Insurance
-          insurance_company_tertiary: insuranceData.insurance_company_tertiary,
-          policy_number_tertiary: insuranceData.policy_number_tertiary,
-          group_number_tertiary: insuranceData.group_number_tertiary,
-          subscriber_name_tertiary: insuranceData.subscriber_name_tertiary,
-          subscriber_relationship_tertiary: insuranceData.subscriber_relationship_tertiary,
-          insurance_type_tertiary: insuranceData.insurance_type_tertiary,
-          subscriber_dob_tertiary: insuranceData.subscriber_dob_tertiary
+          client_insurance_company_tertiary: insuranceData.client_insurance_company_tertiary,
+          client_policy_number_tertiary: insuranceData.client_policy_number_tertiary,
+          client_group_number_tertiary: insuranceData.client_group_number_tertiary,
+          client_subscriber_name_tertiary: insuranceData.client_subscriber_name_tertiary,
+          client_subscriber_relationship_tertiary: insuranceData.client_subscriber_relationship_tertiary,
+          client_insurance_type_tertiary: insuranceData.client_insurance_type_tertiary,
+          client_subscriber_dob_tertiary: insuranceData.client_subscriber_dob_tertiary
         })
         .eq('id', clientId);
         
@@ -230,8 +230,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Insurance Company</label>
             <Input 
-              name="insurance_company_primary"
-              value={insuranceData.insurance_company_primary}
+              name="client_insurance_company_primary"
+              value={insuranceData.client_insurance_company_primary}
               onChange={handleChange}
               placeholder="Insurance Company"
               disabled={disabled}
@@ -241,8 +241,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Policy Number</label>
             <Input 
-              name="policy_number_primary"
-              value={insuranceData.policy_number_primary}
+              name="client_policy_number_primary"
+              value={insuranceData.client_policy_number_primary}
               onChange={handleChange}
               placeholder="Policy Number"
               disabled={disabled}
@@ -252,8 +252,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Group Number</label>
             <Input 
-              name="group_number_primary"
-              value={insuranceData.group_number_primary}
+              name="client_group_number_primary"
+              value={insuranceData.client_group_number_primary}
               onChange={handleChange}
               placeholder="Group Number"
               disabled={disabled}
@@ -263,8 +263,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Subscriber Name</label>
             <Input 
-              name="subscriber_name_primary"
-              value={insuranceData.subscriber_name_primary}
+              name="client_subscriber_name_primary"
+              value={insuranceData.client_subscriber_name_primary}
               onChange={handleChange}
               placeholder="Subscriber Name"
               disabled={disabled}
@@ -274,8 +274,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Relationship to Subscriber</label>
             <select
-              name="subscriber_relationship_primary"
-              value={insuranceData.subscriber_relationship_primary}
+              name="client_subscriber_relationship_primary"
+              value={insuranceData.client_subscriber_relationship_primary}
               onChange={handleChange}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={disabled}
@@ -291,9 +291,9 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Subscriber Date of Birth</label>
             <Input 
-              name="subscriber_dob_primary"
+              name="client_subscriber_dob_primary"
               type="date"
-              value={insuranceData.subscriber_dob_primary}
+              value={insuranceData.client_subscriber_dob_primary}
               onChange={handleChange}
               disabled={disabled}
             />
@@ -302,8 +302,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Plan Type</label>
             <Input 
-              name="insurance_type_primary"
-              value={insuranceData.insurance_type_primary}
+              name="client_insurance_type_primary"
+              value={insuranceData.client_insurance_type_primary}
               onChange={handleChange}
               placeholder="Plan Type"
               disabled={disabled}
@@ -323,8 +323,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Insurance Company</label>
             <Input 
-              name="insurance_company_secondary"
-              value={insuranceData.insurance_company_secondary}
+              name="client_insurance_company_secondary"
+              value={insuranceData.client_insurance_company_secondary}
               onChange={handleChange}
               placeholder="Insurance Company"
               disabled={disabled}
@@ -334,8 +334,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Policy Number</label>
             <Input 
-              name="policy_number_secondary"
-              value={insuranceData.policy_number_secondary}
+              name="client_policy_number_secondary"
+              value={insuranceData.client_policy_number_secondary}
               onChange={handleChange}
               placeholder="Policy Number"
               disabled={disabled}
@@ -345,8 +345,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Group Number</label>
             <Input 
-              name="group_number_secondary"
-              value={insuranceData.group_number_secondary}
+              name="client_group_number_secondary"
+              value={insuranceData.client_group_number_secondary}
               onChange={handleChange}
               placeholder="Group Number"
               disabled={disabled}
@@ -356,8 +356,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Subscriber Name</label>
             <Input 
-              name="subscriber_name_secondary"
-              value={insuranceData.subscriber_name_secondary}
+              name="client_subscriber_name_secondary"
+              value={insuranceData.client_subscriber_name_secondary}
               onChange={handleChange}
               placeholder="Subscriber Name"
               disabled={disabled}
@@ -367,8 +367,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Relationship to Subscriber</label>
             <select
-              name="subscriber_relationship_secondary"
-              value={insuranceData.subscriber_relationship_secondary}
+              name="client_subscriber_relationship_secondary"
+              value={insuranceData.client_subscriber_relationship_secondary}
               onChange={handleChange}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={disabled}
@@ -384,9 +384,9 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Subscriber Date of Birth</label>
             <Input 
-              name="subscriber_dob_secondary"
+              name="client_subscriber_dob_secondary"
               type="date"
-              value={insuranceData.subscriber_dob_secondary}
+              value={insuranceData.client_subscriber_dob_secondary}
               onChange={handleChange}
               disabled={disabled}
             />
@@ -395,8 +395,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Plan Type</label>
             <Input 
-              name="insurance_type_secondary"
-              value={insuranceData.insurance_type_secondary}
+              name="client_insurance_type_secondary"
+              value={insuranceData.client_insurance_type_secondary}
               onChange={handleChange}
               placeholder="Plan Type"
               disabled={disabled}
@@ -416,8 +416,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Insurance Company</label>
             <Input 
-              name="insurance_company_tertiary"
-              value={insuranceData.insurance_company_tertiary}
+              name="client_insurance_company_tertiary"
+              value={insuranceData.client_insurance_company_tertiary}
               onChange={handleChange}
               placeholder="Insurance Company"
               disabled={disabled}
@@ -427,8 +427,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Policy Number</label>
             <Input 
-              name="policy_number_tertiary"
-              value={insuranceData.policy_number_tertiary}
+              name="client_policy_number_tertiary"
+              value={insuranceData.client_policy_number_tertiary}
               onChange={handleChange}
               placeholder="Policy Number"
               disabled={disabled}
@@ -438,8 +438,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Group Number</label>
             <Input 
-              name="group_number_tertiary"
-              value={insuranceData.group_number_tertiary}
+              name="client_group_number_tertiary"
+              value={insuranceData.client_group_number_tertiary}
               onChange={handleChange}
               placeholder="Group Number"
               disabled={disabled}
@@ -449,8 +449,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Subscriber Name</label>
             <Input 
-              name="subscriber_name_tertiary"
-              value={insuranceData.subscriber_name_tertiary}
+              name="client_subscriber_name_tertiary"
+              value={insuranceData.client_subscriber_name_tertiary}
               onChange={handleChange}
               placeholder="Subscriber Name"
               disabled={disabled}
@@ -460,8 +460,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Relationship to Subscriber</label>
             <select
-              name="subscriber_relationship_tertiary"
-              value={insuranceData.subscriber_relationship_tertiary}
+              name="client_subscriber_relationship_tertiary"
+              value={insuranceData.client_subscriber_relationship_tertiary}
               onChange={handleChange}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={disabled}
@@ -477,9 +477,9 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Subscriber Date of Birth</label>
             <Input 
-              name="subscriber_dob_tertiary"
+              name="client_subscriber_dob_tertiary"
               type="date"
-              value={insuranceData.subscriber_dob_tertiary}
+              value={insuranceData.client_subscriber_dob_tertiary}
               onChange={handleChange}
               disabled={disabled}
             />
@@ -488,8 +488,8 @@ const ClientInsuranceTab = ({ clientId, initialData, onSave, disabled = false }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Plan Type</label>
             <Input 
-              name="insurance_type_tertiary"
-              value={insuranceData.insurance_type_tertiary}
+              name="client_insurance_type_tertiary"
+              value={insuranceData.client_insurance_type_tertiary}
               onChange={handleChange}
               placeholder="Plan Type"
               disabled={disabled}

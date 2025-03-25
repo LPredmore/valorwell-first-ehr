@@ -61,7 +61,7 @@ const Clients = () => {
     
     const displayName = getDisplayName(client);
     const email = client.email?.toLowerCase() || '';
-    const phone = client.phone?.toLowerCase() || '';
+    const phone = client.client_phone?.toLowerCase() || '';
     
     return (
       displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -71,8 +71,8 @@ const Clients = () => {
   });
 
   const getDisplayName = (client) => {
-    const preferredName = client.preferred_name || client.first_name || '';
-    const lastName = client.last_name || '';
+    const preferredName = client.client_preferred_name || client.client_first_name || '';
+    const lastName = client.client_last_name || '';
     return `${preferredName} ${lastName}`.trim();
   };
 
@@ -203,19 +203,19 @@ const Clients = () => {
                         </button>
                       </TableCell>
                       <TableCell>{client.email}</TableCell>
-                      <TableCell>{client.phone || '-'}</TableCell>
-                      <TableCell>{client.date_of_birth || '-'}</TableCell>
+                      <TableCell>{client.client_phone || '-'}</TableCell>
+                      <TableCell>{client.client_date_of_birth || '-'}</TableCell>
                       <TableCell>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium 
-                          ${client.status === 'Waiting' ? 'bg-yellow-100 text-yellow-800' : 
-                            client.status === 'Active' ? 'bg-green-100 text-green-800' : 
-                            client.status === 'Inactive' ? 'bg-gray-100 text-gray-800' : 
-                            client.status === 'On Hold' ? 'bg-blue-100 text-blue-800' : 
+                          ${client.client_status === 'Waiting' ? 'bg-yellow-100 text-yellow-800' : 
+                            client.client_status === 'Active' ? 'bg-green-100 text-green-800' : 
+                            client.client_status === 'Inactive' ? 'bg-gray-100 text-gray-800' : 
+                            client.client_status === 'On Hold' ? 'bg-blue-100 text-blue-800' : 
                             'bg-gray-100 text-gray-800'}`}>
-                          {client.status || '-'}
+                          {client.client_status || '-'}
                         </span>
                       </TableCell>
-                      <TableCell>{client.assigned_therapist ? client.assigned_therapist : '-'}</TableCell>
+                      <TableCell>{client.client_assigned_therapist ? client.client_assigned_therapist : '-'}</TableCell>
                       <TableCell>
                         <Popover>
                           <PopoverTrigger asChild>
