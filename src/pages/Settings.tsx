@@ -1,8 +1,18 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
-import { Pencil, Plus } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import StaffMemberForm from '../components/StaffMemberForm';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 
 const SettingsTabs = {
   PRACTICE: 'practice',
@@ -13,10 +23,87 @@ const SettingsTabs = {
   LICENSES: 'licenses'
 };
 
+// Define the structure for staff member data
+type StaffMember = {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  role: string;
+};
+
 const Settings = () => {
   const [activeTab, setActiveTab] = useState(SettingsTabs.PRACTICE);
   const [activeBillingTab, setActiveBillingTab] = useState('cpt');
   const [isStaffFormOpen, setIsStaffFormOpen] = useState(false);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch staff members from database
+  useEffect(() => {
+    if (activeTab === SettingsTabs.STAFF) {
+      fetchStaffMembers();
+    }
+  }, [activeTab]);
+
+  const fetchStaffMembers = async () => {
+    setIsLoading(true);
+    try {
+      // Query clinicians and join with profiles to get all necessary data
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          email,
+          first_name,
+          last_name,
+          role,
+          clinicians(phone)
+        `)
+        .eq('role', 'clinician')
+        .order('last_name', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      // Format the data to include the phone number from the clinicians table
+      const formattedStaff = data.map(profile => ({
+        id: profile.id,
+        email: profile.email,
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        phone: profile.clinicians?.[0]?.phone || null,
+        role: profile.role
+      }));
+
+      setStaffMembers(formattedStaff);
+    } catch (error) {
+      console.error('Error fetching staff members:', error);
+      toast.error('Failed to load staff members');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteStaffMember = async (id: string) => {
+    try {
+      // When deleting a staff member, we need to delete from clinicians and profiles
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast.success('Staff member deleted successfully');
+      fetchStaffMembers(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting staff member:', error);
+      toast.error('Failed to delete staff member');
+    }
+  };
 
   return (
     <Layout>
@@ -185,44 +272,53 @@ const Settings = () => {
               </button>
             </div>
             
-            <div className="space-y-4">
-              <div className="border rounded-lg p-4 relative">
-                <div className="flex items-start">
-                  <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-blue-500 rounded-full mr-4"></div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold mb-1">Test Therapist</h3>
-                    <div className="text-sm text-gray-600">
-                      <p>Email: info+test@valorwell.org</p>
-                      <p>Role: clinician</p>
-                    </div>
-                  </div>
-                  <button className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600">
-                    Delete
-                  </button>
-                </div>
+            {isLoading ? (
+              <div className="py-10 text-center text-gray-500">Loading staff members...</div>
+            ) : staffMembers.length === 0 ? (
+              <div className="text-center py-10 border rounded bg-gray-50 text-gray-500">
+                No staff members found. Click the button above to add your first staff member.
               </div>
-              
-              <div className="border rounded-lg p-4 relative">
-                <div className="flex items-start">
-                  <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-blue-500 rounded-full mr-4"></div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold mb-1">Luke Predmore</h3>
-                    <div className="text-sm text-gray-600">
-                      <p>Email: info@valorwell.org</p>
-                      <p>Role: admin</p>
-                    </div>
-                  </div>
-                  <button className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600">
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {staffMembers.map((staff) => (
+                    <TableRow key={staff.id}>
+                      <TableCell className="font-medium">
+                        {staff.first_name} {staff.last_name}
+                      </TableCell>
+                      <TableCell>{staff.email}</TableCell>
+                      <TableCell>{staff.phone || "—"}</TableCell>
+                      <TableCell className="capitalize">{staff.role}</TableCell>
+                      <TableCell className="text-right">
+                        <button 
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-full"
+                          onClick={() => handleDeleteStaffMember(staff.id)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
             
             {/* Staff Member Form */}
             <StaffMemberForm 
               isOpen={isStaffFormOpen} 
-              onClose={() => setIsStaffFormOpen(false)} 
+              onClose={() => {
+                setIsStaffFormOpen(false);
+                fetchStaffMembers(); // Refresh the list when the form is closed
+              }} 
             />
           </div>
         )}
