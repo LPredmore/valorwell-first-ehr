@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Textarea } from "@/components/ui/textarea";
 
 type StaffProfileEditProps = {
   isOpen: boolean;
@@ -16,13 +17,16 @@ type StaffProfileEditProps = {
 
 type StaffProfile = {
   id: string;
-  email: string;
+  email: string | null;
   first_name: string | null;
   last_name: string | null;
+  professional_name: string | null;
   phone: string | null;
-  role: string;
+  bio: string | null;
   clinician_type: string | null;
   license_type: string | null;
+  npi_number: string | null;
+  taxonomy_code: string | null;
 };
 
 const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) => {
@@ -41,43 +45,32 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
     try {
       console.log('Fetching staff member with ID:', id);
       
-      // First get the profile data
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, email, first_name, last_name, role')
+      // Only get the clinician data
+      const { data: clinicianData, error: clinicianError } = await supabase
+        .from('clinicians')
+        .select('id, email, first_name, last_name, professional_name, phone, bio, clinician_type, license_type, npi_number, taxonomy_code')
         .eq('id', id)
         .single();
 
-      if (profileError) {
-        console.error('Error fetching profile data:', profileError);
-        throw profileError;
-      }
-      
-      console.log('Profile data fetched:', profileData);
-
-      // Then get the clinician data
-      const { data: clinicianData, error: clinicianError } = await supabase
-        .from('clinicians')
-        .select('phone, clinician_type, license_type')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (clinicianError && clinicianError.code !== 'PGRST116') {
+      if (clinicianError) {
         console.error('Error fetching clinician data:', clinicianError);
-        // We don't throw here as the clinician record might not exist yet
+        throw clinicianError;
       }
       
       console.log('Clinician data fetched:', clinicianData);
 
       setProfile({
-        id: profileData.id,
-        email: profileData.email,
-        first_name: profileData.first_name,
-        last_name: profileData.last_name,
-        role: profileData.role,
-        phone: clinicianData?.phone || null,
-        clinician_type: clinicianData?.clinician_type || null,
-        license_type: clinicianData?.license_type || null
+        id: clinicianData.id,
+        email: clinicianData.email,
+        first_name: clinicianData.first_name,
+        last_name: clinicianData.last_name,
+        professional_name: clinicianData.professional_name,
+        phone: clinicianData.phone,
+        bio: clinicianData.bio,
+        clinician_type: clinicianData.clinician_type,
+        license_type: clinicianData.license_type,
+        npi_number: clinicianData.npi_number,
+        taxonomy_code: clinicianData.taxonomy_code
       });
     } catch (error) {
       console.error('Error fetching staff member:', error);
@@ -101,49 +94,24 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
     
     setIsSaving(true);
     try {
-      // Update profile information
-      const { error: profileError } = await supabase
-        .from('profiles')
+      // Update clinician information only
+      const { error: updateError } = await supabase
+        .from('clinicians')
         .update({
           first_name: profile.first_name,
           last_name: profile.last_name,
+          email: profile.email,
+          professional_name: profile.professional_name,
+          phone: profile.phone,
+          bio: profile.bio,
+          clinician_type: profile.clinician_type,
+          license_type: profile.license_type,
+          npi_number: profile.npi_number,
+          taxonomy_code: profile.taxonomy_code
         })
         .eq('id', profile.id);
 
-      if (profileError) throw profileError;
-
-      // Check if clinician record exists
-      const { data: clinicianExists } = await supabase
-        .from('clinicians')
-        .select('id')
-        .eq('id', profile.id)
-        .maybeSingle();
-
-      if (clinicianExists) {
-        // Update existing clinician record
-        const { error: clinicianError } = await supabase
-          .from('clinicians')
-          .update({
-            phone: profile.phone,
-            clinician_type: profile.clinician_type,
-            license_type: profile.license_type
-          })
-          .eq('id', profile.id);
-
-        if (clinicianError) throw clinicianError;
-      } else {
-        // Insert new clinician record if it doesn't exist
-        const { error: insertError } = await supabase
-          .from('clinicians')
-          .insert({
-            id: profile.id,
-            phone: profile.phone,
-            clinician_type: profile.clinician_type,
-            license_type: profile.license_type
-          });
-
-        if (insertError) throw insertError;
-      }
+      if (updateError) throw updateError;
 
       toast.success('Staff profile updated successfully');
       onClose();
@@ -159,7 +127,7 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Staff Profile</DialogTitle>
         </DialogHeader>
@@ -188,12 +156,21 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
             </div>
             
             <div className="space-y-2">
+              <Label htmlFor="professional_name">Professional Name</Label>
+              <Input 
+                id="professional_name" 
+                value={profile.professional_name || ''} 
+                onChange={(e) => handleInputChange('professional_name', e.target.value)}
+                placeholder="Professional name for display"
+              />
+            </div>
+            
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input 
                 id="email" 
-                value={profile.email} 
-                disabled 
-                className="bg-gray-100"
+                value={profile.email || ''} 
+                onChange={(e) => handleInputChange('email', e.target.value)}
               />
             </div>
             
@@ -207,39 +184,74 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="clinician_type">Type</Label>
-              <Select 
-                value={profile.clinician_type || ''} 
-                onValueChange={(value) => handleInputChange('clinician_type', value)}
-              >
-                <SelectTrigger id="clinician_type">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Mental Health">Mental Health</SelectItem>
-                  <SelectItem value="Speech Therapy">Speech Therapy</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="bio">Biography</Label>
+              <Textarea 
+                id="bio" 
+                value={profile.bio || ''} 
+                onChange={(e) => handleInputChange('bio', e.target.value)}
+                placeholder="Clinician biography"
+                className="min-h-[100px]"
+              />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="license_type">License Type</Label>
-              <Select 
-                value={profile.license_type || ''} 
-                onValueChange={(value) => handleInputChange('license_type', value)}
-              >
-                <SelectTrigger id="license_type">
-                  <SelectValue placeholder="Select license type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="LCP">LCP</SelectItem>
-                  <SelectItem value="LMHT">LMHT</SelectItem>
-                  <SelectItem value="LMFT">LMFT</SelectItem>
-                  <SelectItem value="LCSW">LCSW</SelectItem>
-                  <SelectItem value="Psychologist">Psychologist</SelectItem>
-                  <SelectItem value="Speech Therapy">Speech Therapy</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="clinician_type">Clinician Type</Label>
+                <Select 
+                  value={profile.clinician_type || ''} 
+                  onValueChange={(value) => handleInputChange('clinician_type', value)}
+                >
+                  <SelectTrigger id="clinician_type">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Mental Health">Mental Health</SelectItem>
+                    <SelectItem value="Speech Therapy">Speech Therapy</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="license_type">License Type</Label>
+                <Select 
+                  value={profile.license_type || ''} 
+                  onValueChange={(value) => handleInputChange('license_type', value)}
+                >
+                  <SelectTrigger id="license_type">
+                    <SelectValue placeholder="Select license type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LCP">LCP</SelectItem>
+                    <SelectItem value="LMHT">LMHT</SelectItem>
+                    <SelectItem value="LMFT">LMFT</SelectItem>
+                    <SelectItem value="LCSW">LCSW</SelectItem>
+                    <SelectItem value="Psychologist">Psychologist</SelectItem>
+                    <SelectItem value="Speech Therapy">Speech Therapy</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="npi_number">NPI Number</Label>
+                <Input 
+                  id="npi_number" 
+                  value={profile.npi_number || ''} 
+                  onChange={(e) => handleInputChange('npi_number', e.target.value)}
+                  placeholder="National Provider Identifier"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="taxonomy_code">Taxonomy Code</Label>
+                <Input 
+                  id="taxonomy_code" 
+                  value={profile.taxonomy_code || ''} 
+                  onChange={(e) => handleInputChange('taxonomy_code', e.target.value)}
+                  placeholder="Healthcare Provider Taxonomy Code"
+                />
+              </div>
             </div>
           </div>
         ) : null}
