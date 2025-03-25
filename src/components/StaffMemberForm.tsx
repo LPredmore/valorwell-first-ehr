@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -62,6 +61,15 @@ const licenseFormSchema = z.object({
 type StaffFormData = z.infer<typeof staffMemberFormSchema>;
 type LicenseFormData = z.infer<typeof licenseFormSchema>;
 
+interface ClinicianData {
+  phone: string | null;
+  clinician_type: string | null;
+  license_type: string | null;
+  bio: string | null;
+  npi_number: string | null;
+  taxonomy_code: string | null;
+}
+
 const StaffMemberForm = ({ isOpen, onClose, staffId }: StaffMemberFormProps) => {
   const { toast: legacyToast } = useToast();
   const navigate = useNavigate();
@@ -97,7 +105,6 @@ const StaffMemberForm = ({ isOpen, onClose, staffId }: StaffMemberFormProps) => 
     }
   });
 
-  // Fetch staff member data when editing
   useEffect(() => {
     if (isOpen && staffId) {
       setIsEditing(true);
@@ -129,7 +136,6 @@ const StaffMemberForm = ({ isOpen, onClose, staffId }: StaffMemberFormProps) => 
   const fetchStaffMember = async (id: string) => {
     setIsLoading(true);
     try {
-      // Fetch profile and clinician data
       const { data, error } = await supabase
         .from('profiles')
         .select(`
@@ -145,7 +151,6 @@ const StaffMemberForm = ({ isOpen, onClose, staffId }: StaffMemberFormProps) => 
 
       if (error) throw error;
 
-      // Fetch licenses
       const { data: licenseData, error: licenseError } = await supabase
         .from('licenses')
         .select('state, license_number')
@@ -153,21 +158,23 @@ const StaffMemberForm = ({ isOpen, onClose, staffId }: StaffMemberFormProps) => 
 
       if (licenseError) throw licenseError;
 
-      // Set form values
+      const clinicianData: ClinicianData | null = data.clinicians && data.clinicians.length > 0 
+        ? data.clinicians[0] as ClinicianData
+        : null;
+
       staffForm.reset({
         first_name: data.first_name || '',
         last_name: data.last_name || '',
         email: data.email,
-        phone: data.clinicians?.[0]?.phone || '',
-        bio: data.clinicians?.[0]?.bio || '',
-        professional_name: '', // Add this field to database if needed
-        npi_number: data.clinicians?.[0]?.npi_number || '',
-        taxonomy_code: data.clinicians?.[0]?.taxonomy_code || '',
-        clinician_type: data.clinicians?.[0]?.clinician_type || '',
-        license_type: data.clinicians?.[0]?.license_type || '',
+        phone: clinicianData?.phone || '',
+        bio: clinicianData?.bio || '',
+        professional_name: '',
+        npi_number: clinicianData?.npi_number || '',
+        taxonomy_code: clinicianData?.taxonomy_code || '',
+        clinician_type: clinicianData?.clinician_type || '',
+        license_type: clinicianData?.license_type || '',
       });
 
-      // Set licenses
       if (licenseData) {
         setLicenses(licenseData.map(license => ({
           state: license.state,
@@ -186,7 +193,6 @@ const StaffMemberForm = ({ isOpen, onClose, staffId }: StaffMemberFormProps) => 
     setSaving(true);
     try {
       if (isEditing) {
-        // Update existing staff member
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
@@ -220,7 +226,6 @@ const StaffMemberForm = ({ isOpen, onClose, staffId }: StaffMemberFormProps) => 
         }
         
       } else {
-        // Add new staff member
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: data.email,
           password: 'temppass1234',
