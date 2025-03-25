@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -39,7 +38,6 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({ isOpen, onClose, cl
     if (client) {
       setFormData({
         ...client,
-        // Ensure date is properly formatted for the calendar
         client_date_of_birth: client.client_date_of_birth ? new Date(client.client_date_of_birth) : undefined
       });
       
@@ -161,7 +159,6 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({ isOpen, onClose, cl
     }
   };
 
-  // US Time Zones
   const timeZones = [
     "Eastern Time (ET)",
     "Central Time (CT)",
@@ -171,7 +168,6 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({ isOpen, onClose, cl
     "Hawaii-Aleutian Time (HST)"
   ];
 
-  // US States in alphabetical order
   const usStates = [
     "Alabama", "Alaska", "Arizona", "Arkansas", "California", 
     "Colorado", "Connecticut", "Delaware", "Florida", "Georgia", 
@@ -185,7 +181,6 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({ isOpen, onClose, cl
     "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"
   ];
 
-  // Referral sources
   const referralSources = [
     "Family or Friend",
     "Veterans Organization", 
@@ -205,7 +200,6 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({ isOpen, onClose, cl
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Personal Information */}
             <div>
               <Label htmlFor="client_first_name">First Name</Label>
               <Input
@@ -375,7 +369,6 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({ isOpen, onClose, cl
               </Select>
             </div>
 
-            {/* Clinical Information */}
             <div>
               <Label htmlFor="client_referral_source">Referral Source</Label>
               <Select 
@@ -413,16 +406,16 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({ isOpen, onClose, cl
             <div>
               <Label htmlFor="client_assigned_therapist">Assigned Therapist</Label>
               <Select 
-                value={formData.client_assigned_therapist || ''} 
-                onValueChange={(value) => handleSelectChange('client_assigned_therapist', value)}
+                value={formData.client_assigned_therapist || 'none'} 
+                onValueChange={(value) => handleSelectChange('client_assigned_therapist', value === 'none' ? '' : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select therapist" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {clinicians.map(clinician => (
-                    <SelectItem key={clinician.id} value={clinician.clinician_professional_name || ''}>
+                    <SelectItem key={clinician.id} value={clinician.clinician_professional_name || 'Unnamed'}>
                       {clinician.clinician_professional_name || 'Unnamed'}
                     </SelectItem>
                   ))}
