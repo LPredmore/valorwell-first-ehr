@@ -3,7 +3,6 @@ import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -55,40 +54,18 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
   async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
 
-    try {
-      // Create user directly in the profiles table instead
-      const { error } = await supabase
-        .from('profiles')
-        .insert({
-          email: data.email,
-          first_name: data.firstName,
-          last_name: data.lastName,
-          phone: data.phone || null,
-          profile_type: 'user'
-        });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-      
+    // Simulate successful user creation
+    setTimeout(() => {
       toast({
         title: "Success",
-        description: "User added successfully",
+        description: "User added successfully (simulated)",
       });
 
       form.reset();
       onUserAdded();
       onOpenChange(false);
-    } catch (error) {
-      console.error("Error creating user:", error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create user",
-        variant: "destructive",
-      });
-    } finally {
       setIsSubmitting(false);
-    }
+    }, 1000);
   }
 
   return (

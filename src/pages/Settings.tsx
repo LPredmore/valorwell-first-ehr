@@ -1,15 +1,12 @@
-import { useState, useEffect } from 'react';
+
+import { useState } from 'react';
 import Layout from '../components/layout/Layout';
-import { Pencil, Plus, Users } from 'lucide-react';
+import { Pencil, Plus } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AddUserDialog } from '@/components/AddUserDialog';
-import { AddClinicianDialog } from '@/components/AddClinicianDialog';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from "@/hooks/use-toast";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -30,125 +27,13 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState(SettingsTabs.PRACTICE);
   const [activeBillingTab, setActiveBillingTab] = useState('cpt');
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
-  const [isAddClinicianDialogOpen, setIsAddClinicianDialogOpen] = useState(false);
-  const [users, setUsers] = useState<any[]>([]);
-  const [clinicians, setClinicians] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingClinicians, setLoadingClinicians] = useState(false);
-
-  useEffect(() => {
-    if (activeTab === SettingsTabs.USERS) {
-      fetchUsers();
-    } else if (activeTab === SettingsTabs.CLINICIANS) {
-      fetchClinicians();
-    }
-  }, [activeTab]);
-
-  const fetchClinicians = async () => {
-    setLoadingClinicians(true);
-    try {
-      const { data, error } = await supabase
-        .from('clinicians')
-        .select('*');
-      
-      if (error) {
-        throw error;
-      }
-      
-      setClinicians(data || []);
-    } catch (error) {
-      console.error('Error fetching clinicians:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load clinicians',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoadingClinicians(false);
-    }
-  };
-
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*');
-      
-      if (error) {
-        throw error;
-      }
-      
-      setUsers(data || []);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load users',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) return;
-    
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
-      
-      if (error) {
-        throw error;
-      }
-      
-      setUsers(users.filter(user => user.id !== userId));
-      
-      toast({
-        title: 'Success',
-        description: 'User deleted successfully',
-      });
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete user',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleDeleteClinician = async (clinicianId: string) => {
-    if (!confirm('Are you sure you want to delete this clinician?')) return;
-    
-    try {
-      const { error } = await supabase
-        .from('clinicians')
-        .delete()
-        .eq('id', clinicianId);
-      
-      if (error) {
-        throw error;
-      }
-      
-      setClinicians(clinicians.filter(clinician => clinician.id !== clinicianId));
-      
-      toast({
-        title: 'Success',
-        description: 'Clinician deleted successfully',
-      });
-    } catch (error) {
-      console.error('Error deleting clinician:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete clinician',
-        variant: 'destructive',
-      });
-    }
-  };
+  
+  // Sample mock data
+  const mockUsers = [
+    { id: '1', first_name: 'John', last_name: 'Doe', email: 'john@example.com', phone: '555-123-4567' },
+    { id: '2', first_name: 'Jane', last_name: 'Smith', email: 'jane@example.com', phone: '555-987-6543' },
+    { id: '3', first_name: 'Robert', last_name: 'Johnson', email: 'robert@example.com', phone: '555-456-7890' },
+  ];
 
   return (
     <Layout>
@@ -315,7 +200,6 @@ const Settings = () => {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold">Clinician Management</h2>
               <button 
-                onClick={() => setIsAddClinicianDialogOpen(true)}
                 className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800"
               >
                 <Plus size={16} />
@@ -323,57 +207,9 @@ const Settings = () => {
               </button>
             </div>
             
-            {loadingClinicians ? (
-              <div className="text-center py-8">Loading clinicians...</div>
-            ) : clinicians.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No clinicians found. Click the button above to add your first clinician.
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {clinicians.map((clinician) => (
-                  <div key={clinician.id} className="border rounded-lg p-4 relative">
-                    <div className="flex items-start">
-                      <div className="w-12 h-12 overflow-hidden rounded-full mr-4">
-                        {clinician.clinician_image_url ? (
-                          <img 
-                            src={clinician.clinician_image_url} 
-                            alt={`${clinician.clinician_first_name} ${clinician.clinician_last_name}`}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center text-white font-semibold">
-                            {clinician.clinician_first_name?.[0]}{clinician.clinician_last_name?.[0]}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold mb-1">
-                          {clinician.clinician_professional_name || `${clinician.clinician_first_name} ${clinician.clinician_last_name}`}
-                        </h3>
-                        <div className="text-sm text-gray-600">
-                          <p>Email: {clinician.clinician_email}</p>
-                          <p>Type: {clinician.clinician_type}</p>
-                          <p>License: {clinician.clinician_license_type}</p>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => handleDeleteClinician(clinician.id)}
-                        className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            <AddClinicianDialog 
-              open={isAddClinicianDialogOpen} 
-              onOpenChange={setIsAddClinicianDialogOpen}
-              onClinicianAdded={fetchClinicians}
-            />
+            <div className="text-center py-8 text-gray-500">
+              No clinicians found. Click the button above to add your first clinician.
+            </div>
           </div>
         )}
         
@@ -390,52 +226,43 @@ const Settings = () => {
               </button>
             </div>
             
-            {loading ? (
-              <div className="text-center py-8">Loading users...</div>
-            ) : users.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No users found. Click the button above to add your first user.
-              </div>
-            ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Phone Number</TableHead>
-                      <TableHead>User ID</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone Number</TableHead>
+                    <TableHead>User ID</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {mockUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">
+                        {user.first_name} {user.last_name}
+                      </TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.phone || "—"}</TableCell>
+                      <TableCell className="font-mono text-xs text-gray-500">{user.id}</TableCell>
+                      <TableCell className="text-right">
+                        <button 
+                          className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                        >
+                          Delete
+                        </button>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">
-                          {user.first_name} {user.last_name}
-                        </TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>{user.phone || "—"}</TableCell>
-                        <TableCell className="font-mono text-xs text-gray-500">{user.id}</TableCell>
-                        <TableCell className="text-right">
-                          <button 
-                            onClick={() => handleDeleteUser(user.id)}
-                            className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
-                          >
-                            Delete
-                          </button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
             
             <AddUserDialog 
               open={isAddUserDialogOpen} 
               onOpenChange={setIsAddUserDialogOpen}
-              onUserAdded={fetchUsers}
+              onUserAdded={() => {}}
             />
           </div>
         )}
