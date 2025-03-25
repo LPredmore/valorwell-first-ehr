@@ -59,6 +59,17 @@ const Settings = () => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     
     try {
+      // First delete the profile record
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+      
+      if (profileError) {
+        throw profileError;
+      }
+      
+      // Then delete the auth user
       const { error } = await supabase.auth.admin.deleteUser(userId);
       
       if (error) {

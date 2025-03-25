@@ -74,15 +74,21 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       if (!authData.user) {
         throw new Error("Failed to create user");
       }
-
-      // Update profile with phone number (first_name and last_name are handled by trigger)
+      
+      // Manually create the profile record since we no longer have a trigger
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ phone: data.phone })
-        .eq('id', authData.user.id);
+        .insert({
+          id: authData.user.id,
+          email: data.email,
+          first_name: data.firstName,
+          last_name: data.lastName,
+          phone: data.phone || null,
+          profile_type: 'user'
+        });
 
       if (profileError) {
-        throw new Error(profileError.message);
+        throw new Error(`Error creating profile: ${profileError.message}`);
       }
 
       toast({
