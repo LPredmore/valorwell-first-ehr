@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -37,7 +36,7 @@ const ClientProfile = () => {
     state: '',
     time_zone: '',
     treatment_goal: '',
-    minor: false,
+    minor: '',
     referral_source: '',
     status: 'Active',
     assigned_therapist: '',
@@ -137,7 +136,7 @@ const ClientProfile = () => {
         state: client.state || '',
         time_zone: client.time_zone || '',
         treatment_goal: client.treatment_goal || '',
-        minor: client.minor || false,
+        minor: client.minor || '',
         referral_source: client.referral_source || '',
         status: client.status || 'Active',
         assigned_therapist: client.assigned_therapist || '',
@@ -222,7 +221,7 @@ const ClientProfile = () => {
             time_zone: clientData.time_zone,
             treatment_goal: clientData.treatment_goal,
             status: 'Active',
-            minor: Boolean(clientData.minor),
+            minor: clientData.minor,
             referral_source: clientData.referral_source,
             
             // Insurance data - Primary
@@ -288,7 +287,7 @@ const ClientProfile = () => {
             state: clientData.state,
             time_zone: clientData.time_zone,
             treatment_goal: clientData.treatment_goal,
-            minor: Boolean(clientData.minor),
+            minor: clientData.minor,
             referral_source: clientData.referral_source,
             status: clientData.status,
             assigned_therapist: clientData.assigned_therapist,
@@ -587,11 +586,11 @@ const ClientProfile = () => {
                 <label className="text-sm font-medium">Minor</label>
                 <select
                   name="minor"
-                  value={clientData.minor === true ? 'Yes' : 'No'}
+                  value={clientData.minor || ''}
                   onChange={(e) => {
                     setClientData(prev => ({
                       ...prev,
-                      minor: e.target.value === 'Yes'
+                      minor: e.target.value
                     }));
                   }}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
