@@ -79,11 +79,14 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       console.log("User metadata to be saved:", userData);
       
       // Create user in Supabase Auth with a fixed default password
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      // Using signUp instead of admin.createUser as it doesn't require admin privileges
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: "temppass1234",
-        email_confirm: true,
-        user_metadata: userData
+        options: {
+          data: userData,
+          emailRedirectTo: window.location.origin,
+        }
       });
 
       if (authError) {
@@ -95,7 +98,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       
       toast({
         title: "Success",
-        description: "User added successfully with default password: temppass1234",
+        description: "User added successfully with default password: temppass1234. Please note they will need to confirm their email before logging in.",
       });
 
       form.reset();
@@ -119,7 +122,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
           <DialogDescription>
-            Enter user details below. A default password of "temppass1234" will be assigned.
+            Enter user details below. A default password of "temppass1234" will be assigned. The user will need to confirm their email before logging in.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
