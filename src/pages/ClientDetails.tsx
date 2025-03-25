@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getClinicianIdByName } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Pencil, Save, X, Calendar as CalendarIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -72,6 +71,12 @@ const ClientDetails = () => {
     }
   }, [isEditing]);
 
+  useEffect(() => {
+    if (client?.client_assigned_therapist) {
+      fetchClinicianId(client.client_assigned_therapist);
+    }
+  }, [client?.client_assigned_therapist]);
+
   const fetchClientDetails = async (id: string) => {
     try {
       setLoading(true);
@@ -88,6 +93,10 @@ const ClientDetails = () => {
       
       setClient(data);
       setEditedClient(data);
+
+      if (data.client_assigned_therapist) {
+        fetchClinicianId(data.client_assigned_therapist);
+      }
     } catch (error) {
       console.error('Error fetching client details:', error);
       toast({
@@ -97,6 +106,17 @@ const ClientDetails = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchClinicianId = async (therapistName: string) => {
+    try {
+      const id = await getClinicianIdByName(therapistName);
+      if (id) {
+        setSelectedClinicianId(id);
+      }
+    } catch (error) {
+      console.error('Error fetching clinician ID:', error);
     }
   };
 
@@ -115,7 +135,6 @@ const ClientDetails = () => {
       
       setClinicians(data || []);
       
-      // Find the ID of the currently assigned therapist
       if (client?.client_assigned_therapist) {
         const currentTherapist = data?.find(
           (c) => getClinicianDisplayName(c) === client.client_assigned_therapist
@@ -161,25 +180,24 @@ const ClientDetails = () => {
     }
   };
 
-  const handleSelectChange = (field: string, value: string) => {
+  const handleSelectChange = async (field: string, value: string) => {
     if (editedClient) {
       setEditedClient({
         ...editedClient,
         [field]: value,
       });
       
-      // If the assigned therapist changed, update the selected clinician ID
-      if (field === 'client_assigned_therapist' && value) {
-        const selectedClinician = clinicians.find(
-          (c) => getClinicianDisplayName(c) === value
-        );
-        if (selectedClinician) {
-          setSelectedClinicianId(selectedClinician.id);
+      if (field === 'client_assigned_therapist') {
+        if (value) {
+          const id = await getClinicianIdByName(value);
+          if (id) {
+            setSelectedClinicianId(id);
+          } else {
+            setSelectedClinicianId('');
+          }
         } else {
           setSelectedClinicianId('');
         }
-      } else if (field === 'client_assigned_therapist' && !value) {
-        setSelectedClinicianId('');
       }
     }
   };
@@ -667,8 +685,8 @@ const ClientDetails = () => {
                     </div>
                   )}
                 </div>
-                <div className="flex flex-row gap-2">
-                  <div className="flex-1">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Therapist</label>
                     {isEditing ? (
                       <Select
@@ -697,7 +715,7 @@ const ClientDetails = () => {
                       </div>
                     )}
                   </div>
-                  <div className="w-1/3">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Therapist ID</label>
                     <div className="p-3 bg-gray-50 rounded-md border border-gray-200 text-gray-500 text-sm font-mono">
                       {selectedClinicianId ? selectedClinicianId.substring(0, 8) + '...' : '-'}

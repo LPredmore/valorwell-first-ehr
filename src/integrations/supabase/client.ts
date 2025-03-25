@@ -28,3 +28,21 @@ export const createUser = async (
     }
   });
 };
+
+// Helper function to get clinician ID by professional name
+export const getClinicianIdByName = async (professionalName: string) => {
+  if (!professionalName) return null;
+  
+  const { data, error } = await supabase
+    .from('clinicians')
+    .select('id')
+    .eq('clinician_professional_name', professionalName)
+    .single();
+    
+  if (error || !data) {
+    console.error('Error fetching clinician ID:', error);
+    return null;
+  }
+  
+  return data.id;
+};
