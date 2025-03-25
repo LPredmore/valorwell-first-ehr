@@ -48,14 +48,16 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
 
       if (profileError) throw profileError;
 
-      // Then get the clinician data
+      // Then get the clinician data - ensure we're only querying fields that exist
       const { data: clinicianData, error: clinicianError } = await supabase
         .from('clinicians')
         .select('phone, clinician_type, license_type')
         .eq('id', id)
         .maybeSingle();
 
-      if (clinicianError) throw clinicianError;
+      if (clinicianError) {
+        console.error('Error fetching clinician data:', clinicianError);
+      }
 
       setProfile({
         id: profileData.id,
@@ -100,17 +102,40 @@ const StaffProfileEdit = ({ isOpen, onClose, staffId }: StaffProfileEditProps) =
 
       if (profileError) throw profileError;
 
-      // Update clinician information
-      const { error: clinicianError } = await supabase
+      // Check if clinician record exists before updating
+      const { data: clinicianExists, error: checkError } = await supabase
         .from('clinicians')
-        .update({
-          phone: profile.phone,
-          clinician_type: profile.clinician_type,
-          license_type: profile.license_type
-        })
-        .eq('id', profile.id);
+        .select('id')
+        .eq('id', profile.id)
+        .maybeSingle();
+        
+      if (checkError) throw checkError;
 
-      if (clinicianError) throw clinicianError;
+      if (clinicianExists) {
+        // Update existing clinician record
+        const { error: clinicianError } = await supabase
+          .from('clinicians')
+          .update({
+            phone: profile.phone,
+            clinician_type: profile.clinician_type,
+            license_type: profile.license_type
+          })
+          .eq('id', profile.id);
+
+        if (clinicianError) throw clinicianError;
+      } else {
+        // Insert new clinician record if it doesn't exist
+        const { error: insertError } = await supabase
+          .from('clinicians')
+          .insert({
+            id: profile.id,
+            phone: profile.phone,
+            clinician_type: profile.clinician_type,
+            license_type: profile.license_type
+          });
+
+        if (insertError) throw insertError;
+      }
 
       toast.success('Staff profile updated successfully');
       onClose();
