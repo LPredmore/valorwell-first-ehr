@@ -4,8 +4,20 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Pencil } from 'lucide-react';
+import { ArrowLeft, Pencil, Save, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format, differenceInYears } from 'date-fns';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ClientDetails {
   id: string;
@@ -32,6 +44,8 @@ const ClientDetails = () => {
   const [client, setClient] = useState<ClientDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedClient, setEditedClient] = useState<ClientDetails | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -56,6 +70,7 @@ const ClientDetails = () => {
       }
       
       setClient(data);
+      setEditedClient(data);
     } catch (error) {
       console.error('Error fetching client details:', error);
       toast({
@@ -70,6 +85,80 @@ const ClientDetails = () => {
 
   const goBackToClients = () => {
     navigate('/clients');
+  };
+
+  const handleEditToggle = () => {
+    if (isEditing) {
+      // Cancel edit mode and revert changes
+      setEditedClient(client);
+      setIsEditing(false);
+    } else {
+      // Enter edit mode
+      setIsEditing(true);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    if (editedClient) {
+      setEditedClient({
+        ...editedClient,
+        [name]: value,
+      });
+    }
+  };
+
+  const handleSelectChange = (field: string, value: string) => {
+    if (editedClient) {
+      setEditedClient({
+        ...editedClient,
+        [field]: value,
+      });
+    }
+  };
+
+  const handleDateChange = (date: Date | undefined) => {
+    if (!date || !editedClient) return;
+    
+    const formattedDate = format(date, 'yyyy-MM-dd');
+    const age = differenceInYears(new Date(), date);
+    
+    setEditedClient({
+      ...editedClient,
+      client_date_of_birth: formattedDate,
+      client_age: age,
+    });
+  };
+
+  const handleSaveChanges = async () => {
+    if (!editedClient) return;
+    
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update(editedClient)
+        .eq('id', clientId);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update the client state with the edited values
+      setClient(editedClient);
+      setIsEditing(false);
+      
+      toast({
+        title: "Success",
+        description: "Client details updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating client details:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update client details.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (loading) {
@@ -98,6 +187,39 @@ const ClientDetails = () => {
     );
   }
 
+  // US time zones including Hawaii and Alaska
+  const timeZones = [
+    "Hawaii-Aleutian Standard Time (HST)",
+    "Alaska Standard Time (AKST)",
+    "Pacific Standard Time (PST)",
+    "Mountain Standard Time (MST)",
+    "Central Standard Time (CST)",
+    "Eastern Standard Time (EST)",
+  ];
+
+  // US states in alphabetical order
+  const states = [
+    "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", 
+    "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", 
+    "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", 
+    "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", 
+    "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", 
+    "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", 
+    "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", 
+    "Wisconsin", "Wyoming"
+  ];
+
+  // Referral sources
+  const referralSources = [
+    "Family or Friend", 
+    "Veterans Organization", 
+    "Web Search", 
+    "Facebook", 
+    "Instagram", 
+    "Other Social Media", 
+    "Other"
+  ];
+
   return (
     <Layout>
       <div className="mb-6">
@@ -115,10 +237,35 @@ const ClientDetails = () => {
           Back to Clients
         </button>
 
-        <button className="px-4 py-2 bg-valorwell-700 text-white rounded-md flex items-center">
-          <Pencil size={16} className="mr-2" />
-          Edit Client
-        </button>
+        <div className="flex gap-2">
+          {isEditing ? (
+            <>
+              <Button 
+                variant="destructive" 
+                className="flex items-center" 
+                onClick={handleEditToggle}
+              >
+                <X size={16} className="mr-2" />
+                Cancel
+              </Button>
+              <Button 
+                className="flex items-center bg-valorwell-700 hover:bg-valorwell-800" 
+                onClick={handleSaveChanges}
+              >
+                <Save size={16} className="mr-2" />
+                Save Changes
+              </Button>
+            </>
+          ) : (
+            <Button 
+              className="flex items-center bg-valorwell-700 hover:bg-valorwell-800" 
+              onClick={handleEditToggle}
+            >
+              <Pencil size={16} className="mr-2" />
+              Edit Client
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -151,75 +298,223 @@ const ClientDetails = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    {client.client_first_name || '-'}
-                  </div>
+                  {isEditing ? (
+                    <Input 
+                      name="client_first_name"
+                      value={editedClient?.client_first_name || ''}
+                      onChange={handleInputChange}
+                      className="w-full"
+                    />
+                  ) : (
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                      {client.client_first_name || '-'}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Name</label>
-                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    {client.client_preferred_name || '-'}
-                  </div>
+                  {isEditing ? (
+                    <Input 
+                      name="client_preferred_name"
+                      value={editedClient?.client_preferred_name || ''}
+                      onChange={handleInputChange}
+                      className="w-full"
+                    />
+                  ) : (
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                      {client.client_preferred_name || '-'}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    {client.client_last_name || '-'}
-                  </div>
+                  {isEditing ? (
+                    <Input 
+                      name="client_last_name"
+                      value={editedClient?.client_last_name || ''}
+                      onChange={handleInputChange}
+                      className="w-full"
+                    />
+                  ) : (
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                      {client.client_last_name || '-'}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    {client.client_date_of_birth ? new Date(client.client_date_of_birth).toLocaleDateString() : '-'}
-                  </div>
+                  {isEditing ? (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button 
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                        >
+                          {editedClient?.client_date_of_birth ? 
+                            format(new Date(editedClient.client_date_of_birth), 'PP') : 
+                            'Select date'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 pointer-events-auto">
+                        <Calendar
+                          mode="single"
+                          selected={editedClient?.client_date_of_birth ? new Date(editedClient.client_date_of_birth) : undefined}
+                          onSelect={handleDateChange}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                      {client.client_date_of_birth ? new Date(client.client_date_of_birth).toLocaleDateString() : '-'}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
                   <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    {client.client_age || '-'}
+                    {isEditing ? editedClient?.client_age : client.client_age || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Birth Gender</label>
-                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    {client.client_gender || '-'}
-                  </div>
+                  {isEditing ? (
+                    <Select
+                      value={editedClient?.client_gender || ''}
+                      onValueChange={(value) => handleSelectChange('client_gender', value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                      {client.client_gender || '-'}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Gender Identity</label>
-                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    {client.client_gender_identity || '-'}
-                  </div>
+                  {isEditing ? (
+                    <Select
+                      value={editedClient?.client_gender_identity || ''}
+                      onValueChange={(value) => handleSelectChange('client_gender_identity', value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select gender identity" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                      {client.client_gender_identity || '-'}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    {client.client_email || '-'}
-                  </div>
+                  {isEditing ? (
+                    <Input 
+                      name="client_email"
+                      value={editedClient?.client_email || ''}
+                      onChange={handleInputChange}
+                      className="w-full"
+                      type="email"
+                    />
+                  ) : (
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                      {client.client_email || '-'}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    {client.client_phone || '-'}
-                  </div>
+                  {isEditing ? (
+                    <Input 
+                      name="client_phone"
+                      value={editedClient?.client_phone || ''}
+                      onChange={handleInputChange}
+                      className="w-full"
+                    />
+                  ) : (
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                      {client.client_phone || '-'}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    {client.client_state || '-'}
-                  </div>
+                  {isEditing ? (
+                    <Select
+                      value={editedClient?.client_state || ''}
+                      onValueChange={(value) => handleSelectChange('client_state', value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select state" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {states.map((state) => (
+                          <SelectItem key={state} value={state}>{state}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                      {client.client_state || '-'}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Time Zone</label>
-                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    {client.client_time_zone || '-'}
-                  </div>
+                  {isEditing ? (
+                    <Select
+                      value={editedClient?.client_time_zone || ''}
+                      onValueChange={(value) => handleSelectChange('client_time_zone', value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select time zone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeZones.map((timezone) => (
+                          <SelectItem key={timezone} value={timezone}>{timezone}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                      {client.client_time_zone || '-'}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Minor</label>
-                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    {client.client_minor || 'No'}
-                  </div>
+                  {isEditing ? (
+                    <Select
+                      value={editedClient?.client_minor || ''}
+                      onValueChange={(value) => handleSelectChange('client_minor', value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select option" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Yes">Yes</SelectItem>
+                        <SelectItem value="No">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                      {client.client_minor || 'No'}
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -238,15 +533,40 @@ const ClientDetails = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Referral Source</label>
-                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    {client.client_referral_source || '-'}
-                  </div>
+                  {isEditing ? (
+                    <Select
+                      value={editedClient?.client_referral_source || ''}
+                      onValueChange={(value) => handleSelectChange('client_referral_source', value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select referral source" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {referralSources.map((source) => (
+                          <SelectItem key={source} value={source}>{source}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                      {client.client_referral_source || '-'}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Client Status</label>
-                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    {client.client_status || '-'}
-                  </div>
+                  {isEditing ? (
+                    <Input 
+                      name="client_status"
+                      value={editedClient?.client_status || ''}
+                      onChange={handleInputChange}
+                      className="w-full"
+                    />
+                  ) : (
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                      {client.client_status || '-'}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Therapist</label>
@@ -256,9 +576,18 @@ const ClientDetails = () => {
                 </div>
                 <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Goal</label>
-                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200 min-h-20">
-                    {client.client_treatment_goal || '-'}
-                  </div>
+                  {isEditing ? (
+                    <textarea
+                      name="client_treatment_goal"
+                      value={editedClient?.client_treatment_goal || ''}
+                      onChange={handleInputChange}
+                      className="w-full p-3 bg-white rounded-md border border-gray-300 min-h-20 resize-y"
+                    />
+                  ) : (
+                    <div className="p-3 bg-gray-50 rounded-md border border-gray-200 min-h-20">
+                      {client.client_treatment_goal || '-'}
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
