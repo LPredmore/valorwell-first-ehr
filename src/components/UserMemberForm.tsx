@@ -47,7 +47,7 @@ const UserMemberForm = ({ isOpen, onClose, userId }: UserMemberFormProps) => {
           data: {
             first_name: formData.firstName,
             last_name: formData.lastName,
-            role: 'client' // Changed from 'user' to 'client' which is a valid enum value
+            role: 'user' // Updated to 'user' which matches our new enum value
           }
         }
       });
