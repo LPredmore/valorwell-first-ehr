@@ -4,6 +4,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -28,6 +36,9 @@ const userFormSchema = z.object({
   lastName: z.string().min(2, { message: "Last name is required" }),
   email: z.string().email({ message: "Invalid email address" }),
   phone: z.string().optional(),
+  role: z.enum(["admin", "client", "clinician"], {
+    required_error: "Please select a role",
+  }),
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
@@ -48,24 +59,62 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       lastName: "",
       email: "",
       phone: "",
+      role: "client",
     },
   });
 
   async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
 
-    // Simulate successful user creation
-    setTimeout(() => {
+    try {
+      // Create user in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: generateRandomPassword(), // We'll generate a random password
+        options: {
+          data: {
+            first_name: data.firstName,
+            last_name: data.lastName,
+            phone: data.phone,
+            role: data.role
+          }
+        }
+      });
+
+      if (authError) {
+        throw authError;
+      }
+
       toast({
         title: "Success",
-        description: "User added successfully (simulated)",
+        description: "User added successfully",
       });
 
       form.reset();
       onUserAdded();
       onOpenChange(false);
+    } catch (error) {
+      console.error("Error adding user:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add user. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
+  }
+
+  // Generate a random password for new users
+  function generateRandomPassword() {
+    const length = 16;
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
+    let password = "";
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * charset.length);
+      password += charset[randomIndex];
+    }
+    return password;
   }
 
   return (
@@ -127,6 +176,28 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
                   <FormControl>
                     <Input placeholder="Enter phone number" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>User Role</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="client">Client</SelectItem>
+                      <SelectItem value="clinician">Clinician</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
