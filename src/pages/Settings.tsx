@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import { Pencil, Plus, Users } from 'lucide-react';
@@ -18,7 +17,6 @@ import {
 
 const SettingsTabs = {
   PRACTICE: 'practice',
-  CLINICIANS: 'clinicians',
   USERS: 'users',
   BILLING: 'billing',
   TEMPLATES: 'templates',
@@ -67,19 +65,23 @@ const Settings = () => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     
     try {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
-      
-      if (profileError) {
-        throw profileError;
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) {
+        throw new Error('You must be logged in to delete users');
       }
-      
-      const { error } = await supabase.auth.admin.deleteUser(userId);
-      
-      if (error) {
-        throw error;
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-api/delete-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.data.session.access_token}`
+        },
+        body: JSON.stringify({ userId })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete user');
       }
       
       setUsers(users.filter(user => user.id !== userId));
@@ -92,7 +94,7 @@ const Settings = () => {
       console.error('Error deleting user:', error);
       toast({
         title: 'Error',
-        description: 'Failed to delete user',
+        description: error instanceof Error ? error.message : 'Failed to delete user',
         variant: 'destructive',
       });
     }

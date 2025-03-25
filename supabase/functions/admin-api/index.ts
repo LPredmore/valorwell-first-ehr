@@ -62,24 +62,14 @@ serve(async (req) => {
         user_metadata: { 
           first_name: firstName,
           last_name: lastName,
+          phone: phone || null,
           role: role || 'client'
         }
       });
 
       if (error) {
+        console.error('Error creating user:', error);
         throw error;
-      }
-
-      // Update the phone number if provided
-      if (phone && data.user) {
-        const { error: updateError } = await supabaseAdmin
-          .from('profiles')
-          .update({ phone })
-          .eq('id', data.user.id);
-          
-        if (updateError) {
-          throw updateError;
-        }
       }
 
       return new Response(JSON.stringify({ success: true, user: data.user }), {

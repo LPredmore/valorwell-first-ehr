@@ -65,41 +65,31 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
     setIsSubmitting(true);
 
     try {
-      // Create user with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: data.email,
-        password: "temppass1234",
-        email_confirm: true,
-        user_metadata: {
-          first_name: data.firstName,
-          last_name: data.lastName,
-          role: data.role
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) {
+        throw new Error("You must be logged in to add users");
+      }
+
+      // Call our admin API to create a user
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-api/create-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.data.session.access_token}`
         },
+        body: JSON.stringify({
+          email: data.email,
+          password: "temppass1234", // Temporary password
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone || null,
+          role: data.role
+        })
       });
 
-      if (authError) {
-        throw new Error(authError.message);
-      }
-
-      if (!authData.user) {
-        throw new Error("Failed to create user");
-      }
-      
-      // Manually create the profile record since we no longer have a trigger
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          email: data.email,
-          first_name: data.firstName,
-          last_name: data.lastName,
-          phone: data.phone || null,
-          profile_type: data.role,
-          role: data.role
-        });
-
-      if (profileError) {
-        throw new Error(`Error creating profile: ${profileError.message}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create user");
       }
 
       toast({
