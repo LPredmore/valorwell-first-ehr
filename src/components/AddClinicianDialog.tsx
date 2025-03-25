@@ -33,12 +33,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PlusCircle, X, Upload, Search } from "lucide-react";
+import { PlusCircle, X, Upload } from "lucide-react";
 import { v4 as uuidv4 } from 'uuid';
 
 // Define the schema for form validation
 const clinicianFormSchema = z.object({
-  userId: z.string().optional(),
   firstName: z.string().min(2, { message: "First name must be at least 2 characters." }),
   lastName: z.string().min(2, { message: "Last name must be at least 2 characters." }),
   professionalName: z.string().optional(),
@@ -75,15 +74,11 @@ export function AddClinicianDialog({ open, onOpenChange, onClinicianAdded }: Add
   const [uploading, setUploading] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [searchId, setSearchId] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [userFound, setUserFound] = useState(false);
 
   // Initialize form
   const form = useForm<z.infer<typeof clinicianFormSchema>>({
     resolver: zodResolver(clinicianFormSchema),
     defaultValues: {
-      userId: "",
       firstName: "",
       lastName: "",
       professionalName: "",
@@ -100,62 +95,6 @@ export function AddClinicianDialog({ open, onOpenChange, onClinicianAdded }: Add
     },
   });
 
-  // Search for a user profile by ID
-  const searchUserProfile = async () => {
-    if (!searchId.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a user ID to search",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSearching(true);
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', searchId)
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        // Populate form with profile data
-        form.setValue('userId', data.id);
-        form.setValue('firstName', data.first_name || '');
-        form.setValue('lastName', data.last_name || '');
-        form.setValue('email', data.email || '');
-        form.setValue('phone', data.phone || '');
-        
-        setUserFound(true);
-        
-        toast({
-          title: "Success",
-          description: "User profile found and data populated",
-        });
-      } else {
-        toast({
-          title: "Not Found",
-          description: "No user found with that ID",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error searching for user profile:", error);
-      toast({
-        title: "Error",
-        description: "Failed to search for user profile",
-        variant: "destructive",
-      });
-    } finally {
-      setSearching(false);
-    }
-  };
-
   // Reset form function
   const resetForm = () => {
     form.reset();
@@ -165,8 +104,6 @@ export function AddClinicianDialog({ open, onOpenChange, onClinicianAdded }: Add
     setImageUrl(null);
     setImageFile(null);
     setActiveTab("profile");
-    setSearchId("");
-    setUserFound(false);
   };
 
   // Function to add a license
@@ -245,22 +182,23 @@ export function AddClinicianDialog({ open, onOpenChange, onClinicianAdded }: Add
       // Create clinician record
       const { data: clinician, error } = await supabase
         .from('clinicians')
-        .insert({
-          id: data.userId || undefined, // Use the user ID if provided, otherwise let Supabase generate one
-          clinician_first_name: data.firstName,
-          clinician_last_name: data.lastName,
-          clinician_professional_name: data.professionalName || null,
-          clinician_email: data.email,
-          clinician_phone: data.phone || null,
-          clinician_type: data.type,
-          clinician_license_type: data.licenseType,
-          clinician_npi_number: data.npiNumber || null,
-          clinician_taxonomy_code: data.taxonomyCode || null,
-          clinician_bio: data.bio || null,
-          clinician_min_client_age: parseInt(data.minClientAge || "18"),
-          clinician_accepting_new_clients: data.acceptingNewClients ? "Yes" : "No",
-          clinician_treatment_approaches: data.treatmentApproaches || null,
-        })
+        .insert([
+          {
+            clinician_first_name: data.firstName,
+            clinician_last_name: data.lastName,
+            clinician_professional_name: data.professionalName || null,
+            clinician_email: data.email,
+            clinician_phone: data.phone || null,
+            clinician_type: data.type,
+            clinician_license_type: data.licenseType,
+            clinician_npi_number: data.npiNumber || null,
+            clinician_taxonomy_code: data.taxonomyCode || null,
+            clinician_bio: data.bio || null,
+            clinician_min_client_age: parseInt(data.minClientAge || "18"),
+            clinician_accepting_new_clients: data.acceptingNewClients ? "Yes" : "No",
+            clinician_treatment_approaches: data.treatmentApproaches || null,
+          },
+        ])
         .select();
 
       if (error) throw error;
@@ -332,46 +270,6 @@ export function AddClinicianDialog({ open, onOpenChange, onClinicianAdded }: Add
           </DialogDescription>
         </DialogHeader>
 
-        {/* User ID Search Section */}
-        <div className="mb-6 p-4 border rounded-md">
-          <div className="flex items-center space-x-2">
-            <div className="flex-1">
-              <FormLabel>Search User ID</FormLabel>
-              <Input 
-                placeholder="Enter user ID" 
-                value={searchId}
-                onChange={(e) => setSearchId(e.target.value)}
-                disabled={userFound}
-              />
-            </div>
-            <Button 
-              type="button" 
-              onClick={searchUserProfile}
-              disabled={searching || userFound}
-              className="mt-6"
-            >
-              {searching ? "Searching..." : <><Search className="mr-2 h-4 w-4" /> Search</>}
-            </Button>
-            {userFound && (
-              <Button 
-                type="button" 
-                variant="destructive" 
-                onClick={() => {
-                  resetForm();
-                  setSearchId("");
-                  setUserFound(false);
-                }}
-                className="mt-6"
-              >
-                <X className="mr-2 h-4 w-4" /> Clear
-              </Button>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Search for a user by ID to automatically populate their information
-          </p>
-        </div>
-
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-3 w-full">
             <TabsTrigger value="profile">Profile</TabsTrigger>
@@ -408,19 +306,6 @@ export function AddClinicianDialog({ open, onOpenChange, onClinicianAdded }: Add
                     </label>
                   </div>
                 </div>
-
-                {/* Hidden User ID field */}
-                <FormField
-                  control={form.control}
-                  name="userId"
-                  render={({ field }) => (
-                    <FormItem className="hidden">
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
