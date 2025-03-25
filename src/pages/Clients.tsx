@@ -6,6 +6,14 @@ import { Search, Filter, RotateCcw, MoreHorizontal, Download, Upload, Plus } fro
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const Clients = () => {
   const [activeTab, setActiveTab] = useState('all');
@@ -24,7 +32,7 @@ const Clients = () => {
       // First get client IDs
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
-        .select('id, date_of_birth, phone, status, assigned_therapist');
+        .select('id, date_of_birth, phone, status, assigned_therapist, preferred_name');
       
       if (clientsError) throw clientsError;
       
@@ -83,16 +91,22 @@ const Clients = () => {
   const filteredClients = clients.filter(client => {
     if (!searchQuery) return true;
     
-    const fullName = `${client.first_name} ${client.last_name}`.toLowerCase();
+    const displayName = getDisplayName(client);
     const email = client.email?.toLowerCase() || '';
     const phone = client.phone?.toLowerCase() || '';
     
     return (
-      fullName.includes(searchQuery.toLowerCase()) ||
+      displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       email.includes(searchQuery.toLowerCase()) ||
       phone.includes(searchQuery.toLowerCase())
     );
   });
+
+  const getDisplayName = (client) => {
+    const preferredName = client.preferred_name || client.first_name || '';
+    const lastName = client.last_name || '';
+    return `${preferredName} ${lastName}`.trim();
+  };
 
   return (
     <Layout>
@@ -103,21 +117,23 @@ const Clients = () => {
         </div>
         
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-3 py-2 text-gray-600 bg-white rounded border hover:bg-gray-50">
+          <Button variant="outline" size="sm" className="flex items-center gap-2">
             <Download size={16} />
             <span>Export</span>
-          </button>
-          <button className="flex items-center gap-2 px-3 py-2 text-gray-600 bg-white rounded border hover:bg-gray-50">
+          </Button>
+          <Button variant="outline" size="sm" className="flex items-center gap-2">
             <Upload size={16} />
             <span>Import</span>
-          </button>
-          <button 
-            className="flex items-center gap-2 px-3 py-2 text-white bg-valorwell-700 rounded hover:bg-valorwell-800 transition-colors"
+          </Button>
+          <Button 
+            variant="default" 
+            size="sm"
+            className="bg-valorwell-700 hover:bg-valorwell-800 flex items-center gap-2"
             onClick={handleNewClient}
           >
             <Plus size={16} />
             <span>New Client</span>
-          </button>
+          </Button>
         </div>
       </div>
       
@@ -155,83 +171,95 @@ const Clients = () => {
             </div>
             
             <div className="flex items-center gap-2 ml-4">
-              <button 
-                className="px-4 py-2 bg-valorwell-700 text-white rounded hover:bg-valorwell-800 transition-colors"
+              <Button 
+                variant="default"
+                size="sm"
+                className="bg-valorwell-700 hover:bg-valorwell-800"
                 onClick={handleSearch}
               >
                 Search
-              </button>
-              <button 
-                className="px-4 py-2 border rounded text-gray-700 hover:bg-gray-50 transition-colors"
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
                 onClick={clearSearch}
               >
                 Clear
-              </button>
-              <button className="px-4 py-2 border rounded text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
+              </Button>
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
                 <Filter size={16} />
                 <span>Filters</span>
-              </button>
-              <button 
-                className="p-2 border rounded text-gray-700 hover:bg-gray-50 transition-colors"
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="p-2"
                 onClick={fetchClients}
               >
                 <RotateCcw size={16} />
-              </button>
+              </Button>
             </div>
           </div>
           
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-gray-600">
-              <thead className="text-xs uppercase bg-gray-50 border-b">
-                <tr>
-                  <th className="p-4">
+            <Table>
+              <TableHeader className="bg-gray-50">
+                <TableRow>
+                  <TableHead className="w-12">
                     <input type="checkbox" className="w-4 h-4 rounded" />
-                  </th>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Phone</th>
-                  <th className="px-4 py-3">Date Of Birth</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Therapist</th>
-                  <th className="px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Date Of Birth</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Therapist</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {loading ? (
-                  <tr>
-                    <td colSpan={8} className="text-center py-4">Loading clients...</td>
-                  </tr>
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-4">Loading clients...</TableCell>
+                  </TableRow>
                 ) : filteredClients.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="text-center py-4">No clients found</td>
-                  </tr>
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-4">No clients found</TableCell>
+                  </TableRow>
                 ) : (
                   filteredClients.map(client => (
-                    <tr key={client.id} className="border-b hover:bg-gray-50">
-                      <td className="p-4">
+                    <TableRow key={client.id} className="hover:bg-gray-50">
+                      <TableCell>
                         <input type="checkbox" className="w-4 h-4 rounded" />
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-900">{`${client.first_name} ${client.last_name}`}</td>
-                      <td className="px-4 py-3">{client.email}</td>
-                      <td className="px-4 py-3">{client.phone}</td>
-                      <td className="px-4 py-3">{client.date_of_birth}</td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell>
+                        <button 
+                          onClick={() => handleEditClient(client.id)}
+                          className="font-medium text-valorwell-700 hover:underline"
+                        >
+                          {getDisplayName(client)}
+                        </button>
+                      </TableCell>
+                      <TableCell>{client.email}</TableCell>
+                      <TableCell>{client.phone || '-'}</TableCell>
+                      <TableCell>{client.date_of_birth || '-'}</TableCell>
+                      <TableCell>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium 
-                          ${client.status === 'Waiting' ? 'bg-waiting text-yellow-800' : 
+                          ${client.status === 'Waiting' ? 'bg-yellow-100 text-yellow-800' : 
                             client.status === 'Active' ? 'bg-green-100 text-green-800' : 
                             client.status === 'Inactive' ? 'bg-gray-100 text-gray-800' : 
                             client.status === 'On Hold' ? 'bg-blue-100 text-blue-800' : 
                             'bg-gray-100 text-gray-800'}`}>
-                          {client.status}
+                          {client.status || '-'}
                         </span>
-                      </td>
-                      <td className="px-4 py-3">-</td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell>{client.assigned_therapist ? client.assigned_therapist : '-'}</TableCell>
+                      <TableCell>
                         <Popover>
                           <PopoverTrigger asChild>
-                            <button className="text-gray-500 hover:text-gray-700">
+                            <Button variant="ghost" className="h-8 w-8 p-0">
                               <MoreHorizontal size={16} />
-                            </button>
+                            </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-40 p-0">
                             <div className="py-1">
@@ -250,12 +278,12 @@ const Clients = () => {
                             </div>
                           </PopoverContent>
                         </Popover>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       </div>
