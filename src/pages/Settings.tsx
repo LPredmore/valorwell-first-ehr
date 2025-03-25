@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import StaffMemberForm from '../components/StaffMemberForm';
-import StaffProfileEdit from '../components/StaffProfileEdit';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -44,7 +43,6 @@ const Settings = () => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
-  const [isStaffProfileOpen, setIsStaffProfileOpen] = useState(false);
 
   // Fetch staff members from database
   useEffect(() => {
@@ -115,11 +113,11 @@ const Settings = () => {
 
   const handleStaffClick = (id: string) => {
     setSelectedStaffId(id);
-    setIsStaffProfileOpen(true);
+    setIsStaffFormOpen(true);
   };
 
-  const handleCloseStaffProfile = () => {
-    setIsStaffProfileOpen(false);
+  const handleCloseStaffForm = () => {
+    setIsStaffFormOpen(false);
     setSelectedStaffId(null);
     fetchStaffMembers(); // Refresh the list after editing
   };
@@ -284,7 +282,10 @@ const Settings = () => {
               <h2 className="text-xl font-semibold">Staff Management</h2>
               <button 
                 className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800"
-                onClick={() => setIsStaffFormOpen(true)}
+                onClick={() => {
+                  setSelectedStaffId(null);
+                  setIsStaffFormOpen(true);
+                }}
               >
                 <Plus size={16} />
                 <span>Add Staff Member</span>
@@ -338,19 +339,9 @@ const Settings = () => {
               </Table>
             )}
             
-            {/* Staff Member Form */}
             <StaffMemberForm 
               isOpen={isStaffFormOpen} 
-              onClose={() => {
-                setIsStaffFormOpen(false);
-                fetchStaffMembers(); // Refresh the list when the form is closed
-              }} 
-            />
-
-            {/* Staff Profile Edit */}
-            <StaffProfileEdit
-              isOpen={isStaffProfileOpen}
-              onClose={handleCloseStaffProfile}
+              onClose={handleCloseStaffForm} 
               staffId={selectedStaffId}
             />
           </div>
