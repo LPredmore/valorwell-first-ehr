@@ -2,15 +2,10 @@
 import { useState } from 'react';
 import Layout from '../components/layout/Layout';
 import { Pencil, Plus } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ClinicianMemberForm from '../components/ClinicianMemberForm';
-import ClinicianProfileEdit from '../components/ClinicianProfileEdit';
-import UserMemberForm from '../components/UserMemberForm';
 
 const SettingsTabs = {
   PRACTICE: 'practice',
-  CLINICIANS: 'clinicians',
-  USERS: 'users',
+  STAFF: 'staff',
   BILLING: 'billing',
   TEMPLATES: 'templates',
   SECURITY: 'security',
@@ -19,11 +14,8 @@ const SettingsTabs = {
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState(SettingsTabs.PRACTICE);
-  const [isClinicianFormOpen, setIsClinicianFormOpen] = useState(false);
-  const [isUserFormOpen, setIsUserFormOpen] = useState(false);
-  const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(null);
-  const [isClinicianProfileOpen, setIsClinicianProfileOpen] = useState(false);
-  
+  const [activeBillingTab, setActiveBillingTab] = useState('cpt');
+
   return (
     <Layout>
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -35,16 +27,10 @@ const Settings = () => {
             Practice
           </button>
           <button 
-            className={`settings-tab ${activeTab === SettingsTabs.CLINICIANS ? 'active' : ''}`}
-            onClick={() => setActiveTab(SettingsTabs.CLINICIANS)}
+            className={`settings-tab ${activeTab === SettingsTabs.STAFF ? 'active' : ''}`}
+            onClick={() => setActiveTab(SettingsTabs.STAFF)}
           >
-            Clinicians
-          </button>
-          <button 
-            className={`settings-tab ${activeTab === SettingsTabs.USERS ? 'active' : ''}`}
-            onClick={() => setActiveTab(SettingsTabs.USERS)}
-          >
-            Users
+            Staff
           </button>
           <button 
             className={`settings-tab ${activeTab === SettingsTabs.BILLING ? 'active' : ''}`}
@@ -184,40 +170,48 @@ const Settings = () => {
           </div>
         )}
         
-        {activeTab === SettingsTabs.CLINICIANS && (
+        {activeTab === SettingsTabs.STAFF && (
           <div className="p-6 animate-fade-in">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Clinician Management</h2>
-              <button 
-                className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                onClick={() => setIsClinicianFormOpen(true)}
-              >
+              <h2 className="text-xl font-semibold">Staff Management</h2>
+              <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800">
                 <Plus size={16} />
-                <span>Add Clinician</span>
+                <span>Add Staff Member</span>
               </button>
             </div>
             
-            <div className="text-center py-10 border rounded bg-gray-50 text-gray-500">
-              Clinician management functionality has been removed.
-            </div>
-          </div>
-        )}
-
-        {activeTab === SettingsTabs.USERS && (
-          <div className="p-6 animate-fade-in">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">User Management</h2>
-              <button 
-                className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                onClick={() => setIsUserFormOpen(true)}
-              >
-                <Plus size={16} />
-                <span>Add User</span>
-              </button>
-            </div>
-            
-            <div className="text-center py-10 border rounded bg-gray-50 text-gray-500">
-              User management functionality has been removed.
+            <div className="space-y-4">
+              <div className="border rounded-lg p-4 relative">
+                <div className="flex items-start">
+                  <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-blue-500 rounded-full mr-4"></div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold mb-1">Test Therapist</h3>
+                    <div className="text-sm text-gray-600">
+                      <p>Email: info+test@valorwell.org</p>
+                      <p>Role: clinician</p>
+                    </div>
+                  </div>
+                  <button className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600">
+                    Delete
+                  </button>
+                </div>
+              </div>
+              
+              <div className="border rounded-lg p-4 relative">
+                <div className="flex items-start">
+                  <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-blue-500 rounded-full mr-4"></div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold mb-1">Luke Predmore</h3>
+                    <div className="text-sm text-gray-600">
+                      <p>Email: info@valorwell.org</p>
+                      <p>Role: admin</p>
+                    </div>
+                  </div>
+                  <button className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600">
+                    Delete
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -226,6 +220,10 @@ const Settings = () => {
           <div className="p-6 animate-fade-in">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold">CPT Codes</h2>
+              <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white border rounded hover:bg-gray-50">
+                <Plus size={16} />
+                <span>Add CPT Code</span>
+              </button>
             </div>
             
             <div className="overflow-x-auto mb-8">
@@ -268,20 +266,28 @@ const Settings = () => {
             <div className="mb-8">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">Chart Templates</h2>
+                <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white border rounded hover:bg-gray-50">
+                  <Plus size={16} />
+                  <span>Add Template</span>
+                </button>
               </div>
               
               <div className="text-center py-10 border rounded bg-gray-50 text-gray-500">
-                No chart templates available.
+                No chart templates available. Click the button above to create your first template.
               </div>
             </div>
             
             <div>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">Online Forms</h2>
+                <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white border rounded hover:bg-gray-50">
+                  <Plus size={16} />
+                  <span>Add Form</span>
+                </button>
               </div>
               
               <div className="text-center py-10 border rounded bg-gray-50 text-gray-500">
-                No online forms available.
+                No online forms available. Click the button above to create your first form.
               </div>
             </div>
           </div>
@@ -309,24 +315,6 @@ const Settings = () => {
           </div>
         )}
       </div>
-
-      <ClinicianMemberForm 
-        isOpen={isClinicianFormOpen}
-        onClose={() => setIsClinicianFormOpen(false)}
-        clinicianId={null}
-      />
-      
-      <ClinicianProfileEdit 
-        isOpen={isClinicianProfileOpen}
-        onClose={() => setIsClinicianProfileOpen(false)}
-        clinicianId={selectedClinicianId}
-      />
-
-      <UserMemberForm
-        isOpen={isUserFormOpen}
-        onClose={() => setIsUserFormOpen(false)}
-        userId={null}
-      />
     </Layout>
   );
 };

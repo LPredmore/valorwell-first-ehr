@@ -1,101 +1,32 @@
 
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import Layout from '../components/layout/Layout';
-import { Search, Filter, RotateCcw, MoreHorizontal, Download, Upload } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Search, Filter, RotateCcw, MoreHorizontal, Download, Upload, Plus } from 'lucide-react';
 
 const Clients = () => {
   const [activeTab, setActiveTab] = useState('all');
-  const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    fetchClients();
-  }, [activeTab]);
-
-  const fetchClients = async () => {
-    setLoading(true);
-    try {
-      const { data: clientsData, error: clientsError } = await supabase
-        .from('clients')
-        .select('*');
-      
-      if (clientsError) throw clientsError;
-      
-      setClients(clientsData || []);
-    } catch (error) {
-      console.error('Error fetching clients:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearch = () => {
-    console.log('Searching for:', searchQuery);
-  };
-
-  const clearSearch = () => {
-    setSearchQuery('');
-    fetchClients();
-  };
-
-  const handleEditClient = (id) => {
-    navigate(`/clients/${id}`);
-  };
-
-  const filteredClients = clients.filter(client => {
-    if (!searchQuery) return true;
-    
-    const displayName = getDisplayName(client);
-    const email = client.email?.toLowerCase() || '';
-    const phone = client.client_phone?.toLowerCase() || '';
-    
-    return (
-      displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      email.includes(searchQuery.toLowerCase()) ||
-      phone.includes(searchQuery.toLowerCase())
-    );
-  });
-
-  const getDisplayName = (client) => {
-    const preferredName = client.client_preferred_name || client.client_first_name || '';
-    const lastName = client.client_last_name || '';
-    return `${preferredName} ${lastName}`.trim();
-  };
 
   return (
     <Layout>
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="text-2xl font-semibold">Clients</h2>
-          <span className="bg-valorwell-700 text-white text-xs px-2 py-0.5 rounded-full">{clients.length}</span>
+          <span className="bg-valorwell-700 text-white text-xs px-2 py-0.5 rounded-full">1</span>
         </div>
         
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" className="flex items-center gap-2">
+          <button className="flex items-center gap-2 px-3 py-2 text-gray-600 bg-white rounded border hover:bg-gray-50">
             <Download size={16} />
             <span>Export</span>
-          </Button>
-          <Button variant="outline" size="sm" className="flex items-center gap-2">
+          </button>
+          <button className="flex items-center gap-2 px-3 py-2 text-gray-600 bg-white rounded border hover:bg-gray-50">
             <Upload size={16} />
             <span>Import</span>
-          </Button>
-          <div className="text-sm text-gray-500">
-            Client creation functionality has been removed
-          </div>
+          </button>
+          <button className="flex items-center gap-2 px-3 py-2 text-white bg-valorwell-700 rounded hover:bg-valorwell-800 transition-colors">
+            <Plus size={16} />
+            <span>New Client</span>
+          </button>
         </div>
       </div>
       
@@ -127,119 +58,65 @@ const Clients = () => {
                 type="search" 
                 className="w-full p-2 pl-10 text-sm text-gray-900 bg-gray-50 rounded-md border border-gray-300 focus:ring-1 focus:outline-none focus:ring-valorwell-500"
                 placeholder="Search Clients" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             
             <div className="flex items-center gap-2 ml-4">
-              <Button 
-                variant="default"
-                size="sm"
-                className="bg-valorwell-700 hover:bg-valorwell-800"
-                onClick={handleSearch}
-              >
+              <button className="px-4 py-2 bg-valorwell-700 text-white rounded hover:bg-valorwell-800 transition-colors">
                 Search
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={clearSearch}
-              >
+              </button>
+              <button className="px-4 py-2 border rounded text-gray-700 hover:bg-gray-50 transition-colors">
                 Clear
-              </Button>
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
+              </button>
+              <button className="px-4 py-2 border rounded text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
                 <Filter size={16} />
                 <span>Filters</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="p-2"
-                onClick={fetchClients}
-              >
+              </button>
+              <button className="p-2 border rounded text-gray-700 hover:bg-gray-50 transition-colors">
                 <RotateCcw size={16} />
-              </Button>
+              </button>
             </div>
           </div>
           
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-gray-50">
-                <TableRow>
-                  <TableHead className="w-12">
+            <table className="w-full text-sm text-left text-gray-600">
+              <thead className="text-xs uppercase bg-gray-50 border-b">
+                <tr>
+                  <th className="p-4">
                     <input type="checkbox" className="w-4 h-4 rounded" />
-                  </TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Date Of Birth</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Therapist</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-4">Loading clients...</TableCell>
-                  </TableRow>
-                ) : filteredClients.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-4">No clients found</TableCell>
-                  </TableRow>
-                ) : (
-                  filteredClients.map(client => (
-                    <TableRow key={client.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        <input type="checkbox" className="w-4 h-4 rounded" />
-                      </TableCell>
-                      <TableCell>
-                        <button 
-                          onClick={() => handleEditClient(client.id)}
-                          className="font-medium text-valorwell-700 hover:underline"
-                        >
-                          {getDisplayName(client)}
-                        </button>
-                      </TableCell>
-                      <TableCell>{client.email}</TableCell>
-                      <TableCell>{client.client_phone || '-'}</TableCell>
-                      <TableCell>{client.client_date_of_birth || '-'}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium 
-                          ${client.client_status === 'Waiting' ? 'bg-yellow-100 text-yellow-800' : 
-                            client.client_status === 'Active' ? 'bg-green-100 text-green-800' : 
-                            client.client_status === 'Inactive' ? 'bg-gray-100 text-gray-800' : 
-                            client.client_status === 'On Hold' ? 'bg-blue-100 text-blue-800' : 
-                            'bg-gray-100 text-gray-800'}`}>
-                          {client.client_status || '-'}
-                        </span>
-                      </TableCell>
-                      <TableCell>{client.client_assigned_therapist ? client.client_assigned_therapist : '-'}</TableCell>
-                      <TableCell>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal size={16} />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-40 p-0">
-                            <div className="py-1">
-                              <button 
-                                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                                onClick={() => handleEditClient(client.id)}
-                              >
-                                View
-                              </button>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  </th>
+                  <th className="px-4 py-3">Name</th>
+                  <th className="px-4 py-3">Email</th>
+                  <th className="px-4 py-3">Phone</th>
+                  <th className="px-4 py-3">Date Of Birth</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Therapist</th>
+                  <th className="px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b hover:bg-gray-50">
+                  <td className="p-4">
+                    <input type="checkbox" className="w-4 h-4 rounded" />
+                  </td>
+                  <td className="px-4 py-3 font-medium text-gray-900">John Test</td>
+                  <td className="px-4 py-3">predmoreluke@gmail.com</td>
+                  <td className="px-4 py-3">5736946131</td>
+                  <td className="px-4 py-3">09/08/1999</td>
+                  <td className="px-4 py-3">
+                    <span className="px-2 py-1 bg-waiting text-yellow-800 rounded-full text-xs font-medium">
+                      Waiting
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">-</td>
+                  <td className="px-4 py-3">
+                    <button className="text-gray-500 hover:text-gray-700">
+                      <MoreHorizontal size={16} />
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

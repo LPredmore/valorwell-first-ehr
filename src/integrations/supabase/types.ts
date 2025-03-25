@@ -11,195 +11,122 @@ export type Database = {
     Tables: {
       clients: {
         Row: {
-          client_age: number | null
-          client_assigned_therapist: string | null
-          client_date_of_birth: string | null
-          client_first_name: string | null
-          client_gender: string | null
-          client_gender_identity: string | null
-          client_group_number_primary: string | null
-          client_group_number_secondary: string | null
-          client_group_number_tertiary: string | null
-          client_insurance_company_primary: string | null
-          client_insurance_company_secondary: string | null
-          client_insurance_company_tertiary: string | null
-          client_insurance_type_primary: string | null
-          client_insurance_type_secondary: string | null
-          client_insurance_type_tertiary: string | null
-          client_is_profile_complete: string | null
-          client_last_name: string | null
-          client_minor: string | null
-          client_phone: string | null
-          client_policy_number_primary: string | null
-          client_policy_number_secondary: string | null
-          client_policy_number_tertiary: string | null
-          client_preferred_name: string | null
-          client_referral_source: string | null
-          client_state: string | null
-          client_status: string | null
-          client_subscriber_dob_primary: string | null
-          client_subscriber_dob_secondary: string | null
-          client_subscriber_dob_tertiary: string | null
-          client_subscriber_name_primary: string | null
-          client_subscriber_name_secondary: string | null
-          client_subscriber_name_tertiary: string | null
-          client_subscriber_relationship_primary: string | null
-          client_subscriber_relationship_secondary: string | null
-          client_subscriber_relationship_tertiary: string | null
-          client_time_zone: string | null
-          client_treatment_goal: string | null
+          age: number | null
+          assigned_therapist: string | null
           created_at: string
+          date_of_birth: string | null
+          gender: string | null
+          gender_identity: string | null
           id: string
+          is_profile_complete: boolean | null
+          minor: boolean | null
+          phone: string | null
+          preferred_name: string | null
+          referral_source: string | null
+          state: string | null
+          status: string | null
+          time_zone: string | null
+          treatment_goal: string | null
           updated_at: string
         }
         Insert: {
-          client_age?: number | null
-          client_assigned_therapist?: string | null
-          client_date_of_birth?: string | null
-          client_first_name?: string | null
-          client_gender?: string | null
-          client_gender_identity?: string | null
-          client_group_number_primary?: string | null
-          client_group_number_secondary?: string | null
-          client_group_number_tertiary?: string | null
-          client_insurance_company_primary?: string | null
-          client_insurance_company_secondary?: string | null
-          client_insurance_company_tertiary?: string | null
-          client_insurance_type_primary?: string | null
-          client_insurance_type_secondary?: string | null
-          client_insurance_type_tertiary?: string | null
-          client_is_profile_complete?: string | null
-          client_last_name?: string | null
-          client_minor?: string | null
-          client_phone?: string | null
-          client_policy_number_primary?: string | null
-          client_policy_number_secondary?: string | null
-          client_policy_number_tertiary?: string | null
-          client_preferred_name?: string | null
-          client_referral_source?: string | null
-          client_state?: string | null
-          client_status?: string | null
-          client_subscriber_dob_primary?: string | null
-          client_subscriber_dob_secondary?: string | null
-          client_subscriber_dob_tertiary?: string | null
-          client_subscriber_name_primary?: string | null
-          client_subscriber_name_secondary?: string | null
-          client_subscriber_name_tertiary?: string | null
-          client_subscriber_relationship_primary?: string | null
-          client_subscriber_relationship_secondary?: string | null
-          client_subscriber_relationship_tertiary?: string | null
-          client_time_zone?: string | null
-          client_treatment_goal?: string | null
+          age?: number | null
+          assigned_therapist?: string | null
           created_at?: string
+          date_of_birth?: string | null
+          gender?: string | null
+          gender_identity?: string | null
           id: string
+          is_profile_complete?: boolean | null
+          minor?: boolean | null
+          phone?: string | null
+          preferred_name?: string | null
+          referral_source?: string | null
+          state?: string | null
+          status?: string | null
+          time_zone?: string | null
+          treatment_goal?: string | null
           updated_at?: string
         }
         Update: {
-          client_age?: number | null
-          client_assigned_therapist?: string | null
-          client_date_of_birth?: string | null
-          client_first_name?: string | null
-          client_gender?: string | null
-          client_gender_identity?: string | null
-          client_group_number_primary?: string | null
-          client_group_number_secondary?: string | null
-          client_group_number_tertiary?: string | null
-          client_insurance_company_primary?: string | null
-          client_insurance_company_secondary?: string | null
-          client_insurance_company_tertiary?: string | null
-          client_insurance_type_primary?: string | null
-          client_insurance_type_secondary?: string | null
-          client_insurance_type_tertiary?: string | null
-          client_is_profile_complete?: string | null
-          client_last_name?: string | null
-          client_minor?: string | null
-          client_phone?: string | null
-          client_policy_number_primary?: string | null
-          client_policy_number_secondary?: string | null
-          client_policy_number_tertiary?: string | null
-          client_preferred_name?: string | null
-          client_referral_source?: string | null
-          client_state?: string | null
-          client_status?: string | null
-          client_subscriber_dob_primary?: string | null
-          client_subscriber_dob_secondary?: string | null
-          client_subscriber_dob_tertiary?: string | null
-          client_subscriber_name_primary?: string | null
-          client_subscriber_name_secondary?: string | null
-          client_subscriber_name_tertiary?: string | null
-          client_subscriber_relationship_primary?: string | null
-          client_subscriber_relationship_secondary?: string | null
-          client_subscriber_relationship_tertiary?: string | null
-          client_time_zone?: string | null
-          client_treatment_goal?: string | null
+          age?: number | null
+          assigned_therapist?: string | null
           created_at?: string
+          date_of_birth?: string | null
+          gender?: string | null
+          gender_identity?: string | null
           id?: string
+          is_profile_complete?: boolean | null
+          minor?: boolean | null
+          phone?: string | null
+          preferred_name?: string | null
+          referral_source?: string | null
+          state?: string | null
+          status?: string | null
+          time_zone?: string | null
+          treatment_goal?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clients_assigned_therapist_fkey"
+            columns: ["assigned_therapist"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       clinicians: {
         Row: {
-          clinician_accepting_new_clients: string | null
-          clinician_bio: string | null
-          clinician_email: string | null
-          clinician_first_name: string | null
-          clinician_image_url: string | null
-          clinician_last_name: string | null
-          clinician_license_type: string | null
-          clinician_min_client_age: number | null
-          clinician_npi_number: string | null
-          clinician_phone: string | null
-          clinician_professional_name: string | null
-          clinician_state: string | null
-          clinician_taxonomy_code: string | null
-          clinician_treatment_approaches: string[] | null
-          clinician_type: string | null
+          accepting_new_clients: boolean | null
+          bio: string | null
           created_at: string
           id: string
+          min_client_age: number | null
+          phone: string | null
+          specialties: string[] | null
+          treatment_approaches: string[] | null
           updated_at: string
         }
         Insert: {
-          clinician_accepting_new_clients?: string | null
-          clinician_bio?: string | null
-          clinician_email?: string | null
-          clinician_first_name?: string | null
-          clinician_image_url?: string | null
-          clinician_last_name?: string | null
-          clinician_license_type?: string | null
-          clinician_min_client_age?: number | null
-          clinician_npi_number?: string | null
-          clinician_phone?: string | null
-          clinician_professional_name?: string | null
-          clinician_state?: string | null
-          clinician_taxonomy_code?: string | null
-          clinician_treatment_approaches?: string[] | null
-          clinician_type?: string | null
+          accepting_new_clients?: boolean | null
+          bio?: string | null
           created_at?: string
           id: string
+          min_client_age?: number | null
+          phone?: string | null
+          specialties?: string[] | null
+          treatment_approaches?: string[] | null
           updated_at?: string
         }
         Update: {
-          clinician_accepting_new_clients?: string | null
-          clinician_bio?: string | null
-          clinician_email?: string | null
-          clinician_first_name?: string | null
-          clinician_image_url?: string | null
-          clinician_last_name?: string | null
-          clinician_license_type?: string | null
-          clinician_min_client_age?: number | null
-          clinician_npi_number?: string | null
-          clinician_phone?: string | null
-          clinician_professional_name?: string | null
-          clinician_state?: string | null
-          clinician_taxonomy_code?: string | null
-          clinician_treatment_approaches?: string[] | null
-          clinician_type?: string | null
+          accepting_new_clients?: boolean | null
+          bio?: string | null
           created_at?: string
           id?: string
+          min_client_age?: number | null
+          phone?: string | null
+          specialties?: string[] | null
+          treatment_approaches?: string[] | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clinicians_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       document_assignments: {
         Row: {
@@ -241,7 +168,29 @@ export type Database = {
           status?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "document_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_assignments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_assignments_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       documents: {
         Row: {
@@ -274,34 +223,106 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insurance: {
+        Row: {
+          client_id: string
+          created_at: string
+          group_number: string | null
+          id: string
+          insurance_type: string
+          policy_number: string | null
+          provider: string
+          subscriber_dob: string | null
+          subscriber_name: string | null
+          subscriber_relationship: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          group_number?: string | null
+          id?: string
+          insurance_type: string
+          policy_number?: string | null
+          provider: string
+          subscriber_dob?: string | null
+          subscriber_name?: string | null
+          subscriber_relationship?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          group_number?: string | null
+          id?: string
+          insurance_type?: string
+          policy_number?: string | null
+          provider?: string
+          subscriber_dob?: string | null
+          subscriber_name?: string | null
+          subscriber_relationship?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insurance_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       licenses: {
         Row: {
           clinician_id: string
           created_at: string
+          expiration_date: string | null
           id: string
           license_number: string
+          start_date: string | null
           state: string
           updated_at: string
         }
         Insert: {
           clinician_id: string
           created_at?: string
+          expiration_date?: string | null
           id?: string
           license_number: string
+          start_date?: string | null
           state: string
           updated_at?: string
         }
         Update: {
           clinician_id?: string
           created_at?: string
+          expiration_date?: string | null
           id?: string
           license_number?: string
+          start_date?: string | null
           state?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "licenses_clinician_id_fkey"
+            columns: ["clinician_id"]
+            isOneToOne: false
+            referencedRelation: "clinicians"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -310,7 +331,7 @@ export type Database = {
           first_name: string | null
           id: string
           last_name: string | null
-          profile_type: string | null
+          role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
         Insert: {
@@ -319,7 +340,7 @@ export type Database = {
           first_name?: string | null
           id: string
           last_name?: string | null
-          profile_type?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
         Update: {
@@ -328,7 +349,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_name?: string | null
-          profile_type?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
         Relationships: []
@@ -361,7 +382,15 @@ export type Database = {
           profile_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "staff_licenses_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -387,7 +416,7 @@ export type Database = {
         | "consent_form"
         | "therapy_note"
         | "questionnaire"
-      user_role: "user" | "admin"
+      user_role: "client" | "clinician" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
