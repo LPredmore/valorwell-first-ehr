@@ -14,6 +14,7 @@ export type Database = {
           client_age: number | null
           client_assigned_therapist: string | null
           client_date_of_birth: string | null
+          client_email: string | null
           client_first_name: string | null
           client_gender: string | null
           client_gender_identity: string | null
@@ -56,6 +57,7 @@ export type Database = {
           client_age?: number | null
           client_assigned_therapist?: string | null
           client_date_of_birth?: string | null
+          client_email?: string | null
           client_first_name?: string | null
           client_gender?: string | null
           client_gender_identity?: string | null
@@ -98,6 +100,7 @@ export type Database = {
           client_age?: number | null
           client_assigned_therapist?: string | null
           client_date_of_birth?: string | null
+          client_email?: string | null
           client_first_name?: string | null
           client_gender?: string | null
           client_gender_identity?: string | null

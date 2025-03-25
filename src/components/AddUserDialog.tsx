@@ -68,7 +68,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
     console.log("Submitting user data:", data);
 
     try {
-      // When creating a user, the role should be a string, not an enum object
+      // User metadata to be saved
       const userData = {
         first_name: data.firstName,
         last_name: data.lastName,
@@ -78,13 +78,12 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       
       console.log("User metadata to be saved:", userData);
       
-      // Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Create user in Supabase Auth with a fixed default password
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: data.email,
-        password: generateRandomPassword(),
-        options: {
-          data: userData
-        }
+        password: "temppass1234",
+        email_confirm: true,
+        user_metadata: userData
       });
 
       if (authError) {
@@ -96,7 +95,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       
       toast({
         title: "Success",
-        description: "User added successfully",
+        description: "User added successfully with default password: temppass1234",
       });
 
       form.reset();
@@ -114,25 +113,13 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
     }
   }
 
-  // Generate a random password for new users
-  function generateRandomPassword() {
-    const length = 16;
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
-    let password = "";
-    for (let i = 0; i < length; i++) {
-      const randomIndex = Math.floor(Math.random() * charset.length);
-      password += charset[randomIndex];
-    }
-    return password;
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
           <DialogDescription>
-            Enter user details below.
+            Enter user details below. A default password of "temppass1234" will be assigned.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
