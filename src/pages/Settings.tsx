@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -187,6 +188,8 @@ const Settings = () => {
     if (!confirmed) return;
     
     try {
+      // Note: This is using admin auth which may not be available in the client
+      // You may need to create a serverless function for this
       const { error } = await supabase.auth.admin.deleteUser(userId);
       
       if (error) {
@@ -310,9 +313,11 @@ const Settings = () => {
         result = await updateCPTCode(editingCptCode.code, newCptCode);
         
         if (result.success) {
-          setCptCodes(cptCodes.map(code => 
-            code.code === editingCptCode.code ? newCptCode : code
-          ));
+          setCptCodes(prevCodes => 
+            prevCodes.map(code => 
+              code.code === editingCptCode.code ? newCptCode : code
+            )
+          );
           
           toast({
             title: 'Success',
@@ -323,7 +328,7 @@ const Settings = () => {
         result = await addCPTCode(newCptCode);
         
         if (result.success) {
-          setCptCodes([...cptCodes, newCptCode]);
+          setCptCodes(prevCodes => [...prevCodes, newCptCode]);
           
           toast({
             title: 'Success',
