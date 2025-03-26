@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,12 +15,14 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface TreatmentPlanTemplateProps {
   onClose: () => void;
+  onSaveSuccess?: () => void;
   clientData?: any;
   clinicianData?: any;
 }
 
 const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({ 
   onClose,
+  onSaveSuccess,
   clientData,
   clinicianData 
 }) => {
@@ -29,7 +30,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Form data state
   const [formData, setFormData] = useState({
     clientName: clientData ? `${clientData.client_first_name || ''} ${clientData.client_last_name || ''}`.trim() : '',
     clientDob: clientData?.client_date_of_birth || '',
@@ -63,9 +63,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
     setIsSubmitting(true);
     
     try {
-      // Here we would generate and save the PDF
-      // For now, we'll just update the client record with the treatment plan data
-      
       if (!clientData?.id) {
         throw new Error('Client ID is missing');
       }
@@ -86,7 +83,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         client_tertiaryobjective: formData.tertiaryObjective,
         client_intervention5: formData.intervention5,
         client_intervention6: formData.intervention6,
-        client_nexttreatmentplanupdate: null, // Would be calculated based on plan length
+        client_nexttreatmentplanupdate: null,
         client_privatenote: formData.privateNote
       };
       
@@ -97,12 +94,15 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         
       if (error) throw error;
       
-      toast({
-        title: "Success",
-        description: "Treatment plan saved successfully",
-      });
-      
-      onClose();
+      if (onSaveSuccess) {
+        onSaveSuccess();
+      } else {
+        toast({
+          title: "Success",
+          description: "Treatment plan saved successfully",
+        });
+        onClose();
+      }
     } catch (error) {
       console.error('Error saving treatment plan:', error);
       toast({
