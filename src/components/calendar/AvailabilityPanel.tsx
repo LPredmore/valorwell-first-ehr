@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +25,14 @@ interface DaySchedule {
   timeSlots: TimeSlot[];
 }
 
+interface AvailabilitySettings {
+  id: string;
+  clinician_id: string;
+  time_granularity: 'hour' | 'half-hour';
+  created_at: string;
+  updated_at: string;
+}
+
 const AvailabilityPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('set');
   const [availabilityEnabled, setAvailabilityEnabled] = useState(true);
@@ -34,7 +41,6 @@ const AvailabilityPanel: React.FC = () => {
   const [timeGranularity, setTimeGranularity] = useState<'hour' | 'half-hour'>('hour');
   const { toast } = useToast();
 
-  // Initialize a schedule for each day of the week
   const [weekSchedule, setWeekSchedule] = useState<DaySchedule[]>([
     { day: 'Monday', isOpen: true, timeSlots: [] },
     { day: 'Tuesday', isOpen: true, timeSlots: [] },
@@ -44,14 +50,12 @@ const AvailabilityPanel: React.FC = () => {
     { day: 'Saturday', isOpen: false, timeSlots: [] },
     { day: 'Sunday', isOpen: false, timeSlots: [] },
   ]);
-  
-  // Fetch availability data from database
+
   useEffect(() => {
     async function fetchAvailability() {
       setLoading(true);
       
       try {
-        // Get current user session
         const { data: sessionData } = await supabase.auth.getSession();
         
         if (!sessionData?.session?.user) {
@@ -60,7 +64,6 @@ const AvailabilityPanel: React.FC = () => {
           return;
         }
         
-        // Get clinician id from profile
         const { data: profileData } = await supabase
           .from('profiles')
           .select('email')
@@ -73,7 +76,6 @@ const AvailabilityPanel: React.FC = () => {
           return;
         }
         
-        // Get clinician id
         const { data: clinicianData } = await supabase
           .from('clinicians')
           .select('id')
@@ -81,7 +83,6 @@ const AvailabilityPanel: React.FC = () => {
           .single();
           
         if (clinicianData) {
-          // Fetch availability data
           const { data: availabilityData, error } = await supabase
             .from('availability')
             .select('*')
@@ -91,13 +92,11 @@ const AvailabilityPanel: React.FC = () => {
           if (error) {
             console.error('Error fetching availability:', error);
           } else if (availabilityData && availabilityData.length > 0) {
-            // Convert DB data to our UI format
             const newSchedule = [...weekSchedule];
             
-            // Check for time granularity setting
             const { data: settingsData } = await supabase
               .from('availability_settings')
-              .select('time_granularity')
+              .select('*')
               .eq('clinician_id', clinicianData.id)
               .single();
               
@@ -108,8 +107,7 @@ const AvailabilityPanel: React.FC = () => {
             availabilityData.forEach(slot => {
               const dayIndex = newSchedule.findIndex(day => day.day === slot.day_of_week);
               if (dayIndex !== -1) {
-                // Convert time format if needed
-                const startTime = slot.start_time.substring(0, 5); // Convert "09:00:00" to "09:00"
+                const startTime = slot.start_time.substring(0, 5);
                 const endTime = slot.end_time.substring(0, 5);
                 
                 newSchedule[dayIndex].timeSlots.push({
@@ -118,7 +116,6 @@ const AvailabilityPanel: React.FC = () => {
                   endTime: endTime,
                 });
                 
-                // Mark day as open if it has time slots
                 newSchedule[dayIndex].isOpen = true;
               }
             });
@@ -135,8 +132,7 @@ const AvailabilityPanel: React.FC = () => {
     
     fetchAvailability();
   }, []);
-  
-  // Toggle day collapsible
+
   const toggleDayOpen = (dayIndex: number) => {
     setWeekSchedule(prev => {
       const updated = [...prev];
@@ -147,8 +143,7 @@ const AvailabilityPanel: React.FC = () => {
       return updated;
     });
   };
-  
-  // Add a new time slot to a specific day
+
   const addTimeSlot = (dayIndex: number) => {
     setWeekSchedule(prev => {
       const updated = [...prev];
@@ -170,8 +165,7 @@ const AvailabilityPanel: React.FC = () => {
       return updated;
     });
   };
-  
-  // Delete a time slot from a specific day
+
   const deleteTimeSlot = (dayIndex: number, slotId: string) => {
     setWeekSchedule(prev => {
       const updated = [...prev];
@@ -185,8 +179,7 @@ const AvailabilityPanel: React.FC = () => {
       return updated;
     });
   };
-  
-  // Update time slot time
+
   const updateTimeSlot = (dayIndex: number, slotId: string, field: 'startTime' | 'endTime', value: string) => {
     setWeekSchedule(prev => {
       const updated = [...prev];
@@ -202,8 +195,7 @@ const AvailabilityPanel: React.FC = () => {
       return updated;
     });
   };
-  
-  // Toggle availability for a day
+
   const toggleDayAvailability = (dayIndex: number) => {
     setWeekSchedule(prev => {
       const updated = [...prev];
@@ -214,13 +206,11 @@ const AvailabilityPanel: React.FC = () => {
       return updated;
     });
   };
-  
-  // Save availability to database
+
   const saveAvailability = async () => {
     setIsSaving(true);
     
     try {
-      // Get current user session
       const { data: sessionData } = await supabase.auth.getSession();
       
       if (!sessionData?.session?.user) {
@@ -233,7 +223,6 @@ const AvailabilityPanel: React.FC = () => {
         return;
       }
       
-      // Get clinician id from profile
       const { data: profileData } = await supabase
         .from('profiles')
         .select('email')
@@ -250,7 +239,6 @@ const AvailabilityPanel: React.FC = () => {
         return;
       }
       
-      // Get clinician id
       const { data: clinicianData } = await supabase
         .from('clinicians')
         .select('id')
@@ -267,18 +255,14 @@ const AvailabilityPanel: React.FC = () => {
         return;
       }
       
-      // First, deactivate existing entries
       await supabase
         .from('availability')
         .update({ is_active: false })
         .eq('clinician_id', clinicianData.id);
       
-      // Prepare availability data for insertion
       const availabilityToInsert = weekSchedule.flatMap(day => {
-        // Skip days that are not open
         if (!day.isOpen) return [];
         
-        // Return all time slots for this day
         return day.timeSlots.map(slot => ({
           clinician_id: clinicianData.id,
           day_of_week: day.day,
@@ -288,8 +272,8 @@ const AvailabilityPanel: React.FC = () => {
         }));
       });
       
-      // Also save the time granularity preference
-      await supabase.from('availability_settings')
+      await supabase
+        .from('availability_settings')
         .upsert({
           clinician_id: clinicianData.id,
           time_granularity: timeGranularity
@@ -297,7 +281,6 @@ const AvailabilityPanel: React.FC = () => {
           onConflict: 'clinician_id'
         });
       
-      // Insert new availability data
       if (availabilityToInsert.length > 0) {
         const { error } = await supabase
           .from('availability')
@@ -332,16 +315,12 @@ const AvailabilityPanel: React.FC = () => {
       setIsSaving(false);
     }
   };
-  
-  // Generate share link URL
+
   const generateShareLink = () => {
-    // Get the current user's professional name (or another identifier)
-    // For now, we'll just use a placeholder
     const baseUrl = window.location.origin;
     return `${baseUrl}/book/clinician123`;
   };
-  
-  // Copy link to clipboard
+
   const copyLinkToClipboard = () => {
     const link = generateShareLink();
     navigator.clipboard.writeText(link);
@@ -350,25 +329,21 @@ const AvailabilityPanel: React.FC = () => {
       description: "Booking link has been copied to clipboard",
     });
   };
-  
-  // Generate new booking link
+
   const generateNewLink = () => {
     toast({
       title: "New Link Generated",
       description: "A new booking link has been created",
     });
   };
-  
-  // Generate time options for select
+
   const timeOptions = React.useMemo(() => {
     const options = [];
     
     for (let hour = 0; hour < 24; hour++) {
-      // Add hour option (e.g., "09:00")
       const hourFormatted = hour.toString().padStart(2, '0');
       options.push(`${hourFormatted}:00`);
       
-      // If half-hour granularity, add half-hour option (e.g., "09:30")
       if (timeGranularity === 'half-hour') {
         options.push(`${hourFormatted}:30`);
       }
@@ -376,7 +351,7 @@ const AvailabilityPanel: React.FC = () => {
     
     return options;
   }, [timeGranularity]);
-  
+
   if (loading) {
     return (
       <Card className="h-full">
@@ -389,7 +364,7 @@ const AvailabilityPanel: React.FC = () => {
       </Card>
     );
   }
-  
+
   return (
     <Card className="h-full">
       <CardHeader>

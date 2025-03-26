@@ -1,1 +1,4 @@
+
 project_id = "gqlkritspnhjxfejvgfg"
+[functions.getAvailabilitySettings]
+verify_jwt = true

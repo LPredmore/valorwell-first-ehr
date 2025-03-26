@@ -50,6 +50,38 @@ export type Database = {
           },
         ]
       }
+      availability_settings: {
+        Row: {
+          clinician_id: string
+          created_at: string
+          id: string
+          time_granularity: string
+          updated_at: string
+        }
+        Insert: {
+          clinician_id: string
+          created_at?: string
+          id?: string
+          time_granularity?: string
+          updated_at?: string
+        }
+        Update: {
+          clinician_id?: string
+          created_at?: string
+          id?: string
+          time_granularity?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_settings_clinician_id_fkey"
+            columns: ["clinician_id"]
+            isOneToOne: true
+            referencedRelation: "clinicians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           client_affect: string | null

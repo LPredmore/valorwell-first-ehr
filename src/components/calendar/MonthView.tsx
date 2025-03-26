@@ -30,6 +30,12 @@ interface AvailabilityBlock {
   end_time: string;
 }
 
+interface AvailabilitySettings {
+  id?: string;
+  clinician_id: string;
+  time_granularity: 'hour' | 'half-hour';
+}
+
 interface DisplayBlock {
   start: string;
   end: string;
@@ -39,7 +45,7 @@ interface DisplayBlock {
 const MonthView: React.FC<MonthViewProps> = ({ currentDate }) => {
   const [loading, setLoading] = useState(true);
   const [availabilityByDay, setAvailabilityByDay] = useState<Record<string, DisplayBlock[]>>({});
-  const [timeGranularity, setTimeGranularity] = useState<string>('hour');
+  const [timeGranularity, setTimeGranularity] = useState<'hour' | 'half-hour'>('hour');
   
   // Get all days in the current month view (including days from prev/next months to fill the calendar grid)
   const monthStart = startOfMonth(currentDate);
@@ -86,14 +92,14 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate }) => {
         }
         
         // Get scheduling granularity preference
-        const { data: settingsData } = await supabase
+        const { data: settingsData, error: settingsError } = await supabase
           .from('availability_settings')
-          .select('time_granularity')
+          .select('*')
           .eq('clinician_id', clinicianData.id)
-          .single();
+          .maybeSingle();
           
-        if (settingsData) {
-          setTimeGranularity(settingsData.time_granularity);
+        if (settingsData && !settingsError) {
+          setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
         }
         
         // Fetch all availability blocks

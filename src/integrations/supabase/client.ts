@@ -46,6 +46,21 @@ export const getClinicianIdByName = async (professionalName: string) => {
   return data.id;
 };
 
+// Helper to get availability settings for a clinician
+export const getClinicianAvailabilitySettings = async (clinicianId: string) => {
+  if (!clinicianId) return null;
+  
+  const { data, error } = await supabase
+    .rpc('get_availability_settings', { clinician_id: clinicianId });
+    
+  if (error || !data) {
+    console.error('Error fetching availability settings:', error);
+    return { time_granularity: 'hour' }; // Default value
+  }
+  
+  return data;
+};
+
 // Helper function to parse ISO date strings to local Date objects
 export const parseDateString = (dateString: string | null): Date | null => {
   if (!dateString) return null;
