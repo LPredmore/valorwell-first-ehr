@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/form";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarIcon, Pencil, Save, X, Plus, Trash } from "lucide-react";
+import { CalendarIcon, Pencil, Save, X, Plus, Trash, FileText, ClipboardCheck, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -35,7 +35,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import Layout from '../components/layout/Layout';
+import Layout from '@/components/layout/Layout';
 
 interface ClientDetails {
   id: string;
@@ -45,7 +45,7 @@ interface ClientDetails {
   client_email: string | null;
   client_phone: string | null;
   client_date_of_birth: string | null;
-  client_age: number | null;  // This can be a number in the state
+  client_age: number | null;
   client_gender: string | null;
   client_gender_identity: string | null;
   client_state: string | null;
@@ -56,7 +56,6 @@ interface ClientDetails {
   client_referral_source: string | null;
   client_self_goal: string | null;
   client_diagnosis: string[] | null;
-  // Insurance fields
   client_insurance_company_primary: string | null;
   client_policy_number_primary: string | null;
   client_group_number_primary: string | null;
@@ -169,7 +168,6 @@ const ClientDetails = () => {
     client_referral_source: z.string().optional().nullable(),
     client_self_goal: z.string().optional().nullable(),
     client_diagnosis: z.array(z.string()).optional().nullable(),
-    // Insurance fields
     client_insurance_company_primary: z.string().optional().nullable(),
     client_policy_number_primary: z.string().optional().nullable(),
     client_group_number_primary: z.string().optional().nullable(),
@@ -213,7 +211,6 @@ const ClientDetails = () => {
       client_referral_source: clientData?.client_referral_source || "",
       client_self_goal: clientData?.client_self_goal || "",
       client_diagnosis: clientData?.client_diagnosis || [],
-      // Insurance fields
       client_insurance_company_primary: clientData?.client_insurance_company_primary || "",
       client_policy_number_primary: clientData?.client_policy_number_primary || "",
       client_group_number_primary: clientData?.client_group_number_primary || "",
@@ -258,7 +255,6 @@ const ClientDetails = () => {
         client_referral_source: clientData.client_referral_source || "",
         client_self_goal: clientData.client_self_goal || "",
         client_diagnosis: clientData.client_diagnosis || [],
-        // Insurance fields
         client_insurance_company_primary: clientData.client_insurance_company_primary || "",
         client_policy_number_primary: clientData.client_policy_number_primary || "",
         client_group_number_primary: clientData.client_group_number_primary || "",
@@ -413,10 +409,11 @@ const ClientDetails = () => {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSaveChanges)}>
           <Tabs defaultValue="personal" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-4 mb-4">
+            <TabsList className="grid grid-cols-5 mb-4">
               <TabsTrigger value="personal">Personal Info</TabsTrigger>
               <TabsTrigger value="insurance">Insurance</TabsTrigger>
               <TabsTrigger value="treatment">Treatment</TabsTrigger>
+              <TabsTrigger value="documentation">Documentation</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
             </TabsList>
 
@@ -1283,6 +1280,82 @@ const ClientDetails = () => {
               </Card>
             </TabsContent>
 
+            <TabsContent value="documentation">
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader className="border-b pb-3">
+                    <div className="flex items-center gap-2">
+                      <BarChart2 className="h-5 w-5 text-green-600" />
+                      <CardTitle className="text-lg">Charting</CardTitle>
+                    </div>
+                    <CardDescription>
+                      View and manage patient charts and progress tracking
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <div className="text-center">
+                      <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium mb-2">No Charts Available</h3>
+                      <p className="text-gray-500 text-sm mb-6">
+                        Charts and progress tracking will be displayed here
+                      </p>
+                      <Button variant="outline" size="sm">
+                        Create New Chart
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="border-b pb-3">
+                    <div className="flex items-center gap-2">
+                      <ClipboardCheck className="h-5 w-5 text-blue-600" />
+                      <CardTitle className="text-lg">Assessments</CardTitle>
+                    </div>
+                    <CardDescription>
+                      View and complete patient assessments
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <div className="text-center">
+                      <ClipboardCheck className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium mb-2">No Assessments Available</h3>
+                      <p className="text-gray-500 text-sm mb-6">
+                        Patient assessments will be displayed here
+                      </p>
+                      <Button variant="outline" size="sm">
+                        Create New Assessment
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="border-b pb-3">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-purple-600" />
+                      <CardTitle className="text-lg">Completed Notes</CardTitle>
+                    </div>
+                    <CardDescription>
+                      View completed session notes and documentation
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <div className="text-center">
+                      <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium mb-2">No Completed Notes</h3>
+                      <p className="text-gray-500 text-sm mb-6">
+                        Completed session notes will be displayed here
+                      </p>
+                      <Button variant="outline" size="sm">
+                        View All Notes
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
             <TabsContent value="notes">
               <Card>
                 <CardHeader>
@@ -1302,4 +1375,3 @@ const ClientDetails = () => {
 };
 
 export default ClientDetails;
-
