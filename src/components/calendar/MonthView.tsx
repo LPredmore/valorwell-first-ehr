@@ -21,6 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface MonthViewProps {
   currentDate: Date;
+  clinicianId?: string | null;
 }
 
 interface AvailabilityBlock {
@@ -42,7 +43,7 @@ interface DisplayBlock {
   id: string;
 }
 
-const MonthView: React.FC<MonthViewProps> = ({ currentDate }) => {
+const MonthView: React.FC<MonthViewProps> = ({ currentDate, clinicianId }) => {
   const [loading, setLoading] = useState(true);
   const [availabilityByDay, setAvailabilityByDay] = useState<Record<string, DisplayBlock[]>>({});
   const [timeGranularity, setTimeGranularity] = useState<'hour' | 'half-hour'>('hour');
@@ -59,59 +60,65 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate }) => {
     const fetchAvailability = async () => {
       setLoading(true);
       try {
-        // Get current user session
-        const { data: sessionData } = await supabase.auth.getSession();
+        let fetchedClinicianId = clinicianId;
         
-        if (!sessionData?.session?.user) {
-          setLoading(false);
-          return;
-        }
-        
-        // Get profile email
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('id', sessionData.session.user.id)
-          .single();
+        // If no clinician ID is passed, try to get current user and their clinician ID
+        if (!fetchedClinicianId) {
+          const { data: sessionData } = await supabase.auth.getSession();
           
-        if (!profileData) {
-          setLoading(false);
-          return;
+          if (sessionData?.session?.user) {
+            // Get profile email
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('email')
+              .eq('id', sessionData.session.user.id)
+              .single();
+              
+            if (profileData) {
+              // Get clinician ID
+              const { data: clinicianData } = await supabase
+                .from('clinicians')
+                .select('id')
+                .eq('clinician_email', profileData.email)
+                .single();
+                
+              if (clinicianData) {
+                fetchedClinicianId = clinicianData.id;
+              }
+            }
+          }
         }
         
-        // Get clinician ID
-        const { data: clinicianData } = await supabase
-          .from('clinicians')
-          .select('id')
-          .eq('clinician_email', profileData.email)
-          .single();
-          
-        if (!clinicianData) {
-          setLoading(false);
-          return;
+        // Get scheduling granularity preference if we have a clinician ID
+        if (fetchedClinicianId) {
+          const { data: settingsData, error: settingsError } = await supabase
+            .from('availability_settings')
+            .select('*')
+            .eq('clinician_id', fetchedClinicianId)
+            .maybeSingle();
+            
+          if (settingsData && !settingsError) {
+            setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
+          }
         }
         
-        // Get scheduling granularity preference
-        const { data: settingsData, error: settingsError } = await supabase
-          .from('availability_settings')
-          .select('*')
-          .eq('clinician_id', clinicianData.id)
-          .maybeSingle();
-          
-        if (settingsData && !settingsError) {
-          setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
-        }
-        
-        // Fetch all availability blocks
-        const { data, error } = await supabase
+        // Fetch all availability blocks for the clinician
+        let query = supabase
           .from('availability')
           .select('*')
-          .eq('clinician_id', clinicianData.id)
           .eq('is_active', true);
+          
+        // Add clinician filter if provided
+        if (fetchedClinicianId) {
+          query = query.eq('clinician_id', fetchedClinicianId);
+        }
+        
+        const { data, error } = await query;
           
         if (error) {
           console.error('Error fetching availability:', error);
         } else {
+          console.log('MonthView availability data:', data);
           // Process availability data for all days
           processAvailabilityBlocks(data || []);
         }
@@ -123,7 +130,7 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate }) => {
     };
     
     fetchAvailability();
-  }, []);
+  }, [clinicianId]);
   
   // Process availability blocks into a map of day -> availability blocks
   const processAvailabilityBlocks = (blocks: AvailabilityBlock[]) => {

@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface DayViewProps {
   currentDate: Date;
+  clinicianId?: string | null;
 }
 
 interface AvailabilityBlock {
@@ -22,7 +23,7 @@ interface TimeBlock {
   availabilityIds: string[];
 }
 
-const DayView: React.FC<DayViewProps> = ({ currentDate }) => {
+const DayView: React.FC<DayViewProps> = ({ currentDate, clinicianId }) => {
   const [loading, setLoading] = useState(true);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
   
@@ -39,16 +40,24 @@ const DayView: React.FC<DayViewProps> = ({ currentDate }) => {
     const fetchAvailability = async () => {
       setLoading(true);
       try {
-        // Fetch all availability blocks for the current day of week
-        const { data, error } = await supabase
+        // Build query for availability blocks
+        let query = supabase
           .from('availability')
           .select('*')
           .eq('day_of_week', dayOfWeek)
           .eq('is_active', true);
           
+        // Add clinician filter if provided
+        if (clinicianId) {
+          query = query.eq('clinician_id', clinicianId);
+        }
+        
+        const { data, error } = await query;
+          
         if (error) {
           console.error('Error fetching availability:', error);
         } else {
+          console.log('DayView availability data:', data);
           // Process availability data into continuous blocks
           processAvailabilityBlocks(data || []);
         }
@@ -60,7 +69,7 @@ const DayView: React.FC<DayViewProps> = ({ currentDate }) => {
     };
     
     fetchAvailability();
-  }, [dayOfWeek]);
+  }, [dayOfWeek, clinicianId]);
   
   // Process availability blocks into continuous time blocks
   const processAvailabilityBlocks = (blocks: AvailabilityBlock[]) => {

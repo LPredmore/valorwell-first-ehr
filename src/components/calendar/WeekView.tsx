@@ -18,7 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface WeekViewProps {
   currentDate: Date;
-  clinicianId?: string;
+  clinicianId?: string | null;
 }
 
 interface AvailabilityBlock {
@@ -72,7 +72,8 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, clinicianId }) => {
         if (error) {
           console.error('Error fetching availability:', error);
         } else {
-          console.log('Fetched availability data:', data);
+          console.log('WeekView fetched availability data:', data);
+          console.log('Current clinician ID:', clinicianId);
           // Process availability data into continuous blocks for each day
           processAvailabilityBlocks(data || []);
         }

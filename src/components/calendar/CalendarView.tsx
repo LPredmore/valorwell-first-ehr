@@ -34,9 +34,10 @@ import AvailabilityPanel from './AvailabilityPanel';
 interface CalendarViewProps {
   view: 'day' | 'week' | 'month';
   showAvailability: boolean;
+  clinicianId: string | null;
 }
 
-const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, clinicianId }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   
   const navigatePrevious = () => {
@@ -105,14 +106,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability }) =
       
       <div className="flex gap-4">
         <div className={cn("flex-1", showAvailability ? "w-3/4" : "w-full")}>
-          {view === 'day' && <DayView currentDate={currentDate} />}
-          {view === 'week' && <WeekView currentDate={currentDate} />}
-          {view === 'month' && <MonthView currentDate={currentDate} />}
+          {view === 'day' && <DayView currentDate={currentDate} clinicianId={clinicianId} />}
+          {view === 'week' && <WeekView currentDate={currentDate} clinicianId={clinicianId} />}
+          {view === 'month' && <MonthView currentDate={currentDate} clinicianId={clinicianId} />}
         </div>
         
         {showAvailability && (
           <div className="w-1/4">
-            <AvailabilityPanel />
+            <AvailabilityPanel clinicianId={clinicianId} />
           </div>
         )}
       </div>
