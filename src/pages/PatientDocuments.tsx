@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,22 +23,30 @@ const PatientDocuments: React.FC = () => {
   const { toast } = useToast();
   const { id: patientId } = useParams<{ id: string }>();
 
-  const handleCreateTreatmentPlan = () => {
+  // Prevent event propagation and only handle our specific function
+  const handleCreateTreatmentPlan = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("Create Treatment Plan button clicked");
     setShowTreatmentPlan(true);
   };
 
   const handleCloseTreatmentPlan = () => {
+    console.log("Closing treatment plan");
     setShowTreatmentPlan(false);
   };
 
   const handleSaveTreatmentPlan = async () => {
     try {
+      console.log("Saving treatment plan");
+      // Future implementation: Save the treatment plan
       toast({
         title: "Success",
         description: "Treatment plan created successfully",
       });
       setShowTreatmentPlan(false);
     } catch (error) {
+      console.error("Error saving treatment plan:", error);
       toast({
         title: "Error",
         description: "Failed to save treatment plan",
@@ -78,7 +87,11 @@ const PatientDocuments: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="flex space-x-4 mb-6">
-                    <Button className="flex items-center gap-2" onClick={handleCreateTreatmentPlan}>
+                    <Button 
+                      className="flex items-center gap-2" 
+                      onClick={handleCreateTreatmentPlan}
+                      type="button"
+                    >
                       <FileText size={18} />
                       Create Treatment Plan
                     </Button>
@@ -135,7 +148,11 @@ const PatientDocuments: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="flex space-x-4 mb-6">
-                    <Button className="flex items-center gap-2" onClick={handleCreateTreatmentPlan}>
+                    <Button 
+                      className="flex items-center gap-2" 
+                      onClick={handleCreateTreatmentPlan}
+                      type="button"
+                    >
                       <FileText size={18} />
                       Treatment Plan Template
                     </Button>
