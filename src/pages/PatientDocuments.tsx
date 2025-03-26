@@ -7,25 +7,35 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const PatientDocuments: React.FC = () => {
-  // Non-functional buttons - intentionally does nothing
+  // Completely isolated button handler with multiple safeguards
   const handleCreateTreatmentPlan = (e: React.MouseEvent) => {
+    // Stop the event from bubbling up
     e.preventDefault();
     e.stopPropagation();
-    console.log("Treatment Plan button clicked - no action taken");
+    
+    // Log but take no action
+    console.log("[PatientDocuments] Treatment Plan button clicked - no action taken");
+    
+    // Return false to prevent default browser behavior
     return false;
   };
 
-  // Non-functional buttons - intentionally does nothing
+  // Completely isolated button handler with multiple safeguards
   const handleDocumentSession = (e: React.MouseEvent) => {
+    // Stop the event from bubbling up
     e.preventDefault();
     e.stopPropagation();
-    console.log("Document Session button clicked - no action taken");
+    
+    // Log but take no action
+    console.log("[PatientDocuments] Document Session button clicked - no action taken");
+    
+    // Return false to prevent default browser behavior
     return false;
   };
 
   return (
     <Layout>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Patient Documents</h1>
           <div className="flex items-center gap-2">
@@ -42,27 +52,25 @@ const PatientDocuments: React.FC = () => {
           
           <TabsContent value="documents">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <Button 
-                className="p-6 h-auto flex flex-col items-center justify-center gap-3 bg-white hover:bg-gray-50 text-valorwell-700 border border-gray-200"
-                variant="outline"
-                type="button"
+              {/* Using div instead of button to completely isolate from any form context */}
+              <div 
+                className="p-6 flex flex-col items-center justify-center gap-3 bg-white hover:bg-gray-50 text-valorwell-700 border border-gray-200 rounded-md cursor-pointer"
                 onClick={handleCreateTreatmentPlan}
               >
                 <FilePlus className="h-10 w-10 text-valorwell-600" />
                 <span className="text-lg font-medium">Create Treatment Plan</span>
                 <span className="text-sm text-gray-500">Generate a new treatment plan document</span>
-              </Button>
+              </div>
               
-              <Button 
-                className="p-6 h-auto flex flex-col items-center justify-center gap-3 bg-white hover:bg-gray-50 text-valorwell-700 border border-gray-200"
-                variant="outline"
-                type="button"
+              {/* Using div instead of button to completely isolate from any form context */}
+              <div 
+                className="p-6 flex flex-col items-center justify-center gap-3 bg-white hover:bg-gray-50 text-valorwell-700 border border-gray-200 rounded-md cursor-pointer"
                 onClick={handleDocumentSession}
               >
                 <FileEdit className="h-10 w-10 text-valorwell-600" />
                 <span className="text-lg font-medium">Document Session</span>
                 <span className="text-sm text-gray-500">Record notes from a client session</span>
-              </Button>
+              </div>
             </div>
             
             <Card>
