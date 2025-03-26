@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { supabase, getCurrentUser, getClientByUserId, updateClientProfile } from '@/integrations/supabase/client';
+import { supabase, getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import InsuranceSection from '@/components/ui/InsuranceSection';
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
@@ -20,6 +20,7 @@ const PatientDashboard: React.FC = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [clientData, setClientData] = useState<any>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [clinicianName, setClinicianName] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -76,6 +77,22 @@ const PatientDashboard: React.FC = () => {
     }
   });
 
+  const fetchClinicianName = async (clinicianId: string) => {
+    if (!clinicianId) return;
+    
+    try {
+      const name = await getClinicianNameById(clinicianId);
+      if (name) {
+        console.log("Retrieved clinician name:", name);
+        setClinicianName(name);
+      } else {
+        console.log("No clinician name found for ID:", clinicianId);
+      }
+    } catch (error) {
+      console.error("Error fetching clinician name:", error);
+    }
+  };
+
   const fetchClientData = async () => {
     setLoading(true);
     
@@ -98,6 +115,10 @@ const PatientDashboard: React.FC = () => {
       
       if (client) {
         setClientData(client);
+        
+        if (client.client_assigned_therapist) {
+          fetchClinicianName(client.client_assigned_therapist);
+        }
         
         let age = '';
         if (client.client_date_of_birth) {
@@ -366,7 +387,7 @@ const PatientDashboard: React.FC = () => {
                     <>
                       <div className="bg-gray-50 p-3 rounded-md mb-4">
                         <h3 className="font-medium">Your Assigned Therapist</h3>
-                        <p className="text-lg mt-2">{clientData.client_assigned_therapist}</p>
+                        <p className="text-lg mt-2">{clinicianName || 'Loading therapist information...'}</p>
                       </div>
                       
                       <Tabs defaultValue="weekly">

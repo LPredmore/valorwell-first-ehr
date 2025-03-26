@@ -47,6 +47,24 @@ export const getClinicianIdByName = async (professionalName: string) => {
   return data.id;
 };
 
+// Helper function to get clinician name by ID
+export const getClinicianNameById = async (clinicianId: string) => {
+  if (!clinicianId) return null;
+  
+  const { data, error } = await supabase
+    .from('clinicians')
+    .select('clinician_professional_name')
+    .eq('id', clinicianId)
+    .maybeSingle();
+    
+  if (error || !data) {
+    console.error('Error fetching clinician name:', error);
+    return null;
+  }
+  
+  return data.clinician_professional_name;
+};
+
 // Helper to get availability settings for a clinician
 export const getClinicianAvailabilitySettings = async (clinicianId: any) => {
   if (!clinicianId) return null;
