@@ -127,11 +127,11 @@ const Header: React.FC<HeaderProps> = ({
           
           <DropdownMenu>
             <DropdownMenuTrigger className="focus:outline-none">
-              <Avatar className="w-10 h-10 bg-valorwell-700 text-white hover:bg-valorwell-800 transition-colors cursor-pointer">
+              <Avatar className="w-10 h-10 bg-valorwell-500 text-white hover:bg-valorwell-600 transition-colors cursor-pointer">
                 {userAvatar ? (
                   <AvatarImage src={userAvatar} alt={displayName} />
                 ) : (
-                  <AvatarFallback>{initials || 'U'}</AvatarFallback>
+                  <AvatarFallback className="bg-valorwell-500 text-white">{initials || 'U'}</AvatarFallback>
                 )}
               </Avatar>
             </DropdownMenuTrigger>
