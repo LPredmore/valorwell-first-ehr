@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -64,6 +65,7 @@ const ClientDetails: React.FC = () => {
           
           <TabsContent value="documentation">
             <div className="grid grid-cols-1 gap-6">
+              {/* Charting Card */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -85,7 +87,21 @@ const ClientDetails: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
+              
+              {/* Conditionally render the templates right after the Charting card */}
+              {showTreatmentPlanTemplate && (
+                <div className="animate-fade-in">
+                  <TreatmentPlanTemplate onClose={handleCloseTreatmentPlan} />
+                </div>
+              )}
+              
+              {showSessionNoteTemplate && (
+                <div className="animate-fade-in">
+                  <SessionNoteTemplate onClose={handleCloseSessionNote} />
+                </div>
+              )}
 
+              {/* Assessments Card */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -99,6 +115,7 @@ const ClientDetails: React.FC = () => {
                 </CardContent>
               </Card>
 
+              {/* Completed Notes Card */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -116,14 +133,6 @@ const ClientDetails: React.FC = () => {
           
           {/* Other tab contents would go here */}
         </Tabs>
-        
-        {showTreatmentPlanTemplate && (
-          <TreatmentPlanTemplate onClose={handleCloseTreatmentPlan} />
-        )}
-        
-        {showSessionNoteTemplate && (
-          <SessionNoteTemplate onClose={handleCloseSessionNote} />
-        )}
       </div>
     </Layout>
   );
