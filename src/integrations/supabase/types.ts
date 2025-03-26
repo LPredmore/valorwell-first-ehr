@@ -36,6 +36,7 @@ export type Database = {
           client_policy_number_tertiary: string | null
           client_preferred_name: string | null
           client_referral_source: string | null
+          client_self_goal: string | null
           client_state: string | null
           client_status: string | null
           client_subscriber_dob_primary: string | null
@@ -48,7 +49,6 @@ export type Database = {
           client_subscriber_relationship_secondary: string | null
           client_subscriber_relationship_tertiary: string | null
           client_time_zone: string | null
-          client_treatment_goal: string | null
           created_at: string
           id: string
           updated_at: string
@@ -79,6 +79,7 @@ export type Database = {
           client_policy_number_tertiary?: string | null
           client_preferred_name?: string | null
           client_referral_source?: string | null
+          client_self_goal?: string | null
           client_state?: string | null
           client_status?: string | null
           client_subscriber_dob_primary?: string | null
@@ -91,7 +92,6 @@ export type Database = {
           client_subscriber_relationship_secondary?: string | null
           client_subscriber_relationship_tertiary?: string | null
           client_time_zone?: string | null
-          client_treatment_goal?: string | null
           created_at?: string
           id: string
           updated_at?: string
@@ -122,6 +122,7 @@ export type Database = {
           client_policy_number_tertiary?: string | null
           client_preferred_name?: string | null
           client_referral_source?: string | null
+          client_self_goal?: string | null
           client_state?: string | null
           client_status?: string | null
           client_subscriber_dob_primary?: string | null
@@ -134,7 +135,6 @@ export type Database = {
           client_subscriber_relationship_secondary?: string | null
           client_subscriber_relationship_tertiary?: string | null
           client_time_zone?: string | null
-          client_treatment_goal?: string | null
           created_at?: string
           id?: string
           updated_at?: string
