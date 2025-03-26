@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/form";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarIcon, Pencil, Save, X, Plus, Trash, FileText, ClipboardList } from "lucide-react";
+import { CalendarIcon, Pencil, Save, X, Plus, Trash } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -45,7 +45,7 @@ interface ClientDetails {
   client_email: string | null;
   client_phone: string | null;
   client_date_of_birth: string | null;
-  client_age: number | null;
+  client_age: number | null;  // This can be a number in the state
   client_gender: string | null;
   client_gender_identity: string | null;
   client_state: string | null;
@@ -56,6 +56,7 @@ interface ClientDetails {
   client_referral_source: string | null;
   client_self_goal: string | null;
   client_diagnosis: string[] | null;
+  // Insurance fields
   client_insurance_company_primary: string | null;
   client_policy_number_primary: string | null;
   client_group_number_primary: string | null;
@@ -168,6 +169,7 @@ const ClientDetails = () => {
     client_referral_source: z.string().optional().nullable(),
     client_self_goal: z.string().optional().nullable(),
     client_diagnosis: z.array(z.string()).optional().nullable(),
+    // Insurance fields
     client_insurance_company_primary: z.string().optional().nullable(),
     client_policy_number_primary: z.string().optional().nullable(),
     client_group_number_primary: z.string().optional().nullable(),
@@ -211,6 +213,7 @@ const ClientDetails = () => {
       client_referral_source: clientData?.client_referral_source || "",
       client_self_goal: clientData?.client_self_goal || "",
       client_diagnosis: clientData?.client_diagnosis || [],
+      // Insurance fields
       client_insurance_company_primary: clientData?.client_insurance_company_primary || "",
       client_policy_number_primary: clientData?.client_policy_number_primary || "",
       client_group_number_primary: clientData?.client_group_number_primary || "",
@@ -255,6 +258,7 @@ const ClientDetails = () => {
         client_referral_source: clientData.client_referral_source || "",
         client_self_goal: clientData.client_self_goal || "",
         client_diagnosis: clientData.client_diagnosis || [],
+        // Insurance fields
         client_insurance_company_primary: clientData.client_insurance_company_primary || "",
         client_policy_number_primary: clientData.client_policy_number_primary || "",
         client_group_number_primary: clientData.client_group_number_primary || "",
@@ -409,12 +413,11 @@ const ClientDetails = () => {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSaveChanges)}>
           <Tabs defaultValue="personal" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-5 mb-4">
+            <TabsList className="grid grid-cols-4 mb-4">
               <TabsTrigger value="personal">Personal Info</TabsTrigger>
               <TabsTrigger value="insurance">Insurance</TabsTrigger>
               <TabsTrigger value="treatment">Treatment</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
-              <TabsTrigger value="documentation">Documentation</TabsTrigger>
             </TabsList>
 
             <TabsContent value="personal">
@@ -1291,49 +1294,6 @@ const ClientDetails = () => {
                 </CardContent>
               </Card>
             </TabsContent>
-
-            <TabsContent value="documentation">
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle>Charting</CardTitle>
-                  <CardDescription>Create and manage client documentation</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex space-x-4">
-                    <Button className="flex items-center gap-2">
-                      <FileText size={18} />
-                      Create Treatment Plan
-                    </Button>
-                    <Button className="flex items-center gap-2">
-                      <ClipboardList size={18} />
-                      Document Session
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Assessment Forms</CardTitle>
-                  <CardDescription>Select and complete assessment forms</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="flex flex-col space-y-2">
-                      <Label htmlFor="assessment-form">Select Assessment Form</Label>
-                      <Select>
-                        <SelectTrigger id="assessment-form" className="w-full">
-                          <SelectValue placeholder="Select an assessment form" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {/* Assessment forms will be populated here */}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
           </Tabs>
         </form>
       </Form>
@@ -1342,3 +1302,4 @@ const ClientDetails = () => {
 };
 
 export default ClientDetails;
+
