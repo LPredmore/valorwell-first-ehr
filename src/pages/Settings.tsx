@@ -7,6 +7,7 @@ import { AddUserDialog } from '@/components/AddUserDialog';
 import { supabase, fetchCPTCodes, addCPTCode, updateCPTCode, deleteCPTCode, CPTCode } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import TreatmentPlanTemplate from '@/components/templates/TreatmentPlanTemplate';
+import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 import {
   Table,
   TableBody,
@@ -70,6 +71,7 @@ const Settings = () => {
   const [currentClinicianPage, setCurrentClinicianPage] = useState(1);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [showTreatmentPlanTemplate, setShowTreatmentPlanTemplate] = useState(false);
+  const [showSessionNoteTemplate, setShowSessionNoteTemplate] = useState(false);
   
   const [cptCodes, setCptCodes] = useState<CPTCode[]>([]);
   const [isCptLoading, setIsCptLoading] = useState(true);
@@ -802,6 +804,8 @@ const Settings = () => {
           <div className="p-6 animate-fade-in">
             {showTreatmentPlanTemplate ? (
               <TreatmentPlanTemplate onClose={() => setShowTreatmentPlanTemplate(false)} />
+            ) : showSessionNoteTemplate ? (
+              <SessionNoteTemplate onClose={() => setShowSessionNoteTemplate(false)} />
             ) : (
               <>
                 <div className="mb-8">
@@ -837,7 +841,7 @@ const Settings = () => {
                             </Button>
                           </TableCell>
                         </TableRow>
-                        <TableRow className="hover:bg-gray-50">
+                        <TableRow className="cursor-pointer hover:bg-gray-50" onClick={() => setShowSessionNoteTemplate(true)}>
                           <TableCell className="font-medium">Session Note</TableCell>
                           <TableCell>Chart Template</TableCell>
                           <TableCell>{new Date().toLocaleDateString()}</TableCell>
