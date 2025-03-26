@@ -176,7 +176,7 @@ const PatientDocuments: React.FC = () => {
               </Button>
             </div>
             <div className="p-6">
-              <TreatmentPlanTemplate />
+              <TreatmentPlanTemplate onClose={() => setShowTreatmentPlanTemplate(false)} />
             </div>
           </div>
         </div>
@@ -196,7 +196,7 @@ const PatientDocuments: React.FC = () => {
               </Button>
             </div>
             <div className="p-6">
-              <SessionNoteTemplate />
+              <SessionNoteTemplate onClose={() => setShowSessionNoteTemplate(false)} />
             </div>
           </div>
         </div>

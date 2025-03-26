@@ -1300,7 +1300,7 @@ const ClientDetails = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Documentation Templates</CardTitle>
-                  <CardDescription>Use templates to create documentation for this client</CardDescription>
+                  <CardDescription>View and use documentation templates</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-6 md:grid-cols-2 mb-6">
@@ -1369,7 +1369,7 @@ const ClientDetails = () => {
               </Button>
             </div>
             <div className="p-6">
-              <TreatmentPlanTemplate />
+              <TreatmentPlanTemplate onClose={() => setShowTreatmentPlanTemplate(false)} />
             </div>
           </div>
         </div>
@@ -1389,7 +1389,7 @@ const ClientDetails = () => {
               </Button>
             </div>
             <div className="p-6">
-              <SessionNoteTemplate />
+              <SessionNoteTemplate onClose={() => setShowSessionNoteTemplate(false)} />
             </div>
           </div>
         </div>

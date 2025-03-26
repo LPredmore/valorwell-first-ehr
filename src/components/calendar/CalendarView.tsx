@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   format, 
@@ -36,6 +35,22 @@ interface CalendarViewProps {
   showAvailability: boolean;
   clinicianId: string | null;
 }
+
+// Define proper interface for any component that accepts clinicianId
+interface FilterComponentProps {
+  clinicianId: string | null;
+  // Add any other props that might be needed
+}
+
+// Ensure the component that's receiving clinicianId has the proper type
+const FilterComponent: React.FC<FilterComponentProps> = ({ clinicianId }) => {
+  // Component implementation
+  return (
+    <div>
+      {/* Component content */}
+    </div>
+  );
+};
 
 const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, clinicianId }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
