@@ -108,4 +108,37 @@
       opacity: 1;
     }
   }
+  
+  /* Calendar specific styles */
+  .calendar-day {
+    @apply h-full w-full p-1 relative hover:bg-gray-50 transition-colors;
+  }
+  
+  .calendar-day-current-month {
+    @apply bg-white;
+  }
+  
+  .calendar-day-other-month {
+    @apply bg-gray-50 text-gray-400;
+  }
+  
+  .calendar-appointment {
+    @apply p-1 my-1 text-xs rounded border-l-4 truncate cursor-pointer hover:shadow-sm transition-shadow;
+  }
+  
+  .calendar-appointment-consultation {
+    @apply bg-blue-50 border-blue-500;
+  }
+  
+  .calendar-appointment-session {
+    @apply bg-green-50 border-green-500;
+  }
+  
+  .calendar-appointment-group {
+    @apply bg-purple-50 border-purple-500;
+  }
+  
+  .calendar-appointment-assessment {
+    @apply bg-amber-50 border-amber-500;
+  }
 }
