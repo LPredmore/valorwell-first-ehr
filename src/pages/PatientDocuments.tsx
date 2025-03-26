@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Plus, Upload, Download, Folder } from 'lucide-react';
@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import TreatmentPlanTemplate from '@/components/templates/TreatmentPlanTemplate';
 import { useToast } from '@/hooks/use-toast';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 
 interface Document {
   id: string;
@@ -22,12 +22,27 @@ const PatientDocuments: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const { toast } = useToast();
   const { id: patientId } = useParams<{ id: string }>();
+  const location = useLocation();
 
-  // Prevent event propagation and only handle our specific function
-  const handleCreateTreatmentPlan = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log("Create Treatment Plan button clicked");
+  // Log important information for debugging
+  useEffect(() => {
+    console.log("PatientDocuments mounted");
+    console.log("Patient ID:", patientId);
+    console.log("Current location:", location.pathname);
+    
+    // Return a cleanup function
+    return () => {
+      console.log("PatientDocuments unmounted");
+    };
+  }, [patientId, location]);
+
+  // Completely isolated handler with explicit event prevention
+  const handleCreateTreatmentPlan = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Stop event propagation and prevent default
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (e && e.preventDefault) e.preventDefault();
+    
+    console.log("Create Treatment Plan button clicked at", new Date().toISOString());
     setShowTreatmentPlan(true);
   };
 
