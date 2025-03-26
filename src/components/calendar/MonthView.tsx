@@ -21,7 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface MonthViewProps {
   currentDate: Date;
-  clinicianId?: string | null;
+  clinicianId: string | null;
 }
 
 interface AvailabilityBlock {

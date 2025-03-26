@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface DayViewProps {
   currentDate: Date;
-  clinicianId?: string | null;
+  clinicianId: string | null;
 }
 
 interface AvailabilityBlock {

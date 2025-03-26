@@ -18,7 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface WeekViewProps {
   currentDate: Date;
-  clinicianId?: string | null;
+  clinicianId: string | null;
 }
 
 interface AvailabilityBlock {

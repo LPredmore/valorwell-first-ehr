@@ -48,7 +48,7 @@ export const getClinicianIdByName = async (professionalName: string) => {
 };
 
 // Helper function to get clinician name by ID
-export const getClinicianNameById = async (clinicianId: string) => {
+export const getClinicianNameById = async (clinicianId: string | null) => {
   if (!clinicianId) return null;
   
   const { data, error } = await supabase
@@ -66,7 +66,7 @@ export const getClinicianNameById = async (clinicianId: string) => {
 };
 
 // Helper to get availability settings for a clinician
-export const getClinicianAvailabilitySettings = async (clinicianId: any) => {
+export const getClinicianAvailabilitySettings = async (clinicianId: string | null) => {
   if (!clinicianId) return null;
   
   const { data, error } = await supabase
