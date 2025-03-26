@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import TreatmentPlanTemplate from '../templates/TreatmentPlanTemplate';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from "@/hooks/use-toast";
 
 interface TreatmentPlanModalProps {
   isOpen: boolean;
@@ -56,9 +57,22 @@ const TreatmentPlanModal: React.FC<TreatmentPlanModalProps> = ({
       }
     } catch (error) {
       console.error('Error fetching data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load treatment plan data",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSaveSuccess = () => {
+    toast({
+      title: "Success",
+      description: "Treatment plan saved successfully",
+    });
+    onClose();
   };
 
   return (
@@ -70,7 +84,8 @@ const TreatmentPlanModal: React.FC<TreatmentPlanModalProps> = ({
           </div>
         ) : (
           <TreatmentPlanTemplate 
-            onClose={onClose} 
+            onClose={onClose}
+            onSaveSuccess={handleSaveSuccess}
             clientData={clientData}
             clinicianData={clinicianData}
           />
