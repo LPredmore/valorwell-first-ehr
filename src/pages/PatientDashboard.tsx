@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { supabase, getCurrentUser, getClientByUserId, updateClientProfile } from '@/integrations/supabase/client';
+import { supabase, getCurrentUser, getClientByUserId, updateClientProfile, getClientInsurance, parseDateString } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
 const PatientDashboard: React.FC = () => {
@@ -18,10 +18,11 @@ const PatientDashboard: React.FC = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [clientData, setClientData] = useState<any>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [insuranceData, setInsuranceData] = useState<any>(null);
+  const [loadingInsurance, setLoadingInsurance] = useState<boolean>(true);
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Options for dropdowns
   const genderOptions = ['Male', 'Female', 'Non-Binary', 'Other', 'Prefer not to say'];
   const genderIdentityOptions = ['Male', 'Female', 'Trans Man', 'Trans Woman', 'Non-Binary', 'Other', 'Prefer not to say'];
   const stateOptions = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 
@@ -34,8 +35,8 @@ const PatientDashboard: React.FC = () => {
   const timeZoneOptions = ['Eastern Standard Time (EST)', 'Central Standard Time (CST)', 
     'Mountain Standard Time (MST)', 'Pacific Standard Time (PST)', 'Alaska Standard Time (AKST)', 
     'Hawaii-Aleutian Standard Time (HST)', 'Atlantic Standard Time (AST)'];
+  const insuranceRelationshipOptions = ['Self', 'Spouse', 'Child', 'Other'];
 
-  // Form setup for profile
   const form = useForm({
     defaultValues: {
       firstName: '',
@@ -52,7 +53,6 @@ const PatientDashboard: React.FC = () => {
     }
   });
 
-  // Function to fetch client data
   const fetchClientData = async () => {
     setLoading(true);
     
@@ -74,7 +74,6 @@ const PatientDashboard: React.FC = () => {
       if (client) {
         setClientData(client);
         
-        // Calculate age from date of birth if available
         let age = '';
         if (client.client_date_of_birth) {
           const dob = new Date(client.client_date_of_birth);
@@ -82,7 +81,6 @@ const PatientDashboard: React.FC = () => {
           age = String(today.getFullYear() - dob.getFullYear());
         }
         
-        // Format date of birth for display if available
         let formattedDob = '';
         if (client.client_date_of_birth) {
           const dob = new Date(client.client_date_of_birth);
@@ -93,7 +91,6 @@ const PatientDashboard: React.FC = () => {
           });
         }
         
-        // Set form values from client data
         form.reset({
           firstName: client.client_first_name || '',
           lastName: client.client_last_name || '',
@@ -126,7 +123,45 @@ const PatientDashboard: React.FC = () => {
     }
   };
 
-  // Function to save profile changes
+  const fetchInsuranceData = async () => {
+    setLoadingInsurance(true);
+    
+    try {
+      const user = await getCurrentUser();
+      
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to view your insurance information",
+          variant: "destructive"
+        });
+        navigate('/login');
+        return;
+      }
+      
+      const insurance = await getClientInsurance(user.id);
+      
+      if (insurance) {
+        setInsuranceData(insurance);
+      } else {
+        toast({
+          title: "Insurance information not found",
+          description: "We couldn't find your insurance information",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching insurance data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load your insurance data",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingInsurance(false);
+    }
+  };
+
   const handleSaveProfile = async () => {
     if (!clientData) return;
     
@@ -135,7 +170,6 @@ const PatientDashboard: React.FC = () => {
     try {
       const formValues = form.getValues();
       
-      // Prepare data for update
       const updates = {
         client_preferred_name: formValues.preferredName,
         client_phone: formValues.phone,
@@ -153,7 +187,7 @@ const PatientDashboard: React.FC = () => {
           description: "Your profile has been updated successfully",
         });
         setIsEditing(false);
-        fetchClientData(); // Refresh data
+        fetchClientData();
       } else {
         throw new Error("Failed to update profile");
       }
@@ -168,25 +202,37 @@ const PatientDashboard: React.FC = () => {
       setIsSaving(false);
     }
   };
-  
-  // Cancel editing
+
   const handleCancelEdit = () => {
     setIsEditing(false);
-    fetchClientData(); // Reset form to original values
+    fetchClientData();
   };
 
-  // Fetch client data on component mount
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Not provided';
+    try {
+      const date = parseDateString(dateString);
+      if (!date) return 'Invalid date';
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    } catch (e) {
+      return 'Invalid date';
+    }
+  };
+
   useEffect(() => {
     fetchClientData();
+    fetchInsuranceData();
   }, []);
 
-  // Mock data for upcoming appointments
   const upcomingAppointments = [
     { id: 1, date: 'May 15, 2024', time: '10:00 AM', type: 'Therapy Session', therapist: 'Dr. Sarah Johnson' },
     { id: 2, date: 'May 22, 2024', time: '11:30 AM', type: 'Follow-up', therapist: 'Dr. Sarah Johnson' },
   ];
 
-  // Mock data for past appointments
   const pastAppointments = [
     { id: 1, date: 'April 30, 2024', time: '10:00 AM', type: 'Initial Consultation', therapist: 'Dr. Sarah Johnson' },
     { id: 2, date: 'April 15, 2024', time: '11:30 AM', type: 'Therapy Session', therapist: 'Dr. Sarah Johnson' },
@@ -229,10 +275,8 @@ const PatientDashboard: React.FC = () => {
             </TabsTrigger>
           </TabsList>
           
-          {/* Dashboard Tab Content */}
           <TabsContent value="dashboard" className="mt-0">
             <div className="grid grid-cols-1 gap-6">
-              {/* Upcoming Appointments Section */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <div>
@@ -285,7 +329,6 @@ const PatientDashboard: React.FC = () => {
                 </CardFooter>
               </Card>
 
-              {/* Therapist Schedule Section */}
               <Card>
                 <CardHeader>
                   <CardTitle>Therapist Availability</CardTitle>
@@ -345,7 +388,6 @@ const PatientDashboard: React.FC = () => {
             </div>
           </TabsContent>
           
-          {/* Profile Tab Content - Updated to include editing */}
           <TabsContent value="profile" className="mt-0">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -404,7 +446,6 @@ const PatientDashboard: React.FC = () => {
                   ) : (
                     <Form {...form}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* First Name - Always read-only */}
                         <FormField
                           control={form.control}
                           name="firstName"
@@ -418,7 +459,6 @@ const PatientDashboard: React.FC = () => {
                           )}
                         />
                         
-                        {/* Last Name - Always read-only */}
                         <FormField
                           control={form.control}
                           name="lastName"
@@ -432,7 +472,6 @@ const PatientDashboard: React.FC = () => {
                           )}
                         />
                         
-                        {/* Preferred Name - Editable */}
                         <FormField
                           control={form.control}
                           name="preferredName"
@@ -450,7 +489,6 @@ const PatientDashboard: React.FC = () => {
                           )}
                         />
                         
-                        {/* Email - Always read-only */}
                         <FormField
                           control={form.control}
                           name="email"
@@ -464,7 +502,6 @@ const PatientDashboard: React.FC = () => {
                           )}
                         />
                         
-                        {/* Phone - Editable */}
                         <FormField
                           control={form.control}
                           name="phone"
@@ -482,7 +519,6 @@ const PatientDashboard: React.FC = () => {
                           )}
                         />
                         
-                        {/* Date of Birth - Always read-only */}
                         <FormField
                           control={form.control}
                           name="dateOfBirth"
@@ -496,7 +532,6 @@ const PatientDashboard: React.FC = () => {
                           )}
                         />
                         
-                        {/* Age - Always read-only */}
                         <FormField
                           control={form.control}
                           name="age"
@@ -510,7 +545,6 @@ const PatientDashboard: React.FC = () => {
                           )}
                         />
                         
-                        {/* Gender - Editable dropdown */}
                         <FormField
                           control={form.control}
                           name="gender"
@@ -537,7 +571,6 @@ const PatientDashboard: React.FC = () => {
                           )}
                         />
                         
-                        {/* Gender Identity - Editable dropdown */}
                         <FormField
                           control={form.control}
                           name="genderIdentity"
@@ -564,7 +597,6 @@ const PatientDashboard: React.FC = () => {
                           )}
                         />
                         
-                        {/* State - Editable dropdown */}
                         <FormField
                           control={form.control}
                           name="state"
@@ -591,7 +623,6 @@ const PatientDashboard: React.FC = () => {
                           )}
                         />
                         
-                        {/* Time Zone - Editable dropdown */}
                         <FormField
                           control={form.control}
                           name="timeZone"
@@ -625,7 +656,6 @@ const PatientDashboard: React.FC = () => {
             </Card>
           </TabsContent>
           
-          {/* Past Appointments Tab Content */}
           <TabsContent value="pastAppointments" className="mt-0">
             <Card>
               <CardHeader>
@@ -669,22 +699,148 @@ const PatientDashboard: React.FC = () => {
             </Card>
           </TabsContent>
           
-          {/* Insurance Tab Content */}
           <TabsContent value="insurance" className="mt-0">
             <Card>
               <CardHeader>
                 <CardTitle>Insurance Information</CardTitle>
-                <CardDescription>View and manage your insurance details</CardDescription>
+                <CardDescription>View your insurance details</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <p className="text-center text-gray-500">Your insurance information will be displayed here</p>
-                </div>
+              <CardContent>
+                {loadingInsurance ? (
+                  <div className="flex justify-center py-8">
+                    <p>Loading your insurance information...</p>
+                  </div>
+                ) : !insuranceData ? (
+                  <div className="text-center py-6">
+                    <Shield className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <h3 className="text-lg font-medium">No insurance information found</h3>
+                    <p className="text-sm text-gray-500 mt-1">Please contact your provider to update your insurance details</p>
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {insuranceData.client_insurance_company_primary && (
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4 pb-2 border-b">Primary Insurance</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Insurance Company</p>
+                            <p className="text-base">{insuranceData.client_insurance_company_primary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Insurance Type</p>
+                            <p className="text-base">{insuranceData.client_insurance_type_primary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Policy Number</p>
+                            <p className="text-base">{insuranceData.client_policy_number_primary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Group Number</p>
+                            <p className="text-base">{insuranceData.client_group_number_primary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Subscriber Name</p>
+                            <p className="text-base">{insuranceData.client_subscriber_name_primary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Relationship to Subscriber</p>
+                            <p className="text-base">{insuranceData.client_subscriber_relationship_primary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Subscriber Date of Birth</p>
+                            <p className="text-base">{formatDate(insuranceData.client_subscriber_dob_primary)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {insuranceData.client_insurance_company_secondary && (
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4 pb-2 border-b">Secondary Insurance</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Insurance Company</p>
+                            <p className="text-base">{insuranceData.client_insurance_company_secondary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Insurance Type</p>
+                            <p className="text-base">{insuranceData.client_insurance_type_secondary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Policy Number</p>
+                            <p className="text-base">{insuranceData.client_policy_number_secondary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Group Number</p>
+                            <p className="text-base">{insuranceData.client_group_number_secondary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Subscriber Name</p>
+                            <p className="text-base">{insuranceData.client_subscriber_name_secondary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Relationship to Subscriber</p>
+                            <p className="text-base">{insuranceData.client_subscriber_relationship_secondary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Subscriber Date of Birth</p>
+                            <p className="text-base">{formatDate(insuranceData.client_subscriber_dob_secondary)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {insuranceData.client_insurance_company_tertiary && (
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4 pb-2 border-b">Tertiary Insurance</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Insurance Company</p>
+                            <p className="text-base">{insuranceData.client_insurance_company_tertiary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Insurance Type</p>
+                            <p className="text-base">{insuranceData.client_insurance_type_tertiary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Policy Number</p>
+                            <p className="text-base">{insuranceData.client_policy_number_tertiary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Group Number</p>
+                            <p className="text-base">{insuranceData.client_group_number_tertiary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Subscriber Name</p>
+                            <p className="text-base">{insuranceData.client_subscriber_name_tertiary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Relationship to Subscriber</p>
+                            <p className="text-base">{insuranceData.client_subscriber_relationship_tertiary || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Subscriber Date of Birth</p>
+                            <p className="text-base">{formatDate(insuranceData.client_subscriber_dob_tertiary)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!insuranceData.client_insurance_company_primary && 
+                     !insuranceData.client_insurance_company_secondary && 
+                     !insuranceData.client_insurance_company_tertiary && (
+                      <div className="text-center py-6">
+                        <Shield className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                        <h3 className="text-lg font-medium">No insurance information found</h3>
+                        <p className="text-sm text-gray-500 mt-1">Please contact your provider to update your insurance details</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
           
-          {/* Documents Tab Content */}
           <TabsContent value="documents" className="mt-0">
             <Card>
               <CardHeader>

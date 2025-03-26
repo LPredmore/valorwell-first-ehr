@@ -269,3 +269,43 @@ export const updatePracticeInfo = async (updates: Partial<PracticeInfo>): Promis
   
   return { success: true };
 };
+
+// Helper function to get a client's insurance information
+export const getClientInsurance = async (clientId: string) => {
+  if (!clientId) return null;
+  
+  const { data, error } = await supabase
+    .from('clients')
+    .select(`
+      client_insurance_company_primary,
+      client_insurance_type_primary,
+      client_policy_number_primary,
+      client_group_number_primary,
+      client_subscriber_name_primary,
+      client_subscriber_relationship_primary,
+      client_subscriber_dob_primary,
+      client_insurance_company_secondary,
+      client_insurance_type_secondary,
+      client_policy_number_secondary,
+      client_group_number_secondary,
+      client_subscriber_name_secondary,
+      client_subscriber_relationship_secondary,
+      client_subscriber_dob_secondary,
+      client_insurance_company_tertiary,
+      client_insurance_type_tertiary,
+      client_policy_number_tertiary,
+      client_group_number_tertiary,
+      client_subscriber_name_tertiary,
+      client_subscriber_relationship_tertiary,
+      client_subscriber_dob_tertiary
+    `)
+    .eq('id', clientId)
+    .single();
+    
+  if (error) {
+    console.error('Error fetching client insurance:', error);
+    return null;
+  }
+  
+  return data;
+};
