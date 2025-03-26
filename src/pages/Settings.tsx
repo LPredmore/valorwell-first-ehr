@@ -924,3 +924,155 @@ const Settings = () => {
                               className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
                             >
                               Edit
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteCptCode(cptCode.code)}
+                              className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+        
+        {activeTab === SettingsTabs.TEMPLATES && (
+          <div className="p-6 animate-fade-in">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">Document Templates</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="border rounded-md p-4 bg-white hover:shadow-md transition-shadow">
+                <h3 className="text-lg font-medium mb-2">Treatment Plan</h3>
+                <p className="text-gray-600 mb-4">Standard template for creating treatment plans.</p>
+                <div className="flex justify-between items-center">
+                  <button 
+                    className="text-valorwell-700 hover:text-valorwell-800"
+                    onClick={() => setShowTreatmentPlanTemplate(true)}
+                  >
+                    View Template
+                  </button>
+                </div>
+              </div>
+              
+              <div className="border rounded-md p-4 bg-white hover:shadow-md transition-shadow">
+                <h3 className="text-lg font-medium mb-2">Session Note</h3>
+                <p className="text-gray-600 mb-4">Standard template for documenting session notes.</p>
+                <div className="flex justify-between items-center">
+                  <button 
+                    className="text-valorwell-700 hover:text-valorwell-800"
+                    onClick={() => setShowSessionNoteTemplate(true)}
+                  >
+                    View Template
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            {showTreatmentPlanTemplate && (
+              <TreatmentPlanTemplate onClose={() => setShowTreatmentPlanTemplate(false)} />
+            )}
+            
+            {showSessionNoteTemplate && (
+              <SessionNoteTemplate onClose={() => setShowSessionNoteTemplate(false)} />
+            )}
+          </div>
+        )}
+        
+        {activeTab === SettingsTabs.SECURITY && (
+          <div className="p-6 animate-fade-in">
+            <h2 className="text-xl font-semibold mb-6">Security Settings</h2>
+            <p className="text-gray-500">Security settings will be available in a future update.</p>
+          </div>
+        )}
+        
+        {activeTab === SettingsTabs.LICENSES && (
+          <div className="p-6 animate-fade-in">
+            <h2 className="text-xl font-semibold mb-6">License Management</h2>
+            <p className="text-gray-500">License management will be available in a future update.</p>
+          </div>
+        )}
+      </div>
+      
+      <Dialog open={isCptDialogOpen} onOpenChange={setIsCptDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{isEditMode ? 'Edit CPT Code' : 'Add New CPT Code'}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="cpt-code">CPT Code</Label>
+              <Input
+                id="cpt-code"
+                value={newCptCode.code}
+                onChange={(e) => setNewCptCode({ ...newCptCode, code: e.target.value })}
+                placeholder="e.g. 90791"
+                readOnly={isEditMode}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cpt-name">Name</Label>
+              <Input
+                id="cpt-name"
+                value={newCptCode.name}
+                onChange={(e) => setNewCptCode({ ...newCptCode, name: e.target.value })}
+                placeholder="e.g. Psychiatric diagnostic evaluation"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cpt-fee">Fee ($)</Label>
+              <Input
+                id="cpt-fee"
+                type="number"
+                min="0"
+                step="0.01"
+                value={newCptCode.fee}
+                onChange={(e) => setNewCptCode({ ...newCptCode, fee: parseFloat(e.target.value) || 0 })}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cpt-type">Clinical Type</Label>
+              <Select 
+                value={newCptCode.clinical_type} 
+                onValueChange={(value) => setNewCptCode({ ...newCptCode, clinical_type: value })}
+              >
+                <SelectTrigger id="cpt-type">
+                  <SelectValue placeholder="Select clinical type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="evaluation">Evaluation</SelectItem>
+                  <SelectItem value="therapy">Therapy</SelectItem>
+                  <SelectItem value="assessment">Assessment</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cpt-description">Description</Label>
+              <Textarea
+                id="cpt-description"
+                value={newCptCode.description}
+                onChange={(e) => setNewCptCode({ ...newCptCode, description: e.target.value })}
+                placeholder="Enter a description of the CPT code"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCptDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveCptCode}>{isEditMode ? 'Update' : 'Add'} CPT Code</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Layout>
+  );
+};
+
+export default Settings;
