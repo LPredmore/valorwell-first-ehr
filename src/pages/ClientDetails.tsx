@@ -36,6 +36,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import Layout from '../components/layout/Layout';
+import TreatmentPlanTemplate from '../components/treatment-plan-template/TreatmentPlanTemplate';
 
 interface ClientDetails {
   id: string;
@@ -96,6 +97,7 @@ const ClientDetails = () => {
   const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("personal");
+  const [showTreatmentPlan, setShowTreatmentPlan] = useState(false);
 
   useEffect(() => {
     const fetchClient = async () => {
@@ -344,6 +346,23 @@ const ClientDetails = () => {
     );
   };
 
+  const handleCreateTreatmentPlan = () => {
+    setShowTreatmentPlan(true);
+    setActiveTab("documentation");
+  };
+
+  const handleCloseTreatmentPlan = () => {
+    setShowTreatmentPlan(false);
+  };
+
+  const handleSaveTreatmentPlan = () => {
+    toast({
+      title: "Success",
+      description: "Treatment plan created successfully"
+    });
+    setShowTreatmentPlan(false);
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -406,937 +425,944 @@ const ClientDetails = () => {
         </div>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSaveChanges)}>
-          <Tabs defaultValue="personal" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-5 mb-4">
-              <TabsTrigger value="personal">Personal Info</TabsTrigger>
-              <TabsTrigger value="insurance">Insurance</TabsTrigger>
-              <TabsTrigger value="treatment">Treatment</TabsTrigger>
-              <TabsTrigger value="notes">Notes</TabsTrigger>
-              <TabsTrigger value="documentation">Documentation</TabsTrigger>
-            </TabsList>
+      {showTreatmentPlan ? (
+        <TreatmentPlanTemplate
+          onClose={handleCloseTreatmentPlan}
+          onSave={handleSaveTreatmentPlan}
+        />
+      ) : (
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSaveChanges)}>
+            <Tabs defaultValue="personal" value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid grid-cols-5 mb-4">
+                <TabsTrigger value="personal">Personal Info</TabsTrigger>
+                <TabsTrigger value="insurance">Insurance</TabsTrigger>
+                <TabsTrigger value="treatment">Treatment</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
+                <TabsTrigger value="documentation">Documentation</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="personal">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Personal Information</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="client_first_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>First Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_last_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Last Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_preferred_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Preferred Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_date_of_birth"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Date of Birth</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant={"outline"}
-                                  className={cn(
-                                    "w-full pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                  disabled={!isEditing}
-                                >
-                                  {field.value ? (
-                                    format(field.value, "PPP")
-                                  ) : (
-                                    <span>Pick a date</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value || undefined}
-                                onSelect={field.onChange}
-                                disabled={date =>
-                                  date > new Date() || date < new Date("1900-01-01")
-                                }
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_age"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Age</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_gender"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Gender</FormLabel>
-                          <Select
-                            disabled={!isEditing}
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select gender" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Male">Male</SelectItem>
-                              <SelectItem value="Female">Female</SelectItem>
-                              <SelectItem value="Non-binary">Non-binary</SelectItem>
-                              <SelectItem value="Other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_gender_identity"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Gender Identity</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_state"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>State</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_time_zone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Time Zone</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_minor"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Minor</FormLabel>
-                          <Select
-                            disabled={!isEditing}
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Yes">Yes</SelectItem>
-                              <SelectItem value="No">No</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="insurance">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Primary Insurance</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="client_insurance_company_primary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Insurance Company</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_insurance_type_primary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Insurance Type</FormLabel>
-                          <Select
-                            disabled={!isEditing}
-                            onValueChange={field.onChange}
-                            defaultValue={field.value || ""}
-                            value={field.value || ""}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {insuranceTypeOptions.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {type}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_policy_number_primary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Policy Number</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_group_number_primary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Group Number</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_subscriber_name_primary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Subscriber Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_subscriber_relationship_primary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Subscriber Relationship</FormLabel>
-                          <Select
-                            disabled={!isEditing}
-                            onValueChange={field.onChange}
-                            defaultValue={field.value || ""}
-                            value={field.value || ""}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select relationship" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {relationshipOptions.map((relation) => (
-                                <SelectItem key={relation} value={relation}>
-                                  {relation}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_subscriber_dob_primary"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Subscriber Date of Birth</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant={"outline"}
-                                  className={cn(
-                                    "w-full pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                  disabled={!isEditing}
-                                >
-                                  {field.value ? (
-                                    format(field.value, "PPP")
-                                  ) : (
-                                    <span>Pick a date</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value || undefined}
-                                onSelect={field.onChange}
-                                disabled={date =>
-                                  date > new Date() || date < new Date("1900-01-01")
-                                }
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="mt-4">
-                <CardHeader>
-                  <CardTitle>Secondary Insurance</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="client_insurance_company_secondary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Insurance Company</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_insurance_type_secondary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Insurance Type</FormLabel>
-                          <Select
-                            disabled={!isEditing}
-                            onValueChange={field.onChange}
-                            defaultValue={field.value || ""}
-                            value={field.value || ""}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {insuranceTypeOptions.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {type}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_policy_number_secondary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Policy Number</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_group_number_secondary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Group Number</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_subscriber_name_secondary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Subscriber Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_subscriber_relationship_secondary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Subscriber Relationship</FormLabel>
-                          <Select
-                            disabled={!isEditing}
-                            onValueChange={field.onChange}
-                            defaultValue={field.value || ""}
-                            value={field.value || ""}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select relationship" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {relationshipOptions.map((relation) => (
-                                <SelectItem key={relation} value={relation}>
-                                  {relation}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_subscriber_dob_secondary"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Subscriber Date of Birth</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant={"outline"}
-                                  className={cn(
-                                    "w-full pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                  disabled={!isEditing}
-                                >
-                                  {field.value ? (
-                                    format(field.value, "PPP")
-                                  ) : (
-                                    <span>Pick a date</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value || undefined}
-                                onSelect={field.onChange}
-                                disabled={date =>
-                                  date > new Date() || date < new Date("1900-01-01")
-                                }
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="mt-4">
-                <CardHeader>
-                  <CardTitle>Tertiary Insurance</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="client_insurance_company_tertiary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Insurance Company</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_insurance_type_tertiary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Insurance Type</FormLabel>
-                          <Select
-                            disabled={!isEditing}
-                            onValueChange={field.onChange}
-                            defaultValue={field.value || ""}
-                            value={field.value || ""}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {insuranceTypeOptions.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {type}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_policy_number_tertiary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Policy Number</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_group_number_tertiary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Group Number</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_subscriber_name_tertiary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Subscriber Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_subscriber_relationship_tertiary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Subscriber Relationship</FormLabel>
-                          <Select
-                            disabled={!isEditing}
-                            onValueChange={field.onChange}
-                            defaultValue={field.value || ""}
-                            value={field.value || ""}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select relationship" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {relationshipOptions.map((relation) => (
-                                <SelectItem key={relation} value={relation}>
-                                  {relation}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_subscriber_dob_tertiary"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Subscriber Date of Birth</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant={"outline"}
-                                  className={cn(
-                                    "w-full pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                  disabled={!isEditing}
-                                >
-                                  {field.value ? (
-                                    format(field.value, "PPP")
-                                  ) : (
-                                    <span>Pick a date</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value || undefined}
-                                onSelect={field.onChange}
-                                disabled={date =>
-                                  date > new Date() || date < new Date("1900-01-01")
-                                }
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="treatment">
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle>Diagnosis</CardTitle>
-                  <CardDescription>Add client diagnoses here</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {form.watch("client_diagnosis")?.map((diagnosis, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <Input 
-                          value={diagnosis}
-                          onChange={(e) => {
-                            const updatedDiagnoses = [...(form.getValues("client_diagnosis") || [])];
-                            updatedDiagnoses[index] = e.target.value;
-                            form.setValue("client_diagnosis", updatedDiagnoses);
-                          }}
-                          readOnly={!isEditing}
-                          placeholder="Enter diagnosis"
-                          className="flex-grow"
-                        />
-                        {isEditing && (
-                          <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => handleRemoveDiagnosis(index)}
-                          >
-                            <Trash size={16} className="text-red-500" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                    {isEditing && (
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={handleAddDiagnosis}
-                        className="flex items-center gap-1"
-                      >
-                        <Plus size={16} /> Add Diagnosis
-                      </Button>
-                    )}
-                    {(!form.watch("client_diagnosis") || form.watch("client_diagnosis")?.length === 0) && !isEditing && (
-                      <p className="text-sm text-gray-500">No diagnoses have been added yet.</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Treatment Information</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="client_status"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Client Status</FormLabel>
-                          <Select
-                            disabled={!isEditing}
-                            onValueChange={field.onChange}
-                            defaultValue={field.value || ""}
-                            value={field.value || ""}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select status" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Active">Active</SelectItem>
-                              <SelectItem value="Inactive">Inactive</SelectItem>
-                              <SelectItem value="On Hold">On Hold</SelectItem>
-                              <SelectItem value="Discharged">Discharged</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_assigned_therapist"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Assigned Therapist</FormLabel>
-                          <Select
-                            disabled={!isEditing}
-                            onValueChange={field.onChange}
-                            defaultValue={field.value || ""}
-                            value={field.value || ""}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select therapist" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {clinicians.map((clinician) => (
-                                <SelectItem key={clinician.id} value={clinician.id}>
-                                  {clinician.clinician_professional_name || `${clinician.clinician_first_name} ${clinician.clinician_last_name}`}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="client_referral_source"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Referral Source</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly={!isEditing} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="col-span-2">
+              <TabsContent value="personal">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Personal Information</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="client_self_goal"
+                        name="client_first_name"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Client Self Goal</FormLabel>
+                            <FormLabel>First Name</FormLabel>
                             <FormControl>
-                              <Textarea 
-                                {...field} 
-                                readOnly={!isEditing}
-                                className="min-h-[100px]" 
-                              />
+                              <Input {...field} readOnly={!isEditing} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={form.control}
+                        name="client_last_name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Last Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_preferred_name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Preferred Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_date_of_birth"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Date of Birth</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                    disabled={!isEditing}
+                                  >
+                                    {field.value ? (
+                                      format(field.value, "PPP")
+                                    ) : (
+                                      <span>Pick a date</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value || undefined}
+                                  onSelect={field.onChange}
+                                  disabled={date =>
+                                    date > new Date() || date < new Date("1900-01-01")
+                                  }
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_age"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Age</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_gender"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Gender</FormLabel>
+                            <Select
+                              disabled={!isEditing}
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select gender" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Male">Male</SelectItem>
+                                <SelectItem value="Female">Female</SelectItem>
+                                <SelectItem value="Non-binary">Non-binary</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_gender_identity"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Gender Identity</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_state"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>State</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_time_zone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Time Zone</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_minor"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Minor</FormLabel>
+                            <Select
+                              disabled={!isEditing}
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Yes">Yes</SelectItem>
+                                <SelectItem value="No">No</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="notes">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Notes</CardTitle>
-                  <CardDescription>Internal notes about this client</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-500">No notes have been added yet.</p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="documentation">
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle>Charting</CardTitle>
-                  <CardDescription>Create and manage client documentation</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex space-x-4">
-                    <Button className="flex items-center gap-2">
-                      <FileText size={18} />
-                      Create Treatment Plan
-                    </Button>
-                    <Button className="flex items-center gap-2">
-                      <ClipboardList size={18} />
-                      Document Session
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Assessment Forms</CardTitle>
-                  <CardDescription>Select and complete assessment forms</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="flex flex-col space-y-2">
-                      <Label htmlFor="assessment-form">Select Assessment Form</Label>
-                      <Select>
-                        <SelectTrigger id="assessment-form" className="w-full">
-                          <SelectValue placeholder="Select an assessment form" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {/* Assessment forms will be populated here */}
-                        </SelectContent>
-                      </Select>
+              <TabsContent value="insurance">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Primary Insurance</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="client_insurance_company_primary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Insurance Company</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_insurance_type_primary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Insurance Type</FormLabel>
+                            <Select
+                              disabled={!isEditing}
+                              onValueChange={field.onChange}
+                              defaultValue={field.value || ""}
+                              value={field.value || ""}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {insuranceTypeOptions.map((type) => (
+                                  <SelectItem key={type} value={type}>
+                                    {type}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_policy_number_primary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Policy Number</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_group_number_primary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Group Number</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_subscriber_name_primary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Subscriber Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_subscriber_relationship_primary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Subscriber Relationship</FormLabel>
+                            <Select
+                              disabled={!isEditing}
+                              onValueChange={field.onChange}
+                              defaultValue={field.value || ""}
+                              value={field.value || ""}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select relationship" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {relationshipOptions.map((relation) => (
+                                  <SelectItem key={relation} value={relation}>
+                                    {relation}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_subscriber_dob_primary"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Subscriber Date of Birth</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                    disabled={!isEditing}
+                                  >
+                                    {field.value ? (
+                                      format(field.value, "PPP")
+                                    ) : (
+                                      <span>Pick a date</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value || undefined}
+                                  onSelect={field.onChange}
+                                  disabled={date =>
+                                    date > new Date() || date < new Date("1900-01-01")
+                                  }
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </form>
-      </Form>
+                  </CardContent>
+                </Card>
+
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle>Secondary Insurance</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="client_insurance_company_secondary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Insurance Company</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_insurance_type_secondary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Insurance Type</FormLabel>
+                            <Select
+                              disabled={!isEditing}
+                              onValueChange={field.onChange}
+                              defaultValue={field.value || ""}
+                              value={field.value || ""}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {insuranceTypeOptions.map((type) => (
+                                  <SelectItem key={type} value={type}>
+                                    {type}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_policy_number_secondary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Policy Number</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_group_number_secondary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Group Number</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_subscriber_name_secondary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Subscriber Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_subscriber_relationship_secondary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Subscriber Relationship</FormLabel>
+                            <Select
+                              disabled={!isEditing}
+                              onValueChange={field.onChange}
+                              defaultValue={field.value || ""}
+                              value={field.value || ""}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select relationship" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {relationshipOptions.map((relation) => (
+                                  <SelectItem key={relation} value={relation}>
+                                    {relation}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_subscriber_dob_secondary"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Subscriber Date of Birth</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                    disabled={!isEditing}
+                                  >
+                                    {field.value ? (
+                                      format(field.value, "PPP")
+                                    ) : (
+                                      <span>Pick a date</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value || undefined}
+                                  onSelect={field.onChange}
+                                  disabled={date =>
+                                    date > new Date() || date < new Date("1900-01-01")
+                                  }
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle>Tertiary Insurance</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="client_insurance_company_tertiary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Insurance Company</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_insurance_type_tertiary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Insurance Type</FormLabel>
+                            <Select
+                              disabled={!isEditing}
+                              onValueChange={field.onChange}
+                              defaultValue={field.value || ""}
+                              value={field.value || ""}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {insuranceTypeOptions.map((type) => (
+                                  <SelectItem key={type} value={type}>
+                                    {type}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_policy_number_tertiary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Policy Number</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_group_number_tertiary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Group Number</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_subscriber_name_tertiary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Subscriber Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_subscriber_relationship_tertiary"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Subscriber Relationship</FormLabel>
+                            <Select
+                              disabled={!isEditing}
+                              onValueChange={field.onChange}
+                              defaultValue={field.value || ""}
+                              value={field.value || ""}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select relationship" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {relationshipOptions.map((relation) => (
+                                  <SelectItem key={relation} value={relation}>
+                                    {relation}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_subscriber_dob_tertiary"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Subscriber Date of Birth</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                    disabled={!isEditing}
+                                  >
+                                    {field.value ? (
+                                      format(field.value, "PPP")
+                                    ) : (
+                                      <span>Pick a date</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value || undefined}
+                                  onSelect={field.onChange}
+                                  disabled={date =>
+                                    date > new Date() || date < new Date("1900-01-01")
+                                  }
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="treatment">
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Diagnosis</CardTitle>
+                    <CardDescription>Add client diagnoses here</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {form.watch("client_diagnosis")?.map((diagnosis, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Input 
+                            value={diagnosis}
+                            onChange={(e) => {
+                              const updatedDiagnoses = [...(form.getValues("client_diagnosis") || [])];
+                              updatedDiagnoses[index] = e.target.value;
+                              form.setValue("client_diagnosis", updatedDiagnoses);
+                            }}
+                            readOnly={!isEditing}
+                            placeholder="Enter diagnosis"
+                            className="flex-grow"
+                          />
+                          {isEditing && (
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => handleRemoveDiagnosis(index)}
+                            >
+                              <Trash size={16} className="text-red-500" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      {isEditing && (
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={handleAddDiagnosis}
+                          className="flex items-center gap-1"
+                        >
+                          <Plus size={16} /> Add Diagnosis
+                        </Button>
+                      )}
+                      {(!form.watch("client_diagnosis") || form.watch("client_diagnosis")?.length === 0) && !isEditing && (
+                        <p className="text-sm text-gray-500">No diagnoses have been added yet.</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Treatment Information</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="client_status"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Client Status</FormLabel>
+                            <Select
+                              disabled={!isEditing}
+                              onValueChange={field.onChange}
+                              defaultValue={field.value || ""}
+                              value={field.value || ""}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Active">Active</SelectItem>
+                                <SelectItem value="Inactive">Inactive</SelectItem>
+                                <SelectItem value="On Hold">On Hold</SelectItem>
+                                <SelectItem value="Discharged">Discharged</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_assigned_therapist"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Assigned Therapist</FormLabel>
+                            <Select
+                              disabled={!isEditing}
+                              onValueChange={field.onChange}
+                              defaultValue={field.value || ""}
+                              value={field.value || ""}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select therapist" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {clinicians.map((clinician) => (
+                                  <SelectItem key={clinician.id} value={clinician.id}>
+                                    {clinician.clinician_professional_name || `${clinician.clinician_first_name} ${clinician.clinician_last_name}`}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="client_referral_source"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Referral Source</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditing} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="col-span-2">
+                        <FormField
+                          control={form.control}
+                          name="client_self_goal"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Client Self Goal</FormLabel>
+                              <FormControl>
+                                <Textarea 
+                                  {...field} 
+                                  readOnly={!isEditing}
+                                  className="min-h-[100px]" 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="notes">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Notes</CardTitle>
+                    <CardDescription>Internal notes about this client</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-500">No notes have been added yet.</p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="documentation">
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Charting</CardTitle>
+                    <CardDescription>Create and manage client documentation</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex space-x-4">
+                      <Button className="flex items-center gap-2" onClick={handleCreateTreatmentPlan}>
+                        <FileText size={18} />
+                        Create Treatment Plan
+                      </Button>
+                      <Button className="flex items-center gap-2">
+                        <ClipboardList size={18} />
+                        Document Session
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Assessment Forms</CardTitle>
+                    <CardDescription>Select and complete assessment forms</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="flex flex-col space-y-2">
+                        <Label htmlFor="assessment-form">Select Assessment Form</Label>
+                        <Select>
+                          <SelectTrigger id="assessment-form" className="w-full">
+                            <SelectValue placeholder="Select an assessment form" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {/* Assessment forms will be populated here */}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </form>
+        </Form>
+      )}
     </Layout>
   );
 };
