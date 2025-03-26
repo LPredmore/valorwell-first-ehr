@@ -30,7 +30,7 @@ export const createUser = async (
 };
 
 // Helper function to get clinician ID by professional name
-export const getClinicianIdByName = async (professionalName: string): Promise<string | null> => {
+export const getClinicianIdByName = async (professionalName: string) => {
   if (!professionalName) return null;
   
   const { data, error } = await supabase
@@ -48,7 +48,7 @@ export const getClinicianIdByName = async (professionalName: string): Promise<st
 };
 
 // Helper function to get clinician name by ID
-export const getClinicianNameById = async (clinicianId: string | null): Promise<string | null> => {
+export const getClinicianNameById = async (clinicianId: string) => {
   if (!clinicianId) return null;
   
   const { data, error } = await supabase
@@ -66,7 +66,7 @@ export const getClinicianNameById = async (clinicianId: string | null): Promise<
 };
 
 // Helper to get availability settings for a clinician
-export const getClinicianAvailabilitySettings = async (clinicianId: string | null) => {
+export const getClinicianAvailabilitySettings = async (clinicianId: any) => {
   if (!clinicianId) return null;
   
   const { data, error } = await supabase
