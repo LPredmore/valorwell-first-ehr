@@ -212,6 +212,7 @@ export type Database = {
       }
       cpt_codes: {
         Row: {
+          clinical_type: string | null
           code: string
           created_at: string
           description: string | null
@@ -220,6 +221,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          clinical_type?: string | null
           code: string
           created_at?: string
           description?: string | null
@@ -228,6 +230,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          clinical_type?: string | null
           code?: string
           created_at?: string
           description?: string | null

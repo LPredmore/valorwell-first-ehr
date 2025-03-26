@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface User {
   id: string;
@@ -72,7 +73,13 @@ const Settings = () => {
   const [isCptLoading, setIsCptLoading] = useState(true);
   const [isCptDialogOpen, setIsCptDialogOpen] = useState(false);
   const [editingCptCode, setEditingCptCode] = useState<CPTCode | null>(null);
-  const [newCptCode, setNewCptCode] = useState<CPTCode>({ code: '', name: '', fee: 0, description: '' });
+  const [newCptCode, setNewCptCode] = useState<CPTCode>({
+    code: '',
+    name: '',
+    fee: 0,
+    description: '',
+    clinical_type: ''
+  });
   const [isEditMode, setIsEditMode] = useState(false);
   
   const itemsPerPage = 10;
@@ -242,14 +249,17 @@ const Settings = () => {
 
   const handleAddCptCode = () => {
     setIsEditMode(false);
-    setNewCptCode({ code: '', name: '', fee: 0, description: '' });
+    setNewCptCode({ code: '', name: '', fee: 0, description: '', clinical_type: '' });
     setIsCptDialogOpen(true);
   };
 
   const handleEditCptCode = (cptCode: CPTCode) => {
     setIsEditMode(true);
     setEditingCptCode(cptCode);
-    setNewCptCode({ ...cptCode });
+    setNewCptCode({ 
+      ...cptCode,
+      clinical_type: cptCode.clinical_type || '' 
+    });
     setIsCptDialogOpen(true);
   };
 
@@ -732,6 +742,7 @@ const Settings = () => {
                   <TableRow>
                     <TableHead>Code</TableHead>
                     <TableHead>Name</TableHead>
+                    <TableHead>Clinical Type</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead className="text-right">Fee</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -740,13 +751,13 @@ const Settings = () => {
                 <TableBody>
                   {isCptLoading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                         Loading CPT codes...
                       </TableCell>
                     </TableRow>
                   ) : cptCodes.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                         No CPT codes found. Click the button above to add your first CPT code.
                       </TableCell>
                     </TableRow>
@@ -755,6 +766,7 @@ const Settings = () => {
                       <TableRow key={cptCode.code}>
                         <TableCell className="font-medium">{cptCode.code}</TableCell>
                         <TableCell>{cptCode.name}</TableCell>
+                        <TableCell>{cptCode.clinical_type || "—"}</TableCell>
                         <TableCell className="max-w-xs truncate">{cptCode.description || "—"}</TableCell>
                         <TableCell className="text-right">${cptCode.fee.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
@@ -870,6 +882,18 @@ const Settings = () => {
                 value={newCptCode.name}
                 onChange={(e) => setNewCptCode({ ...newCptCode, name: e.target.value })}
                 className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="cpt-clinical-type" className="text-right">
+                Clinical Type
+              </Label>
+              <Input
+                id="cpt-clinical-type"
+                value={newCptCode.clinical_type || ''}
+                onChange={(e) => setNewCptCode({ ...newCptCode, clinical_type: e.target.value })}
+                className="col-span-3"
+                placeholder="E.g., Evaluation & Management, Psychotherapy"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
