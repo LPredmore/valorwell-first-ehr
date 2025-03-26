@@ -1292,14 +1292,8 @@ const ClientDetails = () => {
                       View and manage patient charts and progress tracking
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <div className="text-center">
-                      <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium mb-2">No Charts Available</h3>
-                      <p className="text-gray-500 text-sm mb-6">
-                        Charts and progress tracking will be displayed here
-                      </p>
-                    </div>
+                  <CardContent className="py-6">
+                    {/* Empty content - removed placeholders */}
                   </CardContent>
                 </Card>
 
@@ -1313,14 +1307,8 @@ const ClientDetails = () => {
                       View and complete patient assessments
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <div className="text-center">
-                      <ClipboardCheck className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium mb-2">No Assessments Available</h3>
-                      <p className="text-gray-500 text-sm mb-6">
-                        Patient assessments will be displayed here
-                      </p>
-                    </div>
+                  <CardContent className="py-6">
+                    {/* Empty content - removed placeholders */}
                   </CardContent>
                 </Card>
 
@@ -1334,14 +1322,8 @@ const ClientDetails = () => {
                       View completed session notes and documentation
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <div className="text-center">
-                      <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium mb-2">No Completed Notes</h3>
-                      <p className="text-gray-500 text-sm mb-6">
-                        Completed session notes will be displayed here
-                      </p>
-                    </div>
+                  <CardContent className="py-6">
+                    {/* Empty content - removed placeholders */}
                   </CardContent>
                 </Card>
               </div>
