@@ -240,6 +240,11 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({ onClose }) =>
           <Textarea placeholder="Describe the treatment goals" className="min-h-[100px]" />
         </div>
 
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Session Narrative</label>
+          <Textarea placeholder="Provide a detailed narrative of the session" className="min-h-[100px]" />
+        </div>
+
         <h4 className="text-md font-medium text-gray-800 mb-4">Plan & Signature</h4>
         
         <div className="mb-6">
