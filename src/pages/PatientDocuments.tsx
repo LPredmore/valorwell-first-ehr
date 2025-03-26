@@ -36,14 +36,26 @@ const PatientDocuments: React.FC = () => {
     };
   }, [patientId, location]);
 
-  // Completely isolated handler with explicit event prevention
+  // Completely isolated handler with multiple layers of event prevention
   const handleCreateTreatmentPlan = (e: React.MouseEvent<HTMLButtonElement>) => {
-    // Stop event propagation and prevent default
-    if (e && e.stopPropagation) e.stopPropagation();
-    if (e && e.preventDefault) e.preventDefault();
-    
     console.log("Create Treatment Plan button clicked at", new Date().toISOString());
-    setShowTreatmentPlan(true);
+    
+    // Use all possible ways to stop propagation
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      e.nativeEvent.stopImmediatePropagation();
+      e.nativeEvent.stopPropagation();
+      e.nativeEvent.preventDefault();
+    }
+    
+    // Set a small timeout to ensure we're outside of any other event handling
+    setTimeout(() => {
+      setShowTreatmentPlan(true);
+    }, 10);
+    
+    // Return false to prevent default behavior in older browsers
+    return false;
   };
 
   const handleCloseTreatmentPlan = () => {
@@ -106,6 +118,10 @@ const PatientDocuments: React.FC = () => {
                       className="flex items-center gap-2" 
                       onClick={handleCreateTreatmentPlan}
                       type="button"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onMouseUp={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      onKeyUp={(e) => e.stopPropagation()}
                     >
                       <FileText size={18} />
                       Create Treatment Plan
@@ -167,6 +183,10 @@ const PatientDocuments: React.FC = () => {
                       className="flex items-center gap-2" 
                       onClick={handleCreateTreatmentPlan}
                       type="button"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onMouseUp={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      onKeyUp={(e) => e.stopPropagation()}
                     >
                       <FileText size={18} />
                       Treatment Plan Template
