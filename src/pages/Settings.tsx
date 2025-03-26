@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -8,7 +7,6 @@ import { AddUserDialog } from '@/components/AddUserDialog';
 import { supabase, fetchCPTCodes, addCPTCode, updateCPTCode, deleteCPTCode, CPTCode } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import TreatmentPlanTemplate from '@/components/templates/TreatmentPlanTemplate';
-import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 import {
   Table,
   TableBody,
@@ -63,272 +61,465 @@ const SettingsTabs = {
 };
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState<string>(SettingsTabs.PRACTICE);
-  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState(SettingsTabs.PRACTICE);
   const [users, setUsers] = useState<User[]>([]);
   const [clinicians, setClinicians] = useState<Clinician[]>([]);
-  const [cptCodes, setCptCodes] = useState<CPTCode[]>([]);
-  const [isCPTDialogOpen, setIsCPTDialogOpen] = useState(false);
-  const [selectedCPTCode, setSelectedCPTCode] = useState<CPTCode | null>(null);
-  const [cptCodeForm, setCptCodeForm] = useState({
-    code: '',
-    description: '',
-    fee: 0,
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isClinicianLoading, setIsClinicianLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [currentClinicianPage, setCurrentClinicianPage] = useState(1);
+  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+  const [showTreatmentPlanTemplate, setShowTreatmentPlanTemplate] = useState(false);
+  
+  const [cptCodes, setCptCodes] = useState<CPTCode[]>([]);
+  const [isCptLoading, setIsCptLoading] = useState(true);
+  const [isCptDialogOpen, setIsCptDialogOpen] = useState(false);
+  const [editingCptCode, setEditingCptCode] = useState<CPTCode | null>(null);
+  const [newCptCode, setNewCptCode] = useState<CPTCode>({
+    code: '',
+    name: '',
+    fee: 0,
+    description: '',
+    clinical_type: ''
+  });
+  const [isEditMode, setIsEditMode] = useState(false);
+  
   const itemsPerPage = 10;
-
   const navigate = useNavigate();
+  
+  const totalUserPages = useMemo(() => Math.max(1, Math.ceil(users.length / itemsPerPage)), [users.length]);
+  const totalClinicianPages = useMemo(() => Math.max(1, Math.ceil(clinicians.length / itemsPerPage)), [clinicians.length]);
+  
+  const currentUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return users.slice(startIndex, startIndex + itemsPerPage);
+  }, [users, currentPage]);
+  
+  const currentClinicians = useMemo(() => {
+    const startIndex = (currentClinicianPage - 1) * itemsPerPage;
+    return clinicians.slice(startIndex, startIndex + itemsPerPage);
+  }, [clinicians, currentClinicianPage]);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, email, phone, role');
-
+        .select('id, first_name, last_name, email, phone, role')
+        .order('created_at', { ascending: false });
+      
       if (error) {
-        console.error('Error fetching users:', error);
-        toast({
-          title: 'Error fetching users',
-          description: 'Failed to retrieve users from the database.',
-          variant: 'destructive',
-        });
-        return;
+        throw error;
       }
-
+      
       setUsers(data || []);
-    };
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load users. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    const fetchClinicians = async () => {
+  const fetchClinicians = async () => {
+    setIsClinicianLoading(true);
+    try {
       const { data, error } = await supabase
         .from('clinicians')
-        .select('id, clinician_first_name, clinician_last_name, clinician_email, clinician_phone, clinician_status, created_at');
-
+        .select('id, clinician_first_name, clinician_last_name, clinician_email, clinician_phone, clinician_status, created_at')
+        .order('created_at', { ascending: false });
+      
       if (error) {
-        console.error('Error fetching clinicians:', error);
-        toast({
-          title: 'Error fetching clinicians',
-          description: 'Failed to retrieve clinicians from the database.',
-          variant: 'destructive',
-        });
-        return;
+        throw error;
       }
-
+      
       setClinicians(data || []);
-    };
+    } catch (error) {
+      console.error('Error fetching clinicians:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load clinicians. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsClinicianLoading(false);
+    }
+  };
 
-    fetchUsers();
-    fetchClinicians();
-  }, []);
-
-  useEffect(() => {
-    const getCPTCodes = async () => {
+  const loadCptCodes = async () => {
+    setIsCptLoading(true);
+    try {
       const codes = await fetchCPTCodes();
       setCptCodes(codes);
-    };
-
-    getCPTCodes();
-  }, []);
-
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
+    } catch (error) {
+      console.error('Error loading CPT codes:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load CPT codes. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCptLoading(false);
+    }
   };
 
-  const handleOpenAddUserDialog = () => {
-    setIsAddUserDialogOpen(true);
-  };
+  useEffect(() => {
+    if (activeTab === SettingsTabs.USERS) {
+      fetchUsers();
+    } else if (activeTab === SettingsTabs.CLINICIANS) {
+      fetchClinicians();
+    } else if (activeTab === SettingsTabs.BILLING) {
+      loadCptCodes();
+    }
+  }, [activeTab]);
 
-  const handleCloseAddUserDialog = () => {
-    setIsAddUserDialogOpen(false);
-  };
-
-  const handleUserAdded = (newUser: User) => {
-    setUsers((prevUsers) => [...prevUsers, newUser]);
+  const handleUserAdded = () => {
+    fetchUsers();
   };
 
   const handleDeleteUser = async (userId: string) => {
-    const confirmDelete = window.confirm('Are you sure you want to delete this user?');
-
-    if (!confirmDelete) {
-      return;
-    }
-
-    const { error } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', userId);
-
-    if (error) {
+    const confirmed = window.confirm('Are you sure you want to delete this user? This action cannot be undone.');
+    
+    if (!confirmed) return;
+    
+    try {
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (error) {
+        throw error;
+      }
+      
+      setUsers(users.filter(user => user.id !== userId));
+      
+      toast({
+        title: 'Success',
+        description: 'User deleted successfully',
+      });
+    } catch (error) {
       console.error('Error deleting user:', error);
       toast({
-        title: 'Error deleting user',
-        description: 'Failed to delete the user from the database.',
+        title: 'Error',
+        description: 'Failed to delete user. You may not have permission to perform this action.',
         variant: 'destructive',
       });
-      return;
     }
-
-    setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId));
-    toast({
-      title: 'User deleted',
-      description: 'The user has been successfully deleted.',
-    });
   };
 
-  const handleEditUser = (userId: string) => {
-    navigate(`/users/${userId}/edit`);
-  };
-
-  const handleOpenCPTDialog = (cptCode?: CPTCode) => {
-    setSelectedCPTCode(cptCode || null);
-    setCptCodeForm({
-      code: cptCode?.code || '',
-      description: cptCode?.description || '',
-      fee: cptCode?.fee || 0,
-    });
-    setIsCPTDialogOpen(true);
-  };
-
-  const handleCloseCPTDialog = () => {
-    setIsCPTDialogOpen(false);
-    setSelectedCPTCode(null);
-  };
-
-  const handleCPTFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setCptCodeForm((prevForm) => ({
-      ...prevForm,
-      [name]: name === 'fee' ? parseFloat(value) : value,
-    }));
-  };
-
-  const handleCPTCodeSubmit = async () => {
-    if (!cptCodeForm.code || !cptCodeForm.description || !cptCodeForm.fee) {
+  const handleDeleteClinician = async (clinicianId: string) => {
+    const confirmed = window.confirm('Are you sure you want to delete this clinician? This action cannot be undone.');
+    
+    if (!confirmed) return;
+    
+    try {
+      const { error } = await supabase
+        .from('clinicians')
+        .delete()
+        .eq('id', clinicianId);
+      
+      if (error) {
+        throw error;
+      }
+      
+      setClinicians(clinicians.filter(clinician => clinician.id !== clinicianId));
+      
+      toast({
+        title: 'Success',
+        description: 'Clinician deleted successfully',
+      });
+    } catch (error) {
+      console.error('Error deleting clinician:', error);
       toast({
         title: 'Error',
-        description: 'Please fill in all fields.',
+        description: 'Failed to delete clinician. Please try again.',
         variant: 'destructive',
       });
-      return;
     }
-
-    if (selectedCPTCode) {
-      // Update existing CPT code
-      const updatedCPTCode: CPTCode = {
-        ...selectedCPTCode,
-        code: cptCodeForm.code,
-        description: cptCodeForm.description,
-        fee: cptCodeForm.fee,
-        name: selectedCPTCode.name
-      };
-      try {
-        await updateCPTCode(updatedCPTCode);
-        setCptCodes((prevCodes) =>
-          prevCodes.map((code) => (code.id === updatedCPTCode.id ? updatedCPTCode : code))
-        );
-        toast({
-          title: 'CPT code updated',
-          description: 'The CPT code has been successfully updated.',
-        });
-      } catch (error: any) {
-        console.error('Error updating CPT code:', error);
-        toast({
-          title: 'Error updating CPT code',
-          description: error.message || 'Failed to update the CPT code.',
-          variant: 'destructive',
-        });
-      }
-    } else {
-      // Add new CPT code
-      try {
-        const newCPTCodeData = {
-          code: cptCodeForm.code,
-          description: cptCodeForm.description,
-          fee: cptCodeForm.fee,
-          name: cptCodeForm.code // Using code as name if no name is provided
-        };
-        const newCPTCode = await addCPTCode(newCPTCodeData);
-        setCptCodes((prevCodes) => [...prevCodes, newCPTCode]);
-        toast({
-          title: 'CPT code added',
-          description: 'The CPT code has been successfully added.',
-        });
-      } catch (error: any) {
-        console.error('Error adding CPT code:', error);
-        toast({
-          title: 'Error adding CPT code',
-          description: error.message || 'Failed to add the CPT code.',
-          variant: 'destructive',
-        });
-      }
-    }
-
-    handleCloseCPTDialog();
   };
 
-  const handleDeleteCPTCode = async (cptCodeId: string) => {
-    const confirmDelete = window.confirm('Are you sure you want to delete this CPT code?');
+  const handleClinicianClick = (clinicianId: string) => {
+    navigate(`/clinicians/${clinicianId}`);
+  };
 
-    if (!confirmDelete) {
-      return;
-    }
+  const formatName = (firstName: string | null, lastName: string | null) => {
+    if (!firstName && !lastName) return "—";
+    return `${firstName || ''} ${lastName || ''}`.trim();
+  };
 
+  const handleAddCptCode = () => {
+    setIsEditMode(false);
+    setNewCptCode({ code: '', name: '', fee: 0, description: '', clinical_type: '' });
+    setIsCptDialogOpen(true);
+  };
+
+  const handleEditCptCode = (cptCode: CPTCode) => {
+    setIsEditMode(true);
+    setEditingCptCode(cptCode);
+    setNewCptCode({ 
+      ...cptCode,
+      clinical_type: cptCode.clinical_type || '' 
+    });
+    setIsCptDialogOpen(true);
+  };
+
+  const handleDeleteCptCode = async (code: string) => {
+    const confirmed = window.confirm('Are you sure you want to delete this CPT code? This action cannot be undone.');
+    
+    if (!confirmed) return;
+    
     try {
-      await deleteCPTCode(cptCodeId);
-      setCptCodes((prevCodes) => prevCodes.filter((code) => code.id !== cptCodeId));
+      const result = await deleteCPTCode(code);
+      
+      if (!result.success) {
+        throw result.error;
+      }
+      
+      setCptCodes(cptCodes.filter(cpt => cpt.code !== code));
+      
       toast({
-        title: 'CPT code deleted',
-        description: 'The CPT code has been successfully deleted.',
+        title: 'Success',
+        description: 'CPT code deleted successfully',
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting CPT code:', error);
       toast({
-        title: 'Error deleting CPT code',
-        description: error.message || 'Failed to delete the CPT code.',
+        title: 'Error',
+        description: 'Failed to delete CPT code. Please try again.',
         variant: 'destructive',
       });
     }
   };
 
-  const paginatedCPTCodes = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return cptCodes.slice(startIndex, endIndex);
-  }, [cptCodes, currentPage, itemsPerPage]);
+  const handleSaveCptCode = async () => {
+    try {
+      if (!newCptCode.code || !newCptCode.name || isNaN(newCptCode.fee) || newCptCode.fee <= 0) {
+        toast({
+          title: 'Validation Error',
+          description: 'Please fill in all required fields correctly. Fee must be greater than 0.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-  const totalPages = Math.ceil(cptCodes.length / itemsPerPage);
-
-  // Handler for template closing
-  const handleTemplateClose = () => {
-    // Placeholder for template closing functionality
-    console.log("Template closed");
+      let result;
+      
+      if (isEditMode && editingCptCode) {
+        result = await updateCPTCode(editingCptCode.code, newCptCode);
+        
+        if (result.success) {
+          setCptCodes(cptCodes.map(code => 
+            code.code === editingCptCode.code ? newCptCode : code
+          ));
+          
+          toast({
+            title: 'Success',
+            description: 'CPT code updated successfully',
+          });
+        }
+      } else {
+        result = await addCPTCode(newCptCode);
+        
+        if (result.success) {
+          setCptCodes([...cptCodes, newCptCode]);
+          
+          toast({
+            title: 'Success',
+            description: 'CPT code added successfully',
+          });
+        }
+      }
+      
+      if (!result.success) {
+        throw result.error;
+      }
+      
+      setIsCptDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving CPT code:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save CPT code. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
     <Layout>
-      <div className="container mx-auto py-6">
-        <h1 className="text-2xl font-semibold mb-4">Settings</h1>
-
-        <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList>
-            <TabsTrigger value={SettingsTabs.PRACTICE}>Practice</TabsTrigger>
-            <TabsTrigger value={SettingsTabs.CLINICIANS}>Clinicians</TabsTrigger>
-            <TabsTrigger value={SettingsTabs.USERS}>Users</TabsTrigger>
-            <TabsTrigger value={SettingsTabs.BILLING}>Billing</TabsTrigger>
-            <TabsTrigger value={SettingsTabs.TEMPLATES}>Templates</TabsTrigger>
-            {/* <TabsTrigger value={SettingsTabs.SECURITY}>Security</TabsTrigger> */}
-            {/* <TabsTrigger value={SettingsTabs.LICENSES}>Licenses</TabsTrigger> */}
-          </TabsList>
-          <TabsContent value={SettingsTabs.PRACTICE}>
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Practice Settings</h2>
-              <p>Configure your practice details here.</p>
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="flex border-b">
+          <button 
+            className={`settings-tab ${activeTab === SettingsTabs.PRACTICE ? 'active' : ''}`}
+            onClick={() => setActiveTab(SettingsTabs.PRACTICE)}
+          >
+            Practice
+          </button>
+          <button 
+            className={`settings-tab ${activeTab === SettingsTabs.CLINICIANS ? 'active' : ''}`}
+            onClick={() => setActiveTab(SettingsTabs.CLINICIANS)}
+          >
+            Clinicians
+          </button>
+          <button 
+            className={`settings-tab ${activeTab === SettingsTabs.USERS ? 'active' : ''}`}
+            onClick={() => setActiveTab(SettingsTabs.USERS)}
+          >
+            Users
+          </button>
+          <button 
+            className={`settings-tab ${activeTab === SettingsTabs.BILLING ? 'active' : ''}`}
+            onClick={() => setActiveTab(SettingsTabs.BILLING)}
+          >
+            Billing
+          </button>
+          <button 
+            className={`settings-tab ${activeTab === SettingsTabs.TEMPLATES ? 'active' : ''}`}
+            onClick={() => setActiveTab(SettingsTabs.TEMPLATES)}
+          >
+            Templates
+          </button>
+          <button 
+            className={`settings-tab ${activeTab === SettingsTabs.SECURITY ? 'active' : ''}`}
+            onClick={() => setActiveTab(SettingsTabs.SECURITY)}
+          >
+            Security
+          </button>
+          <button 
+            className={`settings-tab ${activeTab === SettingsTabs.LICENSES ? 'active' : ''}`}
+            onClick={() => setActiveTab(SettingsTabs.LICENSES)}
+          >
+            Licenses
+          </button>
+        </div>
+        
+        {activeTab === SettingsTabs.PRACTICE && (
+          <div className="p-6 animate-fade-in">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">Practice Information</h2>
+              <button className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded hover:bg-gray-50">
+                <Pencil size={14} />
+                <span>Edit</span>
+              </button>
             </div>
-          </TabsContent>
-          <TabsContent value={SettingsTabs.CLINICIANS}>
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Clinicians</h2>
-              <p>Manage Clinicians</p>
+            
+            <div className="grid grid-cols-2 gap-6 mb-8">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Practice Name
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="Enter practice name"
+                  className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  NPI Number
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="Enter NPI number"
+                  className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tax ID
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="Enter tax ID"
+                  className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Group Taxonomy Code
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="Enter group taxonomy code"
+                  className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+                />
+              </div>
+            </div>
+            
+            <h3 className="text-lg font-medium mb-4">Practice Billing Address</h3>
+            <div className="grid grid-cols-2 gap-6 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Address Line 1
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="Street address"
+                  className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Address Line 2
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="Apt, suite, etc."
+                  className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  City
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="City"
+                  className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  State
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="State"
+                  className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  ZIP Code
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="ZIP Code"
+                  className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+                />
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {activeTab === SettingsTabs.CLINICIANS && (
+          <div className="p-6 animate-fade-in">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">Clinician Management</h2>
+              <button 
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800"
+              >
+                <Plus size={16} />
+                <span>Add Clinician</span>
+              </button>
+            </div>
+            
+            <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -336,200 +527,440 @@ const Settings = () => {
                     <TableHead>Email</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Created At</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clinicians.map((clinician) => (
-                    <TableRow key={clinician.id}>
-                      <TableCell>{clinician.clinician_first_name} {clinician.clinician_last_name}</TableCell>
-                      <TableCell>{clinician.clinician_email}</TableCell>
-                      <TableCell>{clinician.clinician_phone}</TableCell>
-                      <TableCell>{clinician.clinician_status}</TableCell>
-                      <TableCell>{clinician.created_at}</TableCell>
+                  {isClinicianLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                        Loading clinicians...
+                      </TableCell>
                     </TableRow>
-                  ))}
+                  ) : clinicians.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                        No clinicians found. Click the button above to add your first clinician.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    currentClinicians.map((clinician) => (
+                      <TableRow key={clinician.id}>
+                        <TableCell className="font-medium">
+                          <button
+                            onClick={() => handleClinicianClick(clinician.id)}
+                            className="hover:text-valorwell-700 hover:underline focus:outline-none text-left"
+                          >
+                            {formatName(clinician.clinician_first_name, clinician.clinician_last_name)}
+                          </button>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Mail size={14} className="text-gray-500" />
+                            {clinician.clinician_email || "—"}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Phone size={14} className="text-gray-500" />
+                            {clinician.clinician_phone || "—"}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            clinician.clinician_status === 'Active' 
+                              ? 'bg-green-100 text-green-800' 
+                              : clinician.clinician_status === 'Pending' 
+                                ? 'bg-yellow-100 text-yellow-800' 
+                                : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {clinician.clinician_status || "Not Set"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <button 
+                            className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                            onClick={() => handleDeleteClinician(clinician.id)}
+                          >
+                            Delete
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
-          </TabsContent>
-          <TabsContent value={SettingsTabs.USERS}>
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Users</h2>
-              <p>Manage users and their roles.</p>
-              <Button onClick={handleOpenAddUserDialog}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add User
-              </Button>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>{user.first_name} {user.last_name}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>{user.phone}</TableCell>
-                      <TableCell>{user.role}</TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => handleEditUser(user.id)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(user.id)}>
-                          <Trash className="mr-2 h-4 w-4" />
-                          Delete
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </TabsContent>
-          <TabsContent value={SettingsTabs.BILLING}>
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Billing Settings</h2>
-              <p>Manage billing information and CPT codes.</p>
-              <Button onClick={() => handleOpenCPTDialog()}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add CPT Code
-              </Button>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Fee</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedCPTCodes.map((code) => (
-                    <TableRow key={code.id}>
-                      <TableCell>{code.code}</TableCell>
-                      <TableCell>{code.description}</TableCell>
-                      <TableCell>{code.fee}</TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenCPTDialog(code)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteCPTCode(code.id)}>
-                          <Trash className="mr-2 h-4 w-4" />
-                          Delete
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <Pagination>
+            
+            {clinicians.length > itemsPerPage && (
+              <Pagination className="mt-4">
                 <PaginationContent>
-                  <PaginationPrevious href="#" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} />
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentClinicianPage((prev) => Math.max(prev - 1, 1))}
+                      className={currentClinicianPage === 1 ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: totalClinicianPages }, (_, i) => i + 1).map((page) => (
                     <PaginationItem key={page}>
                       <PaginationLink
-                        href="#"
-                        onClick={() => setCurrentPage(page)}
-                        isActive={currentPage === page}
+                        isActive={currentClinicianPage === page}
+                        onClick={() => setCurrentClinicianPage(page)}
                       >
                         {page}
                       </PaginationLink>
                     </PaginationItem>
                   ))}
-                  <PaginationNext href="#" onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} />
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setCurrentClinicianPage((prev) => Math.min(prev + 1, totalClinicianPages))}
+                      className={currentClinicianPage === totalClinicianPages ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
                 </PaginationContent>
               </Pagination>
+            )}
+          </div>
+        )}
+        
+        {activeTab === SettingsTabs.USERS && (
+          <div className="p-6 animate-fade-in">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">User Management</h2>
+              <button 
+                onClick={() => setIsAddUserDialogOpen(true)}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800"
+              >
+                <Plus size={16} />
+                <span>Add User</span>
+              </button>
             </div>
-          </TabsContent>
-          <TabsContent value={SettingsTabs.TEMPLATES}>
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Templates</h2>
-              <p>Customize your templates for treatment plans and session notes.</p>
-              <TreatmentPlanTemplate onClose={handleTemplateClose} />
-              <SessionNoteTemplate onClose={handleTemplateClose} />
+            
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone Number</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                        Loading users...
+                      </TableCell>
+                    </TableRow>
+                  ) : users.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                        No users found. Click the button above to add your first user.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    currentUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">
+                          {user.first_name} {user.last_name}
+                        </TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>{user.phone || "—"}</TableCell>
+                        <TableCell className="capitalize">{user.role || "—"}</TableCell>
+                        <TableCell className="text-right">
+                          <button 
+                            className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                            onClick={() => handleDeleteUser(user.id)}
+                          >
+                            Delete
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
-          </TabsContent>
-          {/* <TabsContent value={SettingsTabs.SECURITY}>
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Security Settings</h2>
-              <p>Manage security settings and password policies.</p>
+            
+            {users.length > itemsPerPage && (
+              <Pagination className="mt-4">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: totalUserPages }, (_, i) => i + 1).map((page) => (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        isActive={currentPage === page}
+                        onClick={() => setCurrentPage(page)}
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalUserPages))}
+                      className={currentPage === totalUserPages ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
+            
+            <AddUserDialog 
+              open={isAddUserDialogOpen} 
+              onOpenChange={setIsAddUserDialogOpen}
+              onUserAdded={handleUserAdded}
+            />
+          </div>
+        )}
+        
+        {activeTab === SettingsTabs.BILLING && (
+          <div className="p-6 animate-fade-in">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">CPT Codes</h2>
+              <button 
+                onClick={handleAddCptCode}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800"
+              >
+                <Plus size={16} />
+                <span>Add CPT Code</span>
+              </button>
             </div>
-          </TabsContent>
-          <TabsContent value={SettingsTabs.LICENSES}>
-            <div>
-              <h2 className="text-lg font-semibold mb-2">License Management</h2>
-              <p>Manage your software licenses and subscriptions.</p>
+            
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Clinical Type</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="text-right">Fee</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isCptLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                        Loading CPT codes...
+                      </TableCell>
+                    </TableRow>
+                  ) : cptCodes.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                        No CPT codes found. Click the button above to add your first CPT code.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    cptCodes.map((cptCode) => (
+                      <TableRow key={cptCode.code}>
+                        <TableCell className="font-medium">{cptCode.code}</TableCell>
+                        <TableCell>{cptCode.name}</TableCell>
+                        <TableCell>{cptCode.clinical_type || "—"}</TableCell>
+                        <TableCell className="max-w-xs truncate">{cptCode.description || "—"}</TableCell>
+                        <TableCell className="text-right">${cptCode.fee.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <button 
+                              onClick={() => handleEditCptCode(cptCode)}
+                              className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteCptCode(cptCode.code)}
+                              className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
-          </TabsContent> */}
-        </Tabs>
+          </div>
+        )}
+        
+        {activeTab === SettingsTabs.TEMPLATES && (
+          <div className="p-6 animate-fade-in">
+            {showTreatmentPlanTemplate ? (
+              <TreatmentPlanTemplate onClose={() => setShowTreatmentPlanTemplate(false)} />
+            ) : (
+              <>
+                <div className="mb-8">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold">Chart Templates</h2>
+                    <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800">
+                      <Plus size={16} />
+                      <span>Add Template</span>
+                    </button>
+                  </div>
+                  
+                  <div className="border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Template Name</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Last Modified</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow className="cursor-pointer hover:bg-gray-50" onClick={() => setShowTreatmentPlanTemplate(true)}>
+                          <TableCell className="font-medium">Treatment Plan</TableCell>
+                          <TableCell>Chart Template</TableCell>
+                          <TableCell>{new Date().toLocaleDateString()}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500">
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold">Online Forms</h2>
+                    <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white border rounded hover:bg-gray-50">
+                      <Plus size={16} />
+                      <span>Add Form</span>
+                    </button>
+                  </div>
+                  
+                  <div className="text-center py-10 border rounded bg-gray-50 text-gray-500">
+                    No online forms available. Click the button above to create your first form.
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        
+        {activeTab === SettingsTabs.SECURITY && (
+          <div className="p-6 animate-fade-in">
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <h2 className="text-2xl font-bold mb-4 text-gray-800">Security Settings Coming Soon</h2>
+              <p className="text-gray-600 max-w-md">
+                Security and privacy settings will be implemented in the next phase.
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {activeTab === SettingsTabs.LICENSES && (
+          <div className="p-6 animate-fade-in">
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <h2 className="text-2xl font-bold mb-4 text-gray-800">License Management Coming Soon</h2>
+              <p className="text-gray-600 max-w-md">
+                License management features will be implemented in the next phase.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
-
+      
       <AddUserDialog 
         open={isAddUserDialogOpen} 
-        onOpenChange={setIsAddUserDialogOpen} 
-        onUserAdded={handleUserAdded} 
+        onOpenChange={setIsAddUserDialogOpen}
+        onUserAdded={handleUserAdded}
       />
 
-      <Dialog open={isCPTDialogOpen} onOpenChange={setIsCPTDialogOpen}>
-        <DialogContent>
+      <Dialog open={isCptDialogOpen} onOpenChange={setIsCptDialogOpen}>
+        <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
-            <DialogTitle>{selectedCPTCode ? 'Edit CPT Code' : 'Add CPT Code'}</DialogTitle>
+            <DialogTitle>{isEditMode ? 'Edit CPT Code' : 'Add CPT Code'}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="code" className="text-right">
+              <Label htmlFor="cpt-code" className="text-right">
                 Code
               </Label>
               <Input
-                type="text"
-                id="code"
-                name="code"
-                value={cptCodeForm.code}
-                onChange={handleCPTFormChange}
+                id="cpt-code"
+                value={newCptCode.code}
+                onChange={(e) => setNewCptCode({ ...newCptCode, code: e.target.value })}
+                className="col-span-3"
+                disabled={isEditMode}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="cpt-name" className="text-right">
+                Name
+              </Label>
+              <Input
+                id="cpt-name"
+                value={newCptCode.name}
+                onChange={(e) => setNewCptCode({ ...newCptCode, name: e.target.value })}
                 className="col-span-3"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
+              <Label htmlFor="cpt-clinical-type" className="text-right">
+                Clinical Type
+              </Label>
+              <Input
+                id="cpt-clinical-type"
+                value={newCptCode.clinical_type || ''}
+                onChange={(e) => setNewCptCode({ ...newCptCode, clinical_type: e.target.value })}
+                className="col-span-3"
+                placeholder="E.g., Evaluation & Management, Psychotherapy"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="cpt-description" className="text-right">
                 Description
               </Label>
               <Textarea
-                id="description"
-                name="description"
-                value={cptCodeForm.description}
-                onChange={handleCPTFormChange}
-                className="col-span-3"
+                id="cpt-description"
+                value={newCptCode.description || ''}
+                onChange={(e) => setNewCptCode({ ...newCptCode, description: e.target.value })}
+                className="col-span-3 min-h-[100px]"
+                placeholder="Detailed description of the CPT code"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="fee" className="text-right">
-                Fee
+              <Label htmlFor="cpt-fee" className="text-right">
+                Fee ($)
               </Label>
               <Input
+                id="cpt-fee"
                 type="number"
-                id="fee"
-                name="fee"
-                value={cptCodeForm.fee}
-                onChange={handleCPTFormChange}
+                min="0"
+                step="0.01"
+                value={newCptCode.fee}
+                onChange={(e) => setNewCptCode({ ...newCptCode, fee: parseFloat(e.target.value) || 0 })}
                 className="col-span-3"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="secondary" onClick={handleCloseCPTDialog}>
+            <Button variant="outline" onClick={() => setIsCptDialogOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" onClick={handleCPTCodeSubmit}>
-              {selectedCPTCode ? 'Update' : 'Save'}
+            <Button type="submit" onClick={handleSaveCptCode}>
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -538,5 +969,4 @@ const Settings = () => {
   );
 };
 
-// Add default export for the Settings component
 export default Settings;
