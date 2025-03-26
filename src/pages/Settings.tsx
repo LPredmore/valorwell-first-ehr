@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -27,6 +26,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from "@/components/ui/form";
 
 interface User {
   id: string;
@@ -67,22 +68,19 @@ const Settings = () => {
   const [currentClinicianPage, setCurrentClinicianPage] = useState(1);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   
-  // CPT code related state
   const [cptCodes, setCptCodes] = useState<CPTCode[]>([]);
   const [isCptLoading, setIsCptLoading] = useState(true);
   const [isCptDialogOpen, setIsCptDialogOpen] = useState(false);
   const [editingCptCode, setEditingCptCode] = useState<CPTCode | null>(null);
-  const [newCptCode, setNewCptCode] = useState<CPTCode>({ code: '', name: '', fee: 0 });
+  const [newCptCode, setNewCptCode] = useState<CPTCode>({ code: '', name: '', fee: 0, description: '' });
   const [isEditMode, setIsEditMode] = useState(false);
   
   const itemsPerPage = 10;
   const navigate = useNavigate();
   
-  // Calculate total pages for users and clinicians
   const totalUserPages = useMemo(() => Math.max(1, Math.ceil(users.length / itemsPerPage)), [users.length]);
   const totalClinicianPages = useMemo(() => Math.max(1, Math.ceil(clinicians.length / itemsPerPage)), [clinicians.length]);
   
-  // Calculate current page items for users and clinicians
   const currentUsers = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return users.slice(startIndex, startIndex + itemsPerPage);
@@ -242,10 +240,9 @@ const Settings = () => {
     return `${firstName || ''} ${lastName || ''}`.trim();
   };
 
-  // CPT code functions
   const handleAddCptCode = () => {
     setIsEditMode(false);
-    setNewCptCode({ code: '', name: '', fee: 0 });
+    setNewCptCode({ code: '', name: '', fee: 0, description: '' });
     setIsCptDialogOpen(true);
   };
 
@@ -286,11 +283,10 @@ const Settings = () => {
 
   const handleSaveCptCode = async () => {
     try {
-      // Basic validation
       if (!newCptCode.code || !newCptCode.name || isNaN(newCptCode.fee) || newCptCode.fee <= 0) {
         toast({
           title: 'Validation Error',
-          description: 'Please fill in all fields correctly. Fee must be greater than 0.',
+          description: 'Please fill in all required fields correctly. Fee must be greater than 0.',
           variant: 'destructive',
         });
         return;
@@ -736,6 +732,7 @@ const Settings = () => {
                   <TableRow>
                     <TableHead>Code</TableHead>
                     <TableHead>Name</TableHead>
+                    <TableHead>Description</TableHead>
                     <TableHead className="text-right">Fee</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -743,13 +740,13 @@ const Settings = () => {
                 <TableBody>
                   {isCptLoading ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                         Loading CPT codes...
                       </TableCell>
                     </TableRow>
                   ) : cptCodes.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                         No CPT codes found. Click the button above to add your first CPT code.
                       </TableCell>
                     </TableRow>
@@ -758,6 +755,7 @@ const Settings = () => {
                       <TableRow key={cptCode.code}>
                         <TableCell className="font-medium">{cptCode.code}</TableCell>
                         <TableCell>{cptCode.name}</TableCell>
+                        <TableCell className="max-w-xs truncate">{cptCode.description || "—"}</TableCell>
                         <TableCell className="text-right">${cptCode.fee.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
@@ -845,9 +843,8 @@ const Settings = () => {
         onUserAdded={handleUserAdded}
       />
 
-      {/* CPT Code Dialog */}
       <Dialog open={isCptDialogOpen} onOpenChange={setIsCptDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
             <DialogTitle>{isEditMode ? 'Edit CPT Code' : 'Add CPT Code'}</DialogTitle>
           </DialogHeader>
@@ -861,7 +858,7 @@ const Settings = () => {
                 value={newCptCode.code}
                 onChange={(e) => setNewCptCode({ ...newCptCode, code: e.target.value })}
                 className="col-span-3"
-                disabled={isEditMode} // Cannot edit the code in edit mode as it's the primary key
+                disabled={isEditMode}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -873,6 +870,18 @@ const Settings = () => {
                 value={newCptCode.name}
                 onChange={(e) => setNewCptCode({ ...newCptCode, name: e.target.value })}
                 className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="cpt-description" className="text-right">
+                Description
+              </Label>
+              <Textarea
+                id="cpt-description"
+                value={newCptCode.description || ''}
+                onChange={(e) => setNewCptCode({ ...newCptCode, description: e.target.value })}
+                className="col-span-3 min-h-[100px]"
+                placeholder="Detailed description of the CPT code"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">

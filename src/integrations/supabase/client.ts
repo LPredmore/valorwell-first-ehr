@@ -76,6 +76,7 @@ export interface CPTCode {
   code: string;
   name: string;
   fee: number;
+  description?: string;
   created_at?: string;
   updated_at?: string;
 }

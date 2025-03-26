@@ -214,6 +214,7 @@ export type Database = {
         Row: {
           code: string
           created_at: string
+          description: string | null
           fee: number
           name: string
           updated_at: string
@@ -221,6 +222,7 @@ export type Database = {
         Insert: {
           code: string
           created_at?: string
+          description?: string | null
           fee: number
           name: string
           updated_at?: string
@@ -228,6 +230,7 @@ export type Database = {
         Update: {
           code?: string
           created_at?: string
+          description?: string | null
           fee?: number
           name?: string
           updated_at?: string
