@@ -143,11 +143,11 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({ onClose }
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="space-y-2">
-                <Label htmlFor="sec-intervention-1" className="text-sm text-valorwell-700 font-semibold">Intervention 1</Label>
+                <Label htmlFor="sec-intervention-1" className="text-sm text-valorwell-700 font-semibold">Intervention 3</Label>
                 <Input id="sec-intervention-1" placeholder="Describe intervention" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="sec-intervention-2" className="text-sm text-valorwell-700 font-semibold">Intervention 2</Label>
+                <Label htmlFor="sec-intervention-2" className="text-sm text-valorwell-700 font-semibold">Intervention 4</Label>
                 <Input id="sec-intervention-2" placeholder="Describe intervention" />
               </div>
             </div>
@@ -159,11 +159,11 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({ onClose }
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="space-y-2">
-                <Label htmlFor="tert-intervention-1" className="text-sm text-valorwell-700 font-semibold">Intervention 1</Label>
+                <Label htmlFor="tert-intervention-1" className="text-sm text-valorwell-700 font-semibold">Intervention 5</Label>
                 <Input id="tert-intervention-1" placeholder="Describe intervention" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="tert-intervention-2" className="text-sm text-valorwell-700 font-semibold">Intervention 2</Label>
+                <Label htmlFor="tert-intervention-2" className="text-sm text-valorwell-700 font-semibold">Intervention 6</Label>
                 <Input id="tert-intervention-2" placeholder="Describe intervention" />
               </div>
             </div>
