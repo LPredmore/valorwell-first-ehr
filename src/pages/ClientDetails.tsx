@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/form";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarIcon, Pencil, Save, X, Plus, Trash, FileText } from "lucide-react";
+import { CalendarIcon, Pencil, Save, X, Plus, Trash } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -36,8 +36,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import Layout from '../components/layout/Layout';
-import TreatmentPlanTemplate from '@/components/templates/TreatmentPlanTemplate';
-import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 
 interface ClientDetails {
   id: string;
@@ -47,7 +45,7 @@ interface ClientDetails {
   client_email: string | null;
   client_phone: string | null;
   client_date_of_birth: string | null;
-  client_age: number | null;
+  client_age: number | null;  // This can be a number in the state
   client_gender: string | null;
   client_gender_identity: string | null;
   client_state: string | null;
@@ -58,6 +56,7 @@ interface ClientDetails {
   client_referral_source: string | null;
   client_self_goal: string | null;
   client_diagnosis: string[] | null;
+  // Insurance fields
   client_insurance_company_primary: string | null;
   client_policy_number_primary: string | null;
   client_group_number_primary: string | null;
@@ -98,8 +97,6 @@ const ClientDetails = () => {
   const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("personal");
-  const [showTreatmentPlanTemplate, setShowTreatmentPlanTemplate] = useState(false);
-  const [showSessionNoteTemplate, setShowSessionNoteTemplate] = useState(false);
 
   useEffect(() => {
     const fetchClient = async () => {
@@ -172,6 +169,7 @@ const ClientDetails = () => {
     client_referral_source: z.string().optional().nullable(),
     client_self_goal: z.string().optional().nullable(),
     client_diagnosis: z.array(z.string()).optional().nullable(),
+    // Insurance fields
     client_insurance_company_primary: z.string().optional().nullable(),
     client_policy_number_primary: z.string().optional().nullable(),
     client_group_number_primary: z.string().optional().nullable(),
@@ -215,6 +213,7 @@ const ClientDetails = () => {
       client_referral_source: clientData?.client_referral_source || "",
       client_self_goal: clientData?.client_self_goal || "",
       client_diagnosis: clientData?.client_diagnosis || [],
+      // Insurance fields
       client_insurance_company_primary: clientData?.client_insurance_company_primary || "",
       client_policy_number_primary: clientData?.client_policy_number_primary || "",
       client_group_number_primary: clientData?.client_group_number_primary || "",
@@ -259,6 +258,7 @@ const ClientDetails = () => {
         client_referral_source: clientData.client_referral_source || "",
         client_self_goal: clientData.client_self_goal || "",
         client_diagnosis: clientData.client_diagnosis || [],
+        // Insurance fields
         client_insurance_company_primary: clientData.client_insurance_company_primary || "",
         client_policy_number_primary: clientData.client_policy_number_primary || "",
         client_group_number_primary: clientData.client_group_number_primary || "",
@@ -413,12 +413,11 @@ const ClientDetails = () => {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSaveChanges)}>
           <Tabs defaultValue="personal" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-5 mb-4">
+            <TabsList className="grid grid-cols-4 mb-4">
               <TabsTrigger value="personal">Personal Info</TabsTrigger>
               <TabsTrigger value="insurance">Insurance</TabsTrigger>
               <TabsTrigger value="treatment">Treatment</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
-              <TabsTrigger value="documentation">Documentation</TabsTrigger>
             </TabsList>
 
             <TabsContent value="personal">
@@ -1295,107 +1294,12 @@ const ClientDetails = () => {
                 </CardContent>
               </Card>
             </TabsContent>
-
-            <TabsContent value="documentation">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Documentation Templates</CardTitle>
-                  <CardDescription>View and use documentation templates</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-6 md:grid-cols-2 mb-6">
-                    <Card className="shadow-sm hover:shadow-md transition-shadow">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Treatment Plan</CardTitle>
-                        <CardDescription>Standard documentation for treatment plans</CardDescription>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <p className="text-sm text-gray-500 mb-4">
-                          A comprehensive form for documenting patient treatment plans including goals, interventions, and progress tracking.
-                        </p>
-                        <Button
-                          className="w-full"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowTreatmentPlanTemplate(true);
-                          }}
-                        >
-                          View Template
-                        </Button>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card className="shadow-sm hover:shadow-md transition-shadow">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Session Note</CardTitle>
-                        <CardDescription>Standard documentation for therapy sessions</CardDescription>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <p className="text-sm text-gray-500 mb-4">
-                          A standardized form for documenting patient sessions, including session focus, interventions, and progress notes.
-                        </p>
-                        <Button 
-                          className="w-full"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowSessionNoteTemplate(true);
-                          }}
-                        >
-                          View Template
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
           </Tabs>
         </form>
       </Form>
-
-      {showTreatmentPlanTemplate && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-auto">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="text-lg font-medium">Treatment Plan Template</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowTreatmentPlanTemplate(false)}
-              >
-                Close
-              </Button>
-            </div>
-            <div className="p-6">
-              <TreatmentPlanTemplate onClose={() => setShowTreatmentPlanTemplate(false)} />
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {showSessionNoteTemplate && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-auto">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="text-lg font-medium">Session Note Template</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSessionNoteTemplate(false)}
-              >
-                Close
-              </Button>
-            </div>
-            <div className="p-6">
-              <SessionNoteTemplate onClose={() => setShowSessionNoteTemplate(false)} />
-            </div>
-          </div>
-        </div>
-      )}
     </Layout>
   );
 };
 
 export default ClientDetails;
+

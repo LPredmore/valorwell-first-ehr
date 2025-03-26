@@ -37,26 +37,6 @@ interface CalendarViewProps {
   clinicianId: string | null;
 }
 
-// Ensure all components accept clinicianId prop
-interface DayViewProps {
-  currentDate: Date;
-  clinicianId: string | null;
-}
-
-interface WeekViewProps {
-  currentDate: Date;
-  clinicianId: string | null;
-}
-
-interface MonthViewProps {
-  currentDate: Date;
-  clinicianId: string | null;
-}
-
-interface AvailabilityPanelProps {
-  clinicianId: string | null;
-}
-
 const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, clinicianId }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   
