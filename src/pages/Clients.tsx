@@ -25,12 +25,10 @@ const Clients = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const totalPages = Math.ceil(clients.length / itemsPerPage);
   
-  // Calculate the current page items
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentClients = clients.slice(indexOfFirstItem, indexOfLastItem);
@@ -98,6 +96,7 @@ const Clients = () => {
   };
 
   const handleClientClick = (clientId: string) => {
+    console.log(`Navigating to client details for ID: ${clientId}`);
     navigate(`/clients/${clientId}`);
   };
 
@@ -204,6 +203,7 @@ const Clients = () => {
                         <button 
                           onClick={() => handleClientClick(client.id)}
                           className="hover:text-valorwell-700 hover:underline focus:outline-none"
+                          data-client-id={client.id}
                         >
                           {client.client_first_name || ''} {client.client_last_name || ''}
                         </button>
@@ -234,7 +234,6 @@ const Clients = () => {
             </table>
           </div>
           
-          {/* Pagination */}
           {clients.length > itemsPerPage && (
             <Pagination className="mt-4">
               <PaginationContent>

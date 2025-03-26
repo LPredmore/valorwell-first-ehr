@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase, getCurrentUser, getClientByUserId, updateClientProfile } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import InsuranceSection from '@/components/ui/InsuranceSection';
+import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 
 const PatientDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
@@ -22,7 +23,6 @@ const PatientDashboard: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Options for dropdowns
   const genderOptions = ['Male', 'Female', 'Non-Binary', 'Other', 'Prefer not to say'];
   const genderIdentityOptions = ['Male', 'Female', 'Trans Man', 'Trans Woman', 'Non-Binary', 'Other', 'Prefer not to say'];
   const stateOptions = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 
@@ -36,11 +36,9 @@ const PatientDashboard: React.FC = () => {
     'Mountain Standard Time (MST)', 'Pacific Standard Time (PST)', 'Alaska Standard Time (AKST)', 
     'Hawaii-Aleutian Standard Time (HST)', 'Atlantic Standard Time (AST)'];
     
-  // Insurance related options
   const insuranceTypes = ['PPO', 'HMO', 'EPO', 'POS', 'HDHP', 'Medicare', 'Medicaid', 'Other'];
   const relationshipTypes = ['Self', 'Spouse', 'Child', 'Other'];
 
-  // Form setup for profile
   const form = useForm({
     defaultValues: {
       firstName: '',
@@ -54,7 +52,6 @@ const PatientDashboard: React.FC = () => {
       genderIdentity: '',
       state: '',
       timeZone: '',
-      // Insurance fields - Primary
       client_insurance_company_primary: '',
       client_insurance_type_primary: '',
       client_policy_number_primary: '',
@@ -62,7 +59,6 @@ const PatientDashboard: React.FC = () => {
       client_subscriber_name_primary: '',
       client_subscriber_relationship_primary: '',
       client_subscriber_dob_primary: '',
-      // Insurance fields - Secondary
       client_insurance_company_secondary: '',
       client_insurance_type_secondary: '',
       client_policy_number_secondary: '',
@@ -70,7 +66,6 @@ const PatientDashboard: React.FC = () => {
       client_subscriber_name_secondary: '',
       client_subscriber_relationship_secondary: '',
       client_subscriber_dob_secondary: '',
-      // Insurance fields - Tertiary
       client_insurance_company_tertiary: '',
       client_insurance_type_tertiary: '',
       client_policy_number_tertiary: '',
@@ -81,7 +76,6 @@ const PatientDashboard: React.FC = () => {
     }
   });
 
-  // Function to fetch client data
   const fetchClientData = async () => {
     setLoading(true);
     
@@ -98,12 +92,13 @@ const PatientDashboard: React.FC = () => {
         return;
       }
       
+      console.log("Current user:", user);
       const client = await getClientByUserId(user.id);
+      console.log("Retrieved client data:", client);
       
       if (client) {
         setClientData(client);
         
-        // Calculate age from date of birth if available
         let age = '';
         if (client.client_date_of_birth) {
           const dob = new Date(client.client_date_of_birth);
@@ -111,7 +106,6 @@ const PatientDashboard: React.FC = () => {
           age = String(today.getFullYear() - dob.getFullYear());
         }
         
-        // Format date of birth for display if available
         let formattedDob = '';
         if (client.client_date_of_birth) {
           const dob = new Date(client.client_date_of_birth);
@@ -122,7 +116,6 @@ const PatientDashboard: React.FC = () => {
           });
         }
         
-        // Set form values from client data
         form.reset({
           firstName: client.client_first_name || '',
           lastName: client.client_last_name || '',
@@ -135,7 +128,6 @@ const PatientDashboard: React.FC = () => {
           genderIdentity: client.client_gender_identity || '',
           state: client.client_state || '',
           timeZone: client.client_time_zone || '',
-          // Insurance fields - Primary
           client_insurance_company_primary: client.client_insurance_company_primary || '',
           client_insurance_type_primary: client.client_insurance_type_primary || '',
           client_policy_number_primary: client.client_policy_number_primary || '',
@@ -143,7 +135,6 @@ const PatientDashboard: React.FC = () => {
           client_subscriber_name_primary: client.client_subscriber_name_primary || '',
           client_subscriber_relationship_primary: client.client_subscriber_relationship_primary || '',
           client_subscriber_dob_primary: client.client_subscriber_dob_primary || '',
-          // Insurance fields - Secondary
           client_insurance_company_secondary: client.client_insurance_company_secondary || '',
           client_insurance_type_secondary: client.client_insurance_type_secondary || '',
           client_policy_number_secondary: client.client_policy_number_secondary || '',
@@ -151,7 +142,6 @@ const PatientDashboard: React.FC = () => {
           client_subscriber_name_secondary: client.client_subscriber_name_secondary || '',
           client_subscriber_relationship_secondary: client.client_subscriber_relationship_secondary || '',
           client_subscriber_dob_secondary: client.client_subscriber_dob_secondary || '',
-          // Insurance fields - Tertiary
           client_insurance_company_tertiary: client.client_insurance_company_tertiary || '',
           client_insurance_type_tertiary: client.client_insurance_type_tertiary || '',
           client_policy_number_tertiary: client.client_policy_number_tertiary || '',
@@ -179,16 +169,24 @@ const PatientDashboard: React.FC = () => {
     }
   };
 
-  // Function to save profile changes
   const handleSaveProfile = async () => {
-    if (!clientData) return;
+    if (!clientData) {
+      console.error("Cannot save: No client data available");
+      toast({
+        title: "Error",
+        description: "Unable to save profile: No client data available",
+        variant: "destructive"
+      });
+      return;
+    }
     
+    console.log("Starting save process for client ID:", clientData.id);
     setIsSaving(true);
     
     try {
       const formValues = form.getValues();
+      console.log("Form values to save:", formValues);
       
-      // Prepare data for update
       const updates = {
         client_preferred_name: formValues.preferredName,
         client_phone: formValues.phone,
@@ -196,7 +194,6 @@ const PatientDashboard: React.FC = () => {
         client_gender_identity: formValues.genderIdentity,
         client_state: formValues.state,
         client_time_zone: formValues.timeZone,
-        // Insurance fields - Primary
         client_insurance_company_primary: formValues.client_insurance_company_primary,
         client_insurance_type_primary: formValues.client_insurance_type_primary,
         client_policy_number_primary: formValues.client_policy_number_primary,
@@ -204,7 +201,6 @@ const PatientDashboard: React.FC = () => {
         client_subscriber_name_primary: formValues.client_subscriber_name_primary,
         client_subscriber_relationship_primary: formValues.client_subscriber_relationship_primary,
         client_subscriber_dob_primary: formValues.client_subscriber_dob_primary,
-        // Insurance fields - Secondary
         client_insurance_company_secondary: formValues.client_insurance_company_secondary,
         client_insurance_type_secondary: formValues.client_insurance_type_secondary,
         client_policy_number_secondary: formValues.client_policy_number_secondary,
@@ -212,7 +208,6 @@ const PatientDashboard: React.FC = () => {
         client_subscriber_name_secondary: formValues.client_subscriber_name_secondary,
         client_subscriber_relationship_secondary: formValues.client_subscriber_relationship_secondary,
         client_subscriber_dob_secondary: formValues.client_subscriber_dob_secondary,
-        // Insurance fields - Tertiary
         client_insurance_company_tertiary: formValues.client_insurance_company_tertiary,
         client_insurance_type_tertiary: formValues.client_insurance_type_tertiary,
         client_policy_number_tertiary: formValues.client_policy_number_tertiary,
@@ -222,17 +217,20 @@ const PatientDashboard: React.FC = () => {
         client_subscriber_dob_tertiary: formValues.client_subscriber_dob_tertiary
       };
       
+      console.log("Sending updates to database:", updates);
       const result = await updateClientProfile(clientData.id, updates);
       
       if (result.success) {
+        console.log("Profile update successful");
         toast({
           title: "Success",
           description: "Your profile has been updated successfully",
         });
         setIsEditing(false);
-        fetchClientData(); // Refresh data
+        fetchClientData();
       } else {
-        throw new Error("Failed to update profile");
+        console.error("Profile update failed:", result.error);
+        throw new Error("Failed to update profile: " + JSON.stringify(result.error));
       }
     } catch (error) {
       console.error("Error saving profile:", error);
@@ -245,25 +243,23 @@ const PatientDashboard: React.FC = () => {
       setIsSaving(false);
     }
   };
-  
-  // Cancel editing
+
   const handleCancelEdit = () => {
+    console.log("Edit cancelled");
     setIsEditing(false);
-    fetchClientData(); // Reset form to original values
+    fetchClientData();
   };
 
-  // Fetch client data on component mount
   useEffect(() => {
+    console.log("PatientDashboard component mounted");
     fetchClientData();
   }, []);
 
-  // Mock data for upcoming appointments
   const upcomingAppointments = [
     { id: 1, date: 'May 15, 2024', time: '10:00 AM', type: 'Therapy Session', therapist: 'Dr. Sarah Johnson' },
     { id: 2, date: 'May 22, 2024', time: '11:30 AM', type: 'Follow-up', therapist: 'Dr. Sarah Johnson' },
   ];
 
-  // Mock data for past appointments
   const pastAppointments = [
     { id: 1, date: 'April 30, 2024', time: '10:00 AM', type: 'Initial Consultation', therapist: 'Dr. Sarah Johnson' },
     { id: 2, date: 'April 15, 2024', time: '11:30 AM', type: 'Therapy Session', therapist: 'Dr. Sarah Johnson' },
@@ -306,10 +302,8 @@ const PatientDashboard: React.FC = () => {
             </TabsTrigger>
           </TabsList>
           
-          {/* Dashboard Tab Content */}
           <TabsContent value="dashboard" className="mt-0">
             <div className="grid grid-cols-1 gap-6">
-              {/* Upcoming Appointments Section */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <div>
@@ -362,7 +356,6 @@ const PatientDashboard: React.FC = () => {
                 </CardFooter>
               </Card>
 
-              {/* Therapist Schedule Section */}
               <Card>
                 <CardHeader>
                   <CardTitle>Therapist Availability</CardTitle>
@@ -422,7 +415,6 @@ const PatientDashboard: React.FC = () => {
             </div>
           </TabsContent>
           
-          {/* Profile Tab Content */}
           <TabsContent value="profile" className="mt-0">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -443,6 +435,7 @@ const PatientDashboard: React.FC = () => {
                       className="flex items-center gap-1" 
                       onClick={handleCancelEdit}
                       disabled={isSaving}
+                      type="button"
                     >
                       <X className="h-4 w-4" />
                       Cancel
@@ -453,6 +446,7 @@ const PatientDashboard: React.FC = () => {
                       className="flex items-center gap-1" 
                       onClick={handleSaveProfile}
                       disabled={isSaving}
+                      type="button"
                     >
                       <Save className="h-4 w-4" />
                       {isSaving ? 'Saving...' : 'Save Changes'}
@@ -464,6 +458,7 @@ const PatientDashboard: React.FC = () => {
                     size="sm" 
                     className="flex items-center gap-1"
                     onClick={() => setIsEditing(true)}
+                    type="button"
                   >
                     <Edit className="h-4 w-4" />
                     Edit
@@ -481,218 +476,91 @@ const PatientDashboard: React.FC = () => {
                   ) : (
                     <Form {...form}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* First Name - Always read-only */}
-                        <FormField
+                        <FormFieldWrapper
                           control={form.control}
                           name="firstName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium">First Name</FormLabel>
-                              <FormControl>
-                                <Input {...field} readOnly className="bg-gray-100" />
-                              </FormControl>
-                            </FormItem>
-                          )}
+                          label="First Name"
+                          readOnly={true}
                         />
                         
-                        {/* Last Name - Always read-only */}
-                        <FormField
+                        <FormFieldWrapper
                           control={form.control}
                           name="lastName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium">Last Name</FormLabel>
-                              <FormControl>
-                                <Input {...field} readOnly className="bg-gray-100" />
-                              </FormControl>
-                            </FormItem>
-                          )}
+                          label="Last Name"
+                          readOnly={true}
                         />
                         
-                        {/* Preferred Name - Editable */}
-                        <FormField
+                        <FormFieldWrapper
                           control={form.control}
                           name="preferredName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium">Preferred Name</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  {...field} 
-                                  readOnly={!isEditing} 
-                                  className={!isEditing ? "bg-gray-100" : ""}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
+                          label="Preferred Name"
+                          readOnly={!isEditing}
                         />
                         
-                        {/* Email - Always read-only */}
-                        <FormField
+                        <FormFieldWrapper
                           control={form.control}
                           name="email"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium">Email</FormLabel>
-                              <FormControl>
-                                <Input {...field} readOnly className="bg-gray-100" />
-                              </FormControl>
-                            </FormItem>
-                          )}
+                          label="Email"
+                          type="email"
+                          readOnly={true}
                         />
                         
-                        {/* Phone - Editable */}
-                        <FormField
+                        <FormFieldWrapper
                           control={form.control}
                           name="phone"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium">Phone</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  {...field} 
-                                  readOnly={!isEditing} 
-                                  className={!isEditing ? "bg-gray-100" : ""}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
+                          label="Phone"
+                          type="tel"
+                          readOnly={!isEditing}
                         />
                         
-                        {/* Date of Birth - Always read-only */}
-                        <FormField
+                        <FormFieldWrapper
                           control={form.control}
                           name="dateOfBirth"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium">Date of Birth</FormLabel>
-                              <FormControl>
-                                <Input {...field} readOnly className="bg-gray-100" />
-                              </FormControl>
-                            </FormItem>
-                          )}
+                          label="Date of Birth"
+                          readOnly={true}
                         />
                         
-                        {/* Age - Always read-only */}
-                        <FormField
+                        <FormFieldWrapper
                           control={form.control}
                           name="age"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium">Age</FormLabel>
-                              <FormControl>
-                                <Input {...field} readOnly className="bg-gray-100" />
-                              </FormControl>
-                            </FormItem>
-                          )}
+                          label="Age"
+                          readOnly={true}
                         />
                         
-                        {/* Gender - Editable dropdown */}
-                        <FormField
+                        <FormFieldWrapper
                           control={form.control}
                           name="gender"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium">Gender</FormLabel>
-                              <Select 
-                                disabled={!isEditing} 
-                                value={field.value} 
-                                onValueChange={field.onChange}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className={!isEditing ? "bg-gray-100" : ""}>
-                                    <SelectValue placeholder="Select gender" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {genderOptions.map(option => (
-                                    <SelectItem key={option} value={option}>{option}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </FormItem>
-                          )}
+                          label="Gender"
+                          type="select"
+                          options={genderOptions}
+                          readOnly={!isEditing}
                         />
                         
-                        {/* Gender Identity - Editable dropdown */}
-                        <FormField
+                        <FormFieldWrapper
                           control={form.control}
                           name="genderIdentity"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium">Gender Identity</FormLabel>
-                              <Select 
-                                disabled={!isEditing} 
-                                value={field.value} 
-                                onValueChange={field.onChange}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className={!isEditing ? "bg-gray-100" : ""}>
-                                    <SelectValue placeholder="Select gender identity" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {genderIdentityOptions.map(option => (
-                                    <SelectItem key={option} value={option}>{option}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </FormItem>
-                          )}
+                          label="Gender Identity"
+                          type="select"
+                          options={genderIdentityOptions}
+                          readOnly={!isEditing}
                         />
                         
-                        {/* State - Editable dropdown */}
-                        <FormField
+                        <FormFieldWrapper
                           control={form.control}
                           name="state"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium">State</FormLabel>
-                              <Select 
-                                disabled={!isEditing} 
-                                value={field.value} 
-                                onValueChange={field.onChange}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className={!isEditing ? "bg-gray-100" : ""}>
-                                    <SelectValue placeholder="Select state" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {stateOptions.map(option => (
-                                    <SelectItem key={option} value={option}>{option}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </FormItem>
-                          )}
+                          label="State"
+                          type="select"
+                          options={stateOptions}
+                          readOnly={!isEditing}
                         />
                         
-                        {/* Time Zone - Editable dropdown */}
-                        <FormField
+                        <FormFieldWrapper
                           control={form.control}
                           name="timeZone"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium">Time Zone</FormLabel>
-                              <Select 
-                                disabled={!isEditing} 
-                                value={field.value} 
-                                onValueChange={field.onChange}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className={!isEditing ? "bg-gray-100" : ""}>
-                                    <SelectValue placeholder="Select time zone" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {timeZoneOptions.map(option => (
-                                    <SelectItem key={option} value={option}>{option}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </FormItem>
-                          )}
+                          label="Time Zone"
+                          type="select"
+                          options={timeZoneOptions}
+                          readOnly={!isEditing}
                         />
                       </div>
                     </Form>
@@ -702,7 +570,6 @@ const PatientDashboard: React.FC = () => {
             </Card>
           </TabsContent>
           
-          {/* Past Appointments Tab Content */}
           <TabsContent value="pastAppointments" className="mt-0">
             <Card>
               <CardHeader>
@@ -746,7 +613,6 @@ const PatientDashboard: React.FC = () => {
             </Card>
           </TabsContent>
           
-          {/* Insurance Tab Content */}
           <TabsContent value="insurance" className="mt-0">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -762,6 +628,7 @@ const PatientDashboard: React.FC = () => {
                       className="flex items-center gap-1" 
                       onClick={handleCancelEdit}
                       disabled={isSaving}
+                      type="button"
                     >
                       <X className="h-4 w-4" />
                       Cancel
@@ -772,6 +639,7 @@ const PatientDashboard: React.FC = () => {
                       className="flex items-center gap-1" 
                       onClick={handleSaveProfile}
                       disabled={isSaving}
+                      type="button"
                     >
                       <Save className="h-4 w-4" />
                       {isSaving ? 'Saving...' : 'Save Changes'}
@@ -783,6 +651,7 @@ const PatientDashboard: React.FC = () => {
                     size="sm" 
                     className="flex items-center gap-1"
                     onClick={() => setIsEditing(true)}
+                    type="button"
                   >
                     <Edit className="h-4 w-4" />
                     Edit
@@ -828,7 +697,6 @@ const PatientDashboard: React.FC = () => {
             </Card>
           </TabsContent>
           
-          {/* Documents Tab Content */}
           <TabsContent value="documents" className="mt-0">
             <Card>
               <CardHeader>
