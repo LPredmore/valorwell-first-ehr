@@ -209,7 +209,7 @@ const PatientDashboard: React.FC = () => {
             </div>
           </TabsContent>
           
-          {/* Profile Tab Content */}
+          {/* Profile Tab Content - Updated to remove redundant tabs */}
           <TabsContent value="profile" className="mt-0">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -225,23 +225,7 @@ const PatientDashboard: React.FC = () => {
                 </Button>
               </CardHeader>
               <CardContent>
-                <div className="border-b pb-4 mb-4">
-                  <ul className="flex space-x-4 overflow-x-auto">
-                    <li className="border-b-2 border-valorwell-600 px-3 py-2 text-sm font-medium text-valorwell-600">
-                      Personal Info
-                    </li>
-                    <li className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-valorwell-600 cursor-pointer">
-                      Insurance
-                    </li>
-                    <li className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-valorwell-600 cursor-pointer">
-                      Treatment
-                    </li>
-                    <li className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-valorwell-600 cursor-pointer">
-                      Notes
-                    </li>
-                  </ul>
-                </div>
-              
+                {/* Removed the redundant navigation tabs */}
                 <div className="mt-6">
                   <h3 className="text-xl font-semibold mb-4">Personal Information</h3>
                   
