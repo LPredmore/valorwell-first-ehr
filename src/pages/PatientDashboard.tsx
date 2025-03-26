@@ -139,7 +139,9 @@ const PatientDashboard: React.FC = () => {
         return;
       }
       
+      console.log('Fetching insurance data for user ID:', user.id);
       const insurance = await getClientInsurance(user.id);
+      console.log('Insurance data received:', insurance);
       
       if (insurance) {
         setInsuranceData(insurance);
@@ -219,6 +221,7 @@ const PatientDashboard: React.FC = () => {
         day: 'numeric' 
       });
     } catch (e) {
+      console.error('Error formatting date:', e, 'Date string was:', dateString);
       return 'Invalid date';
     }
   };
