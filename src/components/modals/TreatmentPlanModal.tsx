@@ -69,8 +69,8 @@ const TreatmentPlanModal: React.FC<TreatmentPlanModalProps> = ({
 
   const handleSaveSuccess = () => {
     toast({
-      title: "Success",
-      description: "Treatment plan saved successfully",
+      title: "Treatment Plan Saved",
+      description: "The treatment plan was saved successfully",
     });
     onClose();
   };
