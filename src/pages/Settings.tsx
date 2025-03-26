@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -65,14 +66,14 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState<string>(SettingsTabs.PRACTICE);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
-	const [clinicians, setClinicians] = useState<Clinician[]>([]);
+  const [clinicians, setClinicians] = useState<Clinician[]>([]);
   const [cptCodes, setCptCodes] = useState<CPTCode[]>([]);
   const [isCPTDialogOpen, setIsCPTDialogOpen] = useState(false);
   const [selectedCPTCode, setSelectedCPTCode] = useState<CPTCode | null>(null);
   const [cptCodeForm, setCptCodeForm] = useState({
     code: '',
     description: '',
-    rate: 0,
+    fee: 0,
   });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -82,7 +83,7 @@ const Settings = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .select('id, first_name, last_name, email, phone, role');
 
       if (error) {
@@ -98,26 +99,26 @@ const Settings = () => {
       setUsers(data || []);
     };
 
-		const fetchClinicians = async () => {
-			const { data, error } = await supabase
-				.from('clinicians')
-				.select('id, clinician_first_name, clinician_last_name, clinician_email, clinician_phone, clinician_status, created_at');
+    const fetchClinicians = async () => {
+      const { data, error } = await supabase
+        .from('clinicians')
+        .select('id, clinician_first_name, clinician_last_name, clinician_email, clinician_phone, clinician_status, created_at');
 
-			if (error) {
-				console.error('Error fetching clinicians:', error);
-				toast({
-					title: 'Error fetching clinicians',
-					description: 'Failed to retrieve clinicians from the database.',
-					variant: 'destructive',
-				});
-				return;
-			}
+      if (error) {
+        console.error('Error fetching clinicians:', error);
+        toast({
+          title: 'Error fetching clinicians',
+          description: 'Failed to retrieve clinicians from the database.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-			setClinicians(data || []);
-		};
+      setClinicians(data || []);
+    };
 
     fetchUsers();
-		fetchClinicians();
+    fetchClinicians();
   }, []);
 
   useEffect(() => {
@@ -153,7 +154,7 @@ const Settings = () => {
     }
 
     const { error } = await supabase
-      .from('users')
+      .from('profiles')
       .delete()
       .eq('id', userId);
 
@@ -183,7 +184,7 @@ const Settings = () => {
     setCptCodeForm({
       code: cptCode?.code || '',
       description: cptCode?.description || '',
-      rate: cptCode?.rate || 0,
+      fee: cptCode?.fee || 0,
     });
     setIsCPTDialogOpen(true);
   };
@@ -197,12 +198,12 @@ const Settings = () => {
     const { name, value } = e.target;
     setCptCodeForm((prevForm) => ({
       ...prevForm,
-      [name]: name === 'rate' ? parseFloat(value) : value,
+      [name]: name === 'fee' ? parseFloat(value) : value,
     }));
   };
 
   const handleCPTCodeSubmit = async () => {
-    if (!cptCodeForm.code || !cptCodeForm.description || !cptCodeForm.rate) {
+    if (!cptCodeForm.code || !cptCodeForm.description || !cptCodeForm.fee) {
       toast({
         title: 'Error',
         description: 'Please fill in all fields.',
@@ -213,11 +214,12 @@ const Settings = () => {
 
     if (selectedCPTCode) {
       // Update existing CPT code
-      const updatedCPTCode = {
+      const updatedCPTCode: CPTCode = {
         ...selectedCPTCode,
         code: cptCodeForm.code,
         description: cptCodeForm.description,
-        rate: cptCodeForm.rate,
+        fee: cptCodeForm.fee,
+        name: selectedCPTCode.name
       };
       try {
         await updateCPTCode(updatedCPTCode);
@@ -239,7 +241,13 @@ const Settings = () => {
     } else {
       // Add new CPT code
       try {
-        const newCPTCode = await addCPTCode(cptCodeForm);
+        const newCPTCodeData = {
+          code: cptCodeForm.code,
+          description: cptCodeForm.description,
+          fee: cptCodeForm.fee,
+          name: cptCodeForm.code // Using code as name if no name is provided
+        };
+        const newCPTCode = await addCPTCode(newCPTCodeData);
         setCptCodes((prevCodes) => [...prevCodes, newCPTCode]);
         toast({
           title: 'CPT code added',
@@ -290,6 +298,12 @@ const Settings = () => {
 
   const totalPages = Math.ceil(cptCodes.length / itemsPerPage);
 
+  // Handler for template closing
+  const handleTemplateClose = () => {
+    // Placeholder for template closing functionality
+    console.log("Template closed");
+  };
+
   return (
     <Layout>
       <div className="container mx-auto py-6">
@@ -311,34 +325,34 @@ const Settings = () => {
               <p>Configure your practice details here.</p>
             </div>
           </TabsContent>
-					<TabsContent value={SettingsTabs.CLINICIANS}>
-						<div>
-							<h2 className="text-lg font-semibold mb-2">Clinicians</h2>
-							<p>Manage Clinicians</p>
-							<Table>
-								<TableHeader>
-									<TableRow>
-										<TableHead>Name</TableHead>
-										<TableHead>Email</TableHead>
-										<TableHead>Phone</TableHead>
-										<TableHead>Status</TableHead>
-										<TableHead>Created At</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{clinicians.map((clinician) => (
-										<TableRow key={clinician.id}>
-											<TableCell>{clinician.clinician_first_name} {clinician.clinician_last_name}</TableCell>
-											<TableCell>{clinician.clinician_email}</TableCell>
-											<TableCell>{clinician.clinician_phone}</TableCell>
-											<TableCell>{clinician.clinician_status}</TableCell>
-											<TableCell>{clinician.created_at}</TableCell>
-										</TableRow>
-									))}
-								</TableBody>
-							</Table>
-						</div>
-					</TabsContent>
+          <TabsContent value={SettingsTabs.CLINICIANS}>
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Clinicians</h2>
+              <p>Manage Clinicians</p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created At</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {clinicians.map((clinician) => (
+                    <TableRow key={clinician.id}>
+                      <TableCell>{clinician.clinician_first_name} {clinician.clinician_last_name}</TableCell>
+                      <TableCell>{clinician.clinician_email}</TableCell>
+                      <TableCell>{clinician.clinician_phone}</TableCell>
+                      <TableCell>{clinician.clinician_status}</TableCell>
+                      <TableCell>{clinician.created_at}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
           <TabsContent value={SettingsTabs.USERS}>
             <div>
               <h2 className="text-lg font-semibold mb-2">Users</h2>
@@ -393,7 +407,7 @@ const Settings = () => {
                   <TableRow>
                     <TableHead>Code</TableHead>
                     <TableHead>Description</TableHead>
-                    <TableHead>Rate</TableHead>
+                    <TableHead>Fee</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -402,7 +416,7 @@ const Settings = () => {
                     <TableRow key={code.id}>
                       <TableCell>{code.code}</TableCell>
                       <TableCell>{code.description}</TableCell>
-                      <TableCell>{code.rate}</TableCell>
+                      <TableCell>{code.fee}</TableCell>
                       <TableCell>
                         <Button variant="ghost" size="sm" onClick={() => handleOpenCPTDialog(code)}>
                           <Pencil className="mr-2 h-4 w-4" />
@@ -421,11 +435,11 @@ const Settings = () => {
                 <PaginationContent>
                   <PaginationPrevious href="#" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} />
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <PaginationItem key={page} active={currentPage === page}>
+                    <PaginationItem key={page}>
                       <PaginationLink
                         href="#"
                         onClick={() => setCurrentPage(page)}
-                        isCurrent={currentPage === page}
+                        isActive={currentPage === page}
                       >
                         {page}
                       </PaginationLink>
@@ -440,8 +454,8 @@ const Settings = () => {
             <div>
               <h2 className="text-lg font-semibold mb-2">Templates</h2>
               <p>Customize your templates for treatment plans and session notes.</p>
-              <TreatmentPlanTemplate />
-              <SessionNoteTemplate />
+              <TreatmentPlanTemplate onClose={handleTemplateClose} />
+              <SessionNoteTemplate onClose={handleTemplateClose} />
             </div>
           </TabsContent>
           {/* <TabsContent value={SettingsTabs.SECURITY}>
@@ -459,7 +473,11 @@ const Settings = () => {
         </Tabs>
       </div>
 
-      <AddUserDialog isOpen={isAddUserDialogOpen} onClose={handleCloseAddUserDialog} onUserAdded={handleUserAdded} />
+      <AddUserDialog 
+        open={isAddUserDialogOpen} 
+        onOpenChange={setIsAddUserDialogOpen} 
+        onUserAdded={handleUserAdded} 
+      />
 
       <Dialog open={isCPTDialogOpen} onOpenChange={setIsCPTDialogOpen}>
         <DialogContent>
@@ -493,14 +511,14 @@ const Settings = () => {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="rate" className="text-right">
-                Rate
+              <Label htmlFor="fee" className="text-right">
+                Fee
               </Label>
               <Input
                 type="number"
-                id="rate"
-                name="rate"
-                value={cptCodeForm.rate}
+                id="fee"
+                name="fee"
+                value={cptCodeForm.fee}
                 onChange={handleCPTFormChange}
                 className="col-span-3"
               />
