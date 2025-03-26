@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   format, 
   startOfWeek, 
@@ -10,12 +10,24 @@ import {
   isSameDay
 } from 'date-fns';
 import { Card } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface WeekViewProps {
   currentDate: Date;
 }
 
+interface AvailabilityBlock {
+  id: string;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+}
+
 const WeekView: React.FC<WeekViewProps> = ({ currentDate }) => {
+  const [loading, setLoading] = useState(true);
+  const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
+  
   // Generate days for the week
   const days = eachDayOfInterval({
     start: startOfWeek(currentDate, { weekStartsOn: 0 }),
@@ -28,43 +40,59 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate }) => {
     return addHours(startOfDay(new Date()), hour);
   });
   
-  // Mock appointments (would come from database in real app)
-  const appointments = [
-    {
-      id: 1,
-      title: 'Initial Consultation',
-      client: 'John Doe',
-      start: addHours(startOfDay(days[1]), 10), // Tuesday at 10 AM
-      end: addHours(startOfDay(days[1]), 11),   // Tuesday at 11 AM
-      type: 'consultation'
-    },
-    {
-      id: 2,
-      title: 'Follow-up Session',
-      client: 'Jane Smith',
-      start: addHours(startOfDay(days[3]), 14), // Thursday at 2 PM
-      end: addHours(startOfDay(days[3]), 15),   // Thursday at 3 PM
-      type: 'session'
-    },
-    {
-      id: 3,
-      title: 'Group Therapy',
-      client: 'Support Group',
-      start: addHours(startOfDay(days[4]), 16), // Friday at 4 PM
-      end: addHours(startOfDay(days[4]), 17),   // Friday at 5 PM
-      type: 'group'
-    }
-  ];
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      setLoading(true);
+      try {
+        // Fetch all availability blocks for all days
+        const { data, error } = await supabase
+          .from('availability')
+          .select('*')
+          .eq('is_active', true);
+          
+        if (error) {
+          console.error('Error fetching availability:', error);
+        } else {
+          setAvailabilityBlocks(data || []);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchAvailability();
+  }, []);
   
-  // Function to get appointments for a specific day and hour
-  const getAppointmentsForTimeSlot = (day: Date, hourObj: Date) => {
-    return appointments.filter(apt => {
-      const isSameD = isSameDay(day, apt.start);
-      const hourStart = hourObj.getHours();
-      const appointmentHour = apt.start.getHours();
-      return isSameD && hourStart === appointmentHour;
+  // Function to get availability for a specific day and hour
+  const getAvailabilityForTimeSlot = (day: Date, hourObj: Date) => {
+    const dayOfWeek = format(day, 'EEEE'); // Returns Monday, Tuesday, etc.
+    const hourNumber = hourObj.getHours();
+    
+    return availabilityBlocks.filter(block => {
+      // Check if the block matches the current day of week
+      if (block.day_of_week !== dayOfWeek) return false;
+      
+      // Parse time strings to get hours and minutes
+      const startTime = block.start_time.split(':');
+      const endTime = block.end_time.split(':');
+      
+      const startHour = parseInt(startTime[0], 10);
+      const endHour = parseInt(endTime[0], 10);
+      
+      // Check if the current hour falls within a time block
+      return hourNumber >= startHour && hourNumber < endHour;
     });
   };
+  
+  if (loading) {
+    return (
+      <Card className="p-4 flex justify-center items-center h-[500px]">
+        <Loader2 className="h-6 w-6 animate-spin text-valorwell-500" />
+      </Card>
+    );
+  }
   
   return (
     <Card className="p-4">
@@ -89,25 +117,19 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate }) => {
             </div>
             
             {days.map(day => {
-              const appointments = getAppointmentsForTimeSlot(day, hour);
+              const availability = getAvailabilityForTimeSlot(day, hour);
               
               return (
                 <div 
                   key={`${day}-${hour}`} 
                   className="col-span-1 min-h-[60px] border-t border-l border-gray-100 p-1 group hover:bg-gray-50"
                 >
-                  {appointments.length > 0 ? (
-                    appointments.map(appointment => (
-                      <div 
-                        key={appointment.id}
-                        className="p-1 bg-valorwell-100 border-l-4 border-valorwell-500 rounded text-xs"
-                      >
-                        <div className="font-medium truncate">{appointment.title}</div>
-                        <div className="text-[10px] text-gray-600 truncate">
-                          {appointment.client}
-                        </div>
-                      </div>
-                    ))
+                  {availability.length > 0 ? (
+                    <div 
+                      className="p-1 bg-valorwell-100 border-l-4 border-valorwell-500 rounded text-xs h-full"
+                    >
+                      <div className="font-medium truncate">Available</div>
+                    </div>
                   ) : (
                     <div className="h-full w-full opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-gray-400">
                       +

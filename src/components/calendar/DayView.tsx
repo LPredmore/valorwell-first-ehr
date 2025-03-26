@@ -1,53 +1,90 @@
 
-import React from 'react';
-import { format, addHours, startOfDay } from 'date-fns';
+import React, { useState, useEffect } from 'react';
+import { format, addHours, startOfDay, setHours, setMinutes, isSameDay } from 'date-fns';
 import { Card } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DayViewProps {
   currentDate: Date;
 }
 
+interface AvailabilityBlock {
+  id: string;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+}
+
 const DayView: React.FC<DayViewProps> = ({ currentDate }) => {
+  const [loading, setLoading] = useState(true);
+  const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
+  
   // Generate hours for the day (from 8 AM to 6 PM)
   const hours = Array.from({ length: 11 }, (_, i) => {
     const hour = i + 8; // Starting at 8 AM
     return addHours(startOfDay(currentDate), hour);
   });
   
-  // Mock appointments (would come from database in real app)
-  const appointments = [
-    {
-      id: 1,
-      title: 'Initial Consultation',
-      client: 'John Doe',
-      start: addHours(startOfDay(currentDate), 10), // 10 AM
-      end: addHours(startOfDay(currentDate), 11),   // 11 AM
-      type: 'consultation'
-    },
-    {
-      id: 2,
-      title: 'Follow-up Session',
-      client: 'Jane Smith',
-      start: addHours(startOfDay(currentDate), 14), // 2 PM
-      end: addHours(startOfDay(currentDate), 15),   // 3 PM
-      type: 'session'
-    }
-  ];
+  // Get day of week from current date
+  const dayOfWeek = format(currentDate, 'EEEE'); // Returns Monday, Tuesday, etc.
   
-  // Function to check if hour has appointments
-  const getAppointmentsForHour = (hour: Date) => {
-    return appointments.filter(apt => {
-      const hourStart = hour.getHours();
-      const appointmentHour = apt.start.getHours();
-      return hourStart === appointmentHour;
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      setLoading(true);
+      try {
+        // Fetch all availability blocks for the current day of week
+        const { data, error } = await supabase
+          .from('availability')
+          .select('*')
+          .eq('day_of_week', dayOfWeek)
+          .eq('is_active', true);
+          
+        if (error) {
+          console.error('Error fetching availability:', error);
+        } else {
+          setAvailabilityBlocks(data || []);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchAvailability();
+  }, [dayOfWeek]);
+  
+  // Function to check if hour has availability
+  const getAvailabilityForHour = (hour: Date) => {
+    const hourNumber = hour.getHours();
+    
+    return availabilityBlocks.filter(block => {
+      // Parse time strings to get hours and minutes
+      const startTime = block.start_time.split(':');
+      const endTime = block.end_time.split(':');
+      
+      const startHour = parseInt(startTime[0], 10);
+      const endHour = parseInt(endTime[0], 10);
+      
+      // Check if the current hour falls within a time block
+      return hourNumber >= startHour && hourNumber < endHour;
     });
   };
+  
+  if (loading) {
+    return (
+      <Card className="p-4 flex justify-center items-center h-[500px]">
+        <Loader2 className="h-6 w-6 animate-spin text-valorwell-500" />
+      </Card>
+    );
+  }
   
   return (
     <Card className="p-4">
       <div className="flex flex-col space-y-2">
         {hours.map((hour) => {
-          const hourAppointments = getAppointmentsForHour(hour);
+          const hourAvailability = getAvailabilityForHour(hour);
           
           return (
             <div 
@@ -59,21 +96,21 @@ const DayView: React.FC<DayViewProps> = ({ currentDate }) => {
               </div>
               
               <div className="flex-1">
-                {hourAppointments.length > 0 ? (
-                  hourAppointments.map(appointment => (
+                {hourAvailability.length > 0 ? (
+                  hourAvailability.map(block => (
                     <div 
-                      key={appointment.id}
+                      key={block.id}
                       className="p-2 bg-valorwell-100 border-l-4 border-valorwell-500 rounded text-sm mb-1"
                     >
-                      <div className="font-medium">{appointment.title}</div>
+                      <div className="font-medium">Available</div>
                       <div className="text-xs text-gray-600">
-                        {appointment.client} · {format(appointment.start, 'h:mm a')} - {format(appointment.end, 'h:mm a')}
+                        {block.start_time.substring(0, 5)} - {block.end_time.substring(0, 5)}
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="h-full w-full opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs text-gray-400">
-                    Available
+                    Unavailable
                   </div>
                 )}
               </div>
