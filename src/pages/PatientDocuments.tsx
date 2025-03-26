@@ -75,7 +75,7 @@ const PatientDocuments: React.FC = () => {
                     <FileText className="h-12 w-12 mx-auto text-gray-400 mb-3" />
                     <h3 className="text-lg font-medium mb-2">No Charts Available</h3>
                     <p className="text-sm text-gray-500 mb-4">Charts and progress tracking will be displayed here</p>
-                    <Button variant="outline">Create New Chart</Button>
+                    {/* Removed Create New Chart button */}
                   </div>
                 </CardContent>
               </Card>
@@ -93,7 +93,7 @@ const PatientDocuments: React.FC = () => {
                     <ClipboardCheck className="h-12 w-12 mx-auto text-gray-400 mb-3" />
                     <h3 className="text-lg font-medium mb-2">No Assessments Available</h3>
                     <p className="text-sm text-gray-500 mb-4">Patient assessments will be displayed here</p>
-                    <Button variant="outline">Create New Assessment</Button>
+                    {/* Removed Create New Assessment button */}
                   </div>
                 </CardContent>
               </Card>
@@ -111,7 +111,7 @@ const PatientDocuments: React.FC = () => {
                     <FileCheck className="h-12 w-12 mx-auto text-gray-400 mb-3" />
                     <h3 className="text-lg font-medium mb-2">No Completed Notes</h3>
                     <p className="text-sm text-gray-500 mb-4">Completed session notes will be displayed here</p>
-                    <Button variant="outline">View All Notes</Button>
+                    {/* Removed View All Notes button */}
                   </div>
                 </CardContent>
               </Card>

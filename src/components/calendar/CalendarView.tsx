@@ -22,8 +22,7 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Clock,
-  Calendar as CalendarIcon,
-  Plus
+  Calendar as CalendarIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import DayView from './DayView';
@@ -98,10 +97,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
           <h2 className="text-lg font-semibold ml-2">{getHeaderText()}</h2>
         </div>
         
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          New Appointment
-        </Button>
+        {/* Removed New Appointment button */}
       </div>
       
       <div className="flex gap-4">

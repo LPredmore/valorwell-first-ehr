@@ -1299,9 +1299,6 @@ const ClientDetails = () => {
                       <p className="text-gray-500 text-sm mb-6">
                         Charts and progress tracking will be displayed here
                       </p>
-                      <Button variant="outline" size="sm">
-                        Create New Chart
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -1323,9 +1320,6 @@ const ClientDetails = () => {
                       <p className="text-gray-500 text-sm mb-6">
                         Patient assessments will be displayed here
                       </p>
-                      <Button variant="outline" size="sm">
-                        Create New Assessment
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -1347,9 +1341,6 @@ const ClientDetails = () => {
                       <p className="text-gray-500 text-sm mb-6">
                         Completed session notes will be displayed here
                       </p>
-                      <Button variant="outline" size="sm">
-                        View All Notes
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
