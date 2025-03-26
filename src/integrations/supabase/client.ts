@@ -68,3 +68,248 @@ export const getClinicianAvailabilitySettings = async (clinicianId: string | nul
   
   return data;
 };
+
+// User Authentication helper
+export const getCurrentUser = async () => {
+  const { data, error } = await supabase.auth.getUser();
+  
+  if (error) {
+    console.error('Error getting current user:', error);
+    return null;
+  }
+  
+  return data.user;
+};
+
+// Create User function
+export const createUser = async (email: string, userData: any) => {
+  try {
+    // Use a random password - in production, you'd want to create a secure random password
+    const password = 'temppass1234';
+    
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: userData
+    });
+    
+    if (error) throw error;
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error creating user:', error);
+    return { data: null, error };
+  }
+};
+
+// Client data functions
+export const getClientByUserId = async (userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+      
+    if (error) throw error;
+    
+    return data;
+  } catch (error) {
+    console.error('Error fetching client by user ID:', error);
+    return null;
+  }
+};
+
+export const updateClientProfile = async (clientId: string, updates: any) => {
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .update(updates)
+      .eq('id', clientId)
+      .select()
+      .single();
+      
+    if (error) throw error;
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error updating client profile:', error);
+    return { success: false, error };
+  }
+};
+
+// Clinician data functions
+export const getClinicianIdByName = async (name: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('clinicians')
+      .select('id')
+      .ilike('clinician_professional_name', `%${name}%`)
+      .maybeSingle();
+      
+    if (error) throw error;
+    
+    return data?.id || null;
+  } catch (error) {
+    console.error('Error fetching clinician by name:', error);
+    return null;
+  }
+};
+
+export const getClinicianNameById = async (clinicianId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('clinicians')
+      .select('clinician_professional_name')
+      .eq('id', clinicianId)
+      .maybeSingle();
+      
+    if (error) throw error;
+    
+    return data?.clinician_professional_name || null;
+  } catch (error) {
+    console.error('Error fetching clinician name by ID:', error);
+    return null;
+  }
+};
+
+// CPT Codes 
+export interface CPTCode {
+  code: string;
+  name: string;
+  description?: string;
+  fee: number;
+  clinical_type?: string;
+}
+
+export const fetchCPTCodes = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('cpt_codes')
+      .select('*')
+      .order('code');
+      
+    if (error) throw error;
+    
+    return data;
+  } catch (error) {
+    console.error('Error fetching CPT codes:', error);
+    return [];
+  }
+};
+
+export const addCPTCode = async (cptCode: CPTCode) => {
+  try {
+    const { data, error } = await supabase
+      .from('cpt_codes')
+      .insert([cptCode])
+      .select()
+      .single();
+      
+    if (error) throw error;
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error adding CPT code:', error);
+    return { success: false, error };
+  }
+};
+
+export const updateCPTCode = async (code: string, updates: Partial<CPTCode>) => {
+  try {
+    const { data, error } = await supabase
+      .from('cpt_codes')
+      .update(updates)
+      .eq('code', code)
+      .select()
+      .single();
+      
+    if (error) throw error;
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error updating CPT code:', error);
+    return { success: false, error };
+  }
+};
+
+export const deleteCPTCode = async (code: string) => {
+  try {
+    const { error } = await supabase
+      .from('cpt_codes')
+      .delete()
+      .eq('code', code);
+      
+    if (error) throw error;
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting CPT code:', error);
+    return { success: false, error };
+  }
+};
+
+// Practice Information
+export interface PracticeInfo {
+  id?: string;
+  practice_name?: string;
+  practice_address1?: string;
+  practice_address2?: string;
+  practice_city?: string;
+  practice_state?: string;
+  practice_zip?: string;
+  practice_npi?: string;
+  practice_taxid?: string;
+  practice_taxonomy?: string;
+}
+
+export const fetchPracticeInfo = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('practiceinfo')
+      .select('*')
+      .maybeSingle();
+      
+    if (error) throw error;
+    
+    return data;
+  } catch (error) {
+    console.error('Error fetching practice info:', error);
+    return null;
+  }
+};
+
+export const updatePracticeInfo = async (info: PracticeInfo) => {
+  try {
+    let result;
+    
+    if (info.id) {
+      // Update existing record
+      const { data, error } = await supabase
+        .from('practiceinfo')
+        .update(info)
+        .eq('id', info.id)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      result = data;
+    } else {
+      // Insert new record
+      const { data, error } = await supabase
+        .from('practiceinfo')
+        .insert([info])
+        .select()
+        .single();
+        
+      if (error) throw error;
+      result = data;
+    }
+    
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Error updating practice info:', error);
+    return { success: false, error };
+  }
+};
