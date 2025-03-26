@@ -5,9 +5,12 @@ import {
   startOfWeek, 
   endOfWeek, 
   eachDayOfInterval, 
-  addHours, 
+  addMinutes, 
   startOfDay,
-  isSameDay
+  isSameDay,
+  setHours,
+  setMinutes,
+  differenceInMinutes
 } from 'date-fns';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
@@ -24,9 +27,16 @@ interface AvailabilityBlock {
   end_time: string;
 }
 
+interface TimeBlock {
+  day: Date;
+  start: Date;
+  end: Date;
+  availabilityIds: string[];
+}
+
 const WeekView: React.FC<WeekViewProps> = ({ currentDate }) => {
   const [loading, setLoading] = useState(true);
-  const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
   
   // Generate days for the week
   const days = eachDayOfInterval({
@@ -34,10 +44,10 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate }) => {
     end: endOfWeek(currentDate, { weekStartsOn: 0 })
   });
   
-  // Generate hours for each day (from 8 AM to 6 PM)
-  const hours = Array.from({ length: 11 }, (_, i) => {
-    const hour = i + 8; // Starting at 8 AM
-    return addHours(startOfDay(new Date()), hour);
+  // Generate time slots for each day (from 8 AM to 6 PM, in 30-minute increments)
+  const timeSlots = Array.from({ length: 21 }, (_, i) => {
+    const minutes = i * 30; // 30-minute increments
+    return addMinutes(setHours(startOfDay(new Date()), 8), minutes);
   });
   
   useEffect(() => {
@@ -53,7 +63,8 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate }) => {
         if (error) {
           console.error('Error fetching availability:', error);
         } else {
-          setAvailabilityBlocks(data || []);
+          // Process availability data into continuous blocks for each day
+          processAvailabilityBlocks(data || []);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -65,25 +76,96 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate }) => {
     fetchAvailability();
   }, []);
   
-  // Function to get availability for a specific day and hour
-  const getAvailabilityForTimeSlot = (day: Date, hourObj: Date) => {
-    const dayOfWeek = format(day, 'EEEE'); // Returns Monday, Tuesday, etc.
-    const hourNumber = hourObj.getHours();
+  // Process availability blocks into continuous time blocks for each day
+  const processAvailabilityBlocks = (blocks: AvailabilityBlock[]) => {
+    if (!blocks.length) {
+      setTimeBlocks([]);
+      return;
+    }
     
-    return availabilityBlocks.filter(block => {
-      // Check if the block matches the current day of week
-      if (block.day_of_week !== dayOfWeek) return false;
+    const allTimeBlocks: TimeBlock[] = [];
+    
+    // Process each day separately
+    days.forEach(day => {
+      const dayOfWeek = format(day, 'EEEE'); // e.g. "Monday"
+      const dayBlocks = blocks.filter(block => block.day_of_week === dayOfWeek);
       
-      // Parse time strings to get hours and minutes
-      const startTime = block.start_time.split(':');
-      const endTime = block.end_time.split(':');
+      // Parse blocks into Date objects for this day
+      const parsedBlocks = dayBlocks.map(block => {
+        const [startHour, startMinute] = block.start_time.split(':').map(Number);
+        const [endHour, endMinute] = block.end_time.split(':').map(Number);
+        
+        const start = setMinutes(setHours(startOfDay(day), startHour), startMinute);
+        const end = setMinutes(setHours(startOfDay(day), endHour), endMinute);
+        
+        return {
+          id: block.id,
+          day,
+          start,
+          end
+        };
+      });
       
-      const startHour = parseInt(startTime[0], 10);
-      const endHour = parseInt(endTime[0], 10);
+      // Sort blocks by start time
+      parsedBlocks.sort((a, b) => a.start.getTime() - b.start.getTime());
       
-      // Check if the current hour falls within a time block
-      return hourNumber >= startHour && hourNumber < endHour;
+      // Merge overlapping blocks for this day
+      const mergedBlocks: TimeBlock[] = [];
+      
+      parsedBlocks.forEach(block => {
+        const lastBlock = mergedBlocks[mergedBlocks.length - 1];
+        
+        if (lastBlock && block.start <= lastBlock.end) {
+          // Blocks overlap, extend the end time if needed
+          if (block.end > lastBlock.end) {
+            lastBlock.end = block.end;
+          }
+          // Add this block's ID to the list of availability IDs
+          lastBlock.availabilityIds.push(block.id);
+        } else {
+          // No overlap, add as a new block
+          mergedBlocks.push({
+            day: block.day,
+            start: block.start,
+            end: block.end,
+            availabilityIds: [block.id]
+          });
+        }
+      });
+      
+      // Add this day's blocks to the overall list
+      allTimeBlocks.push(...mergedBlocks);
     });
+    
+    setTimeBlocks(allTimeBlocks);
+  };
+  
+  // Check if a specific day and time slot is within an availability block
+  const isTimeSlotAvailable = (day: Date, timeSlot: Date) => {
+    const slotTime = setMinutes(
+      setHours(startOfDay(day), timeSlot.getHours()),
+      timeSlot.getMinutes()
+    );
+    
+    return timeBlocks.some(block => 
+      isSameDay(block.day, day) && 
+      slotTime >= block.start && 
+      slotTime < block.end
+    );
+  };
+  
+  // Get the continuous block that a time slot belongs to
+  const getBlockForTimeSlot = (day: Date, timeSlot: Date) => {
+    const slotTime = setMinutes(
+      setHours(startOfDay(day), timeSlot.getHours()),
+      timeSlot.getMinutes()
+    );
+    
+    return timeBlocks.find(block => 
+      isSameDay(block.day, day) && 
+      slotTime >= block.start && 
+      slotTime < block.end
+    );
   };
   
   if (loading) {
@@ -110,25 +192,59 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate }) => {
           </div>
         ))}
         
-        {hours.map(hour => (
-          <React.Fragment key={hour.toString()}>
+        {timeSlots.map((timeSlot, slotIndex) => (
+          <React.Fragment key={timeSlot.toString()}>
             <div className="col-span-1 p-2 text-xs text-gray-500 text-right pr-4 border-t border-gray-100">
-              {format(hour, 'h:mm a')}
+              {format(timeSlot, 'h:mm a')}
             </div>
             
             {days.map(day => {
-              const availability = getAvailabilityForTimeSlot(day, hour);
+              const isAvailable = isTimeSlotAvailable(day, timeSlot);
+              const currentBlock = getBlockForTimeSlot(day, timeSlot);
+              
+              // For week view, we need to determine if this is the start/middle/end of a block
+              const isStartOfBlock = currentBlock && 
+                differenceInMinutes(
+                  setMinutes(setHours(startOfDay(day), timeSlot.getHours()), timeSlot.getMinutes()),
+                  currentBlock.start
+                ) < 30;
+              
+              const isEndOfBlock = currentBlock && 
+                differenceInMinutes(
+                  currentBlock.end,
+                  addMinutes(setMinutes(setHours(startOfDay(day), timeSlot.getHours()), timeSlot.getMinutes()), 30)
+                ) < 30;
+              
+              let continuousBlockClass = "";
+              
+              if (isAvailable) {
+                if (isStartOfBlock && isEndOfBlock) {
+                  // This is a single-slot block
+                  continuousBlockClass = "rounded";
+                } else if (isStartOfBlock) {
+                  // This is the start of a block
+                  continuousBlockClass = "rounded-t border-b-0";
+                } else if (isEndOfBlock) {
+                  // This is the end of a block
+                  continuousBlockClass = "rounded-b";
+                } else {
+                  // This is the middle of a block
+                  continuousBlockClass = "border-t-0 border-b-0";
+                }
+              }
               
               return (
                 <div 
-                  key={`${day}-${hour}`} 
-                  className="col-span-1 min-h-[60px] border-t border-l border-gray-100 p-1 group hover:bg-gray-50"
+                  key={`${day}-${timeSlot}`} 
+                  className="col-span-1 min-h-[40px] border-t border-l border-gray-100 p-1 group hover:bg-gray-50"
                 >
-                  {availability.length > 0 ? (
+                  {isAvailable ? (
                     <div 
-                      className="p-1 bg-valorwell-100 border-l-4 border-valorwell-500 rounded text-xs h-full"
+                      className={`p-1 bg-green-50 border-l-4 border-green-500 ${continuousBlockClass} h-full text-xs`}
                     >
-                      <div className="font-medium truncate">Available</div>
+                      {isStartOfBlock && (
+                        <div className="font-medium truncate">Available</div>
+                      )}
                     </div>
                   ) : (
                     <div className="h-full w-full opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-gray-400">

@@ -9,7 +9,10 @@ import {
   isSameDay,
   startOfWeek,
   endOfWeek,
-  isToday
+  isToday,
+  setHours,
+  setMinutes,
+  startOfDay
 } from 'date-fns';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
@@ -27,9 +30,15 @@ interface AvailabilityBlock {
   end_time: string;
 }
 
+interface DisplayBlock {
+  start: string;
+  end: string;
+  id: string;
+}
+
 const MonthView: React.FC<MonthViewProps> = ({ currentDate }) => {
   const [loading, setLoading] = useState(true);
-  const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
+  const [availabilityByDay, setAvailabilityByDay] = useState<Record<string, DisplayBlock[]>>({});
   
   // Get all days in the current month view (including days from prev/next months to fill the calendar grid)
   const monthStart = startOfMonth(currentDate);
@@ -52,7 +61,8 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate }) => {
         if (error) {
           console.error('Error fetching availability:', error);
         } else {
-          setAvailabilityBlocks(data || []);
+          // Process availability data for all days
+          processAvailabilityBlocks(data || []);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -64,11 +74,65 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate }) => {
     fetchAvailability();
   }, []);
   
-  // Get availability blocks for a specific day
-  const getAvailabilityForDay = (day: Date) => {
-    const dayOfWeek = format(day, 'EEEE'); // Returns Monday, Tuesday, etc.
+  // Process availability blocks into a map of day -> availability blocks
+  const processAvailabilityBlocks = (blocks: AvailabilityBlock[]) => {
+    const availabilityMap: Record<string, DisplayBlock[]> = {};
     
-    return availabilityBlocks.filter(block => block.day_of_week === dayOfWeek);
+    // For each day in the calendar
+    days.forEach(day => {
+      const dayOfWeek = format(day, 'EEEE'); // e.g. "Monday"
+      const dayKey = format(day, 'yyyy-MM-dd');
+      
+      // Get blocks for this day of week
+      const dayBlocks = blocks.filter(block => block.day_of_week === dayOfWeek);
+      
+      // Transform into display blocks
+      const displayBlocks = dayBlocks.map(block => ({
+        id: block.id,
+        start: block.start_time.substring(0, 5),
+        end: block.end_time.substring(0, 5)
+      }));
+      
+      // Merge adjacent or overlapping blocks
+      const mergedBlocks = mergeTimeBlocks(displayBlocks);
+      
+      // Store in the map
+      availabilityMap[dayKey] = mergedBlocks;
+    });
+    
+    setAvailabilityByDay(availabilityMap);
+  };
+  
+  // Merge adjacent or overlapping time blocks
+  const mergeTimeBlocks = (blocks: DisplayBlock[]): DisplayBlock[] => {
+    if (!blocks.length) return [];
+    
+    // Sort by start time
+    const sortedBlocks = [...blocks].sort((a, b) => a.start.localeCompare(b.start));
+    
+    const result: DisplayBlock[] = [];
+    let current = {...sortedBlocks[0]};
+    
+    for (let i = 1; i < sortedBlocks.length; i++) {
+      const block = sortedBlocks[i];
+      
+      // Check if blocks can be merged
+      if (current.end >= block.start) {
+        // Extend the end time if needed
+        if (block.end > current.end) {
+          current.end = block.end;
+        }
+      } else {
+        // Cannot merge, save current block and start a new one
+        result.push(current);
+        current = {...block};
+      }
+    }
+    
+    // Add the last block
+    result.push(current);
+    
+    return result;
   };
   
   // Create week rows
@@ -107,7 +171,8 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate }) => {
       {weeks.map((week, weekIndex) => (
         <div key={weekIndex} className="grid grid-cols-7 gap-1 mb-1">
           {week.map((day) => {
-            const dayAvailability = getAvailabilityForDay(day);
+            const dayKey = format(day, 'yyyy-MM-dd');
+            const dayAvailability = availabilityByDay[dayKey] || [];
             const isCurrentMonth = isSameMonth(day, currentDate);
             
             return (
@@ -128,12 +193,12 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate }) => {
                 <div className="mt-1 space-y-1">
                   {dayAvailability.length > 0 ? (
                     <>
-                      {dayAvailability.slice(0, 3).map(block => (
+                      {dayAvailability.slice(0, 3).map((block, index) => (
                         <div 
-                          key={block.id}
-                          className="p-1 bg-valorwell-100 border-l-4 border-valorwell-500 rounded text-xs truncate"
+                          key={`${block.id}-${index}`}
+                          className="p-1 bg-green-50 border-l-4 border-green-500 rounded text-xs truncate"
                         >
-                          {block.start_time.substring(0, 5)} - {block.end_time.substring(0, 5)}
+                          {block.start} - {block.end}
                         </div>
                       ))}
                       
