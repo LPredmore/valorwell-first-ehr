@@ -39,6 +39,7 @@ interface DisplayBlock {
 const MonthView: React.FC<MonthViewProps> = ({ currentDate }) => {
   const [loading, setLoading] = useState(true);
   const [availabilityByDay, setAvailabilityByDay] = useState<Record<string, DisplayBlock[]>>({});
+  const [timeGranularity, setTimeGranularity] = useState<string>('hour');
   
   // Get all days in the current month view (including days from prev/next months to fill the calendar grid)
   const monthStart = startOfMonth(currentDate);
@@ -52,10 +53,54 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate }) => {
     const fetchAvailability = async () => {
       setLoading(true);
       try {
+        // Get current user session
+        const { data: sessionData } = await supabase.auth.getSession();
+        
+        if (!sessionData?.session?.user) {
+          setLoading(false);
+          return;
+        }
+        
+        // Get profile email
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', sessionData.session.user.id)
+          .single();
+          
+        if (!profileData) {
+          setLoading(false);
+          return;
+        }
+        
+        // Get clinician ID
+        const { data: clinicianData } = await supabase
+          .from('clinicians')
+          .select('id')
+          .eq('clinician_email', profileData.email)
+          .single();
+          
+        if (!clinicianData) {
+          setLoading(false);
+          return;
+        }
+        
+        // Get scheduling granularity preference
+        const { data: settingsData } = await supabase
+          .from('availability_settings')
+          .select('time_granularity')
+          .eq('clinician_id', clinicianData.id)
+          .single();
+          
+        if (settingsData) {
+          setTimeGranularity(settingsData.time_granularity);
+        }
+        
         // Fetch all availability blocks
         const { data, error } = await supabase
           .from('availability')
           .select('*')
+          .eq('clinician_id', clinicianData.id)
           .eq('is_active', true);
           
         if (error) {

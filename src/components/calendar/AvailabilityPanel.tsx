@@ -10,6 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 
 interface TimeSlot {
   id: string;
@@ -28,6 +31,7 @@ const AvailabilityPanel: React.FC = () => {
   const [availabilityEnabled, setAvailabilityEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [timeGranularity, setTimeGranularity] = useState<'hour' | 'half-hour'>('hour');
   const { toast } = useToast();
 
   // Initialize a schedule for each day of the week
@@ -89,6 +93,17 @@ const AvailabilityPanel: React.FC = () => {
           } else if (availabilityData && availabilityData.length > 0) {
             // Convert DB data to our UI format
             const newSchedule = [...weekSchedule];
+            
+            // Check for time granularity setting
+            const { data: settingsData } = await supabase
+              .from('availability_settings')
+              .select('time_granularity')
+              .eq('clinician_id', clinicianData.id)
+              .single();
+              
+            if (settingsData) {
+              setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
+            }
             
             availabilityData.forEach(slot => {
               const dayIndex = newSchedule.findIndex(day => day.day === slot.day_of_week);
@@ -273,6 +288,15 @@ const AvailabilityPanel: React.FC = () => {
         }));
       });
       
+      // Also save the time granularity preference
+      await supabase.from('availability_settings')
+        .upsert({
+          clinician_id: clinicianData.id,
+          time_granularity: timeGranularity
+        }, {
+          onConflict: 'clinician_id'
+        });
+      
       // Insert new availability data
       if (availabilityToInsert.length > 0) {
         const { error } = await supabase
@@ -336,13 +360,22 @@ const AvailabilityPanel: React.FC = () => {
   };
   
   // Generate time options for select
-  const timeOptions = Array.from({ length: 24 * 4 }, (_, i) => {
-    const hour = Math.floor(i / 4);
-    const minute = (i % 4) * 15;
-    const hourFormatted = hour.toString().padStart(2, '0');
-    const minuteFormatted = minute.toString().padStart(2, '0');
-    return `${hourFormatted}:${minuteFormatted}`;
-  });
+  const timeOptions = React.useMemo(() => {
+    const options = [];
+    
+    for (let hour = 0; hour < 24; hour++) {
+      // Add hour option (e.g., "09:00")
+      const hourFormatted = hour.toString().padStart(2, '0');
+      options.push(`${hourFormatted}:00`);
+      
+      // If half-hour granularity, add half-hour option (e.g., "09:30")
+      if (timeGranularity === 'half-hour') {
+        options.push(`${hourFormatted}:30`);
+      }
+    }
+    
+    return options;
+  }, [timeGranularity]);
   
   if (loading) {
     return (
@@ -385,6 +418,32 @@ const AvailabilityPanel: React.FC = () => {
       <CardContent>
         {activeTab === 'set' && (
           <div className="space-y-4">
+            <div className="p-3 border rounded-md">
+              <h3 className="font-medium mb-2">Scheduling Settings</h3>
+              <Separator className="my-2" />
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Allow clients to schedule appointments on:
+                  </p>
+                  <RadioGroup 
+                    value={timeGranularity} 
+                    onValueChange={(value) => setTimeGranularity(value as 'hour' | 'half-hour')}
+                    className="flex flex-col space-y-1"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="hour" id="hour" />
+                      <Label htmlFor="hour">Hour marks only (e.g., 1:00, 2:00)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="half-hour" id="half-hour" />
+                      <Label htmlFor="half-hour">Hour and half-hour marks (e.g., 1:00, 1:30)</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </div>
+            </div>
+            
             <div className="space-y-2">
               {weekSchedule.map((day, index) => (
                 <Collapsible 
