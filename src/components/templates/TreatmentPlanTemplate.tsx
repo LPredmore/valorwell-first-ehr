@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,19 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 interface TreatmentPlanTemplateProps {
   onClose: () => void;
-  onSave?: () => void;
 }
 
-const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({ onClose, onSave }) => {
+const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({ onClose }) => {
   const [startDate, setStartDate] = React.useState<Date | undefined>(new Date());
-  
-  const handleSave = () => {
-    if (onSave) {
-      onSave();
-    } else {
-      onClose();
-    }
-  };
 
   return (
     <Card className="w-full border border-gray-200 rounded-md">
@@ -189,7 +181,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({ onClose, 
           
           <div className="flex justify-end">
             <Button variant="outline" onClick={onClose} className="mr-2">Close</Button>
-            <Button className="bg-valorwell-700 hover:bg-valorwell-800" onClick={handleSave}>Save Template</Button>
+            <Button className="bg-valorwell-700 hover:bg-valorwell-800">Save Template</Button>
           </div>
         </div>
       </CardContent>

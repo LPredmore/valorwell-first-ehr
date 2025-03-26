@@ -1,147 +1,124 @@
-import React, { useState } from 'react';
-import Layout from '@/components/layout/Layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Plus, Upload, Download, Folder } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { supabase } from '@/integrations/supabase/client';
-import TreatmentPlanTemplate from '@/components/templates/TreatmentPlanTemplate';
-import { useToast } from '@/hooks/use-toast';
 
-interface Document {
-  id: string;
-  title: string;
-  category: string;
-  created_at: string;
+import React, { useState } from 'react';
+import { 
+  format, 
+  startOfWeek, 
+  endOfWeek, 
+  eachDayOfInterval, 
+  startOfMonth, 
+  endOfMonth,
+  isSameMonth,
+  isSameDay,
+  addMonths,
+  subMonths,
+  addWeeks,
+  subWeeks,
+  addDays,
+  subDays
+} from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Clock,
+  Calendar as CalendarIcon,
+  Plus
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import DayView from './DayView';
+import WeekView from './WeekView';
+import MonthView from './MonthView';
+import AvailabilityPanel from './AvailabilityPanel';
+
+interface CalendarViewProps {
+  view: 'day' | 'week' | 'month';
+  showAvailability: boolean;
+  clinicianId: string | null;
 }
 
-const PatientDocuments: React.FC = () => {
-  const [showTreatmentPlan, setShowTreatmentPlan] = useState(false);
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const { toast } = useToast();
-
-  const handleCreateTreatmentPlan = () => {
-    setShowTreatmentPlan(true);
+const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, clinicianId }) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  const navigatePrevious = () => {
+    if (view === 'day') {
+      setCurrentDate(subDays(currentDate, 1));
+    } else if (view === 'week') {
+      setCurrentDate(subWeeks(currentDate, 1));
+    } else if (view === 'month') {
+      setCurrentDate(subMonths(currentDate, 1));
+    }
   };
-
-  const handleCloseTreatmentPlan = () => {
-    setShowTreatmentPlan(false);
+  
+  const navigateNext = () => {
+    if (view === 'day') {
+      setCurrentDate(addDays(currentDate, 1));
+    } else if (view === 'week') {
+      setCurrentDate(addWeeks(currentDate, 1));
+    } else if (view === 'month') {
+      setCurrentDate(addMonths(currentDate, 1));
+    }
   };
-
-  const handleSaveTreatmentPlan = () => {
-    toast({
-      title: "Success",
-      description: "Treatment plan created successfully",
-    });
-    setShowTreatmentPlan(false);
+  
+  const navigateToday = () => {
+    setCurrentDate(new Date());
   };
-
+  
+  // Format the header based on the current view
+  const getHeaderText = () => {
+    if (view === 'day') {
+      return format(currentDate, 'MMMM d, yyyy');
+    } else if (view === 'week') {
+      const start = startOfWeek(currentDate, { weekStartsOn: 0 });
+      const end = endOfWeek(currentDate, { weekStartsOn: 0 });
+      
+      if (format(start, 'MMM') === format(end, 'MMM')) {
+        return `${format(start, 'MMMM d')} - ${format(end, 'd, yyyy')}`;
+      } else {
+        return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
+      }
+    } else {
+      return format(currentDate, 'MMMM yyyy');
+    }
+  };
+  
   return (
-    <Layout>
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">Patient Documents</h1>
-          <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-valorwell-600" />
-            <span className="text-sm text-gray-500">Manage and view patient documents</span>
-          </div>
+    <div className="flex flex-col space-y-4">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={navigateToday}>
+            Today
+          </Button>
+          <Button variant="ghost" size="icon" onClick={navigatePrevious}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={navigateNext}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <h2 className="text-lg font-semibold ml-2">{getHeaderText()}</h2>
         </div>
         
-        {showTreatmentPlan ? (
-          <TreatmentPlanTemplate 
-            onClose={handleCloseTreatmentPlan} 
-            onSave={handleSaveTreatmentPlan}
-          />
-        ) : (
-          <Tabs defaultValue="documents">
-            <TabsList className="mb-4">
-              <TabsTrigger value="documents">Documents</TabsTrigger>
-              <TabsTrigger value="forms">Assessment Forms</TabsTrigger>
-              <TabsTrigger value="templates">Document Templates</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="documents">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Document Library</CardTitle>
-                  <CardDescription>Access all patient forms, records, and documents</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex space-x-4 mb-6">
-                    <Button className="flex items-center gap-2" onClick={handleCreateTreatmentPlan}>
-                      <FileText size={18} />
-                      Create Treatment Plan
-                    </Button>
-                    <Button className="flex items-center gap-2">
-                      <Upload size={18} />
-                      Upload Document
-                    </Button>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card className="border border-gray-200 hover:border-valorwell-500 transition-colors cursor-pointer">
-                      <CardContent className="p-4 flex flex-col items-center justify-center">
-                        <Folder className="h-12 w-12 text-valorwell-600 mb-2" />
-                        <span className="font-medium">Treatment Plans</span>
-                        <span className="text-sm text-gray-500">0 documents</span>
-                      </CardContent>
-                    </Card>
-                    <Card className="border border-gray-200 hover:border-valorwell-500 transition-colors cursor-pointer">
-                      <CardContent className="p-4 flex flex-col items-center justify-center">
-                        <Folder className="h-12 w-12 text-valorwell-600 mb-2" />
-                        <span className="font-medium">Progress Notes</span>
-                        <span className="text-sm text-gray-500">0 documents</span>
-                      </CardContent>
-                    </Card>
-                    <Card className="border border-gray-200 hover:border-valorwell-500 transition-colors cursor-pointer">
-                      <CardContent className="p-4 flex flex-col items-center justify-center">
-                        <Folder className="h-12 w-12 text-valorwell-600 mb-2" />
-                        <span className="font-medium">Assessments</span>
-                        <span className="text-sm text-gray-500">0 documents</span>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="forms">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Assessment Forms</CardTitle>
-                  <CardDescription>Create and complete patient assessment forms</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p>Assessment forms will be displayed here.</p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="templates">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Document Templates</CardTitle>
-                  <CardDescription>Create and manage document templates</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex space-x-4 mb-6">
-                    <Button className="flex items-center gap-2" onClick={handleCreateTreatmentPlan}>
-                      <FileText size={18} />
-                      Treatment Plan Template
-                    </Button>
-                    <Button className="flex items-center gap-2">
-                      <FileText size={18} />
-                      Progress Note Template
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          New Appointment
+        </Button>
+      </div>
+      
+      <div className="flex gap-4">
+        <div className={cn("flex-1", showAvailability ? "w-3/4" : "w-full")}>
+          {view === 'day' && <DayView currentDate={currentDate} clinicianId={clinicianId} />}
+          {view === 'week' && <WeekView currentDate={currentDate} clinicianId={clinicianId} />}
+          {view === 'month' && <MonthView currentDate={currentDate} clinicianId={clinicianId} />}
+        </div>
+        
+        {showAvailability && (
+          <div className="w-1/4">
+            <AvailabilityPanel clinicianId={clinicianId} />
+          </div>
         )}
       </div>
-    </Layout>
+    </div>
   );
 };
 
-export default PatientDocuments;
+export default CalendarView;
