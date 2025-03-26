@@ -12,6 +12,7 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { supabase, getCurrentUser, getClientByUserId, updateClientProfile } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import InsuranceSection from '@/components/ui/InsuranceSection';
 
 const PatientDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
@@ -34,6 +35,10 @@ const PatientDashboard: React.FC = () => {
   const timeZoneOptions = ['Eastern Standard Time (EST)', 'Central Standard Time (CST)', 
     'Mountain Standard Time (MST)', 'Pacific Standard Time (PST)', 'Alaska Standard Time (AKST)', 
     'Hawaii-Aleutian Standard Time (HST)', 'Atlantic Standard Time (AST)'];
+    
+  // Insurance related options
+  const insuranceTypes = ['PPO', 'HMO', 'EPO', 'POS', 'HDHP', 'Medicare', 'Medicaid', 'Other'];
+  const relationshipTypes = ['Self', 'Spouse', 'Child', 'Other'];
 
   // Form setup for profile
   const form = useForm({
@@ -48,7 +53,31 @@ const PatientDashboard: React.FC = () => {
       gender: '',
       genderIdentity: '',
       state: '',
-      timeZone: ''
+      timeZone: '',
+      // Insurance fields - Primary
+      client_insurance_company_primary: '',
+      client_insurance_type_primary: '',
+      client_policy_number_primary: '',
+      client_group_number_primary: '',
+      client_subscriber_name_primary: '',
+      client_subscriber_relationship_primary: '',
+      client_subscriber_dob_primary: '',
+      // Insurance fields - Secondary
+      client_insurance_company_secondary: '',
+      client_insurance_type_secondary: '',
+      client_policy_number_secondary: '',
+      client_group_number_secondary: '',
+      client_subscriber_name_secondary: '',
+      client_subscriber_relationship_secondary: '',
+      client_subscriber_dob_secondary: '',
+      // Insurance fields - Tertiary
+      client_insurance_company_tertiary: '',
+      client_insurance_type_tertiary: '',
+      client_policy_number_tertiary: '',
+      client_group_number_tertiary: '',
+      client_subscriber_name_tertiary: '',
+      client_subscriber_relationship_tertiary: '',
+      client_subscriber_dob_tertiary: ''
     }
   });
 
@@ -105,7 +134,31 @@ const PatientDashboard: React.FC = () => {
           gender: client.client_gender || '',
           genderIdentity: client.client_gender_identity || '',
           state: client.client_state || '',
-          timeZone: client.client_time_zone || ''
+          timeZone: client.client_time_zone || '',
+          // Insurance fields - Primary
+          client_insurance_company_primary: client.client_insurance_company_primary || '',
+          client_insurance_type_primary: client.client_insurance_type_primary || '',
+          client_policy_number_primary: client.client_policy_number_primary || '',
+          client_group_number_primary: client.client_group_number_primary || '',
+          client_subscriber_name_primary: client.client_subscriber_name_primary || '',
+          client_subscriber_relationship_primary: client.client_subscriber_relationship_primary || '',
+          client_subscriber_dob_primary: client.client_subscriber_dob_primary || '',
+          // Insurance fields - Secondary
+          client_insurance_company_secondary: client.client_insurance_company_secondary || '',
+          client_insurance_type_secondary: client.client_insurance_type_secondary || '',
+          client_policy_number_secondary: client.client_policy_number_secondary || '',
+          client_group_number_secondary: client.client_group_number_secondary || '',
+          client_subscriber_name_secondary: client.client_subscriber_name_secondary || '',
+          client_subscriber_relationship_secondary: client.client_subscriber_relationship_secondary || '',
+          client_subscriber_dob_secondary: client.client_subscriber_dob_secondary || '',
+          // Insurance fields - Tertiary
+          client_insurance_company_tertiary: client.client_insurance_company_tertiary || '',
+          client_insurance_type_tertiary: client.client_insurance_type_tertiary || '',
+          client_policy_number_tertiary: client.client_policy_number_tertiary || '',
+          client_group_number_tertiary: client.client_group_number_tertiary || '',
+          client_subscriber_name_tertiary: client.client_subscriber_name_tertiary || '',
+          client_subscriber_relationship_tertiary: client.client_subscriber_relationship_tertiary || '',
+          client_subscriber_dob_tertiary: client.client_subscriber_dob_tertiary || ''
         });
       } else {
         toast({
@@ -142,7 +195,31 @@ const PatientDashboard: React.FC = () => {
         client_gender: formValues.gender,
         client_gender_identity: formValues.genderIdentity,
         client_state: formValues.state,
-        client_time_zone: formValues.timeZone
+        client_time_zone: formValues.timeZone,
+        // Insurance fields - Primary
+        client_insurance_company_primary: formValues.client_insurance_company_primary,
+        client_insurance_type_primary: formValues.client_insurance_type_primary,
+        client_policy_number_primary: formValues.client_policy_number_primary,
+        client_group_number_primary: formValues.client_group_number_primary,
+        client_subscriber_name_primary: formValues.client_subscriber_name_primary,
+        client_subscriber_relationship_primary: formValues.client_subscriber_relationship_primary,
+        client_subscriber_dob_primary: formValues.client_subscriber_dob_primary,
+        // Insurance fields - Secondary
+        client_insurance_company_secondary: formValues.client_insurance_company_secondary,
+        client_insurance_type_secondary: formValues.client_insurance_type_secondary,
+        client_policy_number_secondary: formValues.client_policy_number_secondary,
+        client_group_number_secondary: formValues.client_group_number_secondary,
+        client_subscriber_name_secondary: formValues.client_subscriber_name_secondary,
+        client_subscriber_relationship_secondary: formValues.client_subscriber_relationship_secondary,
+        client_subscriber_dob_secondary: formValues.client_subscriber_dob_secondary,
+        // Insurance fields - Tertiary
+        client_insurance_company_tertiary: formValues.client_insurance_company_tertiary,
+        client_insurance_type_tertiary: formValues.client_insurance_type_tertiary,
+        client_policy_number_tertiary: formValues.client_policy_number_tertiary,
+        client_group_number_tertiary: formValues.client_group_number_tertiary,
+        client_subscriber_name_tertiary: formValues.client_subscriber_name_tertiary,
+        client_subscriber_relationship_tertiary: formValues.client_subscriber_relationship_tertiary,
+        client_subscriber_dob_tertiary: formValues.client_subscriber_dob_tertiary
       };
       
       const result = await updateClientProfile(clientData.id, updates);
@@ -345,7 +422,7 @@ const PatientDashboard: React.FC = () => {
             </div>
           </TabsContent>
           
-          {/* Profile Tab Content - Updated to include editing */}
+          {/* Profile Tab Content */}
           <TabsContent value="profile" className="mt-0">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -672,14 +749,81 @@ const PatientDashboard: React.FC = () => {
           {/* Insurance Tab Content */}
           <TabsContent value="insurance" className="mt-0">
             <Card>
-              <CardHeader>
-                <CardTitle>Insurance Information</CardTitle>
-                <CardDescription>View and manage your insurance details</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <p className="text-center text-gray-500">Your insurance information will be displayed here</p>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle className="text-2xl">Insurance Information</CardTitle>
+                  <CardDescription>View and manage your insurance details</CardDescription>
                 </div>
+                {isEditing ? (
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex items-center gap-1" 
+                      onClick={handleCancelEdit}
+                      disabled={isSaving}
+                    >
+                      <X className="h-4 w-4" />
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      size="sm" 
+                      className="flex items-center gap-1" 
+                      onClick={handleSaveProfile}
+                      disabled={isSaving}
+                    >
+                      <Save className="h-4 w-4" />
+                      {isSaving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex items-center gap-1"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    <Edit className="h-4 w-4" />
+                    Edit
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <p>Loading your insurance data...</p>
+                  </div>
+                ) : (
+                  <Form {...form}>
+                    <InsuranceSection 
+                      title="Primary Insurance" 
+                      prefix="client_" 
+                      form={form} 
+                      isEditing={isEditing}
+                      insuranceTypes={insuranceTypes}
+                      relationshipTypes={relationshipTypes}
+                    />
+                    
+                    <InsuranceSection 
+                      title="Secondary Insurance" 
+                      prefix="client_" 
+                      form={form} 
+                      isEditing={isEditing}
+                      insuranceTypes={insuranceTypes}
+                      relationshipTypes={relationshipTypes}
+                    />
+                    
+                    <InsuranceSection 
+                      title="Tertiary Insurance" 
+                      prefix="client_" 
+                      form={form} 
+                      isEditing={isEditing}
+                      insuranceTypes={insuranceTypes}
+                      relationshipTypes={relationshipTypes}
+                    />
+                  </Form>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
