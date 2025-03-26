@@ -14,6 +14,7 @@ import { supabase, getCurrentUser, getClientByUserId, updateClientProfile, getCl
 import { useToast } from '@/components/ui/use-toast';
 import InsuranceSection from '@/components/ui/InsuranceSection';
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
+import WeekView from '@/components/calendar/WeekView';
 
 const PatientDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
@@ -398,30 +399,10 @@ const PatientDashboard: React.FC = () => {
                         
                         <TabsContent value="weekly" className="space-y-4">
                           <div className="bg-gray-50 p-4 rounded-md">
-                            <h3 className="font-medium mb-2">{clientData.client_assigned_therapist}'s Schedule</h3>
+                            <h3 className="font-medium mb-2">Available Time Slots</h3>
                             <p className="text-sm text-gray-500 mb-4">Available time slots for the current week</p>
                             
-                            <div className="grid grid-cols-5 gap-3">
-                              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map((day) => (
-                                <div key={day} className="bg-white rounded-md shadow-sm p-3">
-                                  <h4 className="font-medium text-sm mb-2">{day}</h4>
-                                  <div className="space-y-2">
-                                    <div className="text-xs py-1 px-2 rounded bg-green-50 text-green-700 flex items-center">
-                                      <Clock className="h-3 w-3 mr-1" /> 9:00 AM
-                                    </div>
-                                    <div className="text-xs py-1 px-2 rounded bg-green-50 text-green-700 flex items-center">
-                                      <Clock className="h-3 w-3 mr-1" /> 10:00 AM
-                                    </div>
-                                    <div className="text-xs py-1 px-2 rounded bg-gray-100 text-gray-400 flex items-center">
-                                      <Clock className="h-3 w-3 mr-1" /> 11:00 AM (Booked)
-                                    </div>
-                                    <div className="text-xs py-1 px-2 rounded bg-green-50 text-green-700 flex items-center">
-                                      <Clock className="h-3 w-3 mr-1" /> 2:00 PM
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                            <WeekView currentDate={new Date()} />
                           </div>
                           <div className="flex justify-end">
                             <Button>Book a Time Slot</Button>

@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface WeekViewProps {
   currentDate: Date;
+  clinicianId?: string;
 }
 
 interface AvailabilityBlock {
@@ -25,6 +26,7 @@ interface AvailabilityBlock {
   day_of_week: string;
   start_time: string;
   end_time: string;
+  clinician_id?: string;
 }
 
 interface TimeBlock {
@@ -34,7 +36,7 @@ interface TimeBlock {
   availabilityIds: string[];
 }
 
-const WeekView: React.FC<WeekViewProps> = ({ currentDate }) => {
+const WeekView: React.FC<WeekViewProps> = ({ currentDate, clinicianId }) => {
   const [loading, setLoading] = useState(true);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
   
@@ -54,15 +56,23 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate }) => {
     const fetchAvailability = async () => {
       setLoading(true);
       try {
-        // Fetch all availability blocks for all days
-        const { data, error } = await supabase
+        // Fetch all availability blocks for the given clinician, or all if no clinician ID provided
+        let query = supabase
           .from('availability')
           .select('*')
           .eq('is_active', true);
           
+        // If clinicianId is provided, filter by it
+        if (clinicianId) {
+          query = query.eq('clinician_id', clinicianId);
+        }
+        
+        const { data, error } = await query;
+          
         if (error) {
           console.error('Error fetching availability:', error);
         } else {
+          console.log('Fetched availability data:', data);
           // Process availability data into continuous blocks for each day
           processAvailabilityBlocks(data || []);
         }
@@ -74,7 +84,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate }) => {
     };
     
     fetchAvailability();
-  }, []);
+  }, [clinicianId]);
   
   // Process availability blocks into continuous time blocks for each day
   const processAvailabilityBlocks = (blocks: AvailabilityBlock[]) => {
@@ -170,7 +180,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate }) => {
   
   if (loading) {
     return (
-      <Card className="p-4 flex justify-center items-center h-[500px]">
+      <Card className="p-4 flex justify-center items-center h-[300px]">
         <Loader2 className="h-6 w-6 animate-spin text-valorwell-500" />
       </Card>
     );
