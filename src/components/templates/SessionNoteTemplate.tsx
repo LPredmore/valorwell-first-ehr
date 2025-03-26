@@ -4,6 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { X, FileText } from 'lucide-react';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 
 interface SessionNoteTemplateProps {
   onClose: () => void;
@@ -11,6 +18,33 @@ interface SessionNoteTemplateProps {
 
 const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({ onClose }) => {
   const [sessionDate, setSessionDate] = useState('');
+  
+  // State for the dropdown values
+  const [appearance, setAppearance] = useState('');
+  const [attitude, setAttitude] = useState('');
+  const [behavior, setBehavior] = useState('');
+  const [speech, setSpeech] = useState('');
+  const [affect, setAffect] = useState('');
+  const [thoughtProcess, setThoughtProcess] = useState('');
+  const [perception, setPerception] = useState('');
+  const [orientation, setOrientation] = useState('');
+  const [memoryConcentration, setMemoryConcentration] = useState('');
+  const [insightJudgement, setInsightJudgement] = useState('');
+  const [substanceAbuseRisk, setSubstanceAbuseRisk] = useState('');
+  const [suicidalIdeation, setSuicidalIdeation] = useState('');
+  const [homicidalIdeation, setHomicidalIdeation] = useState('');
+  
+  // State for "Other" text values
+  const [otherAppearance, setOtherAppearance] = useState('');
+  const [otherAttitude, setOtherAttitude] = useState('');
+  const [otherBehavior, setOtherBehavior] = useState('');
+  const [otherSpeech, setOtherSpeech] = useState('');
+  const [otherAffect, setOtherAffect] = useState('');
+  const [otherThoughtProcess, setOtherThoughtProcess] = useState('');
+  const [otherPerception, setOtherPerception] = useState('');
+  const [otherOrientation, setOtherOrientation] = useState('');
+  const [otherMemoryConcentration, setOtherMemoryConcentration] = useState('');
+  const [otherInsightJudgement, setOtherInsightJudgement] = useState('');
 
   return (
     <div className="animate-fade-in">
@@ -90,52 +124,212 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({ onClose }) =>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Appearance</label>
-            <Input placeholder="Describe appearance" />
+            <Select value={appearance} onValueChange={(value) => setAppearance(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select appearance" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Normal Appearance & Grooming">Normal Appearance & Grooming</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {appearance === "Other" && (
+              <Input 
+                className="mt-2" 
+                placeholder="Describe appearance" 
+                value={otherAppearance}
+                onChange={(e) => setOtherAppearance(e.target.value)}
+              />
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Attitude</label>
-            <Input placeholder="Describe attitude" />
+            <Select value={attitude} onValueChange={(value) => setAttitude(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select attitude" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Calm & Cooperative">Calm & Cooperative</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {attitude === "Other" && (
+              <Input 
+                className="mt-2" 
+                placeholder="Describe attitude" 
+                value={otherAttitude}
+                onChange={(e) => setOtherAttitude(e.target.value)}
+              />
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Behavior</label>
-            <Input placeholder="Describe behavior" />
+            <Select value={behavior} onValueChange={(value) => setBehavior(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select behavior" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="No unusual behavior or psychomotor changes">No unusual behavior or psychomotor changes</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {behavior === "Other" && (
+              <Input 
+                className="mt-2" 
+                placeholder="Describe behavior" 
+                value={otherBehavior}
+                onChange={(e) => setOtherBehavior(e.target.value)}
+              />
+            )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Speech</label>
-            <Input placeholder="Describe speech" />
+            <Select value={speech} onValueChange={(value) => setSpeech(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select speech" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Normal rate/tone/volume w/out pressure">Normal rate/tone/volume w/out pressure</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {speech === "Other" && (
+              <Input 
+                className="mt-2" 
+                placeholder="Describe speech" 
+                value={otherSpeech}
+                onChange={(e) => setOtherSpeech(e.target.value)}
+              />
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Affect</label>
-            <Input placeholder="Describe affect" />
+            <Select value={affect} onValueChange={(value) => setAffect(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select affect" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Normal range/congruent">Normal range/congruent</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {affect === "Other" && (
+              <Input 
+                className="mt-2" 
+                placeholder="Describe affect" 
+                value={otherAffect}
+                onChange={(e) => setOtherAffect(e.target.value)}
+              />
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Thought Process</label>
-            <Input placeholder="Describe thought process" />
+            <Select value={thoughtProcess} onValueChange={(value) => setThoughtProcess(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select thought process" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Goal Oriented/Directed">Goal Oriented/Directed</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {thoughtProcess === "Other" && (
+              <Input 
+                className="mt-2" 
+                placeholder="Describe thought process" 
+                value={otherThoughtProcess}
+                onChange={(e) => setOtherThoughtProcess(e.target.value)}
+              />
+            )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Perception</label>
-            <Input placeholder="Describe perception" />
+            <Select value={perception} onValueChange={(value) => setPerception(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select perception" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="No Hallucinations or Delusions">No Hallucinations or Delusions</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {perception === "Other" && (
+              <Input 
+                className="mt-2" 
+                placeholder="Describe perception" 
+                value={otherPerception}
+                onChange={(e) => setOtherPerception(e.target.value)}
+              />
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Orientation</label>
-            <Input placeholder="Describe orientation" />
+            <Select value={orientation} onValueChange={(value) => setOrientation(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select orientation" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Oriented x3">Oriented x3</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {orientation === "Other" && (
+              <Input 
+                className="mt-2" 
+                placeholder="Describe orientation" 
+                value={otherOrientation}
+                onChange={(e) => setOtherOrientation(e.target.value)}
+              />
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Memory/Concentration</label>
-            <Input placeholder="Describe memory/concentration" />
+            <Select value={memoryConcentration} onValueChange={(value) => setMemoryConcentration(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select memory/concentration" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Short & Long Term Intact">Short & Long Term Intact</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {memoryConcentration === "Other" && (
+              <Input 
+                className="mt-2" 
+                placeholder="Describe memory/concentration" 
+                value={otherMemoryConcentration}
+                onChange={(e) => setOtherMemoryConcentration(e.target.value)}
+              />
+            )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Insight/Judgement</label>
-            <Input placeholder="Describe insight/judgement" />
+            <Select value={insightJudgement} onValueChange={(value) => setInsightJudgement(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select insight/judgement" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Good">Good</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {insightJudgement === "Other" && (
+              <Input 
+                className="mt-2" 
+                placeholder="Describe insight/judgement" 
+                value={otherInsightJudgement}
+                onChange={(e) => setOtherInsightJudgement(e.target.value)}
+              />
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Mood</label>
@@ -143,18 +337,46 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({ onClose }) =>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Substance Abuse Risk</label>
-            <Input placeholder="Describe risk" />
+            <Select value={substanceAbuseRisk} onValueChange={(value) => setSubstanceAbuseRisk(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select risk level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="None">None</SelectItem>
+                <SelectItem value="Low">Low</SelectItem>
+                <SelectItem value="Medium">Medium</SelectItem>
+                <SelectItem value="High">High</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Suicidal Ideation</label>
-            <Input placeholder="Describe ideation" />
+            <Select value={suicidalIdeation} onValueChange={(value) => setSuicidalIdeation(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select ideation level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="None">None</SelectItem>
+                <SelectItem value="Passive">Passive</SelectItem>
+                <SelectItem value="Active">Active</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Homicidal Ideation</label>
-            <Input placeholder="Describe ideation" />
+            <Select value={homicidalIdeation} onValueChange={(value) => setHomicidalIdeation(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select ideation level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="None">None</SelectItem>
+                <SelectItem value="Passive">Passive</SelectItem>
+                <SelectItem value="Active">Active</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
