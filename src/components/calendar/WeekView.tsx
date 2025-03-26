@@ -39,7 +39,6 @@ interface TimeBlock {
 const WeekView: React.FC<WeekViewProps> = ({ currentDate, clinicianId }) => {
   const [loading, setLoading] = useState(true);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
-  const [availableDaysOfWeek, setAvailableDaysOfWeek] = useState<string[]>([]);
   
   // Generate days for the week
   const days = eachDayOfInterval({
@@ -74,16 +73,6 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, clinicianId }) => {
           console.error('Error fetching availability:', error);
         } else {
           console.log('Fetched availability data:', data);
-          
-          // Extract the unique days of week that have availability
-          if (data && data.length > 0) {
-            const availableDays = [...new Set(data.map(block => block.day_of_week))];
-            setAvailableDaysOfWeek(availableDays);
-            console.log('Available days of week:', availableDays);
-          } else {
-            setAvailableDaysOfWeek([]);
-          }
-          
           // Process availability data into continuous blocks for each day
           processAvailabilityBlocks(data || []);
         }
@@ -109,19 +98,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, clinicianId }) => {
     // Process each day separately
     days.forEach(day => {
       const dayOfWeek = format(day, 'EEEE'); // e.g. "Monday"
-      
-      // Check if this day of the week has any availability
-      if (!availableDaysOfWeek.includes(dayOfWeek) && availableDaysOfWeek.length > 0) {
-        // Skip days that don't have availability
-        return;
-      }
-      
       const dayBlocks = blocks.filter(block => block.day_of_week === dayOfWeek);
-      
-      // Skip days without any blocks
-      if (dayBlocks.length === 0) {
-        return;
-      }
       
       // Parse blocks into Date objects for this day
       const parsedBlocks = dayBlocks.map(block => {
@@ -232,7 +209,6 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, clinicianId }) => {
             </div>
             
             {days.map(day => {
-              const dayOfWeek = format(day, 'EEEE');
               const isAvailable = isTimeSlotAvailable(day, timeSlot);
               const currentBlock = getBlockForTimeSlot(day, timeSlot);
               
