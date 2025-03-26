@@ -499,6 +499,24 @@ export type Database = {
         }
         Relationships: []
       }
+      icd10: {
+        Row: {
+          diagnosis_name: string
+          icd10: string
+          id: number
+        }
+        Insert: {
+          diagnosis_name: string
+          icd10: string
+          id?: number
+        }
+        Update: {
+          diagnosis_name?: string
+          icd10?: string
+          id?: number
+        }
+        Relationships: []
+      }
       licenses: {
         Row: {
           clinician_id: string
