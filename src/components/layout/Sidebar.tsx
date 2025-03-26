@@ -1,4 +1,3 @@
-
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Calendar, 
@@ -10,7 +9,8 @@ import {
   MessageSquare,
   ChevronLeft,
   UserCheck,
-  LayoutDashboard
+  LayoutDashboard,
+  FileText
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -52,6 +52,14 @@ const Sidebar = () => {
         >
           <LayoutDashboard size={18} />
           <span>Patient Dashboard</span>
+        </Link>
+        
+        <Link 
+          to="/patient-documents" 
+          className={`sidebar-link ${isActive('/patient-documents') ? 'active' : ''}`}
+        >
+          <FileText size={18} />
+          <span>Patient Documents</span>
         </Link>
         
         <Link 

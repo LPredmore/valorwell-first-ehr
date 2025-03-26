@@ -21,6 +21,7 @@ import Login from "./pages/Login";
 import ClinicianDetails from "./pages/ClinicianDetails";
 import MyClients from "./pages/MyClients";
 import PatientDashboard from "./pages/PatientDashboard";
+import PatientDocuments from "./pages/PatientDocuments";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App: React.FC = () => {
               <Route path="/" element={<Index />} />
               <Route path="/my-clients" element={<MyClients />} />
               <Route path="/patient-dashboard" element={<PatientDashboard />} />
+              <Route path="/patient-documents" element={<PatientDocuments />} />
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/clients" element={<Clients />} />
               <Route path="/clients/:clientId" element={<ClientDetails />} />
