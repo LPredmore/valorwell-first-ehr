@@ -1,22 +1,23 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, LayoutDashboard, User, FileText, Calendar as CalendarIcon, Clock3, ClipboardList, Shield, Edit, PenSquare } from 'lucide-react';
+import { Calendar, Clock, LayoutDashboard, User, FileText, Calendar as CalendarIcon, Clock3, ClipboardList, Shield, Edit, PenSquare, Save, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { supabase, getCurrentUser, getClientByUserId } from '@/integrations/supabase/client';
+import { supabase, getCurrentUser, getClientByUserId, updateClientProfile } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
 const PatientDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [clientData, setClientData] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -123,6 +124,55 @@ const PatientDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Function to save profile changes
+  const handleSaveProfile = async () => {
+    if (!clientData) return;
+    
+    setIsSaving(true);
+    
+    try {
+      const formValues = form.getValues();
+      
+      // Prepare data for update
+      const updates = {
+        client_preferred_name: formValues.preferredName,
+        client_phone: formValues.phone,
+        client_gender: formValues.gender,
+        client_gender_identity: formValues.genderIdentity,
+        client_state: formValues.state,
+        client_time_zone: formValues.timeZone
+      };
+      
+      const result = await updateClientProfile(clientData.id, updates);
+      
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Your profile has been updated successfully",
+        });
+        setIsEditing(false);
+        fetchClientData(); // Refresh data
+      } else {
+        throw new Error("Failed to update profile");
+      }
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save your profile",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
+  // Cancel editing
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    fetchClientData(); // Reset form to original values
   };
 
   // Fetch client data on component mount
@@ -295,7 +345,7 @@ const PatientDashboard: React.FC = () => {
             </div>
           </TabsContent>
           
-          {/* Profile Tab Content - Updated to remove redundant tabs */}
+          {/* Profile Tab Content - Updated to include editing */}
           <TabsContent value="profile" className="mt-0">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -308,13 +358,42 @@ const PatientDashboard: React.FC = () => {
                     {loading ? 'Loading...' : clientData?.client_email || 'Your personal information'}
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm" className="flex items-center gap-1">
-                  <Edit className="h-4 w-4" />
-                  Edit
-                </Button>
+                {isEditing ? (
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex items-center gap-1" 
+                      onClick={handleCancelEdit}
+                      disabled={isSaving}
+                    >
+                      <X className="h-4 w-4" />
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      size="sm" 
+                      className="flex items-center gap-1" 
+                      onClick={handleSaveProfile}
+                      disabled={isSaving}
+                    >
+                      <Save className="h-4 w-4" />
+                      {isSaving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex items-center gap-1"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    <Edit className="h-4 w-4" />
+                    Edit
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
-                {/* Removed the redundant navigation tabs */}
                 <div className="mt-6">
                   <h3 className="text-xl font-semibold mb-4">Personal Information</h3>
                   
@@ -325,7 +404,7 @@ const PatientDashboard: React.FC = () => {
                   ) : (
                     <Form {...form}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* First Name */}
+                        {/* First Name - Always read-only */}
                         <FormField
                           control={form.control}
                           name="firstName"
@@ -333,13 +412,13 @@ const PatientDashboard: React.FC = () => {
                             <FormItem>
                               <FormLabel className="text-sm font-medium">First Name</FormLabel>
                               <FormControl>
-                                <Input {...field} readOnly />
+                                <Input {...field} readOnly className="bg-gray-100" />
                               </FormControl>
                             </FormItem>
                           )}
                         />
                         
-                        {/* Last Name */}
+                        {/* Last Name - Always read-only */}
                         <FormField
                           control={form.control}
                           name="lastName"
@@ -347,13 +426,13 @@ const PatientDashboard: React.FC = () => {
                             <FormItem>
                               <FormLabel className="text-sm font-medium">Last Name</FormLabel>
                               <FormControl>
-                                <Input {...field} readOnly />
+                                <Input {...field} readOnly className="bg-gray-100" />
                               </FormControl>
                             </FormItem>
                           )}
                         />
                         
-                        {/* Preferred Name */}
+                        {/* Preferred Name - Editable */}
                         <FormField
                           control={form.control}
                           name="preferredName"
@@ -361,13 +440,17 @@ const PatientDashboard: React.FC = () => {
                             <FormItem>
                               <FormLabel className="text-sm font-medium">Preferred Name</FormLabel>
                               <FormControl>
-                                <Input {...field} readOnly />
+                                <Input 
+                                  {...field} 
+                                  readOnly={!isEditing} 
+                                  className={!isEditing ? "bg-gray-100" : ""}
+                                />
                               </FormControl>
                             </FormItem>
                           )}
                         />
                         
-                        {/* Email */}
+                        {/* Email - Always read-only */}
                         <FormField
                           control={form.control}
                           name="email"
@@ -375,13 +458,13 @@ const PatientDashboard: React.FC = () => {
                             <FormItem>
                               <FormLabel className="text-sm font-medium">Email</FormLabel>
                               <FormControl>
-                                <Input {...field} readOnly />
+                                <Input {...field} readOnly className="bg-gray-100" />
                               </FormControl>
                             </FormItem>
                           )}
                         />
                         
-                        {/* Phone */}
+                        {/* Phone - Editable */}
                         <FormField
                           control={form.control}
                           name="phone"
@@ -389,13 +472,17 @@ const PatientDashboard: React.FC = () => {
                             <FormItem>
                               <FormLabel className="text-sm font-medium">Phone</FormLabel>
                               <FormControl>
-                                <Input {...field} readOnly />
+                                <Input 
+                                  {...field} 
+                                  readOnly={!isEditing} 
+                                  className={!isEditing ? "bg-gray-100" : ""}
+                                />
                               </FormControl>
                             </FormItem>
                           )}
                         />
                         
-                        {/* Date of Birth */}
+                        {/* Date of Birth - Always read-only */}
                         <FormField
                           control={form.control}
                           name="dateOfBirth"
@@ -403,13 +490,13 @@ const PatientDashboard: React.FC = () => {
                             <FormItem>
                               <FormLabel className="text-sm font-medium">Date of Birth</FormLabel>
                               <FormControl>
-                                <Input {...field} readOnly />
+                                <Input {...field} readOnly className="bg-gray-100" />
                               </FormControl>
                             </FormItem>
                           )}
                         />
                         
-                        {/* Age */}
+                        {/* Age - Always read-only */}
                         <FormField
                           control={form.control}
                           name="age"
@@ -417,13 +504,13 @@ const PatientDashboard: React.FC = () => {
                             <FormItem>
                               <FormLabel className="text-sm font-medium">Age</FormLabel>
                               <FormControl>
-                                <Input {...field} readOnly />
+                                <Input {...field} readOnly className="bg-gray-100" />
                               </FormControl>
                             </FormItem>
                           )}
                         />
                         
-                        {/* Gender */}
+                        {/* Gender - Editable dropdown */}
                         <FormField
                           control={form.control}
                           name="gender"
@@ -431,12 +518,12 @@ const PatientDashboard: React.FC = () => {
                             <FormItem>
                               <FormLabel className="text-sm font-medium">Gender</FormLabel>
                               <Select 
-                                disabled 
+                                disabled={!isEditing} 
                                 value={field.value} 
                                 onValueChange={field.onChange}
                               >
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger className={!isEditing ? "bg-gray-100" : ""}>
                                     <SelectValue placeholder="Select gender" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -450,7 +537,7 @@ const PatientDashboard: React.FC = () => {
                           )}
                         />
                         
-                        {/* Gender Identity */}
+                        {/* Gender Identity - Editable dropdown */}
                         <FormField
                           control={form.control}
                           name="genderIdentity"
@@ -458,12 +545,12 @@ const PatientDashboard: React.FC = () => {
                             <FormItem>
                               <FormLabel className="text-sm font-medium">Gender Identity</FormLabel>
                               <Select 
-                                disabled 
+                                disabled={!isEditing} 
                                 value={field.value} 
                                 onValueChange={field.onChange}
                               >
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger className={!isEditing ? "bg-gray-100" : ""}>
                                     <SelectValue placeholder="Select gender identity" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -477,7 +564,7 @@ const PatientDashboard: React.FC = () => {
                           )}
                         />
                         
-                        {/* State */}
+                        {/* State - Editable dropdown */}
                         <FormField
                           control={form.control}
                           name="state"
@@ -485,12 +572,12 @@ const PatientDashboard: React.FC = () => {
                             <FormItem>
                               <FormLabel className="text-sm font-medium">State</FormLabel>
                               <Select 
-                                disabled 
+                                disabled={!isEditing} 
                                 value={field.value} 
                                 onValueChange={field.onChange}
                               >
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger className={!isEditing ? "bg-gray-100" : ""}>
                                     <SelectValue placeholder="Select state" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -504,7 +591,7 @@ const PatientDashboard: React.FC = () => {
                           )}
                         />
                         
-                        {/* Time Zone */}
+                        {/* Time Zone - Editable dropdown */}
                         <FormField
                           control={form.control}
                           name="timeZone"
@@ -512,12 +599,12 @@ const PatientDashboard: React.FC = () => {
                             <FormItem>
                               <FormLabel className="text-sm font-medium">Time Zone</FormLabel>
                               <Select 
-                                disabled 
+                                disabled={!isEditing} 
                                 value={field.value} 
                                 onValueChange={field.onChange}
                               >
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger className={!isEditing ? "bg-gray-100" : ""}>
                                     <SelectValue placeholder="Select time zone" />
                                   </SelectTrigger>
                                 </FormControl>
