@@ -3,12 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Save, X } from 'lucide-react';
+import { Pencil, Save, X, FileText } from 'lucide-react';
+import TreatmentPlanTemplate from '@/components/templates/TreatmentPlanTemplate';
+import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 import { 
   Card, 
   CardContent, 
   CardHeader, 
-  CardTitle 
+  CardTitle,
+  CardDescription
 } from "@/components/ui/card";
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -53,8 +56,9 @@ const ClinicianDetails = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
+  const [showTreatmentPlanTemplate, setShowTreatmentPlanTemplate] = useState(false);
+  const [showSessionNoteTemplate, setShowSessionNoteTemplate] = useState(false);
 
-  // Time zone options
   const timeZones = [
     "Eastern Time (ET)",
     "Central Time (CT)",
@@ -64,13 +68,11 @@ const ClinicianDetails = () => {
     "Hawaii-Aleutian Time (HAT)"
   ];
 
-  // Clinician type options
   const clinicianTypeOptions = [
     "Mental Health",
     "Speech Therapy"
   ];
 
-  // License types
   const licenseTypes = [
     "LPC", 
     "LCSW", 
@@ -80,7 +82,6 @@ const ClinicianDetails = () => {
     "SLP"
   ];
 
-  // States with full names
   const states = [
     { code: "Alabama", name: "Alabama" },
     { code: "Alaska", name: "Alaska" },
@@ -142,14 +143,10 @@ const ClinicianDetails = () => {
 
   useEffect(() => {
     if (clinician?.clinician_licensed_states) {
-      // Convert any state abbreviations to full names
       const fullStateNames = clinician.clinician_licensed_states.map(state => {
-        // Check if state is already a full name
         if (states.some(s => s.name === state)) {
           return state;
         }
-        
-        // Otherwise, try to find the full name
         const stateObj = states.find(s => s.code === state);
         return stateObj ? stateObj.name : state;
       });
@@ -174,14 +171,10 @@ const ClinicianDetails = () => {
       setClinician(data);
       setEditedClinician(data);
       if (data.clinician_licensed_states) {
-        // Convert any state abbreviations to full names
         const fullStateNames = data.clinician_licensed_states.map(state => {
-          // Check if state is already a full name
           if (states.some(s => s.name === state)) {
             return state;
           }
-          
-          // Otherwise, try to find the full name
           const stateObj = states.find(s => s.code === state);
           return stateObj ? stateObj.name : state;
         });
@@ -215,7 +208,7 @@ const ClinicianDetails = () => {
       
       const updatedClinicianData = {
         ...editedClinician,
-        clinician_licensed_states: selectedStates, // Store full state names
+        clinician_licensed_states: selectedStates,
         clinician_type: editedClinician.clinician_type,
         clinician_license_type: editedClinician.clinician_license_type
       };
@@ -243,7 +236,6 @@ const ClinicianDetails = () => {
         description: "Clinician details updated successfully.",
       });
       
-      // Refresh data to ensure we have the latest version
       fetchClinicianData();
       
     } catch (error) {
@@ -272,6 +264,14 @@ const ClinicianDetails = () => {
         ? current.filter(s => s !== stateName)
         : [...current, stateName]
     );
+  };
+
+  const handleCloseTreatmentPlan = () => {
+    setShowTreatmentPlanTemplate(false);
+  };
+
+  const handleCloseSessionNote = () => {
+    setShowSessionNoteTemplate(false);
   };
 
   if (isLoading) {
@@ -322,6 +322,32 @@ const ClinicianDetails = () => {
       </div>
 
       <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-valorwell-600" />
+              Documentation
+            </CardTitle>
+            <CardDescription>Create and manage documentation for this clinician</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-center space-x-4">
+              <Button onClick={() => setShowTreatmentPlanTemplate(true)}>
+                Create Treatment Plan
+              </Button>
+              <Button onClick={() => setShowSessionNoteTemplate(true)}>
+                Create Session Note
+              </Button>
+            </div>
+            {showTreatmentPlanTemplate && (
+              <TreatmentPlanTemplate onClose={handleCloseTreatmentPlan} />
+            )}
+            {showSessionNoteTemplate && (
+              <SessionNoteTemplate onClose={handleCloseSessionNote} />
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Personal Information</CardTitle>
