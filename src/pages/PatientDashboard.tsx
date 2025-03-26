@@ -1,13 +1,32 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, LayoutDashboard, User, FileText, Calendar as CalendarIcon, Clock3, ClipboardList, Shield } from 'lucide-react';
+import { Calendar, Clock, LayoutDashboard, User, FileText, Calendar as CalendarIcon, Clock3, ClipboardList, Shield, Edit, PenSquare } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
+import { useForm } from 'react-hook-form';
 
 const PatientDashboard: React.FC = () => {
+  // Mock data for patient profile
+  const patientProfile = {
+    firstName: 'Robert',
+    lastName: 'Boucher',
+    preferredName: 'Bobby',
+    email: 'predmorejax@gmail.com',
+    phone: '5736346131',
+    dateOfBirth: 'September 7th, 1986',
+    age: '38',
+    gender: 'Male',
+    genderIdentity: 'Male',
+    state: 'Missouri',
+    timeZone: 'Central Standard Time (CST)'
+  };
+
   // Mock data for upcoming appointments
   const upcomingAppointments = [
     { id: 1, date: 'May 15, 2024', time: '10:00 AM', type: 'Therapy Session', therapist: 'Dr. Sarah Johnson' },
@@ -19,6 +38,25 @@ const PatientDashboard: React.FC = () => {
     { id: 1, date: 'April 30, 2024', time: '10:00 AM', type: 'Initial Consultation', therapist: 'Dr. Sarah Johnson' },
     { id: 2, date: 'April 15, 2024', time: '11:30 AM', type: 'Therapy Session', therapist: 'Dr. Sarah Johnson' },
   ];
+
+  // Options for dropdowns
+  const genderOptions = ['Male', 'Female', 'Non-Binary', 'Other', 'Prefer not to say'];
+  const genderIdentityOptions = ['Male', 'Female', 'Trans Man', 'Trans Woman', 'Non-Binary', 'Other', 'Prefer not to say'];
+  const stateOptions = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 
+    'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 
+    'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 
+    'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 
+    'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 
+    'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 
+    'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'];
+  const timeZoneOptions = ['Eastern Standard Time (EST)', 'Central Standard Time (CST)', 
+    'Mountain Standard Time (MST)', 'Pacific Standard Time (PST)', 'Alaska Standard Time (AKST)', 
+    'Hawaii-Aleutian Standard Time (HST)', 'Atlantic Standard Time (AST)'];
+
+  // Form setup for profile
+  const form = useForm({
+    defaultValues: patientProfile,
+  });
 
   return (
     <Layout>
@@ -174,13 +212,248 @@ const PatientDashboard: React.FC = () => {
           {/* Profile Tab Content */}
           <TabsContent value="profile" className="mt-0">
             <Card>
-              <CardHeader>
-                <CardTitle>Your Profile</CardTitle>
-                <CardDescription>View and manage your personal information</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle className="text-2xl">
+                    {patientProfile.firstName} {patientProfile.lastName}
+                  </CardTitle>
+                  <CardDescription>{patientProfile.email}</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" className="flex items-center gap-1">
+                  <Edit className="h-4 w-4" />
+                  Edit
+                </Button>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <p className="text-center text-gray-500">Your profile information will be displayed here</p>
+              <CardContent>
+                <div className="border-b pb-4 mb-4">
+                  <ul className="flex space-x-4 overflow-x-auto">
+                    <li className="border-b-2 border-valorwell-600 px-3 py-2 text-sm font-medium text-valorwell-600">
+                      Personal Info
+                    </li>
+                    <li className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-valorwell-600 cursor-pointer">
+                      Insurance
+                    </li>
+                    <li className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-valorwell-600 cursor-pointer">
+                      Treatment
+                    </li>
+                    <li className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-valorwell-600 cursor-pointer">
+                      Notes
+                    </li>
+                  </ul>
+                </div>
+              
+                <div className="mt-6">
+                  <h3 className="text-xl font-semibold mb-4">Personal Information</h3>
+                  
+                  <Form {...form}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* First Name */}
+                      <FormField
+                        control={form.control}
+                        name="firstName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">First Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      {/* Last Name */}
+                      <FormField
+                        control={form.control}
+                        name="lastName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Last Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      {/* Preferred Name */}
+                      <FormField
+                        control={form.control}
+                        name="preferredName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Preferred Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      {/* Email */}
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Email</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      {/* Phone */}
+                      <FormField
+                        control={form.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Phone</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      {/* Date of Birth */}
+                      <FormField
+                        control={form.control}
+                        name="dateOfBirth"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Date of Birth</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      {/* Age */}
+                      <FormField
+                        control={form.control}
+                        name="age"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Age</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      {/* Gender */}
+                      <FormField
+                        control={form.control}
+                        name="gender"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Gender</FormLabel>
+                            <Select 
+                              disabled 
+                              value={field.value} 
+                              onValueChange={field.onChange}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select gender" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {genderOptions.map(option => (
+                                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      {/* Gender Identity */}
+                      <FormField
+                        control={form.control}
+                        name="genderIdentity"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Gender Identity</FormLabel>
+                            <Select 
+                              disabled 
+                              value={field.value} 
+                              onValueChange={field.onChange}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select gender identity" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {genderIdentityOptions.map(option => (
+                                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      {/* State */}
+                      <FormField
+                        control={form.control}
+                        name="state"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">State</FormLabel>
+                            <Select 
+                              disabled 
+                              value={field.value} 
+                              onValueChange={field.onChange}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select state" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {stateOptions.map(option => (
+                                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      {/* Time Zone */}
+                      <FormField
+                        control={form.control}
+                        name="timeZone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Time Zone</FormLabel>
+                            <Select 
+                              disabled 
+                              value={field.value} 
+                              onValueChange={field.onChange}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select time zone" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {timeZoneOptions.map(option => (
+                                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </Form>
                 </div>
               </CardContent>
             </Card>
