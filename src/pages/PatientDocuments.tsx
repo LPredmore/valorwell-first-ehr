@@ -71,11 +71,15 @@ const PatientDocuments: React.FC = () => {
                   <CardDescription>View and manage patient charts and progress tracking</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="bg-gray-50 p-6 rounded-md text-center">
-                    <FileText className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                    <h3 className="text-lg font-medium mb-2">No Charts Available</h3>
-                    <p className="text-sm text-gray-500 mb-4">Charts and progress tracking will be displayed here</p>
-                    {/* Removed Create New Chart button */}
+                  <div className="py-6">
+                    <div className="flex gap-4">
+                      <Button onClick={() => setShowTreatmentPlanTemplate(true)}>
+                        Create Treatment Plan
+                      </Button>
+                      <Button onClick={() => setShowSessionNoteTemplate(true)}>
+                        Create Session Note
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -88,13 +92,8 @@ const PatientDocuments: React.FC = () => {
                   </CardTitle>
                   <CardDescription>View and complete patient assessments</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="bg-gray-50 p-6 rounded-md text-center">
-                    <ClipboardCheck className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                    <h3 className="text-lg font-medium mb-2">No Assessments Available</h3>
-                    <p className="text-sm text-gray-500 mb-4">Patient assessments will be displayed here</p>
-                    {/* Removed Create New Assessment button */}
-                  </div>
+                <CardContent className="py-6">
+                  {/* Empty content - removed placeholders */}
                 </CardContent>
               </Card>
 
@@ -106,13 +105,8 @@ const PatientDocuments: React.FC = () => {
                   </CardTitle>
                   <CardDescription>View completed session notes and documentation</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="bg-gray-50 p-6 rounded-md text-center">
-                    <FileCheck className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                    <h3 className="text-lg font-medium mb-2">No Completed Notes</h3>
-                    <p className="text-sm text-gray-500 mb-4">Completed session notes will be displayed here</p>
-                    {/* Removed View All Notes button */}
-                  </div>
+                <CardContent className="py-6">
+                  {/* Empty content - removed placeholders */}
                 </CardContent>
               </Card>
             </div>
