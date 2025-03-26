@@ -1,7 +1,8 @@
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import { supabase } from "@/integrations/supabase/client";
 
 interface LayoutProps {
   children: ReactNode;

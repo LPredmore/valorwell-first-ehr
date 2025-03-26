@@ -10,6 +10,8 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useEffect, useState } from "react";
 
 interface HeaderProps {
   userName?: string;
@@ -17,13 +19,49 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ 
-  userName = 'Dr. Johnson',
+  userName,
   userAvatar 
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const path = location.pathname.substring(1);
   const title = path.charAt(0).toUpperCase() + path.slice(1) || 'Dashboard';
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [initials, setInitials] = useState('');
+
+  // Get user profile data
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', user.id)
+            .single();
+            
+          if (error) throw error;
+          
+          if (data) {
+            setFirstName(data.first_name || '');
+            setLastName(data.last_name || '');
+            
+            // Generate initials
+            const firstInitial = data.first_name ? data.first_name.charAt(0).toUpperCase() : '';
+            const lastInitial = data.last_name ? data.last_name.charAt(0).toUpperCase() : '';
+            setInitials(firstInitial + lastInitial);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    };
+    
+    fetchUserProfile();
+  }, []);
 
   // Get current time to display greeting
   const hours = new Date().getHours();
@@ -55,6 +93,11 @@ const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  // Create display name from first and last name, fallback to the provided userName prop
+  const displayName = firstName && lastName 
+    ? `${firstName} ${lastName}` 
+    : userName || 'User';
+
   return (
     <header className="h-16 border-b bg-white flex items-center justify-between px-6">
       <h1 className="text-2xl font-semibold text-gray-800">{title}</h1>
@@ -79,22 +122,18 @@ const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-2">
           <div className="text-right">
             <p className="text-sm text-gray-500">{greeting},</p>
-            <p className="text-sm font-medium text-valorwell-700">{userName}</p>
+            <p className="text-sm font-medium text-valorwell-700">{displayName}</p>
           </div>
           
           <DropdownMenu>
             <DropdownMenuTrigger className="focus:outline-none">
-              <div className="w-10 h-10 bg-valorwell-700 rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-valorwell-800 transition-colors">
+              <Avatar className="w-10 h-10 bg-valorwell-700 text-white hover:bg-valorwell-800 transition-colors cursor-pointer">
                 {userAvatar ? (
-                  <img 
-                    src={userAvatar} 
-                    alt={userName} 
-                    className="w-full h-full rounded-full object-cover" 
-                  />
+                  <AvatarImage src={userAvatar} alt={displayName} />
                 ) : (
-                  <span>JN</span>
+                  <AvatarFallback>{initials || 'U'}</AvatarFallback>
                 )}
-              </div>
+              </Avatar>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 mt-1">
               <DropdownMenuItem className="cursor-pointer flex items-center" onClick={() => navigate('/profile')}>
