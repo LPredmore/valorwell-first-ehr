@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -686,7 +685,7 @@ const PatientDashboard: React.FC = () => {
             </Card>
           </TabsContent>
           
-          {/* Insurance Tab Content */}
+          {/* Insurance Tab Content - Updated with new fields */}
           <TabsContent value="insurance" className="mt-0">
             <div className="space-y-6">
               {loading ? (
@@ -731,11 +730,27 @@ const PatientDashboard: React.FC = () => {
                           </div>
                         </div>
                         
-                        {/* Policy Holder Name */}
+                        {/* Subscriber Name (formerly Policy Holder Name) */}
                         <div>
-                          <h4 className="text-sm font-medium mb-1">Policy Holder Name</h4>
+                          <h4 className="text-sm font-medium mb-1">Subscriber Name</h4>
                           <div className="p-3 bg-gray-100 rounded-md">
                             {clientData.client_subscriber_name_primary || "Not provided"}
+                          </div>
+                        </div>
+                        
+                        {/* Subscriber Relationship - NEW */}
+                        <div>
+                          <h4 className="text-sm font-medium mb-1">Subscriber Relationship</h4>
+                          <div className="p-3 bg-gray-100 rounded-md">
+                            {clientData.client_subscriber_relationship_primary || "Not provided"}
+                          </div>
+                        </div>
+                        
+                        {/* Subscriber Date of Birth - NEW */}
+                        <div>
+                          <h4 className="text-sm font-medium mb-1">Subscriber Date of Birth</h4>
+                          <div className="p-3 bg-gray-100 rounded-md">
+                            {clientData.client_subscriber_dob_primary ? formatDate(clientData.client_subscriber_dob_primary) : "Not provided"}
                           </div>
                         </div>
                         
@@ -785,11 +800,27 @@ const PatientDashboard: React.FC = () => {
                             </div>
                           </div>
                           
-                          {/* Policy Holder Name */}
+                          {/* Subscriber Name (formerly Policy Holder Name) */}
                           <div>
-                            <h4 className="text-sm font-medium mb-1">Policy Holder Name</h4>
+                            <h4 className="text-sm font-medium mb-1">Subscriber Name</h4>
                             <div className="p-3 bg-gray-100 rounded-md">
                               {clientData.client_subscriber_name_secondary || "Not provided"}
+                            </div>
+                          </div>
+                          
+                          {/* Subscriber Relationship - NEW */}
+                          <div>
+                            <h4 className="text-sm font-medium mb-1">Subscriber Relationship</h4>
+                            <div className="p-3 bg-gray-100 rounded-md">
+                              {clientData.client_subscriber_relationship_secondary || "Not provided"}
+                            </div>
+                          </div>
+                          
+                          {/* Subscriber Date of Birth - NEW */}
+                          <div>
+                            <h4 className="text-sm font-medium mb-1">Subscriber Date of Birth</h4>
+                            <div className="p-3 bg-gray-100 rounded-md">
+                              {clientData.client_subscriber_dob_secondary ? formatDate(clientData.client_subscriber_dob_secondary) : "Not provided"}
                             </div>
                           </div>
                           
@@ -846,11 +877,27 @@ const PatientDashboard: React.FC = () => {
                             </div>
                           </div>
                           
-                          {/* Policy Holder Name */}
+                          {/* Subscriber Name (formerly Policy Holder Name) */}
                           <div>
-                            <h4 className="text-sm font-medium mb-1">Policy Holder Name</h4>
+                            <h4 className="text-sm font-medium mb-1">Subscriber Name</h4>
                             <div className="p-3 bg-gray-100 rounded-md">
                               {clientData.client_subscriber_name_tertiary || "Not provided"}
+                            </div>
+                          </div>
+                          
+                          {/* Subscriber Relationship - NEW */}
+                          <div>
+                            <h4 className="text-sm font-medium mb-1">Subscriber Relationship</h4>
+                            <div className="p-3 bg-gray-100 rounded-md">
+                              {clientData.client_subscriber_relationship_tertiary || "Not provided"}
+                            </div>
+                          </div>
+                          
+                          {/* Subscriber Date of Birth - NEW */}
+                          <div>
+                            <h4 className="text-sm font-medium mb-1">Subscriber Date of Birth</h4>
+                            <div className="p-3 bg-gray-100 rounded-md">
+                              {clientData.client_subscriber_dob_tertiary ? formatDate(clientData.client_subscriber_dob_tertiary) : "Not provided"}
                             </div>
                           </div>
                           

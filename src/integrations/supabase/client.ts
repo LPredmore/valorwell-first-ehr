@@ -48,7 +48,7 @@ export const getClinicianIdByName = async (professionalName: string) => {
 };
 
 // Helper to get availability settings for a clinician
-export const getClinicianAvailabilitySettings = async (clinicianId: string) => {
+export const getClinicianAvailabilitySettings = async (clinicianId: string | null) => {
   if (!clinicianId) return null;
   
   const { data, error } = await supabase
