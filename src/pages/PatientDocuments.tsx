@@ -71,25 +71,11 @@ const PatientDocuments: React.FC = () => {
                   <CardDescription>View and manage patient charts and progress tracking</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="bg-gray-50 p-6 rounded-md">
+                  <div className="bg-gray-50 p-6 rounded-md text-center">
                     <FileText className="h-12 w-12 mx-auto text-gray-400 mb-3" />
                     <h3 className="text-lg font-medium mb-2">No Charts Available</h3>
                     <p className="text-sm text-gray-500 mb-4">Charts and progress tracking will be displayed here</p>
                     {/* Removed Create New Chart button */}
-                    <div className="flex justify-center space-x-4">
-                      <Button onClick={() => setShowTreatmentPlanTemplate(true)}>
-                        Create Treatment Plan
-                      </Button>
-                      <Button onClick={() => setShowSessionNoteTemplate(true)}>
-                        Create Session Note
-                      </Button>
-                    </div>
-                    {showTreatmentPlanTemplate && (
-                      <TreatmentPlanTemplate onClose={handleCloseTreatmentPlan} />
-                    )}
-                    {showSessionNoteTemplate && (
-                      <SessionNoteTemplate onClose={handleCloseSessionNote} />
-                    )}
                   </div>
                 </CardContent>
               </Card>
