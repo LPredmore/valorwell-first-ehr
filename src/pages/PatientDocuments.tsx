@@ -1,12 +1,17 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import TreatmentPlanTemplate from '@/components/templates/TreatmentPlanTemplate';
+import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 
 const PatientDocuments: React.FC = () => {
+  const [showTreatmentPlanTemplate, setShowTreatmentPlanTemplate] = useState(false);
+  const [showSessionNoteTemplate, setShowSessionNoteTemplate] = useState(false);
+
   return (
     <Layout>
       <div className="flex flex-col gap-6">
@@ -24,6 +29,7 @@ const PatientDocuments: React.FC = () => {
             <TabsTrigger value="treatment">Treatment Plans</TabsTrigger>
             <TabsTrigger value="session">Session Notes</TabsTrigger>
             <TabsTrigger value="forms">Intake Forms</TabsTrigger>
+            <TabsTrigger value="documentation">Documentation</TabsTrigger>
           </TabsList>
           
           <TabsContent value="all" className="space-y-4">
@@ -34,8 +40,8 @@ const PatientDocuments: React.FC = () => {
                   <CardDescription>Access all patient forms, records, and documents</CardDescription>
                 </div>
                 <div className="flex space-x-2">
-                  <Button 
-                    type="button" 
+                  <div 
+                    className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -43,10 +49,9 @@ const PatientDocuments: React.FC = () => {
                     }}
                   >
                     Create Treatment Plan
-                  </Button>
-                  <Button 
-                    type="button"
-                    variant="outline"
+                  </div>
+                  <div 
+                    className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -54,7 +59,7 @@ const PatientDocuments: React.FC = () => {
                     }}
                   >
                     Document Session
-                  </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -98,8 +103,104 @@ const PatientDocuments: React.FC = () => {
               </CardContent>
             </Card>
           </TabsContent>
+          
+          <TabsContent value="documentation" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Documentation Templates</CardTitle>
+                <CardDescription>View and use documentation templates</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-6 md:grid-cols-2 mb-6">
+                  <Card className="shadow-sm hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">Treatment Plan</CardTitle>
+                      <CardDescription>Standard documentation for treatment plans</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <p className="text-sm text-gray-500 mb-4">
+                        A comprehensive form for documenting patient treatment plans including goals, interventions, and progress tracking.
+                      </p>
+                      <Button
+                        className="w-full"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setShowTreatmentPlanTemplate(true);
+                        }}
+                      >
+                        View Template
+                      </Button>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="shadow-sm hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">Session Note</CardTitle>
+                      <CardDescription>Standard documentation for therapy sessions</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <p className="text-sm text-gray-500 mb-4">
+                        A standardized form for documenting patient sessions, including session focus, interventions, and progress notes.
+                      </p>
+                      <Button 
+                        className="w-full"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setShowSessionNoteTemplate(true);
+                        }}
+                      >
+                        View Template
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
+      
+      {showTreatmentPlanTemplate && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-auto">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-medium">Treatment Plan Template</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowTreatmentPlanTemplate(false)}
+              >
+                Close
+              </Button>
+            </div>
+            <div className="p-6">
+              <TreatmentPlanTemplate />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {showSessionNoteTemplate && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-auto">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-medium">Session Note Template</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSessionNoteTemplate(false)}
+              >
+                Close
+              </Button>
+            </div>
+            <div className="p-6">
+              <SessionNoteTemplate />
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };
