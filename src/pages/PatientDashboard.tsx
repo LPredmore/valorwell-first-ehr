@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, LayoutDashboard, User, FileText, Calendar as CalendarIcon, Clock3, ClipboardList, Shield, Edit, PenSquare, Save, X, Activity } from 'lucide-react';
+import { Calendar, Clock, LayoutDashboard, User, FileText, Calendar as CalendarIcon, Clock3, ClipboardList, Shield, Edit, PenSquare, Save, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
@@ -179,22 +179,6 @@ const PatientDashboard: React.FC = () => {
   useEffect(() => {
     fetchClientData();
   }, []);
-
-  // Helper function to format date of birth
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'Not provided';
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return 'Invalid date';
-    }
-  };
 
   // Mock data for upcoming appointments
   const upcomingAppointments = [
@@ -685,250 +669,19 @@ const PatientDashboard: React.FC = () => {
             </Card>
           </TabsContent>
           
-          {/* Insurance Tab Content - Updated with new fields */}
+          {/* Insurance Tab Content */}
           <TabsContent value="insurance" className="mt-0">
-            <div className="space-y-6">
-              {loading ? (
-                <Card>
-                  <CardContent className="flex justify-center items-center py-8">
-                    <p>Loading insurance information...</p>
-                  </CardContent>
-                </Card>
-              ) : clientData ? (
-                <>
-                  {/* Primary Insurance */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center">
-                        <Activity className="h-5 w-5 mr-2 text-valorwell-600" />
-                        <CardTitle>Primary Insurance</CardTitle>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Insurance Company */}
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Insurance Company</h4>
-                          <div className="p-3 bg-gray-100 rounded-md">
-                            {clientData.client_insurance_company_primary || "Not provided"}
-                          </div>
-                        </div>
-                        
-                        {/* Policy Number */}
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Policy Number</h4>
-                          <div className="p-3 bg-gray-100 rounded-md">
-                            {clientData.client_policy_number_primary || "Not provided"}
-                          </div>
-                        </div>
-                        
-                        {/* Group Number */}
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Group Number</h4>
-                          <div className="p-3 bg-gray-100 rounded-md">
-                            {clientData.client_group_number_primary || "Not provided"}
-                          </div>
-                        </div>
-                        
-                        {/* Subscriber Name (formerly Policy Holder Name) */}
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Subscriber Name</h4>
-                          <div className="p-3 bg-gray-100 rounded-md">
-                            {clientData.client_subscriber_name_primary || "Not provided"}
-                          </div>
-                        </div>
-                        
-                        {/* Subscriber Relationship - NEW */}
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Subscriber Relationship</h4>
-                          <div className="p-3 bg-gray-100 rounded-md">
-                            {clientData.client_subscriber_relationship_primary || "Not provided"}
-                          </div>
-                        </div>
-                        
-                        {/* Subscriber Date of Birth - NEW */}
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Subscriber Date of Birth</h4>
-                          <div className="p-3 bg-gray-100 rounded-md">
-                            {clientData.client_subscriber_dob_primary ? formatDate(clientData.client_subscriber_dob_primary) : "Not provided"}
-                          </div>
-                        </div>
-                        
-                        {/* Plan Type */}
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Plan Type</h4>
-                          <div className="p-3 bg-gray-100 rounded-md">
-                            {clientData.client_insurance_type_primary || "Not provided"}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  {/* Secondary Insurance */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center">
-                        <Activity className="h-5 w-5 mr-2 text-valorwell-600" />
-                        <CardTitle>Secondary Insurance</CardTitle>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {clientData.client_insurance_company_secondary ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {/* Insurance Company */}
-                          <div>
-                            <h4 className="text-sm font-medium mb-1">Insurance Company</h4>
-                            <div className="p-3 bg-gray-100 rounded-md">
-                              {clientData.client_insurance_company_secondary || "Not provided"}
-                            </div>
-                          </div>
-                          
-                          {/* Policy Number */}
-                          <div>
-                            <h4 className="text-sm font-medium mb-1">Policy Number</h4>
-                            <div className="p-3 bg-gray-100 rounded-md">
-                              {clientData.client_policy_number_secondary || "Not provided"}
-                            </div>
-                          </div>
-                          
-                          {/* Group Number */}
-                          <div>
-                            <h4 className="text-sm font-medium mb-1">Group Number</h4>
-                            <div className="p-3 bg-gray-100 rounded-md">
-                              {clientData.client_group_number_secondary || "Not provided"}
-                            </div>
-                          </div>
-                          
-                          {/* Subscriber Name (formerly Policy Holder Name) */}
-                          <div>
-                            <h4 className="text-sm font-medium mb-1">Subscriber Name</h4>
-                            <div className="p-3 bg-gray-100 rounded-md">
-                              {clientData.client_subscriber_name_secondary || "Not provided"}
-                            </div>
-                          </div>
-                          
-                          {/* Subscriber Relationship - NEW */}
-                          <div>
-                            <h4 className="text-sm font-medium mb-1">Subscriber Relationship</h4>
-                            <div className="p-3 bg-gray-100 rounded-md">
-                              {clientData.client_subscriber_relationship_secondary || "Not provided"}
-                            </div>
-                          </div>
-                          
-                          {/* Subscriber Date of Birth - NEW */}
-                          <div>
-                            <h4 className="text-sm font-medium mb-1">Subscriber Date of Birth</h4>
-                            <div className="p-3 bg-gray-100 rounded-md">
-                              {clientData.client_subscriber_dob_secondary ? formatDate(clientData.client_subscriber_dob_secondary) : "Not provided"}
-                            </div>
-                          </div>
-                          
-                          {/* Plan Type */}
-                          <div>
-                            <h4 className="text-sm font-medium mb-1">Plan Type</h4>
-                            <div className="p-3 bg-gray-100 rounded-md">
-                              {clientData.client_insurance_type_secondary || "Not provided"}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center py-6 text-center">
-                          <Shield className="h-12 w-12 text-gray-300 mb-3" />
-                          <h3 className="text-lg font-medium">No secondary insurance</h3>
-                          <p className="text-sm text-gray-500 mt-1">No secondary insurance information has been provided</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                  
-                  {/* Tertiary Insurance */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center">
-                        <Activity className="h-5 w-5 mr-2 text-valorwell-600" />
-                        <CardTitle>Tertiary Insurance</CardTitle>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {clientData.client_insurance_company_tertiary ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {/* Insurance Company */}
-                          <div>
-                            <h4 className="text-sm font-medium mb-1">Insurance Company</h4>
-                            <div className="p-3 bg-gray-100 rounded-md">
-                              {clientData.client_insurance_company_tertiary || "Not provided"}
-                            </div>
-                          </div>
-                          
-                          {/* Policy Number */}
-                          <div>
-                            <h4 className="text-sm font-medium mb-1">Policy Number</h4>
-                            <div className="p-3 bg-gray-100 rounded-md">
-                              {clientData.client_policy_number_tertiary || "Not provided"}
-                            </div>
-                          </div>
-                          
-                          {/* Group Number */}
-                          <div>
-                            <h4 className="text-sm font-medium mb-1">Group Number</h4>
-                            <div className="p-3 bg-gray-100 rounded-md">
-                              {clientData.client_group_number_tertiary || "Not provided"}
-                            </div>
-                          </div>
-                          
-                          {/* Subscriber Name (formerly Policy Holder Name) */}
-                          <div>
-                            <h4 className="text-sm font-medium mb-1">Subscriber Name</h4>
-                            <div className="p-3 bg-gray-100 rounded-md">
-                              {clientData.client_subscriber_name_tertiary || "Not provided"}
-                            </div>
-                          </div>
-                          
-                          {/* Subscriber Relationship - NEW */}
-                          <div>
-                            <h4 className="text-sm font-medium mb-1">Subscriber Relationship</h4>
-                            <div className="p-3 bg-gray-100 rounded-md">
-                              {clientData.client_subscriber_relationship_tertiary || "Not provided"}
-                            </div>
-                          </div>
-                          
-                          {/* Subscriber Date of Birth - NEW */}
-                          <div>
-                            <h4 className="text-sm font-medium mb-1">Subscriber Date of Birth</h4>
-                            <div className="p-3 bg-gray-100 rounded-md">
-                              {clientData.client_subscriber_dob_tertiary ? formatDate(clientData.client_subscriber_dob_tertiary) : "Not provided"}
-                            </div>
-                          </div>
-                          
-                          {/* Plan Type */}
-                          <div>
-                            <h4 className="text-sm font-medium mb-1">Plan Type</h4>
-                            <div className="p-3 bg-gray-100 rounded-md">
-                              {clientData.client_insurance_type_tertiary || "Not provided"}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center py-6 text-center">
-                          <Shield className="h-12 w-12 text-gray-300 mb-3" />
-                          <h3 className="text-lg font-medium">No tertiary insurance</h3>
-                          <p className="text-sm text-gray-500 mt-1">No tertiary insurance information has been provided</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </>
-              ) : (
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-                    <Shield className="h-12 w-12 text-gray-300 mb-3" />
-                    <h3 className="text-lg font-medium">No insurance information</h3>
-                    <p className="text-sm text-gray-500 mt-1">Please contact your provider to update your insurance details</p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Insurance Information</CardTitle>
+                <CardDescription>View and manage your insurance details</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded-md">
+                  <p className="text-center text-gray-500">Your insurance information will be displayed here</p>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
           
           {/* Documents Tab Content */}
