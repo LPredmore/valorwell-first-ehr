@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import TreatmentPlanTemplate from '@/components/templates/TreatmentPlanTemplate';
 import { useToast } from '@/hooks/use-toast';
+import { useParams } from 'react-router-dom';
 
 interface Document {
   id: string;
@@ -20,6 +20,7 @@ const PatientDocuments: React.FC = () => {
   const [showTreatmentPlan, setShowTreatmentPlan] = useState(false);
   const [documents, setDocuments] = useState<Document[]>([]);
   const { toast } = useToast();
+  const { id: patientId } = useParams<{ id: string }>();
 
   const handleCreateTreatmentPlan = () => {
     setShowTreatmentPlan(true);
@@ -29,12 +30,20 @@ const PatientDocuments: React.FC = () => {
     setShowTreatmentPlan(false);
   };
 
-  const handleSaveTreatmentPlan = () => {
-    toast({
-      title: "Success",
-      description: "Treatment plan created successfully",
-    });
-    setShowTreatmentPlan(false);
+  const handleSaveTreatmentPlan = async () => {
+    try {
+      toast({
+        title: "Success",
+        description: "Treatment plan created successfully",
+      });
+      setShowTreatmentPlan(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save treatment plan",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
