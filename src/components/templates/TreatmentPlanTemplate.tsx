@@ -98,8 +98,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         onSaveSuccess();
       } else {
         toast({
-          title: "Success",
-          description: "Treatment plan saved successfully",
+          title: "Treatment Plan Saved",
+          description: "The treatment plan was saved successfully",
         });
         onClose();
       }
