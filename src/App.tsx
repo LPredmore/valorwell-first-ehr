@@ -19,6 +19,8 @@ import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import ClinicianDetails from "./pages/ClinicianDetails";
+import MyClients from "./pages/MyClients";
+import PatientDashboard from "./pages/PatientDashboard";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -33,6 +35,8 @@ const App: React.FC = () => {
             <Sonner />
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/my-clients" element={<MyClients />} />
+              <Route path="/patient-dashboard" element={<PatientDashboard />} />
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/clients" element={<Clients />} />
               <Route path="/clients/:clientId" element={<ClientDetails />} />

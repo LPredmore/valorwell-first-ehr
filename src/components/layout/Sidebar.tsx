@@ -8,7 +8,9 @@ import {
   Settings, 
   Bell, 
   MessageSquare,
-  ChevronLeft
+  ChevronLeft,
+  UserCheck,
+  LayoutDashboard
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -36,6 +38,22 @@ const Sidebar = () => {
       </div>
       
       <nav className="flex-1 py-4 space-y-1 px-2">
+        <Link 
+          to="/my-clients" 
+          className={`sidebar-link ${isActive('/my-clients') ? 'active' : ''}`}
+        >
+          <UserCheck size={18} />
+          <span>My Clients</span>
+        </Link>
+
+        <Link 
+          to="/patient-dashboard" 
+          className={`sidebar-link ${isActive('/patient-dashboard') ? 'active' : ''}`}
+        >
+          <LayoutDashboard size={18} />
+          <span>Patient Dashboard</span>
+        </Link>
+        
         <Link 
           to="/calendar" 
           className={`sidebar-link ${isActive('/calendar') ? 'active' : ''}`}
