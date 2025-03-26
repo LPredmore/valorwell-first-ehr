@@ -106,14 +106,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
       
       <div className="flex gap-4">
         <div className={cn("flex-1", showAvailability ? "w-3/4" : "w-full")}>
-          {view === 'day' && <DayView currentDate={currentDate} clinicianId={clinicianId} />}
-          {view === 'week' && <WeekView currentDate={currentDate} clinicianId={clinicianId} />}
-          {view === 'month' && <MonthView currentDate={currentDate} clinicianId={clinicianId} />}
+          {view === 'day' && <DayView clinicianId={clinicianId} currentDate={currentDate} />}
+          {view === 'week' && <WeekView clinicianId={clinicianId} currentDate={currentDate} />}
+          {view === 'month' && <MonthView clinicianId={clinicianId} currentDate={currentDate} />}
         </div>
         
         {showAvailability && (
           <div className="w-1/4">
-            <AvailabilityPanel clinicianId={clinicianId} />
+            <AvailabilityPanel clinicianId={clinicianId || undefined} />
           </div>
         )}
       </div>

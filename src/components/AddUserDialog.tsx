@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -78,6 +79,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       console.log("User metadata to be saved:", userData);
       
       // Create user using our helper function
+      // Fix: The createUser function expects only the email and userData
       const { data: authData, error: authError } = await createUser(data.email, userData);
 
       if (authError) {

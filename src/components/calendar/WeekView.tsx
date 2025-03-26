@@ -1,22 +1,33 @@
+
 import React from 'react';
 import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Appointment } from '@/types/appointment';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 
-interface WeekViewProps {
-  clinicianId?: string;
+// Define the Appointment type since it's missing
+interface Appointment {
+  id: string;
+  appointment_date: string;
+  appointment_start_time: string;
+  appointment_end_time: string;
+  appointment_client_name: string;
+  appointment_clinician_id?: string;
 }
 
-const WeekView: React.FC<WeekViewProps> = ({ clinicianId }) => {
-  const [currentDate, setCurrentDate] = React.useState(new Date());
+interface WeekViewProps {
+  clinicianId?: string | null;
+  currentDate?: Date;
+}
+
+const WeekView: React.FC<WeekViewProps> = ({ clinicianId, currentDate = new Date() }) => {
+  const [selectedDate, setSelectedDate] = React.useState(currentDate);
   const { toast } = useToast();
 
-  const startDate = startOfWeek(currentDate, { weekStartsOn: 0 });
+  const startDate = startOfWeek(selectedDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startDate, i));
 
   const { data: appointments, isLoading, error } = useQuery({
@@ -62,11 +73,11 @@ const WeekView: React.FC<WeekViewProps> = ({ clinicianId }) => {
   };
 
   const handlePrevWeek = () => {
-    setCurrentDate(addDays(currentDate, -7));
+    setSelectedDate(addDays(selectedDate, -7));
   };
 
   const handleNextWeek = () => {
-    setCurrentDate(addDays(currentDate, 7));
+    setSelectedDate(addDays(selectedDate, 7));
   };
 
   return (
