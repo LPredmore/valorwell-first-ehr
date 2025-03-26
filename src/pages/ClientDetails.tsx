@@ -39,10 +39,35 @@ import { Textarea } from "@/components/ui/textarea";
 import Layout from '@/components/layout/Layout';
 import TreatmentPlanTemplate from '@/components/templates/TreatmentPlanTemplate';
 import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
+import { useClinicianData } from '@/hooks/useClinicianData';
 
 const ClientDetails: React.FC = () => {
   const [showTreatmentPlanTemplate, setShowTreatmentPlanTemplate] = useState(false);
   const [showSessionNoteTemplate, setShowSessionNoteTemplate] = useState(false);
+  const { clientId } = useParams();
+  const { clinicianData, loading: clinicianLoading } = useClinicianData();
+  
+  // Fetch client data using the clientId
+  const { data: clientData, isLoading: clientLoading } = useQuery({
+    queryKey: ['client', clientId],
+    queryFn: async () => {
+      if (!clientId) return null;
+      
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', clientId)
+        .single();
+        
+      if (error) {
+        console.error("Error fetching client data:", error);
+        throw error;
+      }
+      
+      return data;
+    },
+    enabled: !!clientId,
+  });
 
   const handleCloseTreatmentPlan = () => {
     setShowTreatmentPlanTemplate(false);
@@ -91,13 +116,23 @@ const ClientDetails: React.FC = () => {
               {/* Conditionally render the templates right after the Charting card */}
               {showTreatmentPlanTemplate && (
                 <div className="animate-fade-in">
-                  <TreatmentPlanTemplate onClose={handleCloseTreatmentPlan} />
+                  <TreatmentPlanTemplate 
+                    onClose={handleCloseTreatmentPlan} 
+                    clinicianName={clinicianData?.clinician_professional_name || ''}
+                    clientName={`${clientData?.client_first_name || ''} ${clientData?.client_last_name || ''}`}
+                    clientDob={clientData?.client_date_of_birth || ''}
+                  />
                 </div>
               )}
               
               {showSessionNoteTemplate && (
                 <div className="animate-fade-in">
-                  <SessionNoteTemplate onClose={handleCloseSessionNote} />
+                  <SessionNoteTemplate 
+                    onClose={handleCloseSessionNote} 
+                    clinicianName={clinicianData?.clinician_professional_name || ''}
+                    clientName={`${clientData?.client_first_name || ''} ${clientData?.client_last_name || ''}`}
+                    clientDob={clientData?.client_date_of_birth || ''}
+                  />
                 </div>
               )}
 
