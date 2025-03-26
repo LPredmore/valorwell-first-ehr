@@ -9,6 +9,47 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      availability: {
+        Row: {
+          clinician_id: string | null
+          created_at: string
+          day_of_week: string
+          end_time: string
+          id: string
+          is_active: boolean | null
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          clinician_id?: string | null
+          created_at?: string
+          day_of_week: string
+          end_time: string
+          id?: string
+          is_active?: boolean | null
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          clinician_id?: string | null
+          created_at?: string
+          day_of_week?: string
+          end_time?: string
+          id?: string
+          is_active?: boolean | null
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_clinician_id_fkey"
+            columns: ["clinician_id"]
+            isOneToOne: false
+            referencedRelation: "clinicians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           client_affect: string | null
