@@ -37,7 +37,7 @@ export const getClinicianIdByName = async (professionalName: string) => {
     .from('clinicians')
     .select('id')
     .eq('clinician_professional_name', professionalName)
-    .single();
+    .maybeSingle();
     
   if (error || !data) {
     console.error('Error fetching clinician ID:', error);
