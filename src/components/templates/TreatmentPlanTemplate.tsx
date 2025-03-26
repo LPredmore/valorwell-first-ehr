@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface TreatmentPlanTemplateProps {
   onClose: () => void;
@@ -68,17 +69,39 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({ onClose }
                       selected={startDate}
                       onSelect={setStartDate}
                       initialFocus
+                      className="pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="plan-type" className="text-sm text-valorwell-700 font-semibold">Plan Type</Label>
-                <Input id="plan-type" placeholder="Select plan duration" />
+                <Label htmlFor="plan-type" className="text-sm text-valorwell-700 font-semibold">Plan Length</Label>
+                <Select>
+                  <SelectTrigger id="plan-type">
+                    <SelectValue placeholder="Select plan length" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1month">1 month</SelectItem>
+                    <SelectItem value="3month">3 month</SelectItem>
+                    <SelectItem value="6month">6 month</SelectItem>
+                    <SelectItem value="9month">9 month</SelectItem>
+                    <SelectItem value="12month">12 month</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="treatment-frequency" className="text-sm text-valorwell-700 font-semibold">Treatment Frequency</Label>
-                <Input id="treatment-frequency" placeholder="Select frequency" />
+                <Select>
+                  <SelectTrigger id="treatment-frequency">
+                    <SelectValue placeholder="Select frequency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="biweekly">Bi-Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="asneeded">As Needed</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             
