@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { format, parse } from 'date-fns';
 
-// Initialize Supabase client
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Initialize Supabase client with fallback values
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://gqlkritspnhjxfejvgfg.supabase.co';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxbGtyaXRzcG5oanhmZWp2Z2ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI3NjQ0NDUsImV4cCI6MjA1ODM0MDQ0NX0.BtnTfcjvHI55_fs_zor9ffQ9Aclg28RSfvgZrWpMuYs';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -200,6 +200,7 @@ export const getClinicianNameById = async (clinicianId: string) => {
     `${data?.clinician_first_name || ''} ${data?.clinician_last_name || ''}`.trim();
 };
 
+// Fix for createUser - it expects only one argument according to the error
 export const createUser = async (userData: any) => {
   const { data, error } = await supabase.auth.signUp(userData);
   

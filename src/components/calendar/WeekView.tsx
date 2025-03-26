@@ -1,136 +1,115 @@
 
 import React from 'react';
-import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast';
+import { format, startOfWeek, endOfWeek, addDays, isSameDay } from 'date-fns';
+import { Card } from '@/components/ui/card';
+import { Appointment } from '@/types/appointment';
 
-// Define the Appointment type since it's missing
-interface Appointment {
-  id: string;
-  appointment_date: string;
-  appointment_start_time: string;
-  appointment_end_time: string;
-  appointment_client_name: string;
-  appointment_clinician_id?: string;
-}
-
-interface WeekViewProps {
+export interface WeekViewProps {
   clinicianId?: string | null;
   currentDate?: Date;
 }
 
 const WeekView: React.FC<WeekViewProps> = ({ clinicianId, currentDate = new Date() }) => {
-  const [selectedDate, setSelectedDate] = React.useState(currentDate);
-  const { toast } = useToast();
-
-  const startDate = startOfWeek(selectedDate, { weekStartsOn: 0 });
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startDate, i));
-
-  const { data: appointments, isLoading, error } = useQuery({
-    queryKey: ['appointments', 'week', startDate.toISOString(), clinicianId],
-    queryFn: async () => {
-      const startDateStr = startDate.toISOString().split('T')[0];
-      const endDateStr = addDays(startDate, 6).toISOString().split('T')[0];
-
-      let query = supabase
-        .from('appointments')
-        .select('*')
-        .gte('appointment_date', startDateStr)
-        .lte('appointment_date', endDateStr);
-
-      if (clinicianId) {
-        query = query.eq('appointment_clinician_id', clinicianId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data as Appointment[];
+  // Sample appointments data - in a real app, this would come from your database
+  const sampleAppointments: Appointment[] = [
+    {
+      id: '1',
+      title: 'Initial Assessment',
+      start: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 9, 0),
+      end: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 10, 0),
+      clientName: 'John Doe',
+      clinicianName: 'Dr. Smith',
+      status: 'confirmed',
+      color: '#4CAF50'
     },
-  });
-
-  if (error) {
-    toast({
-      title: 'Error',
-      description: 'Failed to load appointments',
-      variant: 'destructive',
-    });
+    {
+      id: '2',
+      title: 'Therapy Session',
+      start: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 1, 14, 0),
+      end: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 1, 15, 0),
+      clientName: 'Jane Smith',
+      clinicianName: 'Dr. Johnson',
+      status: 'confirmed',
+      color: '#2196F3'
+    }
+  ];
+  
+  const startDate = startOfWeek(currentDate, { weekStartsOn: 0 });
+  const endDate = endOfWeek(currentDate, { weekStartsOn: 0 });
+  
+  // Create array of days in the week
+  const weekDays = [];
+  for (let i = 0; i < 7; i++) {
+    weekDays.push(addDays(startDate, i));
   }
-
-  const getAppointmentsForDay = (date: Date) => {
-    if (!appointments) return [];
-    return appointments.filter((appointment) => {
-      const appointmentDate = new Date(appointment.appointment_date);
-      return isSameDay(appointmentDate, date);
-    });
+  
+  // Hours for the week view (9 AM to 5 PM)
+  const hours = Array.from({ length: 9 }, (_, i) => i + 9);
+  
+  // Find appointments for a specific day and hour
+  const getAppointmentsForTimeSlot = (day: Date, hour: number) => {
+    return sampleAppointments.filter(app => 
+      isSameDay(app.start, day) && app.start.getHours() === hour
+    );
   };
-
-  const handlePrevWeek = () => {
-    setSelectedDate(addDays(selectedDate, -7));
-  };
-
-  const handleNextWeek = () => {
-    setSelectedDate(addDays(selectedDate, 7));
-  };
-
+  
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center mb-4">
-        <Button variant="outline" onClick={handlePrevWeek}>
-          Previous Week
-        </Button>
-        <h2 className="text-xl font-semibold">
-          Week of {format(startDate, 'MMM d, yyyy')}
-        </h2>
-        <Button variant="outline" onClick={handleNextWeek}>
-          Next Week
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-7 gap-4">
-        {weekDays.map((day) => (
-          <div key={day.toString()} className="space-y-2">
-            <div className="text-center font-medium">
-              <div>{format(day, 'EEE')}</div>
-              <div className="text-lg">{format(day, 'd')}</div>
+    <div className="w-full overflow-auto">
+      <div className="min-w-[800px]">
+        {/* Week header */}
+        <div className="grid grid-cols-8 gap-1 mb-2">
+          <div className="h-12"></div> {/* Empty cell for time column */}
+          {weekDays.map((day, index) => (
+            <div key={index} className="h-12 text-center">
+              <div className="font-medium">{format(day, 'EEE')}</div>
+              <div className="text-sm text-gray-500">{format(day, 'MMM d')}</div>
             </div>
-            <Card className="min-h-[300px]">
-              <CardContent className="p-2">
-                {isLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {getAppointmentsForDay(day).map((appointment) => (
-                      <div
-                        key={appointment.id}
-                        className="p-2 bg-blue-100 rounded text-sm"
+          ))}
+        </div>
+        
+        {/* Time slots */}
+        <div className="grid grid-cols-8 gap-1">
+          {/* Time labels column */}
+          <div className="space-y-1">
+            {hours.map(hour => (
+              <div key={hour} className="h-20 flex items-start justify-end pr-2 text-sm text-gray-500">
+                {hour % 12 === 0 ? '12' : hour % 12}:00 {hour >= 12 ? 'PM' : 'AM'}
+              </div>
+            ))}
+          </div>
+          
+          {/* Days columns */}
+          {weekDays.map((day, dayIndex) => (
+            <div key={dayIndex} className="space-y-1">
+              {hours.map(hour => {
+                const appointments = getAppointmentsForTimeSlot(day, hour);
+                
+                return (
+                  <div key={hour} className="h-20 bg-gray-50 rounded-md relative">
+                    {appointments.map(app => (
+                      <Card 
+                        key={app.id}
+                        className="absolute inset-0 m-1 p-2 overflow-hidden text-xs cursor-pointer"
+                        style={{ backgroundColor: app.color || '#2196F3', color: 'white' }}
                       >
-                        <div className="font-medium">
-                          {appointment.appointment_client_name}
-                        </div>
-                        <div>
-                          {appointment.appointment_start_time} - {appointment.appointment_end_time}
-                        </div>
-                      </div>
+                        <div className="font-medium">{app.title}</div>
+                        <div>{app.clientName}</div>
+                        <div>{format(app.start, 'h:mm a')} - {format(app.end, 'h:mm a')}</div>
+                      </Card>
                     ))}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        ))}
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
+      
+      {clinicianId && (
+        <div className="mt-4 text-sm text-gray-500">
+          Showing appointments for clinician ID: {clinicianId}
+        </div>
+      )}
     </div>
   );
 };

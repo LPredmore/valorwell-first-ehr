@@ -1,7 +1,7 @@
 
 import React from 'react';
 
-interface MonthViewProps {
+export interface MonthViewProps {
   clinicianId?: string | null;
   currentDate?: Date;
 }

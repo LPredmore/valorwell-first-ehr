@@ -2,7 +2,7 @@
 import React from 'react';
 // Assuming you have necessary imports like styles or components
 
-interface DayViewProps {
+export interface DayViewProps {
   clinicianId?: string | null;
   currentDate?: Date;
 }
