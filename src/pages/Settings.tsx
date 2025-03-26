@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -188,8 +187,6 @@ const Settings = () => {
     if (!confirmed) return;
     
     try {
-      // Note: This is using admin auth which may not be available in the client
-      // You may need to create a serverless function for this
       const { error } = await supabase.auth.admin.deleteUser(userId);
       
       if (error) {
@@ -829,6 +826,19 @@ const Settings = () => {
                       <TableBody>
                         <TableRow className="cursor-pointer hover:bg-gray-50" onClick={() => setShowTreatmentPlanTemplate(true)}>
                           <TableCell className="font-medium">Treatment Plan</TableCell>
+                          <TableCell>Chart Template</TableCell>
+                          <TableCell>{new Date().toLocaleDateString()}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500">
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        <TableRow className="hover:bg-gray-50">
+                          <TableCell className="font-medium">Session Note</TableCell>
                           <TableCell>Chart Template</TableCell>
                           <TableCell>{new Date().toLocaleDateString()}</TableCell>
                           <TableCell className="text-right">
