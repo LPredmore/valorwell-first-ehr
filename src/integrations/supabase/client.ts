@@ -66,11 +66,11 @@ export const getClinicianNameById = async (clinicianId: string) => {
 };
 
 // Helper to get availability settings for a clinician
-export const getClinicianAvailabilitySettings = async (clinicianId: any) => {
-  if (!clinicianId) return null;
+export const getClinicianAvailabilitySettings = async (clinician_idnumber: any) => {
+  if (!clinician_idnumber) return null;
   
   const { data, error } = await supabase
-    .rpc('get_availability_settings', { clinician_id: clinicianId });
+    .rpc('get_availability_settings', { clinician_idnumber: clinician_idnumber });
     
   if (error || !data) {
     console.error('Error fetching availability settings:', error);
