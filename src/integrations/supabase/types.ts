@@ -12,6 +12,7 @@ export type Database = {
       availability: {
         Row: {
           clinician_id: string | null
+          clinician_idnumber: string | null
           created_at: string
           day_of_week: string
           end_time: string
@@ -22,6 +23,7 @@ export type Database = {
         }
         Insert: {
           clinician_id?: string | null
+          clinician_idnumber?: string | null
           created_at?: string
           day_of_week: string
           end_time: string
@@ -32,6 +34,7 @@ export type Database = {
         }
         Update: {
           clinician_id?: string | null
+          clinician_idnumber?: string | null
           created_at?: string
           day_of_week?: string
           end_time?: string
@@ -40,19 +43,12 @@ export type Database = {
           start_time?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "availability_clinician_id_fkey"
-            columns: ["clinician_id"]
-            isOneToOne: false
-            referencedRelation: "clinicians"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       availability_settings: {
         Row: {
           clinician_id: string
+          clinician_idnumber: string | null
           created_at: string
           id: string
           time_granularity: string
@@ -60,6 +56,7 @@ export type Database = {
         }
         Insert: {
           clinician_id: string
+          clinician_idnumber?: string | null
           created_at?: string
           id?: string
           time_granularity?: string
@@ -67,20 +64,13 @@ export type Database = {
         }
         Update: {
           clinician_id?: string
+          clinician_idnumber?: string | null
           created_at?: string
           id?: string
           time_granularity?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "availability_settings_clinician_id_fkey"
-            columns: ["clinician_id"]
-            isOneToOne: true
-            referencedRelation: "clinicians"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       clients: {
         Row: {
