@@ -11,21 +11,28 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ClientDetails } from "@/types/client";
 
 interface TreatmentPlanTemplateProps {
   onClose: () => void;
   clinicianName?: string;
   clientName?: string;
   clientDob?: string;
+  clientData?: ClientDetails | null;
 }
 
 const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({ 
   onClose, 
   clinicianName = '',
   clientName = '',
-  clientDob = ''
+  clientDob = '',
+  clientData = null
 }) => {
   const [startDate, setStartDate] = React.useState<Date | undefined>(new Date());
+  
+  // Derive values from clientData if available, otherwise use the direct props
+  const derivedClientName = clientName || `${clientData?.client_first_name || ''} ${clientData?.client_last_name || ''}`;
+  const derivedClientDob = clientDob || clientData?.client_date_of_birth || '';
 
   return (
     <Card className="w-full border border-gray-200 rounded-md">
@@ -43,11 +50,11 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="space-y-2">
                 <Label htmlFor="client-name" className="text-sm text-valorwell-700 font-semibold">Client Name</Label>
-                <Input id="client-name" placeholder="Enter client name" defaultValue={clientName} />
+                <Input id="client-name" placeholder="Enter client name" defaultValue={derivedClientName} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="client-dob" className="text-sm text-valorwell-700 font-semibold">Client DOB</Label>
-                <Input id="client-dob" placeholder="MM/DD/YYYY" defaultValue={clientDob} />
+                <Input id="client-dob" placeholder="MM/DD/YYYY" defaultValue={derivedClientDob} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="clinician-name" className="text-sm text-valorwell-700 font-semibold">Clinician Name</Label>
@@ -84,7 +91,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="plan-type" className="text-sm text-valorwell-700 font-semibold">Plan Length</Label>
-                <Select>
+                <Select defaultValue={clientData?.client_planlength || undefined}>
                   <SelectTrigger id="plan-type">
                     <SelectValue placeholder="Select plan length" />
                   </SelectTrigger>
@@ -99,7 +106,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="treatment-frequency" className="text-sm text-valorwell-700 font-semibold">Treatment Frequency</Label>
-                <Select>
+                <Select defaultValue={clientData?.client_treatmentfrequency || undefined}>
                   <SelectTrigger id="treatment-frequency">
                     <SelectValue placeholder="Select frequency" />
                   </SelectTrigger>
@@ -115,75 +122,136 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
             
             <div className="space-y-2 mb-6">
               <Label htmlFor="diagnosis" className="text-sm text-valorwell-700 font-semibold">Diagnosis</Label>
-              <Input id="diagnosis" placeholder="Select diagnosis code" />
+              <Input 
+                id="diagnosis" 
+                placeholder="Select diagnosis code" 
+                defaultValue={clientData?.client_diagnosis ? clientData.client_diagnosis.join(', ') : ''}
+              />
             </div>
             
             <div className="space-y-2 mb-6">
               <Label htmlFor="problem-narrative" className="text-sm text-valorwell-700 font-semibold">Problem Narrative</Label>
-              <Textarea id="problem-narrative" placeholder="Describe the presenting problem" className="min-h-[100px]" />
+              <Textarea 
+                id="problem-narrative" 
+                placeholder="Describe the presenting problem" 
+                className="min-h-[100px]"
+                defaultValue={clientData?.client_problem || ''}
+              />
             </div>
             
             <div className="space-y-2 mb-6">
               <Label htmlFor="treatment-goal" className="text-sm text-valorwell-700 font-semibold">Treatment Goal Narrative</Label>
-              <Textarea id="treatment-goal" placeholder="Describe the treatment goals" className="min-h-[100px]" />
+              <Textarea 
+                id="treatment-goal" 
+                placeholder="Describe the treatment goals" 
+                className="min-h-[100px]"
+                defaultValue={clientData?.client_treatmentgoal || ''}
+              />
             </div>
             
             <div className="space-y-2 mb-4">
               <Label htmlFor="primary-objective" className="text-sm text-valorwell-700 font-semibold">Primary Objective</Label>
-              <Textarea id="primary-objective" placeholder="Describe the primary objective" className="min-h-[100px]" />
+              <Textarea 
+                id="primary-objective" 
+                placeholder="Describe the primary objective" 
+                className="min-h-[100px]"
+                defaultValue={clientData?.client_primaryobjective || ''}
+              />
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="space-y-2">
                 <Label htmlFor="intervention-1" className="text-sm text-valorwell-700 font-semibold">Intervention 1</Label>
-                <Input id="intervention-1" placeholder="Describe intervention" />
+                <Input 
+                  id="intervention-1" 
+                  placeholder="Describe intervention"
+                  defaultValue={clientData?.client_intervention1 || ''}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="intervention-2" className="text-sm text-valorwell-700 font-semibold">Intervention 2</Label>
-                <Input id="intervention-2" placeholder="Describe intervention" />
+                <Input 
+                  id="intervention-2" 
+                  placeholder="Describe intervention"
+                  defaultValue={clientData?.client_intervention2 || ''}
+                />
               </div>
             </div>
             
             <div className="space-y-2 mb-4">
               <Label htmlFor="secondary-objective" className="text-sm text-valorwell-700 font-semibold">Secondary Objective</Label>
-              <Textarea id="secondary-objective" placeholder="Describe the secondary objective" className="min-h-[100px]" />
+              <Textarea 
+                id="secondary-objective" 
+                placeholder="Describe the secondary objective" 
+                className="min-h-[100px]"
+                defaultValue={clientData?.client_secondaryobjective || ''}
+              />
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="space-y-2">
                 <Label htmlFor="sec-intervention-1" className="text-sm text-valorwell-700 font-semibold">Intervention 3</Label>
-                <Input id="sec-intervention-1" placeholder="Describe intervention" />
+                <Input 
+                  id="sec-intervention-1" 
+                  placeholder="Describe intervention"
+                  defaultValue={clientData?.client_intervention3 || ''}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="sec-intervention-2" className="text-sm text-valorwell-700 font-semibold">Intervention 4</Label>
-                <Input id="sec-intervention-2" placeholder="Describe intervention" />
+                <Input 
+                  id="sec-intervention-2" 
+                  placeholder="Describe intervention"
+                  defaultValue={clientData?.client_intervention4 || ''}
+                />
               </div>
             </div>
             
             <div className="space-y-2 mb-4">
               <Label htmlFor="tertiary-objective" className="text-sm text-valorwell-700 font-semibold">Tertiary Objective</Label>
-              <Textarea id="tertiary-objective" placeholder="Describe the tertiary objective" className="min-h-[100px]" />
+              <Textarea 
+                id="tertiary-objective" 
+                placeholder="Describe the tertiary objective" 
+                className="min-h-[100px]"
+                defaultValue={clientData?.client_tertiaryobjective || ''}
+              />
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="space-y-2">
                 <Label htmlFor="tert-intervention-1" className="text-sm text-valorwell-700 font-semibold">Intervention 5</Label>
-                <Input id="tert-intervention-1" placeholder="Describe intervention" />
+                <Input 
+                  id="tert-intervention-1" 
+                  placeholder="Describe intervention"
+                  defaultValue={clientData?.client_intervention5 || ''}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="tert-intervention-2" className="text-sm text-valorwell-700 font-semibold">Intervention 6</Label>
-                <Input id="tert-intervention-2" placeholder="Describe intervention" />
+                <Input 
+                  id="tert-intervention-2" 
+                  placeholder="Describe intervention"
+                  defaultValue={clientData?.client_intervention6 || ''}
+                />
               </div>
             </div>
             
             <div className="space-y-2 mb-6">
               <Label htmlFor="next-update" className="text-sm text-valorwell-700 font-semibold">Next Treatment Plan Update</Label>
-              <Input id="next-update" placeholder="When will this plan be reviewed next" />
+              <Input 
+                id="next-update" 
+                placeholder="When will this plan be reviewed next"
+                defaultValue={clientData?.client_nexttreatmentplanupdate || ''}
+              />
             </div>
             
             <div className="space-y-2 mb-2">
               <Label htmlFor="private-note" className="text-sm text-valorwell-700 font-semibold">Private Note</Label>
-              <Input id="private-note" placeholder="Notes visible only to providers" />
+              <Input 
+                id="private-note" 
+                placeholder="Notes visible only to providers"
+                defaultValue={clientData?.client_privatenote || ''}
+              />
             </div>
           </div>
           
