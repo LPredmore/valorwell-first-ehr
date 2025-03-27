@@ -12,7 +12,6 @@ export type Database = {
       availability: {
         Row: {
           clinician_id: string | null
-          clinician_idnumber: string | null
           created_at: string
           day_of_week: string
           end_time: string
@@ -23,7 +22,6 @@ export type Database = {
         }
         Insert: {
           clinician_id?: string | null
-          clinician_idnumber?: string | null
           created_at?: string
           day_of_week: string
           end_time: string
@@ -34,7 +32,6 @@ export type Database = {
         }
         Update: {
           clinician_id?: string | null
-          clinician_idnumber?: string | null
           created_at?: string
           day_of_week?: string
           end_time?: string
@@ -43,7 +40,15 @@ export type Database = {
           start_time?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "availability_clinician_id_fkey"
+            columns: ["clinician_id"]
+            isOneToOne: false
+            referencedRelation: "clinicians"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       availability_settings: {
         Row: {
@@ -67,7 +72,15 @@ export type Database = {
           time_granularity?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "availability_settings_clinician_id_fkey"
+            columns: ["clinician_id"]
+            isOneToOne: true
+            referencedRelation: "clinicians"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       clients: {
         Row: {
@@ -483,24 +496,6 @@ export type Database = {
           template?: Json | null
           title?: string
           updated_at?: string
-        }
-        Relationships: []
-      }
-      icd10: {
-        Row: {
-          diagnosis_name: string
-          icd10: string
-          id: number
-        }
-        Insert: {
-          diagnosis_name: string
-          icd10: string
-          id?: number
-        }
-        Update: {
-          diagnosis_name?: string
-          icd10?: string
-          id?: number
         }
         Relationships: []
       }

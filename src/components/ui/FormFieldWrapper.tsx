@@ -1,61 +1,78 @@
 
 import React from 'react';
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface FormFieldWrapperProps {
   control: any;
   name: string;
   label: string;
-  type?: 'text' | 'email' | 'tel' | 'select';
-  options?: string[];
   readOnly?: boolean;
+  options?: string[];
+  placeholder?: string;
+  type?: 'text' | 'email' | 'tel' | 'date' | 'select';
+  required?: boolean;
+  className?: string;
 }
 
+/**
+ * A wrapper component for form fields that ensures consistent IDs and names
+ * for all form elements, fixing the console warning about missing attributes.
+ */
 const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
   control,
   name,
   label,
-  type = 'text',
+  readOnly = false,
   options = [],
-  readOnly = false
+  placeholder = "",
+  type = "text",
+  required = false,
+  className = "",
 }) => {
   return (
     <FormField
       control={control}
       name={name}
       render={({ field }) => (
-        <FormItem>
-          <FormLabel>{label}</FormLabel>
+        <FormItem className={className}>
+          <FormLabel className="text-sm font-medium">
+            {label} {required && <span className="text-red-500">*</span>}
+          </FormLabel>
           <FormControl>
             {type === 'select' ? (
               <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
                 disabled={readOnly}
+                value={field.value || ""}
+                onValueChange={field.onChange}
               >
-                <SelectTrigger className={readOnly ? "bg-gray-100" : ""}>
-                  <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+                <SelectTrigger 
+                  id={`field-${name}`}
+                  name={name}
+                  className={readOnly ? "bg-gray-100" : ""}
+                >
+                  <SelectValue placeholder={placeholder || `Select ${label.toLowerCase()}`} />
                 </SelectTrigger>
                 <SelectContent>
-                  {options.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option}
-                    </SelectItem>
+                  {options.map(option => (
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             ) : (
               <Input
                 {...field}
+                id={`field-${name}`}
+                name={name}
                 type={type}
                 readOnly={readOnly}
+                placeholder={placeholder}
+                value={field.value || ""}
                 className={readOnly ? "bg-gray-100" : ""}
               />
             )}
           </FormControl>
-          <FormMessage />
         </FormItem>
       )}
     />

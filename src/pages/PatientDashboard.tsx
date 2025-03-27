@@ -402,7 +402,7 @@ const PatientDashboard: React.FC = () => {
                             <h3 className="font-medium mb-2">Available Time Slots</h3>
                             <p className="text-sm text-gray-500 mb-4">Available time slots for the current week</p>
                             
-                            <WeekView currentDate={new Date()} />
+                            <WeekView currentDate={new Date()} clinicianId={clientData?.client_assigned_therapist || null} />
                           </div>
                           <div className="flex justify-end">
                             <Button>Book a Time Slot</Button>
