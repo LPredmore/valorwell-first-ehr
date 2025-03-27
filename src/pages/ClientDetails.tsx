@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase, parseDateString, formatDateForDB } from "@/integrations/supabase/client";
@@ -20,6 +19,7 @@ import Layout from '@/components/layout/Layout';
 import PersonalInfoTab from "@/components/client/PersonalInfoTab";
 import InsuranceTab from "@/components/client/InsuranceTab";
 import TreatmentTab from "@/components/client/TreatmentTab";
+import DocumentationTab from "@/components/client/DocumentationTab";
 import { ClientDetails as ClientDetailsType, Clinician } from "@/types/client";
 
 const ClientDetails = () => {
@@ -330,10 +330,11 @@ const ClientDetails = () => {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSaveChanges)}>
           <Tabs defaultValue="personal" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-3 mb-4">
+            <TabsList className="grid grid-cols-4 mb-4">
               <TabsTrigger value="personal">Personal Info</TabsTrigger>
               <TabsTrigger value="insurance">Insurance</TabsTrigger>
               <TabsTrigger value="treatment">Treatment</TabsTrigger>
+              <TabsTrigger value="documentation">Documentation</TabsTrigger>
             </TabsList>
 
             <TabsContent value="personal">
@@ -361,6 +362,10 @@ const ClientDetails = () => {
                 handleAddDiagnosis={handleAddDiagnosis}
                 handleRemoveDiagnosis={handleRemoveDiagnosis}
               />
+            </TabsContent>
+
+            <TabsContent value="documentation">
+              <DocumentationTab clientData={clientData} />
             </TabsContent>
           </Tabs>
         </form>
