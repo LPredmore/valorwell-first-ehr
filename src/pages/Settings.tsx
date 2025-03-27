@@ -924,3 +924,210 @@ const Settings = () => {
                               className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
                             >
                               Edit
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteCptCode(cptCode.code)}
+                              className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+        
+        {activeTab === SettingsTabs.TEMPLATES && (
+          <div className="p-6 animate-fade-in">
+            {showTreatmentPlanTemplate ? (
+              <TreatmentPlanTemplate onClose={() => setShowTreatmentPlanTemplate(false)} />
+            ) : showSessionNoteTemplate ? (
+              <SessionNoteTemplate onClose={() => setShowSessionNoteTemplate(false)} />
+            ) : (
+              <>
+                <div className="mb-8">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold">Chart Templates</h2>
+                    <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800">
+                      <Plus size={16} />
+                      <span>Add Template</span>
+                    </button>
+                  </div>
+                  
+                  <div className="border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Template Name</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Last Modified</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow className="cursor-pointer hover:bg-gray-50" onClick={() => setShowTreatmentPlanTemplate(true)}>
+                          <TableCell className="font-medium">Treatment Plan</TableCell>
+                          <TableCell>Chart Template</TableCell>
+                          <TableCell>{new Date().toLocaleDateString()}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500">
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        <TableRow className="cursor-pointer hover:bg-gray-50" onClick={() => setShowSessionNoteTemplate(true)}>
+                          <TableCell className="font-medium">Session Note</TableCell>
+                          <TableCell>Chart Template</TableCell>
+                          <TableCell>{new Date().toLocaleDateString()}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500">
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold">Online Forms</h2>
+                    <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white border rounded hover:bg-gray-50">
+                      <Plus size={16} />
+                      <span>Add Form</span>
+                    </button>
+                  </div>
+                  
+                  <div className="text-center py-10 border rounded bg-gray-50 text-gray-500">
+                    No online forms available. Click the button above to create your first form.
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        
+        {activeTab === SettingsTabs.SECURITY && (
+          <div className="p-6 animate-fade-in">
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <h2 className="text-2xl font-bold mb-4 text-gray-800">Security Settings Coming Soon</h2>
+              <p className="text-gray-600 max-w-md">
+                Security and privacy settings will be implemented in the next phase.
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {activeTab === SettingsTabs.LICENSES && (
+          <div className="p-6 animate-fade-in">
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <h2 className="text-2xl font-bold mb-4 text-gray-800">License Management Coming Soon</h2>
+              <p className="text-gray-600 max-w-md">
+                License management features will be implemented in the next phase.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+      
+      <AddUserDialog 
+        open={isAddUserDialogOpen} 
+        onOpenChange={setIsAddUserDialogOpen}
+        onUserAdded={handleUserAdded}
+      />
+
+      <Dialog open={isCptDialogOpen} onOpenChange={setIsCptDialogOpen}>
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader>
+            <DialogTitle>{isEditMode ? 'Edit CPT Code' : 'Add CPT Code'}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="cpt-code" className="text-right">
+                Code
+              </Label>
+              <Input
+                id="cpt-code"
+                value={newCptCode.code}
+                onChange={(e) => setNewCptCode({ ...newCptCode, code: e.target.value })}
+                className="col-span-3"
+                disabled={isEditMode}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="cpt-name" className="text-right">
+                Name
+              </Label>
+              <Input
+                id="cpt-name"
+                value={newCptCode.name}
+                onChange={(e) => setNewCptCode({ ...newCptCode, name: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="cpt-clinical-type" className="text-right">
+                Clinical Type
+              </Label>
+              <Input
+                id="cpt-clinical-type"
+                value={newCptCode.clinical_type || ''}
+                onChange={(e) => setNewCptCode({ ...newCptCode, clinical_type: e.target.value })}
+                className="col-span-3"
+                placeholder="E.g., Evaluation & Management, Psychotherapy"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="cpt-description" className="text-right">
+                Description
+              </Label>
+              <Textarea
+                id="cpt-description"
+                value={newCptCode.description || ''}
+                onChange={(e) => setNewCptCode({ ...newCptCode, description: e.target.value })}
+                className="col-span-3 min-h-[100px]"
+                placeholder="Detailed description of the CPT code"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="cpt-fee" className="text-right">
+                Fee ($)
+              </Label>
+              <Input
+                id="cpt-fee"
+                type="number"
+                min="0"
+                step="0.01"
+                value={newCptCode.fee}
+                onChange={(e) => setNewCptCode({ ...newCptCode, fee: parseFloat(e.target.value) || 0 })}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCptDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" onClick={handleSaveCptCode}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Layout>
+  );
+};
+
+export default Settings;
