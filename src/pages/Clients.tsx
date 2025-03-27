@@ -18,7 +18,6 @@ interface Client {
 }
 
 const Clients = () => {
-  const [activeTab, setActiveTab] = useState('all');
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,16 +112,9 @@ const Clients = () => {
         <div className="border-b">
           <div className="flex">
             <button 
-              className={`px-6 py-3 font-medium text-sm ${activeTab === 'all' ? 'border-b-2 border-valorwell-700 text-valorwell-700' : 'text-gray-500'}`}
-              onClick={() => setActiveTab('all')}
+              className="px-6 py-3 font-medium text-sm border-b-2 border-valorwell-700 text-valorwell-700"
             >
               All Clients
-            </button>
-            <button 
-              className={`px-6 py-3 font-medium text-sm ${activeTab === 'custodian' ? 'border-b-2 border-valorwell-700 text-valorwell-700' : 'text-gray-500'}`}
-              onClick={() => setActiveTab('custodian')}
-            >
-              My Custodian Records
             </button>
           </div>
         </div>

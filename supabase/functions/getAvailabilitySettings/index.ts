@@ -34,7 +34,7 @@ serve(async (req) => {
     const { data, error } = await supabaseClient
       .from('availability_settings')
       .select('*')
-      .eq('clinician_id', clinicianId)
+      .eq('clinician_id', clinicianId.toString()) // Convert to string explicitly
       .single()
     
     if (error) {
