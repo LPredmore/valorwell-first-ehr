@@ -1,107 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
-  startOfWeek,
-  endOfWeek,
-  isSameMonth,
-  isSameDay,
-  parseISO,
-  formatISO
-} from 'date-fns';
-import { Card } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+
+import React from 'react';
+import { Card, CardContent } from "@/components/ui/card";
 
 interface MonthViewProps {
   currentDate: Date;
-  clinicianId: string | null;
+  clinicianId?: string | null;
 }
 
 const MonthView: React.FC<MonthViewProps> = ({ currentDate, clinicianId }) => {
-  const [loading, setLoading] = useState(true);
-  const [availabilityData, setAvailabilityData] = useState<any[]>([]);
-
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const startDate = startOfWeek(monthStart, { weekStartsOn: 0 });
-  const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
-  
-  const days = eachDayOfInterval({ start: startDate, end: endDate });
-
-  useEffect(() => {
-    const fetchAvailability = async () => {
-      setLoading(true);
-      try {
-        let query = supabase
-          .from('availability')
-          .select('*')
-          .eq('is_active', true);
-
-        if (clinicianId) {
-          query = query.eq('clinician_id', clinicianId);
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-          console.error('Error fetching availability:', error);
-        } else {
-          console.log('MonthView fetched availability data:', data);
-          setAvailabilityData(data || []);
-        }
-      } catch (error) {
-        console.error('Error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAvailability();
-  }, [clinicianId]);
-
-  const hasDayAvailability = (day: Date) => {
-    const dayOfWeek = format(day, 'EEEE');
-    return availabilityData.some(slot => slot.day_of_week === dayOfWeek);
-  };
-
-  if (loading) {
-    return (
-      <Card className="p-4 flex justify-center items-center h-[300px]">
-        <Loader2 className="h-6 w-6 animate-spin text-valorwell-500" />
-      </Card>
-    );
-  }
-
   return (
-    <Card className="p-4">
-      <div className="grid grid-cols-7 gap-1">
-        {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day) => (
-          <div key={day} className="p-2 text-center font-medium border-b border-gray-200">
-            {day.slice(0, 3)}
-          </div>
-        ))}
-
-        {days.map((day) => (
-          <div
-            key={day.toString()}
-            className={`p-2 min-h-[100px] border border-gray-100 ${!isSameMonth(day, monthStart) ? 'bg-gray-50 text-gray-400' : ''} ${isSameDay(day, new Date()) ? 'border-valorwell-500 border-2' : ''}`}
-          >
-            <div className="flex justify-between items-start">
-              <span className={`text-sm font-medium ${isSameDay(day, new Date()) ? 'text-valorwell-500' : ''}`}>
-                {format(day, 'd')}
-              </span>
-              {hasDayAvailability(day) && isSameMonth(day, monthStart) && (
-                <div className="bg-green-100 text-green-800 text-xs px-1 py-0.5 rounded">
-                  Available
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+    <Card>
+      <CardContent className="p-4">
+        <h3 className="text-lg font-medium mb-4">Monthly View</h3>
+        <p className="text-gray-500 text-sm mb-2">
+          {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+        </p>
+        <div className="text-center p-6">
+          <p className="text-gray-500">Monthly calendar view will be implemented soon</p>
+          {clinicianId && (
+            <p className="text-xs text-gray-400 mt-2">Showing availability for clinician ID: {clinicianId}</p>
+          )}
+        </div>
+      </CardContent>
     </Card>
   );
 };

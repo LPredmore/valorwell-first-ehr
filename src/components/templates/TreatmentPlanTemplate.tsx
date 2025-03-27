@@ -31,11 +31,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
   clientData = null,
   clientId
 }) => {
-  const [startDate, setStartDate] = React.useState<Date | undefined>(
-    clientData?.client_treatmentplan_startdate 
-      ? new Date(clientData.client_treatmentplan_startdate) 
-      : new Date()
-  );
+  // Use a standard date field instead of client_treatmentplan_startdate which doesn't exist
+  const [startDate, setStartDate] = React.useState<Date | undefined>(new Date());
   
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
@@ -92,7 +89,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         : [];
       
       const updates = {
-        client_treatmentplan_startdate: formatDateForDB(startDate),
         client_planlength: formValues.planLength,
         client_treatmentfrequency: formValues.treatmentFrequency,
         client_problem: formValues.problem,
