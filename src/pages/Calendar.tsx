@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import CalendarView from '../components/calendar/CalendarView';
@@ -36,7 +35,6 @@ const Calendar = () => {
           console.error('Error fetching clinicians:', error);
         } else {
           setClinicians(data || []);
-          // Set the first clinician as default if available
           if (data && data.length > 0 && !selectedClinicianId) {
             setSelectedClinicianId(data[0].id);
           }

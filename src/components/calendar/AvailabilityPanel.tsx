@@ -28,7 +28,7 @@ interface DaySchedule {
 
 interface AvailabilitySettings {
   id: string;
-  clinician_id: string;
+  clinician_idnumber: string;
   time_granularity: 'hour' | 'half-hour';
   created_at: string;
   updated_at: string;
@@ -102,7 +102,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinician_idnumbe
             const { data: settingsData } = await supabase
               .from('availability_settings')
               .select('*')
-              .eq('clinician_id', clinicianData.id)
+              .eq('clinician_idnumber', clinician_idnumber)
               .single();
               
             if (settingsData) {
@@ -280,10 +280,10 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinician_idnumbe
       await supabase
         .from('availability_settings')
         .upsert({
-          clinician_id: clinicianData.id,
+          clinician_idnumber: clinician_idnumber,
           time_granularity: timeGranularity
         }, {
-          onConflict: 'clinician_id'
+          onConflict: 'clinician_idnumber'
         });
       
       if (availabilityToInsert.length > 0) {
