@@ -22,7 +22,8 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Clock,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  Plus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import DayView from './DayView';
@@ -97,19 +98,22 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
           <h2 className="text-lg font-semibold ml-2">{getHeaderText()}</h2>
         </div>
         
-        {/* Removed New Appointment button */}
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          New Appointment
+        </Button>
       </div>
       
       <div className="flex gap-4">
         <div className={cn("flex-1", showAvailability ? "w-3/4" : "w-full")}>
-          {view === 'day' && <DayView clinicianId={clinicianId} currentDate={currentDate} />}
-          {view === 'week' && <WeekView clinicianId={clinicianId} currentDate={currentDate} />}
-          {view === 'month' && <MonthView clinicianId={clinicianId} currentDate={currentDate} />}
+          {view === 'day' && <DayView currentDate={currentDate} clinicianId={clinicianId} />}
+          {view === 'week' && <WeekView currentDate={currentDate} clinicianId={clinicianId} />}
+          {view === 'month' && <MonthView currentDate={currentDate} clinicianId={clinicianId} />}
         </div>
         
         {showAvailability && (
           <div className="w-1/4">
-            <AvailabilityPanel clinicianId={clinicianId || undefined} />
+            <AvailabilityPanel clinicianId={clinicianId} />
           </div>
         )}
       </div>

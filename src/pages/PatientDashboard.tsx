@@ -287,22 +287,6 @@ const PatientDashboard: React.FC = () => {
     { id: 2, date: 'April 15, 2024', time: '11:30 AM', type: 'Therapy Session', therapist: 'Dr. Sarah Johnson' },
   ];
 
-  const renderWeekView = () => {
-    return (
-      <TabsContent value="weekly" className="space-y-4">
-        <div className="bg-gray-50 p-4 rounded-md">
-          <h3 className="font-medium mb-2">Available Time Slots</h3>
-          <p className="text-sm text-gray-500 mb-4">Available time slots for the current week</p>
-          
-          <WeekView clinicianId={clientData?.client_assigned_therapist || null} />
-        </div>
-        <div className="flex justify-end">
-          <Button>Book a Time Slot</Button>
-        </div>
-      </TabsContent>
-    );
-  };
-
   return (
     <Layout>
       <div className="flex flex-col gap-6">
@@ -418,22 +402,20 @@ const PatientDashboard: React.FC = () => {
                             <h3 className="font-medium mb-2">Available Time Slots</h3>
                             <p className="text-sm text-gray-500 mb-4">Available time slots for the current week</p>
                             
-                            <WeekView clinicianId={clientData.client_assigned_therapist} />
+                            <WeekView currentDate={new Date()} />
                           </div>
                           <div className="flex justify-end">
                             <Button>Book a Time Slot</Button>
                           </div>
                         </TabsContent>
                         
-                        <TabsContent value="monthly" className="space-y-4">
+                        <TabsContent value="monthly">
                           <div className="bg-gray-50 p-4 rounded-md">
-                            <h3 className="font-medium mb-2">Available Time Slots</h3>
-                            <p className="text-sm text-gray-500 mb-4">Available time slots for the current month</p>
-                            
-                            <WeekView clinicianId={clientData.client_assigned_therapist} />
-                          </div>
-                          <div className="flex justify-end">
-                            <Button>Book a Time Slot</Button>
+                            <h3 className="font-medium mb-2">Monthly Availability</h3>
+                            <p className="text-sm text-gray-500 mb-4">View available slots for the entire month</p>
+                            <div className="flex justify-center">
+                              <p className="text-gray-500">Monthly calendar view will be displayed here</p>
+                            </div>
                           </div>
                         </TabsContent>
                       </Tabs>
