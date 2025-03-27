@@ -1,4 +1,3 @@
-
 export interface ClientDetails {
   id: string;
   client_first_name: string | null;
@@ -39,6 +38,21 @@ export interface ClientDetails {
   client_insurance_type_tertiary: string | null;
   client_subscriber_dob_tertiary: string | null;
   client_subscriber_relationship_tertiary: string | null;
+  client_planlength: string | null;
+  client_treatmentfrequency: string | null;
+  client_problem: string | null;
+  client_treatmentgoal: string | null;
+  client_primaryobjective: string | null;
+  client_secondaryobjective: string | null;
+  client_tertiaryobjective: string | null;
+  client_intervention1: string | null;
+  client_intervention2: string | null;
+  client_intervention3: string | null;
+  client_intervention4: string | null;
+  client_intervention5: string | null;
+  client_intervention6: string | null;
+  client_nexttreatmentplanupdate: string | null;
+  client_privatenote: string | null;
 }
 
 export interface Clinician {
