@@ -13,9 +13,17 @@ import {
 
 interface SessionNoteTemplateProps {
   onClose: () => void;
+  clinicianName?: string;
+  clientName?: string;
+  clientDob?: string;
 }
 
-const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({ onClose }) => {
+const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({ 
+  onClose,
+  clinicianName = '',
+  clientName = '',
+  clientDob = ''
+}) => {
   const [sessionDate, setSessionDate] = useState('');
   
   // State for the dropdown/input field values
@@ -91,15 +99,15 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({ onClose }) =>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
-            <Input placeholder="Enter patient name" />
+            <Input placeholder="Enter patient name" defaultValue={clientName} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Patient DOB</label>
-            <Input placeholder="MM/DD/YYYY" />
+            <Input placeholder="MM/DD/YYYY" defaultValue={clientDob} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Clinician Name</label>
-            <Input placeholder="Enter clinician name" />
+            <Input placeholder="Enter clinician name" defaultValue={clinicianName} />
           </div>
         </div>
 
