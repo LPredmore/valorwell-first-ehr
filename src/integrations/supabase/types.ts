@@ -48,6 +48,7 @@ export type Database = {
       availability_settings: {
         Row: {
           clinician_id: string
+          clinician_idnumber: string | null
           created_at: string
           id: string
           time_granularity: string
@@ -55,6 +56,7 @@ export type Database = {
         }
         Insert: {
           clinician_id: string
+          clinician_idnumber?: string | null
           created_at?: string
           id?: string
           time_granularity?: string
@@ -62,6 +64,7 @@ export type Database = {
         }
         Update: {
           clinician_id?: string
+          clinician_idnumber?: string | null
           created_at?: string
           id?: string
           time_granularity?: string

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React from 'react';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -13,17 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 interface TreatmentPlanTemplateProps {
   onClose: () => void;
-  clinicianName?: string;
-  clientName?: string;
-  clientDob?: string;
 }
 
-const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({ 
-  onClose,
-  clinicianName = '',
-  clientName = '',
-  clientDob = ''
-}) => {
+const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({ onClose }) => {
   const [startDate, setStartDate] = React.useState<Date | undefined>(new Date());
 
   return (
@@ -42,15 +35,15 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="space-y-2">
                 <Label htmlFor="client-name" className="text-sm text-valorwell-700 font-semibold">Client Name</Label>
-                <Input id="client-name" placeholder="Enter client name" defaultValue={clientName} />
+                <Input id="client-name" placeholder="Enter client name" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="client-dob" className="text-sm text-valorwell-700 font-semibold">Client DOB</Label>
-                <Input id="client-dob" placeholder="MM/DD/YYYY" defaultValue={clientDob} />
+                <Input id="client-dob" placeholder="MM/DD/YYYY" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="clinician-name" className="text-sm text-valorwell-700 font-semibold">Clinician Name</Label>
-                <Input id="clinician-name" placeholder="Enter clinician name" defaultValue={clinicianName} />
+                <Input id="clinician-name" placeholder="Enter clinician name" />
               </div>
             </div>
             
