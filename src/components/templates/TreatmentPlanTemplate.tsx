@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,7 +31,12 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
   clientData = null,
   clientId
 }) => {
-  const [startDate, setStartDate] = React.useState<Date | undefined>(new Date());
+  const [startDate, setStartDate] = React.useState<Date | undefined>(
+    clientData?.client_treatmentplan_startdate 
+      ? new Date(clientData.client_treatmentplan_startdate) 
+      : new Date()
+  );
+  
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   
@@ -82,6 +86,11 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
     setIsSaving(true);
     
     try {
+      // Process diagnosis field - convert comma-separated string to array
+      const diagnosisArray = formValues.diagnosis 
+        ? formValues.diagnosis.split(',').map(item => item.trim()) 
+        : [];
+      
       const updates = {
         client_treatmentplan_startdate: formatDateForDB(startDate),
         client_planlength: formValues.planLength,
@@ -98,7 +107,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         client_intervention5: formValues.intervention5,
         client_intervention6: formValues.intervention6,
         client_nexttreatmentplanupdate: formValues.nextUpdate,
-        client_privatenote: formValues.privateNote
+        client_privatenote: formValues.privateNote,
+        client_diagnosis: diagnosisArray
       };
 
       const id = clientId || clientData?.id;
@@ -226,9 +236,9 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
               <Label htmlFor="diagnosis" className="text-sm text-valorwell-700 font-semibold">Diagnosis</Label>
               <Input 
                 id="diagnosis" 
-                placeholder="Select diagnosis code" 
-                defaultValue={formValues.diagnosis}
-                readOnly
+                placeholder="Enter diagnosis (comma separated)" 
+                value={formValues.diagnosis}
+                onChange={(e) => handleInputChange('diagnosis', e.target.value)}
               />
             </div>
             
