@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClientDetails } from "@/types/client";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TreatmentPlanTemplateProps {
   onClose: () => void;
@@ -28,11 +30,120 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
   clientDob = '',
   clientData = null
 }) => {
-  const [startDate, setStartDate] = React.useState<Date | undefined>(new Date());
-  
-  // Derive values from clientData if available, otherwise use the direct props
-  const derivedClientName = clientName || `${clientData?.client_first_name || ''} ${clientData?.client_last_name || ''}`;
-  const derivedClientDob = clientDob || clientData?.client_date_of_birth || '';
+  const { toast } = useToast();
+  // Initialize form state from client data
+  const [formState, setFormState] = useState({
+    clientName: clientName || `${clientData?.client_first_name || ''} ${clientData?.client_last_name || ''}`,
+    clientDob: clientDob || clientData?.client_date_of_birth || '',
+    clinicianName: clinicianName || '',
+    startDate: clientData?.client_treatmentplan_startdate ? new Date(clientData.client_treatmentplan_startdate) : new Date(),
+    planLength: clientData?.client_planlength || '',
+    treatmentFrequency: clientData?.client_treatmentfrequency || '',
+    diagnosis: clientData?.client_diagnosis ? clientData.client_diagnosis.join(', ') : '',
+    problemNarrative: clientData?.client_problem || '',
+    treatmentGoalNarrative: clientData?.client_treatmentgoal || '',
+    primaryObjective: clientData?.client_primaryobjective || '',
+    intervention1: clientData?.client_intervention1 || '',
+    intervention2: clientData?.client_intervention2 || '',
+    secondaryObjective: clientData?.client_secondaryobjective || '',
+    intervention3: clientData?.client_intervention3 || '',
+    intervention4: clientData?.client_intervention4 || '',
+    tertiaryObjective: clientData?.client_tertiaryobjective || '',
+    intervention5: clientData?.client_intervention5 || '',
+    intervention6: clientData?.client_intervention6 || '',
+    nextUpdate: clientData?.client_nexttreatmentplanupdate || '',
+    privateNote: clientData?.client_privatenote || ''
+  });
+
+  // Update form state if clientData changes
+  useEffect(() => {
+    if (clientData) {
+      setFormState({
+        clientName: `${clientData.client_first_name || ''} ${clientData.client_last_name || ''}`,
+        clientDob: clientData.client_date_of_birth || '',
+        clinicianName: clinicianName || '',
+        startDate: clientData.client_treatmentplan_startdate ? new Date(clientData.client_treatmentplan_startdate) : new Date(),
+        planLength: clientData.client_planlength || '',
+        treatmentFrequency: clientData.client_treatmentfrequency || '',
+        diagnosis: clientData.client_diagnosis ? clientData.client_diagnosis.join(', ') : '',
+        problemNarrative: clientData.client_problem || '',
+        treatmentGoalNarrative: clientData.client_treatmentgoal || '',
+        primaryObjective: clientData.client_primaryobjective || '',
+        intervention1: clientData.client_intervention1 || '',
+        intervention2: clientData.client_intervention2 || '',
+        secondaryObjective: clientData.client_secondaryobjective || '',
+        intervention3: clientData.client_intervention3 || '',
+        intervention4: clientData.client_intervention4 || '',
+        tertiaryObjective: clientData.client_tertiaryobjective || '',
+        intervention5: clientData.client_intervention5 || '',
+        intervention6: clientData.client_intervention6 || '',
+        nextUpdate: clientData.client_nexttreatmentplanupdate || '',
+        privateNote: clientData.client_privatenote || ''
+      });
+    }
+  }, [clientData, clinicianName]);
+
+  const handleChange = (field: string, value: any) => {
+    setFormState(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSave = async () => {
+    try {
+      if (!clientData?.id) {
+        toast({
+          title: "Error",
+          description: "Cannot save - client data is missing",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Map form data back to database schema
+      const updates = {
+        client_planlength: formState.planLength,
+        client_treatmentfrequency: formState.treatmentFrequency,
+        client_diagnosis: formState.diagnosis ? formState.diagnosis.split(',').map(d => d.trim()) : [],
+        client_problem: formState.problemNarrative,
+        client_treatmentgoal: formState.treatmentGoalNarrative,
+        client_primaryobjective: formState.primaryObjective,
+        client_secondaryobjective: formState.secondaryObjective,
+        client_tertiaryobjective: formState.tertiaryObjective,
+        client_intervention1: formState.intervention1,
+        client_intervention2: formState.intervention2,
+        client_intervention3: formState.intervention3,
+        client_intervention4: formState.intervention4,
+        client_intervention5: formState.intervention5,
+        client_intervention6: formState.intervention6,
+        client_nexttreatmentplanupdate: formState.nextUpdate,
+        client_privatenote: formState.privateNote,
+        client_treatmentplan_startdate: formState.startDate ? formState.startDate.toISOString().split('T')[0] : null
+      };
+
+      // Update client in database
+      const { error } = await supabase
+        .from('clients')
+        .update(updates)
+        .eq('id', clientData.id);
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: "Treatment plan saved successfully"
+      });
+
+      onClose();
+    } catch (err) {
+      console.error('Error saving treatment plan:', err);
+      toast({
+        title: "Error",
+        description: "Failed to save treatment plan",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <Card className="w-full border border-gray-200 rounded-md">
@@ -50,15 +161,30 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="space-y-2">
                 <Label htmlFor="client-name" className="text-sm text-valorwell-700 font-semibold">Client Name</Label>
-                <Input id="client-name" placeholder="Enter client name" defaultValue={derivedClientName} />
+                <Input 
+                  id="client-name" 
+                  placeholder="Enter client name" 
+                  value={formState.clientName}
+                  onChange={(e) => handleChange('clientName', e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="client-dob" className="text-sm text-valorwell-700 font-semibold">Client DOB</Label>
-                <Input id="client-dob" placeholder="MM/DD/YYYY" defaultValue={derivedClientDob} />
+                <Input 
+                  id="client-dob" 
+                  placeholder="MM/DD/YYYY" 
+                  value={formState.clientDob}
+                  onChange={(e) => handleChange('clientDob', e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="clinician-name" className="text-sm text-valorwell-700 font-semibold">Clinician Name</Label>
-                <Input id="clinician-name" placeholder="Enter clinician name" defaultValue={clinicianName} />
+                <Input 
+                  id="clinician-name" 
+                  placeholder="Enter clinician name" 
+                  value={formState.clinicianName}
+                  onChange={(e) => handleChange('clinicianName', e.target.value)}
+                />
               </div>
             </div>
             
@@ -71,18 +197,18 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                       variant={"outline"}
                       className={cn(
                         "w-full pl-3 text-left font-normal",
-                        !startDate && "text-muted-foreground"
+                        !formState.startDate && "text-muted-foreground"
                       )}
                     >
-                      {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                      {formState.startDate ? format(formState.startDate, "PPP") : <span>Pick a date</span>}
                       <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={startDate}
-                      onSelect={setStartDate}
+                      selected={formState.startDate}
+                      onSelect={(date) => handleChange('startDate', date)}
                       initialFocus
                       className="pointer-events-auto"
                     />
@@ -91,7 +217,10 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="plan-type" className="text-sm text-valorwell-700 font-semibold">Plan Length</Label>
-                <Select defaultValue={clientData?.client_planlength || undefined}>
+                <Select 
+                  value={formState.planLength}
+                  onValueChange={(value) => handleChange('planLength', value)}
+                >
                   <SelectTrigger id="plan-type">
                     <SelectValue placeholder="Select plan length" />
                   </SelectTrigger>
@@ -106,7 +235,10 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="treatment-frequency" className="text-sm text-valorwell-700 font-semibold">Treatment Frequency</Label>
-                <Select defaultValue={clientData?.client_treatmentfrequency || undefined}>
+                <Select 
+                  value={formState.treatmentFrequency}
+                  onValueChange={(value) => handleChange('treatmentFrequency', value)}
+                >
                   <SelectTrigger id="treatment-frequency">
                     <SelectValue placeholder="Select frequency" />
                   </SelectTrigger>
@@ -125,7 +257,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
               <Input 
                 id="diagnosis" 
                 placeholder="Select diagnosis code" 
-                defaultValue={clientData?.client_diagnosis ? clientData.client_diagnosis.join(', ') : ''}
+                value={formState.diagnosis}
+                onChange={(e) => handleChange('diagnosis', e.target.value)}
               />
             </div>
             
@@ -135,7 +268,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                 id="problem-narrative" 
                 placeholder="Describe the presenting problem" 
                 className="min-h-[100px]"
-                defaultValue={clientData?.client_problem || ''}
+                value={formState.problemNarrative}
+                onChange={(e) => handleChange('problemNarrative', e.target.value)}
               />
             </div>
             
@@ -145,7 +279,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                 id="treatment-goal" 
                 placeholder="Describe the treatment goals" 
                 className="min-h-[100px]"
-                defaultValue={clientData?.client_treatmentgoal || ''}
+                value={formState.treatmentGoalNarrative}
+                onChange={(e) => handleChange('treatmentGoalNarrative', e.target.value)}
               />
             </div>
             
@@ -155,7 +290,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                 id="primary-objective" 
                 placeholder="Describe the primary objective" 
                 className="min-h-[100px]"
-                defaultValue={clientData?.client_primaryobjective || ''}
+                value={formState.primaryObjective}
+                onChange={(e) => handleChange('primaryObjective', e.target.value)}
               />
             </div>
             
@@ -165,7 +301,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                 <Input 
                   id="intervention-1" 
                   placeholder="Describe intervention"
-                  defaultValue={clientData?.client_intervention1 || ''}
+                  value={formState.intervention1}
+                  onChange={(e) => handleChange('intervention1', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -173,7 +310,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                 <Input 
                   id="intervention-2" 
                   placeholder="Describe intervention"
-                  defaultValue={clientData?.client_intervention2 || ''}
+                  value={formState.intervention2}
+                  onChange={(e) => handleChange('intervention2', e.target.value)}
                 />
               </div>
             </div>
@@ -184,7 +322,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                 id="secondary-objective" 
                 placeholder="Describe the secondary objective" 
                 className="min-h-[100px]"
-                defaultValue={clientData?.client_secondaryobjective || ''}
+                value={formState.secondaryObjective}
+                onChange={(e) => handleChange('secondaryObjective', e.target.value)}
               />
             </div>
             
@@ -194,7 +333,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                 <Input 
                   id="sec-intervention-1" 
                   placeholder="Describe intervention"
-                  defaultValue={clientData?.client_intervention3 || ''}
+                  value={formState.intervention3}
+                  onChange={(e) => handleChange('intervention3', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -202,7 +342,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                 <Input 
                   id="sec-intervention-2" 
                   placeholder="Describe intervention"
-                  defaultValue={clientData?.client_intervention4 || ''}
+                  value={formState.intervention4}
+                  onChange={(e) => handleChange('intervention4', e.target.value)}
                 />
               </div>
             </div>
@@ -213,7 +354,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                 id="tertiary-objective" 
                 placeholder="Describe the tertiary objective" 
                 className="min-h-[100px]"
-                defaultValue={clientData?.client_tertiaryobjective || ''}
+                value={formState.tertiaryObjective}
+                onChange={(e) => handleChange('tertiaryObjective', e.target.value)}
               />
             </div>
             
@@ -223,7 +365,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                 <Input 
                   id="tert-intervention-1" 
                   placeholder="Describe intervention"
-                  defaultValue={clientData?.client_intervention5 || ''}
+                  value={formState.intervention5}
+                  onChange={(e) => handleChange('intervention5', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -231,7 +374,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                 <Input 
                   id="tert-intervention-2" 
                   placeholder="Describe intervention"
-                  defaultValue={clientData?.client_intervention6 || ''}
+                  value={formState.intervention6}
+                  onChange={(e) => handleChange('intervention6', e.target.value)}
                 />
               </div>
             </div>
@@ -241,7 +385,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
               <Input 
                 id="next-update" 
                 placeholder="When will this plan be reviewed next"
-                defaultValue={clientData?.client_nexttreatmentplanupdate || ''}
+                value={formState.nextUpdate}
+                onChange={(e) => handleChange('nextUpdate', e.target.value)}
               />
             </div>
             
@@ -250,14 +395,15 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
               <Input 
                 id="private-note" 
                 placeholder="Notes visible only to providers"
-                defaultValue={clientData?.client_privatenote || ''}
+                value={formState.privateNote}
+                onChange={(e) => handleChange('privateNote', e.target.value)}
               />
             </div>
           </div>
           
           <div className="flex justify-end">
             <Button variant="outline" onClick={onClose} className="mr-2">Close</Button>
-            <Button className="bg-valorwell-700 hover:bg-valorwell-800">Save Template</Button>
+            <Button className="bg-valorwell-700 hover:bg-valorwell-800" onClick={handleSave}>Save Treatment Plan</Button>
           </div>
         </div>
       </CardContent>
