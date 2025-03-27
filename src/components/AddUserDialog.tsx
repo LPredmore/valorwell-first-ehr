@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -67,25 +68,31 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
     console.log("Submitting user data:", data);
 
     try {
-      // User metadata to be saved
-      const userData = {
-        first_name: data.firstName,
-        last_name: data.lastName,
-        phone: data.phone || "",
-        role: data.role
+      // Create user auth data
+      const authData = {
+        email: data.email,
+        password: "temppass1234", // Default password
+        options: {
+          data: {
+            first_name: data.firstName,
+            last_name: data.lastName,
+            phone: data.phone || "",
+            role: data.role
+          }
+        }
       };
       
-      console.log("User metadata to be saved:", userData);
+      console.log("User data to be saved:", authData);
       
-      // Create user using our helper function
-      const { data: authData, error: authError } = await createUser(data.email, userData);
+      // Call createUser with the properly formatted data object
+      const { data: userData, error } = await createUser(authData);
 
-      if (authError) {
-        console.error("Auth error:", authError);
-        throw authError;
+      if (error) {
+        console.error("Auth error:", error);
+        throw error;
       }
 
-      console.log("User created successfully:", authData);
+      console.log("User created successfully:", userData);
       
       toast({
         title: "Success",

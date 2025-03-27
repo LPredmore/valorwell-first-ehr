@@ -1,6 +1,7 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Layout from '../components/layout/Layout';
+import Layout from '@/components/layout/Layout';  // Updated import path
 import { Pencil, Plus, Trash, Phone, Mail, Save, X } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AddUserDialog } from '@/components/AddUserDialog';
