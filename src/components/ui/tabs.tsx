@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 
@@ -49,5 +50,39 @@ const TabsContent = React.forwardRef<
   />
 ))
 TabsContent.displayName = TabsPrimitive.Content.displayName
+
+// Custom styling for settings tabs
+// We need to add some CSS to make sure the settings tabs look like they did before
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    .settings-tab {
+      padding: 0.75rem 1.5rem;
+      font-size: 0.875rem;
+      font-weight: medium;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    
+    .settings-tab:hover {
+      background-color: rgba(0, 0, 0, 0.03);
+    }
+    
+    .settings-tab.active {
+      border-bottom-color: rgb(79, 70, 229);
+      color: rgb(79, 70, 229);
+    }
+    
+    .animate-fade-in {
+      animation: fadeIn 0.2s ease-in-out;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 export { Tabs, TabsList, TabsTrigger, TabsContent }
