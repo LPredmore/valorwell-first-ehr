@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -14,9 +13,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 interface TreatmentPlanTemplateProps {
   onClose: () => void;
+  clinicianName?: string;
+  clientName?: string;
+  clientDob?: string;
 }
 
-const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({ onClose }) => {
+const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({ 
+  onClose,
+  clinicianName = '',
+  clientName = '',
+  clientDob = ''
+}) => {
   const [startDate, setStartDate] = React.useState<Date | undefined>(new Date());
 
   return (
@@ -35,15 +42,15 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({ onClose }
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="space-y-2">
                 <Label htmlFor="client-name" className="text-sm text-valorwell-700 font-semibold">Client Name</Label>
-                <Input id="client-name" placeholder="Enter client name" />
+                <Input id="client-name" placeholder="Enter client name" defaultValue={clientName} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="client-dob" className="text-sm text-valorwell-700 font-semibold">Client DOB</Label>
-                <Input id="client-dob" placeholder="MM/DD/YYYY" />
+                <Input id="client-dob" placeholder="MM/DD/YYYY" defaultValue={clientDob} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="clinician-name" className="text-sm text-valorwell-700 font-semibold">Clinician Name</Label>
-                <Input id="clinician-name" placeholder="Enter clinician name" />
+                <Input id="clinician-name" placeholder="Enter clinician name" defaultValue={clinicianName} />
               </div>
             </div>
             
