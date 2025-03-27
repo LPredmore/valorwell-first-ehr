@@ -1,10 +1,22 @@
-
 import { createClient } from '@supabase/supabase-js';
 
+// Check for required environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+if (!supabaseUrl) {
+  console.error('VITE_SUPABASE_URL environment variable is missing. Please make sure it is set in your .env file.');
+}
+
+if (!supabaseKey) {
+  console.error('VITE_SUPABASE_ANON_KEY environment variable is missing. Please make sure it is set in your .env file.');
+}
+
+// Create a Supabase client with fallback defaults (for development only)
+export const supabase = createClient(
+  supabaseUrl || 'http://localhost:54321', 
+  supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
+);
 
 // Helper function to parse date strings from the database
 export const parseDateString = (dateString: string | null): Date | null => {
