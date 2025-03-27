@@ -113,7 +113,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
         
         {showAvailability && (
           <div className="w-1/4">
-            <AvailabilityPanel clinician_idnumber={clinicianId} />
+            <AvailabilityPanel clinicianId={clinicianId} />
           </div>
         )}
       </div>

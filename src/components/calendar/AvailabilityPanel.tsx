@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,17 +27,13 @@ interface DaySchedule {
 
 interface AvailabilitySettings {
   id: string;
-  clinician_idnumber: string;
+  clinician_id: string;
   time_granularity: 'hour' | 'half-hour';
   created_at: string;
   updated_at: string;
 }
 
-interface AvailabilityPanelProps {
-  clinician_idnumber: string | null;
-}
-
-const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinician_idnumber }) => {
+const AvailabilityPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('set');
   const [availabilityEnabled, setAvailabilityEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -91,7 +86,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinician_idnumbe
           const { data: availabilityData, error } = await supabase
             .from('availability')
             .select('*')
-            .eq('clinician_idnumber', clinician_idnumber)
+            .eq('clinician_id', clinicianData.id)
             .eq('is_active', true);
             
           if (error) {
@@ -102,7 +97,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinician_idnumbe
             const { data: settingsData } = await supabase
               .from('availability_settings')
               .select('*')
-              .eq('clinician_idnumber', clinician_idnumber)
+              .eq('clinician_id', clinicianData.id)
               .single();
               
             if (settingsData) {
@@ -263,13 +258,13 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinician_idnumbe
       await supabase
         .from('availability')
         .update({ is_active: false })
-        .eq('clinician_idnumber', clinician_idnumber);
+        .eq('clinician_id', clinicianData.id);
       
       const availabilityToInsert = weekSchedule.flatMap(day => {
         if (!day.isOpen) return [];
         
         return day.timeSlots.map(slot => ({
-          clinician_idnumber: clinician_idnumber,
+          clinician_id: clinicianData.id,
           day_of_week: day.day,
           start_time: slot.startTime,
           end_time: slot.endTime,
@@ -280,10 +275,10 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinician_idnumbe
       await supabase
         .from('availability_settings')
         .upsert({
-          clinician_idnumber: clinician_idnumber,
+          clinician_id: clinicianData.id,
           time_granularity: timeGranularity
         }, {
-          onConflict: 'clinician_idnumber'
+          onConflict: 'clinician_id'
         });
       
       if (availabilityToInsert.length > 0) {

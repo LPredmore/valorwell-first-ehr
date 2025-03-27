@@ -24,17 +24,17 @@ serve(async (req) => {
       }
     )
     
-    const { clinician_idnumber } = await req.json()
+    const { clinicianId } = await req.json()
     
-    if (!clinician_idnumber) {
-      throw new Error('Clinician ID number is required')
+    if (!clinicianId) {
+      throw new Error('Clinician ID is required')
     }
     
     // Fetch the clinician's availability settings
     const { data, error } = await supabaseClient
       .from('availability_settings')
       .select('*')
-      .eq('clinician_idnumber', clinician_idnumber)
+      .eq('clinician_id', clinicianId)
       .single()
     
     if (error) {
