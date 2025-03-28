@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,7 +34,6 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const [refreshAppointments, setRefreshAppointments] = useState(0);
   const { toast } = useToast();
 
-  // Fetch appointments from database
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!clientData?.id) return;
@@ -55,7 +53,6 @@ const MyPortal: React.FC<MyPortalProps> = ({
         }
 
         if (data && data.length > 0) {
-          // Transform the data to match the expected format
           const formattedAppointments = data.map((appointment) => ({
             id: appointment.id,
             date: format(parseISO(appointment.date), 'MMMM d, yyyy'),
@@ -84,10 +81,10 @@ const MyPortal: React.FC<MyPortalProps> = ({
     });
   };
 
-  const handleReschedule = (appointmentId: string | number) => {
+  const handleStartSession = (appointmentId: string | number) => {
     toast({
       title: "Feature Coming Soon",
-      description: "Appointment rescheduling will be available soon.",
+      description: "Video session functionality will be available soon.",
     });
   };
 
@@ -124,9 +121,9 @@ const MyPortal: React.FC<MyPortalProps> = ({
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => handleReschedule(appointment.id)}
+                        onClick={() => handleStartSession(appointment.id)}
                       >
-                        Reschedule
+                        Start Session
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -217,7 +214,6 @@ const MyPortal: React.FC<MyPortalProps> = ({
         </CardContent>
       </Card>
 
-      {/* Appointment Booking Dialog */}
       <AppointmentBookingDialog
         open={isBookingOpen}
         onOpenChange={setIsBookingOpen}
