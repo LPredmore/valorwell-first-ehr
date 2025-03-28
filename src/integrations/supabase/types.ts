@@ -22,6 +22,7 @@ export type Database = {
           status: string
           type: string
           updated_at: string
+          video_room_url: string | null
         }
         Insert: {
           client_id: string
@@ -35,6 +36,7 @@ export type Database = {
           status?: string
           type: string
           updated_at?: string
+          video_room_url?: string | null
         }
         Update: {
           client_id?: string
@@ -48,6 +50,7 @@ export type Database = {
           status?: string
           type?: string
           updated_at?: string
+          video_room_url?: string | null
         }
         Relationships: [
           {

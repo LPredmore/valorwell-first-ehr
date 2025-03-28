@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import { CalendarClock, User, Clock, AlertTriangle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -24,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import VideoChat from '@/components/video/VideoChat';
 
 interface AppointmentDetailsDialogProps {
   isOpen: boolean;
@@ -51,6 +52,9 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
   const { toast } = useToast();
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isVideoSessionOpen, setIsVideoSessionOpen] = useState(false);
+  const [videoRoomUrl, setVideoRoomUrl] = useState<string | null>(null);
+  const [isLoadingVideoSession, setIsLoadingVideoSession] = useState(false);
 
   if (!appointment) return null;
 
@@ -101,6 +105,40 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
       setIsDeleting(false);
       setIsCancelDialogOpen(false);
     }
+  };
+
+  const handleStartSession = async () => {
+    if (!appointment) return;
+    
+    setIsLoadingVideoSession(true);
+    try {
+      const result = await getOrCreateVideoRoom(appointment.id);
+      
+      if (!result.success || !result.url) {
+        throw new Error(result.error || 'Failed to create video room');
+      }
+      
+      setVideoRoomUrl(result.url);
+      setIsVideoSessionOpen(true);
+      
+      toast({
+        title: "Video Session Ready",
+        description: "You are entering the video session now."
+      });
+    } catch (error) {
+      console.error('Error starting video session:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start the video session. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingVideoSession(false);
+    }
+  };
+
+  const handleCloseVideoSession = () => {
+    setIsVideoSessionOpen(false);
   };
 
   return (
@@ -168,8 +206,11 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
               <Button variant="outline" onClick={onClose}>
                 Close
               </Button>
-              <Button>
-                Start Session
+              <Button 
+                onClick={handleStartSession}
+                disabled={isLoadingVideoSession}
+              >
+                {isLoadingVideoSession ? "Loading..." : "Start Session"}
               </Button>
             </div>
           </DialogFooter>
@@ -196,6 +237,15 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Video Session Dialog */}
+      {videoRoomUrl && (
+        <VideoChat 
+          roomUrl={videoRoomUrl} 
+          isOpen={isVideoSessionOpen} 
+          onClose={handleCloseVideoSession} 
+        />
+      )}
     </>
   );
 };

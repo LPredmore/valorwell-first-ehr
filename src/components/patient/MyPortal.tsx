@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,9 +7,10 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import WeekView from '@/components/calendar/WeekView';
 import AppointmentBookingDialog from './AppointmentBookingDialog';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
+import VideoChat from '@/components/video/VideoChat';
 
 interface MyPortalProps {
   upcomingAppointments: Array<{
@@ -32,6 +34,9 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [upcomingAppointments, setUpcomingAppointments] = useState(initialAppointments);
   const [refreshAppointments, setRefreshAppointments] = useState(0);
+  const [isVideoSessionOpen, setIsVideoSessionOpen] = useState(false);
+  const [videoRoomUrl, setVideoRoomUrl] = useState<string | null>(null);
+  const [isLoadingVideoSession, setIsLoadingVideoSession] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -81,11 +86,36 @@ const MyPortal: React.FC<MyPortalProps> = ({
     });
   };
 
-  const handleStartSession = (appointmentId: string | number) => {
-    toast({
-      title: "Feature Coming Soon",
-      description: "Video session functionality will be available soon.",
-    });
+  const handleStartSession = async (appointmentId: string | number) => {
+    setIsLoadingVideoSession(true);
+    try {
+      const result = await getOrCreateVideoRoom(appointmentId.toString());
+      
+      if (!result.success || !result.url) {
+        throw new Error(result.error || 'Failed to create video room');
+      }
+      
+      setVideoRoomUrl(result.url);
+      setIsVideoSessionOpen(true);
+      
+      toast({
+        title: "Video Session Ready",
+        description: "You are entering the video session now."
+      });
+    } catch (error) {
+      console.error('Error starting video session:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start the video session. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingVideoSession(false);
+    }
+  };
+
+  const handleCloseVideoSession = () => {
+    setIsVideoSessionOpen(false);
   };
 
   return (
@@ -122,8 +152,9 @@ const MyPortal: React.FC<MyPortalProps> = ({
                         variant="outline" 
                         size="sm"
                         onClick={() => handleStartSession(appointment.id)}
+                        disabled={isLoadingVideoSession}
                       >
-                        Start Session
+                        {isLoadingVideoSession ? "Loading..." : "Start Session"}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -222,6 +253,15 @@ const MyPortal: React.FC<MyPortalProps> = ({
         clientId={clientData?.id || null}
         onAppointmentBooked={handleBookingComplete}
       />
+
+      {/* Video Session Dialog */}
+      {videoRoomUrl && (
+        <VideoChat 
+          roomUrl={videoRoomUrl} 
+          isOpen={isVideoSessionOpen} 
+          onClose={handleCloseVideoSession} 
+        />
+      )}
     </div>
   );
 };
