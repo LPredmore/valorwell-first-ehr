@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +13,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClientDetails } from '@/types/client';
+import { DiagnosisSelector } from '@/components/DiagnosisSelector';
 
 interface SessionNoteTemplateProps {
   onClose: () => void;
@@ -36,7 +36,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     patientName: '',
     patientDOB: '',
     clinicianName: '',
-    diagnosis: '',
+    diagnosisCodes: [] as string[],
     planType: '',
     treatmentFrequency: '',
     medications: '',
@@ -54,10 +54,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     orientation: '',
     memoryConcentration: '',
     insightJudgement: '',
-    mood: '',
-    substanceAbuseRisk: '',
-    suicidalIdeation: '',
-    homicidalIdeation: '',
     
     // Treatment objectives and interventions
     primaryObjective: '',
@@ -106,7 +102,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         patientName: `${clientData.client_first_name || ''} ${clientData.client_last_name || ''}`,
         patientDOB: clientData.client_date_of_birth || '',
         clinicianName: clinicianName || '',
-        diagnosis: (clientData.client_diagnosis || []).join(', '),
+        diagnosisCodes: clientData.client_diagnosis || [],
         planType: clientData.client_planlength || '',
         treatmentFrequency: clientData.client_treatmentfrequency || '',
         medications: clientData.client_medications || '',
@@ -123,10 +119,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         orientation: clientData.client_orientation || '',
         memoryConcentration: clientData.client_memoryconcentration || '',
         insightJudgement: clientData.client_insightjudgement || '',
-        mood: clientData.client_mood || '',
-        substanceAbuseRisk: clientData.client_substanceabuserisk || '',
-        suicidalIdeation: clientData.client_suicidalideation || '',
-        homicidalIdeation: clientData.client_homicidalideation || '',
         
         // Treatment objectives from client data
         primaryObjective: clientData.client_primaryobjective || '',
@@ -168,7 +160,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   }, [clientData, clinicianName]);
 
   // Universal handle change function for any field
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: any) => {
     setFormState({
       ...formState,
       [field]: value
@@ -203,6 +195,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     try {
       // Map formState fields to database column names
       const updates = {
+        // Save diagnosis codes to client_diagnosis
+        client_diagnosis: formState.diagnosisCodes,
+        
         // Mental status exam fields
         client_appearance: formState.appearance,
         client_attitude: formState.attitude,
@@ -214,10 +209,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         client_orientation: formState.orientation,
         client_memoryconcentration: formState.memoryConcentration,
         client_insightjudgement: formState.insightJudgement,
-        client_mood: formState.mood,
-        client_substanceabuserisk: formState.substanceAbuseRisk,
-        client_suicidalideation: formState.suicidalIdeation,
-        client_homicidalideation: formState.homicidalIdeation,
         
         // Treatment objectives
         client_primaryobjective: formState.primaryObjective,
@@ -320,10 +311,10 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis</label>
-            <Input 
-              placeholder="Select diagnosis code" 
-              value={formState.diagnosis} 
-              onChange={(e) => handleChange('diagnosis', e.target.value)}
+            <DiagnosisSelector
+              value={formState.diagnosisCodes}
+              onChange={(codes) => handleChange('diagnosisCodes', codes)}
+              placeholder="Search diagnosis codes..."
             />
           </div>
           <div>
@@ -533,9 +524,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           </div>
         </div>
 
-        {/* Continue with the rest of the mental status fields and other sections */}
-        {/* ... remaining fields follow the same pattern */}
-        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Perception</label>
