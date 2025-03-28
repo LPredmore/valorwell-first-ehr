@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   format,
@@ -19,9 +20,25 @@ interface MonthViewProps {
   currentDate: Date;
   clinicianId: string | null;
   refreshTrigger?: number;
+  appointments?: Array<{
+    id: string;
+    client_id: string;
+    date: string; 
+    start_time: string;
+    end_time: string;
+    type: string;
+    status: string;
+  }>;
+  getClientName?: (clientId: string) => string;
 }
 
-const MonthView: React.FC<MonthViewProps> = ({ currentDate, clinicianId, refreshTrigger = 0 }) => {
+const MonthView: React.FC<MonthViewProps> = ({ 
+  currentDate, 
+  clinicianId, 
+  refreshTrigger = 0,
+  appointments = [],
+  getClientName = () => 'Client'
+}) => {
   const [loading, setLoading] = useState(true);
   const [availabilityData, setAvailabilityData] = useState<any[]>([]);
 
@@ -73,6 +90,12 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, clinicianId, refresh
     return availabilityData.some(slot => slot.day_of_week === dayOfWeek);
   };
 
+  // Get appointments for a specific day
+  const getDayAppointments = (day: Date) => {
+    const dayStr = format(day, 'yyyy-MM-dd');
+    return appointments.filter(appointment => appointment.date === dayStr);
+  };
+
   if (loading) {
     return (
       <Card className="p-4 flex justify-center items-center h-[300px]">
@@ -92,23 +115,46 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, clinicianId, refresh
         ))}
 
         {/* Calendar days */}
-        {days.map((day) => (
-          <div
-            key={day.toString()}
-            className={`p-2 min-h-[100px] border border-gray-100 ${!isSameMonth(day, monthStart) ? 'bg-gray-50 text-gray-400' : ''} ${isSameDay(day, new Date()) ? 'border-valorwell-500 border-2' : ''}`}
-          >
-            <div className="flex justify-between items-start">
-              <span className={`text-sm font-medium ${isSameDay(day, new Date()) ? 'text-valorwell-500' : ''}`}>
-                {format(day, 'd')}
-              </span>
-              {hasDayAvailability(day) && isSameMonth(day, monthStart) && (
-                <div className="bg-green-100 text-green-800 text-xs px-1 py-0.5 rounded">
-                  Available
+        {days.map((day) => {
+          const dayAppointments = getDayAppointments(day);
+          
+          return (
+            <div
+              key={day.toString()}
+              className={`p-2 min-h-[100px] border border-gray-100 ${!isSameMonth(day, monthStart) ? 'bg-gray-50 text-gray-400' : ''} ${isSameDay(day, new Date()) ? 'border-valorwell-500 border-2' : ''}`}
+            >
+              <div className="flex justify-between items-start">
+                <span className={`text-sm font-medium ${isSameDay(day, new Date()) ? 'text-valorwell-500' : ''}`}>
+                  {format(day, 'd')}
+                </span>
+                {hasDayAvailability(day) && isSameMonth(day, monthStart) && (
+                  <div className="bg-green-100 text-green-800 text-xs px-1 py-0.5 rounded">
+                    Available
+                  </div>
+                )}
+              </div>
+              
+              {/* Display appointments for this day */}
+              {dayAppointments.length > 0 && isSameMonth(day, monthStart) && (
+                <div className="mt-1 space-y-1">
+                  {dayAppointments.slice(0, 3).map(appointment => (
+                    <div 
+                      key={appointment.id} 
+                      className="bg-blue-100 text-blue-800 text-xs p-1 rounded truncate"
+                    >
+                      {format(parseISO(`2000-01-01T${appointment.start_time}`), 'h:mm a')} - {getClientName(appointment.client_id)}
+                    </div>
+                  ))}
+                  {dayAppointments.length > 3 && (
+                    <div className="text-xs text-gray-500 pl-1">
+                      +{dayAppointments.length - 3} more
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </Card>
   );

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
 format,
 startOfWeek,
@@ -14,7 +14,8 @@ subMonths,
 addWeeks,
 subWeeks,
 addDays,
-subDays
+subDays,
+parseISO
 } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -30,6 +31,7 @@ import DayView from './DayView';
 import WeekView from './WeekView';
 import MonthView from './MonthView';
 import AvailabilityPanel from './AvailabilityPanel';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CalendarViewProps {
   view: 'day' | 'week' | 'month';
@@ -37,9 +39,85 @@ interface CalendarViewProps {
   clinicianId: string | null;
 }
 
+interface Appointment {
+  id: string;
+  client_id: string;
+  date: string; 
+  start_time: string;
+  end_time: string;
+  type: string;
+  status: string;
+}
+
 const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, clinicianId }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [availabilityRefreshTrigger, setAvailabilityRefreshTrigger] = useState(0);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [clientsMap, setClientsMap] = useState<Record<string, any>>({});
+
+  // Fetch appointments
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      if (!clinicianId) return;
+
+      try {
+        // Define date range based on view
+        let startDate, endDate;
+        if (view === 'day') {
+          startDate = format(currentDate, 'yyyy-MM-dd');
+          endDate = startDate;
+        } else if (view === 'week') {
+          const start = startOfWeek(currentDate, { weekStartsOn: 0 });
+          const end = endOfWeek(currentDate, { weekStartsOn: 0 });
+          startDate = format(start, 'yyyy-MM-dd');
+          endDate = format(end, 'yyyy-MM-dd');
+        } else if (view === 'month') {
+          const start = startOfMonth(currentDate);
+          const end = endOfMonth(currentDate);
+          startDate = format(start, 'yyyy-MM-dd');
+          endDate = format(end, 'yyyy-MM-dd');
+        }
+
+        // Fetch appointments for the selected date range
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('clinician_id', clinicianId)
+          .gte('date', startDate)
+          .lte('date', endDate)
+          .eq('status', 'scheduled');
+
+        if (error) {
+          console.error('Error fetching appointments:', error);
+        } else {
+          setAppointments(data || []);
+          
+          // Fetch client information for all appointments
+          if (data && data.length > 0) {
+            const clientIds = [...new Set(data.map(app => app.client_id))];
+            const { data: clientsData, error: clientsError } = await supabase
+              .from('clients')
+              .select('id, client_first_name, client_last_name, client_preferred_name')
+              .in('id', clientIds);
+              
+            if (clientsError) {
+              console.error('Error fetching clients:', clientsError);
+            } else if (clientsData) {
+              const clientsMapData: Record<string, any> = {};
+              clientsData.forEach(client => {
+                clientsMapData[client.id] = client;
+              });
+              setClientsMap(clientsMapData);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
+
+    fetchAppointments();
+  }, [clinicianId, currentDate, view, availabilityRefreshTrigger]);
 
   const navigatePrevious = () => {
     if (view === 'day') {
@@ -89,6 +167,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
     }
   };
 
+  // Get client name from client map
+  const getClientName = (clientId: string) => {
+    const client = clientsMap[clientId];
+    if (!client) return 'Unknown Client';
+    return client.client_preferred_name || `${client.client_first_name} ${client.client_last_name}`;
+  };
+
   return (
     <div className="flex flex-col space-y-4">
       <div className="flex justify-between items-center mb-4">
@@ -113,9 +198,35 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
 
       <div className="flex gap-4">
         <div className={cn("flex-1", showAvailability ? "w-3/4" : "w-full")}>
-          {view === 'day' && <DayView currentDate={currentDate} clinicianId={clinicianId} refreshTrigger={availabilityRefreshTrigger} />}
-          {view === 'week' && <WeekView currentDate={currentDate} clinicianId={clinicianId} refreshTrigger={availabilityRefreshTrigger} />}
-          {view === 'month' && <MonthView currentDate={currentDate} clinicianId={clinicianId} refreshTrigger={availabilityRefreshTrigger} />}
+          {view === 'day' && (
+            <DayView 
+              currentDate={currentDate} 
+              clinicianId={clinicianId} 
+              refreshTrigger={availabilityRefreshTrigger}
+              appointments={appointments.filter(app => 
+                app.date === format(currentDate, 'yyyy-MM-dd')
+              )}
+              getClientName={getClientName}
+            />
+          )}
+          {view === 'week' && (
+            <WeekView 
+              currentDate={currentDate} 
+              clinicianId={clinicianId} 
+              refreshTrigger={availabilityRefreshTrigger}
+              appointments={appointments}
+              getClientName={getClientName}
+            />
+          )}
+          {view === 'month' && (
+            <MonthView 
+              currentDate={currentDate} 
+              clinicianId={clinicianId} 
+              refreshTrigger={availabilityRefreshTrigger}
+              appointments={appointments}
+              getClientName={getClientName}
+            />
+          )}
         </div>
 
         {showAvailability && (

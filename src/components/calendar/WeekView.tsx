@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
 format,
@@ -9,7 +10,8 @@ startOfDay,
 isSameDay,
 setHours,
 setMinutes,
-differenceInMinutes
+differenceInMinutes,
+parseISO
 } from 'date-fns';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
@@ -19,6 +21,16 @@ interface WeekViewProps {
   currentDate: Date;
   clinicianId: string | null;
   refreshTrigger?: number;
+  appointments?: Array<{
+    id: string;
+    client_id: string;
+    date: string; 
+    start_time: string;
+    end_time: string;
+    type: string;
+    status: string;
+  }>;
+  getClientName?: (clientId: string) => string;
 }
 
 interface AvailabilityBlock {
@@ -36,9 +48,26 @@ interface TimeBlock {
   availabilityIds: string[];
 }
 
-const WeekView: React.FC<WeekViewProps> = ({ currentDate, clinicianId, refreshTrigger = 0 }) => {
+interface AppointmentBlock {
+  id: string;
+  day: Date;
+  start: Date;
+  end: Date;
+  clientId: string;
+  type: string;
+  clientName?: string;
+}
+
+const WeekView: React.FC<WeekViewProps> = ({ 
+  currentDate, 
+  clinicianId, 
+  refreshTrigger = 0,
+  appointments = [],
+  getClientName = () => 'Client'
+}) => {
   const [loading, setLoading] = useState(true);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
+  const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
 
   const days = eachDayOfInterval({
     start: startOfWeek(currentDate, { weekStartsOn: 0 }),
@@ -49,6 +78,35 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, clinicianId, refreshTr
     const minutes = i * 30;
     return addMinutes(setHours(startOfDay(new Date()), 8), minutes);
   });
+
+  // Process appointments into blocks
+  useEffect(() => {
+    if (!appointments.length) {
+      setAppointmentBlocks([]);
+      return;
+    }
+
+    const blocks: AppointmentBlock[] = appointments.map(appointment => {
+      const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
+      const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
+
+      const dateObj = parseISO(appointment.date);
+      const start = setMinutes(setHours(startOfDay(dateObj), startHour), startMinute);
+      const end = setMinutes(setHours(startOfDay(dateObj), endHour), endMinute);
+
+      return {
+        id: appointment.id,
+        day: dateObj,
+        start,
+        end,
+        clientId: appointment.client_id,
+        type: appointment.type,
+        clientName: getClientName(appointment.client_id)
+      };
+    });
+
+    setAppointmentBlocks(blocks);
+  }, [appointments, getClientName]);
 
   useEffect(() => {
     const fetchAvailability = async () => {
@@ -163,6 +221,19 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, clinicianId, refreshTr
     );
   };
 
+  const getAppointmentForTimeSlot = (day: Date, timeSlot: Date) => {
+    const slotTime = setMinutes(
+      setHours(startOfDay(day), timeSlot.getHours()),
+      timeSlot.getMinutes()
+    );
+
+    return appointmentBlocks.find(block => 
+      isSameDay(block.day, day) &&
+      slotTime >= block.start && 
+      slotTime < block.end
+    );
+  };
+
   if (loading) {
     return (
       <Card className="p-4 flex justify-center items-center h-[300px]">
@@ -196,6 +267,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, clinicianId, refreshTr
             {days.map(day => {
               const isAvailable = isTimeSlotAvailable(day, timeSlot);
               const currentBlock = getBlockForTimeSlot(day, timeSlot);
+              const appointment = getAppointmentForTimeSlot(day, timeSlot);
 
               const isStartOfBlock = currentBlock &&
                 differenceInMinutes(
@@ -209,9 +281,15 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, clinicianId, refreshTr
                   addMinutes(setMinutes(setHours(startOfDay(day), timeSlot.getHours()), timeSlot.getMinutes()), 30)
                 ) < 30;
 
+              const isStartOfAppointment = appointment && 
+                differenceInMinutes(
+                  setMinutes(setHours(startOfDay(day), timeSlot.getHours()), timeSlot.getMinutes()),
+                  appointment.start
+                ) < 30;
+
               let continuousBlockClass = "";
 
-              if (isAvailable) {
+              if (isAvailable && !appointment) {
                 if (isStartOfBlock && isEndOfBlock) {
                   continuousBlockClass = "rounded";
                 } else if (isStartOfBlock) {
@@ -228,7 +306,15 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, clinicianId, refreshTr
                   key={`${day}-${timeSlot}`}
                   className="col-span-1 min-h-[40px] border-t border-l border-gray-100 p-1 group hover:bg-gray-50"
                 >
-                  {isAvailable ? (
+                  {appointment && isStartOfAppointment ? (
+                    <div className="p-1 bg-blue-50 border-l-4 border-blue-500 rounded h-full text-xs font-medium truncate">
+                      {appointment.clientName}
+                    </div>
+                  ) : appointment && !isStartOfAppointment ? (
+                    <div className="p-1 bg-blue-50 border-l-4 border-blue-500 border-t-0 h-full text-xs opacity-75">
+                      {/* Continuation of appointment */}
+                    </div>
+                  ) : isAvailable ? (
                     <div
                       className={`p-1 bg-green-50 border-l-4 border-green-500 ${continuousBlockClass} h-full text-xs`}
                     >
@@ -238,7 +324,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, clinicianId, refreshTr
                     </div>
                   ) : (
                     <div className="h-full w-full opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-gray-400">
-                      #ERROR!
+                      Unavailable
                     </div>
                   )}
                 </div>

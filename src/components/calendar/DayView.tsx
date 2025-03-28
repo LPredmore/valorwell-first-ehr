@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, addMinutes, startOfDay, setHours, setMinutes, isSameDay, differenceInMinutes, parseISO } from 'date-fns';
 import { Card } from '@/components/ui/card';
@@ -8,6 +9,16 @@ interface DayViewProps {
   currentDate: Date;
   clinicianId: string | null;
   refreshTrigger?: number;
+  appointments?: Array<{
+    id: string;
+    client_id: string;
+    date: string; 
+    start_time: string;
+    end_time: string;
+    type: string;
+    status: string;
+  }>;
+  getClientName?: (clientId: string) => string;
 }
 
 interface AvailabilityBlock {
@@ -23,9 +34,25 @@ interface TimeBlock {
   availabilityIds: string[];
 }
 
-const DayView: React.FC<DayViewProps> = ({ currentDate, clinicianId, refreshTrigger = 0 }) => {
+interface AppointmentBlock {
+  id: string;
+  start: Date;
+  end: Date;
+  clientId: string;
+  type: string;
+  clientName?: string;
+}
+
+const DayView: React.FC<DayViewProps> = ({ 
+  currentDate, 
+  clinicianId, 
+  refreshTrigger = 0,
+  appointments = [],
+  getClientName = () => 'Client'
+}) => {
   const [loading, setLoading] = useState(true);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
+  const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
 
   const timeSlots = Array.from({ length: 21 }, (_, i) => {
     const minutes = i * 30;
@@ -33,6 +60,34 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, clinicianId, refreshTrig
   });
 
   const dayOfWeek = format(currentDate, 'EEEE');
+
+  // Process appointments into blocks
+  useEffect(() => {
+    if (!appointments.length) {
+      setAppointmentBlocks([]);
+      return;
+    }
+
+    const blocks: AppointmentBlock[] = appointments.map(appointment => {
+      const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
+      const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
+
+      const dateObj = parseISO(appointment.date);
+      const start = setMinutes(setHours(startOfDay(dateObj), startHour), startMinute);
+      const end = setMinutes(setHours(startOfDay(dateObj), endHour), endMinute);
+
+      return {
+        id: appointment.id,
+        start,
+        end,
+        clientId: appointment.client_id,
+        type: appointment.type,
+        clientName: getClientName(appointment.client_id)
+      };
+    });
+
+    setAppointmentBlocks(blocks);
+  }, [appointments, getClientName]);
 
   useEffect(() => {
     const fetchAvailability = async () => {
@@ -124,6 +179,13 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, clinicianId, refreshTrig
     );
   };
 
+  const getAppointmentForTimeSlot = (timeSlot: Date) => {
+    return appointmentBlocks.find(block => {
+      const slotTime = new Date(timeSlot);
+      return slotTime >= block.start && slotTime < block.end;
+    });
+  };
+
   if (loading) {
     return (
       <Card className="p-4 flex justify-center items-center h-[500px]">
@@ -138,15 +200,20 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, clinicianId, refreshTrig
         {timeSlots.map((timeSlot, index) => {
           const isAvailable = isTimeSlotAvailable(timeSlot);
           const currentBlock = getBlockForTimeSlot(timeSlot);
+          const appointment = getAppointmentForTimeSlot(timeSlot);
+          
           const isStartOfBlock = currentBlock &&
             differenceInMinutes(timeSlot, currentBlock.start) < 30;
           const isEndOfBlock = currentBlock &&
             differenceInMinutes(currentBlock.end, addMinutes(timeSlot, 30)) < 30;
 
+          const isStartOfAppointment = appointment && 
+            differenceInMinutes(timeSlot, appointment.start) < 30;
+
           let showContinuousBlock = false;
           let continuousBlockClass = "";
 
-          if (isAvailable) {
+          if (isAvailable && !appointment) {
             showContinuousBlock = true;
 
             if (isStartOfBlock && isEndOfBlock) {
@@ -170,7 +237,18 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, clinicianId, refreshTrig
               </div>
 
               <div className="flex-1">
-                {showContinuousBlock ? (
+                {appointment && isStartOfAppointment ? (
+                  <div className="p-2 bg-blue-50 border-l-4 border-blue-500 rounded text-sm h-full">
+                    <div className="font-medium">{appointment.clientName}</div>
+                    <div className="text-xs text-gray-600">
+                      {appointment.type} - {format(appointment.start, 'h:mm a')} to {format(appointment.end, 'h:mm a')}
+                    </div>
+                  </div>
+                ) : appointment && !isStartOfAppointment ? (
+                  <div className="p-2 bg-blue-50 border-l-4 border-blue-500 border-t-0 text-sm h-full opacity-75">
+                    {/* Continuation of appointment block */}
+                  </div>
+                ) : showContinuousBlock ? (
                   <div
                     className={`p-2 bg-green-50 border-l-4 border-green-500 ${continuousBlockClass} rounded text-sm h-full`}
                   >
