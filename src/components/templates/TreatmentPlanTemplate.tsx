@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { CalendarIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { format, addMonths } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClientDetails } from "@/types/client";
@@ -83,8 +82,32 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
     }
   }, [clientData, clinicianName]);
 
+  // Function to calculate the next update date based on start date and plan length
+  const calculateNextUpdateDate = (startDate: Date, planLength: string): string => {
+    if (!startDate || !planLength) return '';
+    
+    // Extract the number of months from the planLength value
+    const months = parseInt(planLength.replace('month', ''));
+    
+    // Calculate the next update date by adding months to the start date
+    const nextDate = addMonths(startDate, months);
+    
+    // Format as YYYY-MM-DD for database compatibility
+    return format(nextDate, 'yyyy-MM-dd');
+  };
+
+  // Handle form field changes
   const handleChange = (field: string, value: any) => {
-    setFormState(prev => ({ ...prev, [field]: value }));
+    setFormState(prev => {
+      const newState = { ...prev, [field]: value };
+      
+      // If startDate or planLength changed, recalculate nextUpdate
+      if ((field === 'startDate' || field === 'planLength') && newState.startDate && newState.planLength) {
+        newState.nextUpdate = calculateNextUpdateDate(newState.startDate, newState.planLength);
+      }
+      
+      return newState;
+    });
   };
 
   const handleSave = async () => {
@@ -114,8 +137,9 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         client_intervention4: formState.intervention4,
         client_intervention5: formState.intervention5,
         client_intervention6: formState.intervention6,
-        client_nexttreatmentplanupdate: formState.nextUpdate,
-        client_privatenote: formState.privateNote
+        client_nexttreatmentplanupdate: formState.nextUpdate ? formState.nextUpdate : null,
+        client_privatenote: formState.privateNote,
+        client_treatmentplan_startdate: formState.startDate ? formatDateForDB(formState.startDate) : null
       };
 
       console.log('Saving treatment plan with updates:', updates);
@@ -150,6 +174,13 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
       });
     }
   };
+
+  // When component mounts, calculate nextUpdate if startDate and planLength are already set
+  useEffect(() => {
+    if (formState.startDate && formState.planLength && !formState.nextUpdate) {
+      handleChange('planLength', formState.planLength);
+    }
+  }, []);
 
   return (
     <Card className="w-full border border-gray-200 rounded-md">
@@ -393,10 +424,13 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
               <Label htmlFor="next-update" className="text-sm text-valorwell-700 font-semibold">Next Treatment Plan Update</Label>
               <Input 
                 id="next-update" 
-                placeholder="When will this plan be reviewed next"
+                placeholder="Auto-calculated based on plan length"
                 value={formState.nextUpdate}
                 onChange={(e) => handleChange('nextUpdate', e.target.value)}
+                readOnly
+                className="bg-gray-50"
               />
+              <p className="text-xs text-gray-500 mt-1">This date is automatically calculated based on the Plan Length</p>
             </div>
             
             <div className="space-y-2 mb-2">
