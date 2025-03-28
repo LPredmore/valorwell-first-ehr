@@ -33,7 +33,12 @@ created_at: string;
 updated_at: string;
 }
 
-const AvailabilityPanel: React.FC = () => {
+interface AvailabilityPanelProps {
+  clinicianId?: string | null;
+  onAvailabilityUpdated?: () => void;
+}
+
+const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAvailabilityUpdated }) => {
 const [activeTab, setActiveTab] = useState<string>('set');
 const [availabilityEnabled, setAvailabilityEnabled] = useState(true);
 const [loading, setLoading] = useState(false);
@@ -76,6 +81,10 @@ setLoading(false);
 return;
 }
 
+const clinicianIdToUse = clinicianId || null;
+let clinicianToQuery = clinicianIdToUse;
+
+if (!clinicianIdToUse) {
 const { data: clinicianData } = await supabase
 .from('clinicians')
 .select('id')
@@ -83,10 +92,15 @@ const { data: clinicianData } = await supabase
 .single();
 
 if (clinicianData) {
+clinicianToQuery = clinicianData.id;
+}
+}
+
+if (clinicianToQuery) {
 const { data: availabilityData, error } = await supabase
 .from('availability')
 .select('*')
-.eq('clinician_id', clinicianData.id)
+.eq('clinician_id', clinicianToQuery)
 .eq('is_active', true);
 
 if (error) {
@@ -97,7 +111,7 @@ const newSchedule = [...weekSchedule];
 const { data: settingsData } = await supabase
 .from('availability_settings')
 .select('*')
-.eq('clinician_id', clinicianData.id)
+.eq('clinician_id', clinicianToQuery)
 .single();
 
 if (settingsData) {
@@ -131,7 +145,7 @@ setLoading(false);
 }
 
 fetchAvailability();
-}, []);
+}, [clinicianId]);
 
 const toggleDayOpen = (dayIndex: number) => {
 setWeekSchedule(prev => {
@@ -223,6 +237,9 @@ setIsSaving(false);
 return;
 }
 
+let clinicianIdToUse = clinicianId;
+
+if (!clinicianIdToUse) {
 const { data: profileData } = await supabase
 .from('profiles')
 .select('email')
@@ -255,30 +272,53 @@ setIsSaving(false);
 return;
 }
 
-await supabase
+clinicianIdToUse = clinicianData.id;
+}
+
+if (!clinicianIdToUse) {
+toast({
+title: "Error",
+description: "No clinician ID found to save availability",
+variant: "destructive"
+});
+setIsSaving(false);
+return;
+}
+
+const { error: deleteError } = await supabase
 .from('availability')
-.update({ is_active: false })
-.eq('clinician_id', clinicianData.id);
+.delete()
+.eq('clinician_id', clinicianIdToUse);
+
+if (deleteError) {
+toast({
+title: "Error Deleting Existing Availability",
+description: deleteError.message,
+variant: "destructive"
+});
+setIsSaving(false);
+return;
+}
+
+await supabase
+.from('availability_settings')
+.upsert({
+clinician_id: clinicianIdToUse,
+time_granularity: timeGranularity
+}, {
+onConflict: 'clinician_id'
+});
 
 const availabilityToInsert = weekSchedule.flatMap(day => {
 if (!day.isOpen) return [];
 
 return day.timeSlots.map(slot => ({
-clinician_id: clinicianData.id,
+clinician_id: clinicianIdToUse,
 day_of_week: day.day,
 start_time: slot.startTime,
 end_time: slot.endTime,
 is_active: true
 }));
-});
-
-await supabase
-.from('availability_settings')
-.upsert({
-clinician_id: clinicianData.id,
-time_granularity: timeGranularity
-}, {
-onConflict: 'clinician_id'
 });
 
 if (availabilityToInsert.length > 0) {
@@ -297,6 +337,9 @@ toast({
 title: "Availability Saved",
 description: "Your availability has been updated successfully",
 });
+if (onAvailabilityUpdated) {
+onAvailabilityUpdated();
+}
 }
 } else {
 toast({

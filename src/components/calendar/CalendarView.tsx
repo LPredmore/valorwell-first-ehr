@@ -39,6 +39,7 @@ interface CalendarViewProps {
 
 const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, clinicianId }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [availabilityRefreshTrigger, setAvailabilityRefreshTrigger] = useState(0);
 
   const navigatePrevious = () => {
     if (view === 'day') {
@@ -62,6 +63,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
 
   const navigateToday = () => {
     setCurrentDate(new Date());
+  };
+
+  // Callback function that will be triggered when availability is updated
+  const handleAvailabilityUpdated = () => {
+    // Increment the trigger to force view components to refetch data
+    setAvailabilityRefreshTrigger(prev => prev + 1);
   };
 
   // Format the header based on the current view
@@ -106,14 +113,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
 
       <div className="flex gap-4">
         <div className={cn("flex-1", showAvailability ? "w-3/4" : "w-full")}>
-          {view === 'day' && <DayView currentDate={currentDate} clinicianId={clinicianId} />}
-          {view === 'week' && <WeekView currentDate={currentDate} clinicianId={clinicianId} />}
-          {view === 'month' && <MonthView currentDate={currentDate} clinicianId={clinicianId} />}
+          {view === 'day' && <DayView currentDate={currentDate} clinicianId={clinicianId} refreshTrigger={availabilityRefreshTrigger} />}
+          {view === 'week' && <WeekView currentDate={currentDate} clinicianId={clinicianId} refreshTrigger={availabilityRefreshTrigger} />}
+          {view === 'month' && <MonthView currentDate={currentDate} clinicianId={clinicianId} refreshTrigger={availabilityRefreshTrigger} />}
         </div>
 
         {showAvailability && (
           <div className="w-1/4">
-            <AvailabilityPanel clinicianId={clinicianId} />
+            <AvailabilityPanel clinicianId={clinicianId} onAvailabilityUpdated={handleAvailabilityUpdated} />
           </div>
         )}
       </div>

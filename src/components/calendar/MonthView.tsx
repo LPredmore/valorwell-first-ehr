@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   format,
@@ -19,9 +18,10 @@ import { supabase } from '@/integrations/supabase/client';
 interface MonthViewProps {
   currentDate: Date;
   clinicianId: string | null;
+  refreshTrigger?: number;
 }
 
-const MonthView: React.FC<MonthViewProps> = ({ currentDate, clinicianId }) => {
+const MonthView: React.FC<MonthViewProps> = ({ currentDate, clinicianId, refreshTrigger = 0 }) => {
   const [loading, setLoading] = useState(true);
   const [availabilityData, setAvailabilityData] = useState<any[]>([]);
 
@@ -65,7 +65,7 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, clinicianId }) => {
     };
 
     fetchAvailability();
-  }, [clinicianId]);
+  }, [clinicianId, refreshTrigger]);
 
   // Check if a day has availability slots
   const hasDayAvailability = (day: Date) => {
