@@ -56,6 +56,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
   const [clientsMap, setClientsMap] = useState<Record<string, any>>({});
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment & { clientName?: string } | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -115,7 +116,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
     };
 
     fetchAppointments();
-  }, [clinicianId, currentDate, view, availabilityRefreshTrigger]);
+  }, [clinicianId, currentDate, view, availabilityRefreshTrigger, appointmentRefreshTrigger]);
 
   const navigatePrevious = () => {
     if (view === 'day') {
@@ -165,7 +166,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
   const getClientName = (clientId: string) => {
     const client = clientsMap[clientId];
     if (!client) return 'Unknown Client';
-    return client.client_preferred_name || `${client.client_first_name} ${client.client_last_name}`;
+    
+    const preferredName = client.client_preferred_name;
+    const firstName = client.client_first_name;
+    const lastName = client.client_last_name;
+    
+    const displayName = preferredName || firstName;
+    return `${displayName} ${lastName}`;
   };
 
   const handleAppointmentClick = (appointment: Appointment) => {
@@ -175,6 +182,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
     };
     setSelectedAppointment(appointmentWithClientName);
     setIsDetailsDialogOpen(true);
+  };
+
+  const handleAppointmentUpdated = () => {
+    setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
   return (
@@ -246,6 +257,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
         isOpen={isDetailsDialogOpen}
         onClose={() => setIsDetailsDialogOpen(false)}
         appointment={selectedAppointment}
+        onAppointmentUpdated={handleAppointmentUpdated}
       />
     </div>
   );
