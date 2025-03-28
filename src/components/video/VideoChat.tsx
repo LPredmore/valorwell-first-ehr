@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Loader2, Mic, MicOff, Video, VideoOff, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,6 +19,32 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomUrl, isOpen, onClose }) => {
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  
+  // Add a timeout to automatically hide the loading spinner if it takes too long
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    // Reset state when component opens
+    setIsLoading(true);
+    setError(null);
+    
+    if (!roomUrl) {
+      setError('No video room URL provided');
+      setIsLoading(false);
+      return;
+    }
+    
+    // Add a safety timeout to hide the spinner after 15 seconds
+    // in case the load event doesn't fire for some reason
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        console.log('Video chat load timeout reached, hiding spinner');
+        setIsLoading(false);
+      }
+    }, 15000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [isOpen, roomUrl, isLoading]);
 
   useEffect(() => {
     if (!roomUrl) {
@@ -29,6 +55,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomUrl, isOpen, onClose }) => {
 
     // Setup iframe load handler
     const handleIframeLoad = () => {
+      console.log('Video iframe loaded');
       setIsLoading(false);
     };
 
@@ -117,8 +144,12 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomUrl, isOpen, onClose }) => {
           <iframe
             ref={iframeRef}
             src={roomUrl}
-            allow="camera; microphone; fullscreen; speaker; display-capture"
+            allow="camera; microphone; fullscreen; display-capture"
             className="w-full h-full border-0"
+            onLoad={() => {
+              console.log('Iframe onLoad event fired');
+              setIsLoading(false);
+            }}
           ></iframe>
         )}
       </CardContent>
@@ -147,6 +178,8 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomUrl, isOpen, onClose }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-4xl p-0 overflow-hidden">
+        <DialogTitle className="sr-only">Video Session</DialogTitle>
+        <DialogDescription className="sr-only">Video call session interface</DialogDescription>
         {renderVideoChatCard()}
       </DialogContent>
     </Dialog>
