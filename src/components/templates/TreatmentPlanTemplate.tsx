@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,7 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ClientDetails } from "@/types/client";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, formatDateForDB } from "@/integrations/supabase/client";
-import { DiagnosisSelector } from "@/components/DiagnosisSelector";
 
 interface TreatmentPlanTemplateProps {
   onClose: () => void;
@@ -31,7 +31,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
   clientData = null
 }) => {
   const { toast } = useToast();
-
+  // Initialize form state from client data
   const [formState, setFormState] = useState({
     clientName: clientName || `${clientData?.client_first_name || ''} ${clientData?.client_last_name || ''}`,
     clientDob: clientDob || clientData?.client_date_of_birth || '',
@@ -39,7 +39,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
     startDate: new Date(),
     planLength: clientData?.client_planlength || '',
     treatmentFrequency: clientData?.client_treatmentfrequency || '',
-    diagnosisCodes: clientData?.client_diagnosis || [],
+    diagnosis: clientData?.client_diagnosis ? clientData.client_diagnosis.join(', ') : '',
     problemNarrative: clientData?.client_problem || '',
     treatmentGoalNarrative: clientData?.client_treatmentgoal || '',
     primaryObjective: clientData?.client_primaryobjective || '',
@@ -55,6 +55,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
     privateNote: clientData?.client_privatenote || ''
   });
 
+  // Update form state if clientData changes
   useEffect(() => {
     if (clientData) {
       setFormState({
@@ -64,7 +65,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         startDate: new Date(),
         planLength: clientData.client_planlength || '',
         treatmentFrequency: clientData.client_treatmentfrequency || '',
-        diagnosisCodes: clientData.client_diagnosis || [],
+        diagnosis: clientData.client_diagnosis ? clientData.client_diagnosis.join(', ') : '',
         problemNarrative: clientData.client_problem || '',
         treatmentGoalNarrative: clientData.client_treatmentgoal || '',
         primaryObjective: clientData.client_primaryobjective || '',
@@ -97,10 +98,11 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         return;
       }
 
+      // Map form data back to database schema
       const updates = {
         client_planlength: formState.planLength,
         client_treatmentfrequency: formState.treatmentFrequency,
-        client_diagnosis: formState.diagnosisCodes,
+        client_diagnosis: formState.diagnosis ? formState.diagnosis.split(',').map(d => d.trim()) : [],
         client_problem: formState.problemNarrative,
         client_treatmentgoal: formState.treatmentGoalNarrative,
         client_primaryobjective: formState.primaryObjective,
@@ -119,6 +121,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
       console.log('Saving treatment plan with updates:', updates);
       console.log('For client with ID:', clientData.id);
 
+      // Update client in database
       const { error, data } = await supabase
         .from('clients')
         .update(updates)
@@ -169,7 +172,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                   placeholder="Enter client name" 
                   value={formState.clientName}
                   onChange={(e) => handleChange('clientName', e.target.value)}
-                  disabled
+                  disabled // Read-only as this is bound to client data
                 />
               </div>
               <div className="space-y-2">
@@ -179,7 +182,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                   placeholder="MM/DD/YYYY" 
                   value={formState.clientDob}
                   onChange={(e) => handleChange('clientDob', e.target.value)}
-                  disabled
+                  disabled // Read-only as this is bound to client data
                 />
               </div>
               <div className="space-y-2">
@@ -189,7 +192,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                   placeholder="Enter clinician name" 
                   value={formState.clinicianName}
                   onChange={(e) => handleChange('clinicianName', e.target.value)}
-                  disabled
+                  disabled // Read-only as this is bound to clinician data
                 />
               </div>
             </div>
@@ -260,9 +263,11 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
             
             <div className="space-y-2 mb-6">
               <Label htmlFor="diagnosis" className="text-sm text-valorwell-700 font-semibold">Diagnosis</Label>
-              <DiagnosisSelector 
-                value={formState.diagnosisCodes}
-                onChange={(codes) => handleChange('diagnosisCodes', codes)}
+              <Input 
+                id="diagnosis" 
+                placeholder="Enter diagnoses separated by commas" 
+                value={formState.diagnosis}
+                onChange={(e) => handleChange('diagnosis', e.target.value)}
               />
             </div>
             
