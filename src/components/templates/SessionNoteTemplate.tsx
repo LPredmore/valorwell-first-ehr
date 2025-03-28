@@ -281,6 +281,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   };
 
   return (
+    
     <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-2">
         <div>
@@ -352,6 +353,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           </div>
         </div>
 
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Session Date</label>
@@ -390,6 +392,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         </div>
 
         <h4 className="text-md font-medium text-gray-800 mb-4">Mental Status Examination</h4>
+        
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
@@ -850,53 +853,4 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             placeholder="Describe the treatment goals" 
             className="min-h-[100px]" 
             value={formState.treatmentGoalNarrative} 
-            onChange={(e) => handleChange('treatmentGoalNarrative', e.target.value)}
-          />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Session Narrative</label>
-          <Textarea 
-            placeholder="Provide a detailed narrative of the session" 
-            className="min-h-[100px]" 
-            value={formState.sessionNarrative} 
-            onChange={(e) => handleChange('sessionNarrative', e.target.value)}
-          />
-        </div>
-
-        <h4 className="text-md font-medium text-gray-800 mb-4">Plan & Signature</h4>
-        
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Next Treatment Plan Update</label>
-          <Input 
-            placeholder="When will this plan be reviewed next" 
-            value={formState.nextTreatmentPlanUpdate} 
-            onChange={(e) => handleChange('nextTreatmentPlanUpdate', e.target.value)}
-          />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Signature</label>
-          <Input 
-            placeholder="Digital signature" 
-            value={formState.signature} 
-            onChange={(e) => handleChange('signature', e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-2 mt-6">
-        <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Close</Button>
-        <Button 
-          className="bg-valorwell-700 hover:bg-valorwell-800" 
-          onClick={handleSave}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Saving...' : 'Save Session Note'}
-        </Button>
-      </div>
-    </div>
-  );
-};
-
-export default SessionNoteTemplate;
+            onChange={(e) => handleChange('treatmentGoalNarrative', e.target.value
