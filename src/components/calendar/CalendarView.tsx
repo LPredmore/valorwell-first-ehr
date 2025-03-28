@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
 format,
@@ -31,6 +30,7 @@ import DayView from './DayView';
 import WeekView from './WeekView';
 import MonthView from './MonthView';
 import AvailabilityPanel from './AvailabilityPanel';
+import AppointmentDetailsDialog from './AppointmentDetailsDialog';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CalendarViewProps {
@@ -54,14 +54,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
   const [availabilityRefreshTrigger, setAvailabilityRefreshTrigger] = useState(0);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clientsMap, setClientsMap] = useState<Record<string, any>>({});
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment & { clientName?: string } | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
-  // Fetch appointments
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!clinicianId) return;
 
       try {
-        // Define date range based on view
         let startDate, endDate;
         if (view === 'day') {
           startDate = format(currentDate, 'yyyy-MM-dd');
@@ -78,7 +78,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
           endDate = format(end, 'yyyy-MM-dd');
         }
 
-        // Fetch appointments for the selected date range
         const { data, error } = await supabase
           .from('appointments')
           .select('*')
@@ -92,7 +91,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
         } else {
           setAppointments(data || []);
           
-          // Fetch client information for all appointments
           if (data && data.length > 0) {
             const clientIds = [...new Set(data.map(app => app.client_id))];
             const { data: clientsData, error: clientsError } = await supabase
@@ -143,13 +141,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
     setCurrentDate(new Date());
   };
 
-  // Callback function that will be triggered when availability is updated
   const handleAvailabilityUpdated = () => {
-    // Increment the trigger to force view components to refetch data
     setAvailabilityRefreshTrigger(prev => prev + 1);
   };
 
-  // Format the header based on the current view
   const getHeaderText = () => {
     if (view === 'day') {
       return format(currentDate, 'MMMM d, yyyy');
@@ -167,11 +162,19 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
     }
   };
 
-  // Get client name from client map
   const getClientName = (clientId: string) => {
     const client = clientsMap[clientId];
     if (!client) return 'Unknown Client';
     return client.client_preferred_name || `${client.client_first_name} ${client.client_last_name}`;
+  };
+
+  const handleAppointmentClick = (appointment: Appointment) => {
+    const appointmentWithClientName = {
+      ...appointment,
+      clientName: getClientName(appointment.client_id)
+    };
+    setSelectedAppointment(appointmentWithClientName);
+    setIsDetailsDialogOpen(true);
   };
 
   return (
@@ -207,6 +210,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
                 app.date === format(currentDate, 'yyyy-MM-dd')
               )}
               getClientName={getClientName}
+              onAppointmentClick={handleAppointmentClick}
             />
           )}
           {view === 'week' && (
@@ -216,6 +220,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
               refreshTrigger={availabilityRefreshTrigger}
               appointments={appointments}
               getClientName={getClientName}
+              onAppointmentClick={handleAppointmentClick}
             />
           )}
           {view === 'month' && (
@@ -225,6 +230,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
               refreshTrigger={availabilityRefreshTrigger}
               appointments={appointments}
               getClientName={getClientName}
+              onAppointmentClick={handleAppointmentClick}
             />
           )}
         </div>
@@ -235,6 +241,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
           </div>
         )}
       </div>
+
+      <AppointmentDetailsDialog 
+        isOpen={isDetailsDialogOpen}
+        onClose={() => setIsDetailsDialogOpen(false)}
+        appointment={selectedAppointment}
+      />
     </div>
   );
 };

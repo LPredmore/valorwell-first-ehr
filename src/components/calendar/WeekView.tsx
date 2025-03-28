@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
 format,
@@ -31,6 +30,7 @@ interface WeekViewProps {
     status: string;
   }>;
   getClientName?: (clientId: string) => string;
+  onAppointmentClick?: (appointment: any) => void;
 }
 
 interface AvailabilityBlock {
@@ -63,7 +63,8 @@ const WeekView: React.FC<WeekViewProps> = ({
   clinicianId, 
   refreshTrigger = 0,
   appointments = [],
-  getClientName = () => 'Client'
+  getClientName = () => 'Client',
+  onAppointmentClick
 }) => {
   const [loading, setLoading] = useState(true);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
@@ -79,7 +80,6 @@ const WeekView: React.FC<WeekViewProps> = ({
     return addMinutes(setHours(startOfDay(new Date()), 8), minutes);
   });
 
-  // Process appointments into blocks
   useEffect(() => {
     if (!appointments.length) {
       setAppointmentBlocks([]);
@@ -307,11 +307,35 @@ const WeekView: React.FC<WeekViewProps> = ({
                   className="col-span-1 min-h-[40px] border-t border-l border-gray-100 p-1 group hover:bg-gray-50"
                 >
                   {appointment && isStartOfAppointment ? (
-                    <div className="p-1 bg-blue-50 border-l-4 border-blue-500 rounded h-full text-xs font-medium truncate">
+                    <div 
+                      className="p-1 bg-blue-50 border-l-4 border-blue-500 rounded h-full text-xs font-medium truncate cursor-pointer hover:bg-blue-100 transition-colors"
+                      onClick={() => {
+                        if (onAppointmentClick) {
+                          const originalAppointment = appointments.find(app => 
+                            app.id === appointment.id
+                          );
+                          if (originalAppointment) {
+                            onAppointmentClick(originalAppointment);
+                          }
+                        }
+                      }}
+                    >
                       {appointment.clientName}
                     </div>
                   ) : appointment && !isStartOfAppointment ? (
-                    <div className="p-1 bg-blue-50 border-l-4 border-blue-500 border-t-0 h-full text-xs opacity-75">
+                    <div 
+                      className="p-1 bg-blue-50 border-l-4 border-blue-500 border-t-0 h-full text-xs opacity-75 cursor-pointer hover:bg-blue-100 transition-colors"
+                      onClick={() => {
+                        if (onAppointmentClick) {
+                          const originalAppointment = appointments.find(app => 
+                            app.id === appointment.id
+                          );
+                          if (originalAppointment) {
+                            onAppointmentClick(originalAppointment);
+                          }
+                        }
+                      }}
+                    >
                       {/* Continuation of appointment */}
                     </div>
                   ) : isAvailable ? (

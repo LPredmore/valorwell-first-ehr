@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, addMinutes, startOfDay, setHours, setMinutes, isSameDay, differenceInMinutes, parseISO } from 'date-fns';
 import { Card } from '@/components/ui/card';
@@ -19,6 +18,7 @@ interface DayViewProps {
     status: string;
   }>;
   getClientName?: (clientId: string) => string;
+  onAppointmentClick?: (appointment: any) => void;
 }
 
 interface AvailabilityBlock {
@@ -48,7 +48,8 @@ const DayView: React.FC<DayViewProps> = ({
   clinicianId, 
   refreshTrigger = 0,
   appointments = [],
-  getClientName = () => 'Client'
+  getClientName = () => 'Client',
+  onAppointmentClick
 }) => {
   const [loading, setLoading] = useState(true);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
@@ -61,7 +62,6 @@ const DayView: React.FC<DayViewProps> = ({
 
   const dayOfWeek = format(currentDate, 'EEEE');
 
-  // Process appointments into blocks
   useEffect(() => {
     if (!appointments.length) {
       setAppointmentBlocks([]);
@@ -238,14 +238,34 @@ const DayView: React.FC<DayViewProps> = ({
 
               <div className="flex-1">
                 {appointment && isStartOfAppointment ? (
-                  <div className="p-2 bg-blue-50 border-l-4 border-blue-500 rounded text-sm h-full">
+                  <div 
+                    className="p-2 bg-blue-50 border-l-4 border-blue-500 rounded text-sm h-full cursor-pointer hover:bg-blue-100 transition-colors"
+                    onClick={() => {
+                      if (onAppointmentClick) {
+                        const originalAppointment = appointments.find(app => app.id === appointment.id);
+                        if (originalAppointment) {
+                          onAppointmentClick(originalAppointment);
+                        }
+                      }
+                    }}
+                  >
                     <div className="font-medium">{appointment.clientName}</div>
                     <div className="text-xs text-gray-600">
                       {appointment.type} - {format(appointment.start, 'h:mm a')} to {format(appointment.end, 'h:mm a')}
                     </div>
                   </div>
                 ) : appointment && !isStartOfAppointment ? (
-                  <div className="p-2 bg-blue-50 border-l-4 border-blue-500 border-t-0 text-sm h-full opacity-75">
+                  <div 
+                    className="p-2 bg-blue-50 border-l-4 border-blue-500 border-t-0 text-sm h-full opacity-75 cursor-pointer hover:bg-blue-100 transition-colors"
+                    onClick={() => {
+                      if (onAppointmentClick) {
+                        const originalAppointment = appointments.find(app => app.id === appointment.id);
+                        if (originalAppointment) {
+                          onAppointmentClick(originalAppointment);
+                        }
+                      }
+                    }}
+                  >
                     {/* Continuation of appointment block */}
                   </div>
                 ) : showContinuousBlock ? (

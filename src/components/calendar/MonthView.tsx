@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   format,
@@ -30,6 +29,7 @@ interface MonthViewProps {
     status: string;
   }>;
   getClientName?: (clientId: string) => string;
+  onAppointmentClick?: (appointment: any) => void;
 }
 
 const MonthView: React.FC<MonthViewProps> = ({ 
@@ -37,13 +37,12 @@ const MonthView: React.FC<MonthViewProps> = ({
   clinicianId, 
   refreshTrigger = 0,
   appointments = [],
-  getClientName = () => 'Client'
+  getClientName = () => 'Client',
+  onAppointmentClick
 }) => {
   const [loading, setLoading] = useState(true);
   const [availabilityData, setAvailabilityData] = useState<any[]>([]);
 
-  // Get days for the current month, including those from previous/next months
-  // that appear in the calendar view
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const startDate = startOfWeek(monthStart, { weekStartsOn: 0 });
@@ -55,13 +54,11 @@ const MonthView: React.FC<MonthViewProps> = ({
     const fetchAvailability = async () => {
       setLoading(true);
       try {
-        // Build query for availability blocks
         let query = supabase
           .from('availability')
           .select('*')
           .eq('is_active', true);
 
-        // Add clinician filter if provided
         if (clinicianId) {
           query = query.eq('clinician_id', clinicianId);
         }
@@ -84,13 +81,11 @@ const MonthView: React.FC<MonthViewProps> = ({
     fetchAvailability();
   }, [clinicianId, refreshTrigger]);
 
-  // Check if a day has availability slots
   const hasDayAvailability = (day: Date) => {
-    const dayOfWeek = format(day, 'EEEE'); // e.g., "Monday"
+    const dayOfWeek = format(day, 'EEEE');
     return availabilityData.some(slot => slot.day_of_week === dayOfWeek);
   };
 
-  // Get appointments for a specific day
   const getDayAppointments = (day: Date) => {
     const dayStr = format(day, 'yyyy-MM-dd');
     return appointments.filter(appointment => appointment.date === dayStr);
@@ -107,14 +102,12 @@ const MonthView: React.FC<MonthViewProps> = ({
   return (
     <Card className="p-4">
       <div className="grid grid-cols-7 gap-1">
-        {/* Header - Days of week */}
         {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day) => (
           <div key={day} className="p-2 text-center font-medium border-b border-gray-200">
             {day.slice(0, 3)}
           </div>
         ))}
 
-        {/* Calendar days */}
         {days.map((day) => {
           const dayAppointments = getDayAppointments(day);
           
@@ -134,13 +127,13 @@ const MonthView: React.FC<MonthViewProps> = ({
                 )}
               </div>
               
-              {/* Display appointments for this day */}
               {dayAppointments.length > 0 && isSameMonth(day, monthStart) && (
                 <div className="mt-1 space-y-1">
                   {dayAppointments.slice(0, 3).map(appointment => (
                     <div 
                       key={appointment.id} 
-                      className="bg-blue-100 text-blue-800 text-xs p-1 rounded truncate"
+                      className="bg-blue-100 text-blue-800 text-xs p-1 rounded truncate cursor-pointer hover:bg-blue-200 transition-colors"
+                      onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
                     >
                       {format(parseISO(`2000-01-01T${appointment.start_time}`), 'h:mm a')} - {getClientName(appointment.client_id)}
                     </div>
