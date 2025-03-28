@@ -6,9 +6,11 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import WeekView from '@/components/calendar/WeekView';
 import AppointmentBookingDialog from './AppointmentBookingDialog';
+import VideoChat from '../video/VideoChat';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
+import { getOrCreateAppointmentRoom } from '@/integrations/daily/dailyService';
 
 interface MyPortalProps {
   upcomingAppointments: Array<{
@@ -33,6 +35,10 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const [upcomingAppointments, setUpcomingAppointments] = useState(initialAppointments);
   const [refreshAppointments, setRefreshAppointments] = useState(0);
   const { toast } = useToast();
+  const [isVideoChatOpen, setIsVideoChatOpen] = useState(false);
+  const [currentMeetingUrl, setCurrentMeetingUrl] = useState<string | null>(null);
+  const [currentAppointmentId, setCurrentAppointmentId] = useState<string | number>('');
+  const [isLoadingSession, setIsLoadingSession] = useState(false);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -81,11 +87,45 @@ const MyPortal: React.FC<MyPortalProps> = ({
     });
   };
 
-  const handleStartSession = (appointmentId: string | number) => {
-    toast({
-      title: "Feature Coming Soon",
-      description: "Video session functionality will be available soon.",
-    });
+  const handleStartSession = async (appointmentId: string | number) => {
+    try {
+      setIsLoadingSession(true);
+      setCurrentAppointmentId(appointmentId);
+      
+      toast({
+        title: "Starting Session",
+        description: "Preparing your video call...",
+      });
+      
+      const meetingUrl = await getOrCreateAppointmentRoom(String(appointmentId));
+      
+      if (!meetingUrl) {
+        toast({
+          title: "Error",
+          description: "Could not start video session. Please try again.",
+          variant: "destructive"
+        });
+        setIsLoadingSession(false);
+        return;
+      }
+      
+      setCurrentMeetingUrl(meetingUrl);
+      setIsVideoChatOpen(true);
+    } catch (error) {
+      console.error('Error starting session:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start video session. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingSession(false);
+    }
+  };
+
+  const handleCloseVideoChat = () => {
+    setIsVideoChatOpen(false);
+    setCurrentMeetingUrl(null);
   };
 
   return (
@@ -122,8 +162,12 @@ const MyPortal: React.FC<MyPortalProps> = ({
                         variant="outline" 
                         size="sm"
                         onClick={() => handleStartSession(appointment.id)}
+                        disabled={isLoadingSession}
                       >
-                        Start Session
+                        {isLoadingSession && currentAppointmentId === appointment.id 
+                          ? "Connecting..." 
+                          : "Start Session"
+                        }
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -221,6 +265,13 @@ const MyPortal: React.FC<MyPortalProps> = ({
         clinicianName={clinicianName}
         clientId={clientData?.id || null}
         onAppointmentBooked={handleBookingComplete}
+      />
+
+      <VideoChat 
+        isOpen={isVideoChatOpen}
+        onClose={handleCloseVideoChat}
+        meetingUrl={currentMeetingUrl}
+        appointmentId={currentAppointmentId}
       />
     </div>
   );

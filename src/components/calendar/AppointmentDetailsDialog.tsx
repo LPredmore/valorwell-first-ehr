@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -24,6 +23,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import VideoChat from '../video/VideoChat';
+import { getOrCreateAppointmentRoom } from '@/integrations/daily/dailyService';
 
 interface AppointmentDetailsDialogProps {
   isOpen: boolean;
@@ -51,6 +52,9 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
   const { toast } = useToast();
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isVideoChatOpen, setIsVideoChatOpen] = useState(false);
+  const [currentMeetingUrl, setCurrentMeetingUrl] = useState<string | null>(null);
+  const [isLoadingSession, setIsLoadingSession] = useState(false);
 
   if (!appointment) return null;
 
@@ -101,6 +105,46 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
       setIsDeleting(false);
       setIsCancelDialogOpen(false);
     }
+  };
+
+  const handleStartSession = async () => {
+    try {
+      setIsLoadingSession(true);
+      
+      toast({
+        title: "Starting Session",
+        description: "Preparing your video call...",
+      });
+      
+      const meetingUrl = await getOrCreateAppointmentRoom(appointment.id);
+      
+      if (!meetingUrl) {
+        toast({
+          title: "Error",
+          description: "Could not start video session. Please try again.",
+          variant: "destructive"
+        });
+        setIsLoadingSession(false);
+        return;
+      }
+      
+      setCurrentMeetingUrl(meetingUrl);
+      setIsVideoChatOpen(true);
+    } catch (error) {
+      console.error('Error starting session:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start video session. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingSession(false);
+    }
+  };
+
+  const handleCloseVideoChat = () => {
+    setIsVideoChatOpen(false);
+    setCurrentMeetingUrl(null);
   };
 
   return (
@@ -168,8 +212,11 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
               <Button variant="outline" onClick={onClose}>
                 Close
               </Button>
-              <Button>
-                Start Session
+              <Button 
+                onClick={handleStartSession}
+                disabled={isLoadingSession}
+              >
+                {isLoadingSession ? "Connecting..." : "Start Session"}
               </Button>
             </div>
           </DialogFooter>
@@ -196,6 +243,13 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <VideoChat 
+        isOpen={isVideoChatOpen}
+        onClose={handleCloseVideoChat}
+        meetingUrl={currentMeetingUrl}
+        appointmentId={appointment.id}
+      />
     </>
   );
 };
