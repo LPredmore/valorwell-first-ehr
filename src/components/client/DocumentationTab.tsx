@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { BarChart2, ClipboardCheck, FileText } from "lucide-react";
 import TreatmentPlanTemplate from "@/components/templates/TreatmentPlanTemplate";
-import SessionNoteTemplate from "@/components/ui/SessionNoteTemplate";
+import SessionNoteTemplate from "@/components/templates/SessionNoteTemplate"; // Changed import path here
 import { useClinicianData } from "@/hooks/useClinicianData";
 import { ClientDetails } from "@/types/client";
 
