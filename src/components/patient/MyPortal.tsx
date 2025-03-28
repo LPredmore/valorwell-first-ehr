@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -89,12 +88,15 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const handleStartSession = async (appointmentId: string | number) => {
     setIsLoadingVideoSession(true);
     try {
+      console.log('Starting session for appointment:', appointmentId);
       const result = await getOrCreateVideoRoom(appointmentId.toString());
       
       if (!result.success || !result.url) {
-        throw new Error(result.error || 'Failed to create video room');
+        console.error('Error result from getOrCreateVideoRoom:', result);
+        throw new Error(result.error?.message || result.error || 'Failed to create video room');
       }
       
+      console.log('Video room URL obtained:', result.url);
       setVideoRoomUrl(result.url);
       setIsVideoSessionOpen(true);
       
@@ -106,7 +108,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
       console.error('Error starting video session:', error);
       toast({
         title: "Error",
-        description: "Failed to start the video session. Please try again.",
+        description: error?.message || "Failed to start the video session. Please try again.",
         variant: "destructive"
       });
     } finally {

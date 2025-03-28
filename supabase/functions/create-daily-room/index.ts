@@ -41,6 +41,29 @@ serve(async (req) => {
     // Create a new room in Daily.co
     const roomName = `appointment-${appointmentId}`;
     
+    // First check if room already exists
+    console.log('Checking if Daily.co room exists:', roomName);
+    const checkResponse = await fetch(`https://api.daily.co/v1/rooms/${roomName}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${DAILY_API_KEY}`
+      }
+    });
+    
+    if (checkResponse.ok) {
+      // Room exists, return its URL
+      const roomData = await checkResponse.json();
+      console.log('Room already exists, returning URL:', roomData.url);
+      return new Response(
+        JSON.stringify({ url: roomData.url }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    // Room doesn't exist, create it
     // Set room properties
     const roomProperties = {
       name: roomName,
@@ -69,6 +92,30 @@ serve(async (req) => {
     
     if (!response.ok) {
       console.error('Daily.co API error:', data);
+      
+      // Check if this is a "room already exists" error
+      if (data.info && data.info.includes('already exists')) {
+        // Try to get the room directly
+        const getResponse = await fetch(`https://api.daily.co/v1/rooms/${roomName}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${DAILY_API_KEY}`
+          }
+        });
+        
+        if (getResponse.ok) {
+          const roomData = await getResponse.json();
+          console.log('Retrieved existing room:', roomData.url);
+          return new Response(
+            JSON.stringify({ url: roomData.url }),
+            { 
+              status: 200, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+      }
+      
       return new Response(
         JSON.stringify({ error: 'Failed to create Daily.co room', details: data }),
         { 
