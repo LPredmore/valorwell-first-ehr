@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import {
-  Card, 
+  Card,
   CardContent,
   CardDescription,
   CardHeader,
@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { BarChart2, ClipboardCheck, FileText } from "lucide-react";
 import TreatmentPlanTemplate from "@/components/templates/TreatmentPlanTemplate";
-import SessionNoteTemplate from "@/components/templates/SessionNoteTemplate";
+import SessionNoteTemplate from "@/components/ui/SessionNoteTemplate";
 import { useClinicianData } from "@/hooks/useClinicianData";
 import { ClientDetails } from "@/types/client";
 
@@ -30,8 +30,6 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
   const handleCloseSessionNote = () => {
     setShowSessionNoteTemplate(false);
   };
-
-  console.log("DocumentationTab clientData:", clientData); // Add logging to debug
 
   return (
     <div className="grid grid-cols-1 gap-6">
@@ -76,7 +74,6 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
             clinicianName={clinicianData?.clinician_professional_name || ''}
             clientName={`${clientData?.client_first_name || ''} ${clientData?.client_last_name || ''}`}
             clientDob={clientData?.client_date_of_birth || ''}
-            clientData={clientData}
           />
         </div>
       )}
