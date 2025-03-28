@@ -20,55 +20,71 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomUrl, isOpen, onClose }) => {
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   
-  // Add a timeout to automatically hide the loading spinner if it takes too long
+  // Reset loading state when the component opens
   useEffect(() => {
     if (!isOpen) return;
     
-    // Reset state when component opens
+    console.log('VideoChat opened, resetting state');
     setIsLoading(true);
     setError(null);
     
     if (!roomUrl) {
+      console.error('No room URL provided');
       setError('No video room URL provided');
       setIsLoading(false);
       return;
     }
     
-    // Add a safety timeout to hide the spinner after 15 seconds
-    // in case the load event doesn't fire for some reason
+    // Force hide loading spinner after 8 seconds
+    // This ensures the UI is usable even if load events don't fire correctly
     const timeoutId = setTimeout(() => {
       if (isLoading) {
-        console.log('Video chat load timeout reached, hiding spinner');
+        console.log('Video chat load timeout reached, forcing spinner to hide');
         setIsLoading(false);
       }
-    }, 15000);
+    }, 8000);
     
-    return () => clearTimeout(timeoutId);
-  }, [isOpen, roomUrl, isLoading]);
+    return () => {
+      console.log('Cleaning up VideoChat effects');
+      clearTimeout(timeoutId);
+    };
+  }, [isOpen, roomUrl]);
 
+  // Handle iframe loading
   useEffect(() => {
-    if (!roomUrl) {
-      setError('No video room URL provided');
-      setIsLoading(false);
-      return;
-    }
+    if (!roomUrl || !isOpen) return;
 
-    // Setup iframe load handler
+    console.log('Setting up iframe load handlers');
+    
+    // Use multiple methods to detect when the iframe is loaded
     const handleIframeLoad = () => {
-      console.log('Video iframe loaded');
+      console.log('Video iframe loaded via addEventListener');
       setIsLoading(false);
     };
 
+    const handleIframeMessage = (event: MessageEvent) => {
+      // Listen for messages from Daily.co iframe that might indicate it's ready
+      if (event.origin.includes('daily.co') && event.data) {
+        console.log('Received message from Daily.co iframe', typeof event.data);
+        // After receiving any message from daily.co, consider it loaded
+        setIsLoading(false);
+      }
+    };
+
+    // Add event listeners
     if (iframeRef.current) {
       iframeRef.current.addEventListener('load', handleIframeLoad);
+      window.addEventListener('message', handleIframeMessage);
     }
 
     return () => {
+      // Clean up event listeners
       if (iframeRef.current) {
         iframeRef.current.removeEventListener('load', handleIframeLoad);
       }
+      window.removeEventListener('message', handleIframeMessage);
     };
-  }, [roomUrl]);
+  }, [roomUrl, isOpen]);
 
   const handleClose = () => {
     // Cleanup and close
@@ -129,7 +145,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomUrl, isOpen, onClose }) => {
       </CardHeader>
       <CardContent className="p-0 relative h-[450px]">
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 z-10">
+          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 z-10 pointer-events-none">
             <Loader2 className="h-8 w-8 text-white animate-spin" />
           </div>
         )}
@@ -147,7 +163,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomUrl, isOpen, onClose }) => {
             allow="camera; microphone; fullscreen; display-capture"
             className="w-full h-full border-0"
             onLoad={() => {
-              console.log('Iframe onLoad event fired');
+              console.log('Iframe onLoad event fired directly');
               setIsLoading(false);
             }}
           ></iframe>
