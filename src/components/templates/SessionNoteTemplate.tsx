@@ -77,7 +77,12 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     
     // Plan and signature
     nextTreatmentPlanUpdate: '',
-    signature: ''
+    
+    // Additional fields
+    mood: '',
+    substanceAbuseRisk: '',
+    suicidalIdeation: '',
+    homicidalIdeation: ''
   });
   
   // State to track when fields are in "Other" mode
@@ -140,7 +145,13 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         sessionNarrative: clientData.client_sessionnarrative || '',
         
         // Plan fields
-        nextTreatmentPlanUpdate: clientData.client_nexttreatmentplanupdate || ''
+        nextTreatmentPlanUpdate: clientData.client_nexttreatmentplanupdate || '',
+        
+        // Additional fields
+        mood: clientData.client_mood || '',
+        substanceAbuseRisk: clientData.client_substanceabuserisk || '',
+        suicidalIdeation: clientData.client_suicidalideation || '',
+        homicidalIdeation: clientData.client_homicidalideation || ''
       }));
       
       // Set edit modes based on client data values
@@ -233,6 +244,12 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         
         // Plan
         client_nexttreatmentplanupdate: formState.nextTreatmentPlanUpdate,
+        
+        // Additional fields
+        client_mood: formState.mood,
+        client_substanceabuserisk: formState.substanceAbuseRisk,
+        client_suicidalideation: formState.suicidalIdeation,
+        client_homicidalideation: formState.homicidalIdeation
       };
 
       const { error } = await supabase
