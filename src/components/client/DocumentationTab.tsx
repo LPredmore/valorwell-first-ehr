@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   Card,
@@ -10,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { BarChart2, ClipboardCheck, FileText } from "lucide-react";
 import TreatmentPlanTemplate from "@/components/templates/TreatmentPlanTemplate";
-import SessionNoteTemplate from "@/components/templates/SessionNoteTemplate"; // Changed import path here
+import SessionNoteTemplate from "@/components/templates/SessionNoteTemplate";
 import { useClinicianData } from "@/hooks/useClinicianData";
 import { ClientDetails } from "@/types/client";
 
@@ -74,6 +73,7 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
             clinicianName={clinicianData?.clinician_professional_name || ''}
             clientName={`${clientData?.client_first_name || ''} ${clientData?.client_last_name || ''}`}
             clientDob={clientData?.client_date_of_birth || ''}
+            clientData={clientData}
           />
         </div>
       )}
