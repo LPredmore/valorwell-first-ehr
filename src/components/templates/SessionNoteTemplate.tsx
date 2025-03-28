@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
+import { DiagnosisSelector } from '@/components/DiagnosisSelector';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClientDetails } from '@/types/client';
@@ -272,6 +273,19 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     }
   };
 
+  // Helper function to determine if a field should be read-only
+  const isReadOnlyField = (fieldName: string) => {
+    const readOnlyFields = [
+      'patientName', 'patientDOB', 'clinicianName', 'diagnosis', 
+      'planType', 'treatmentFrequency', 'sessionDate',
+      'primaryObjective', 'intervention1', 'intervention2',
+      'secondaryObjective', 'intervention3', 'intervention4',
+      'tertiaryObjective', 'intervention5', 'intervention6',
+      'problemNarrative', 'treatmentGoalNarrative', 'nextTreatmentPlanUpdate'
+    ];
+    return readOnlyFields.includes(fieldName);
+  };
+
   return (
     <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-2">
@@ -297,6 +311,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
               placeholder="Enter patient name" 
               value={formState.patientName} 
               onChange={(e) => handleChange('patientName', e.target.value)}
+              readOnly
+              className="bg-gray-100"
             />
           </div>
           <div>
@@ -305,6 +321,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
               placeholder="MM/DD/YYYY" 
               value={formState.patientDOB} 
               onChange={(e) => handleChange('patientDOB', e.target.value)}
+              readOnly
+              className="bg-gray-100"
             />
           </div>
           <div>
@@ -313,6 +331,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
               placeholder="Enter clinician name" 
               value={formState.clinicianName} 
               onChange={(e) => handleChange('clinicianName', e.target.value)}
+              readOnly
+              className="bg-gray-100"
             />
           </div>
         </div>
@@ -324,6 +344,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
               placeholder="Select diagnosis code" 
               value={formState.diagnosis} 
               onChange={(e) => handleChange('diagnosis', e.target.value)}
+              readOnly
+              className="bg-gray-100"
             />
           </div>
           <div>
@@ -332,6 +354,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
               placeholder="Select plan length" 
               value={formState.planType} 
               onChange={(e) => handleChange('planType', e.target.value)}
+              readOnly
+              className="bg-gray-100"
             />
           </div>
           <div>
@@ -340,6 +364,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
               placeholder="Select frequency" 
               value={formState.treatmentFrequency} 
               onChange={(e) => handleChange('treatmentFrequency', e.target.value)}
+              readOnly
+              className="bg-gray-100"
             />
           </div>
         </div>
@@ -352,6 +378,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
               value={formState.sessionDate} 
               onChange={(e) => handleChange('sessionDate', e.target.value)}
               placeholder="Select date"
+              readOnly
+              className="bg-gray-100"
             />
           </div>
           <div>
@@ -704,9 +732,10 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-1">Primary Objective</label>
           <Textarea 
             placeholder="Describe the primary objective" 
-            className="min-h-[100px]" 
+            className="min-h-[100px] bg-gray-100" 
             value={formState.primaryObjective} 
             onChange={(e) => handleChange('primaryObjective', e.target.value)}
+            readOnly
           />
         </div>
 
@@ -717,6 +746,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
               placeholder="Describe intervention" 
               value={formState.intervention1} 
               onChange={(e) => handleChange('intervention1', e.target.value)}
+              readOnly
+              className="bg-gray-100"
             />
           </div>
           <div>
@@ -725,6 +756,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
               placeholder="Describe intervention" 
               value={formState.intervention2} 
               onChange={(e) => handleChange('intervention2', e.target.value)}
+              readOnly
+              className="bg-gray-100"
             />
           </div>
         </div>
@@ -733,9 +766,10 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Objective</label>
           <Textarea 
             placeholder="Describe the secondary objective" 
-            className="min-h-[100px]" 
+            className="min-h-[100px] bg-gray-100" 
             value={formState.secondaryObjective} 
             onChange={(e) => handleChange('secondaryObjective', e.target.value)}
+            readOnly
           />
         </div>
 
@@ -746,6 +780,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
               placeholder="Describe intervention" 
               value={formState.intervention3} 
               onChange={(e) => handleChange('intervention3', e.target.value)}
+              readOnly
+              className="bg-gray-100"
             />
           </div>
           <div>
@@ -754,6 +790,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
               placeholder="Describe intervention" 
               value={formState.intervention4} 
               onChange={(e) => handleChange('intervention4', e.target.value)}
+              readOnly
+              className="bg-gray-100"
             />
           </div>
         </div>
@@ -762,9 +800,10 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-1">Tertiary Objective</label>
           <Textarea 
             placeholder="Describe the tertiary objective" 
-            className="min-h-[100px]" 
+            className="min-h-[100px] bg-gray-100" 
             value={formState.tertiaryObjective} 
             onChange={(e) => handleChange('tertiaryObjective', e.target.value)}
+            readOnly
           />
         </div>
 
@@ -775,6 +814,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
               placeholder="Describe intervention" 
               value={formState.intervention5} 
               onChange={(e) => handleChange('intervention5', e.target.value)}
+              readOnly
+              className="bg-gray-100"
             />
           </div>
           <div>
@@ -783,6 +824,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
               placeholder="Describe intervention" 
               value={formState.intervention6} 
               onChange={(e) => handleChange('intervention6', e.target.value)}
+              readOnly
+              className="bg-gray-100"
             />
           </div>
         </div>
@@ -833,9 +876,10 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-1">Problem Narrative</label>
           <Textarea 
             placeholder="Describe the problem narrative" 
-            className="min-h-[100px]" 
+            className="min-h-[100px] bg-gray-100" 
             value={formState.problemNarrative} 
             onChange={(e) => handleChange('problemNarrative', e.target.value)}
+            readOnly
           />
         </div>
 
@@ -843,9 +887,10 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Goal Narrative</label>
           <Textarea 
             placeholder="Describe the treatment goals" 
-            className="min-h-[100px]" 
+            className="min-h-[100px] bg-gray-100" 
             value={formState.treatmentGoalNarrative} 
             onChange={(e) => handleChange('treatmentGoalNarrative', e.target.value)}
+            readOnly
           />
         </div>
 
@@ -867,6 +912,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             placeholder="When will this plan be reviewed next" 
             value={formState.nextTreatmentPlanUpdate} 
             onChange={(e) => handleChange('nextTreatmentPlanUpdate', e.target.value)}
+            readOnly
+            className="bg-gray-100"
           />
         </div>
 
