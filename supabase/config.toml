@@ -2,5 +2,5 @@
 project_id = "gqlkritspnhjxfejvgfg"
 [functions.create-daily-room]
 verify_jwt = true
-[functions.getAvailabilitySettings]
+[functions."getAvailabilitySettings"]
 verify_jwt = true
