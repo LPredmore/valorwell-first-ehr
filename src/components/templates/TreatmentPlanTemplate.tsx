@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,7 +35,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
     clientName: clientName || `${clientData?.client_first_name || ''} ${clientData?.client_last_name || ''}`,
     clientDob: clientDob || clientData?.client_date_of_birth || '',
     clinicianName: clinicianName || '',
-    startDate: clientData?.client_treatmentplan_startdate ? new Date(clientData.client_treatmentplan_startdate) : new Date(),
+    startDate: new Date(),
     planLength: clientData?.client_planlength || '',
     treatmentFrequency: clientData?.client_treatmentfrequency || '',
     diagnosis: clientData?.client_diagnosis ? clientData.client_diagnosis.join(', ') : '',
@@ -62,7 +61,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         clientName: `${clientData.client_first_name || ''} ${clientData.client_last_name || ''}`,
         clientDob: clientData.client_date_of_birth || '',
         clinicianName: clinicianName || '',
-        startDate: clientData.client_treatmentplan_startdate ? new Date(clientData.client_treatmentplan_startdate) : new Date(),
+        startDate: new Date(),
         planLength: clientData.client_planlength || '',
         treatmentFrequency: clientData.client_treatmentfrequency || '',
         diagnosis: clientData.client_diagnosis ? clientData.client_diagnosis.join(', ') : '',
@@ -115,8 +114,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         client_intervention5: formState.intervention5,
         client_intervention6: formState.intervention6,
         client_nexttreatmentplanupdate: formState.nextUpdate,
-        client_privatenote: formState.privateNote,
-        client_treatmentplan_startdate: formState.startDate ? formState.startDate.toISOString().split('T')[0] : null
+        client_privatenote: formState.privateNote
       };
 
       // Update client in database
