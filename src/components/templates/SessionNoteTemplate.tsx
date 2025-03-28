@@ -29,6 +29,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   clientDob = '',
   clientData
 }) => {
+  console.log("SessionNoteTemplate received clientData:", clientData); // Debug logging
+
   const [formState, setFormState] = useState({
     sessionDate: '',
     medications: '',
@@ -83,6 +85,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
 
   useEffect(() => {
     if (clientData) {
+      console.log("Populating form state with client data:", clientData); // Debug logging
+      
       setFormState(prevState => ({
         ...prevState,
         medications: clientData.client_medications || '',
@@ -161,6 +165,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     }
 
     try {
+      console.log("Saving session note for client ID:", clientData.id); // Debug logging
+      console.log("Form state being saved:", formState); // Debug logging
+      
       const updates = {
         client_medications: formState.medications,
         client_personsinattendance: formState.personsInAttendance,

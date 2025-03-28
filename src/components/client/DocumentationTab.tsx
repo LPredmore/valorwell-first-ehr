@@ -1,6 +1,7 @@
+
 import React, { useState } from "react";
 import {
-  Card,
+  Card, 
   CardContent,
   CardDescription,
   CardHeader,
@@ -29,6 +30,8 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
   const handleCloseSessionNote = () => {
     setShowSessionNoteTemplate(false);
   };
+
+  console.log("DocumentationTab clientData:", clientData); // Add logging to debug
 
   return (
     <div className="grid grid-cols-1 gap-6">
