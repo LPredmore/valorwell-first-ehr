@@ -1,7 +1,8 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 // Constants
-const DAILY_API_KEY = process.env.VITE_DAILY_API_KEY || '';
+const DAILY_API_KEY = import.meta.env.VITE_DAILY_API_KEY || '';
 const DAILY_API_URL = 'https://api.daily.co/v1';
 
 // Types
