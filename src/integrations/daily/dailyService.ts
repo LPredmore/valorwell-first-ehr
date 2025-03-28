@@ -1,8 +1,6 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 // Constants
-const DAILY_API_KEY = import.meta.env.VITE_DAILY_API_KEY || '';
 const DAILY_API_URL = 'https://api.daily.co/v1';
 
 // Types
@@ -30,6 +28,8 @@ export interface DailyRoom {
  */
 export const createDailyRoom = async (config: DailyRoomConfig = {}): Promise<DailyRoom | null> => {
   try {
+    console.log('Creating Daily room with config:', JSON.stringify(config));
+    
     // Use the Edge Function to create a room - this keeps our API key secure
     const { data, error } = await supabase.functions.invoke('create-daily-room', {
       body: { config }
@@ -40,6 +40,7 @@ export const createDailyRoom = async (config: DailyRoomConfig = {}): Promise<Dai
       return null;
     }
 
+    console.log('Daily room created successfully:', data);
     return data as DailyRoom;
   } catch (error) {
     console.error('Exception creating Daily room:', error);
@@ -52,6 +53,8 @@ export const createDailyRoom = async (config: DailyRoomConfig = {}): Promise<Dai
  */
 export const getOrCreateAppointmentRoom = async (appointmentId: string): Promise<string | null> => {
   try {
+    console.log(`Getting or creating room for appointment: ${appointmentId}`);
+    
     // Check if the appointment already has a meeting URL
     const { data: appointment, error: fetchError } = await supabase
       .from('appointments')
@@ -66,9 +69,12 @@ export const getOrCreateAppointmentRoom = async (appointmentId: string): Promise
 
     // If there's already a meeting URL, return it
     if (appointment?.meeting_url) {
+      console.log('Existing meeting URL found:', appointment.meeting_url);
       return appointment.meeting_url;
     }
 
+    console.log('No existing meeting URL found, creating new room');
+    
     // Create a new room
     const roomConfig: DailyRoomConfig = {
       name: `appointment-${appointmentId}`,
@@ -87,6 +93,8 @@ export const getOrCreateAppointmentRoom = async (appointmentId: string): Promise
       return null;
     }
 
+    console.log('Room created, updating appointment with meeting URL:', room.url);
+    
     // Update the appointment with the meeting URL
     const { error: updateError } = await supabase
       .from('appointments')
@@ -98,6 +106,7 @@ export const getOrCreateAppointmentRoom = async (appointmentId: string): Promise
       return null;
     }
 
+    console.log('Appointment updated with meeting URL');
     return room.url;
   } catch (error) {
     console.error('Exception in getOrCreateAppointmentRoom:', error);

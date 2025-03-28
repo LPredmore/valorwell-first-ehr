@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 interface VideoChatProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ const VideoChat: React.FC<VideoChatProps> = ({
   const { toast } = useToast();
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -45,16 +47,36 @@ const VideoChat: React.FC<VideoChatProps> = ({
   }, [isOpen, meetingUrl, toast]);
 
   const handleIframeLoad = () => {
+    console.log('Video iframe loaded successfully');
     setIframeLoaded(true);
+    setRetrying(false);
   };
 
   const handleIframeError = () => {
+    console.error('Failed to load video iframe');
     setError('Failed to load the video session.');
+    setRetrying(false);
     toast({
       title: "Connection Error",
       description: "Failed to connect to the video session",
       variant: "destructive"
     });
+  };
+
+  const handleRetry = () => {
+    console.log('Retrying video connection...');
+    setRetrying(true);
+    setError(null);
+    // Force a refresh of the iframe
+    setTimeout(() => {
+      setIframeLoaded(false);
+      setTimeout(() => {
+        const iframe = document.querySelector('iframe');
+        if (iframe) {
+          iframe.src = meetingUrl + '?t=' + new Date().getTime();
+        }
+      }, 100);
+    }, 500);
   };
 
   const handleEndCall = () => {
@@ -84,12 +106,22 @@ const VideoChat: React.FC<VideoChatProps> = ({
             <div className="absolute inset-0 flex items-center justify-center text-white">
               <div className="text-center p-6 max-w-md">
                 <p className="mb-4">{error}</p>
-                <Button onClick={onClose}>Close</Button>
+                {retrying ? (
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    <span>Retrying...</span>
+                  </div>
+                ) : (
+                  <div className="space-x-3">
+                    <Button onClick={handleRetry}>Retry</Button>
+                    <Button variant="outline" onClick={onClose}>Close</Button>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
             <iframe
-              src={meetingUrl}
+              src={`${meetingUrl}?t=${new Date().getTime()}`}
               allow="camera; microphone; fullscreen; speaker; display-capture"
               className={`w-full h-full border-0 ${iframeLoaded ? 'opacity-100' : 'opacity-0'}`}
               onLoad={handleIframeLoad}
@@ -100,6 +132,7 @@ const VideoChat: React.FC<VideoChatProps> = ({
           {!iframeLoaded && !error && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="animate-pulse text-white text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3" />
                 <p>Connecting to video session...</p>
                 <p className="text-sm mt-2">This may take a few moments</p>
               </div>

@@ -28,12 +28,20 @@ serve(async (req) => {
   }
 
   try {
-    if (!DAILY_API_KEY) {
-      throw new Error('DAILY_API_KEY environment variable is not set');
+    console.log('Starting create-daily-room function...');
+    
+    if (!DAILY_API_KEY || DAILY_API_KEY.trim() === '') {
+      console.error('DAILY_API_KEY environment variable is not set or is empty');
+      throw new Error('DAILY_API_KEY environment variable is not set or is empty');
     }
 
     // Parse request body
-    const { config = {} } = await req.json() as { config: DailyRoomConfig };
+    const requestData = await req.json().catch(err => {
+      console.error('Error parsing request JSON:', err);
+      throw new Error('Invalid JSON in request body');
+    });
+    
+    const { config = {} } = requestData as { config: DailyRoomConfig };
     
     // Create a room name if not provided
     if (!config.name) {
@@ -41,8 +49,10 @@ serve(async (req) => {
     }
 
     console.log(`Creating Daily.co room with name: ${config.name}`);
+    console.log('Room config:', JSON.stringify(config));
     
     // Call Daily.co API to create a room
+    console.log('Making request to Daily.co API...');
     const response = await fetch(`${DAILY_API_URL}/rooms`, {
       method: 'POST',
       headers: {
@@ -52,13 +62,16 @@ serve(async (req) => {
       body: JSON.stringify(config)
     });
 
+    const responseText = await response.text();
+    console.log(`Daily.co API response status: ${response.status}`);
+    console.log(`Daily.co API response body: ${responseText}`);
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Daily.co API error: ${response.status} ${errorText}`);
-      throw new Error(`Failed to create Daily.co room: ${response.status} ${errorText}`);
+      console.error(`Daily.co API error: ${response.status} ${responseText}`);
+      throw new Error(`Failed to create Daily.co room: ${response.status} ${responseText}`);
     }
 
-    const room = await response.json();
+    const room = JSON.parse(responseText);
     console.log(`Room created successfully: ${room.name}`);
 
     return new Response(JSON.stringify(room), {
@@ -68,7 +81,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in create-daily-room:', error.message);
     
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      details: error.stack || 'No stack trace available'
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500
     });
