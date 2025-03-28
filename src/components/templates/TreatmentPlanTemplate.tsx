@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClientDetails } from "@/types/client";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, formatDateForDB } from "@/integrations/supabase/client";
 
 interface TreatmentPlanTemplateProps {
   onClose: () => void;
@@ -117,15 +118,22 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         client_privatenote: formState.privateNote
       };
 
+      console.log('Saving treatment plan with updates:', updates);
+      console.log('For client with ID:', clientData.id);
+
       // Update client in database
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('clients')
         .update(updates)
-        .eq('id', clientData.id);
+        .eq('id', clientData.id)
+        .select();
 
       if (error) {
+        console.error('Error from Supabase:', error);
         throw error;
       }
+
+      console.log('Treatment plan saved successfully:', data);
 
       toast({
         title: "Success",
@@ -164,6 +172,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                   placeholder="Enter client name" 
                   value={formState.clientName}
                   onChange={(e) => handleChange('clientName', e.target.value)}
+                  disabled // Read-only as this is bound to client data
                 />
               </div>
               <div className="space-y-2">
@@ -173,6 +182,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                   placeholder="MM/DD/YYYY" 
                   value={formState.clientDob}
                   onChange={(e) => handleChange('clientDob', e.target.value)}
+                  disabled // Read-only as this is bound to client data
                 />
               </div>
               <div className="space-y-2">
@@ -182,6 +192,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                   placeholder="Enter clinician name" 
                   value={formState.clinicianName}
                   onChange={(e) => handleChange('clinicianName', e.target.value)}
+                  disabled // Read-only as this is bound to clinician data
                 />
               </div>
             </div>
@@ -254,7 +265,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
               <Label htmlFor="diagnosis" className="text-sm text-valorwell-700 font-semibold">Diagnosis</Label>
               <Input 
                 id="diagnosis" 
-                placeholder="Select diagnosis code" 
+                placeholder="Enter diagnoses separated by commas" 
                 value={formState.diagnosis}
                 onChange={(e) => handleChange('diagnosis', e.target.value)}
               />
@@ -401,7 +412,12 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
           
           <div className="flex justify-end">
             <Button variant="outline" onClick={onClose} className="mr-2">Close</Button>
-            <Button className="bg-valorwell-700 hover:bg-valorwell-800" onClick={handleSave}>Save Treatment Plan</Button>
+            <Button 
+              className="bg-valorwell-700 hover:bg-valorwell-800" 
+              onClick={handleSave}
+            >
+              Save Treatment Plan
+            </Button>
           </div>
         </div>
       </CardContent>
