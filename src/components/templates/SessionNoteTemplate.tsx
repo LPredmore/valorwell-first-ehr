@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClientDetails } from '@/types/client';
-import { DiagnosisSelector } from '@/components/DiagnosisSelector';
 
 interface SessionNoteTemplateProps {
   onClose: () => void;
@@ -36,7 +36,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     patientName: '',
     patientDOB: '',
     clinicianName: '',
-    diagnosisCodes: [] as string[],
+    diagnosis: '',
     planType: '',
     treatmentFrequency: '',
     medications: '',
@@ -54,6 +54,10 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     orientation: '',
     memoryConcentration: '',
     insightJudgement: '',
+    mood: '',
+    substanceAbuseRisk: '',
+    suicidalIdeation: '',
+    homicidalIdeation: '',
     
     // Treatment objectives and interventions
     primaryObjective: '',
@@ -77,12 +81,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     
     // Plan and signature
     nextTreatmentPlanUpdate: '',
-    
-    // Additional fields
-    mood: '',
-    substanceAbuseRisk: '',
-    suicidalIdeation: '',
-    homicidalIdeation: ''
+    signature: ''
   });
   
   // State to track when fields are in "Other" mode
@@ -107,7 +106,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         patientName: `${clientData.client_first_name || ''} ${clientData.client_last_name || ''}`,
         patientDOB: clientData.client_date_of_birth || '',
         clinicianName: clinicianName || '',
-        diagnosisCodes: clientData.client_diagnosis || [],
+        diagnosis: (clientData.client_diagnosis || []).join(', '),
         planType: clientData.client_planlength || '',
         treatmentFrequency: clientData.client_treatmentfrequency || '',
         medications: clientData.client_medications || '',
@@ -124,6 +123,10 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         orientation: clientData.client_orientation || '',
         memoryConcentration: clientData.client_memoryconcentration || '',
         insightJudgement: clientData.client_insightjudgement || '',
+        mood: clientData.client_mood || '',
+        substanceAbuseRisk: clientData.client_substanceabuserisk || '',
+        suicidalIdeation: clientData.client_suicidalideation || '',
+        homicidalIdeation: clientData.client_homicidalideation || '',
         
         // Treatment objectives from client data
         primaryObjective: clientData.client_primaryobjective || '',
@@ -145,13 +148,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         sessionNarrative: clientData.client_sessionnarrative || '',
         
         // Plan fields
-        nextTreatmentPlanUpdate: clientData.client_nexttreatmentplanupdate || '',
-        
-        // Additional fields
-        mood: clientData.client_mood || '',
-        substanceAbuseRisk: clientData.client_substanceabuserisk || '',
-        suicidalIdeation: clientData.client_suicidalideation || '',
-        homicidalIdeation: clientData.client_homicidalideation || ''
+        nextTreatmentPlanUpdate: clientData.client_nexttreatmentplanupdate || ''
       }));
       
       // Set edit modes based on client data values
@@ -171,7 +168,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   }, [clientData, clinicianName]);
 
   // Universal handle change function for any field
-  const handleChange = (field: string, value: any) => {
+  const handleChange = (field: string, value: string) => {
     setFormState({
       ...formState,
       [field]: value
@@ -206,9 +203,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     try {
       // Map formState fields to database column names
       const updates = {
-        // Save diagnosis codes to client_diagnosis
-        client_diagnosis: formState.diagnosisCodes,
-        
         // Mental status exam fields
         client_appearance: formState.appearance,
         client_attitude: formState.attitude,
@@ -220,6 +214,10 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         client_orientation: formState.orientation,
         client_memoryconcentration: formState.memoryConcentration,
         client_insightjudgement: formState.insightJudgement,
+        client_mood: formState.mood,
+        client_substanceabuserisk: formState.substanceAbuseRisk,
+        client_suicidalideation: formState.suicidalIdeation,
+        client_homicidalideation: formState.homicidalIdeation,
         
         // Treatment objectives
         client_primaryobjective: formState.primaryObjective,
@@ -244,12 +242,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         
         // Plan
         client_nexttreatmentplanupdate: formState.nextTreatmentPlanUpdate,
-        
-        // Additional fields
-        client_mood: formState.mood,
-        client_substanceabuserisk: formState.substanceAbuseRisk,
-        client_suicidalideation: formState.suicidalIdeation,
-        client_homicidalideation: formState.homicidalIdeation
       };
 
       const { error } = await supabase
@@ -281,7 +273,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   };
 
   return (
-    
     <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-2">
         <div>
@@ -329,10 +320,10 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis</label>
-            <DiagnosisSelector
-              value={formState.diagnosisCodes}
-              onChange={(codes) => handleChange('diagnosisCodes', codes)}
-              placeholder="Search diagnosis codes..."
+            <Input 
+              placeholder="Select diagnosis code" 
+              value={formState.diagnosis} 
+              onChange={(e) => handleChange('diagnosis', e.target.value)}
             />
           </div>
           <div>
@@ -353,7 +344,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           </div>
         </div>
 
-        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Session Date</label>
@@ -392,7 +382,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         </div>
 
         <h4 className="text-md font-medium text-gray-800 mb-4">Mental Status Examination</h4>
-        
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
@@ -544,6 +533,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           </div>
         </div>
 
+        {/* Continue with the rest of the mental status fields and other sections */}
+        {/* ... remaining fields follow the same pattern */}
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Perception</label>
@@ -853,4 +845,53 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             placeholder="Describe the treatment goals" 
             className="min-h-[100px]" 
             value={formState.treatmentGoalNarrative} 
-            onChange={(e) => handleChange('treatmentGoalNarrative', e.target.value
+            onChange={(e) => handleChange('treatmentGoalNarrative', e.target.value)}
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Session Narrative</label>
+          <Textarea 
+            placeholder="Provide a detailed narrative of the session" 
+            className="min-h-[100px]" 
+            value={formState.sessionNarrative} 
+            onChange={(e) => handleChange('sessionNarrative', e.target.value)}
+          />
+        </div>
+
+        <h4 className="text-md font-medium text-gray-800 mb-4">Plan & Signature</h4>
+        
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Next Treatment Plan Update</label>
+          <Input 
+            placeholder="When will this plan be reviewed next" 
+            value={formState.nextTreatmentPlanUpdate} 
+            onChange={(e) => handleChange('nextTreatmentPlanUpdate', e.target.value)}
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Signature</label>
+          <Input 
+            placeholder="Digital signature" 
+            value={formState.signature} 
+            onChange={(e) => handleChange('signature', e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2 mt-6">
+        <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Close</Button>
+        <Button 
+          className="bg-valorwell-700 hover:bg-valorwell-800" 
+          onClick={handleSave}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Saving...' : 'Save Session Note'}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+export default SessionNoteTemplate;

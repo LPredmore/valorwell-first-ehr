@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ClientDetails } from "@/types/client";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, formatDateForDB } from "@/integrations/supabase/client";
+import { DiagnosisSelector } from "@/components/DiagnosisSelector";
 
 interface TreatmentPlanTemplateProps {
   onClose: () => void;
@@ -39,7 +39,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
     startDate: new Date(),
     planLength: clientData?.client_planlength || '',
     treatmentFrequency: clientData?.client_treatmentfrequency || '',
-    diagnosis: clientData?.client_diagnosis ? clientData.client_diagnosis.join(', ') : '',
+    diagnosisCodes: clientData?.client_diagnosis || [],
     problemNarrative: clientData?.client_problem || '',
     treatmentGoalNarrative: clientData?.client_treatmentgoal || '',
     primaryObjective: clientData?.client_primaryobjective || '',
@@ -65,7 +65,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         startDate: new Date(),
         planLength: clientData.client_planlength || '',
         treatmentFrequency: clientData.client_treatmentfrequency || '',
-        diagnosis: clientData.client_diagnosis ? clientData.client_diagnosis.join(', ') : '',
+        diagnosisCodes: clientData.client_diagnosis || [],
         problemNarrative: clientData.client_problem || '',
         treatmentGoalNarrative: clientData.client_treatmentgoal || '',
         primaryObjective: clientData.client_primaryobjective || '',
@@ -102,7 +102,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
       const updates = {
         client_planlength: formState.planLength,
         client_treatmentfrequency: formState.treatmentFrequency,
-        client_diagnosis: formState.diagnosis ? formState.diagnosis.split(',').map(d => d.trim()) : [],
+        client_diagnosis: formState.diagnosisCodes,
         client_problem: formState.problemNarrative,
         client_treatmentgoal: formState.treatmentGoalNarrative,
         client_primaryobjective: formState.primaryObjective,
@@ -263,11 +263,9 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
             
             <div className="space-y-2 mb-6">
               <Label htmlFor="diagnosis" className="text-sm text-valorwell-700 font-semibold">Diagnosis</Label>
-              <Input 
-                id="diagnosis" 
-                placeholder="Enter diagnoses separated by commas" 
-                value={formState.diagnosis}
-                onChange={(e) => handleChange('diagnosis', e.target.value)}
+              <DiagnosisSelector 
+                value={formState.diagnosisCodes}
+                onChange={(codes) => handleChange('diagnosisCodes', codes)}
               />
             </div>
             
