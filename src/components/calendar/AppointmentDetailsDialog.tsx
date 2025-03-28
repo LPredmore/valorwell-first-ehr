@@ -24,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import VideoChatDialog from '@/components/video/VideoChatDialog';
 
 interface AppointmentDetailsDialogProps {
   isOpen: boolean;
@@ -51,6 +52,7 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
   const { toast } = useToast();
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isVideoChatOpen, setIsVideoChatOpen] = useState(false);
 
   if (!appointment) return null;
 
@@ -101,6 +103,10 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
       setIsDeleting(false);
       setIsCancelDialogOpen(false);
     }
+  };
+
+  const handleStartSession = () => {
+    setIsVideoChatOpen(true);
   };
 
   return (
@@ -168,7 +174,7 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
               <Button variant="outline" onClick={onClose}>
                 Close
               </Button>
-              <Button>
+              <Button onClick={handleStartSession}>
                 Start Session
               </Button>
             </div>
@@ -196,6 +202,14 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {appointment && (
+        <VideoChatDialog
+          isOpen={isVideoChatOpen}
+          onClose={() => setIsVideoChatOpen(false)}
+          appointmentId={appointment.id}
+        />
+      )}
     </>
   );
 };
