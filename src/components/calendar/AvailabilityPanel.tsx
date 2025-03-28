@@ -108,11 +108,9 @@ console.error('Error fetching availability:', error);
 } else if (availabilityData && availabilityData.length > 0) {
 const newSchedule = [...weekSchedule];
 
-const { data: settingsData } = await supabase
-.from('availability_settings')
-.select('*')
-.eq('clinician_id', clinicianToQuery)
-.single();
+const { data: settingsData } = await supabase.functions.invoke('get-availability-settings', {
+  body: { clinicianId: clinicianToQuery }
+});
 
 if (settingsData) {
 setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
