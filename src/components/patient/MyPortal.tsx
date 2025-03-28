@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,6 @@ import AppointmentBookingDialog from './AppointmentBookingDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
-import VideoChatDialog from '@/components/video/VideoChatDialog';
 
 interface MyPortalProps {
   upcomingAppointments: Array<{
@@ -35,8 +33,6 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const [upcomingAppointments, setUpcomingAppointments] = useState(initialAppointments);
   const [refreshAppointments, setRefreshAppointments] = useState(0);
   const { toast } = useToast();
-  const [isVideoChatOpen, setIsVideoChatOpen] = useState(false);
-  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -86,8 +82,10 @@ const MyPortal: React.FC<MyPortalProps> = ({
   };
 
   const handleStartSession = (appointmentId: string | number) => {
-    setSelectedAppointmentId(String(appointmentId));
-    setIsVideoChatOpen(true);
+    toast({
+      title: "Feature Coming Soon",
+      description: "Video session functionality will be available soon.",
+    });
   };
 
   return (
@@ -224,14 +222,6 @@ const MyPortal: React.FC<MyPortalProps> = ({
         clientId={clientData?.id || null}
         onAppointmentBooked={handleBookingComplete}
       />
-
-      {selectedAppointmentId && (
-        <VideoChatDialog
-          isOpen={isVideoChatOpen}
-          onClose={() => setIsVideoChatOpen(false)}
-          appointmentId={selectedAppointmentId}
-        />
-      )}
     </div>
   );
 };
