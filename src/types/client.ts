@@ -1,3 +1,4 @@
+
 export interface ClientDetails {
   id: string;
   client_first_name: string | null;
@@ -53,6 +54,27 @@ export interface ClientDetails {
   client_intervention6: string | null;
   client_nexttreatmentplanupdate: string | null;
   client_privatenote: string | null;
+  // Session note specific fields
+  client_appearance: string | null;
+  client_attitude: string | null;
+  client_behavior: string | null;
+  client_speech: string | null;
+  client_affect: string | null;
+  client_thoughtprocess: string | null;
+  client_perception: string | null;
+  client_orientation: string | null;
+  client_memoryconcentration: string | null;
+  client_insightjudgement: string | null;
+  client_mood: string | null;
+  client_substanceabuserisk: string | null;
+  client_suicidalideation: string | null;
+  client_homicidalideation: string | null;
+  client_functioning: string | null;
+  client_prognosis: string | null;
+  client_progress: string | null;
+  client_sessionnarrative: string | null;
+  client_medications: string | null;
+  client_personsinattendance: string | null;
 }
 
 export interface Clinician {

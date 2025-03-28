@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,38 +11,80 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { ClientDetails } from '@/types/client';
 
 interface SessionNoteTemplateProps {
   onClose: () => void;
   clinicianName?: string;
-  clientName?: string;
-  clientDob?: string;
+  clientData?: ClientDetails | null;
 }
 
 const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({ 
   onClose,
   clinicianName = '',
-  clientName = '',
-  clientDob = ''
+  clientData = null
 }) => {
-  const [sessionDate, setSessionDate] = useState('');
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // State for the dropdown/input field values
-  const [appearance, setAppearance] = useState('');
-  const [attitude, setAttitude] = useState('');
-  const [behavior, setBehavior] = useState('');
-  const [speech, setSpeech] = useState('');
-  const [affect, setAffect] = useState('');
-  const [thoughtProcess, setThoughtProcess] = useState('');
-  const [perception, setPerception] = useState('');
-  const [orientation, setOrientation] = useState('');
-  const [memoryConcentration, setMemoryConcentration] = useState('');
-  const [insightJudgement, setInsightJudgement] = useState('');
-  const [substanceAbuseRisk, setSubstanceAbuseRisk] = useState('');
-  const [suicidalIdeation, setSuicidalIdeation] = useState('');
-  const [homicidalIdeation, setHomicidalIdeation] = useState('');
+  // Initialize form state with all fields from the session note
+  const [formState, setFormState] = useState({
+    // Basic session info
+    sessionDate: '',
+    patientName: '',
+    patientDOB: '',
+    clinicianName: '',
+    diagnosis: '',
+    planType: '',
+    treatmentFrequency: '',
+    medications: '',
+    sessionType: '',
+    personsInAttendance: '',
+    
+    // Mental status exam fields
+    appearance: '',
+    attitude: '',
+    behavior: '',
+    speech: '',
+    affect: '',
+    thoughtProcess: '',
+    perception: '',
+    orientation: '',
+    memoryConcentration: '',
+    insightJudgement: '',
+    mood: '',
+    substanceAbuseRisk: '',
+    suicidalIdeation: '',
+    homicidalIdeation: '',
+    
+    // Treatment objectives and interventions
+    primaryObjective: '',
+    intervention1: '',
+    intervention2: '',
+    secondaryObjective: '',
+    intervention3: '',
+    intervention4: '',
+    tertiaryObjective: '',
+    intervention5: '',
+    intervention6: '',
+    
+    // Session assessment
+    currentSymptoms: '',
+    functioning: '',
+    prognosis: '',
+    progress: '',
+    problemNarrative: '',
+    treatmentGoalNarrative: '',
+    sessionNarrative: '',
+    
+    // Plan and signature
+    nextTreatmentPlanUpdate: '',
+    signature: ''
+  });
   
-  // State to track if fields should be in edit mode
+  // State to track when fields are in "Other" mode
   const [editModes, setEditModes] = useState({
     appearance: false,
     attitude: false,
@@ -55,26 +98,177 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     insightJudgement: false
   });
 
-  // Helper function to toggle edit mode for a field
+  // Populate form with client data on initial load and when client data changes
+  useEffect(() => {
+    if (clientData) {
+      setFormState(prevState => ({
+        ...prevState,
+        patientName: `${clientData.client_first_name || ''} ${clientData.client_last_name || ''}`,
+        patientDOB: clientData.client_date_of_birth || '',
+        clinicianName: clinicianName || '',
+        diagnosis: (clientData.client_diagnosis || []).join(', '),
+        planType: clientData.client_planlength || '',
+        treatmentFrequency: clientData.client_treatmentfrequency || '',
+        medications: clientData.client_medications || '',
+        personsInAttendance: clientData.client_personsinattendance || '',
+        
+        // Mental status exam values from client data
+        appearance: clientData.client_appearance || '',
+        attitude: clientData.client_attitude || '',
+        behavior: clientData.client_behavior || '',
+        speech: clientData.client_speech || '',
+        affect: clientData.client_affect || '',
+        thoughtProcess: clientData.client_thoughtprocess || '',
+        perception: clientData.client_perception || '',
+        orientation: clientData.client_orientation || '',
+        memoryConcentration: clientData.client_memoryconcentration || '',
+        insightJudgement: clientData.client_insightjudgement || '',
+        mood: clientData.client_mood || '',
+        substanceAbuseRisk: clientData.client_substanceabuserisk || '',
+        suicidalIdeation: clientData.client_suicidalideation || '',
+        homicidalIdeation: clientData.client_homicidalideation || '',
+        
+        // Treatment objectives from client data
+        primaryObjective: clientData.client_primaryobjective || '',
+        secondaryObjective: clientData.client_secondaryobjective || '',
+        tertiaryObjective: clientData.client_tertiaryobjective || '',
+        intervention1: clientData.client_intervention1 || '',
+        intervention2: clientData.client_intervention2 || '',
+        intervention3: clientData.client_intervention3 || '',
+        intervention4: clientData.client_intervention4 || '',
+        intervention5: clientData.client_intervention5 || '',
+        intervention6: clientData.client_intervention6 || '',
+        
+        // Session assessment fields
+        functioning: clientData.client_functioning || '',
+        prognosis: clientData.client_prognosis || '',
+        progress: clientData.client_progress || '',
+        problemNarrative: clientData.client_problem || '',
+        treatmentGoalNarrative: clientData.client_treatmentgoal || '',
+        sessionNarrative: clientData.client_sessionnarrative || '',
+        
+        // Plan fields
+        nextTreatmentPlanUpdate: clientData.client_nexttreatmentplanupdate || ''
+      }));
+      
+      // Set edit modes based on client data values
+      setEditModes({
+        appearance: clientData.client_appearance && !['Normal Appearance & Grooming'].includes(clientData.client_appearance),
+        attitude: clientData.client_attitude && !['Calm & Cooperative'].includes(clientData.client_attitude),
+        behavior: clientData.client_behavior && !['No unusual behavior or psychomotor changes'].includes(clientData.client_behavior),
+        speech: clientData.client_speech && !['Normal rate/tone/volume w/out pressure'].includes(clientData.client_speech),
+        affect: clientData.client_affect && !['Normal range/congruent'].includes(clientData.client_affect),
+        thoughtProcess: clientData.client_thoughtprocess && !['Goal Oriented/Directed'].includes(clientData.client_thoughtprocess),
+        perception: clientData.client_perception && !['No Hallucinations or Delusions'].includes(clientData.client_perception),
+        orientation: clientData.client_orientation && !['Oriented x3'].includes(clientData.client_orientation),
+        memoryConcentration: clientData.client_memoryconcentration && !['Short & Long Term Intact'].includes(clientData.client_memoryconcentration),
+        insightJudgement: clientData.client_insightjudgement && !['Good'].includes(clientData.client_insightjudgement)
+      });
+    }
+  }, [clientData, clinicianName]);
+
+  // Universal handle change function for any field
+  const handleChange = (field: string, value: string) => {
+    setFormState({
+      ...formState,
+      [field]: value
+    });
+  };
+
+  // Toggle edit mode for mental status exam fields
   const toggleEditMode = (field: string, value: string) => {
     if (value === 'Other') {
       setEditModes({ ...editModes, [field]: true });
       // Clear the field when switching to edit mode
-      switch (field) {
-        case 'appearance': setAppearance(''); break;
-        case 'attitude': setAttitude(''); break;
-        case 'behavior': setBehavior(''); break;
-        case 'speech': setSpeech(''); break;
-        case 'affect': setAffect(''); break;
-        case 'thoughtProcess': setThoughtProcess(''); break;
-        case 'perception': setPerception(''); break;
-        case 'orientation': setOrientation(''); break;
-        case 'memoryConcentration': setMemoryConcentration(''); break;
-        case 'insightJudgement': setInsightJudgement(''); break;
-        default: break;
-      }
+      handleChange(field, '');
     } else {
       setEditModes({ ...editModes, [field]: false });
+      handleChange(field, value);
+    }
+  };
+
+  // Save the session note to the database
+  const handleSave = async () => {
+    if (!clientData?.id) {
+      toast({
+        title: "Error",
+        description: "No client ID found. Cannot save session note.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Map formState fields to database column names
+      const updates = {
+        // Mental status exam fields
+        client_appearance: formState.appearance,
+        client_attitude: formState.attitude,
+        client_behavior: formState.behavior,
+        client_speech: formState.speech,
+        client_affect: formState.affect,
+        client_thoughtprocess: formState.thoughtProcess,
+        client_perception: formState.perception,
+        client_orientation: formState.orientation,
+        client_memoryconcentration: formState.memoryConcentration,
+        client_insightjudgement: formState.insightJudgement,
+        client_mood: formState.mood,
+        client_substanceabuserisk: formState.substanceAbuseRisk,
+        client_suicidalideation: formState.suicidalIdeation,
+        client_homicidalideation: formState.homicidalIdeation,
+        
+        // Treatment objectives
+        client_primaryobjective: formState.primaryObjective,
+        client_secondaryobjective: formState.secondaryObjective,
+        client_tertiaryobjective: formState.tertiaryObjective,
+        client_intervention1: formState.intervention1,
+        client_intervention2: formState.intervention2,
+        client_intervention3: formState.intervention3,
+        client_intervention4: formState.intervention4,
+        client_intervention5: formState.intervention5,
+        client_intervention6: formState.intervention6,
+        
+        // Session assessment
+        client_functioning: formState.functioning,
+        client_prognosis: formState.prognosis,
+        client_progress: formState.progress,
+        client_problem: formState.problemNarrative,
+        client_treatmentgoal: formState.treatmentGoalNarrative,
+        client_sessionnarrative: formState.sessionNarrative,
+        client_medications: formState.medications,
+        client_personsinattendance: formState.personsInAttendance,
+        
+        // Plan
+        client_nexttreatmentplanupdate: formState.nextTreatmentPlanUpdate,
+      };
+
+      const { error } = await supabase
+        .from('clients')
+        .update(updates)
+        .eq('id', clientData.id);
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: "Session note saved successfully.",
+      });
+      
+      // Close the form after successful save
+      onClose();
+    } catch (error) {
+      console.error('Error saving session note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save session note.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -99,30 +293,54 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
-            <Input placeholder="Enter patient name" defaultValue={clientName} />
+            <Input 
+              placeholder="Enter patient name" 
+              value={formState.patientName} 
+              onChange={(e) => handleChange('patientName', e.target.value)}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Patient DOB</label>
-            <Input placeholder="MM/DD/YYYY" defaultValue={clientDob} />
+            <Input 
+              placeholder="MM/DD/YYYY" 
+              value={formState.patientDOB} 
+              onChange={(e) => handleChange('patientDOB', e.target.value)}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Clinician Name</label>
-            <Input placeholder="Enter clinician name" defaultValue={clinicianName} />
+            <Input 
+              placeholder="Enter clinician name" 
+              value={formState.clinicianName} 
+              onChange={(e) => handleChange('clinicianName', e.target.value)}
+            />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis</label>
-            <Input placeholder="Select diagnosis code" />
+            <Input 
+              placeholder="Select diagnosis code" 
+              value={formState.diagnosis} 
+              onChange={(e) => handleChange('diagnosis', e.target.value)}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Plan Type</label>
-            <Input placeholder="Select plan length" />
+            <Input 
+              placeholder="Select plan length" 
+              value={formState.planType} 
+              onChange={(e) => handleChange('planType', e.target.value)}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Frequency</label>
-            <Input placeholder="Select frequency" />
+            <Input 
+              placeholder="Select frequency" 
+              value={formState.treatmentFrequency} 
+              onChange={(e) => handleChange('treatmentFrequency', e.target.value)}
+            />
           </div>
         </div>
 
@@ -131,24 +349,36 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">Session Date</label>
             <Input 
               type="date" 
-              value={sessionDate} 
-              onChange={(e) => setSessionDate(e.target.value)}
+              value={formState.sessionDate} 
+              onChange={(e) => handleChange('sessionDate', e.target.value)}
               placeholder="Select date"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Medications</label>
-            <Input placeholder="List current medications" />
+            <Input 
+              placeholder="List current medications" 
+              value={formState.medications} 
+              onChange={(e) => handleChange('medications', e.target.value)}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Session Type</label>
-            <Input placeholder="Enter session type" />
+            <Input 
+              placeholder="Enter session type" 
+              value={formState.sessionType} 
+              onChange={(e) => handleChange('sessionType', e.target.value)}
+            />
           </div>
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">Person's in Attendance</label>
-          <Input placeholder="List all attendees" />
+          <Input 
+            placeholder="List all attendees" 
+            value={formState.personsInAttendance} 
+            onChange={(e) => handleChange('personsInAttendance', e.target.value)}
+          />
         </div>
 
         <h4 className="text-md font-medium text-gray-800 mb-4">Mental Status Examination</h4>
@@ -158,16 +388,16 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">Appearance</label>
             {editModes.appearance ? (
               <Input 
-                value={appearance}
-                onChange={(e) => setAppearance(e.target.value)}
+                value={formState.appearance}
+                onChange={(e) => handleChange('appearance', e.target.value)}
                 placeholder="Describe appearance"
                 className="w-full"
               />
             ) : (
-              <Select value={appearance} onValueChange={(value) => {
-                setAppearance(value);
-                toggleEditMode('appearance', value);
-              }}>
+              <Select 
+                value={formState.appearance} 
+                onValueChange={(value) => toggleEditMode('appearance', value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select appearance" />
                 </SelectTrigger>
@@ -182,16 +412,16 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">Attitude</label>
             {editModes.attitude ? (
               <Input 
-                value={attitude}
-                onChange={(e) => setAttitude(e.target.value)}
+                value={formState.attitude}
+                onChange={(e) => handleChange('attitude', e.target.value)}
                 placeholder="Describe attitude"
                 className="w-full"
               />
             ) : (
-              <Select value={attitude} onValueChange={(value) => {
-                setAttitude(value);
-                toggleEditMode('attitude', value);
-              }}>
+              <Select 
+                value={formState.attitude} 
+                onValueChange={(value) => toggleEditMode('attitude', value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select attitude" />
                 </SelectTrigger>
@@ -206,16 +436,16 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">Behavior</label>
             {editModes.behavior ? (
               <Input 
-                value={behavior}
-                onChange={(e) => setBehavior(e.target.value)}
+                value={formState.behavior}
+                onChange={(e) => handleChange('behavior', e.target.value)}
                 placeholder="Describe behavior"
                 className="w-full"
               />
             ) : (
-              <Select value={behavior} onValueChange={(value) => {
-                setBehavior(value);
-                toggleEditMode('behavior', value);
-              }}>
+              <Select 
+                value={formState.behavior} 
+                onValueChange={(value) => toggleEditMode('behavior', value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select behavior" />
                 </SelectTrigger>
@@ -233,16 +463,16 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">Speech</label>
             {editModes.speech ? (
               <Input 
-                value={speech}
-                onChange={(e) => setSpeech(e.target.value)}
+                value={formState.speech}
+                onChange={(e) => handleChange('speech', e.target.value)}
                 placeholder="Describe speech"
                 className="w-full"
               />
             ) : (
-              <Select value={speech} onValueChange={(value) => {
-                setSpeech(value);
-                toggleEditMode('speech', value);
-              }}>
+              <Select 
+                value={formState.speech} 
+                onValueChange={(value) => toggleEditMode('speech', value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select speech" />
                 </SelectTrigger>
@@ -257,16 +487,16 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">Affect</label>
             {editModes.affect ? (
               <Input 
-                value={affect}
-                onChange={(e) => setAffect(e.target.value)}
+                value={formState.affect}
+                onChange={(e) => handleChange('affect', e.target.value)}
                 placeholder="Describe affect"
                 className="w-full"
               />
             ) : (
-              <Select value={affect} onValueChange={(value) => {
-                setAffect(value);
-                toggleEditMode('affect', value);
-              }}>
+              <Select 
+                value={formState.affect} 
+                onValueChange={(value) => toggleEditMode('affect', value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select affect" />
                 </SelectTrigger>
@@ -281,16 +511,16 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">Thought Process</label>
             {editModes.thoughtProcess ? (
               <Input 
-                value={thoughtProcess}
-                onChange={(e) => setThoughtProcess(e.target.value)}
+                value={formState.thoughtProcess}
+                onChange={(e) => handleChange('thoughtProcess', e.target.value)}
                 placeholder="Describe thought process"
                 className="w-full"
               />
             ) : (
-              <Select value={thoughtProcess} onValueChange={(value) => {
-                setThoughtProcess(value);
-                toggleEditMode('thoughtProcess', value);
-              }}>
+              <Select 
+                value={formState.thoughtProcess} 
+                onValueChange={(value) => toggleEditMode('thoughtProcess', value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select thought process" />
                 </SelectTrigger>
@@ -303,21 +533,24 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           </div>
         </div>
 
+        {/* Continue with the rest of the mental status fields and other sections */}
+        {/* ... remaining fields follow the same pattern */}
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Perception</label>
             {editModes.perception ? (
               <Input 
-                value={perception}
-                onChange={(e) => setPerception(e.target.value)}
+                value={formState.perception}
+                onChange={(e) => handleChange('perception', e.target.value)}
                 placeholder="Describe perception"
                 className="w-full"
               />
             ) : (
-              <Select value={perception} onValueChange={(value) => {
-                setPerception(value);
-                toggleEditMode('perception', value);
-              }}>
+              <Select 
+                value={formState.perception} 
+                onValueChange={(value) => toggleEditMode('perception', value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select perception" />
                 </SelectTrigger>
@@ -332,16 +565,16 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">Orientation</label>
             {editModes.orientation ? (
               <Input 
-                value={orientation}
-                onChange={(e) => setOrientation(e.target.value)}
+                value={formState.orientation}
+                onChange={(e) => handleChange('orientation', e.target.value)}
                 placeholder="Describe orientation"
                 className="w-full"
               />
             ) : (
-              <Select value={orientation} onValueChange={(value) => {
-                setOrientation(value);
-                toggleEditMode('orientation', value);
-              }}>
+              <Select 
+                value={formState.orientation} 
+                onValueChange={(value) => toggleEditMode('orientation', value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select orientation" />
                 </SelectTrigger>
@@ -356,16 +589,16 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">Memory/Concentration</label>
             {editModes.memoryConcentration ? (
               <Input 
-                value={memoryConcentration}
-                onChange={(e) => setMemoryConcentration(e.target.value)}
+                value={formState.memoryConcentration}
+                onChange={(e) => handleChange('memoryConcentration', e.target.value)}
                 placeholder="Describe memory/concentration"
                 className="w-full"
               />
             ) : (
-              <Select value={memoryConcentration} onValueChange={(value) => {
-                setMemoryConcentration(value);
-                toggleEditMode('memoryConcentration', value);
-              }}>
+              <Select 
+                value={formState.memoryConcentration} 
+                onValueChange={(value) => toggleEditMode('memoryConcentration', value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select memory/concentration" />
                 </SelectTrigger>
@@ -383,16 +616,16 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">Insight/Judgement</label>
             {editModes.insightJudgement ? (
               <Input 
-                value={insightJudgement}
-                onChange={(e) => setInsightJudgement(e.target.value)}
+                value={formState.insightJudgement}
+                onChange={(e) => handleChange('insightJudgement', e.target.value)}
                 placeholder="Describe insight/judgement"
                 className="w-full"
               />
             ) : (
-              <Select value={insightJudgement} onValueChange={(value) => {
-                setInsightJudgement(value);
-                toggleEditMode('insightJudgement', value);
-              }}>
+              <Select 
+                value={formState.insightJudgement} 
+                onValueChange={(value) => toggleEditMode('insightJudgement', value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select insight/judgement" />
                 </SelectTrigger>
@@ -405,11 +638,18 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Mood</label>
-            <Input placeholder="Describe mood" />
+            <Input 
+              placeholder="Describe mood" 
+              value={formState.mood} 
+              onChange={(e) => handleChange('mood', e.target.value)}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Substance Abuse Risk</label>
-            <Select value={substanceAbuseRisk} onValueChange={(value) => setSubstanceAbuseRisk(value)}>
+            <Select 
+              value={formState.substanceAbuseRisk} 
+              onValueChange={(value) => handleChange('substanceAbuseRisk', value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select risk level" />
               </SelectTrigger>
@@ -426,7 +666,10 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Suicidal Ideation</label>
-            <Select value={suicidalIdeation} onValueChange={(value) => setSuicidalIdeation(value)}>
+            <Select 
+              value={formState.suicidalIdeation} 
+              onValueChange={(value) => handleChange('suicidalIdeation', value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select ideation level" />
               </SelectTrigger>
@@ -439,7 +682,10 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Homicidal Ideation</label>
-            <Select value={homicidalIdeation} onValueChange={(value) => setHomicidalIdeation(value)}>
+            <Select 
+              value={formState.homicidalIdeation} 
+              onValueChange={(value) => handleChange('homicidalIdeation', value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select ideation level" />
               </SelectTrigger>
@@ -456,49 +702,88 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">Primary Objective</label>
-          <Textarea placeholder="Describe the primary objective" className="min-h-[100px]" />
+          <Textarea 
+            placeholder="Describe the primary objective" 
+            className="min-h-[100px]" 
+            value={formState.primaryObjective} 
+            onChange={(e) => handleChange('primaryObjective', e.target.value)}
+          />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 1</label>
-            <Input placeholder="Describe intervention" />
+            <Input 
+              placeholder="Describe intervention" 
+              value={formState.intervention1} 
+              onChange={(e) => handleChange('intervention1', e.target.value)}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 2</label>
-            <Input placeholder="Describe intervention" />
+            <Input 
+              placeholder="Describe intervention" 
+              value={formState.intervention2} 
+              onChange={(e) => handleChange('intervention2', e.target.value)}
+            />
           </div>
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Objective</label>
-          <Textarea placeholder="Describe the secondary objective" className="min-h-[100px]" />
+          <Textarea 
+            placeholder="Describe the secondary objective" 
+            className="min-h-[100px]" 
+            value={formState.secondaryObjective} 
+            onChange={(e) => handleChange('secondaryObjective', e.target.value)}
+          />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 3</label>
-            <Input placeholder="Describe intervention" />
+            <Input 
+              placeholder="Describe intervention" 
+              value={formState.intervention3} 
+              onChange={(e) => handleChange('intervention3', e.target.value)}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 4</label>
-            <Input placeholder="Describe intervention" />
+            <Input 
+              placeholder="Describe intervention" 
+              value={formState.intervention4} 
+              onChange={(e) => handleChange('intervention4', e.target.value)}
+            />
           </div>
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">Tertiary Objective</label>
-          <Textarea placeholder="Describe the tertiary objective" className="min-h-[100px]" />
+          <Textarea 
+            placeholder="Describe the tertiary objective" 
+            className="min-h-[100px]" 
+            value={formState.tertiaryObjective} 
+            onChange={(e) => handleChange('tertiaryObjective', e.target.value)}
+          />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 5</label>
-            <Input placeholder="Describe intervention" />
+            <Input 
+              placeholder="Describe intervention" 
+              value={formState.intervention5} 
+              onChange={(e) => handleChange('intervention5', e.target.value)}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 6</label>
-            <Input placeholder="Describe intervention" />
+            <Input 
+              placeholder="Describe intervention" 
+              value={formState.intervention6} 
+              onChange={(e) => handleChange('intervention6', e.target.value)}
+            />
           </div>
         </div>
 
@@ -506,55 +791,104 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">Current Symptoms</label>
-          <Textarea placeholder="Describe current symptoms" className="min-h-[100px]" />
+          <Textarea 
+            placeholder="Describe current symptoms" 
+            className="min-h-[100px]" 
+            value={formState.currentSymptoms} 
+            onChange={(e) => handleChange('currentSymptoms', e.target.value)}
+          />
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">Functioning</label>
-          <Textarea placeholder="Describe client functioning" className="min-h-[100px]" />
+          <Textarea 
+            placeholder="Describe client functioning" 
+            className="min-h-[100px]" 
+            value={formState.functioning} 
+            onChange={(e) => handleChange('functioning', e.target.value)}
+          />
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">Prognosis</label>
-          <Textarea placeholder="Describe prognosis" className="min-h-[100px]" />
+          <Textarea 
+            placeholder="Describe prognosis" 
+            className="min-h-[100px]" 
+            value={formState.prognosis} 
+            onChange={(e) => handleChange('prognosis', e.target.value)}
+          />
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">Progress</label>
-          <Textarea placeholder="Describe progress" className="min-h-[100px]" />
+          <Textarea 
+            placeholder="Describe progress" 
+            className="min-h-[100px]" 
+            value={formState.progress} 
+            onChange={(e) => handleChange('progress', e.target.value)}
+          />
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">Problem Narrative</label>
-          <Textarea placeholder="Describe the problem narrative" className="min-h-[100px]" />
+          <Textarea 
+            placeholder="Describe the problem narrative" 
+            className="min-h-[100px]" 
+            value={formState.problemNarrative} 
+            onChange={(e) => handleChange('problemNarrative', e.target.value)}
+          />
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Goal Narrative</label>
-          <Textarea placeholder="Describe the treatment goals" className="min-h-[100px]" />
+          <Textarea 
+            placeholder="Describe the treatment goals" 
+            className="min-h-[100px]" 
+            value={formState.treatmentGoalNarrative} 
+            onChange={(e) => handleChange('treatmentGoalNarrative', e.target.value)}
+          />
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">Session Narrative</label>
-          <Textarea placeholder="Provide a detailed narrative of the session" className="min-h-[100px]" />
+          <Textarea 
+            placeholder="Provide a detailed narrative of the session" 
+            className="min-h-[100px]" 
+            value={formState.sessionNarrative} 
+            onChange={(e) => handleChange('sessionNarrative', e.target.value)}
+          />
         </div>
 
         <h4 className="text-md font-medium text-gray-800 mb-4">Plan & Signature</h4>
         
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">Next Treatment Plan Update</label>
-          <Input placeholder="When will this plan be reviewed next" />
+          <Input 
+            placeholder="When will this plan be reviewed next" 
+            value={formState.nextTreatmentPlanUpdate} 
+            onChange={(e) => handleChange('nextTreatmentPlanUpdate', e.target.value)}
+          />
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">Signature</label>
-          <Input placeholder="Digital signature" />
+          <Input 
+            placeholder="Digital signature" 
+            value={formState.signature} 
+            onChange={(e) => handleChange('signature', e.target.value)}
+          />
         </div>
       </div>
 
       <div className="flex justify-end gap-2 mt-6">
-        <Button variant="outline" onClick={onClose}>Close</Button>
-        <Button className="bg-valorwell-700 hover:bg-valorwell-800">Save Template</Button>
+        <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Close</Button>
+        <Button 
+          className="bg-valorwell-700 hover:bg-valorwell-800" 
+          onClick={handleSave}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Saving...' : 'Save Session Note'}
+        </Button>
       </div>
     </div>
   );
