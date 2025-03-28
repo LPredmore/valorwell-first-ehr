@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,8 +41,6 @@ const MyPortal: React.FC<MyPortalProps> = ({
       if (!clientData?.id) return;
 
       try {
-        console.log('Fetching patient appointments for client:', clientData.id, 'refresh trigger:', refreshAppointments);
-        
         const { data, error } = await supabase
           .from('appointments')
           .select('*')
@@ -55,8 +54,6 @@ const MyPortal: React.FC<MyPortalProps> = ({
           return;
         }
 
-        console.log('Patient appointments fetched:', data?.length || 0);
-        
         if (data && data.length > 0) {
           // Transform the data to match the expected format
           const formattedAppointments = data.map((appointment) => ({

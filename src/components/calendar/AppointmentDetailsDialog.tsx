@@ -68,56 +68,30 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
     
     setIsDeleting(true);
     try {
-      // Extensive logging to diagnose the issue
-      console.log('Appointment to cancel:', appointment);
-      console.log('Appointment ID type:', typeof appointment.id);
-      console.log('Appointment ID value:', appointment.id);
-      
-      // First update the appointment status
-      const { error, data } = await supabase
+      const { error } = await supabase
         .from('appointments')
-        .update({ status: 'cancelled' })
-        .eq('id', appointment.id)
-        .select();
-      
-      // Detailed logging of the operation result
-      console.log('Cancellation operation completed');
-      console.log('Error:', error);
-      console.log('Return data:', data);
-      
+        .delete()
+        .eq('id', appointment.id);
+        
       if (error) {
-        console.error('Database error when cancelling appointment:', error.message);
+        console.error('Error cancelling appointment:', error);
         toast({
           title: "Error",
-          description: `Failed to cancel appointment: ${error.message}`,
-          variant: "destructive"
-        });
-      } else if (!data || data.length === 0) {
-        console.error('No appointment was updated. ID may be invalid or not found.');
-        toast({
-          title: "Error",
-          description: "No appointment found with that ID. Please refresh and try again.",
+          description: "Failed to cancel the appointment. Please try again.",
           variant: "destructive"
         });
       } else {
-        console.log('Successfully cancelled appointment:', data[0]);
         toast({
           title: "Appointment Cancelled",
           description: "The appointment has been successfully cancelled."
         });
-        
-        // Explicitly call the update callback to refresh parent components
         if (onAppointmentUpdated) {
-          console.log('Triggering appointment updated callback');
           onAppointmentUpdated();
         }
-        
-        // Close both dialogs
-        setIsCancelDialogOpen(false);
         onClose();
       }
     } catch (error) {
-      console.error('Unexpected error:', error);
+      console.error('Error:', error);
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -125,6 +99,7 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
       });
     } finally {
       setIsDeleting(false);
+      setIsCancelDialogOpen(false);
     }
   };
 

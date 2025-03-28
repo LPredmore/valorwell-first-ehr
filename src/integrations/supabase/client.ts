@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Check for required environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -11,16 +12,20 @@ if (!supabaseKey) {
   console.error('VITE_SUPABASE_ANON_KEY environment variable is missing. Please make sure it is set in your .env file.');
 }
 
+// Create a Supabase client with fallback defaults (for development only)
 export const supabase = createClient(
   supabaseUrl || 'http://localhost:54321', 
   supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
 );
 
+// Helper function to parse date strings from the database
 export const parseDateString = (dateString: string | null): Date | null => {
   if (!dateString) return null;
   
+  // Try to parse the date string
   const date = new Date(dateString);
   
+  // Check if the date is valid
   if (isNaN(date.getTime())) {
     console.error(`Invalid date string: ${dateString}`);
     return null;
@@ -29,12 +34,15 @@ export const parseDateString = (dateString: string | null): Date | null => {
   return date;
 };
 
+// Helper function to format dates for database storage
 export const formatDateForDB = (date: Date | null): string | null => {
   if (!date) return null;
   
+  // Format as ISO string and take just the date part (YYYY-MM-DD)
   return date.toISOString().split('T')[0];
 };
 
+// Interface for CPT Code
 export interface CPTCode {
   code: string;
   name: string;
@@ -43,6 +51,7 @@ export interface CPTCode {
   clinical_type: string;
 }
 
+// Interface for Practice Info
 export interface PracticeInfo {
   id: string;
   practice_name: string;
@@ -56,6 +65,7 @@ export interface PracticeInfo {
   practice_zip: string;
 }
 
+// User management functions
 export const createUser = async (email: string, userData: any) => {
   try {
     const { data, error } = await supabase.auth.admin.createUser({
@@ -72,6 +82,7 @@ export const createUser = async (email: string, userData: any) => {
   }
 };
 
+// User data functions
 export const getCurrentUser = async () => {
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -83,6 +94,7 @@ export const getCurrentUser = async () => {
   }
 };
 
+// Client data functions
 export const getClientByUserId = async (userId: string) => {
   try {
     const { data, error } = await supabase
@@ -114,6 +126,7 @@ export const updateClientProfile = async (clientId: string, updates: any) => {
   }
 };
 
+// Clinician data functions
 export const getClinicianNameById = async (clinicianId: string) => {
   try {
     const { data, error } = await supabase
@@ -146,6 +159,7 @@ export const getClinicianIdByName = async (clinicianName: string) => {
   }
 };
 
+// CPT code functions
 export const fetchCPTCodes = async (): Promise<CPTCode[]> => {
   try {
     const { data, error } = await supabase
@@ -205,6 +219,7 @@ export const deleteCPTCode = async (codeId: string) => {
   }
 };
 
+// Practice info functions
 export const fetchPracticeInfo = async (): Promise<PracticeInfo | null> => {
   try {
     const { data, error } = await supabase
