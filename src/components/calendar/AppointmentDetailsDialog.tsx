@@ -71,17 +71,18 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
       // Log the appointment ID we're trying to delete
       console.log('Attempting to delete appointment with ID:', appointment.id);
       
-      const { error, data } = await supabase
+      // First try to update the status to cancelled
+      const { error: updateError, data: updateData } = await supabase
         .from('appointments')
-        .delete()
+        .update({ status: 'cancelled' })
         .eq('id', appointment.id)
         .select();
         
-      // Log the result of the delete operation
-      console.log('Delete result:', { error, data });
+      // Log the result of the update operation
+      console.log('Update result:', { updateError, updateData });
         
-      if (error) {
-        console.error('Error cancelling appointment:', error);
+      if (updateError) {
+        console.error('Error cancelling appointment:', updateError);
         toast({
           title: "Error",
           description: "Failed to cancel the appointment. Please try again.",

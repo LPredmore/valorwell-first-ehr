@@ -79,6 +79,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
           endDate = format(end, 'yyyy-MM-dd');
         }
 
+        console.log('Fetching appointments with parameters:', {
+          clinicianId,
+          startDate, 
+          endDate,
+          refreshTrigger: appointmentRefreshTrigger
+        });
+
         const { data, error } = await supabase
           .from('appointments')
           .select('*')
@@ -90,6 +97,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
         if (error) {
           console.error('Error fetching appointments:', error);
         } else {
+          console.log('Fetched appointments:', data?.length || 0);
           setAppointments(data || []);
           
           if (data && data.length > 0) {
