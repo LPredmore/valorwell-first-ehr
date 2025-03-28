@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, parse, addDays, isSameDay } from 'date-fns';
 import { Calendar as CalendarIcon, Clock, Check } from 'lucide-react';
@@ -53,7 +52,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [appointmentType, setAppointmentType] = useState<string>("Therapy Session");
   const [notes, setNotes] = useState<string>("");
   const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
@@ -61,7 +59,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   const [bookingInProgress, setBookingInProgress] = useState<boolean>(false);
   const { toast } = useToast();
 
-  // Fetch availability for the selected clinician
   useEffect(() => {
     const fetchAvailability = async () => {
       if (!clinicianId) return;
@@ -94,7 +91,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     fetchAvailability();
   }, [clinicianId, toast]);
 
-  // Generate time slots when date is selected
   useEffect(() => {
     if (!selectedDate || !availabilityBlocks.length) {
       setTimeSlots([]);
@@ -117,7 +113,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
       const startTime = parse(block.start_time, 'HH:mm:ss', new Date());
       const endTime = parse(block.end_time, 'HH:mm:ss', new Date());
       
-      // Create 30-minute slots
       let currentTime = startTime;
       while (currentTime < endTime) {
         const timeString = format(currentTime, 'HH:mm');
@@ -130,7 +125,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
       }
     });
 
-    // Check for existing appointments to mark slots as unavailable
     const checkExistingAppointments = async () => {
       if (!selectedDate || !clinicianId) return;
       
@@ -147,7 +141,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
         if (error) {
           console.error('Error fetching appointments:', error);
         } else if (data && data.length > 0) {
-          // Mark any slots that overlap with existing appointments as unavailable
           const updatedSlots = slots.map(slot => {
             const slotTime = parse(slot.time, 'HH:mm', new Date());
             const slotTimeStr = format(slotTime, 'HH:mm:ss');
@@ -178,7 +171,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     if (!selectedDate || !selectedTime || !clinicianId || !clientId) {
       toast({
         title: "Missing information",
-        description: "Please select a date, time, and appointment type",
+        description: "Please select a date and time",
         variant: "destructive"
       });
       return;
@@ -187,7 +180,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     setBookingInProgress(true);
     
     try {
-      // Convert time string to start and end times (30 min appointment)
       const startTime = selectedTime;
       const endTimeObj = parse(selectedTime, 'HH:mm', new Date());
       endTimeObj.setMinutes(endTimeObj.getMinutes() + 30);
@@ -195,7 +187,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
       
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
       
-      // Insert the appointment in the database
       const { data, error } = await supabase
         .from('appointments')
         .insert([
@@ -205,7 +196,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
             date: dateStr,
             start_time: startTime,
             end_time: endTime,
-            type: appointmentType,
+            type: "Therapy Session",
             notes: notes,
             status: 'scheduled'
           }
@@ -224,9 +215,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           description: "Your appointment has been booked successfully!",
         });
         
-        // Reset form and close dialog
         setSelectedTime(null);
-        setAppointmentType("Therapy Session");
         setNotes("");
         onAppointmentBooked();
         onOpenChange(false);
@@ -243,13 +232,11 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     }
   };
 
-  // Disable dates that don't have availability
   const isDayUnavailable = (date: Date) => {
     const dayOfWeek = format(date, 'EEEE');
     return !availabilityBlocks.some(block => block.day_of_week === dayOfWeek);
   };
 
-  // Check if date is in the past
   const isPastDate = (date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -366,24 +353,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
             
             <TabsContent value="details" className="space-y-4">
               <div>
-                <h3 className="text-sm font-medium mb-2">Appointment Type</h3>
-                <RadioGroup value={appointmentType} onValueChange={setAppointmentType} className="space-y-2">
-                  <div className="flex items-center">
-                    <RadioGroupItem value="Therapy Session" id="type-therapy" />
-                    <Label htmlFor="type-therapy" className="ml-2">Therapy Session</Label>
-                  </div>
-                  <div className="flex items-center">
-                    <RadioGroupItem value="Initial Consultation" id="type-consultation" />
-                    <Label htmlFor="type-consultation" className="ml-2">Initial Consultation</Label>
-                  </div>
-                  <div className="flex items-center">
-                    <RadioGroupItem value="Follow-up" id="type-followup" />
-                    <Label htmlFor="type-followup" className="ml-2">Follow-up</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-              
-              <div>
                 <h3 className="text-sm font-medium mb-2">Notes (Optional)</h3>
                 <Textarea
                   placeholder="Add any notes or questions for your therapist"
@@ -412,7 +381,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Type:</span>
-                    <span className="font-medium">{appointmentType}</span>
+                    <span className="font-medium">Therapy Session</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Provider:</span>
