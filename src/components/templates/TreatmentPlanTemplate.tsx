@@ -31,7 +31,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
   clientData = null
 }) => {
   const { toast } = useToast();
-  // Initialize form state from client data
+
   const [formState, setFormState] = useState({
     clientName: clientName || `${clientData?.client_first_name || ''} ${clientData?.client_last_name || ''}`,
     clientDob: clientDob || clientData?.client_date_of_birth || '',
@@ -55,7 +55,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
     privateNote: clientData?.client_privatenote || ''
   });
 
-  // Update form state if clientData changes
   useEffect(() => {
     if (clientData) {
       setFormState({
@@ -98,7 +97,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         return;
       }
 
-      // Map form data back to database schema
       const updates = {
         client_planlength: formState.planLength,
         client_treatmentfrequency: formState.treatmentFrequency,
@@ -121,7 +119,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
       console.log('Saving treatment plan with updates:', updates);
       console.log('For client with ID:', clientData.id);
 
-      // Update client in database
       const { error, data } = await supabase
         .from('clients')
         .update(updates)
@@ -172,7 +169,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                   placeholder="Enter client name" 
                   value={formState.clientName}
                   onChange={(e) => handleChange('clientName', e.target.value)}
-                  disabled // Read-only as this is bound to client data
+                  disabled
                 />
               </div>
               <div className="space-y-2">
@@ -182,7 +179,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                   placeholder="MM/DD/YYYY" 
                   value={formState.clientDob}
                   onChange={(e) => handleChange('clientDob', e.target.value)}
-                  disabled // Read-only as this is bound to client data
+                  disabled
                 />
               </div>
               <div className="space-y-2">
@@ -192,7 +189,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                   placeholder="Enter clinician name" 
                   value={formState.clinicianName}
                   onChange={(e) => handleChange('clinicianName', e.target.value)}
-                  disabled // Read-only as this is bound to clinician data
+                  disabled
                 />
               </div>
             </div>
