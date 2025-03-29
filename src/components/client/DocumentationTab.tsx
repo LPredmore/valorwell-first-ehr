@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { BarChart2, ClipboardCheck, FileText, ClipboardList } from "lucide-react";
 import TreatmentPlanTemplate from "@/components/templates/TreatmentPlanTemplate";
 import SessionNoteTemplate from "@/components/templates/SessionNoteTemplate";
+import PHQ9Template from "@/components/templates/PHQ9Template";
 import { useClinicianData } from "@/hooks/useClinicianData";
 import { ClientDetails } from "@/types/client";
 
@@ -21,6 +22,7 @@ interface DocumentationTabProps {
 const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
   const [showTreatmentPlanTemplate, setShowTreatmentPlanTemplate] = useState(false);
   const [showSessionNoteTemplate, setShowSessionNoteTemplate] = useState(false);
+  const [showPHQ9Template, setShowPHQ9Template] = useState(false);
   const { clinicianData } = useClinicianData();
 
   const handleCloseTreatmentPlan = () => {
@@ -29,6 +31,10 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
 
   const handleCloseSessionNote = () => {
     setShowSessionNoteTemplate(false);
+  };
+
+  const handleClosePHQ9 = () => {
+    setShowPHQ9Template(false);
   };
 
   return (
@@ -44,12 +50,15 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
         </CardHeader>
         <CardContent>
           <div className="py-6">
-            <div className="flex gap-4">
+            <div className="flex gap-4 flex-wrap">
               <Button onClick={() => setShowTreatmentPlanTemplate(true)}>
                 Create Treatment Plan
               </Button>
               <Button onClick={() => setShowSessionNoteTemplate(true)}>
                 Create Session Note
+              </Button>
+              <Button onClick={() => setShowPHQ9Template(true)}>
+                PHQ-9 Assessment
               </Button>
             </div>
           </div>
@@ -71,6 +80,16 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
         <div className="animate-fade-in">
           <SessionNoteTemplate
             onClose={handleCloseSessionNote}
+            clinicianName={clinicianData?.clinician_professional_name || ''}
+            clientData={clientData}
+          />
+        </div>
+      )}
+
+      {showPHQ9Template && (
+        <div className="animate-fade-in">
+          <PHQ9Template
+            onClose={handleClosePHQ9}
             clinicianName={clinicianData?.clinician_professional_name || ''}
             clientData={clientData}
           />
