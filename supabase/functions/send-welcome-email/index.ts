@@ -2,8 +2,10 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { Resend } from "npm:resend@1.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+// Add more detailed debugging
+console.log("Loading send-welcome-email function");
 
+// CORS headers for cross-origin requests
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -26,9 +28,12 @@ interface WebhookPayload {
 }
 
 serve(async (req) => {
+  // Log request information
+  console.log(`Request received: ${req.method} ${req.url}`);
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    console.log("Received OPTIONS request");
+    console.log("Handling OPTIONS request for CORS preflight");
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -42,10 +47,55 @@ serve(async (req) => {
   }
 
   try {
-    console.log("Received webhook request");
+    console.log("Processing webhook request");
     
-    const payload: WebhookPayload = await req.json();
-    console.log("Webhook payload:", JSON.stringify(payload, null, 2));
+    // Validate Resend API key before doing anything else
+    const apiKey = Deno.env.get("RESEND_API_KEY");
+    if (!apiKey) {
+      console.error("ERROR: RESEND_API_KEY is not set in environment variables");
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "RESEND_API_KEY is not set. Please configure this secret in the Supabase dashboard." 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+    console.log("Resend API key is configured");
+    
+    // Parse payload
+    let payload: WebhookPayload;
+    try {
+      payload = await req.json();
+      console.log("Webhook payload received:", JSON.stringify(payload, null, 2));
+    } catch (error) {
+      console.error("Failed to parse request JSON:", error);
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid JSON payload" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
+
+    // Validate payload structure
+    if (!payload.record || !payload.table || !payload.type) {
+      console.error("Invalid webhook payload structure:", payload);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Invalid webhook payload structure" 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
 
     // Only process if it's an insert to profiles table and role is client
     if (payload.table === "profiles" && payload.type === "INSERT" && payload.record.role === "client") {
@@ -54,25 +104,12 @@ serve(async (req) => {
       
       console.log(`Preparing to send welcome email to ${email}`);
       
-      // Check if we have a valid Resend API key
-      const apiKey = Deno.env.get("RESEND_API_KEY");
-      if (!apiKey) {
-        console.error("RESEND_API_KEY is not set");
-        return new Response(
-          JSON.stringify({ success: false, error: "RESEND_API_KEY is not set" }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500,
-          }
-        );
-      }
-      console.log("Resend API key is configured");
+      // Initialize Resend with API key
+      const resend = new Resend(apiKey);
       
       // Frontend URL with login path
       const frontendUrl = Deno.env.get("FRONTEND_URL") || "http://localhost:5173/login";
-      const loginUrl = frontendUrl;
-      
-      console.log(`Using login URL: ${loginUrl}`);
+      console.log(`Using login URL: ${frontendUrl}`);
 
       // Send the welcome email
       console.log("Sending welcome email...");
@@ -91,7 +128,7 @@ serve(async (req) => {
                 <p><strong>Email:</strong> ${email}</p>
                 <p><strong>Temporary Password:</strong> ${temp_password}</p>
               </div>
-              <p>Please use these credentials to <a href="${loginUrl}" style="color: #4a6cf7; text-decoration: none; font-weight: bold;">log in to your account</a>.</p>
+              <p>Please use these credentials to <a href="${frontendUrl}" style="color: #4a6cf7; text-decoration: none; font-weight: bold;">log in to your account</a>.</p>
               <p>For security reasons, we recommend changing your password after your first login.</p>
               <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
               <p>Best regards,</p>
@@ -101,7 +138,7 @@ serve(async (req) => {
         });
 
         if (error) {
-          console.error("Error sending email:", error);
+          console.error("Error from Resend API:", error);
           throw error;
         }
 
