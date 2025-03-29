@@ -1,3 +1,4 @@
+
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Calendar, 
@@ -10,7 +11,8 @@ import {
   ChevronLeft,
   UserCheck,
   LayoutDashboard,
-  FileText
+  FileText,
+  UserPlus
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -38,6 +40,14 @@ const Sidebar = () => {
       </div>
       
       <nav className="flex-1 py-4 space-y-1 px-2">
+        <Link 
+          to="/signup" 
+          className={`sidebar-link ${isActive('/signup') ? 'active' : ''}`}
+        >
+          <UserPlus size={18} />
+          <span>Sign-Up</span>
+        </Link>
+
         <Link 
           to="/my-clients" 
           className={`sidebar-link ${isActive('/my-clients') ? 'active' : ''}`}
