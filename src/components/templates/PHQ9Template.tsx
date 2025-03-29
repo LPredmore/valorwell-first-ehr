@@ -48,7 +48,7 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
     defaultValues: {
       date: format(new Date(), "yyyy-MM-dd"),
       clinicianName: clinicianName,
-      patientName: clientData ? `${clientData.first_name} ${clientData.last_name}` : "",
+      patientName: clientData ? `${clientData.client_first_name} ${clientData.client_last_name}` : "",
     }
   });
 
