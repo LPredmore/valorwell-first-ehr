@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,8 @@ import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClientDetails } from "@/types/client";
 import { useToast } from "@/hooks/use-toast";
-import { supabase, formatDateForDB } from "@/integrations/supabase/client";
+import { supabase, formatDateForDB, getCurrentUser } from "@/integrations/supabase/client";
+import { generateAndSavePDF } from "@/utils/pdfUtils";
 
 interface SessionNoteTemplateProps {
   onClose: () => void;
@@ -31,7 +31,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   clientData = null
 }) => {
   const { toast } = useToast();
-  // Initialize form state from client data
+  const sessionNoteRef = useRef<HTMLDivElement>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  
   const [formState, setFormState] = useState({
     clientName: clientName || `${clientData?.client_first_name || ''} ${clientData?.client_last_name || ''}`,
     clientDob: clientDob || clientData?.client_date_of_birth || '',
@@ -53,17 +55,16 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     intervention6: clientData?.client_intervention6 || '',
     nextUpdate: clientData?.client_nexttreatmentplanupdate || '',
     sessionDate: new Date(),
-    sessionType: '', // New field
+    sessionType: '',
     presentingIssue: '',
     interventions: '',
     homework: '',
     goalProgress: '',
-    prognosis: '', // New field
-    progress: '', // New field
+    prognosis: '',
+    progress: '',
     signature: 'Electronic Signature on File'
   });
 
-  // Update form state if clientData changes
   useEffect(() => {
     if (clientData) {
       setFormState(prev => ({
@@ -95,6 +96,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   };
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
       if (!clientData?.id) {
         toast({
@@ -102,11 +104,56 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           description: "Cannot save - client data is missing",
           variant: "destructive"
         });
+        setIsSaving(false);
         return;
       }
 
-      // TODO: Save session note to database
-      // For now, let's just show a success message
+      const sessionData = {
+        client_sessionnarrative: formState.presentingIssue,
+        client_progress: formState.progress,
+        client_prognosis: formState.prognosis,
+        client_mood: formState.presentingIssue,
+        client_interventions: formState.interventions,
+        client_homework: formState.homework,
+        client_goal_progress: formState.goalProgress
+      };
+
+      console.log('Saving session note with data:', sessionData);
+      console.log('For client with ID:', clientData.id);
+
+      const { error, data } = await supabase
+        .from('clients')
+        .update(sessionData)
+        .eq('id', clientData.id)
+        .select();
+
+      if (error) {
+        console.error('Error from Supabase:', error);
+        throw error;
+      }
+
+      console.log('Session note saved successfully:', data);
+
+      if (sessionNoteRef.current) {
+        const currentUser = await getCurrentUser();
+        const sessionDate = formState.sessionDate ? format(formState.sessionDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+        
+        const documentInfo = {
+          clientId: clientData.id,
+          documentType: 'Session Note',
+          documentDate: sessionDate,
+          documentTitle: `Session Note - ${sessionDate}`,
+          createdBy: currentUser?.id
+        };
+
+        const pdfPath = await generateAndSavePDF('session-note-content', documentInfo);
+        
+        if (pdfPath) {
+          console.log('Session note PDF saved successfully at path:', pdfPath);
+        } else {
+          console.error('Failed to generate or save session note PDF');
+        }
+      }
       
       toast({
         title: "Success",
@@ -121,20 +168,19 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         description: "Failed to save session note",
         variant: "destructive"
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  // Session type options
   const sessionTypeOptions = [
     "Psychotherapy, 53 minutes",
     "Psychotherapy, 43 minutes",
     "Psychotherapy, 30 minutes"
   ];
 
-  // Prognosis options
   const prognosisOptions = ["Poor", "Guarded", "Fair", "Good", "Excellent"];
 
-  // Progress options
   const progressOptions = [
     "Intake", 
     "Regressed", 
@@ -157,7 +203,11 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
       </CardHeader>
       <CardContent className="pt-4">
         <div className="space-y-6">
-          <div className="border rounded-md p-4 bg-white">
+          <div 
+            id="session-note-content"
+            ref={sessionNoteRef}
+            className="border rounded-md p-4 bg-white"
+          >
             <h2 className="text-xl font-semibold text-valorwell-800 mb-4">Therapy Session Note</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -492,12 +542,13 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           </div>
           
           <div className="flex justify-end">
-            <Button variant="outline" onClick={onClose} className="mr-2">Close</Button>
+            <Button variant="outline" onClick={onClose} className="mr-2" disabled={isSaving}>Close</Button>
             <Button 
               className="bg-valorwell-700 hover:bg-valorwell-800" 
               onClick={handleSave}
+              disabled={isSaving}
             >
-              Save Session Note
+              {isSaving ? "Saving..." : "Save Session Note"}
             </Button>
           </div>
         </div>

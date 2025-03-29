@@ -101,6 +101,38 @@ export const getOrCreateVideoRoom = async (appointmentId: string) => {
   }
 };
 
+// New function to fetch clinical documents for a client
+export const fetchClinicalDocuments = async (clientId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('clinical_documents')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('document_date', { ascending: false });
+      
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching clinical documents:', error);
+    return [];
+  }
+};
+
+// New function to get document download URL
+export const getDocumentDownloadURL = async (filePath: string) => {
+  try {
+    const { data, error } = await supabase.storage
+      .from('clinical_documents')
+      .createSignedUrl(filePath, 60); // 60 seconds expiration
+      
+    if (error) throw error;
+    return data.signedUrl;
+  } catch (error) {
+    console.error('Error getting document download URL:', error);
+    return null;
+  }
+};
+
 // Interface for CPT Code
 export interface CPTCode {
   code: string;

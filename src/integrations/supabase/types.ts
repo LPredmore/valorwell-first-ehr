@@ -365,6 +365,47 @@ export type Database = {
         }
         Relationships: []
       }
+      clinical_documents: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          document_date: string
+          document_title: string
+          document_type: string
+          file_path: string
+          id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          document_date: string
+          document_title: string
+          document_type: string
+          file_path: string
+          id?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          document_date?: string
+          document_title?: string
+          document_type?: string
+          file_path?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_documents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinicians: {
         Row: {
           clinician_accepting_new_clients: string | null
