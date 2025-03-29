@@ -18,6 +18,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import TreatmentPlanTemplate from '@/components/templates/TreatmentPlanTemplate';
 import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
+import PHQ9Template from '@/components/templates/PHQ9Template';
 import {
   Table,
   TableBody,
@@ -82,6 +83,7 @@ const Settings = () => {
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [showTreatmentPlanTemplate, setShowTreatmentPlanTemplate] = useState(false);
   const [showSessionNoteTemplate, setShowSessionNoteTemplate] = useState(false);
+  const [showPHQ9Template, setShowPHQ9Template] = useState(false);
   
   const [cptCodes, setCptCodes] = useState<CPTCode[]>([]);
   const [isCptLoading, setIsCptLoading] = useState(true);
@@ -427,6 +429,18 @@ const Settings = () => {
     } finally {
       setIsSavingPractice(false);
     }
+  };
+
+  const handleCloseTreatmentPlan = () => {
+    setShowTreatmentPlanTemplate(false);
+  };
+
+  const handleCloseSessionNote = () => {
+    setShowSessionNoteTemplate(false);
+  };
+  
+  const handleClosePHQ9 = () => {
+    setShowPHQ9Template(false);
   };
 
   return (
@@ -948,6 +962,8 @@ const Settings = () => {
               <TreatmentPlanTemplate onClose={() => setShowTreatmentPlanTemplate(false)} />
             ) : showSessionNoteTemplate ? (
               <SessionNoteTemplate onClose={() => setShowSessionNoteTemplate(false)} />
+            ) : showPHQ9Template ? (
+              <PHQ9Template onClose={() => setShowPHQ9Template(false)} clinicianName="" />
             ) : (
               <>
                 <div className="mb-8">
@@ -1021,7 +1037,7 @@ const Settings = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        <TableRow className="hover:bg-gray-50">
+                        <TableRow className="cursor-pointer hover:bg-gray-50" onClick={() => setShowPHQ9Template(true)}>
                           <TableCell className="font-medium">PHQ-9</TableCell>
                           <TableCell>Depression Screener</TableCell>
                           <TableCell>Patient Health Questionnaire (9-item)</TableCell>
