@@ -54,7 +54,7 @@ const Signup = () => {
     
     try {
       // Generate a random password (will be reset later)
-      const tempPassword = Math.random().toString(36).slice(-8);
+      const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
       
       // 1. Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -65,7 +65,8 @@ const Signup = () => {
             first_name: values.firstName,
             last_name: values.lastName,
             phone: values.phone,
-            role: "client"
+            role: "client",
+            temp_password: tempPassword // Include temp password in metadata so it gets stored in profiles table
           }
         }
       });
