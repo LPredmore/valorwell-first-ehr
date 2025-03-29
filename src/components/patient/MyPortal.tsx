@@ -12,6 +12,7 @@ import { format, parseISO } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import VideoChat from '@/components/video/VideoChat';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
+import PHQ9Template from '@/components/templates/PHQ9Template';
 
 interface MyPortalProps {
   upcomingAppointments: Array<{
@@ -38,6 +39,8 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const [isVideoSessionOpen, setIsVideoSessionOpen] = useState(false);
   const [videoRoomUrl, setVideoRoomUrl] = useState<string | null>(null);
   const [isLoadingVideoSession, setIsLoadingVideoSession] = useState(false);
+  const [showPHQ9, setShowPHQ9] = useState(false);
+  const [pendingAppointmentId, setPendingAppointmentId] = useState<string | number | null>(null);
   const { toast } = useToast();
 
   const clientTimeZone = clientData?.client_time_zone || getUserTimeZone();
@@ -100,33 +103,43 @@ const MyPortal: React.FC<MyPortalProps> = ({
   };
 
   const handleStartSession = async (appointmentId: string | number) => {
-    setIsLoadingVideoSession(true);
-    try {
-      console.log('Starting session for appointment:', appointmentId);
-      const result = await getOrCreateVideoRoom(appointmentId.toString());
-      
-      if (!result.success || !result.url) {
-        console.error('Error result from getOrCreateVideoRoom:', result);
-        throw new Error(result.error?.message || result.error || 'Failed to create video room');
+    setPendingAppointmentId(appointmentId);
+    setShowPHQ9(true);
+  };
+
+  const handlePHQ9Complete = async () => {
+    setShowPHQ9(false);
+    
+    if (pendingAppointmentId) {
+      setIsLoadingVideoSession(true);
+      try {
+        console.log('Starting session for appointment:', pendingAppointmentId);
+        const result = await getOrCreateVideoRoom(pendingAppointmentId.toString());
+        
+        if (!result.success || !result.url) {
+          console.error('Error result from getOrCreateVideoRoom:', result);
+          throw new Error(result.error?.message || result.error || 'Failed to create video room');
+        }
+        
+        console.log('Video room URL obtained:', result.url);
+        setVideoRoomUrl(result.url);
+        setIsVideoSessionOpen(true);
+        
+        toast({
+          title: "Video Session Ready",
+          description: "You are entering the video session now."
+        });
+      } catch (error) {
+        console.error('Error starting video session:', error);
+        toast({
+          title: "Error",
+          description: error?.message || "Failed to start the video session. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoadingVideoSession(false);
+        setPendingAppointmentId(null);
       }
-      
-      console.log('Video room URL obtained:', result.url);
-      setVideoRoomUrl(result.url);
-      setIsVideoSessionOpen(true);
-      
-      toast({
-        title: "Video Session Ready",
-        description: "You are entering the video session now."
-      });
-    } catch (error) {
-      console.error('Error starting video session:', error);
-      toast({
-        title: "Error",
-        description: error?.message || "Failed to start the video session. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoadingVideoSession(false);
     }
   };
 
@@ -274,7 +287,15 @@ const MyPortal: React.FC<MyPortalProps> = ({
         onAppointmentBooked={handleBookingComplete}
       />
 
-      {/* Video Session Dialog */}
+      {showPHQ9 && (
+        <PHQ9Template
+          onClose={() => setShowPHQ9(false)}
+          clinicianName={clinicianName || "Your Therapist"}
+          clientData={clientData}
+          onComplete={handlePHQ9Complete}
+        />
+      )}
+
       {videoRoomUrl && (
         <VideoChat 
           roomUrl={videoRoomUrl} 

@@ -16,6 +16,7 @@ interface PHQ9TemplateProps {
   onClose: () => void;
   clinicianName: string;
   clientData?: ClientDetails | null;
+  onComplete?: () => void; // New callback for when assessment is completed
 }
 
 // PHQ-9 questions
@@ -39,7 +40,7 @@ const answerOptions = [
   { value: 3, label: "Nearly every day" }
 ];
 
-const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, clientData }) => {
+const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, clientData, onComplete }) => {
   const { toast } = useToast();
   const [scores, setScores] = useState<number[]>(new Array(9).fill(0));
   const [additionalNotes, setAdditionalNotes] = useState("");
@@ -76,7 +77,12 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
       description: "PHQ-9 assessment has been saved successfully.",
     });
     
-    onClose();
+    // Call onComplete if provided, otherwise just close
+    if (onComplete) {
+      onComplete();
+    } else {
+      onClose();
+    }
   };
 
   return (
