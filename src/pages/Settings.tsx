@@ -1010,8 +1010,45 @@ const Settings = () => {
                     </button>
                   </div>
                   
-                  <div className="text-center py-10 border rounded bg-gray-50 text-gray-500">
-                    No assessment forms available. Click the button above to create your first assessment.
+                  <div className="border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Form Name</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow className="hover:bg-gray-50">
+                          <TableCell className="font-medium">PHQ-9</TableCell>
+                          <TableCell>Depression Screener</TableCell>
+                          <TableCell>Patient Health Questionnaire (9-item)</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500">
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        <TableRow className="hover:bg-gray-50">
+                          <TableCell className="font-medium">GAD-7</TableCell>
+                          <TableCell>Anxiety Screener</TableCell>
+                          <TableCell>Generalized Anxiety Disorder (7-item)</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500">
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
                 
