@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
 format,
@@ -32,11 +33,13 @@ import MonthView from './MonthView';
 import AvailabilityPanel from './AvailabilityPanel';
 import AppointmentDetailsDialog from './AppointmentDetailsDialog';
 import { supabase } from '@/integrations/supabase/client';
+import { getUserTimeZone } from '@/utils/timeZoneUtils';
 
 interface CalendarViewProps {
   view: 'day' | 'week' | 'month';
   showAvailability: boolean;
   clinicianId: string | null;
+  userTimeZone?: string;
 }
 
 interface Appointment {
@@ -49,7 +52,12 @@ interface Appointment {
   status: string;
 }
 
-const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, clinicianId }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ 
+  view, 
+  showAvailability, 
+  clinicianId,
+  userTimeZone: propTimeZone
+}) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [availabilityRefreshTrigger, setAvailabilityRefreshTrigger] = useState(0);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -57,6 +65,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment & { clientName?: string } | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
+  const userTimeZone = propTimeZone || getUserTimeZone();
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -96,7 +105,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
             const clientIds = [...new Set(data.map(app => app.client_id))];
             const { data: clientsData, error: clientsError } = await supabase
               .from('clients')
-              .select('id, client_first_name, client_last_name, client_preferred_name')
+              .select('id, client_first_name, client_last_name, client_preferred_name, client_time_zone')
               .in('id', clientIds);
               
             if (clientsError) {
@@ -175,6 +184,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
     return `${displayName} ${lastName}`;
   };
 
+  const getClientTimeZone = (clientId: string): string => {
+    const client = clientsMap[clientId];
+    return client?.client_time_zone || getUserTimeZone();
+  };
+
   const handleAppointmentClick = (appointment: Appointment) => {
     const appointmentWithClientName = {
       ...appointment,
@@ -222,6 +236,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
               )}
               getClientName={getClientName}
               onAppointmentClick={handleAppointmentClick}
+              userTimeZone={userTimeZone}
             />
           )}
           {view === 'week' && (
@@ -232,6 +247,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
               appointments={appointments}
               getClientName={getClientName}
               onAppointmentClick={handleAppointmentClick}
+              userTimeZone={userTimeZone}
             />
           )}
           {view === 'month' && (
@@ -242,13 +258,18 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
               appointments={appointments}
               getClientName={getClientName}
               onAppointmentClick={handleAppointmentClick}
+              userTimeZone={userTimeZone}
             />
           )}
         </div>
 
         {showAvailability && (
           <div className="w-1/4">
-            <AvailabilityPanel clinicianId={clinicianId} onAvailabilityUpdated={handleAvailabilityUpdated} />
+            <AvailabilityPanel 
+              clinicianId={clinicianId} 
+              onAvailabilityUpdated={handleAvailabilityUpdated}
+              userTimeZone={userTimeZone}
+            />
           </div>
         )}
       </div>
@@ -258,6 +279,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ view, showAvailability, cli
         onClose={() => setIsDetailsDialogOpen(false)}
         appointment={selectedAppointment}
         onAppointmentUpdated={handleAppointmentUpdated}
+        userTimeZone={userTimeZone}
+        clientTimeZone={selectedAppointment ? getClientTimeZone(selectedAppointment.client_id) : ''}
       />
     </div>
   );

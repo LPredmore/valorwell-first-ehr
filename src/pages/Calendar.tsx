@@ -8,6 +8,8 @@ import { Calendar as CalendarIcon, Users, Clock } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
+import { getUserTimeZone } from '@/utils/timeZoneUtils';
+import { useClinicianData } from '@/hooks/useClinicianData';
 
 type ViewType = 'day' | 'week' | 'month';
 
@@ -22,6 +24,17 @@ const [showAvailability, setShowAvailability] = useState(false);
 const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(null);
 const [clinicians, setClinicians] = useState<Clinician[]>([]);
 const [loadingClinicians, setLoadingClinicians] = useState(true);
+const { clinicianData } = useClinicianData();
+const [userTimeZone, setUserTimeZone] = useState<string>('');
+
+useEffect(() => {
+  // Set the user's time zone
+  if (clinicianData?.clinician_time_zone) {
+    setUserTimeZone(clinicianData.clinician_time_zone);
+  } else {
+    setUserTimeZone(getUserTimeZone());
+  }
+}, [clinicianData]);
 
 useEffect(() => {
 const fetchClinicians = async () => {
@@ -114,6 +127,7 @@ clinicians.map((clinician) => (
 view={view}
 showAvailability={showAvailability}
 clinicianId={selectedClinicianId}
+userTimeZone={userTimeZone}
 />
 </div>
 </div>

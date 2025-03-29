@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, parse, addDays, isSameDay } from 'date-fns';
 import { Calendar as CalendarIcon, Clock, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { formatTimeInUserTimeZone, getUserTimeZone } from '@/utils/timeZoneUtils';
 
 import { 
   Dialog, 
@@ -28,6 +30,7 @@ interface AppointmentBookingDialogProps {
   clinicianName: string | null;
   clientId: string | null;
   onAppointmentBooked: () => void;
+  userTimeZone?: string;
 }
 
 interface AvailabilityBlock {
@@ -48,7 +51,8 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   clinicianId,
   clinicianName,
   clientId,
-  onAppointmentBooked
+  onAppointmentBooked,
+  userTimeZone: propTimeZone
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -58,6 +62,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [bookingInProgress, setBookingInProgress] = useState<boolean>(false);
   const { toast } = useToast();
+  const userTimeZone = propTimeZone || getUserTimeZone();
 
   useEffect(() => {
     const fetchAvailability = async () => {
@@ -247,6 +252,10 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     return isDayUnavailable(date) || isPastDate(date);
   };
 
+  const formatTimeDisplay = (timeString: string) => {
+    return formatTimeInUserTimeZone(timeString, userTimeZone);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -296,6 +305,9 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
 
                 <div>
                   <h3 className="text-sm font-medium mb-2">Available Time Slots</h3>
+                  <div className="text-xs text-gray-600 mb-2">
+                    All times shown in your local time zone ({userTimeZone})
+                  </div>
                   {timeSlots.length > 0 ? (
                     <div className="space-y-2 max-h-[300px] overflow-y-auto p-2">
                       <RadioGroup value={selectedTime || ''} onValueChange={setSelectedTime}>
@@ -312,7 +324,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
                                 htmlFor={`time-${slot.time}`}
                                 className={`ml-2 ${!slot.available ? 'line-through text-gray-400' : ''}`}
                               >
-                                {format(parse(slot.time, 'HH:mm', new Date()), 'h:mm a')}
+                                {formatTimeDisplay(slot.time)}
                               </Label>
                             </div>
                           ))}
@@ -374,9 +386,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
                   <div className="flex justify-between">
                     <span className="text-gray-500">Time:</span>
                     <span className="font-medium">
-                      {selectedTime 
-                        ? format(parse(selectedTime, 'HH:mm', new Date()), 'h:mm a') 
-                        : ''}
+                      {selectedTime ? formatTimeDisplay(selectedTime) : ''}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -386,6 +396,10 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
                   <div className="flex justify-between">
                     <span className="text-gray-500">Provider:</span>
                     <span className="font-medium">{clinicianName || 'Your therapist'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Time Zone:</span>
+                    <span className="font-medium">{userTimeZone}</span>
                   </div>
                 </div>
               </div>
