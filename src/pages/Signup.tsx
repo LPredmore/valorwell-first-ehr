@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const signupSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
+  preferredName: z.string().optional(),
   email: z.string().email("Invalid email address"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
   state: z.string().min(1, "State is required"),
@@ -41,6 +42,7 @@ const Signup = () => {
     defaultValues: {
       firstName: "",
       lastName: "",
+      preferredName: "",
       email: "",
       phone: "",
       state: "",
@@ -83,6 +85,7 @@ const Signup = () => {
             id: authData.user.id,
             client_first_name: values.firstName, 
             client_last_name: values.lastName,
+            client_preferred_name: values.preferredName || null,
             client_email: values.email,
             client_phone: values.phone,
             client_state: values.state,
@@ -166,6 +169,20 @@ const Signup = () => {
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="preferredName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Preferred Name (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="How you'd like to be addressed" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
               <FormField
                 control={form.control}
