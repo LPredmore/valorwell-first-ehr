@@ -40,6 +40,8 @@ interface AppointmentDetailsDialogProps {
     clientName?: string;
   } | null;
   onAppointmentUpdated?: () => void;
+  userTimeZone?: string;
+  clientTimeZone?: string;
 }
 
 const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
@@ -47,6 +49,8 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
   onClose,
   appointment,
   onAppointmentUpdated,
+  userTimeZone,
+  clientTimeZone
 }) => {
   const navigate = useNavigate();
   const { toast } = useToast();

@@ -36,9 +36,10 @@ updated_at: string;
 interface AvailabilityPanelProps {
   clinicianId?: string | null;
   onAvailabilityUpdated?: () => void;
+  userTimeZone?: string;
 }
 
-const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAvailabilityUpdated }) => {
+const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAvailabilityUpdated, userTimeZone }) => {
 const [activeTab, setActiveTab] = useState<string>('set');
 const [availabilityEnabled, setAvailabilityEnabled] = useState(true);
 const [loading, setLoading] = useState(false);

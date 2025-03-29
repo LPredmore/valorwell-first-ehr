@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   format,
@@ -30,6 +31,7 @@ interface MonthViewProps {
   }>;
   getClientName?: (clientId: string) => string;
   onAppointmentClick?: (appointment: any) => void;
+  userTimeZone?: string;
 }
 
 const MonthView: React.FC<MonthViewProps> = ({ 
@@ -38,7 +40,8 @@ const MonthView: React.FC<MonthViewProps> = ({
   refreshTrigger = 0,
   appointments = [],
   getClientName = () => 'Client',
-  onAppointmentClick
+  onAppointmentClick,
+  userTimeZone
 }) => {
   const [loading, setLoading] = useState(true);
   const [availabilityData, setAvailabilityData] = useState<any[]>([]);

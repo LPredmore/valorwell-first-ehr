@@ -31,6 +31,7 @@ interface WeekViewProps {
   }>;
   getClientName?: (clientId: string) => string;
   onAppointmentClick?: (appointment: any) => void;
+  userTimeZone?: string;
 }
 
 interface AvailabilityBlock {
@@ -64,7 +65,8 @@ const WeekView: React.FC<WeekViewProps> = ({
   refreshTrigger = 0,
   appointments = [],
   getClientName = () => 'Client',
-  onAppointmentClick
+  onAppointmentClick,
+  userTimeZone
 }) => {
   const [loading, setLoading] = useState(true);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
