@@ -9,7 +9,9 @@ import AppointmentBookingDialog from './AppointmentBookingDialog';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import VideoChat from '@/components/video/VideoChat';
+import { getUserTimeZone } from '@/utils/timeZoneUtils';
 
 interface MyPortalProps {
   upcomingAppointments: Array<{
@@ -38,6 +40,8 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const [isLoadingVideoSession, setIsLoadingVideoSession] = useState(false);
   const { toast } = useToast();
 
+  const clientTimeZone = clientData?.client_time_zone || getUserTimeZone();
+
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!clientData?.id) return;
@@ -57,13 +61,23 @@ const MyPortal: React.FC<MyPortalProps> = ({
         }
 
         if (data && data.length > 0) {
-          const formattedAppointments = data.map((appointment) => ({
-            id: appointment.id,
-            date: format(parseISO(appointment.date), 'MMMM d, yyyy'),
-            time: format(parseISO(`2000-01-01T${appointment.start_time}`), 'h:mm a'),
-            type: appointment.type,
-            therapist: clinicianName || 'Your Therapist'
-          }));
+          const formattedAppointments = data.map((appointment) => {
+            const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
+            const dateTimeString = `${appointment.date}T${appointment.start_time}`;
+            const formattedTime = formatInTimeZone(
+              parseISO(dateTimeString), 
+              clientTimeZone, 
+              'h:mm a'
+            );
+            
+            return {
+              id: appointment.id,
+              date: formattedDate,
+              time: formattedTime,
+              type: appointment.type,
+              therapist: clinicianName || 'Your Therapist'
+            };
+          });
           
           setUpcomingAppointments(formattedAppointments);
         } else {
@@ -75,7 +89,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
     };
 
     fetchAppointments();
-  }, [clientData, clinicianName, refreshAppointments]);
+  }, [clientData, clinicianName, refreshAppointments, clientTimeZone]);
 
   const handleBookingComplete = () => {
     setRefreshAppointments(prev => prev + 1);
@@ -136,7 +150,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Time</TableHead>
+                  <TableHead>Time <span className="text-xs text-gray-500">({clientTimeZone.split('/').pop()?.replace('_', ' ')})</span></TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Therapist</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -214,7 +228,11 @@ const MyPortal: React.FC<MyPortalProps> = ({
                     <h3 className="font-medium mb-2">Available Time Slots</h3>
                     <p className="text-sm text-gray-500 mb-4">Available time slots for the current week</p>
 
-                    <WeekView currentDate={new Date()} clinicianId={clientData?.client_assigned_therapist || null} />
+                    <WeekView 
+                      currentDate={new Date()} 
+                      clinicianId={clientData?.client_assigned_therapist || null} 
+                      userTimeZone={clientTimeZone} 
+                    />
                   </div>
                   <div className="flex justify-end">
                     <Button onClick={() => setIsBookingOpen(true)}>

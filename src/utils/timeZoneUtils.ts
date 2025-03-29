@@ -71,5 +71,24 @@ export const formatTimeInUserTimeZone = (
  * Get current timezone if not specified
  */
 export const getUserTimeZone = (userTimeZone?: string | null): string => {
-  return userTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (userTimeZone && userTimeZone.includes('/')) {
+    // Already in IANA format (e.g. "America/New_York")
+    return userTimeZone;
+  } else if (userTimeZone) {
+    // Handle legacy format or other formats
+    // Map common timezone names to IANA format
+    const timezoneMap: Record<string, string> = {
+      'Eastern Standard Time (EST)': 'America/New_York',
+      'Central Standard Time (CST)': 'America/Chicago',
+      'Mountain Standard Time (MST)': 'America/Denver',
+      'Pacific Standard Time (PST)': 'America/Los_Angeles',
+      'Alaska Standard Time (AKST)': 'America/Anchorage',
+      'Hawaii-Aleutian Standard Time (HST)': 'Pacific/Honolulu',
+      'Atlantic Standard Time (AST)': 'America/Puerto_Rico'
+    };
+    
+    return timezoneMap[userTimeZone] || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  }
+  
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
 };
