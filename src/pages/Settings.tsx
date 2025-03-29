@@ -1001,6 +1001,20 @@ const Settings = () => {
                   </div>
                 </div>
                 
+                <div className="mb-8">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold">Assessment Forms</h2>
+                    <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800">
+                      <Plus size={16} />
+                      <span>Add Assessment</span>
+                    </button>
+                  </div>
+                  
+                  <div className="text-center py-10 border rounded bg-gray-50 text-gray-500">
+                    No assessment forms available. Click the button above to create your first assessment.
+                  </div>
+                </div>
+                
                 <div>
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-semibold">Online Forms</h2>

@@ -8,7 +8,7 @@ import {
   CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart2, ClipboardCheck, FileText } from "lucide-react";
+import { BarChart2, ClipboardCheck, FileText, Forms } from "lucide-react";
 import TreatmentPlanTemplate from "@/components/templates/TreatmentPlanTemplate";
 import SessionNoteTemplate from "@/components/templates/SessionNoteTemplate";
 import { useClinicianData } from "@/hooks/useClinicianData";
