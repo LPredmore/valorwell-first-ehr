@@ -1,5 +1,12 @@
 
 import React, { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,12 +18,13 @@ import { Form, FormField, FormItem, FormControl } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { X } from "lucide-react";
 
 interface PHQ9TemplateProps {
   onClose: () => void;
   clinicianName: string;
   clientData?: ClientDetails | null;
-  onComplete?: () => void; // New callback for when assessment is completed
+  onComplete?: () => void; // Callback for when assessment is completed
 }
 
 // PHQ-9 questions
@@ -44,6 +52,7 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
   const { toast } = useToast();
   const [scores, setScores] = useState<number[]>(new Array(9).fill(0));
   const [additionalNotes, setAdditionalNotes] = useState("");
+  const [isOpen, setIsOpen] = useState(true);
   
   const form = useForm({
     defaultValues: {
@@ -77,154 +86,159 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
       description: "PHQ-9 assessment has been saved successfully.",
     });
     
+    handleClose();
+    
     // Call onComplete if provided, otherwise just close
     if (onComplete) {
       onComplete();
-    } else {
-      onClose();
     }
   };
 
-  return (
-    <Card className="w-full mb-6">
-      <CardHeader className="bg-valorwell-600 text-white">
-        <CardTitle className="flex justify-between items-center">
-          <span>PHQ-9 Depression Screener</span>
-          <Button 
-            variant="outline" 
-            onClick={onClose}
-            className="text-white border-white hover:bg-valorwell-700"
-          >
-            Close
-          </Button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-6">
-        <Form {...form}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem>
-                  <Label>Date</Label>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="clinicianName"
-              render={({ field }) => (
-                <FormItem>
-                  <Label>Clinician</Label>
-                  <FormControl>
-                    <Input {...field} readOnly />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="patientName"
-              render={({ field }) => (
-                <FormItem>
-                  <Label>Patient</Label>
-                  <FormControl>
-                    <Input {...field} readOnly />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </div>
+  const handleClose = () => {
+    setIsOpen(false);
+    onClose();
+  };
 
-          <div className="mb-6">
-            <h3 className="font-medium text-lg mb-4">
-              Over the last 2 weeks, how often have you been bothered by any of the following problems?
-            </h3>
-            
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-1/2">Question</TableHead>
-                  {answerOptions.map((option) => (
-                    <TableHead key={option.value} className="text-center">
-                      {option.label}<br />
-                      <span className="text-sm font-normal">({option.value})</span>
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {phq9Questions.map((question, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{question}</TableCell>
-                    {answerOptions.map((option) => (
-                      <TableCell key={`${index}-${option.value}`} className="text-center">
-                        <input
-                          type="radio"
-                          name={`question-${index}`}
-                          value={option.value}
-                          checked={scores[index] === option.value}
-                          onChange={() => handleScoreChange(index, option.value)}
-                          className="h-4 w-4"
-                        />
-                      </TableCell>
-                    ))}
-                  </TableRow>
+  const renderFormContent = () => (
+    <Form {...form}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <FormField
+          control={form.control}
+          name="date"
+          render={({ field }) => (
+            <FormItem>
+              <Label>Date</Label>
+              <FormControl>
+                <Input type="date" {...field} />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="clinicianName"
+          render={({ field }) => (
+            <FormItem>
+              <Label>Clinician</Label>
+              <FormControl>
+                <Input {...field} readOnly />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="patientName"
+          render={({ field }) => (
+            <FormItem>
+              <Label>Patient</Label>
+              <FormControl>
+                <Input {...field} readOnly />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+      </div>
+
+      <div className="mb-6">
+        <h3 className="font-medium text-lg mb-4">
+          Over the last 2 weeks, how often have you been bothered by any of the following problems?
+        </h3>
+        
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-1/2">Question</TableHead>
+              {answerOptions.map((option) => (
+                <TableHead key={option.value} className="text-center">
+                  {option.label}<br />
+                  <span className="text-sm font-normal">({option.value})</span>
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {phq9Questions.map((question, index) => (
+              <TableRow key={index}>
+                <TableCell>{question}</TableCell>
+                {answerOptions.map((option) => (
+                  <TableCell key={`${index}-${option.value}`} className="text-center">
+                    <input
+                      type="radio"
+                      name={`question-${index}`}
+                      value={option.value}
+                      checked={scores[index] === option.value}
+                      onChange={() => handleScoreChange(index, option.value)}
+                      className="h-4 w-4"
+                    />
+                  </TableCell>
                 ))}
-              </TableBody>
-            </Table>
-          </div>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
-          <div className="mb-6">
-            <div className="bg-gray-100 p-4 rounded-md">
-              <h3 className="font-medium mb-2">Score Interpretation</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p><strong>Total Score:</strong> {totalScore}</p>
-                  <p><strong>Severity:</strong> {getSeverity(totalScore)}</p>
-                </div>
-                <div>
-                  <p><strong>PHQ-9 Score Ranges:</strong></p>
-                  <ul className="text-sm">
-                    <li>0-4: None-minimal</li>
-                    <li>5-9: Mild</li>
-                    <li>10-14: Moderate</li>
-                    <li>15-19: Moderately severe</li>
-                    <li>20-27: Severe</li>
-                  </ul>
-                </div>
-              </div>
+      <div className="mb-6">
+        <div className="bg-gray-100 p-4 rounded-md">
+          <h3 className="font-medium mb-2">Score Interpretation</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p><strong>Total Score:</strong> {totalScore}</p>
+              <p><strong>Severity:</strong> {getSeverity(totalScore)}</p>
+            </div>
+            <div>
+              <p><strong>PHQ-9 Score Ranges:</strong></p>
+              <ul className="text-sm">
+                <li>0-4: None-minimal</li>
+                <li>5-9: Mild</li>
+                <li>10-14: Moderate</li>
+                <li>15-19: Moderately severe</li>
+                <li>20-27: Severe</li>
+              </ul>
             </div>
           </div>
+        </div>
+      </div>
 
-          <div className="mb-6">
-            <Label htmlFor="additionalNotes">Additional Notes</Label>
-            <Textarea 
-              id="additionalNotes" 
-              value={additionalNotes} 
-              onChange={(e) => setAdditionalNotes(e.target.value)}
-              className="mt-1"
-              rows={4}
-            />
-          </div>
+      <div className="mb-6">
+        <Label htmlFor="additionalNotes">Additional Notes</Label>
+        <Textarea 
+          id="additionalNotes" 
+          value={additionalNotes} 
+          onChange={(e) => setAdditionalNotes(e.target.value)}
+          className="mt-1"
+          rows={4}
+        />
+      </div>
 
-          <div className="flex justify-end gap-4">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
+      <div className="flex justify-end gap-4 mt-6">
+        <Button variant="outline" onClick={handleClose}>
+          Cancel
+        </Button>
+        <Button onClick={handleSubmit}>
+          Save Assessment
+        </Button>
+      </div>
+    </Form>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex justify-between items-center">
+            <span>PHQ-9 Depression Screener</span>
+            <Button variant="ghost" size="icon" onClick={handleClose} className="h-6 w-6 rounded-full">
+              <X className="h-4 w-4" />
             </Button>
-            <Button onClick={handleSubmit}>
-              Save Assessment
-            </Button>
-          </div>
-        </Form>
-      </CardContent>
-    </Card>
+          </DialogTitle>
+        </DialogHeader>
+        {renderFormContent()}
+      </DialogContent>
+    </Dialog>
   );
 };
 
