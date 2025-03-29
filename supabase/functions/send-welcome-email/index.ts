@@ -78,7 +78,7 @@ serve(async (req) => {
       console.log(`Sending test email to ${testEmail}`);
       
       const { data, error } = await resend.emails.send({
-        from: "TheraPal <onboarding@resend.dev>",
+        from: "TheraPal <noreply@updates.valorwell.org>",
         to: testEmail,
         subject: "TheraPal Email Test",
         html: `
@@ -194,14 +194,14 @@ serve(async (req) => {
       const resend = new Resend(apiKey);
       
       // Frontend URL with login path
-      const frontendUrl = Deno.env.get("FRONTEND_URL") || "http://localhost:5173/login";
+      const frontendUrl = Deno.env.get("FRONTEND_URL") || "https://valorwell.org/login";
       console.log(`Using login URL: ${frontendUrl}`);
 
       // Send the welcome email
       console.log("Sending welcome email...");
       try {
         const { data, error } = await resend.emails.send({
-          from: "TheraPal <onboarding@resend.dev>",
+          from: "TheraPal <noreply@updates.valorwell.org>",
           to: email,
           subject: "Welcome to TheraPal - Your Account Information",
           html: `
