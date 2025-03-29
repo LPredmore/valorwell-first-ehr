@@ -14,12 +14,14 @@ import TreatmentPlanTemplate from '@/components/templates/TreatmentPlanTemplate'
 import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 import PHQ9Template from '@/components/templates/PHQ9Template';
 import GAD7Template from '@/components/templates/GAD7Template';
+import PCL5Template from '@/components/templates/PCL5Template';
 
 const TemplatesTab = () => {
   const [showTreatmentPlanTemplate, setShowTreatmentPlanTemplate] = useState(false);
   const [showSessionNoteTemplate, setShowSessionNoteTemplate] = useState(false);
   const [showPHQ9Template, setShowPHQ9Template] = useState(false);
   const [showGAD7Template, setShowGAD7Template] = useState(false);
+  const [showPCL5Template, setShowPCL5Template] = useState(false);
 
   const handleCloseTreatmentPlan = () => {
     setShowTreatmentPlanTemplate(false);
@@ -36,6 +38,10 @@ const TemplatesTab = () => {
   const handleCloseGAD7 = () => {
     setShowGAD7Template(false);
   };
+  
+  const handleClosePCL5 = () => {
+    setShowPCL5Template(false);
+  };
 
   return (
     <div className="p-6 animate-fade-in">
@@ -47,6 +53,8 @@ const TemplatesTab = () => {
         <PHQ9Template onClose={() => setShowPHQ9Template(false)} clinicianName="" />
       ) : showGAD7Template ? (
         <GAD7Template onClose={() => setShowGAD7Template(false)} clinicianName="" />
+      ) : showPCL5Template ? (
+        <PCL5Template onClose={() => setShowPCL5Template(false)} clinicianName="" />
       ) : (
         <>
           <div className="mb-8">
@@ -137,6 +145,19 @@ const TemplatesTab = () => {
                     <TableCell className="font-medium">GAD-7</TableCell>
                     <TableCell>Anxiety Screener</TableCell>
                     <TableCell>Generalized Anxiety Disorder (7-item)</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500">
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow className="cursor-pointer hover:bg-gray-50" onClick={() => setShowPCL5Template(true)}>
+                    <TableCell className="font-medium">PCL-5</TableCell>
+                    <TableCell>Trauma Screener</TableCell>
+                    <TableCell>PTSD Checklist for DSM-5 (20-item)</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                         <Pencil className="h-4 w-4" />

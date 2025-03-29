@@ -12,6 +12,7 @@ import { BarChart2, ClipboardCheck, FileText, ClipboardList } from "lucide-react
 import TreatmentPlanTemplate from "@/components/templates/TreatmentPlanTemplate";
 import SessionNoteTemplate from "@/components/templates/SessionNoteTemplate";
 import PHQ9Template from "@/components/templates/PHQ9Template";
+import PCL5Template from "@/components/templates/PCL5Template";
 import { useClinicianData } from "@/hooks/useClinicianData";
 import { ClientDetails } from "@/types/client";
 
@@ -23,6 +24,7 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
   const [showTreatmentPlanTemplate, setShowTreatmentPlanTemplate] = useState(false);
   const [showSessionNoteTemplate, setShowSessionNoteTemplate] = useState(false);
   const [showPHQ9Template, setShowPHQ9Template] = useState(false);
+  const [showPCL5Template, setShowPCL5Template] = useState(false);
   const { clinicianData } = useClinicianData();
 
   const handleCloseTreatmentPlan = () => {
@@ -35,6 +37,10 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
 
   const handleClosePHQ9 = () => {
     setShowPHQ9Template(false);
+  };
+  
+  const handleClosePCL5 = () => {
+    setShowPCL5Template(false);
   };
 
   return (
@@ -59,6 +65,9 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
               </Button>
               <Button onClick={() => setShowPHQ9Template(true)}>
                 PHQ-9 Assessment
+              </Button>
+              <Button onClick={() => setShowPCL5Template(true)}>
+                PCL-5 Assessment
               </Button>
             </div>
           </div>
@@ -90,6 +99,16 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
         <div className="animate-fade-in">
           <PHQ9Template
             onClose={handleClosePHQ9}
+            clinicianName={clinicianData?.clinician_professional_name || ''}
+            clientData={clientData}
+          />
+        </div>
+      )}
+      
+      {showPCL5Template && (
+        <div className="animate-fade-in">
+          <PCL5Template
+            onClose={handleClosePCL5}
             clinicianName={clinicianData?.clinician_professional_name || ''}
             clientData={clientData}
           />
