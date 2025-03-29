@@ -19,6 +19,7 @@ import { toast } from '@/hooks/use-toast';
 import TreatmentPlanTemplate from '@/components/templates/TreatmentPlanTemplate';
 import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 import PHQ9Template from '@/components/templates/PHQ9Template';
+import GAD7Template from '@/components/templates/GAD7Template';
 import {
   Table,
   TableBody,
@@ -84,6 +85,7 @@ const Settings = () => {
   const [showTreatmentPlanTemplate, setShowTreatmentPlanTemplate] = useState(false);
   const [showSessionNoteTemplate, setShowSessionNoteTemplate] = useState(false);
   const [showPHQ9Template, setShowPHQ9Template] = useState(false);
+  const [showGAD7Template, setShowGAD7Template] = useState(false);
   
   const [cptCodes, setCptCodes] = useState<CPTCode[]>([]);
   const [isCptLoading, setIsCptLoading] = useState(true);
@@ -441,6 +443,10 @@ const Settings = () => {
   
   const handleClosePHQ9 = () => {
     setShowPHQ9Template(false);
+  };
+  
+  const handleCloseGAD7 = () => {
+    setShowGAD7Template(false);
   };
 
   return (
@@ -964,6 +970,8 @@ const Settings = () => {
               <SessionNoteTemplate onClose={() => setShowSessionNoteTemplate(false)} />
             ) : showPHQ9Template ? (
               <PHQ9Template onClose={() => setShowPHQ9Template(false)} clinicianName="" />
+            ) : showGAD7Template ? (
+              <GAD7Template onClose={() => setShowGAD7Template(false)} clinicianName="" />
             ) : (
               <>
                 <div className="mb-8">
@@ -1050,7 +1058,7 @@ const Settings = () => {
                             </Button>
                           </TableCell>
                         </TableRow>
-                        <TableRow className="hover:bg-gray-50">
+                        <TableRow className="cursor-pointer hover:bg-gray-50" onClick={() => setShowGAD7Template(true)}>
                           <TableCell className="font-medium">GAD-7</TableCell>
                           <TableCell>Anxiety Screener</TableCell>
                           <TableCell>Generalized Anxiety Disorder (7-item)</TableCell>
