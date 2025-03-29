@@ -18,6 +18,7 @@ import Reminders from "./pages/Reminders";
 import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import ClinicianDetails from "./pages/ClinicianDetails";
 import MyClients from "./pages/MyClients";
 import PatientDashboard from "./pages/PatientDashboard";
@@ -49,6 +50,7 @@ const App: React.FC = () => {
               <Route path="/reminders" element={<Reminders />} />
               <Route path="/messages" element={<Messages />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </TooltipProvider>
