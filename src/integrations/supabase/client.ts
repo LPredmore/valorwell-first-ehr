@@ -133,6 +133,56 @@ export const getDocumentDownloadURL = async (filePath: string) => {
   }
 };
 
+// New interface for PHQ9 assessment data
+export interface PHQ9Assessment {
+  client_id: string;
+  assessment_date: string;
+  question_1: number;
+  question_2: number;
+  question_3: number;
+  question_4: number;
+  question_5: number;
+  question_6: number;
+  question_7: number;
+  question_8: number;
+  question_9: number;
+  total_score: number;
+  additional_notes?: string;
+}
+
+// New function to save PHQ-9 assessment
+export const savePHQ9Assessment = async (assessment: PHQ9Assessment) => {
+  try {
+    const { data, error } = await supabase
+      .from('phq9_assessments')
+      .insert([assessment])
+      .select();
+      
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error saving PHQ9 assessment:', error);
+    return { success: false, error };
+  }
+};
+
+// Function to fetch PHQ-9 assessments for a client
+export const fetchPHQ9Assessments = async (clientId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('phq9_assessments')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('assessment_date', { ascending: false });
+      
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching PHQ9 assessments:', error);
+    return [];
+  }
+};
+
 // Interface for CPT Code
 export interface CPTCode {
   code: string;

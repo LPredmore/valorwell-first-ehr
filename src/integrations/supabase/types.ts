@@ -625,6 +625,68 @@ export type Database = {
         }
         Relationships: []
       }
+      phq9_assessments: {
+        Row: {
+          additional_notes: string | null
+          assessment_date: string
+          client_id: string
+          created_at: string
+          id: string
+          question_1: number
+          question_2: number
+          question_3: number
+          question_4: number
+          question_5: number
+          question_6: number
+          question_7: number
+          question_8: number
+          question_9: number
+          total_score: number
+        }
+        Insert: {
+          additional_notes?: string | null
+          assessment_date?: string
+          client_id: string
+          created_at?: string
+          id?: string
+          question_1: number
+          question_2: number
+          question_3: number
+          question_4: number
+          question_5: number
+          question_6: number
+          question_7: number
+          question_8: number
+          question_9: number
+          total_score: number
+        }
+        Update: {
+          additional_notes?: string | null
+          assessment_date?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          question_1?: number
+          question_2?: number
+          question_3?: number
+          question_4?: number
+          question_5?: number
+          question_6?: number
+          question_7?: number
+          question_8?: number
+          question_9?: number
+          total_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phq9_assessments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       practiceinfo: {
         Row: {
           created_at: string

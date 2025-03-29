@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   Dialog,
@@ -19,6 +18,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { X } from "lucide-react";
+import { savePHQ9Assessment } from "@/integrations/supabase/client";
 
 interface PHQ9TemplateProps {
   onClose: () => void;
@@ -53,6 +53,7 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
   const [scores, setScores] = useState<number[]>(new Array(9).fill(0));
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [isOpen, setIsOpen] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   
   const form = useForm({
     defaultValues: {
@@ -80,17 +81,68 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
     setScores(newScores);
   };
 
-  const handleSubmit = () => {
-    toast({
-      title: "Assessment Saved",
-      description: "PHQ-9 assessment has been saved successfully.",
-    });
-    
-    handleClose();
-    
-    // Call onComplete if provided, otherwise just close
-    if (onComplete) {
-      onComplete();
+  const handleSubmit = async () => {
+    try {
+      setIsSaving(true);
+      
+      // Only proceed with saving if we have clientData with an ID
+      if (clientData && clientData.id) {
+        // Prepare the assessment data
+        const assessmentData = {
+          client_id: clientData.id,
+          assessment_date: form.getValues().date,
+          question_1: scores[0],
+          question_2: scores[1],
+          question_3: scores[2],
+          question_4: scores[3],
+          question_5: scores[4],
+          question_6: scores[5],
+          question_7: scores[6],
+          question_8: scores[7],
+          question_9: scores[8],
+          total_score: totalScore,
+          additional_notes: additionalNotes
+        };
+        
+        // Save the assessment to the database
+        const result = await savePHQ9Assessment(assessmentData);
+        
+        if (!result.success) {
+          console.error('Failed to save PHQ-9 assessment:', result.error);
+          toast({
+            title: "Warning",
+            description: "The assessment was completed but there was an issue saving the data.",
+            variant: "destructive"
+          });
+          // Still continue with the flow even if saving fails
+        } else {
+          console.log('PHQ-9 assessment saved successfully:', result.data);
+        }
+      } else {
+        console.warn('Cannot save PHQ-9 assessment: Missing client data or ID');
+      }
+      
+      // Keep existing notification code
+      toast({
+        title: "Assessment Saved",
+        description: "PHQ-9 assessment has been saved successfully.",
+      });
+      
+    } catch (error) {
+      console.error('Error in PHQ-9 submission:', error);
+      toast({
+        title: "Error",
+        description: "There was an issue saving your assessment. The session will continue.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+      handleClose();
+      
+      // Call onComplete if provided, otherwise just close
+      if (onComplete) {
+        onComplete();
+      }
     }
   };
 
@@ -215,11 +267,11 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
       </div>
 
       <div className="flex justify-end gap-4 mt-6">
-        <Button variant="outline" onClick={handleClose}>
+        <Button variant="outline" onClick={handleClose} disabled={isSaving}>
           Cancel
         </Button>
-        <Button onClick={handleSubmit}>
-          Save Assessment
+        <Button onClick={handleSubmit} disabled={isSaving}>
+          {isSaving ? "Saving..." : "Save Assessment"}
         </Button>
       </div>
     </Form>
