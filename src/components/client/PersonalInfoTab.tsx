@@ -16,12 +16,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Clock } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { TabProps } from '@/types/client';
+import { timezoneOptions } from '@/utils/timezoneOptions';
 
 const PersonalInfoTab: React.FC<TabProps> = ({ isEditing, form, clientData }) => {
   return (
@@ -211,9 +212,44 @@ const PersonalInfoTab: React.FC<TabProps> = ({ isEditing, form, clientData }) =>
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Time Zone</FormLabel>
-                <FormControl>
-                  <Input {...field} readOnly={!isEditing} />
-                </FormControl>
+                {isEditing ? (
+                  <Select
+                    disabled={!isEditing}
+                    onValueChange={field.onChange}
+                    value={field.value || ""}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select time zone">
+                          {field.value ? (
+                            <div className="flex items-center">
+                              <Clock className="mr-2 h-4 w-4" />
+                              <span>
+                                {timezoneOptions.find(tz => tz.value === field.value)?.label || field.value}
+                              </span>
+                            </div>
+                          ) : (
+                            "Select time zone"
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {timezoneOptions.map((timezone) => (
+                        <SelectItem key={timezone.value} value={timezone.value}>
+                          {timezone.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <FormControl>
+                    <Input 
+                      value={timezoneOptions.find(tz => tz.value === field.value)?.label || field.value || ""} 
+                      readOnly 
+                    />
+                  </FormControl>
+                )}
                 <FormMessage />
               </FormItem>
             )}
