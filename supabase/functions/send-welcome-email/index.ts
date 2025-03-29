@@ -46,6 +46,92 @@ serve(async (req) => {
     });
   }
 
+  // Check for test mode
+  const url = new URL(req.url);
+  const isTestMode = url.searchParams.get("test") === "true";
+  
+  if (isTestMode) {
+    console.log("Running in test mode");
+    try {
+      // Get the Resend API key
+      const apiKey = Deno.env.get("RESEND_API_KEY");
+      if (!apiKey) {
+        console.error("ERROR: RESEND_API_KEY is not set in environment variables");
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: "RESEND_API_KEY is not set. Please configure this secret in the Supabase dashboard." 
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          }
+        );
+      }
+      console.log("Resend API key is configured for test");
+      
+      // Initialize Resend
+      const resend = new Resend(apiKey);
+      
+      // Send a test email
+      const testEmail = url.searchParams.get("email") || "test@example.com";
+      console.log(`Sending test email to ${testEmail}`);
+      
+      const { data, error } = await resend.emails.send({
+        from: "TheraPal <onboarding@resend.dev>",
+        to: testEmail,
+        subject: "TheraPal Email Test",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+            <h2 style="color: #4a6cf7;">TheraPal Email Test</h2>
+            <p>This is a test email from TheraPal to verify the email system is working correctly.</p>
+            <p>If you received this email, the system is configured properly.</p>
+            <p>Test time: ${new Date().toISOString()}</p>
+          </div>
+        `,
+      });
+      
+      if (error) {
+        console.error("Error from Resend API during test:", error);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: error.message || "Failed to send test email" 
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          }
+        );
+      }
+      
+      console.log("Test email sent successfully:", data);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "Test email sent successfully", 
+          data 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    } catch (testError) {
+      console.error("Error in test mode:", testError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: testError.message || "An error occurred during testing" 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+  }
+
   try {
     console.log("Processing webhook request");
     
