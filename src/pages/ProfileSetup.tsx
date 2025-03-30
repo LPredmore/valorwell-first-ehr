@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -20,12 +21,14 @@ import SignupTricare from '@/components/signup/SignupTricare';
 import SignupVaCcn from '@/components/signup/SignupVaCcn';
 import SignupVeteran from '@/components/signup/SignupVeteran';
 import SignupNotAVeteran from '@/components/signup/SignupNotAVeteran';
+import AdditionalInsurance from '@/components/signup/AdditionalInsurance';
 
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [clientId, setClientId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const [insuranceCount, setInsuranceCount] = useState(1);
   
   // Form setup
   const form = useForm({
@@ -60,6 +63,16 @@ const ProfileSetup = () => {
       tricareInsuranceAgreement: false,
       veteranRelationship: '',
       situationExplanation: '',
+      hasMoreInsurance: '',
+      additionalInsurance: [{ 
+        insuranceCompany: '',
+        planType: '',
+        subscriberName: '',
+        subscriberRelationship: '',
+        subscriberDOB: undefined as Date | undefined,
+        groupNumber: '',
+        policyNumber: ''
+      }]
     }
   });
 
@@ -137,7 +150,9 @@ const ProfileSetup = () => {
   };
 
   const handleGoBack = () => {
-    if (currentStep === 3) {
+    if (currentStep === 4) {
+      setCurrentStep(3);
+    } else if (currentStep === 3) {
       setCurrentStep(2);
     } else if (currentStep === 2) {
       setCurrentStep(1);
@@ -146,13 +161,47 @@ const ProfileSetup = () => {
 
   const handleNext = () => {
     const vaCoverage = form.getValues('vaCoverage');
+    const otherInsurance = form.getValues('otherInsurance');
+    const hasMoreInsurance = form.getValues('hasMoreInsurance');
     
     if (currentStep === 2) {
       // Move to the third step which will conditionally render based on vaCoverage
       setCurrentStep(3);
     } else if (currentStep === 3) {
-      // Submit the form (completing the profile)
-      handleSubmit();
+      // Check if we need to go to the additional insurance step
+      const needsAdditionalInsurance = 
+        (vaCoverage === 'CHAMPVA' || vaCoverage === 'TRICARE') && 
+        otherInsurance === 'Yes';
+      
+      if (needsAdditionalInsurance) {
+        setCurrentStep(4);
+      } else {
+        // Submit the form (completing the profile)
+        handleSubmit();
+      }
+    } else if (currentStep === 4) {
+      // Check if user wants to add another insurance
+      if (hasMoreInsurance === 'Yes') {
+        // Add another insurance form
+        const currentAdditionalInsurance = form.getValues('additionalInsurance') || [];
+        form.setValue('additionalInsurance', [
+          ...currentAdditionalInsurance,
+          {
+            insuranceCompany: '',
+            planType: '',
+            subscriberName: '',
+            subscriberRelationship: '',
+            subscriberDOB: undefined,
+            groupNumber: '',
+            policyNumber: ''
+          }
+        ]);
+        setInsuranceCount(insuranceCount + 1);
+        form.setValue('hasMoreInsurance', '');
+      } else {
+        // Submit the form (completing the profile)
+        handleSubmit();
+      }
     }
   };
 
@@ -171,6 +220,52 @@ const ProfileSetup = () => {
     // Format dates to ISO strings if they exist
     const formattedDateOfBirth = values.dateOfBirth ? format(values.dateOfBirth, 'yyyy-MM-dd') : null;
     const formattedDischargeDate = values.dischargeDate ? format(values.dischargeDate, 'yyyy-MM-dd') : null;
+    
+    // Format additional insurance data
+    let additionalInsuranceData = {};
+    if (values.additionalInsurance && values.additionalInsurance.length > 0) {
+      // First insurance
+      additionalInsuranceData = {
+        client_insurance_company_primary: values.additionalInsurance[0].insuranceCompany,
+        client_insurance_type_primary: values.additionalInsurance[0].planType,
+        client_subscriber_name_primary: values.additionalInsurance[0].subscriberName,
+        client_subscriber_relationship_primary: values.additionalInsurance[0].subscriberRelationship,
+        client_subscriber_dob_primary: values.additionalInsurance[0].subscriberDOB ? 
+          format(values.additionalInsurance[0].subscriberDOB, 'yyyy-MM-dd') : null,
+        client_group_number_primary: values.additionalInsurance[0].groupNumber,
+        client_policy_number_primary: values.additionalInsurance[0].policyNumber,
+      };
+      
+      // Second insurance if exists
+      if (values.additionalInsurance.length > 1) {
+        additionalInsuranceData = {
+          ...additionalInsuranceData,
+          client_insurance_company_secondary: values.additionalInsurance[1].insuranceCompany,
+          client_insurance_type_secondary: values.additionalInsurance[1].planType,
+          client_subscriber_name_secondary: values.additionalInsurance[1].subscriberName,
+          client_subscriber_relationship_secondary: values.additionalInsurance[1].subscriberRelationship,
+          client_subscriber_dob_secondary: values.additionalInsurance[1].subscriberDOB ? 
+            format(values.additionalInsurance[1].subscriberDOB, 'yyyy-MM-dd') : null,
+          client_group_number_secondary: values.additionalInsurance[1].groupNumber,
+          client_policy_number_secondary: values.additionalInsurance[1].policyNumber,
+        };
+      }
+      
+      // Third insurance if exists
+      if (values.additionalInsurance.length > 2) {
+        additionalInsuranceData = {
+          ...additionalInsuranceData,
+          client_insurance_company_tertiary: values.additionalInsurance[2].insuranceCompany,
+          client_insurance_type_tertiary: values.additionalInsurance[2].planType,
+          client_subscriber_name_tertiary: values.additionalInsurance[2].subscriberName,
+          client_subscriber_relationship_tertiary: values.additionalInsurance[2].subscriberRelationship,
+          client_subscriber_dob_tertiary: values.additionalInsurance[2].subscriberDOB ? 
+            format(values.additionalInsurance[2].subscriberDOB, 'yyyy-MM-dd') : null,
+          client_group_number_tertiary: values.additionalInsurance[2].groupNumber,
+          client_policy_number_tertiary: values.additionalInsurance[2].policyNumber,
+        };
+      }
+    }
     
     const { error } = await supabase
       .from('clients')
@@ -205,7 +300,8 @@ const ProfileSetup = () => {
         client_veteran_relationship: values.veteranRelationship,
         client_situation_explanation: values.situationExplanation,
         client_status: 'Profile Complete',
-        client_is_profile_complete: 'true'
+        client_is_profile_complete: 'true',
+        ...additionalInsuranceData
       })
       .eq('id', clientId);
     
@@ -426,10 +522,46 @@ const ProfileSetup = () => {
             
             <Button 
               type="button" 
-              onClick={handleSubmit}
+              onClick={handleNext}
               className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
             >
               Next
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </Form>
+    );
+  };
+
+  const renderStepFour = () => {
+    return (
+      <Form {...form}>
+        <div className="space-y-6">
+          {form.getValues('additionalInsurance')?.map((_, index) => (
+            <div key={index}>
+              {index > 0 && <Separator className="my-8" />}
+              <AdditionalInsurance form={form} index={index} />
+            </div>
+          ))}
+          
+          <div className="flex justify-between mt-8">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handleGoBack}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            
+            <Button 
+              type="button" 
+              onClick={handleNext}
+              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+            >
+              {form.getValues('hasMoreInsurance') === 'Yes' ? 'Add Another' : 'Complete Profile'}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
@@ -456,6 +588,7 @@ const ProfileSetup = () => {
             {currentStep === 1 && renderStepOne()}
             {currentStep === 2 && renderStepTwo()}
             {currentStep === 3 && renderStepThree()}
+            {currentStep === 4 && renderStepFour()}
           </CardContent>
         </Card>
       </div>
