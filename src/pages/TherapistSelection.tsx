@@ -51,12 +51,11 @@ const TherapistSelection = () => {
           return;
         }
         
-        // Get client data
+        // Get client data by user ID instead of email
         const { data, error } = await supabase
           .from('clients')
           .select('client_state, client_age')
-          .eq('id', user.id)
-          .single();
+          .eq('id', user.id);
           
         if (error) {
           console.error("Error fetching client data:", error);
@@ -64,7 +63,24 @@ const TherapistSelection = () => {
           return;
         }
         
-        setClientData(data);
+        // If we found data, use the first record
+        if (data && data.length > 0) {
+          setClientData(data[0]);
+        } else {
+          console.log("No client record found for user ID:", user.id);
+          // Try fallback to email if no data found by ID
+          const { data: emailData, error: emailError } = await supabase
+            .from('clients')
+            .select('client_state, client_age')
+            .eq('client_email', user.email);
+            
+          if (!emailError && emailData && emailData.length > 0) {
+            setClientData(emailData[0]);
+            console.log("Found client data by email instead of ID");
+          } else {
+            console.log("No client data found by ID or email");
+          }
+        }
       } catch (error) {
         console.error("Error in fetchClientData:", error);
       } finally {
