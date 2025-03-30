@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -430,7 +429,7 @@ const ProfileSetup = () => {
               onClick={handleSubmit}
               className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
             >
-              Complete Profile
+              Next
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
