@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -46,6 +47,7 @@ const ProfileSetup = () => {
       timeZone: '',
       vaCoverage: '',
       otherInsurance: '',
+      champvaNumber: '', // Added champvaNumber field to the form
       champvaAgreement: false,
       mentalHealthReferral: '',
       branchOfService: '',
@@ -119,6 +121,7 @@ const ProfileSetup = () => {
             timeZone: data.client_time_zone || '',
             vaCoverage: data.client_va_coverage || '',
             otherInsurance: data.client_other_insurance || '',
+            champvaNumber: data.client_champva || '', // Load the CHAMPVA number from the database
             champvaAgreement: data.client_champva_agreement || false,
             mentalHealthReferral: data.client_mental_health_referral || '',
             branchOfService: data.client_branch_of_service || '',
@@ -167,7 +170,41 @@ const ProfileSetup = () => {
     }
   };
 
-  const handleNext = () => {
+  // Function to save CHAMPVA information when Next is clicked in Step 3
+  const saveChampvaInfo = async () => {
+    if (!clientId) {
+      console.error("No client ID found");
+      return;
+    }
+
+    const champvaNumber = form.getValues('champvaNumber');
+    const champvaAgreement = form.getValues('champvaAgreement');
+
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          client_champva: champvaNumber,
+          client_champva_agreement: champvaAgreement
+        })
+        .eq('id', clientId);
+
+      if (error) {
+        console.error('Error saving CHAMPVA information:', error);
+        toast({
+          title: "Error",
+          description: "Failed to save CHAMPVA information. Please try again.",
+          variant: "destructive"
+        });
+      } else {
+        console.log('CHAMPVA information saved successfully');
+      }
+    } catch (err) {
+      console.error('Exception saving CHAMPVA information:', err);
+    }
+  };
+
+  const handleNext = async () => {
     const vaCoverage = form.getValues('vaCoverage');
     const otherInsurance = form.getValues('otherInsurance');
     const hasMoreInsurance = form.getValues('hasMoreInsurance');
@@ -175,6 +212,11 @@ const ProfileSetup = () => {
     if (currentStep === 2) {
       navigateToStep(3);
     } else if (currentStep === 3) {
+      // Save CHAMPVA information if the user is on CHAMPVA coverage
+      if (vaCoverage === "CHAMPVA") {
+        await saveChampvaInfo();
+      }
+      
       if (vaCoverage === "TRICARE" && otherInsurance === "No") {
         navigateToStep(6);
       } else if (otherInsurance === "Yes" && (vaCoverage === "TRICARE" || vaCoverage === "CHAMPVA")) {
@@ -225,6 +267,7 @@ const ProfileSetup = () => {
         client_time_zone: values.timeZone,
         client_va_coverage: values.vaCoverage,
         client_other_insurance: values.otherInsurance,
+        client_champva: values.champvaNumber, // Save CHAMPVA number in final submission
         client_mental_health_referral: values.mentalHealthReferral,
         client_branch_of_service: values.branchOfService,
         client_discharge_date: formattedDischargeDate,
