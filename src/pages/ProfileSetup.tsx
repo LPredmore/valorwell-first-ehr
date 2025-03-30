@@ -15,6 +15,13 @@ import { timezoneOptions } from '@/utils/timezoneOptions';
 import { DateField } from '@/components/ui/DateField';
 import { format } from 'date-fns';
 
+// Import specialized signup components
+import SignupChampva from '@/components/signup/SignupChampva';
+import SignupTricare from '@/components/signup/SignupTricare';
+import SignupVaCcn from '@/components/signup/SignupVaCcn';
+import SignupVeteran from '@/components/signup/SignupVeteran';
+import SignupNotAVeteran from '@/components/signup/SignupNotAVeteran';
+
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -36,6 +43,10 @@ const ProfileSetup = () => {
       state: '',
       timeZone: '',
       vaCoverage: '',
+      // Additional fields for specialized forms
+      otherInsurance: '',
+      mentalHealthReferral: '',
+      branchOfService: '',
     }
   });
 
@@ -75,6 +86,9 @@ const ProfileSetup = () => {
             state: data.client_state || '',
             timeZone: data.client_time_zone || '',
             vaCoverage: data.client_va_coverage || '',
+            otherInsurance: data.client_other_insurance || '',
+            mentalHealthReferral: data.client_mental_health_referral || '',
+            branchOfService: data.client_branch_of_service || '',
           });
         } else if (error) {
           console.error('Error fetching client data:', error);
@@ -90,7 +104,23 @@ const ProfileSetup = () => {
   };
 
   const handleGoBack = () => {
-    setCurrentStep(1);
+    if (currentStep === 3) {
+      setCurrentStep(2);
+    } else if (currentStep === 2) {
+      setCurrentStep(1);
+    }
+  };
+
+  const handleNext = () => {
+    const vaCoverage = form.getValues('vaCoverage');
+    
+    if (currentStep === 2) {
+      // Move to the third step which will conditionally render based on vaCoverage
+      setCurrentStep(3);
+    } else if (currentStep === 3) {
+      // Submit the form (completing the profile)
+      handleSubmit();
+    }
   };
 
   const handleSubmit = async () => {
@@ -122,6 +152,9 @@ const ProfileSetup = () => {
         client_state: values.state,
         client_time_zone: values.timeZone,
         client_va_coverage: values.vaCoverage,
+        client_other_insurance: values.otherInsurance,
+        client_mental_health_referral: values.mentalHealthReferral,
+        client_branch_of_service: values.branchOfService,
         client_status: 'Profile Complete',
         client_is_profile_complete: 'true'
       })
@@ -294,16 +327,67 @@ const ProfileSetup = () => {
           
           <Button 
             type="button" 
-            onClick={handleSubmit}
+            onClick={handleNext}
             className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
           >
-            Complete Profile
+            Next
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
     </Form>
   );
+
+  const renderStepThree = () => {
+    const vaCoverage = form.getValues('vaCoverage');
+    
+    return (
+      <Form {...form}>
+        <div className="space-y-6">
+          {vaCoverage === 'CHAMPVA' && (
+            <SignupChampva form={form} />
+          )}
+          
+          {vaCoverage === 'TRICARE' && (
+            <SignupTricare form={form} />
+          )}
+          
+          {vaCoverage === 'VA Community Care' && (
+            <SignupVaCcn form={form} />
+          )}
+          
+          {vaCoverage === 'None - I am a veteran' && (
+            <SignupVeteran form={form} />
+          )}
+          
+          {vaCoverage === 'None - I am not a veteran' && (
+            <SignupNotAVeteran />
+          )}
+          
+          <div className="flex justify-between mt-8">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handleGoBack}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            
+            <Button 
+              type="button" 
+              onClick={handleSubmit}
+              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+            >
+              Complete Profile
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </Form>
+    );
+  };
 
   return (
     <Layout>
@@ -320,7 +404,9 @@ const ProfileSetup = () => {
             </p>
           </CardHeader>
           <CardContent className="pt-6">
-            {currentStep === 1 ? renderStepOne() : renderStepTwo()}
+            {currentStep === 1 && renderStepOne()}
+            {currentStep === 2 && renderStepTwo()}
+            {currentStep === 3 && renderStepThree()}
           </CardContent>
         </Card>
       </div>
