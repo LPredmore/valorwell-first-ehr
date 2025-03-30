@@ -458,22 +458,21 @@ const ClinicianDetails = () => {
                   </div>
                   
                   {isEditing && (
-                    <>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => document.getElementById('profile-image')?.click()}
-                        className="flex items-center gap-1 mb-2"
-                      >
-                        <Upload size={16} /> Upload Image
-                      </Button>
-                      
-                      {profileImage && (
-                        <p className="text-sm text-gray-500 text-center">
-                          {profileImage.name} ({Math.round(profileImage.size / 1024)} KB)
-                        </p>
-                      )}
-                    </>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      type="button" 
+                      className="flex items-center gap-1 mb-2"
+                      onClick={() => document.getElementById('profile-image')?.click()}
+                    >
+                      <Upload size={16} /> Choose Image
+                    </Button>
+                  )}
+                  
+                  {isEditing && profileImage && (
+                    <p className="text-sm text-gray-500 text-center">
+                      {profileImage.name} ({Math.round(profileImage.size / 1024)} KB)
+                    </p>
                   )}
                 </div>
               </div>
