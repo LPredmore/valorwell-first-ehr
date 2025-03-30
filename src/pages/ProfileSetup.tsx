@@ -29,6 +29,7 @@ const ProfileSetup = () => {
   const { toast } = useToast();
   const [clientId, setClientId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const [navigationHistory, setNavigationHistory] = useState<number[]>([1]);
   
   const form = useForm({
     defaultValues: {
@@ -147,21 +148,22 @@ const ProfileSetup = () => {
     fetchUser();
   }, [form]);
 
+  const navigateToStep = (nextStep: number) => {
+    setNavigationHistory(prev => [...prev, nextStep]);
+    setCurrentStep(nextStep);
+  };
+
   const handleConfirmIdentity = () => {
-    setCurrentStep(2);
+    navigateToStep(2);
   };
 
   const handleGoBack = () => {
-    if (currentStep === 6) {
-      setCurrentStep(5);
-    } else if (currentStep === 5) {
-      setCurrentStep(4);
-    } else if (currentStep === 4) {
-      setCurrentStep(3);
-    } else if (currentStep === 3) {
-      setCurrentStep(2);
-    } else if (currentStep === 2) {
-      setCurrentStep(1);
+    if (navigationHistory.length > 1) {
+      const newHistory = [...navigationHistory];
+      newHistory.pop();
+      const previousStep = newHistory[newHistory.length - 1];
+      setNavigationHistory(newHistory);
+      setCurrentStep(previousStep);
     }
   };
 
@@ -171,23 +173,23 @@ const ProfileSetup = () => {
     const hasMoreInsurance = form.getValues('hasMoreInsurance');
     
     if (currentStep === 2) {
-      setCurrentStep(3);
+      navigateToStep(3);
     } else if (currentStep === 3) {
       if (vaCoverage === "TRICARE" && otherInsurance === "No") {
-        setCurrentStep(6);
+        navigateToStep(6);
       } else if (otherInsurance === "Yes" && (vaCoverage === "TRICARE" || vaCoverage === "CHAMPVA")) {
-        setCurrentStep(4);
+        navigateToStep(4);
       } else {
-        setCurrentStep(6);
+        navigateToStep(6);
       }
     } else if (currentStep === 4) {
       if (hasMoreInsurance === "Yes") {
-        setCurrentStep(5);
+        navigateToStep(5);
       } else {
-        setCurrentStep(6);
+        navigateToStep(6);
       }
     } else if (currentStep === 5) {
-      setCurrentStep(6);
+      navigateToStep(6);
     } else if (currentStep === 6) {
       handleSubmit();
     }
