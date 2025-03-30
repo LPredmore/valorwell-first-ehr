@@ -33,40 +33,40 @@ const ProfileSetup = () => {
   
   const form = useForm({
     defaultValues: {
-      firstName: '',
-      preferredName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      relationship: '',
-      dateOfBirth: undefined as Date | undefined,
-      birthGender: '',
-      genderIdentity: '',
-      state: '',
-      timeZone: '',
-      vaCoverage: '',
-      otherInsurance: '',
-      champvaAgreement: false,
-      mentalHealthReferral: '',
-      branchOfService: '',
-      dischargeDate: undefined as Date | undefined,
-      vaDisabilityRating: '',
-      tricareBeneficiaryCategory: '',
-      tricareSponsorName: '',
-      tricareSponsorBranch: '',
-      tricareSponsorId: '',
-      tricarePlan: '',
-      tricareRegion: '',
-      tricarePolicyId: '',
-      tricareHasReferral: '',
-      tricareReferralNumber: '',
-      tricareInsuranceAgreement: false,
-      veteranRelationship: '',
-      situationExplanation: '',
-      hasMoreInsurance: '',
-      hasEvenMoreInsurance: '',
-      therapyGoals: '',
-      referralSource: '',
+      client_first_name: '',
+      client_preferred_name: '',
+      client_last_name: '',
+      client_email: '',
+      client_phone: '',
+      client_relationship: '',
+      client_date_of_birth: undefined as Date | undefined,
+      client_gender: '',
+      client_gender_identity: '',
+      client_state: '',
+      client_time_zone: '',
+      client_va_coverage: '',
+      client_other_insurance: '',
+      client_champva_agreement: false,
+      client_mental_health_referral: '',
+      client_branch_of_service: '',
+      client_discharge_date: undefined as Date | undefined,
+      client_va_disability_rating: '',
+      client_tricare_beneficiary_category: '',
+      client_tricare_sponsor_name: '',
+      client_tricare_sponsor_branch: '',
+      client_tricare_sponsor_id: '',
+      client_tricare_plan: '',
+      client_tricare_region: '',
+      client_tricare_policy_id: '',
+      client_tricare_has_referral: '',
+      client_tricare_referral_number: '',
+      client_tricare_insurance_agreement: false,
+      client_veteran_relationship: '',
+      client_situation_explanation: '',
+      client_has_more_insurance: '',
+      client_has_even_more_insurance: '',
+      client_therapy_goals: '',
+      client_referral_source: '',
       additionalInsurance: [
         {
           companyName: '',
@@ -85,11 +85,17 @@ const ProfileSetup = () => {
     const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        console.log("Authenticated user:", user);
         const { data, error } = await supabase
           .from('clients')
           .select('*')
           .eq('client_email', user.email)
           .single();
+        
+        if (error) {
+          console.error('Error fetching client data:', error);
+          return;
+        }
         
         if (data) {
           console.log("Fetched client data:", data);
@@ -106,41 +112,39 @@ const ProfileSetup = () => {
           }
           
           form.reset({
-            firstName: data.client_first_name || '',
-            preferredName: data.client_preferred_name || '',
-            lastName: data.client_last_name || '',
-            email: data.client_email || '',
-            phone: data.client_phone || '',
-            relationship: data.client_relationship || '',
-            dateOfBirth: dateOfBirth,
-            birthGender: data.client_gender || '',
-            genderIdentity: data.client_gender_identity || '',
-            state: data.client_state || '',
-            timeZone: data.client_time_zone || '',
-            vaCoverage: data.client_va_coverage || '',
-            otherInsurance: data.client_other_insurance || '',
-            champvaAgreement: data.client_champva_agreement || false,
-            mentalHealthReferral: data.client_mental_health_referral || '',
-            branchOfService: data.client_branch_of_service || '',
-            dischargeDate: dischargeDate,
-            vaDisabilityRating: data.client_va_disability_rating || '',
-            tricareBeneficiaryCategory: data.client_tricare_beneficiary_category || '',
-            tricareSponsorName: data.client_tricare_sponsor_name || '',
-            tricareSponsorBranch: data.client_tricare_sponsor_branch || '',
-            tricareSponsorId: data.client_tricare_sponsor_id || '',
-            tricarePlan: data.client_tricare_plan || '',
-            tricareRegion: data.client_tricare_region || '',
-            tricarePolicyId: data.client_tricare_policy_id || '',
-            tricareHasReferral: data.client_tricare_has_referral || '',
-            tricareReferralNumber: data.client_tricare_referral_number || '',
-            tricareInsuranceAgreement: data.client_tricare_insurance_agreement || false,
-            veteranRelationship: data.client_veteran_relationship || '',
-            situationExplanation: data.client_situation_explanation || '',
-            therapyGoals: data.client_therapy_goals || '',
-            referralSource: data.client_referral_source || '',
+            client_first_name: data.client_first_name || '',
+            client_preferred_name: data.client_preferred_name || '',
+            client_last_name: data.client_last_name || '',
+            client_email: data.client_email || '',
+            client_phone: data.client_phone || '',
+            client_relationship: data.client_relationship || '',
+            client_date_of_birth: dateOfBirth,
+            client_gender: data.client_gender || '',
+            client_gender_identity: data.client_gender_identity || '',
+            client_state: data.client_state || '',
+            client_time_zone: data.client_time_zone || '',
+            client_va_coverage: data.client_va_coverage || '',
+            client_other_insurance: data.client_other_insurance || '',
+            client_champva_agreement: data.client_champva_agreement || false,
+            client_mental_health_referral: data.client_mental_health_referral || '',
+            client_branch_of_service: data.client_branch_of_service || '',
+            client_discharge_date: dischargeDate,
+            client_va_disability_rating: data.client_va_disability_rating || '',
+            client_tricare_beneficiary_category: data.client_tricare_beneficiary_category || '',
+            client_tricare_sponsor_name: data.client_tricare_sponsor_name || '',
+            client_tricare_sponsor_branch: data.client_tricare_sponsor_branch || '',
+            client_tricare_sponsor_id: data.client_tricare_sponsor_id || '',
+            client_tricare_plan: data.client_tricare_plan || '',
+            client_tricare_region: data.client_tricare_region || '',
+            client_tricare_policy_id: data.client_tricare_policy_id || '',
+            client_tricare_has_referral: data.client_tricare_has_referral || '',
+            client_tricare_referral_number: data.client_tricare_referral_number || '',
+            client_tricare_insurance_agreement: data.client_tricare_insurance_agreement || false,
+            client_veteran_relationship: data.client_veteran_relationship || '',
+            client_situation_explanation: data.client_situation_explanation || '',
+            client_therapy_goals: data.client_therapy_goals || '',
+            client_referral_source: data.client_referral_source || '',
           });
-        } else if (error) {
-          console.error('Error fetching client data:', error);
         }
       }
     };
@@ -153,8 +157,56 @@ const ProfileSetup = () => {
     setCurrentStep(nextStep);
   };
 
-  const handleConfirmIdentity = () => {
-    navigateToStep(2);
+  const handleConfirmIdentity = async () => {
+    if (!clientId) {
+      toast({
+        title: "Error",
+        description: "No client record found. Please contact support.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const values = form.getValues();
+    console.log("Saving initial profile data:", values);
+    
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          client_first_name: values.client_first_name,
+          client_last_name: values.client_last_name,
+          client_preferred_name: values.client_preferred_name,
+          client_email: values.client_email,
+          client_phone: values.client_phone,
+          client_relationship: values.client_relationship
+        })
+        .eq('id', clientId);
+        
+      if (error) {
+        console.error("Error saving identity data:", error);
+        toast({
+          title: "Error saving data",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      toast({
+        title: "Personal information saved",
+        description: "Your identity details have been updated.",
+      });
+      
+      navigateToStep(2);
+    } catch (error) {
+      console.error("Exception saving identity data:", error);
+      toast({
+        title: "Error saving data",
+        description: "An unexpected error occurred.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleGoBack = () => {
@@ -168,9 +220,9 @@ const ProfileSetup = () => {
   };
 
   const handleNext = () => {
-    const vaCoverage = form.getValues('vaCoverage');
-    const otherInsurance = form.getValues('otherInsurance');
-    const hasMoreInsurance = form.getValues('hasMoreInsurance');
+    const vaCoverage = form.getValues('client_va_coverage');
+    const otherInsurance = form.getValues('client_other_insurance');
+    const hasMoreInsurance = form.getValues('client_has_more_insurance');
     
     if (currentStep === 2) {
       navigateToStep(3);
@@ -207,43 +259,43 @@ const ProfileSetup = () => {
       return;
     }
 
-    const formattedDateOfBirth = values.dateOfBirth ? format(values.dateOfBirth, 'yyyy-MM-dd') : null;
-    const formattedDischargeDate = values.dischargeDate ? format(values.dischargeDate, 'yyyy-MM-dd') : null;
+    const formattedDateOfBirth = values.client_date_of_birth ? format(values.client_date_of_birth, 'yyyy-MM-dd') : null;
+    const formattedDischargeDate = values.client_discharge_date ? format(values.client_discharge_date, 'yyyy-MM-dd') : null;
     
     const { error } = await supabase
       .from('clients')
       .update({
-        client_first_name: values.firstName,
-        client_preferred_name: values.preferredName,
-        client_last_name: values.lastName,
-        client_phone: values.phone,
-        client_relationship: values.relationship,
+        client_first_name: values.client_first_name,
+        client_preferred_name: values.client_preferred_name,
+        client_last_name: values.client_last_name,
+        client_phone: values.client_phone,
+        client_relationship: values.client_relationship,
         client_date_of_birth: formattedDateOfBirth,
-        client_gender: values.birthGender,
-        client_gender_identity: values.genderIdentity,
-        client_state: values.state,
-        client_time_zone: values.timeZone,
-        client_va_coverage: values.vaCoverage,
-        client_other_insurance: values.otherInsurance,
-        client_mental_health_referral: values.mentalHealthReferral,
-        client_branch_of_service: values.branchOfService,
+        client_gender: values.client_gender,
+        client_gender_identity: values.client_gender_identity,
+        client_state: values.client_state,
+        client_time_zone: values.client_time_zone,
+        client_va_coverage: values.client_va_coverage,
+        client_other_insurance: values.client_other_insurance,
+        client_mental_health_referral: values.client_mental_health_referral,
+        client_branch_of_service: values.client_branch_of_service,
         client_discharge_date: formattedDischargeDate,
-        client_va_disability_rating: values.vaDisabilityRating,
-        client_champva_agreement: values.champvaAgreement,
-        client_tricare_beneficiary_category: values.tricareBeneficiaryCategory,
-        client_tricare_sponsor_name: values.tricareSponsorName,
-        client_tricare_sponsor_branch: values.tricareSponsorBranch,
-        client_tricare_sponsor_id: values.tricareSponsorId,
-        client_tricare_plan: values.tricarePlan,
-        client_tricare_region: values.tricareRegion,
-        client_tricare_policy_id: values.tricarePolicyId,
-        client_tricare_has_referral: values.tricareHasReferral,
-        client_tricare_referral_number: values.tricareReferralNumber,
-        client_tricare_insurance_agreement: values.tricareInsuranceAgreement,
-        client_veteran_relationship: values.veteranRelationship,
-        client_situation_explanation: values.situationExplanation,
-        client_therapy_goals: values.therapyGoals,
-        client_referral_source: values.referralSource,
+        client_va_disability_rating: values.client_va_disability_rating,
+        client_champva_agreement: values.client_champva_agreement,
+        client_tricare_beneficiary_category: values.client_tricare_beneficiary_category,
+        client_tricare_sponsor_name: values.client_tricare_sponsor_name,
+        client_tricare_sponsor_branch: values.client_tricare_sponsor_branch,
+        client_tricare_sponsor_id: values.client_tricare_sponsor_id,
+        client_tricare_plan: values.client_tricare_plan,
+        client_tricare_region: values.client_tricare_region,
+        client_tricare_policy_id: values.client_tricare_policy_id,
+        client_tricare_has_referral: values.client_tricare_has_referral,
+        client_tricare_referral_number: values.client_tricare_referral_number,
+        client_tricare_insurance_agreement: values.client_tricare_insurance_agreement,
+        client_veteran_relationship: values.client_veteran_relationship,
+        client_situation_explanation: values.client_situation_explanation,
+        client_therapy_goals: values.client_therapy_goals,
+        client_referral_source: values.client_referral_source,
         client_status: 'Profile Complete',
         client_is_profile_complete: 'true'
       })
@@ -270,25 +322,25 @@ const ProfileSetup = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormFieldWrapper
             control={form.control}
-            name="firstName"
+            name="client_first_name"
             label="First Name"
           />
           
           <FormFieldWrapper
             control={form.control}
-            name="lastName"
+            name="client_last_name"
             label="Last Name"
           />
           
           <FormFieldWrapper
             control={form.control}
-            name="preferredName"
+            name="client_preferred_name"
             label="Preferred Name (optional)"
           />
           
           <FormFieldWrapper
             control={form.control}
-            name="email"
+            name="client_email"
             label="Email"
             type="email"
             readOnly={true}
@@ -296,14 +348,14 @@ const ProfileSetup = () => {
           
           <FormFieldWrapper
             control={form.control}
-            name="phone"
+            name="client_phone"
             label="Phone"
             type="tel"
           />
           
           <FormFieldWrapper
             control={form.control}
-            name="relationship"
+            name="client_relationship"
             label="What is your relationship with the patient?"
             type="select"
             options={[
@@ -333,13 +385,13 @@ const ProfileSetup = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <DateField
             control={form.control}
-            name="dateOfBirth"
+            name="client_date_of_birth"
             label="Date of Birth"
           />
           
           <FormFieldWrapper
             control={form.control}
-            name="birthGender"
+            name="client_gender"
             label="Birth Gender"
             type="select"
             options={["Male", "Female"]}
@@ -347,7 +399,7 @@ const ProfileSetup = () => {
           
           <FormFieldWrapper
             control={form.control}
-            name="genderIdentity"
+            name="client_gender_identity"
             label="Gender Identity"
             type="select"
             options={["Male", "Female", "Other"]}
@@ -355,7 +407,7 @@ const ProfileSetup = () => {
           
           <FormFieldWrapper
             control={form.control}
-            name="state"
+            name="client_state"
             label="State of Primary Residence"
             type="select"
             options={[
@@ -374,7 +426,7 @@ const ProfileSetup = () => {
           
           <FormFieldWrapper
             control={form.control}
-            name="timeZone"
+            name="client_time_zone"
             label="Time Zone"
             type="select"
             options={timezoneOptions.map(tz => tz.label)}
@@ -390,7 +442,7 @@ const ProfileSetup = () => {
           
           <FormFieldWrapper
             control={form.control}
-            name="vaCoverage"
+            name="client_va_coverage"
             label="What type of VA Coverage do you have?"
             type="select"
             options={[
@@ -428,7 +480,7 @@ const ProfileSetup = () => {
   );
 
   const renderStepThree = () => {
-    const vaCoverage = form.getValues('vaCoverage');
+    const vaCoverage = form.getValues('client_va_coverage');
     
     return (
       <Form {...form}>

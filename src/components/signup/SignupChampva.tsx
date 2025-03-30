@@ -15,7 +15,7 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   
   // Watch for changes to the otherInsurance field
-  const otherInsurance = form.watch('otherInsurance');
+  const otherInsurance = form.watch('client_other_insurance');
   
   useEffect(() => {
     // Show disclaimer only when "No" is selected
@@ -32,7 +32,7 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
       <div className="grid grid-cols-1 gap-6">
         <FormFieldWrapper
           control={form.control}
-          name="champvaNumber"
+          name="client_champva"
           label="CHAMPVA #"
           type="text"
           maxLength={9}
@@ -45,7 +45,7 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
         
         <FormFieldWrapper
           control={form.control}
-          name="otherInsurance"
+          name="client_other_insurance"
           label="Do you have any other insurance?"
           type="select"
           options={["Yes", "No"]}
@@ -59,7 +59,7 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
             
             <FormField
               control={form.control}
-              name="champvaAgreement"
+              name="client_champva_agreement"
               render={({ field }) => (
                 <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                   <FormControl>

@@ -130,6 +130,7 @@ export type Database = {
           client_assigned_therapist: string | null
           client_attitude: string | null
           client_behavior: string | null
+          client_champva: string | null
           client_date_of_birth: string | null
           client_diagnosis: string[] | null
           client_email: string | null
@@ -176,6 +177,7 @@ export type Database = {
           client_prognosis: string | null
           client_progress: string | null
           client_referral_source: string | null
+          client_relationship: string | null
           client_secondaryobjective: string | null
           client_self_goal: string | null
           client_sessionnarrative: string | null
@@ -219,6 +221,7 @@ export type Database = {
           client_assigned_therapist?: string | null
           client_attitude?: string | null
           client_behavior?: string | null
+          client_champva?: string | null
           client_date_of_birth?: string | null
           client_diagnosis?: string[] | null
           client_email?: string | null
@@ -265,6 +268,7 @@ export type Database = {
           client_prognosis?: string | null
           client_progress?: string | null
           client_referral_source?: string | null
+          client_relationship?: string | null
           client_secondaryobjective?: string | null
           client_self_goal?: string | null
           client_sessionnarrative?: string | null
@@ -308,6 +312,7 @@ export type Database = {
           client_assigned_therapist?: string | null
           client_attitude?: string | null
           client_behavior?: string | null
+          client_champva?: string | null
           client_date_of_birth?: string | null
           client_diagnosis?: string[] | null
           client_email?: string | null
@@ -354,6 +359,7 @@ export type Database = {
           client_prognosis?: string | null
           client_progress?: string | null
           client_referral_source?: string | null
+          client_relationship?: string | null
           client_secondaryobjective?: string | null
           client_self_goal?: string | null
           client_sessionnarrative?: string | null
