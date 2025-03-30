@@ -109,7 +109,7 @@ const ProfileSetup = () => {
             <CardTitle className="text-3xl text-valorwell-700">Welcome to ValorWell!</CardTitle>
             <CardDescription className="text-lg mt-2">
               We're glad you're here. Before scheduling with a therapist, 
-              please confirm your information below.
+              we need to get a little more information about you. Please confirm your information below.
             </CardDescription>
             <p className="mt-4 text-valorwell-600">
               This process will only take 5-10 minutes of your time.
