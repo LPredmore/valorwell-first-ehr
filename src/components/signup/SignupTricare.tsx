@@ -5,7 +5,6 @@ import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormField, FormItem, FormControl, FormLabel } from '@/components/ui/form';
-import { DateField } from '@/components/ui/DateField';
 
 interface SignupTricareProps {
   form: UseFormReturn<any>;
@@ -77,34 +76,6 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form }) => {
             "NOAA Corps",
             "Space Force",
             "USPHS"
-          ]}
-        />
-        
-        <DateField
-          control={form.control}
-          name="tricareDateOfDischarge"
-          label="Date of Most Recent Discharge"
-        />
-        
-        <FormFieldWrapper
-          control={form.control}
-          name="tricareDisabilityRating"
-          label="Current VA Disability Rating"
-          type="select"
-          options={[
-            "0",
-            "10",
-            "20",
-            "30",
-            "40",
-            "50",
-            "60",
-            "70",
-            "80",
-            "90",
-            "100",
-            "100 P&T",
-            "TDIU"
           ]}
         />
         
