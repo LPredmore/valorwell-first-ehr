@@ -229,7 +229,6 @@ const ProfileSetup = () => {
         client_branch_of_service: values.branchOfService,
         client_discharge_date: formattedDischargeDate,
         client_va_disability_rating: values.vaDisabilityRating,
-        client_champva: values.champvaNumber,
         client_champva_agreement: values.champvaAgreement,
         client_tricare_beneficiary_category: values.tricareBeneficiaryCategory,
         client_tricare_sponsor_name: values.tricareSponsorName,
@@ -435,7 +434,7 @@ const ProfileSetup = () => {
       <Form {...form}>
         <div className="space-y-6">
           {vaCoverage === 'CHAMPVA' && (
-            <SignupChampva form={form} clientId={clientId} />
+            <SignupChampva form={form} />
           )}
           
           {vaCoverage === 'TRICARE' && (
