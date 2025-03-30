@@ -63,21 +63,6 @@ const ProfileSetup = () => {
       client_tricare_insurance_agreement: false,
       client_veteran_relationship: '',
       client_situation_explanation: '',
-      client_has_more_insurance: '',
-      client_has_even_more_insurance: '',
-      client_therapy_goals: '',
-      client_referral_source: '',
-      additionalInsurance: [
-        {
-          companyName: '',
-          planType: '',
-          subscriberName: '',
-          subscriberRelationship: '',
-          subscriberDob: undefined as Date | undefined,
-          groupNumber: '',
-          policyNumber: ''
-        }
-      ],
       client_insurance_company_primary: '',
       client_insurance_type_primary: '',
       client_subscriber_name_primary: '',
@@ -86,6 +71,9 @@ const ProfileSetup = () => {
       client_group_number_primary: '',
       client_policy_number_primary: '',
       client_has_more_insurance: '',
+      client_has_even_more_insurance: '',
+      client_therapy_goals: '',
+      client_referral_source: '',
       tricareInsuranceAgreement: false
     }
   });
