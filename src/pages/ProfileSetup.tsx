@@ -601,70 +601,61 @@ const ProfileSetup = () => {
   };
 
   const handleSubmit = async () => {
-    const values = form.getValues();
-    
-    if (!clientId) {
-      toast({
-        title: "Error",
-        description: "No client record found. Please contact support.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const formattedDateOfBirth = values.client_date_of_birth ? format(values.client_date_of_birth, 'yyyy-MM-dd') : null;
-    const formattedDischargeDate = values.client_recentdischarge ? format(values.client_recentdischarge, 'yyyy-MM-dd') : null;
-    
-    const { error } = await supabase
-      .from('clients')
-      .update({
-        client_first_name: values.client_first_name,
-        client_preferred_name: values.client_preferred_name,
-        client_last_name: values.client_last_name,
-        client_phone: values.client_phone,
-        client_relationship: values.client_relationship,
-        client_date_of_birth: formattedDateOfBirth,
-        client_gender: values.client_gender,
-        client_gender_identity: values.client_gender_identity,
-        client_state: values.client_state,
-        client_time_zone: values.client_time_zone,
-        client_vacoverage: values.client_vacoverage,
-        client_other_insurance: values.client_other_insurance,
-        client_mental_health_referral: values.client_mental_health_referral,
-        client_branchOS: values.client_branchOS,
-        client_recentdischarge: formattedDischargeDate,
-        client_disabilityrating: values.client_disabilityrating,
-        client_tricare_beneficiary_category: values.client_tricare_beneficiary_category,
-        client_tricare_sponsor_name: values.client_tricare_sponsor_name,
-        client_tricare_sponsor_branch: values.client_tricare_sponsor_branch,
-        client_tricare_sponsor_id: values.client_tricare_sponsor_id,
-        client_tricare_plan: values.client_tricare_plan,
-        client_tricare_region: values.client_tricare_region,
-        client_tricare_policy_id: values.client_tricare_policy_id,
-        client_tricare_has_referral: values.client_tricare_has_referral,
-        client_tricare_referral_number: values.client_tricare_referral_number,
-        client_tricare_insurance_agreement: values.client_tricare_insurance_agreement,
-        client_veteran_relationship: values.client_veteran_relationship,
-        client_situation_explanation: values.client_situation_explanation,
+    try {
+      const values = form.getValues();
+      
+      if (!clientId) {
+        toast({
+          title: "Error",
+          description: "No client record found. Please contact support.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      console.log("Submitting final form data:", {
         client_self_goal: values.client_self_goal,
         client_referral_source: values.client_referral_source,
         client_status: 'Profile Complete',
         client_is_profile_complete: 'true'
-      })
-      .eq('id', clientId);
-    
-    if (error) {
-      toast({
-        title: "Error updating profile",
-        description: error.message,
-        variant: "destructive"
       });
-    } else {
+
+      // Only update necessary fields for final step
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          client_self_goal: values.client_self_goal || null,
+          client_referral_source: values.client_referral_source || null,
+          client_status: 'Profile Complete',
+          client_is_profile_complete: 'true'
+        })
+        .eq('id', clientId);
+      
+      if (error) {
+        console.error("Error updating profile:", error);
+        toast({
+          title: "Error updating profile",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      console.log("Profile completed successfully");
       toast({
         title: "Profile complete!",
         description: "Your information has been saved. You can now select a therapist.",
       });
+      
+      // Navigate to therapist selection
       navigate('/therapist-selection');
+    } catch (error) {
+      console.error("Exception in handleSubmit:", error);
+      toast({
+        title: "Error updating profile",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
