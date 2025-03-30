@@ -46,7 +46,6 @@ const ProfileSetup = () => {
       timeZone: '',
       vaCoverage: '',
       otherInsurance: '',
-      champvaNumber: '',
       champvaAgreement: false,
       mentalHealthReferral: '',
       branchOfService: '',
@@ -120,7 +119,6 @@ const ProfileSetup = () => {
             timeZone: data.client_time_zone || '',
             vaCoverage: data.client_va_coverage || '',
             otherInsurance: data.client_other_insurance || '',
-            champvaNumber: data.client_champva || '',
             champvaAgreement: data.client_champva_agreement || false,
             mentalHealthReferral: data.client_mental_health_referral || '',
             branchOfService: data.client_branch_of_service || '',
@@ -169,38 +167,7 @@ const ProfileSetup = () => {
     }
   };
 
-  const saveChampvaInfo = async () => {
-    if (!clientId) {
-      console.error("No client ID found");
-      return;
-    }
-
-    const champvaNumber = form.getValues('champvaNumber');
-
-    try {
-      const { error } = await supabase
-        .from('clients')
-        .update({
-          client_champva: champvaNumber
-        })
-        .eq('id', clientId);
-
-      if (error) {
-        console.error('Error saving CHAMPVA information:', error);
-        toast({
-          title: "Error",
-          description: "Failed to save CHAMPVA information. Please try again.",
-          variant: "destructive"
-        });
-      } else {
-        console.log('CHAMPVA information saved successfully');
-      }
-    } catch (err) {
-      console.error('Exception saving CHAMPVA information:', err);
-    }
-  };
-
-  const handleNext = async () => {
+  const handleNext = () => {
     const vaCoverage = form.getValues('vaCoverage');
     const otherInsurance = form.getValues('otherInsurance');
     const hasMoreInsurance = form.getValues('hasMoreInsurance');
@@ -208,22 +175,6 @@ const ProfileSetup = () => {
     if (currentStep === 2) {
       navigateToStep(3);
     } else if (currentStep === 3) {
-      if (vaCoverage === "CHAMPVA") {
-        const otherInsurance = form.getValues('otherInsurance');
-        const champvaAgreement = form.getValues('champvaAgreement');
-        
-        if (otherInsurance === "No" && !champvaAgreement) {
-          toast({
-            title: "Agreement Required",
-            description: "Please check the agreement box to continue.",
-            variant: "destructive"
-          });
-          return;
-        }
-        
-        await saveChampvaInfo();
-      }
-      
       if (vaCoverage === "TRICARE" && otherInsurance === "No") {
         navigateToStep(6);
       } else if (otherInsurance === "Yes" && (vaCoverage === "TRICARE" || vaCoverage === "CHAMPVA")) {
@@ -274,7 +225,6 @@ const ProfileSetup = () => {
         client_time_zone: values.timeZone,
         client_va_coverage: values.vaCoverage,
         client_other_insurance: values.otherInsurance,
-        client_champva: values.champvaNumber,
         client_mental_health_referral: values.mentalHealthReferral,
         client_branch_of_service: values.branchOfService,
         client_discharge_date: formattedDischargeDate,
