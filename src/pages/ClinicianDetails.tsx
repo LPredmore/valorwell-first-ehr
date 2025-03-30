@@ -458,21 +458,20 @@ const ClinicianDetails = () => {
                   </div>
                   
                   {isEditing && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      type="button" 
-                      className="flex items-center gap-1 mb-2"
-                      onClick={() => document.getElementById('profile-image')?.click()}
-                    >
-                      <Upload size={16} /> Choose Image
-                    </Button>
-                  )}
-                  
-                  {isEditing && profileImage && (
-                    <p className="text-sm text-gray-500 text-center">
-                      {profileImage.name} ({Math.round(profileImage.size / 1024)} KB)
-                    </p>
+                    <>
+                      <label 
+                        htmlFor="profile-image"
+                        className="block text-sm font-medium text-gray-700 mb-2 cursor-pointer hover:text-gray-900 transition-colors"
+                      >
+                        Upload Image
+                      </label>
+                      
+                      {profileImage && (
+                        <p className="text-sm text-gray-500 text-center">
+                          {profileImage.name} ({Math.round(profileImage.size / 1024)} KB)
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
