@@ -5,7 +5,7 @@ import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { FormField, FormItem, FormControl } from '@/components/ui/form';
+import { FormField, FormItem, FormControl, FormMessage } from '@/components/ui/form';
 
 interface SignupChampvaProps {
   form: UseFormReturn<any>;
@@ -36,6 +36,7 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
           label="CHAMPVA #"
           type="text"
           maxLength={9}
+          rules={{ required: "CHAMPVA number is required" }}
         />
         <p className="text-sm text-gray-500 italic -mt-4">
           We understand that this is your SSN. And although we do not necessarily agree with them using this as their patient identifier, we do have to follow their process. The only way to verify your coverage is to have this.
@@ -49,6 +50,7 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
           label="Do you have any other insurance?"
           type="select"
           options={["Yes", "No"]}
+          rules={{ required: "Please select Yes or No" }}
         />
         
         {showDisclaimer && (
@@ -66,11 +68,15 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
                     <Checkbox
                       checked={field.value}
                       onCheckedChange={field.onChange}
+                      id="champva-agreement"
                     />
                   </FormControl>
-                  <Label className="font-medium cursor-pointer">
-                    I agree
-                  </Label>
+                  <div className="space-y-1 leading-none">
+                    <Label htmlFor="champva-agreement" className="font-medium cursor-pointer">
+                      I agree <span className="text-red-500">*</span>
+                    </Label>
+                    <FormMessage />
+                  </div>
                 </FormItem>
               )}
             />
