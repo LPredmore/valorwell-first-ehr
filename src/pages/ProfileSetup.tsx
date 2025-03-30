@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { timezoneOptions } from '@/utils/timezoneOptions';
 import { DateField } from '@/components/ui/DateField';
 import { format } from 'date-fns';
+import { Separator } from '@/components/ui/separator';
 
 // Import specialized signup components
 import SignupChampva from '@/components/signup/SignupChampva';
