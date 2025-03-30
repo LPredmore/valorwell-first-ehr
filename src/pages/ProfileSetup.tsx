@@ -14,16 +14,6 @@ import { timezoneOptions } from '@/utils/timezoneOptions';
 import { DateField } from '@/components/ui/DateField';
 import { format } from 'date-fns';
 
-// Import specialized signup components
-import SignupChampva from '@/components/signup/SignupChampva';
-import SignupTricare from '@/components/signup/SignupTricare';
-import SignupVaCcn from '@/components/signup/SignupVaCcn';
-import SignupVeteran from '@/components/signup/SignupVeteran';
-import SignupNotAVeteran from '@/components/signup/SignupNotAVeteran';
-import AdditionalInsurance from '@/components/signup/AdditionalInsurance';
-import MoreAdditionalInsurance from '@/components/signup/MoreAdditionalInsurance';
-import SignupLast from '@/components/signup/SignupLast';
-
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -210,47 +200,52 @@ const ProfileSetup = () => {
     const formattedDateOfBirth = values.dateOfBirth ? format(values.dateOfBirth, 'yyyy-MM-dd') : null;
     const formattedDischargeDate = values.dischargeDate ? format(values.dischargeDate, 'yyyy-MM-dd') : null;
     
+    const clientData = {
+      client_first_name: values.firstName,
+      client_preferred_name: values.preferredName,
+      client_last_name: values.lastName,
+      client_phone: values.phone,
+      client_relationship: values.relationship,
+      client_date_of_birth: formattedDateOfBirth,
+      client_gender: values.birthGender,
+      client_gender_identity: values.genderIdentity,
+      client_state: values.state,
+      client_time_zone: values.timeZone,
+      client_va_coverage: values.vaCoverage,
+      client_other_insurance: values.otherInsurance,
+      client_mental_health_referral: values.mentalHealthReferral,
+      client_branch_of_service: values.branchOfService,
+      client_discharge_date: formattedDischargeDate,
+      client_va_disability_rating: values.vaDisabilityRating,
+      client_champva: values.champvaNumber,
+      client_champva_agreement: values.champvaAgreement,
+      client_tricare_beneficiary_category: values.tricareBeneficiaryCategory,
+      client_tricare_sponsor_name: values.tricareSponsorName,
+      client_tricare_sponsor_branch: values.tricareSponsorBranch,
+      client_tricare_sponsor_id: values.tricareSponsorId,
+      client_tricare_plan: values.tricarePlan,
+      client_tricare_region: values.tricareRegion,
+      client_tricare_policy_id: values.tricarePolicyId,
+      client_tricare_has_referral: values.tricareHasReferral,
+      client_tricare_referral_number: values.tricareReferralNumber,
+      client_tricare_insurance_agreement: values.tricareInsuranceAgreement,
+      client_veteran_relationship: values.veteranRelationship,
+      client_situation_explanation: values.situationExplanation,
+      client_therapy_goals: values.therapyGoals,
+      client_referral_source: values.referralSource,
+      client_status: 'Profile Complete',
+      client_is_profile_complete: 'true'
+    };
+
+    console.log("Updating client record with data:", clientData);
+    
     const { error } = await supabase
       .from('clients')
-      .update({
-        client_first_name: values.firstName,
-        client_preferred_name: values.preferredName,
-        client_last_name: values.lastName,
-        client_phone: values.phone,
-        client_relationship: values.relationship,
-        client_date_of_birth: formattedDateOfBirth,
-        client_gender: values.birthGender,
-        client_gender_identity: values.genderIdentity,
-        client_state: values.state,
-        client_time_zone: values.timeZone,
-        client_va_coverage: values.vaCoverage,
-        client_other_insurance: values.otherInsurance,
-        client_mental_health_referral: values.mentalHealthReferral,
-        client_branch_of_service: values.branchOfService,
-        client_discharge_date: formattedDischargeDate,
-        client_va_disability_rating: values.vaDisabilityRating,
-        client_champva: values.champvaNumber,
-        client_champva_agreement: values.champvaAgreement,
-        client_tricare_beneficiary_category: values.tricareBeneficiaryCategory,
-        client_tricare_sponsor_name: values.tricareSponsorName,
-        client_tricare_sponsor_branch: values.tricareSponsorBranch,
-        client_tricare_sponsor_id: values.tricareSponsorId,
-        client_tricare_plan: values.tricarePlan,
-        client_tricare_region: values.tricareRegion,
-        client_tricare_policy_id: values.tricarePolicyId,
-        client_tricare_has_referral: values.tricareHasReferral,
-        client_tricare_referral_number: values.tricareReferralNumber,
-        client_tricare_insurance_agreement: values.tricareInsuranceAgreement,
-        client_veteran_relationship: values.veteranRelationship,
-        client_situation_explanation: values.situationExplanation,
-        client_therapy_goals: values.therapyGoals,
-        client_referral_source: values.referralSource,
-        client_status: 'Profile Complete',
-        client_is_profile_complete: 'true'
-      })
+      .update(clientData)
       .eq('id', clientId);
     
     if (error) {
+      console.error("Supabase error:", error);
       toast({
         title: "Error updating profile",
         description: error.message,
