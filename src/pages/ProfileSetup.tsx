@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -893,4 +894,120 @@ const ProfileSetup = () => {
       <div className="space-y-6">
         <AdditionalInsurance form={form} />
         
-        <div className="flex justify-between
+        <div className="flex justify-between mt-8">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          
+          <Button 
+            type="button" 
+            onClick={handleNext}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
+            Next
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </Form>
+  );
+
+  const renderStepFive = () => (
+    <Form {...form}>
+      <div className="space-y-6">
+        <MoreAdditionalInsurance form={form} />
+        
+        <div className="flex justify-between mt-8">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          
+          <Button 
+            type="button" 
+            onClick={handleNext}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
+            Next
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </Form>
+  );
+
+  const renderStepSix = () => (
+    <Form {...form}>
+      <div className="space-y-6">
+        <SignupLast form={form} />
+        
+        <div className="flex justify-between mt-8">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          
+          <Button 
+            type="button" 
+            onClick={handleSubmit}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
+            Submit
+          </Button>
+        </div>
+      </div>
+    </Form>
+  );
+
+  return (
+    <Layout>
+      <div className="max-w-5xl mx-auto">
+        <Card className="border-valorwell-200 shadow-xl">
+          <CardHeader className="bg-gradient-to-r from-valorwell-500 to-valorwell-600 text-white rounded-t-lg p-6">
+            <CardTitle className="text-xl sm:text-2xl font-semibold">Profile Setup</CardTitle>
+            <CardDescription className="text-valorwell-50">Tell us about yourself to get started</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 sm:p-8">
+            <div className="mb-6">
+              <div className="flex justify-between mb-2">
+                <span className="text-sm text-valorwell-700">Step {currentStep} of 6</span>
+                <span className="text-sm text-valorwell-700">{Math.round((currentStep / 6) * 100)}% Complete</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-valorwell-600 h-2.5 rounded-full" 
+                  style={{ width: `${(currentStep / 6) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+            
+            {currentStep === 1 && renderStepOne()}
+            {currentStep === 2 && renderStepTwo()}
+            {currentStep === 3 && renderStepThree()}
+            {currentStep === 4 && renderStepFour()}
+            {currentStep === 5 && renderStepFive()}
+            {currentStep === 6 && renderStepSix()}
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
+  );
+};
+
+export default ProfileSetup;
