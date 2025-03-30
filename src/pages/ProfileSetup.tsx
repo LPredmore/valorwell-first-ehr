@@ -59,6 +59,8 @@ const ProfileSetup = () => {
       tricareHasReferral: '',
       tricareReferralNumber: '',
       tricareInsuranceAgreement: false,
+      veteranRelationship: '',
+      situationExplanation: '',
     }
   });
 
@@ -119,6 +121,8 @@ const ProfileSetup = () => {
             tricareHasReferral: data.client_tricare_has_referral || '',
             tricareReferralNumber: data.client_tricare_referral_number || '',
             tricareInsuranceAgreement: data.client_tricare_insurance_agreement || false,
+            veteranRelationship: data.client_veteran_relationship || '',
+            situationExplanation: data.client_situation_explanation || '',
           });
         } else if (error) {
           console.error('Error fetching client data:', error);
@@ -199,6 +203,8 @@ const ProfileSetup = () => {
         client_tricare_has_referral: values.tricareHasReferral,
         client_tricare_referral_number: values.tricareReferralNumber,
         client_tricare_insurance_agreement: values.tricareInsuranceAgreement,
+        client_veteran_relationship: values.veteranRelationship,
+        client_situation_explanation: values.situationExplanation,
         client_status: 'Profile Complete',
         client_is_profile_complete: 'true'
       })
@@ -405,7 +411,7 @@ const ProfileSetup = () => {
           )}
           
           {vaCoverage === 'None - I am not a veteran' && (
-            <SignupNotAVeteran />
+            <SignupNotAVeteran form={form} />
           )}
           
           <div className="flex justify-between mt-8">
