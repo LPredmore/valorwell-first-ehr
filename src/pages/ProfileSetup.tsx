@@ -246,6 +246,7 @@ const ProfileSetup = () => {
         client_va_coverage: values.vaCoverage,
         client_other_insurance: values.otherInsurance,
         client_champva: values.champvaNumber,
+        client_champva_agreement: values.champvaAgreement,
         client_mental_health_referral: values.mentalHealthReferral,
         client_branch_of_service: values.branchOfService,
         client_discharge_date: formattedDischargeDate,
