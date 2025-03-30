@@ -46,6 +46,7 @@ const ProfileSetup = () => {
       timeZone: '',
       vaCoverage: '',
       otherInsurance: '',
+      champvaNumber: '',
       champvaAgreement: false,
       mentalHealthReferral: '',
       branchOfService: '',
@@ -119,6 +120,7 @@ const ProfileSetup = () => {
             timeZone: data.client_time_zone || '',
             vaCoverage: data.client_va_coverage || '',
             otherInsurance: data.client_other_insurance || '',
+            champvaNumber: data.client_champva || '',
             champvaAgreement: data.client_champva_agreement || false,
             mentalHealthReferral: data.client_mental_health_referral || '',
             branchOfService: data.client_branch_of_service || '',
@@ -171,6 +173,24 @@ const ProfileSetup = () => {
     const vaCoverage = form.getValues('vaCoverage');
     const otherInsurance = form.getValues('otherInsurance');
     const hasMoreInsurance = form.getValues('hasMoreInsurance');
+    
+    if (currentStep === 3 && vaCoverage === "CHAMPVA" && otherInsurance === "No") {
+      const champvaAgreement = form.getValues('champvaAgreement');
+      if (!champvaAgreement) {
+        form.setError('champvaAgreement', {
+          type: 'manual',
+          message: 'You must agree to the terms above to proceed'
+        });
+        
+        toast({
+          title: "Agreement Required",
+          description: "Please agree to the CHAMPVA terms to continue.",
+          variant: "destructive"
+        });
+        
+        return;
+      }
+    }
     
     if (currentStep === 2) {
       navigateToStep(3);
@@ -225,11 +245,11 @@ const ProfileSetup = () => {
         client_time_zone: values.timeZone,
         client_va_coverage: values.vaCoverage,
         client_other_insurance: values.otherInsurance,
+        client_champva: values.champvaNumber,
         client_mental_health_referral: values.mentalHealthReferral,
         client_branch_of_service: values.branchOfService,
         client_discharge_date: formattedDischargeDate,
         client_va_disability_rating: values.vaDisabilityRating,
-        client_champva_agreement: values.champvaAgreement,
         client_tricare_beneficiary_category: values.tricareBeneficiaryCategory,
         client_tricare_sponsor_name: values.tricareSponsorName,
         client_tricare_sponsor_branch: values.tricareSponsorBranch,

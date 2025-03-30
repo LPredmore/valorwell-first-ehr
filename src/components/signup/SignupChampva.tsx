@@ -20,7 +20,12 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
   useEffect(() => {
     // Show disclaimer only when "No" is selected
     setShowDisclaimer(otherInsurance === "No");
-  }, [otherInsurance]);
+    
+    // If "No" is selected, set champvaAgreement to false to ensure form validation catches it
+    if (otherInsurance === "No") {
+      form.setValue('champvaAgreement', false);
+    }
+  }, [otherInsurance, form]);
 
   return (
     <div className="space-y-6">
