@@ -41,9 +41,6 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
           label="CHAMPVA #"
           type="text"
           maxLength={9}
-          rules={{
-            required: "CHAMPVA number is required"
-          }}
         />
         <p className="text-sm text-gray-500 italic -mt-4">
           We understand that this is your SSN. And although we do not necessarily agree with them using this as their patient identifier, we do have to follow their process. The only way to verify your coverage is to have this.
@@ -57,9 +54,6 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
           label="Do you have any other insurance?"
           type="select"
           options={["Yes", "No"]}
-          rules={{
-            required: "This field is required"
-          }}
         />
         
         {showDisclaimer && (
