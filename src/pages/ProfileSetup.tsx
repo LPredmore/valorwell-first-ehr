@@ -14,6 +14,16 @@ import { timezoneOptions } from '@/utils/timezoneOptions';
 import { DateField } from '@/components/ui/DateField';
 import { format } from 'date-fns';
 
+// Import specialized signup components
+import SignupChampva from '@/components/signup/SignupChampva';
+import SignupTricare from '@/components/signup/SignupTricare';
+import SignupVaCcn from '@/components/signup/SignupVaCcn';
+import SignupVeteran from '@/components/signup/SignupVeteran';
+import SignupNotAVeteran from '@/components/signup/SignupNotAVeteran';
+import AdditionalInsurance from '@/components/signup/AdditionalInsurance';
+import MoreAdditionalInsurance from '@/components/signup/MoreAdditionalInsurance';
+import SignupLast from '@/components/signup/SignupLast';
+
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -36,7 +46,6 @@ const ProfileSetup = () => {
       timeZone: '',
       vaCoverage: '',
       otherInsurance: '',
-      champvaNumber: '',
       champvaAgreement: false,
       mentalHealthReferral: '',
       branchOfService: '',
@@ -110,7 +119,6 @@ const ProfileSetup = () => {
             timeZone: data.client_time_zone || '',
             vaCoverage: data.client_va_coverage || '',
             otherInsurance: data.client_other_insurance || '',
-            champvaNumber: data.client_champva || '',
             champvaAgreement: data.client_champva_agreement || false,
             mentalHealthReferral: data.client_mental_health_referral || '',
             branchOfService: data.client_branch_of_service || '',
@@ -163,11 +171,6 @@ const ProfileSetup = () => {
     const vaCoverage = form.getValues('vaCoverage');
     const otherInsurance = form.getValues('otherInsurance');
     const hasMoreInsurance = form.getValues('hasMoreInsurance');
-    const champvaNumber = form.getValues('champvaNumber');
-    
-    if (currentStep === 3 && vaCoverage === "CHAMPVA") {
-      saveChampvaInfo();
-    }
     
     if (currentStep === 2) {
       navigateToStep(3);
@@ -189,39 +192,6 @@ const ProfileSetup = () => {
       navigateToStep(6);
     } else if (currentStep === 6) {
       handleSubmit();
-    }
-  };
-
-  const saveChampvaInfo = async () => {
-    if (!clientId) {
-      toast({
-        title: "Error",
-        description: "No client record found. Please contact support.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const values = form.getValues();
-    
-    const { error } = await supabase
-      .from('clients')
-      .update({
-        client_champva: values.champvaNumber,
-        client_other_insurance: values.otherInsurance,
-        client_champva_agreement: values.champvaAgreement
-      })
-      .eq('id', clientId);
-    
-    if (error) {
-      console.error('Error saving CHAMPVA information:', error);
-      toast({
-        title: "Error updating CHAMPVA information",
-        description: error.message,
-        variant: "destructive"
-      });
-    } else {
-      console.log('CHAMPVA information saved successfully');
     }
   };
 
@@ -255,7 +225,6 @@ const ProfileSetup = () => {
         client_time_zone: values.timeZone,
         client_va_coverage: values.vaCoverage,
         client_other_insurance: values.otherInsurance,
-        client_champva: values.champvaNumber,
         client_mental_health_referral: values.mentalHealthReferral,
         client_branch_of_service: values.branchOfService,
         client_discharge_date: formattedDischargeDate,
