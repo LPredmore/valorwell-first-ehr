@@ -87,35 +87,65 @@ const ProfileSetup = () => {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      try {
+        console.log("Starting fetchUser function");
+        
+        // Get current user
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        console.log("Auth getUser result:", { user, authError });
+        
+        if (authError || !user) {
+          console.log("No authenticated user or auth error:", authError);
+          return;
+        }
+        
         console.log("Authenticated user:", user);
+        console.log("User ID:", user.id);
+        console.log("User email:", user.email);
+        
+        // Get client data
+        console.log("Querying clients table with email:", user.email);
+        
         const { data, error } = await supabase
           .from('clients')
           .select('*')
           .eq('client_email', user.email)
           .single();
+          
+        console.log("Client query result:", { data, error });
         
         if (error) {
-          console.error('Error fetching client data:', error);
+          console.error("Error fetching client data:", error);
+          console.error("Error code:", error.code);
+          console.error("Error message:", error.message);
           return;
         }
         
         if (data) {
           console.log("Fetched client data:", data);
+          console.log("Client ID:", data.id);
+          console.log("Client first name:", data.client_first_name);
+          console.log("Client last name:", data.client_last_name);
+          console.log("Client email:", data.client_email);
+          
           setClientId(data.id);
           
           let dateOfBirth = undefined;
           if (data.client_date_of_birth) {
             dateOfBirth = new Date(data.client_date_of_birth);
+            console.log("Parsed date of birth:", dateOfBirth);
           }
           
           let dischargeDate = undefined;
           if (data.client_recentdischarge) {
             dischargeDate = new Date(data.client_recentdischarge);
+            console.log("Parsed discharge date:", dischargeDate);
           }
           
-          form.reset({
+          console.log("Setting form values with client data");
+          
+          const formValues = {
             client_first_name: data.client_first_name || '',
             client_preferred_name: data.client_preferred_name || '',
             client_last_name: data.client_last_name || '',
@@ -149,8 +179,22 @@ const ProfileSetup = () => {
             client_situation_explanation: data.client_situation_explanation || '',
             client_self_goal: data.client_self_goal || '',
             client_referral_source: data.client_referral_source || '',
-          });
+          };
+          
+          console.log("Form values to be set:", formValues);
+          form.reset(formValues);
+          console.log("Form reset completed");
+          
+          // Check if form values were actually set
+          setTimeout(() => {
+            const currentValues = form.getValues();
+            console.log("Current form values after reset:", currentValues);
+          }, 100);
+        } else {
+          console.log("No client data found for email:", user.email);
         }
+      } catch (error) {
+        console.error("Exception in fetchUser:", error);
       }
     };
     
