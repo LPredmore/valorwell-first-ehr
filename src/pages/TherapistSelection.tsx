@@ -93,16 +93,28 @@ const TherapistSelection = () => {
         // If filtering is enabled and we have client data, filter the results client-side
         // to handle case-insensitive matching
         if (filteringEnabled && clientData && data) {
+          console.log("Client state:", clientData.client_state);
+          console.log("Client age:", clientData.client_age);
+          
           const filteredTherapists = data.filter(therapist => {
             let matchesState = true;
             let matchesAge = true;
             
             // Check if therapist is licensed in client's state (case-insensitive)
             if (clientData.client_state && therapist.clinician_licensed_states) {
-              const clientStateNormalized = clientData.client_state.toLowerCase();
-              const matchingState = therapist.clinician_licensed_states.some(
-                state => state && state.toLowerCase() === clientStateNormalized
-              );
+              const clientStateNormalized = clientData.client_state.toLowerCase().trim();
+              console.log(`Therapist: ${therapist.clinician_first_name}, Licensed states:`, therapist.clinician_licensed_states);
+              
+              // More flexible matching - either contains the other
+              const matchingState = therapist.clinician_licensed_states.some(state => {
+                if (!state) return false;
+                const stateNormalized = state.toLowerCase().trim();
+                
+                // Check if either contains the other or exact match
+                return stateNormalized.includes(clientStateNormalized) || 
+                       clientStateNormalized.includes(stateNormalized);
+              });
+              
               matchesState = matchingState;
             }
             
@@ -114,6 +126,7 @@ const TherapistSelection = () => {
             return matchesState && matchesAge;
           });
           
+          console.log("Filtered therapists count:", filteredTherapists.length);
           setTherapists(filteredTherapists);
         } else {
           // If filtering is disabled, show all active therapists
@@ -261,7 +274,12 @@ const TherapistSelection = () => {
                                 </p>
                                 
                                 {clientData?.client_state && therapist.clinician_licensed_states?.some(
-                                  state => state && state.toLowerCase() === clientData.client_state?.toLowerCase()
+                                  state => {
+                                    if (!state || !clientData.client_state) return false;
+                                    const stateNorm = state.toLowerCase().trim();
+                                    const clientStateNorm = clientData.client_state.toLowerCase().trim();
+                                    return stateNorm.includes(clientStateNorm) || clientStateNorm.includes(stateNorm);
+                                  }
                                 ) && (
                                   <div className="mt-4 text-valorwell-700">
                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-valorwell-100">
