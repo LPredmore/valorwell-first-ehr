@@ -558,9 +558,9 @@ const ProfileSetup = () => {
     } else {
       toast({
         title: "Profile complete!",
-        description: "Your information has been saved. You can now proceed with scheduling an appointment.",
+        description: "Your information has been saved. You can now select a therapist.",
       });
-      navigate('/patient-dashboard');
+      navigate('/therapist-selection');
     }
   };
 
@@ -890,4 +890,13 @@ const ProfileSetup = () => {
             {currentStep === 2 && renderStepTwo()}
             {currentStep === 3 && renderStepThree()}
             {currentStep === 4 && renderStepFour()}
-            {currentStep ===
+            {currentStep === 5 && renderStepFive()}
+            {currentStep === 6 && renderStepSix()}
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
+  );
+};
+
+export default ProfileSetup;

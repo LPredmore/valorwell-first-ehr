@@ -13,7 +13,8 @@ import {
   LayoutDashboard,
   FileText,
   UserPlus,
-  UserCog
+  UserCog,
+  UserSearch
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -55,6 +56,14 @@ const Sidebar = () => {
         >
           <UserCog size={18} />
           <span>Profile Setup</span>
+        </Link>
+        
+        <Link 
+          to="/therapist-selection" 
+          className={`sidebar-link ${isActive('/therapist-selection') ? 'active' : ''}`}
+        >
+          <UserSearch size={18} />
+          <span>Therapist Selection</span>
         </Link>
 
         <Link 
