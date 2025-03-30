@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { DateField } from '@/components/ui/DateField';
@@ -19,7 +19,7 @@ const SignupVeteran: React.FC<SignupVeteranProps> = ({ form }) => {
       <div className="grid grid-cols-1 gap-6">
         <FormFieldWrapper
           control={form.control}
-          name="branchOfService"
+          name="client_branchOS"
           label="Branch of Service"
           type="select"
           options={[
@@ -36,13 +36,13 @@ const SignupVeteran: React.FC<SignupVeteranProps> = ({ form }) => {
 
         <DateField
           control={form.control}
-          name="dischargeDate"
+          name="client_recentdischarge"
           label="Date of Most Recent Discharge"
         />
 
         <FormFieldWrapper
           control={form.control}
-          name="vaDisabilityRating"
+          name="client_disabilityrating"
           label="Current VA Disability Rating"
           type="select"
           options={[

@@ -14,16 +14,6 @@ import { timezoneOptions } from '@/utils/timezoneOptions';
 import { DateField } from '@/components/ui/DateField';
 import { format } from 'date-fns';
 
-// Import specialized signup components
-import SignupChampva from '@/components/signup/SignupChampva';
-import SignupTricare from '@/components/signup/SignupTricare';
-import SignupVaCcn from '@/components/signup/SignupVaCcn';
-import SignupVeteran from '@/components/signup/SignupVeteran';
-import SignupNotAVeteran from '@/components/signup/SignupNotAVeteran';
-import AdditionalInsurance from '@/components/signup/AdditionalInsurance';
-import MoreAdditionalInsurance from '@/components/signup/MoreAdditionalInsurance';
-import SignupLast from '@/components/signup/SignupLast';
-
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -50,9 +40,9 @@ const ProfileSetup = () => {
       client_other_insurance: '',
       client_champva_agreement: false,
       client_mental_health_referral: '',
-      client_branch_of_service: '',
-      client_discharge_date: undefined as Date | undefined,
-      client_va_disability_rating: '',
+      client_branchOS: '',
+      client_recentdischarge: undefined as Date | undefined,
+      client_disabilityrating: '',
       client_tricare_beneficiary_category: '',
       client_tricare_sponsor_name: '',
       client_tricare_sponsor_branch: '',
@@ -110,8 +100,8 @@ const ProfileSetup = () => {
           }
           
           let dischargeDate = undefined;
-          if (data.client_discharge_date) {
-            dischargeDate = new Date(data.client_discharge_date);
+          if (data.client_recentdischarge) {
+            dischargeDate = new Date(data.client_recentdischarge);
           }
           
           form.reset({
@@ -131,9 +121,9 @@ const ProfileSetup = () => {
             client_other_insurance: data.client_other_insurance || '',
             client_champva_agreement: data.client_champva_agreement || false,
             client_mental_health_referral: data.client_mental_health_referral || '',
-            client_branch_of_service: data.client_branch_of_service || '',
-            client_discharge_date: dischargeDate,
-            client_va_disability_rating: data.client_va_disability_rating || '',
+            client_branchOS: data.client_branchOS || '',
+            client_recentdischarge: dischargeDate,
+            client_disabilityrating: data.client_disabilityrating || '',
             client_tricare_beneficiary_category: data.client_tricare_beneficiary_category || '',
             client_tricare_sponsor_name: data.client_tricare_sponsor_name || '',
             client_tricare_sponsor_branch: data.client_tricare_sponsor_branch || '',
@@ -348,6 +338,44 @@ const ProfileSetup = () => {
             variant: "destructive"
           });
         }
+      } else if (vaCoverage === "None - I am a veteran" && clientId) {
+        try {
+          console.log("Saving Veteran Information");
+          
+          const formattedDischargeDate = values.client_recentdischarge 
+            ? format(values.client_recentdischarge, 'yyyy-MM-dd') 
+            : null;
+          
+          const { error } = await supabase
+            .from('clients')
+            .update({
+              client_branchOS: values.client_branchOS,
+              client_recentdischarge: formattedDischargeDate,
+              client_disabilityrating: values.client_disabilityrating
+            })
+            .eq('id', clientId);
+            
+          if (error) {
+            console.error("Error saving veteran data:", error);
+            toast({
+              title: "Error saving data",
+              description: error.message,
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Information saved",
+              description: "Your veteran information has been updated.",
+            });
+          }
+        } catch (error) {
+          console.error("Exception saving veteran data:", error);
+          toast({
+            title: "Error saving data",
+            description: "An unexpected error occurred.",
+            variant: "destructive"
+          });
+        }
       }
       
       if (vaCoverage === "TRICARE" && otherInsurance === "No") {
@@ -383,7 +411,7 @@ const ProfileSetup = () => {
     }
 
     const formattedDateOfBirth = values.client_date_of_birth ? format(values.client_date_of_birth, 'yyyy-MM-dd') : null;
-    const formattedDischargeDate = values.client_discharge_date ? format(values.client_discharge_date, 'yyyy-MM-dd') : null;
+    const formattedDischargeDate = values.client_recentdischarge ? format(values.client_recentdischarge, 'yyyy-MM-dd') : null;
     
     const { error } = await supabase
       .from('clients')
@@ -401,10 +429,9 @@ const ProfileSetup = () => {
         client_vacoverage: values.client_vacoverage,
         client_other_insurance: values.client_other_insurance,
         client_mental_health_referral: values.client_mental_health_referral,
-        client_branch_of_service: values.client_branch_of_service,
-        client_discharge_date: formattedDischargeDate,
-        client_va_disability_rating: values.client_va_disability_rating,
-        client_champva_agreement: values.client_champva_agreement,
+        client_branchOS: values.client_branchOS,
+        client_recentdischarge: formattedDischargeDate,
+        client_disabilityrating: values.client_disabilityrating,
         client_tricare_beneficiary_category: values.client_tricare_beneficiary_category,
         client_tricare_sponsor_name: values.client_tricare_sponsor_name,
         client_tricare_sponsor_branch: values.client_tricare_sponsor_branch,
