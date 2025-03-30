@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -22,6 +21,7 @@ import SignupVaCcn from '@/components/signup/SignupVaCcn';
 import SignupVeteran from '@/components/signup/SignupVeteran';
 import SignupNotAVeteran from '@/components/signup/SignupNotAVeteran';
 import AdditionalInsurance from '@/components/signup/AdditionalInsurance';
+import MoreAdditionalInsurance from '@/components/signup/MoreAdditionalInsurance';
 
 const ProfileSetup = () => {
   const navigate = useNavigate();
@@ -63,6 +63,7 @@ const ProfileSetup = () => {
       veteranRelationship: '',
       situationExplanation: '',
       hasMoreInsurance: '',
+      hasEvenMoreInsurance: '',
       additionalInsurance: [
         {
           companyName: '',
@@ -151,7 +152,9 @@ const ProfileSetup = () => {
   };
 
   const handleGoBack = () => {
-    if (currentStep === 4) {
+    if (currentStep === 5) {
+      setCurrentStep(4);
+    } else if (currentStep === 4) {
       setCurrentStep(3);
     } else if (currentStep === 3) {
       setCurrentStep(2);
@@ -163,6 +166,8 @@ const ProfileSetup = () => {
   const handleNext = () => {
     const vaCoverage = form.getValues('vaCoverage');
     const otherInsurance = form.getValues('otherInsurance');
+    const hasMoreInsurance = form.getValues('hasMoreInsurance');
+    const hasEvenMoreInsurance = form.getValues('hasEvenMoreInsurance');
     
     if (currentStep === 2) {
       // Move to the third step which will conditionally render based on vaCoverage
@@ -177,7 +182,16 @@ const ProfileSetup = () => {
         handleSubmit();
       }
     } else if (currentStep === 4) {
-      // Submit the form after additional insurance step
+      // Check if user wants to add even more insurance
+      if (hasMoreInsurance === "Yes") {
+        // Move to more additional insurance step
+        setCurrentStep(5);
+      } else {
+        // Submit the form after additional insurance step
+        handleSubmit();
+      }
+    } else if (currentStep === 5) {
+      // Submit the form after more additional insurance step
       handleSubmit();
     }
   };
@@ -485,6 +499,35 @@ const ProfileSetup = () => {
             onClick={handleNext}
             className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
           >
+            Next
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </Form>
+  );
+
+  const renderStepFive = () => (
+    <Form {...form}>
+      <div className="space-y-6">
+        <MoreAdditionalInsurance form={form} />
+        
+        <div className="flex justify-between mt-8">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          
+          <Button 
+            type="button" 
+            onClick={handleNext}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
             Complete Profile
             <ArrowRight className="h-4 w-4" />
           </Button>
@@ -512,6 +555,7 @@ const ProfileSetup = () => {
             {currentStep === 2 && renderStepTwo()}
             {currentStep === 3 && renderStepThree()}
             {currentStep === 4 && renderStepFour()}
+            {currentStep === 5 && renderStepFive()}
           </CardContent>
         </Card>
       </div>
