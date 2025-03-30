@@ -22,6 +22,7 @@ import SignupVeteran from '@/components/signup/SignupVeteran';
 import SignupNotAVeteran from '@/components/signup/SignupNotAVeteran';
 import AdditionalInsurance from '@/components/signup/AdditionalInsurance';
 import MoreAdditionalInsurance from '@/components/signup/MoreAdditionalInsurance';
+import SignupLast from '@/components/signup/SignupLast';
 
 const ProfileSetup = () => {
   const navigate = useNavigate();
@@ -64,6 +65,8 @@ const ProfileSetup = () => {
       situationExplanation: '',
       hasMoreInsurance: '',
       hasEvenMoreInsurance: '',
+      therapyGoals: '',
+      referralSource: '',
       additionalInsurance: [
         {
           companyName: '',
@@ -137,6 +140,8 @@ const ProfileSetup = () => {
             tricareInsuranceAgreement: data.client_tricare_insurance_agreement || false,
             veteranRelationship: data.client_veteran_relationship || '',
             situationExplanation: data.client_situation_explanation || '',
+            therapyGoals: data.client_therapy_goals || '',
+            referralSource: data.client_referral_source || '',
           });
         } else if (error) {
           console.error('Error fetching client data:', error);
@@ -152,7 +157,9 @@ const ProfileSetup = () => {
   };
 
   const handleGoBack = () => {
-    if (currentStep === 5) {
+    if (currentStep === 6) {
+      setCurrentStep(5);
+    } else if (currentStep === 5) {
       setCurrentStep(4);
     } else if (currentStep === 4) {
       setCurrentStep(3);
@@ -178,8 +185,8 @@ const ProfileSetup = () => {
         // Move to additional insurance step
         setCurrentStep(4);
       } else {
-        // Submit the form (completing the profile)
-        handleSubmit();
+        // Move to the final step
+        setCurrentStep(6);
       }
     } else if (currentStep === 4) {
       // Check if user wants to add even more insurance
@@ -187,11 +194,14 @@ const ProfileSetup = () => {
         // Move to more additional insurance step
         setCurrentStep(5);
       } else {
-        // Submit the form after additional insurance step
-        handleSubmit();
+        // Move to the final step
+        setCurrentStep(6);
       }
     } else if (currentStep === 5) {
-      // Submit the form after more additional insurance step
+      // After more additional insurance, go to final step
+      setCurrentStep(6);
+    } else if (currentStep === 6) {
+      // Submit the form after final step
       handleSubmit();
     }
   };
@@ -244,6 +254,8 @@ const ProfileSetup = () => {
         client_tricare_insurance_agreement: values.tricareInsuranceAgreement,
         client_veteran_relationship: values.veteranRelationship,
         client_situation_explanation: values.situationExplanation,
+        client_therapy_goals: values.therapyGoals,
+        client_referral_source: values.referralSource,
         client_status: 'Profile Complete',
         client_is_profile_complete: 'true'
       })
@@ -536,6 +548,35 @@ const ProfileSetup = () => {
     </Form>
   );
 
+  const renderStepSix = () => (
+    <Form {...form}>
+      <div className="space-y-6">
+        <SignupLast form={form} />
+        
+        <div className="flex justify-between mt-8">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          
+          <Button 
+            type="button" 
+            onClick={handleNext}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
+            Complete Profile
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </Form>
+  );
+
   return (
     <Layout>
       <div className="container max-w-4xl mx-auto py-6">
@@ -556,6 +597,7 @@ const ProfileSetup = () => {
             {currentStep === 3 && renderStepThree()}
             {currentStep === 4 && renderStepFour()}
             {currentStep === 5 && renderStepFive()}
+            {currentStep === 6 && renderStepSix()}
           </CardContent>
         </Card>
       </div>
