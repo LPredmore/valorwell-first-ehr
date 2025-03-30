@@ -459,12 +459,14 @@ const ClinicianDetails = () => {
                   
                   {isEditing && (
                     <>
-                      <label 
-                        htmlFor="profile-image"
-                        className="block text-sm font-medium text-gray-700 mb-2 cursor-pointer hover:text-gray-900 transition-colors"
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => document.getElementById('profile-image')?.click()}
+                        className="flex items-center gap-1 mb-2"
                       >
-                        Upload Image
-                      </label>
+                        <Upload size={16} /> Upload Image
+                      </Button>
                       
                       {profileImage && (
                         <p className="text-sm text-gray-500 text-center">
