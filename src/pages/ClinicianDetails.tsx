@@ -26,6 +26,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
 
 interface Clinician {
   id: string;
@@ -422,9 +423,9 @@ const ClinicianDetails = () => {
           <CardContent>
             <div className="flex flex-col md:flex-row gap-6">
               <div className="md:w-1/3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Label className="block text-sm font-medium text-gray-700 mb-2">
                   Profile Picture
-                </label>
+                </Label>
                 <div className="flex flex-col items-center">
                   <div className="relative w-48 h-48 mb-4 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                     {imagePreview ? (
@@ -459,13 +460,14 @@ const ClinicianDetails = () => {
                   
                   {isEditing && (
                     <Button 
-                      variant="outline" 
+                      variant="ghost" 
                       size="sm" 
                       type="button" 
-                      className="flex items-center gap-1 mb-2"
+                      className="text-sm font-medium text-gray-700 mb-2"
                       onClick={() => document.getElementById('profile-image')?.click()}
                     >
-                      <Upload size={16} /> Choose Image
+                      <Upload size={16} className="mr-1" />
+                      Upload Image
                     </Button>
                   )}
                   
