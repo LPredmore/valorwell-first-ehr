@@ -6,16 +6,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
-import { Check } from 'lucide-react';
+import { Check, ArrowLeft, ArrowRight } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { useToast } from '@/hooks/use-toast';
+import { timezoneOptions } from '@/utils/timezoneOptions';
+import { DateField } from '@/components/ui/DateField';
+import { format } from 'date-fns';
 
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [clientId, setClientId] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState(1);
   
   // Form setup
   const form = useForm({
@@ -26,6 +30,12 @@ const ProfileSetup = () => {
       email: '',
       phone: '',
       relationship: '',
+      dateOfBirth: undefined as Date | undefined,
+      birthGender: '',
+      genderIdentity: '',
+      state: '',
+      timeZone: '',
+      vaCoverage: '',
     }
   });
 
@@ -44,6 +54,13 @@ const ProfileSetup = () => {
         if (data) {
           console.log("Fetched client data:", data); // Debug log
           setClientId(data.id);
+          
+          // Parse date of birth if it exists
+          let dateOfBirth = undefined;
+          if (data.client_date_of_birth) {
+            dateOfBirth = new Date(data.client_date_of_birth);
+          }
+          
           // Populate form with existing data
           form.reset({
             firstName: data.client_first_name || '',
@@ -52,6 +69,12 @@ const ProfileSetup = () => {
             email: data.client_email || '',
             phone: data.client_phone || '',
             relationship: data.client_relationship || '',
+            dateOfBirth: dateOfBirth,
+            birthGender: data.client_gender || '',
+            genderIdentity: data.client_gender_identity || '',
+            state: data.client_state || '',
+            timeZone: data.client_time_zone || '',
+            vaCoverage: data.client_va_coverage || '',
           });
         } else if (error) {
           console.error('Error fetching client data:', error);
@@ -62,7 +85,15 @@ const ProfileSetup = () => {
     fetchUser();
   }, [form]);
 
-  const handleConfirm = async () => {
+  const handleConfirmIdentity = () => {
+    setCurrentStep(2);
+  };
+
+  const handleGoBack = () => {
+    setCurrentStep(1);
+  };
+
+  const handleSubmit = async () => {
     const values = form.getValues();
     
     if (!clientId) {
@@ -73,6 +104,9 @@ const ProfileSetup = () => {
       });
       return;
     }
+
+    // Format date to ISO string if it exists
+    const formattedDateOfBirth = values.dateOfBirth ? format(values.dateOfBirth, 'yyyy-MM-dd') : null;
     
     const { error } = await supabase
       .from('clients')
@@ -82,6 +116,12 @@ const ProfileSetup = () => {
         client_last_name: values.lastName,
         client_phone: values.phone,
         client_relationship: values.relationship,
+        client_date_of_birth: formattedDateOfBirth,
+        client_gender: values.birthGender,
+        client_gender_identity: values.genderIdentity,
+        client_state: values.state,
+        client_time_zone: values.timeZone,
+        client_va_coverage: values.vaCoverage,
         client_status: 'Profile Complete',
         client_is_profile_complete: 'true'
       })
@@ -95,12 +135,175 @@ const ProfileSetup = () => {
       });
     } else {
       toast({
-        title: "Profile confirmed!",
+        title: "Profile complete!",
         description: "Your information has been saved. You can now proceed with scheduling an appointment.",
       });
       navigate('/patient-dashboard');
     }
   };
+
+  const renderStepOne = () => (
+    <Form {...form}>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormFieldWrapper
+            control={form.control}
+            name="firstName"
+            label="First Name"
+          />
+          
+          <FormFieldWrapper
+            control={form.control}
+            name="lastName"
+            label="Last Name"
+          />
+          
+          <FormFieldWrapper
+            control={form.control}
+            name="preferredName"
+            label="Preferred Name (optional)"
+          />
+          
+          <FormFieldWrapper
+            control={form.control}
+            name="email"
+            label="Email"
+            type="email"
+            readOnly={true}
+          />
+          
+          <FormFieldWrapper
+            control={form.control}
+            name="phone"
+            label="Phone"
+            type="tel"
+          />
+          
+          <FormFieldWrapper
+            control={form.control}
+            name="relationship"
+            label="What is your relationship with the patient?"
+            type="select"
+            options={[
+              "Self", "Parent/Guardian", "Spouse", "Child", "Other"
+            ]}
+          />
+        </div>
+        
+        <div className="flex justify-center mt-8">
+          <Button 
+            type="button" 
+            size="lg" 
+            onClick={handleConfirmIdentity}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
+            <Check className="h-5 w-5" />
+            I confirm that this is me
+          </Button>
+        </div>
+      </div>
+    </Form>
+  );
+
+  const renderStepTwo = () => (
+    <Form {...form}>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <DateField
+            control={form.control}
+            name="dateOfBirth"
+            label="Date of Birth"
+          />
+          
+          <FormFieldWrapper
+            control={form.control}
+            name="birthGender"
+            label="Birth Gender"
+            type="select"
+            options={["Male", "Female"]}
+          />
+          
+          <FormFieldWrapper
+            control={form.control}
+            name="genderIdentity"
+            label="Gender Identity"
+            type="select"
+            options={["Male", "Female", "Other"]}
+          />
+          
+          <FormFieldWrapper
+            control={form.control}
+            name="state"
+            label="State of Primary Residence"
+            type="select"
+            options={[
+              "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", 
+              "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", 
+              "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", 
+              "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", 
+              "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", 
+              "New Hampshire", "New Jersey", "New Mexico", "New York", 
+              "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", 
+              "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", 
+              "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", 
+              "West Virginia", "Wisconsin", "Wyoming"
+            ]}
+          />
+          
+          <FormFieldWrapper
+            control={form.control}
+            name="timeZone"
+            label="Time Zone"
+            type="select"
+            options={timezoneOptions.map(tz => tz.label)}
+            valueMapper={(label) => {
+              const option = timezoneOptions.find(tz => tz.label === label);
+              return option ? option.value : '';
+            }}
+            labelMapper={(value) => {
+              const option = timezoneOptions.find(tz => tz.value === value);
+              return option ? option.label : '';
+            }}
+          />
+          
+          <FormFieldWrapper
+            control={form.control}
+            name="vaCoverage"
+            label="What type of VA Coverage do you have?"
+            type="select"
+            options={[
+              "CHAMPVA", 
+              "TRICARE", 
+              "VA Community Care", 
+              "None - I am a veteran", 
+              "None - I am not a veteran"
+            ]}
+          />
+        </div>
+        
+        <div className="flex justify-between mt-8">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          
+          <Button 
+            type="button" 
+            onClick={handleSubmit}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
+            Complete Profile
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </Form>
+  );
 
   return (
     <Layout>
@@ -117,66 +320,7 @@ const ProfileSetup = () => {
             </p>
           </CardHeader>
           <CardContent className="pt-6">
-            <Form {...form}>
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormFieldWrapper
-                    control={form.control}
-                    name="firstName"
-                    label="First Name"
-                  />
-                  
-                  <FormFieldWrapper
-                    control={form.control}
-                    name="lastName"
-                    label="Last Name"
-                  />
-                  
-                  <FormFieldWrapper
-                    control={form.control}
-                    name="preferredName"
-                    label="Preferred Name (optional)"
-                  />
-                  
-                  <FormFieldWrapper
-                    control={form.control}
-                    name="email"
-                    label="Email"
-                    type="email"
-                    readOnly={true}
-                  />
-                  
-                  <FormFieldWrapper
-                    control={form.control}
-                    name="phone"
-                    label="Phone"
-                    type="tel"
-                  />
-                  
-                  <FormFieldWrapper
-                    control={form.control}
-                    name="relationship"
-                    label="What is your relationship with the patient?"
-                    type="select"
-                    options={[
-                      "Self", "Parent/Guardian", "Spouse", "Child", "Other"
-                    ]}
-                  />
-                </div>
-                
-                <div className="flex justify-center mt-8">
-                  <Button 
-                    type="button" 
-                    size="lg" 
-                    onClick={handleConfirm}
-                    className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
-                  >
-                    <Check className="h-5 w-5" />
-                    I confirm that this is me
-                  </Button>
-                </div>
-              </div>
-            </Form>
+            {currentStep === 1 ? renderStepOne() : renderStepTwo()}
           </CardContent>
         </Card>
       </div>

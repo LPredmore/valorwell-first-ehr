@@ -11,6 +11,8 @@ interface FormFieldWrapperProps {
   type?: 'text' | 'email' | 'tel' | 'select';
   options?: string[];
   readOnly?: boolean;
+  valueMapper?: (label: string) => string;
+  labelMapper?: (value: string) => string;
 }
 
 const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
@@ -19,7 +21,9 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
   label,
   type = 'text',
   options = [],
-  readOnly = false
+  readOnly = false,
+  valueMapper,
+  labelMapper
 }) => {
   return (
     <FormField
@@ -27,9 +31,16 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
       name={name}
       render={({ field }) => {
         // For debugging purposes
-        if (name === 'state') {
-          console.log('State field value:', field.value);
-        }
+        console.log(`Field ${name} value:`, field.value);
+        
+        const handleSelectChange = (selectedValue: string) => {
+          // If a valueMapper is provided, map the selected option label to its actual value
+          const valueToStore = valueMapper ? valueMapper(selectedValue) : selectedValue;
+          field.onChange(valueToStore);
+        };
+
+        // If a labelMapper is provided and we have a value, map the value to a display label
+        const displayValue = (labelMapper && field.value) ? labelMapper(field.value) : field.value;
         
         return (
           <FormItem>
@@ -37,8 +48,8 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
             <FormControl>
               {type === 'select' ? (
                 <Select
-                  onValueChange={field.onChange}
-                  value={field.value || ''}
+                  onValueChange={handleSelectChange}
+                  value={displayValue || ''}
                   disabled={readOnly}
                 >
                   <SelectTrigger className={readOnly ? "bg-gray-100" : ""}>
