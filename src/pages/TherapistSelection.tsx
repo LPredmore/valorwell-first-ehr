@@ -80,31 +80,45 @@ const TherapistSelection = () => {
       try {
         setLoading(true);
         
-        let query = supabase
+        // Get all active clinicians
+        const { data, error } = await supabase
           .from('clinicians')
           .select('*')
           .eq('clinician_status', 'Active');
-        
-        // Apply filtering if client data is available and filtering is enabled
-        if (filteringEnabled && clientData) {
-          if (clientData.client_state) {
-            // Filter by state - clinician's licensed states must contain client's state
-            query = query.contains('clinician_licensed_states', [clientData.client_state]);
-          }
-          
-          if (clientData.client_age) {
-            // Filter by age - clinician's min client age must be <= client's age
-            query = query.lte('clinician_min_client_age', clientData.client_age);
-          }
-        }
-        
-        const { data, error } = await query;
         
         if (error) {
           throw error;
         }
         
-        setTherapists(data || []);
+        // If filtering is enabled and we have client data, filter the results client-side
+        // to handle case-insensitive matching
+        if (filteringEnabled && clientData && data) {
+          const filteredTherapists = data.filter(therapist => {
+            let matchesState = true;
+            let matchesAge = true;
+            
+            // Check if therapist is licensed in client's state (case-insensitive)
+            if (clientData.client_state && therapist.clinician_licensed_states) {
+              const clientStateNormalized = clientData.client_state.toLowerCase();
+              const matchingState = therapist.clinician_licensed_states.some(
+                state => state && state.toLowerCase() === clientStateNormalized
+              );
+              matchesState = matchingState;
+            }
+            
+            // Check if therapist accepts client's age
+            if (clientData.client_age !== null && therapist.clinician_min_client_age !== null) {
+              matchesAge = therapist.clinician_min_client_age <= clientData.client_age;
+            }
+            
+            return matchesState && matchesAge;
+          });
+          
+          setTherapists(filteredTherapists);
+        } else {
+          // If filtering is disabled, show all active therapists
+          setTherapists(data || []);
+        }
       } catch (error) {
         console.error('Error fetching therapists:', error);
         toast({
@@ -246,7 +260,9 @@ const TherapistSelection = () => {
                                     'No biography available for this therapist.'}
                                 </p>
                                 
-                                {clientData?.client_state && therapist.clinician_licensed_states?.includes(clientData.client_state) && (
+                                {clientData?.client_state && therapist.clinician_licensed_states?.some(
+                                  state => state && state.toLowerCase() === clientData.client_state?.toLowerCase()
+                                ) && (
                                   <div className="mt-4 text-valorwell-700">
                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-valorwell-100">
                                       Licensed in your state ({clientData.client_state})
