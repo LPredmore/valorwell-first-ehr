@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -14,21 +13,22 @@ import { useToast } from '@/hooks/use-toast';
 import { timezoneOptions } from '@/utils/timezoneOptions';
 import { DateField } from '@/components/ui/DateField';
 import { format } from 'date-fns';
-
-// Import specialized signup components
+import { Separator } from '@/components/ui/separator';
 import SignupChampva from '@/components/signup/SignupChampva';
 import SignupTricare from '@/components/signup/SignupTricare';
 import SignupVaCcn from '@/components/signup/SignupVaCcn';
 import SignupVeteran from '@/components/signup/SignupVeteran';
 import SignupNotAVeteran from '@/components/signup/SignupNotAVeteran';
+import AdditionalInsurance from '@/components/signup/AdditionalInsurance';
 
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [clientId, setClientId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const [insuranceEntries, setInsuranceEntries] = useState<number[]>([0]);
+  const [needAdditionalInsurance, setNeedAdditionalInsurance] = useState<boolean | null>(null);
   
-  // Form setup
   const form = useForm({
     defaultValues: {
       firstName: '',
@@ -61,15 +61,33 @@ const ProfileSetup = () => {
       tricareInsuranceAgreement: false,
       veteranRelationship: '',
       situationExplanation: '',
+      additionalInsurance: [{ 
+        company: '',
+        planType: '',
+        subscriberName: '',
+        subscriberRelationship: '',
+        subscriberDob: undefined as Date | undefined,
+        groupNumber: '',
+        policyNumber: '',
+        addAnother: ''
+      }]
     }
   });
 
-  // Get current user data
+  const otherInsurance = form.watch('otherInsurance');
+  
+  useEffect(() => {
+    if (otherInsurance === 'Yes') {
+      setNeedAdditionalInsurance(true);
+    } else if (otherInsurance === 'No') {
+      setNeedAdditionalInsurance(false);
+    }
+  }, [otherInsurance]);
+
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Get client record associated with this user
         const { data, error } = await supabase
           .from('clients')
           .select('*')
@@ -77,10 +95,9 @@ const ProfileSetup = () => {
           .single();
         
         if (data) {
-          console.log("Fetched client data:", data); // Debug log
+          console.log("Fetched client data:", data);
           setClientId(data.id);
           
-          // Parse dates if they exist
           let dateOfBirth = undefined;
           if (data.client_date_of_birth) {
             dateOfBirth = new Date(data.client_date_of_birth);
@@ -91,7 +108,31 @@ const ProfileSetup = () => {
             dischargeDate = new Date(data.client_discharge_date);
           }
           
-          // Populate form with existing data
+          let additionalInsurance = [{ 
+            company: '',
+            planType: '',
+            subscriberName: '',
+            subscriberRelationship: '',
+            subscriberDob: undefined as Date | undefined,
+            groupNumber: '',
+            policyNumber: '',
+            addAnother: ''
+          }];
+          
+          if (data.client_additional_insurance) {
+            try {
+              const parsedInsurance = JSON.parse(data.client_additional_insurance);
+              additionalInsurance = parsedInsurance.map((ins: any) => ({
+                ...ins,
+                subscriberDob: ins.subscriberDob ? new Date(ins.subscriberDob) : undefined
+              }));
+              
+              setInsuranceEntries(Array.from({ length: additionalInsurance.length }, (_, i) => i));
+            } catch (e) {
+              console.error("Error parsing additional insurance data:", e);
+            }
+          }
+          
           form.reset({
             firstName: data.client_first_name || '',
             preferredName: data.client_preferred_name || '',
@@ -123,6 +164,7 @@ const ProfileSetup = () => {
             tricareInsuranceAgreement: data.client_tricare_insurance_agreement || false,
             veteranRelationship: data.client_veteran_relationship || '',
             situationExplanation: data.client_situation_explanation || '',
+            additionalInsurance: additionalInsurance
           });
         } else if (error) {
           console.error('Error fetching client data:', error);
@@ -138,7 +180,9 @@ const ProfileSetup = () => {
   };
 
   const handleGoBack = () => {
-    if (currentStep === 3) {
+    if (currentStep === 4) {
+      setCurrentStep(3);
+    } else if (currentStep === 3) {
       setCurrentStep(2);
     } else if (currentStep === 2) {
       setCurrentStep(1);
@@ -147,13 +191,37 @@ const ProfileSetup = () => {
 
   const handleNext = () => {
     const vaCoverage = form.getValues('vaCoverage');
+    const otherInsurance = form.getValues('otherInsurance');
     
     if (currentStep === 2) {
-      // Move to the third step which will conditionally render based on vaCoverage
       setCurrentStep(3);
     } else if (currentStep === 3) {
-      // Submit the form (completing the profile)
+      if (otherInsurance === 'Yes') {
+        setCurrentStep(4);
+      } else {
+        handleSubmit();
+      }
+    } else if (currentStep === 4) {
       handleSubmit();
+    }
+  };
+
+  const handleAddAnotherInsurance = (shouldAdd: boolean, index: number) => {
+    if (shouldAdd && index === insuranceEntries.length - 1) {
+      const newInsuranceData = form.getValues('additionalInsurance') || [];
+      newInsuranceData.push({
+        company: '',
+        planType: '',
+        subscriberName: '',
+        subscriberRelationship: '',
+        subscriberDob: undefined,
+        groupNumber: '',
+        policyNumber: '',
+        addAnother: ''
+      });
+      
+      form.setValue('additionalInsurance', newInsuranceData);
+      setInsuranceEntries([...insuranceEntries, insuranceEntries.length]);
     }
   };
 
@@ -169,9 +237,13 @@ const ProfileSetup = () => {
       return;
     }
 
-    // Format dates to ISO strings if they exist
     const formattedDateOfBirth = values.dateOfBirth ? format(values.dateOfBirth, 'yyyy-MM-dd') : null;
     const formattedDischargeDate = values.dischargeDate ? format(values.dischargeDate, 'yyyy-MM-dd') : null;
+    
+    const formattedAdditionalInsurance = values.additionalInsurance.map(insurance => ({
+      ...insurance,
+      subscriberDob: insurance.subscriberDob ? format(insurance.subscriberDob, 'yyyy-MM-dd') : null
+    }));
     
     const { error } = await supabase
       .from('clients')
@@ -205,6 +277,7 @@ const ProfileSetup = () => {
         client_tricare_insurance_agreement: values.tricareInsuranceAgreement,
         client_veteran_relationship: values.veteranRelationship,
         client_situation_explanation: values.situationExplanation,
+        client_additional_insurance: JSON.stringify(formattedAdditionalInsurance),
         client_status: 'Profile Complete',
         client_is_profile_complete: 'true'
       })
@@ -439,6 +512,42 @@ const ProfileSetup = () => {
     );
   };
 
+  const renderStepFour = () => (
+    <Form {...form}>
+      <div className="space-y-6">
+        {insuranceEntries.map((index) => (
+          <AdditionalInsurance 
+            key={index} 
+            form={form} 
+            onAddAnother={(shouldAdd) => handleAddAnotherInsurance(shouldAdd, index)}
+            insuranceIndex={index}
+          />
+        ))}
+        
+        <div className="flex justify-between mt-8">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          
+          <Button 
+            type="button" 
+            onClick={handleSubmit}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
+            Complete Profile
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </Form>
+  );
+
   return (
     <Layout>
       <div className="container max-w-4xl mx-auto py-6">
@@ -457,6 +566,7 @@ const ProfileSetup = () => {
             {currentStep === 1 && renderStepOne()}
             {currentStep === 2 && renderStepTwo()}
             {currentStep === 3 && renderStepThree()}
+            {currentStep === 4 && renderStepFour()}
           </CardContent>
         </Card>
       </div>
