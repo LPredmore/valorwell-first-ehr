@@ -37,6 +37,8 @@ const TherapistSelection = () => {
   const [clientData, setClientData] = useState<Client | null>(null);
   const [filteringEnabled, setFilteringEnabled] = useState(true);
   const [allTherapists, setAllTherapists] = useState<Therapist[]>([]);
+  const [selectingTherapist, setSelectingTherapist] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   
   // Fetch client data
   useEffect(() => {
@@ -58,6 +60,9 @@ const TherapistSelection = () => {
           navigate('/login');
           return;
         }
+        
+        // Store user ID for later use
+        setUserId(user.id);
         
         // Get client data by ID first
         let { data, error } = await supabase
@@ -198,6 +203,57 @@ const TherapistSelection = () => {
     fetchTherapists();
   }, [toast, clientData, filteringEnabled]);
   
+  // Function to handle therapist selection
+  const handleSelectTherapist = async (therapist: Therapist) => {
+    if (!userId) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to select a therapist",
+        variant: "destructive"
+      });
+      navigate('/login');
+      return;
+    }
+    
+    try {
+      setSelectingTherapist(true);
+      
+      // Update client record with selected therapist ID
+      const { error } = await supabase
+        .from('clients')
+        .update({ client_assigned_therapist: therapist.id })
+        .eq('id', userId);
+      
+      if (error) {
+        console.error("Error selecting therapist:", error);
+        toast({
+          title: "Error",
+          description: "Failed to select therapist. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Show success message
+      toast({
+        title: "Therapist Selected",
+        description: `You have selected ${therapist.clinician_first_name} ${therapist.clinician_last_name} as your therapist.`,
+      });
+      
+      // Navigate to patient dashboard
+      navigate('/patient-dashboard');
+    } catch (error) {
+      console.error("Exception in handleSelectTherapist:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSelectingTherapist(false);
+    }
+  };
+  
   return (
     <Layout>
       <div className="container max-w-6xl mx-auto py-6">
@@ -303,15 +359,10 @@ const TherapistSelection = () => {
                               
                               <Button 
                                 className="mt-4 w-full bg-valorwell-600 hover:bg-valorwell-700"
-                                onClick={() => {
-                                  // Future implementation: Handle therapist selection
-                                  toast({
-                                    title: 'Therapist Selected',
-                                    description: `You have selected ${therapist.clinician_first_name} ${therapist.clinician_last_name}.`,
-                                  });
-                                }}
+                                onClick={() => handleSelectTherapist(therapist)}
+                                disabled={selectingTherapist}
                               >
-                                Select Therapist
+                                {selectingTherapist ? 'Selecting...' : 'Select Therapist'}
                               </Button>
                             </div>
                             
