@@ -30,7 +30,6 @@ const ProfileSetup = () => {
   const [clientId, setClientId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   
-  // Form setup
   const form = useForm({
     defaultValues: {
       firstName: '',
@@ -81,12 +80,10 @@ const ProfileSetup = () => {
     }
   });
 
-  // Get current user data
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Get client record associated with this user
         const { data, error } = await supabase
           .from('clients')
           .select('*')
@@ -94,10 +91,9 @@ const ProfileSetup = () => {
           .single();
         
         if (data) {
-          console.log("Fetched client data:", data); // Debug log
+          console.log("Fetched client data:", data);
           setClientId(data.id);
           
-          // Parse dates if they exist
           let dateOfBirth = undefined;
           if (data.client_date_of_birth) {
             dateOfBirth = new Date(data.client_date_of_birth);
@@ -108,7 +104,6 @@ const ProfileSetup = () => {
             dischargeDate = new Date(data.client_discharge_date);
           }
           
-          // Populate form with existing data
           form.reset({
             firstName: data.client_first_name || '',
             preferredName: data.client_preferred_name || '',
@@ -174,34 +169,26 @@ const ProfileSetup = () => {
     const vaCoverage = form.getValues('vaCoverage');
     const otherInsurance = form.getValues('otherInsurance');
     const hasMoreInsurance = form.getValues('hasMoreInsurance');
-    const hasEvenMoreInsurance = form.getValues('hasEvenMoreInsurance');
     
     if (currentStep === 2) {
-      // Move to the third step which will conditionally render based on vaCoverage
       setCurrentStep(3);
     } else if (currentStep === 3) {
-      // Check if user has other insurance and is using Tricare or CHAMPVA
-      if (otherInsurance === "Yes" && (vaCoverage === "TRICARE" || vaCoverage === "CHAMPVA")) {
-        // Move to additional insurance step
+      if (vaCoverage === "TRICARE" && otherInsurance === "No") {
+        setCurrentStep(6);
+      } else if (otherInsurance === "Yes" && (vaCoverage === "TRICARE" || vaCoverage === "CHAMPVA")) {
         setCurrentStep(4);
       } else {
-        // Move to the final step
         setCurrentStep(6);
       }
     } else if (currentStep === 4) {
-      // Check if user wants to add even more insurance
       if (hasMoreInsurance === "Yes") {
-        // Move to more additional insurance step
         setCurrentStep(5);
       } else {
-        // Move to the final step
         setCurrentStep(6);
       }
     } else if (currentStep === 5) {
-      // After more additional insurance, go to final step
       setCurrentStep(6);
     } else if (currentStep === 6) {
-      // Submit the form after final step
       handleSubmit();
     }
   };
@@ -218,7 +205,6 @@ const ProfileSetup = () => {
       return;
     }
 
-    // Format dates to ISO strings if they exist
     const formattedDateOfBirth = values.dateOfBirth ? format(values.dateOfBirth, 'yyyy-MM-dd') : null;
     const formattedDischargeDate = values.dischargeDate ? format(values.dischargeDate, 'yyyy-MM-dd') : null;
     
@@ -540,7 +526,7 @@ const ProfileSetup = () => {
             onClick={handleNext}
             className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
           >
-            Complete Profile
+            Next
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>

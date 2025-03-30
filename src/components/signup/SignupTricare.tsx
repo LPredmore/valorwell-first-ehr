@@ -5,6 +5,7 @@ import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormField, FormItem, FormControl, FormLabel } from '@/components/ui/form';
+import { Info } from 'lucide-react';
 
 interface SignupTricareProps {
   form: UseFormReturn<any>;
@@ -154,9 +155,12 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form }) => {
 
         {showInsuranceDisclaimer && (
           <div className="bg-blue-50 p-4 rounded-md border border-blue-200">
-            <p className="text-sm text-blue-900 mb-4">
-              I understand that if I have any other insurance, I have to include it here, even if it doesn't cover the services I will be receiving. TRICARE requires other insurances to be billed first, even if it is out of network or they don't cover the service. I understand that if I have other insurance and fail to provide it here, my claims will likely not be covered by TRICARE and I will be responsible for the entire cost.
-            </p>
+            <div className="flex gap-2 items-start mb-3">
+              <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-blue-900">
+                I understand that if I have any other insurance, I have to include it here, even if it doesn't cover the services I will be receiving. TRICARE requires other insurances to be billed first, even if it is out of network or they don't cover the service. I understand that if I have other insurance and fail to provide it here, my claims will likely not be covered by TRICARE and I will be responsible for the entire cost.
+              </p>
+            </div>
             
             <FormField
               control={form.control}
