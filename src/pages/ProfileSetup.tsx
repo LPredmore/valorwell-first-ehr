@@ -78,6 +78,14 @@ const ProfileSetup = () => {
           policyNumber: ''
         }
       ],
+      client_insurance_company_primary: '',
+      client_insurance_type_primary: '',
+      client_subscriber_name_primary: '',
+      client_subscriber_relationship_primary: '',
+      client_subscriber_dob_primary: undefined as Date | undefined,
+      client_group_number_primary: '',
+      client_policy_number_primary: '',
+      client_has_more_insurance: '',
       tricareInsuranceAgreement: false
     }
   });
@@ -394,6 +402,51 @@ const ProfileSetup = () => {
         navigateToStep(6);
       }
     } else if (currentStep === 4) {
+      if (clientId) {
+        try {
+          console.log("Saving primary insurance data");
+          
+          const formattedSubscriberDob = values.client_subscriber_dob_primary 
+            ? format(values.client_subscriber_dob_primary, 'yyyy-MM-dd') 
+            : null;
+            
+          const { error } = await supabase
+            .from('clients')
+            .update({
+              client_insurance_company_primary: values.client_insurance_company_primary,
+              client_insurance_type_primary: values.client_insurance_type_primary,
+              client_subscriber_name_primary: values.client_subscriber_name_primary,
+              client_subscriber_relationship_primary: values.client_subscriber_relationship_primary,
+              client_subscriber_dob_primary: formattedSubscriberDob,
+              client_group_number_primary: values.client_group_number_primary,
+              client_policy_number_primary: values.client_policy_number_primary,
+              client_has_more_insurance: values.client_has_more_insurance
+            })
+            .eq('id', clientId);
+            
+          if (error) {
+            console.error("Error saving primary insurance data:", error);
+            toast({
+              title: "Error saving data",
+              description: error.message,
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Information saved",
+              description: "Your primary insurance information has been updated.",
+            });
+          }
+        } catch (error) {
+          console.error("Exception saving primary insurance data:", error);
+          toast({
+            title: "Error saving data",
+            description: "An unexpected error occurred.",
+            variant: "destructive"
+          });
+        }
+      }
+    
       if (hasMoreInsurance === "Yes") {
         navigateToStep(5);
       } else {
