@@ -118,8 +118,8 @@ export const DateField: React.FC<DateFieldProps> = ({ control, name, label }) =>
                   }
                   components={{
                     Caption: captionComponent,
-                    IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
-                    IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />
+                    IconLeft: () => <ChevronLeft className="h-4 w-4" />,
+                    IconRight: () => <ChevronRight className="h-4 w-4" />
                   }}
                   initialFocus
                   className={cn("p-3 pointer-events-auto")}
