@@ -210,6 +210,7 @@ export type Database = {
           client_tricare_sponsor_branch: string | null
           client_tricare_sponsor_id: string | null
           client_tricare_sponsor_name: string | null
+          client_vacoverage: string | null
           created_at: string
           id: string
           updated_at: string
@@ -301,6 +302,7 @@ export type Database = {
           client_tricare_sponsor_branch?: string | null
           client_tricare_sponsor_id?: string | null
           client_tricare_sponsor_name?: string | null
+          client_vacoverage?: string | null
           created_at?: string
           id: string
           updated_at?: string
@@ -392,6 +394,7 @@ export type Database = {
           client_tricare_sponsor_branch?: string | null
           client_tricare_sponsor_id?: string | null
           client_tricare_sponsor_name?: string | null
+          client_vacoverage?: string | null
           created_at?: string
           id?: string
           updated_at?: string

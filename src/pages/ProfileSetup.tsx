@@ -44,7 +44,7 @@ const ProfileSetup = () => {
       client_gender_identity: '',
       client_state: '',
       client_time_zone: '',
-      client_va_coverage: '',
+      client_vacoverage: '',
       client_other_insurance: '',
       client_champva_agreement: false,
       client_mental_health_referral: '',
@@ -123,7 +123,7 @@ const ProfileSetup = () => {
             client_gender_identity: data.client_gender_identity || '',
             client_state: data.client_state || '',
             client_time_zone: data.client_time_zone || '',
-            client_va_coverage: data.client_va_coverage || '',
+            client_vacoverage: data.client_vacoverage || '',
             client_other_insurance: data.client_other_insurance || '',
             client_champva_agreement: data.client_champva_agreement || false,
             client_mental_health_referral: data.client_mental_health_referral || '',
@@ -219,12 +219,54 @@ const ProfileSetup = () => {
     }
   };
 
-  const handleNext = () => {
-    const vaCoverage = form.getValues('client_va_coverage');
+  const handleNext = async () => {
+    const vaCoverage = form.getValues('client_vacoverage');
     const otherInsurance = form.getValues('client_other_insurance');
     const hasMoreInsurance = form.getValues('client_has_more_insurance');
     
     if (currentStep === 2) {
+      if (clientId) {
+        const values = form.getValues();
+        const formattedDateOfBirth = values.client_date_of_birth 
+          ? format(values.client_date_of_birth, 'yyyy-MM-dd') 
+          : null;
+          
+        try {
+          const { error } = await supabase
+            .from('clients')
+            .update({
+              client_date_of_birth: formattedDateOfBirth,
+              client_gender: values.client_gender,
+              client_gender_identity: values.client_gender_identity,
+              client_state: values.client_state,
+              client_time_zone: values.client_time_zone,
+              client_vacoverage: values.client_vacoverage
+            })
+            .eq('id', clientId);
+            
+          if (error) {
+            console.error("Error saving step 2 data:", error);
+            toast({
+              title: "Error saving data",
+              description: error.message,
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Information saved",
+              description: "Your demographic information has been updated.",
+            });
+          }
+        } catch (error) {
+          console.error("Exception saving step 2 data:", error);
+          toast({
+            title: "Error saving data",
+            description: "An unexpected error occurred.",
+            variant: "destructive"
+          });
+        }
+      }
+      
       navigateToStep(3);
     } else if (currentStep === 3) {
       if (vaCoverage === "TRICARE" && otherInsurance === "No") {
@@ -275,7 +317,7 @@ const ProfileSetup = () => {
         client_gender_identity: values.client_gender_identity,
         client_state: values.client_state,
         client_time_zone: values.client_time_zone,
-        client_va_coverage: values.client_va_coverage,
+        client_vacoverage: values.client_vacoverage,
         client_other_insurance: values.client_other_insurance,
         client_mental_health_referral: values.client_mental_health_referral,
         client_branch_of_service: values.client_branch_of_service,
@@ -442,7 +484,7 @@ const ProfileSetup = () => {
           
           <FormFieldWrapper
             control={form.control}
-            name="client_va_coverage"
+            name="client_vacoverage"
             label="What type of VA Coverage do you have?"
             type="select"
             options={[
@@ -480,7 +522,7 @@ const ProfileSetup = () => {
   );
 
   const renderStepThree = () => {
-    const vaCoverage = form.getValues('client_va_coverage');
+    const vaCoverage = form.getValues('client_vacoverage');
     
     return (
       <Form {...form}>
