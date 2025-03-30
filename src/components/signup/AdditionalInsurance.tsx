@@ -5,7 +5,7 @@ import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { DateField } from '@/components/ui/DateField';
-import { Plus, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface AdditionalInsuranceProps {
@@ -14,11 +14,6 @@ interface AdditionalInsuranceProps {
 
 const AdditionalInsurance: React.FC<AdditionalInsuranceProps> = ({ form }) => {
   const [insuranceEntries, setInsuranceEntries] = useState([{ id: 1 }]);
-  const [addMoreInsurance, setAddMoreInsurance] = useState<string | null>(null);
-
-  const handleAddInsurance = () => {
-    setInsuranceEntries([...insuranceEntries, { id: insuranceEntries.length + 1 }]);
-  };
 
   const handleRemoveInsurance = (id: number) => {
     if (insuranceEntries.length > 1) {
@@ -126,18 +121,6 @@ const AdditionalInsurance: React.FC<AdditionalInsuranceProps> = ({ form }) => {
             type="select"
             options={["Yes", "No"]}
           />
-          
-          {form.watch('hasMoreInsurance') === 'Yes' && (
-            <Button
-              type="button"
-              onClick={handleAddInsurance}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Add Another Insurance
-            </Button>
-          )}
         </div>
       )}
     </div>
