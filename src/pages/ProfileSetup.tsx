@@ -13,6 +13,14 @@ import { useToast } from '@/hooks/use-toast';
 import { timezoneOptions } from '@/utils/timezoneOptions';
 import { DateField } from '@/components/ui/DateField';
 import { format } from 'date-fns';
+import SignupChampva from '@/components/signup/SignupChampva';
+import SignupTricare from '@/components/signup/SignupTricare';
+import SignupVaCcn from '@/components/signup/SignupVaCcn';
+import SignupVeteran from '@/components/signup/SignupVeteran';
+import SignupNotAVeteran from '@/components/signup/SignupNotAVeteran';
+import AdditionalInsurance from '@/components/signup/AdditionalInsurance';
+import MoreAdditionalInsurance from '@/components/signup/MoreAdditionalInsurance';
+import SignupLast from '@/components/signup/SignupLast';
 
 const ProfileSetup = () => {
   const navigate = useNavigate();
