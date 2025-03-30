@@ -13,6 +13,7 @@ interface FormFieldWrapperProps {
   readOnly?: boolean;
   valueMapper?: (label: string) => string;
   labelMapper?: (value: string) => string;
+  maxLength?: number; // Add the maxLength property to the interface
 }
 
 const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
@@ -23,7 +24,8 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
   options = [],
   readOnly = false,
   valueMapper,
-  labelMapper
+  labelMapper,
+  maxLength // Include in component props
 }) => {
   return (
     <FormField
@@ -69,6 +71,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                   type={type}
                   readOnly={readOnly}
                   className={readOnly ? "bg-gray-100" : ""}
+                  maxLength={maxLength} // Pass maxLength to the Input component
                 />
               )}
             </FormControl>
