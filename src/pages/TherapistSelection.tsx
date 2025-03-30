@@ -34,6 +34,7 @@ const TherapistSelection = () => {
   const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [clientData, setClientData] = useState<Client | null>(null);
   const [filteringEnabled, setFilteringEnabled] = useState(true);
+  const [allTherapists, setAllTherapists] = useState<Therapist[]>([]);
   
   // Fetch client data
   useEffect(() => {
@@ -90,6 +91,12 @@ const TherapistSelection = () => {
           throw error;
         }
         
+        console.log("Total active therapists:", data?.length || 0);
+        console.log("Sample therapist data:", data?.[0]);
+        
+        // Store all therapists
+        setAllTherapists(data || []);
+        
         // If filtering is enabled and we have client data, filter the results client-side
         // to handle case-insensitive matching
         if (filteringEnabled && clientData && data) {
@@ -101,7 +108,7 @@ const TherapistSelection = () => {
             let matchesAge = true;
             
             // Check if therapist is licensed in client's state (case-insensitive)
-            if (clientData.client_state && therapist.clinician_licensed_states) {
+            if (clientData.client_state && therapist.clinician_licensed_states && therapist.clinician_licensed_states.length > 0) {
               const clientStateNormalized = clientData.client_state.toLowerCase().trim();
               console.log(`Therapist: ${therapist.clinician_first_name}, Licensed states:`, therapist.clinician_licensed_states);
               
@@ -121,13 +128,34 @@ const TherapistSelection = () => {
             // Check if therapist accepts client's age
             if (clientData.client_age !== null && therapist.clinician_min_client_age !== null) {
               matchesAge = therapist.clinician_min_client_age <= clientData.client_age;
+            } else {
+              // If client age is null, don't filter based on age
+              matchesAge = true;
             }
             
             return matchesState && matchesAge;
           });
           
           console.log("Filtered therapists count:", filteredTherapists.length);
-          setTherapists(filteredTherapists);
+          
+          // If no therapists match the criteria and we have at least one therapist,
+          // show all therapists instead of an empty list
+          if (filteredTherapists.length === 0 && data.length > 0) {
+            console.log("No matching therapists found, showing all therapists");
+            setTherapists(data);
+            
+            // Show a toast notification
+            toast({
+              title: "No exact matches found",
+              description: "Showing all available therapists instead",
+              variant: "default"
+            });
+            
+            // Disable filtering automatically
+            setFilteringEnabled(false);
+          } else {
+            setTherapists(filteredTherapists);
+          }
         } else {
           // If filtering is disabled, show all active therapists
           setTherapists(data || []);
