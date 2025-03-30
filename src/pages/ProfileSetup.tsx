@@ -269,6 +269,42 @@ const ProfileSetup = () => {
       
       navigateToStep(3);
     } else if (currentStep === 3) {
+      if (clientId) {
+        const values = form.getValues();
+        
+        try {
+          const { error } = await supabase
+            .from('clients')
+            .update({
+              client_champva: values.client_champva,
+              client_other_insurance: values.client_other_insurance,
+              client_champva_agreement: values.client_champva_agreement
+            })
+            .eq('id', clientId);
+            
+          if (error) {
+            console.error("Error saving step 3 data:", error);
+            toast({
+              title: "Error saving data",
+              description: error.message,
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Coverage information saved",
+              description: "Your insurance information has been updated.",
+            });
+          }
+        } catch (error) {
+          console.error("Exception saving step 3 data:", error);
+          toast({
+            title: "Error saving data",
+            description: "An unexpected error occurred.",
+            variant: "destructive"
+          });
+        }
+      }
+      
       if (vaCoverage === "TRICARE" && otherInsurance === "No") {
         navigateToStep(6);
       } else if (otherInsurance === "Yes" && (vaCoverage === "TRICARE" || vaCoverage === "CHAMPVA")) {

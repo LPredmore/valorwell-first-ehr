@@ -27,6 +27,19 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
     }
   }, [otherInsurance, form]);
 
+  // Log the values for debugging
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'client_champva') {
+        console.log("Field client_champva value:", value.client_champva);
+      } else if (name === 'client_other_insurance') {
+        console.log("Field client_other_insurance value:", value.client_other_insurance);
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form]);
+
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-medium">CHAMPVA Coverage Details</h3>
