@@ -14,8 +14,8 @@ interface SignupChampvaProps {
 const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   
-  // Watch for changes to the otherInsurance field using the direct database column name
-  const otherInsurance = form.watch('client_other_insurance');
+  // Watch for changes to the otherInsurance field
+  const otherInsurance = form.watch('otherInsurance');
   
   useEffect(() => {
     // Show disclaimer only when "No" is selected
@@ -32,7 +32,7 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
       <div className="grid grid-cols-1 gap-6">
         <FormFieldWrapper
           control={form.control}
-          name="client_champva"
+          name="champvaNumber"
           label="CHAMPVA #"
           type="text"
           maxLength={9}
@@ -45,7 +45,7 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
         
         <FormFieldWrapper
           control={form.control}
-          name="client_other_insurance"
+          name="otherInsurance"
           label="Do you have any other insurance?"
           type="select"
           options={["Yes", "No"]}
@@ -59,7 +59,7 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
             
             <FormField
               control={form.control}
-              name="client_champva_agreement"
+              name="champvaAgreement"
               render={({ field }) => (
                 <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                   <FormControl>
