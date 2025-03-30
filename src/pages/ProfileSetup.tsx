@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -21,12 +20,14 @@ import SignupTricare from '@/components/signup/SignupTricare';
 import SignupVaCcn from '@/components/signup/SignupVaCcn';
 import SignupVeteran from '@/components/signup/SignupVeteran';
 import SignupNotAVeteran from '@/components/signup/SignupNotAVeteran';
+import AdditionalInsurance from '@/components/signup/AdditionalInsurance';
 
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [clientId, setClientId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const [showInsuranceStep, setShowInsuranceStep] = useState(false);
   
   // Form setup
   const form = useForm({
@@ -61,8 +62,23 @@ const ProfileSetup = () => {
       tricareInsuranceAgreement: false,
       veteranRelationship: '',
       situationExplanation: '',
+      otherInsuranceCompany: '',
+      otherInsurancePlanType: '',
+      otherInsuranceSubscriberName: '',
+      otherInsuranceSubscriberRelationship: '',
+      otherInsuranceSubscriberDob: undefined as Date | undefined,
+      otherInsuranceGroupNumber: '',
+      otherInsurancePolicyNumber: '',
+      hasMoreInsurance: '',
     }
   });
+
+  // Watch for changes to otherInsurance to determine if we need to show the insurance step
+  const otherInsurance = form.watch('otherInsurance');
+  
+  useEffect(() => {
+    setShowInsuranceStep(otherInsurance === "Yes");
+  }, [otherInsurance]);
 
   // Get current user data
   useEffect(() => {
@@ -89,6 +105,11 @@ const ProfileSetup = () => {
           let dischargeDate = undefined;
           if (data.client_discharge_date) {
             dischargeDate = new Date(data.client_discharge_date);
+          }
+          
+          let otherInsuranceSubscriberDob = undefined;
+          if (data.client_other_insurance_subscriber_dob) {
+            otherInsuranceSubscriberDob = new Date(data.client_other_insurance_subscriber_dob);
           }
           
           // Populate form with existing data
@@ -123,7 +144,20 @@ const ProfileSetup = () => {
             tricareInsuranceAgreement: data.client_tricare_insurance_agreement || false,
             veteranRelationship: data.client_veteran_relationship || '',
             situationExplanation: data.client_situation_explanation || '',
+            otherInsuranceCompany: data.client_other_insurance_company || '',
+            otherInsurancePlanType: data.client_other_insurance_plan_type || '',
+            otherInsuranceSubscriberName: data.client_other_insurance_subscriber_name || '',
+            otherInsuranceSubscriberRelationship: data.client_other_insurance_subscriber_relationship || '',
+            otherInsuranceSubscriberDob: otherInsuranceSubscriberDob,
+            otherInsuranceGroupNumber: data.client_other_insurance_group_number || '',
+            otherInsurancePolicyNumber: data.client_other_insurance_policy_number || '',
+            hasMoreInsurance: data.client_has_more_insurance || '',
           });
+          
+          // If they previously answered yes to other insurance, show that step
+          if (data.client_other_insurance === "Yes") {
+            setShowInsuranceStep(true);
+          }
         } else if (error) {
           console.error('Error fetching client data:', error);
         }
@@ -138,7 +172,9 @@ const ProfileSetup = () => {
   };
 
   const handleGoBack = () => {
-    if (currentStep === 3) {
+    if (currentStep === 4) {
+      setCurrentStep(3);
+    } else if (currentStep === 3) {
       setCurrentStep(2);
     } else if (currentStep === 2) {
       setCurrentStep(1);
@@ -147,11 +183,20 @@ const ProfileSetup = () => {
 
   const handleNext = () => {
     const vaCoverage = form.getValues('vaCoverage');
+    const otherInsurance = form.getValues('otherInsurance');
     
     if (currentStep === 2) {
       // Move to the third step which will conditionally render based on vaCoverage
       setCurrentStep(3);
     } else if (currentStep === 3) {
+      // If user has other insurance, move to additional insurance step
+      if (otherInsurance === "Yes" && showInsuranceStep) {
+        setCurrentStep(4);
+      } else {
+        // Otherwise, submit the form
+        handleSubmit();
+      }
+    } else if (currentStep === 4) {
       // Submit the form (completing the profile)
       handleSubmit();
     }
@@ -172,6 +217,7 @@ const ProfileSetup = () => {
     // Format dates to ISO strings if they exist
     const formattedDateOfBirth = values.dateOfBirth ? format(values.dateOfBirth, 'yyyy-MM-dd') : null;
     const formattedDischargeDate = values.dischargeDate ? format(values.dischargeDate, 'yyyy-MM-dd') : null;
+    const formattedOtherInsuranceSubscriberDob = values.otherInsuranceSubscriberDob ? format(values.otherInsuranceSubscriberDob, 'yyyy-MM-dd') : null;
     
     const { error } = await supabase
       .from('clients')
@@ -205,6 +251,14 @@ const ProfileSetup = () => {
         client_tricare_insurance_agreement: values.tricareInsuranceAgreement,
         client_veteran_relationship: values.veteranRelationship,
         client_situation_explanation: values.situationExplanation,
+        client_other_insurance_company: values.otherInsuranceCompany,
+        client_other_insurance_plan_type: values.otherInsurancePlanType,
+        client_other_insurance_subscriber_name: values.otherInsuranceSubscriberName,
+        client_other_insurance_subscriber_relationship: values.otherInsuranceSubscriberRelationship,
+        client_other_insurance_subscriber_dob: formattedOtherInsuranceSubscriberDob,
+        client_other_insurance_group_number: values.otherInsuranceGroupNumber,
+        client_other_insurance_policy_number: values.otherInsurancePolicyNumber,
+        client_has_more_insurance: values.hasMoreInsurance,
         client_status: 'Profile Complete',
         client_is_profile_complete: 'true'
       })
@@ -439,6 +493,41 @@ const ProfileSetup = () => {
     );
   };
 
+  const renderStepFour = () => {
+    return (
+      <Form {...form}>
+        <div className="space-y-6">
+          <AdditionalInsurance 
+            form={form} 
+            onComplete={handleSubmit} 
+            onBack={handleGoBack} 
+          />
+          
+          <div className="flex justify-between mt-8">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handleGoBack}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            
+            <Button 
+              type="button" 
+              onClick={handleSubmit}
+              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+            >
+              Complete Profile
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </Form>
+    );
+  };
+
   return (
     <Layout>
       <div className="container max-w-4xl mx-auto py-6">
@@ -457,6 +546,7 @@ const ProfileSetup = () => {
             {currentStep === 1 && renderStepOne()}
             {currentStep === 2 && renderStepTwo()}
             {currentStep === 3 && renderStepThree()}
+            {currentStep === 4 && renderStepFour()}
           </CardContent>
         </Card>
       </div>
