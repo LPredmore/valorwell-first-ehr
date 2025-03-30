@@ -79,7 +79,8 @@ const ProfileSetup = () => {
           groupNumber: '',
           policyNumber: ''
         }
-      ]
+      ],
+      tricareInsuranceAgreement: false
     }
   });
 
@@ -301,6 +302,46 @@ const ProfileSetup = () => {
           }
         } catch (error) {
           console.error("Exception saving CHAMPVA data:", error);
+          toast({
+            title: "Error saving data",
+            description: "An unexpected error occurred.",
+            variant: "destructive"
+          });
+        }
+      } else if (vaCoverage === "TRICARE" && clientId) {
+        try {
+          console.log("Saving TRICARE data");
+          
+          const { error } = await supabase
+            .from('clients')
+            .update({
+              client_tricare_beneficiary_category: values.client_tricare_beneficiary_category,
+              client_tricare_sponsor_name: values.client_tricare_sponsor_name,
+              client_tricare_sponsor_branch: values.client_tricare_sponsor_branch,
+              client_tricare_sponsor_id: values.client_tricare_sponsor_id,
+              client_tricare_plan: values.client_tricare_plan,
+              client_tricare_region: values.client_tricare_region,
+              client_tricare_policy_id: values.client_tricare_policy_id,
+              client_tricare_has_referral: values.client_tricare_has_referral,
+              client_tricare_referral_number: values.client_tricare_referral_number
+            })
+            .eq('id', clientId);
+            
+          if (error) {
+            console.error("Error saving TRICARE data:", error);
+            toast({
+              title: "Error saving data",
+              description: error.message,
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Information saved",
+              description: "Your TRICARE information has been updated.",
+            });
+          }
+        } catch (error) {
+          console.error("Exception saving TRICARE data:", error);
           toast({
             title: "Error saving data",
             description: "An unexpected error occurred.",
@@ -575,7 +616,10 @@ const ProfileSetup = () => {
           )}
           
           {vaCoverage === 'TRICARE' && (
-            <SignupTricare form={form} />
+            <SignupTricare 
+              form={form}
+              onOtherInsuranceChange={handleOtherInsuranceChange}
+            />
           )}
           
           {vaCoverage === 'VA Community Care' && (

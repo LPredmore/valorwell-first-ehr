@@ -4,19 +4,20 @@ import { UseFormReturn } from 'react-hook-form';
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { FormField, FormItem, FormControl, FormLabel } from '@/components/ui/form';
+import { FormField, FormItem, FormControl, FormLabel, FormMessage } from '@/components/ui/form';
 import { Info } from 'lucide-react';
 
 interface SignupTricareProps {
   form: UseFormReturn<any>;
+  onOtherInsuranceChange?: (value: string) => void;
 }
 
-const SignupTricare: React.FC<SignupTricareProps> = ({ form }) => {
+const SignupTricare: React.FC<SignupTricareProps> = ({ form, onOtherInsuranceChange }) => {
   const [showReferralField, setShowReferralField] = useState(false);
   const [showInsuranceDisclaimer, setShowInsuranceDisclaimer] = useState(false);
   
   // Watch for changes to the hasReferral and otherInsurance fields
-  const hasReferral = form.watch('tricareHasReferral');
+  const hasReferral = form.watch('client_tricare_has_referral');
   const otherInsurance = form.watch('otherInsurance');
   
   useEffect(() => {
@@ -25,7 +26,12 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form }) => {
     
     // Show insurance disclaimer only when "No" is selected for other insurance
     setShowInsuranceDisclaimer(otherInsurance === "No");
-  }, [hasReferral, otherInsurance]);
+    
+    // Call the callback if provided
+    if (onOtherInsuranceChange) {
+      onOtherInsuranceChange(otherInsurance);
+    }
+  }, [hasReferral, otherInsurance, onOtherInsuranceChange]);
 
   return (
     <div className="space-y-6">
@@ -37,7 +43,7 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form }) => {
       <div className="grid grid-cols-1 gap-6">
         <FormFieldWrapper
           control={form.control}
-          name="tricareBeneficiaryCategory"
+          name="client_tricare_beneficiary_category"
           label="TRICARE Beneficiary Category"
           type="select"
           options={[
@@ -58,14 +64,14 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form }) => {
         
         <FormFieldWrapper
           control={form.control}
-          name="tricareSponsorName"
+          name="client_tricare_sponsor_name"
           label="TRICARE Sponsor's Name"
           type="text"
         />
         
         <FormFieldWrapper
           control={form.control}
-          name="tricareSponsorBranch"
+          name="client_tricare_sponsor_branch"
           label="TRICARE Sponsor's Branch of Service"
           type="select"
           options={[
@@ -82,14 +88,14 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form }) => {
         
         <FormFieldWrapper
           control={form.control}
-          name="tricareSponsorId"
+          name="client_tricare_sponsor_id"
           label="TRICARE Sponsor's SSN or DOD ID Number"
           type="text"
         />
         
         <FormFieldWrapper
           control={form.control}
-          name="tricarePlan"
+          name="client_tricare_plan"
           label="TRICARE Plan"
           type="select"
           options={[
@@ -109,7 +115,7 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form }) => {
         
         <FormFieldWrapper
           control={form.control}
-          name="tricareRegion"
+          name="client_tricare_region"
           label="TRICARE Region"
           type="select"
           options={[
@@ -121,14 +127,14 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form }) => {
         
         <FormFieldWrapper
           control={form.control}
-          name="tricarePolicyId"
+          name="client_tricare_policy_id"
           label="Policy #/Plan ID"
           type="text"
         />
         
         <FormFieldWrapper
           control={form.control}
-          name="tricareHasReferral"
+          name="client_tricare_has_referral"
           label="Do you have a Referral Number?"
           type="select"
           options={["Yes", "No"]}
@@ -137,7 +143,7 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form }) => {
         {showReferralField && (
           <FormFieldWrapper
             control={form.control}
-            name="tricareReferralNumber"
+            name="client_tricare_referral_number"
             label="Referral Number"
             type="text"
           />
@@ -165,6 +171,15 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form }) => {
             <FormField
               control={form.control}
               name="tricareInsuranceAgreement"
+              rules={{
+                validate: (value) => {
+                  // Only require the checkbox when "No" is selected
+                  if (otherInsurance === "No" && !value) {
+                    return "You must agree to this statement";
+                  }
+                  return true;
+                }
+              }}
               render={({ field }) => (
                 <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                   <FormControl>
@@ -173,9 +188,12 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form }) => {
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
-                  <FormLabel className="font-medium cursor-pointer">
-                    I agree
-                  </FormLabel>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel className="font-medium cursor-pointer">
+                      I agree
+                    </FormLabel>
+                    <FormMessage />
+                  </div>
                 </FormItem>
               )}
             />
