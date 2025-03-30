@@ -14,6 +14,7 @@ import { timezoneOptions } from '@/utils/timezoneOptions';
 import { DateField } from '@/components/ui/DateField';
 import { format } from 'date-fns';
 
+// Import specialized signup components
 import SignupChampva from '@/components/signup/SignupChampva';
 import SignupTricare from '@/components/signup/SignupTricare';
 import SignupVaCcn from '@/components/signup/SignupVaCcn';
@@ -45,7 +46,6 @@ const ProfileSetup = () => {
       timeZone: '',
       vaCoverage: '',
       otherInsurance: '',
-      champvaNumber: '',
       champvaAgreement: false,
       mentalHealthReferral: '',
       branchOfService: '',
@@ -119,7 +119,6 @@ const ProfileSetup = () => {
             timeZone: data.client_time_zone || '',
             vaCoverage: data.client_va_coverage || '',
             otherInsurance: data.client_other_insurance || '',
-            champvaNumber: data.client_champva || '',
             champvaAgreement: data.client_champva_agreement || false,
             mentalHealthReferral: data.client_mental_health_referral || '',
             branchOfService: data.client_branch_of_service || '',
@@ -230,7 +229,6 @@ const ProfileSetup = () => {
         client_branch_of_service: values.branchOfService,
         client_discharge_date: formattedDischargeDate,
         client_va_disability_rating: values.vaDisabilityRating,
-        client_champva: values.champvaNumber,
         client_champva_agreement: values.champvaAgreement,
         client_tricare_beneficiary_category: values.tricareBeneficiaryCategory,
         client_tricare_sponsor_name: values.tricareSponsorName,
@@ -436,7 +434,7 @@ const ProfileSetup = () => {
       <Form {...form}>
         <div className="space-y-6">
           {vaCoverage === 'CHAMPVA' && (
-            <SignupChampva form={form} clientId={clientId} />
+            <SignupChampva form={form} />
           )}
           
           {vaCoverage === 'TRICARE' && (
