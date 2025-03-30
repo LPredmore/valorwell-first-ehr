@@ -13,7 +13,8 @@ interface FormFieldWrapperProps {
   readOnly?: boolean;
   valueMapper?: (label: string) => string;
   labelMapper?: (value: string) => string;
-  maxLength?: number; // Add the maxLength property to the interface
+  maxLength?: number;
+  disabled?: boolean; // Add the disabled property to the interface
 }
 
 const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
@@ -25,7 +26,8 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
   readOnly = false,
   valueMapper,
   labelMapper,
-  maxLength // Include in component props
+  maxLength,
+  disabled = false // Include in component props with default value
 }) => {
   return (
     <FormField
@@ -52,9 +54,9 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                 <Select
                   onValueChange={handleSelectChange}
                   value={displayValue || ''}
-                  disabled={readOnly}
+                  disabled={readOnly || disabled}
                 >
-                  <SelectTrigger className={readOnly ? "bg-gray-100" : ""}>
+                  <SelectTrigger className={readOnly || disabled ? "bg-gray-100" : ""}>
                     <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
                   </SelectTrigger>
                   <SelectContent>
@@ -70,8 +72,9 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                   {...field}
                   type={type}
                   readOnly={readOnly}
-                  className={readOnly ? "bg-gray-100" : ""}
-                  maxLength={maxLength} // Pass maxLength to the Input component
+                  disabled={disabled}
+                  className={(readOnly || disabled) ? "bg-gray-100" : ""}
+                  maxLength={maxLength}
                 />
               )}
             </FormControl>

@@ -14,16 +14,6 @@ import { timezoneOptions } from '@/utils/timezoneOptions';
 import { DateField } from '@/components/ui/DateField';
 import { format } from 'date-fns';
 
-// Import specialized signup components
-import SignupChampva from '@/components/signup/SignupChampva';
-import SignupTricare from '@/components/signup/SignupTricare';
-import SignupVaCcn from '@/components/signup/SignupVaCcn';
-import SignupVeteran from '@/components/signup/SignupVeteran';
-import SignupNotAVeteran from '@/components/signup/SignupNotAVeteran';
-import AdditionalInsurance from '@/components/signup/AdditionalInsurance';
-import MoreAdditionalInsurance from '@/components/signup/MoreAdditionalInsurance';
-import SignupLast from '@/components/signup/SignupLast';
-
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -46,6 +36,7 @@ const ProfileSetup = () => {
       timeZone: '',
       vaCoverage: '',
       otherInsurance: '',
+      champvaNumber: '',
       champvaAgreement: false,
       mentalHealthReferral: '',
       branchOfService: '',
@@ -119,6 +110,7 @@ const ProfileSetup = () => {
             timeZone: data.client_time_zone || '',
             vaCoverage: data.client_va_coverage || '',
             otherInsurance: data.client_other_insurance || '',
+            champvaNumber: data.client_champva || '',
             champvaAgreement: data.client_champva_agreement || false,
             mentalHealthReferral: data.client_mental_health_referral || '',
             branchOfService: data.client_branch_of_service || '',
