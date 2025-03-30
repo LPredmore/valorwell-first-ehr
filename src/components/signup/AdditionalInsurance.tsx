@@ -89,10 +89,11 @@ const AdditionalInsurance: React.FC<AdditionalInsuranceProps> = ({ form }) => {
         
         <FormFieldWrapper
           control={form.control}
-          name="client_has_more_insurance"
+          name="hasMoreInsurance"  
           label="Do you have any other Insurance you would like to add?"
           type="select"
           options={["Yes", "No"]}
+          required={true}
         />
       </div>
     </div>

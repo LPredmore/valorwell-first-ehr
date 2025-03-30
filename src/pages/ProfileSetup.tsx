@@ -70,7 +70,7 @@ const ProfileSetup = () => {
       client_subscriber_dob_primary: undefined as Date | undefined,
       client_group_number_primary: '',
       client_policy_number_primary: '',
-      client_has_more_insurance: '',
+      hasMoreInsurance: '', // Changed from client_has_more_insurance to hasMoreInsurance (local state only)
       client_has_even_more_insurance: '',
       client_therapy_goals: '',
       client_referral_source: '',
@@ -224,7 +224,7 @@ const ProfileSetup = () => {
   const handleNext = async () => {
     const values = form.getValues();
     const vaCoverage = values.client_vacoverage;
-    const hasMoreInsurance = values.client_has_more_insurance;
+    const hasMoreInsurance = values.hasMoreInsurance; // Updated to use the local field
     
     if (currentStep === 2) {
       if (clientId) {
@@ -407,8 +407,7 @@ const ProfileSetup = () => {
               client_subscriber_relationship_primary: values.client_subscriber_relationship_primary,
               client_subscriber_dob_primary: formattedSubscriberDob,
               client_group_number_primary: values.client_group_number_primary,
-              client_policy_number_primary: values.client_policy_number_primary,
-              client_has_more_insurance: values.client_has_more_insurance
+              client_policy_number_primary: values.client_policy_number_primary
             })
             .eq('id', clientId);
             
