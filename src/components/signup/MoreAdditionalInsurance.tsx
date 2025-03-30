@@ -14,7 +14,6 @@ interface MoreAdditionalInsuranceProps {
 
 const MoreAdditionalInsurance: React.FC<MoreAdditionalInsuranceProps> = ({ form }) => {
   const [insuranceEntries, setInsuranceEntries] = useState([{ id: 1 }]);
-  const [addMoreInsurance, setAddMoreInsurance] = useState<string | null>(null);
 
   const handleAddInsurance = () => {
     setInsuranceEntries([...insuranceEntries, { id: insuranceEntries.length + 1 }]);
@@ -119,25 +118,15 @@ const MoreAdditionalInsurance: React.FC<MoreAdditionalInsuranceProps> = ({ form 
         <div className="space-y-6">
           <Separator className="my-4" />
           
-          <FormFieldWrapper
-            control={form.control}
-            name="hasEvenMoreInsurance"
-            label="Do you have any other Insurance you would like to add?"
-            type="select"
-            options={["Yes", "No"]}
-          />
-          
-          {form.watch('hasEvenMoreInsurance') === 'Yes' && (
-            <Button
-              type="button"
-              onClick={handleAddInsurance}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Add Another Insurance
-            </Button>
-          )}
+          <Button
+            type="button"
+            onClick={handleAddInsurance}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Add Another Insurance
+          </Button>
         </div>
       )}
     </div>
