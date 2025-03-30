@@ -42,6 +42,7 @@ const ProfileSetup = () => {
           .single();
         
         if (data) {
+          console.log("Fetched client data:", data); // Debug log
           setClientId(data.id);
           // Populate form with existing data
           form.reset({

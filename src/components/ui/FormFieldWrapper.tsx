@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,39 +25,46 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
     <FormField
       control={control}
       name={name}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>{label}</FormLabel>
-          <FormControl>
-            {type === 'select' ? (
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-                disabled={readOnly}
-              >
-                <SelectTrigger className={readOnly ? "bg-gray-100" : ""}>
-                  <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
-                </SelectTrigger>
-                <SelectContent>
-                  {options.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Input
-                {...field}
-                type={type}
-                readOnly={readOnly}
-                className={readOnly ? "bg-gray-100" : ""}
-              />
-            )}
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
+      render={({ field }) => {
+        // For debugging purposes
+        if (name === 'state') {
+          console.log('State field value:', field.value);
+        }
+        
+        return (
+          <FormItem>
+            <FormLabel>{label}</FormLabel>
+            <FormControl>
+              {type === 'select' ? (
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value || ''}
+                  disabled={readOnly}
+                >
+                  <SelectTrigger className={readOnly ? "bg-gray-100" : ""}>
+                    <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {options.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  {...field}
+                  type={type}
+                  readOnly={readOnly}
+                  className={readOnly ? "bg-gray-100" : ""}
+                />
+              )}
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        );
+      }}
     />
   );
 };
