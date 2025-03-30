@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Save, X } from 'lucide-react';
+import { Pencil, Save, X, Upload, Camera, Image, User } from 'lucide-react';
 import { 
   Card, 
   CardContent, 
@@ -41,6 +42,7 @@ interface Clinician {
   clinician_status: string | null;
   clinician_type: string | null;
   clinician_licensed_states: string[] | null;
+  clinician_image_url: string | null;
 }
 
 const ClinicianDetails = () => {
@@ -53,6 +55,9 @@ const ClinicianDetails = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Time zone options
   const timeZones = [
@@ -157,6 +162,24 @@ const ClinicianDetails = () => {
     }
   }, [clinician]);
 
+  // Set initial image preview when clinician data is loaded
+  useEffect(() => {
+    if (clinician?.clinician_image_url) {
+      setImagePreview(clinician.clinician_image_url);
+    }
+  }, [clinician]);
+
+  // Update image preview when a new file is selected
+  useEffect(() => {
+    if (profileImage) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(profileImage);
+    }
+  }, [profileImage]);
+
   const fetchClinicianData = async () => {
     setIsLoading(true);
     try {
@@ -187,6 +210,11 @@ const ClinicianDetails = () => {
         });
         setSelectedStates(fullStateNames);
       }
+      
+      // Set image preview if available
+      if (data.clinician_image_url) {
+        setImagePreview(data.clinician_image_url);
+      }
     } catch (error) {
       console.error('Error fetching clinician:', error);
       toast({
@@ -209,15 +237,95 @@ const ClinicianDetails = () => {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Image size should be less than 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setProfileImage(file);
+    }
+  };
+
+  const uploadProfileImage = async (): Promise<string | null> => {
+    if (!profileImage || !clinicianId) return null;
+    
+    setIsUploading(true);
+    
+    try {
+      // Create a unique filename
+      const fileExt = profileImage.name.split('.').pop();
+      const fileName = `${clinicianId}-${Date.now()}.${fileExt}`;
+      const filePath = `profile-images/${fileName}`;
+      
+      // Upload the file to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('clinician-images')
+        .upload(filePath, profileImage, {
+          cacheControl: '3600',
+          upsert: true
+        });
+      
+      if (uploadError) throw uploadError;
+      
+      // Get the public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('clinician-images')
+        .getPublicUrl(filePath);
+      
+      console.log("Image uploaded successfully:", publicUrlData.publicUrl);
+      
+      return publicUrlData.publicUrl;
+    } catch (error) {
+      console.error('Error uploading profile image:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload profile image.",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSave = async () => {
     try {
       if (!editedClinician) return;
       
+      let imageUrl = editedClinician.clinician_image_url;
+      
+      // Upload profile image if a new one was selected
+      if (profileImage) {
+        const uploadedUrl = await uploadProfileImage();
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl;
+        }
+      }
+      
       const updatedClinicianData = {
         ...editedClinician,
-        clinician_licensed_states: selectedStates, // Store full state names
+        clinician_licensed_states: selectedStates,
         clinician_type: editedClinician.clinician_type,
-        clinician_license_type: editedClinician.clinician_license_type
+        clinician_license_type: editedClinician.clinician_license_type,
+        clinician_image_url: imageUrl
       };
       
       console.log("Saving clinician data:", updatedClinicianData);
@@ -234,9 +342,11 @@ const ClinicianDetails = () => {
       
       setClinician({
         ...editedClinician,
-        clinician_licensed_states: selectedStates
+        clinician_licensed_states: selectedStates,
+        clinician_image_url: imageUrl
       });
       setIsEditing(false);
+      setProfileImage(null);
       
       toast({
         title: "Success",
@@ -264,6 +374,9 @@ const ClinicianDetails = () => {
       setSelectedStates([]);
     }
     setIsEditing(false);
+    setProfileImage(null);
+    // Reset image preview to the original image
+    setImagePreview(clinician?.clinician_image_url || null);
   };
 
   const toggleState = (stateName: string) => {
@@ -309,7 +422,11 @@ const ClinicianDetails = () => {
               <Button variant="outline" onClick={handleCancel} className="flex items-center gap-1">
                 <X size={16} /> Cancel
               </Button>
-              <Button onClick={handleSave} className="flex items-center gap-1 bg-valorwell-700 hover:bg-valorwell-800">
+              <Button 
+                onClick={handleSave} 
+                className="flex items-center gap-1 bg-valorwell-700 hover:bg-valorwell-800"
+                disabled={isUploading}
+              >
                 <Save size={16} /> Save Changes
               </Button>
             </>
@@ -327,130 +444,193 @@ const ClinicianDetails = () => {
             <CardTitle>Personal Information</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  First Name
+            <div className="flex flex-col md:flex-row gap-6">
+              {/* Profile Image Section */}
+              <div className="md:w-1/3">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Profile Picture
                 </label>
-                {isEditing ? (
-                  <Input 
-                    type="text" 
-                    value={editedClinician?.clinician_first_name || ''} 
-                    onChange={(e) => handleInputChange('clinician_first_name', e.target.value)}
-                  />
-                ) : (
-                  <p className="p-2 border rounded-md bg-gray-50">
-                    {clinician.clinician_first_name || '—'}
-                  </p>
-                )}
+                <div className="flex flex-col items-center">
+                  <div className="relative w-48 h-48 mb-4 border rounded-md overflow-hidden bg-gray-100 flex items-center justify-center">
+                    {imagePreview ? (
+                      <img 
+                        src={imagePreview} 
+                        alt="Profile" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User size={64} className="text-gray-400" />
+                    )}
+                    
+                    {isEditing && (
+                      <label 
+                        htmlFor="profile-image" 
+                        className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white cursor-pointer opacity-0 hover:opacity-100 transition-opacity"
+                      >
+                        <div className="flex flex-col items-center">
+                          <Camera size={32} />
+                          <span className="text-sm mt-2">Upload Photo</span>
+                        </div>
+                        <input 
+                          id="profile-image" 
+                          type="file" 
+                          accept="image/*" 
+                          className="hidden" 
+                          onChange={handleFileChange}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  
+                  {isEditing && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      type="button" 
+                      className="flex items-center gap-1 mb-2"
+                      onClick={() => document.getElementById('profile-image')?.click()}
+                    >
+                      <Upload size={16} /> Choose Image
+                    </Button>
+                  )}
+                  
+                  {isEditing && profileImage && (
+                    <p className="text-sm text-gray-500 text-center">
+                      {profileImage.name} ({Math.round(profileImage.size / 1024)} KB)
+                    </p>
+                  )}
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Last Name
-                </label>
-                {isEditing ? (
-                  <Input 
-                    type="text" 
-                    value={editedClinician?.clinician_last_name || ''} 
-                    onChange={(e) => handleInputChange('clinician_last_name', e.target.value)}
-                  />
-                ) : (
-                  <p className="p-2 border rounded-md bg-gray-50">
-                    {clinician.clinician_last_name || '—'}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name for Insurance
-                </label>
-                {isEditing ? (
-                  <Input 
-                    type="text" 
-                    value={`${editedClinician?.clinician_first_name || ''} ${editedClinician?.clinician_last_name || ''}`} 
-                    readOnly
-                  />
-                ) : (
-                  <p className="p-2 border rounded-md bg-gray-50">
-                    {clinician.clinician_first_name && clinician.clinician_last_name 
-                      ? `${clinician.clinician_first_name} ${clinician.clinician_last_name}` 
-                      : '—'}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Professional Name
-                </label>
-                {isEditing ? (
-                  <Input 
-                    type="text" 
-                    value={editedClinician?.clinician_professional_name || ''} 
-                    onChange={(e) => handleInputChange('clinician_professional_name', e.target.value)}
-                  />
-                ) : (
-                  <p className="p-2 border rounded-md bg-gray-50">
-                    {clinician.clinician_professional_name || '—'}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                {isEditing ? (
-                  <Input 
-                    type="email" 
-                    value={editedClinician?.clinician_email || ''} 
-                    onChange={(e) => handleInputChange('clinician_email', e.target.value)}
-                  />
-                ) : (
-                  <p className="p-2 border rounded-md bg-gray-50">
-                    {clinician.clinician_email || '—'}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Time Zone
-                </label>
-                {isEditing ? (
-                  <Select 
-                    value="Central Time (CT)" 
-                    onValueChange={(value) => {}}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select time zone" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeZones.map((zone) => (
-                        <SelectItem key={zone} value={zone}>
-                          {zone}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="p-2 border rounded-md bg-gray-50">
-                    Central Time (CT)
-                  </p>
-                )}
-              </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Biography
-                </label>
-                {isEditing ? (
-                  <Textarea 
-                    value={editedClinician?.clinician_bio || ''} 
-                    onChange={(e) => handleInputChange('clinician_bio', e.target.value)}
-                    className="min-h-[100px]"
-                  />
-                ) : (
-                  <p className="p-2 border rounded-md bg-gray-50 min-h-[100px] whitespace-pre-wrap">
-                    {clinician.clinician_bio || '—'}
-                  </p>
-                )}
+              
+              {/* Personal Information Fields */}
+              <div className="md:w-2/3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      First Name
+                    </label>
+                    {isEditing ? (
+                      <Input 
+                        type="text" 
+                        value={editedClinician?.clinician_first_name || ''} 
+                        onChange={(e) => handleInputChange('clinician_first_name', e.target.value)}
+                      />
+                    ) : (
+                      <p className="p-2 border rounded-md bg-gray-50">
+                        {clinician.clinician_first_name || '—'}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Last Name
+                    </label>
+                    {isEditing ? (
+                      <Input 
+                        type="text" 
+                        value={editedClinician?.clinician_last_name || ''} 
+                        onChange={(e) => handleInputChange('clinician_last_name', e.target.value)}
+                      />
+                    ) : (
+                      <p className="p-2 border rounded-md bg-gray-50">
+                        {clinician.clinician_last_name || '—'}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Name for Insurance
+                    </label>
+                    {isEditing ? (
+                      <Input 
+                        type="text" 
+                        value={`${editedClinician?.clinician_first_name || ''} ${editedClinician?.clinician_last_name || ''}`} 
+                        readOnly
+                      />
+                    ) : (
+                      <p className="p-2 border rounded-md bg-gray-50">
+                        {clinician.clinician_first_name && clinician.clinician_last_name 
+                          ? `${clinician.clinician_first_name} ${clinician.clinician_last_name}` 
+                          : '—'}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Professional Name
+                    </label>
+                    {isEditing ? (
+                      <Input 
+                        type="text" 
+                        value={editedClinician?.clinician_professional_name || ''} 
+                        onChange={(e) => handleInputChange('clinician_professional_name', e.target.value)}
+                      />
+                    ) : (
+                      <p className="p-2 border rounded-md bg-gray-50">
+                        {clinician.clinician_professional_name || '—'}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email
+                    </label>
+                    {isEditing ? (
+                      <Input 
+                        type="email" 
+                        value={editedClinician?.clinician_email || ''} 
+                        onChange={(e) => handleInputChange('clinician_email', e.target.value)}
+                      />
+                    ) : (
+                      <p className="p-2 border rounded-md bg-gray-50">
+                        {clinician.clinician_email || '—'}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Time Zone
+                    </label>
+                    {isEditing ? (
+                      <Select 
+                        value="Central Time (CT)" 
+                        onValueChange={(value) => {}}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select time zone" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeZones.map((zone) => (
+                            <SelectItem key={zone} value={zone}>
+                              {zone}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="p-2 border rounded-md bg-gray-50">
+                        Central Time (CT)
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Biography
+                  </label>
+                  {isEditing ? (
+                    <Textarea 
+                      value={editedClinician?.clinician_bio || ''} 
+                      onChange={(e) => handleInputChange('clinician_bio', e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                  ) : (
+                    <p className="p-2 border rounded-md bg-gray-50 min-h-[100px] whitespace-pre-wrap">
+                      {clinician.clinician_bio || '—'}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -602,7 +782,11 @@ const ClinicianDetails = () => {
             <Button variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button onClick={handleSave} className="bg-valorwell-700 hover:bg-valorwell-800">
+            <Button 
+              onClick={handleSave} 
+              className="bg-valorwell-700 hover:bg-valorwell-800"
+              disabled={isUploading}
+            >
               Save Changes
             </Button>
           </div>
