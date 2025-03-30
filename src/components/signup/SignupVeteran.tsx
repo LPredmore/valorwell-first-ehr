@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { DateField } from '@/components/ui/DateField';
+import { Textarea } from '@/components/ui/textarea';
 
 interface SignupVeteranProps {
   form: UseFormReturn<any>;
@@ -61,6 +62,28 @@ const SignupVeteran: React.FC<SignupVeteranProps> = ({ form }) => {
             "TDIU"
           ]}
         />
+
+        <FormFieldWrapper
+          control={form.control}
+          name="isVeteranFamilyMember"
+          label="Are you a child or spouse of a veteran?"
+          type="select"
+          options={["Yes", "No"]}
+        />
+
+        <div className="col-span-1">
+          <FormFieldWrapper
+            control={form.control}
+            name="veteranSituation"
+            label="Please explain your situation so that we can understand how to best serve you."
+            type="text"
+          />
+          <Textarea
+            {...form.register("veteranSituation")}
+            className="mt-1 w-full min-h-[120px]"
+            placeholder="Please describe your situation..."
+          />
+        </div>
       </div>
     </div>
   );

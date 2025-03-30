@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -15,20 +14,12 @@ import { timezoneOptions } from '@/utils/timezoneOptions';
 import { DateField } from '@/components/ui/DateField';
 import { format } from 'date-fns';
 
-// Import specialized signup components
-import SignupChampva from '@/components/signup/SignupChampva';
-import SignupTricare from '@/components/signup/SignupTricare';
-import SignupVaCcn from '@/components/signup/SignupVaCcn';
-import SignupVeteran from '@/components/signup/SignupVeteran';
-import SignupNotAVeteran from '@/components/signup/SignupNotAVeteran';
-
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [clientId, setClientId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   
-  // Form setup
   const form = useForm({
     defaultValues: {
       firstName: '',
@@ -59,15 +50,15 @@ const ProfileSetup = () => {
       tricareHasReferral: '',
       tricareReferralNumber: '',
       tricareInsuranceAgreement: false,
+      isVeteranFamilyMember: '',
+      veteranSituation: ''
     }
   });
 
-  // Get current user data
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Get client record associated with this user
         const { data, error } = await supabase
           .from('clients')
           .select('*')
@@ -75,10 +66,9 @@ const ProfileSetup = () => {
           .single();
         
         if (data) {
-          console.log("Fetched client data:", data); // Debug log
+          console.log("Fetched client data:", data);
           setClientId(data.id);
           
-          // Parse dates if they exist
           let dateOfBirth = undefined;
           if (data.client_date_of_birth) {
             dateOfBirth = new Date(data.client_date_of_birth);
@@ -89,7 +79,6 @@ const ProfileSetup = () => {
             dischargeDate = new Date(data.client_discharge_date);
           }
           
-          // Populate form with existing data
           form.reset({
             firstName: data.client_first_name || '',
             preferredName: data.client_preferred_name || '',
@@ -119,6 +108,8 @@ const ProfileSetup = () => {
             tricareHasReferral: data.client_tricare_has_referral || '',
             tricareReferralNumber: data.client_tricare_referral_number || '',
             tricareInsuranceAgreement: data.client_tricare_insurance_agreement || false,
+            isVeteranFamilyMember: data.client_is_veteran_family_member || '',
+            veteranSituation: data.client_veteran_situation || ''
           });
         } else if (error) {
           console.error('Error fetching client data:', error);
@@ -145,10 +136,8 @@ const ProfileSetup = () => {
     const vaCoverage = form.getValues('vaCoverage');
     
     if (currentStep === 2) {
-      // Move to the third step which will conditionally render based on vaCoverage
       setCurrentStep(3);
     } else if (currentStep === 3) {
-      // Submit the form (completing the profile)
       handleSubmit();
     }
   };
@@ -165,7 +154,6 @@ const ProfileSetup = () => {
       return;
     }
 
-    // Format dates to ISO strings if they exist
     const formattedDateOfBirth = values.dateOfBirth ? format(values.dateOfBirth, 'yyyy-MM-dd') : null;
     const formattedDischargeDate = values.dischargeDate ? format(values.dischargeDate, 'yyyy-MM-dd') : null;
     
