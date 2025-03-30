@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
+import { DateField } from '@/components/ui/DateField';
 
 interface SignupVeteranProps {
   form: UseFormReturn<any>;
@@ -27,7 +28,37 @@ const SignupVeteran: React.FC<SignupVeteranProps> = ({ form }) => {
             "Coast Guard",
             "Marine Corps",
             "Navy",
-            "Space Force"
+            "Space Force",
+            "NOAA Corps",
+            "USPHS"
+          ]}
+        />
+
+        <DateField
+          control={form.control}
+          name="dischargeDate"
+          label="Date of Most Recent Discharge"
+        />
+
+        <FormFieldWrapper
+          control={form.control}
+          name="vaDisabilityRating"
+          label="Current VA Disability Rating"
+          type="select"
+          options={[
+            "0",
+            "10",
+            "20",
+            "30",
+            "40",
+            "50",
+            "60",
+            "70",
+            "80",
+            "90",
+            "100",
+            "100 P&T",
+            "TDIU"
           ]}
         />
       </div>

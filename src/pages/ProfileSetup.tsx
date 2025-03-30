@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -46,6 +47,8 @@ const ProfileSetup = () => {
       champvaAgreement: false,
       mentalHealthReferral: '',
       branchOfService: '',
+      dischargeDate: undefined as Date | undefined,
+      vaDisabilityRating: '',
       tricareBeneficiaryCategory: '',
       tricareSponsorName: '',
       tricareSponsorBranch: '',
@@ -75,10 +78,15 @@ const ProfileSetup = () => {
           console.log("Fetched client data:", data); // Debug log
           setClientId(data.id);
           
-          // Parse date of birth if it exists
+          // Parse dates if they exist
           let dateOfBirth = undefined;
           if (data.client_date_of_birth) {
             dateOfBirth = new Date(data.client_date_of_birth);
+          }
+          
+          let dischargeDate = undefined;
+          if (data.client_discharge_date) {
+            dischargeDate = new Date(data.client_discharge_date);
           }
           
           // Populate form with existing data
@@ -99,6 +107,8 @@ const ProfileSetup = () => {
             champvaAgreement: data.client_champva_agreement || false,
             mentalHealthReferral: data.client_mental_health_referral || '',
             branchOfService: data.client_branch_of_service || '',
+            dischargeDate: dischargeDate,
+            vaDisabilityRating: data.client_va_disability_rating || '',
             tricareBeneficiaryCategory: data.client_tricare_beneficiary_category || '',
             tricareSponsorName: data.client_tricare_sponsor_name || '',
             tricareSponsorBranch: data.client_tricare_sponsor_branch || '',
@@ -106,7 +116,7 @@ const ProfileSetup = () => {
             tricarePlan: data.client_tricare_plan || '',
             tricareRegion: data.client_tricare_region || '',
             tricarePolicyId: data.client_tricare_policy_id || '',
-            tricareHasReferral: data.client_tricare_has_referral || false,
+            tricareHasReferral: data.client_tricare_has_referral || '',
             tricareReferralNumber: data.client_tricare_referral_number || '',
             tricareInsuranceAgreement: data.client_tricare_insurance_agreement || false,
           });
@@ -155,8 +165,9 @@ const ProfileSetup = () => {
       return;
     }
 
-    // Format date to ISO string if it exists
+    // Format dates to ISO strings if they exist
     const formattedDateOfBirth = values.dateOfBirth ? format(values.dateOfBirth, 'yyyy-MM-dd') : null;
+    const formattedDischargeDate = values.dischargeDate ? format(values.dischargeDate, 'yyyy-MM-dd') : null;
     
     const { error } = await supabase
       .from('clients')
@@ -175,6 +186,8 @@ const ProfileSetup = () => {
         client_other_insurance: values.otherInsurance,
         client_mental_health_referral: values.mentalHealthReferral,
         client_branch_of_service: values.branchOfService,
+        client_discharge_date: formattedDischargeDate,
+        client_va_disability_rating: values.vaDisabilityRating,
         client_champva_agreement: values.champvaAgreement,
         client_tricare_beneficiary_category: values.tricareBeneficiaryCategory,
         client_tricare_sponsor_name: values.tricareSponsorName,
