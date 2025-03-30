@@ -70,7 +70,14 @@ const ProfileSetup = () => {
       client_subscriber_dob_primary: undefined as Date | undefined,
       client_group_number_primary: '',
       client_policy_number_primary: '',
-      hasMoreInsurance: '', // Changed from client_has_more_insurance to hasMoreInsurance (local state only)
+      client_insurance_company_secondary: '',
+      client_insurance_type_secondary: '',
+      client_subscriber_name_secondary: '',
+      client_subscriber_relationship_secondary: '',
+      client_subscriber_dob_secondary: undefined as Date | undefined,
+      client_group_number_secondary: '',
+      client_policy_number_secondary: '',
+      hasMoreInsurance: '',
       client_has_even_more_insurance: '',
       client_therapy_goals: '',
       client_referral_source: '',
@@ -440,6 +447,49 @@ const ProfileSetup = () => {
         navigateToStep(6);
       }
     } else if (currentStep === 5) {
+      if (clientId) {
+        try {
+          console.log("Saving secondary insurance data");
+          
+          const formattedSubscriberDobSecondary = values.client_subscriber_dob_secondary 
+            ? format(values.client_subscriber_dob_secondary, 'yyyy-MM-dd') 
+            : null;
+            
+          const { error } = await supabase
+            .from('clients')
+            .update({
+              client_insurance_company_secondary: values.client_insurance_company_secondary,
+              client_insurance_type_secondary: values.client_insurance_type_secondary,
+              client_subscriber_name_secondary: values.client_subscriber_name_secondary,
+              client_subscriber_relationship_secondary: values.client_subscriber_relationship_secondary,
+              client_subscriber_dob_secondary: formattedSubscriberDobSecondary,
+              client_group_number_secondary: values.client_group_number_secondary,
+              client_policy_number_secondary: values.client_policy_number_secondary
+            })
+            .eq('id', clientId);
+            
+          if (error) {
+            console.error("Error saving secondary insurance data:", error);
+            toast({
+              title: "Error saving data",
+              description: error.message,
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Information saved",
+              description: "Your additional insurance information has been updated.",
+            });
+          }
+        } catch (error) {
+          console.error("Exception saving secondary insurance data:", error);
+          toast({
+            title: "Error saving data",
+            description: "An unexpected error occurred.",
+            variant: "destructive"
+          });
+        }
+      }
       navigateToStep(6);
     } else if (currentStep === 6) {
       handleSubmit();
