@@ -9,13 +9,14 @@ import { FormField, FormItem, FormControl, FormMessage } from '@/components/ui/f
 
 interface SignupChampvaProps {
   form: UseFormReturn<any>;
+  onOtherInsuranceChange?: (value: string) => void;
 }
 
-const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
+const SignupChampva: React.FC<SignupChampvaProps> = ({ form, onOtherInsuranceChange }) => {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   
-  // Watch for changes to the otherInsurance field
-  const otherInsurance = form.watch('client_other_insurance');
+  // Watch for changes to the otherInsurance field - using local field name
+  const otherInsurance = form.watch('other_insurance');
   
   useEffect(() => {
     // Show disclaimer only when "No" is selected
@@ -23,9 +24,14 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
     
     // When other insurance is changed, clear the agreement if disclaimer is hidden
     if (otherInsurance !== "No") {
-      form.setValue('client_champva_agreement', false);
+      form.setValue('champva_agreement', false);
     }
-  }, [otherInsurance, form]);
+    
+    // Call the callback if provided
+    if (onOtherInsuranceChange) {
+      onOtherInsuranceChange(otherInsurance);
+    }
+  }, [otherInsurance, form, onOtherInsuranceChange]);
 
   return (
     <div className="space-y-6">
@@ -50,7 +56,7 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
         
         <FormFieldWrapper
           control={form.control}
-          name="client_other_insurance"
+          name="other_insurance"
           label="Do you have any other insurance?"
           type="select"
           options={["Yes", "No"]}
@@ -64,7 +70,7 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({ form }) => {
             
             <FormField
               control={form.control}
-              name="client_champva_agreement"
+              name="champva_agreement"
               rules={{
                 validate: (value) => {
                   // Only require the checkbox when "No" is selected

@@ -30,6 +30,7 @@ const ProfileSetup = () => {
   const [clientId, setClientId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [navigationHistory, setNavigationHistory] = useState<number[]>([1]);
+  const [otherInsurance, setOtherInsurance] = useState<string>('');
   
   const form = useForm({
     defaultValues: {
@@ -45,6 +46,7 @@ const ProfileSetup = () => {
       client_state: '',
       client_time_zone: '',
       client_vacoverage: '',
+      client_champva: '',
       client_other_insurance: '',
       client_champva_agreement: false,
       client_mental_health_referral: '',
@@ -124,6 +126,7 @@ const ProfileSetup = () => {
             client_state: data.client_state || '',
             client_time_zone: data.client_time_zone || '',
             client_vacoverage: data.client_vacoverage || '',
+            client_champva: data.client_champva || '',
             client_other_insurance: data.client_other_insurance || '',
             client_champva_agreement: data.client_champva_agreement || false,
             client_mental_health_referral: data.client_mental_health_referral || '',
@@ -219,14 +222,17 @@ const ProfileSetup = () => {
     }
   };
 
+  const handleOtherInsuranceChange = (value: string) => {
+    setOtherInsurance(value);
+  };
+
   const handleNext = async () => {
-    const vaCoverage = form.getValues('client_vacoverage');
-    const otherInsurance = form.getValues('client_other_insurance');
-    const hasMoreInsurance = form.getValues('client_has_more_insurance');
+    const values = form.getValues();
+    const vaCoverage = values.client_vacoverage;
+    const hasMoreInsurance = values.client_has_more_insurance;
     
     if (currentStep === 2) {
       if (clientId) {
-        const values = form.getValues();
         const formattedDateOfBirth = values.client_date_of_birth 
           ? format(values.client_date_of_birth, 'yyyy-MM-dd') 
           : null;
@@ -269,6 +275,40 @@ const ProfileSetup = () => {
       
       navigateToStep(3);
     } else if (currentStep === 3) {
+      if (vaCoverage === "CHAMPVA" && clientId) {
+        try {
+          console.log("Saving CHAMPVA #:", values.client_champva);
+          
+          const { error } = await supabase
+            .from('clients')
+            .update({
+              client_champva: values.client_champva
+            })
+            .eq('id', clientId);
+            
+          if (error) {
+            console.error("Error saving CHAMPVA data:", error);
+            toast({
+              title: "Error saving data",
+              description: error.message,
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Information saved",
+              description: "Your CHAMPVA information has been updated.",
+            });
+          }
+        } catch (error) {
+          console.error("Exception saving CHAMPVA data:", error);
+          toast({
+            title: "Error saving data",
+            description: "An unexpected error occurred.",
+            variant: "destructive"
+          });
+        }
+      }
+      
       if (vaCoverage === "TRICARE" && otherInsurance === "No") {
         navigateToStep(6);
       } else if (otherInsurance === "Yes" && (vaCoverage === "TRICARE" || vaCoverage === "CHAMPVA")) {
@@ -528,7 +568,10 @@ const ProfileSetup = () => {
       <Form {...form}>
         <div className="space-y-6">
           {vaCoverage === 'CHAMPVA' && (
-            <SignupChampva form={form} />
+            <SignupChampva 
+              form={form} 
+              onOtherInsuranceChange={handleOtherInsuranceChange}
+            />
           )}
           
           {vaCoverage === 'TRICARE' && (
