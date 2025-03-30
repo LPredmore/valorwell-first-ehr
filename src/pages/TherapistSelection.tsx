@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface Client {
   client_state: string | null;
@@ -29,6 +30,7 @@ interface Therapist {
 
 const TherapistSelection = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [loadingClient, setLoadingClient] = useState(true);
   const [therapists, setTherapists] = useState<Therapist[]>([]);
@@ -48,23 +50,44 @@ const TherapistSelection = () => {
         if (authError || !user) {
           console.log("Not authenticated or auth error:", authError);
           setLoadingClient(false);
+          toast({
+            title: "Authentication required",
+            description: "Please log in to view therapists",
+            variant: "destructive"
+          });
+          navigate('/login');
           return;
         }
         
-        // Get client data
-        const { data, error } = await supabase
+        // Get client data by ID first
+        let { data, error } = await supabase
           .from('clients')
           .select('client_state, client_age')
-          .eq('id', user.id)
-          .single();
+          .eq('id', user.id);
           
+        // If no client found by ID, try by email as fallback
+        if ((!data || data.length === 0) && user.email) {
+          const { data: emailData, error: emailError } = await supabase
+            .from('clients')
+            .select('client_state, client_age')
+            .eq('client_email', user.email);
+            
+          if (!emailError && emailData && emailData.length > 0) {
+            data = emailData;
+          }
+        }
+        
         if (error) {
           console.error("Error fetching client data:", error);
           setLoadingClient(false);
           return;
         }
         
-        setClientData(data);
+        if (data && data.length > 0) {
+          setClientData(data[0]);
+        } else {
+          console.log("No client data found");
+        }
       } catch (error) {
         console.error("Error in fetchClientData:", error);
       } finally {
@@ -73,7 +96,7 @@ const TherapistSelection = () => {
     };
     
     fetchClientData();
-  }, []);
+  }, [navigate, toast]);
   
   // Fetch therapists based on client data
   useEffect(() => {

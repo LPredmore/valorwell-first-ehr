@@ -104,30 +104,85 @@ const ProfileSetup = () => {
         console.log("User ID:", user.id);
         console.log("User email:", user.email);
         
-        // Get client data
-        console.log("Querying clients table with email:", user.email);
-        
-        const { data, error } = await supabase
+        // First try to get client by ID
+        let { data: clientData, error: clientIdError } = await supabase
           .from('clients')
           .select('*')
-          .eq('client_email', user.email)
-          .single();
+          .eq('id', user.id);
           
-        console.log("Client query result:", { data, error });
+        console.log("Client query by ID result:", { clientData, clientIdError });
         
-        if (error) {
-          console.error("Error fetching client data:", error);
-          console.error("Error code:", error.code);
-          console.error("Error message:", error.message);
-          return;
+        // If no client found by ID, check by email as fallback
+        if ((!clientData || clientData.length === 0) && user.email) {
+          console.log("No client found by ID, checking by email:", user.email);
+          
+          const { data: emailData, error: emailError } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('client_email', user.email);
+            
+          console.log("Client query by email result:", { emailData, emailError });
+          
+          if (!emailError && emailData && emailData.length > 0) {
+            clientData = emailData;
+            
+            // Optionally update client ID to match user ID for future consistency
+            console.log("Updating client ID to match user ID");
+            
+            const { error: updateError } = await supabase
+              .from('clients')
+              .update({ id: user.id })
+              .eq('id', clientData[0].id);
+              
+            if (updateError) {
+              console.error("Error updating client ID:", updateError);
+            } else {
+              // Re-fetch with updated ID
+              const { data: updatedData } = await supabase
+                .from('clients')
+                .select('*')
+                .eq('id', user.id);
+                
+              if (updatedData && updatedData.length > 0) {
+                clientData = updatedData;
+              }
+            }
+          }
         }
         
-        if (data) {
-          console.log("Fetched client data:", data);
-          console.log("Client ID:", data.id);
-          console.log("Client first name:", data.client_first_name);
-          console.log("Client last name:", data.client_last_name);
-          console.log("Client email:", data.client_email);
+        // If still no client found, create a new one
+        if (!clientData || clientData.length === 0) {
+          console.log("No client record found, creating new one for user:", user.id);
+          
+          // Create new client record
+          const { data: newClient, error: insertError } = await supabase
+            .from('clients')
+            .insert([
+              { 
+                id: user.id,
+                client_email: user.email,
+              }
+            ])
+            .select();
+            
+          if (insertError) {
+            console.error("Error creating client record:", insertError);
+            toast({
+              title: "Profile Error", 
+              description: "Failed to create your profile. Please try again.",
+              variant: "destructive"
+            });
+            return;
+          }
+          
+          clientData = newClient;
+          console.log("Created new client record:", clientData);
+        }
+        
+        // Process the client data
+        if (clientData && clientData.length > 0) {
+          const data = clientData[0];
+          console.log("Processing client data:", data);
           
           setClientId(data.id);
           
@@ -191,15 +246,20 @@ const ProfileSetup = () => {
             console.log("Current form values after reset:", currentValues);
           }, 100);
         } else {
-          console.log("No client data found for email:", user.email);
+          console.log("No client data found after all attempts");
         }
       } catch (error) {
         console.error("Exception in fetchUser:", error);
+        toast({
+          title: "Error", 
+          description: "An unexpected error occurred loading your profile.",
+          variant: "destructive"
+        });
       }
     };
     
     fetchUser();
-  }, [form]);
+  }, [form, toast]);
 
   const navigateToStep = (nextStep: number) => {
     setNavigationHistory(prev => [...prev, nextStep]);
@@ -833,114 +893,4 @@ const ProfileSetup = () => {
       <div className="space-y-6">
         <AdditionalInsurance form={form} />
         
-        <div className="flex justify-between mt-8">
-          <Button 
-            type="button" 
-            variant="outline"
-            onClick={handleGoBack}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-          
-          <Button 
-            type="button" 
-            onClick={handleNext}
-            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
-          >
-            Next
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </Form>
-  );
-
-  const renderStepFive = () => (
-    <Form {...form}>
-      <div className="space-y-6">
-        <MoreAdditionalInsurance form={form} />
-        
-        <div className="flex justify-between mt-8">
-          <Button 
-            type="button" 
-            variant="outline"
-            onClick={handleGoBack}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-          
-          <Button 
-            type="button" 
-            onClick={handleNext}
-            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
-          >
-            Next
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </Form>
-  );
-
-  const renderStepSix = () => (
-    <Form {...form}>
-      <div className="space-y-6">
-        <SignupLast form={form} />
-        
-        <div className="flex justify-between mt-8">
-          <Button 
-            type="button" 
-            variant="outline"
-            onClick={handleGoBack}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-          
-          <Button 
-            type="button" 
-            onClick={handleNext}
-            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
-          >
-            Complete Profile
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </Form>
-  );
-
-  return (
-    <Layout>
-      <div className="container max-w-4xl mx-auto py-6">
-        <Card className="shadow-md">
-          <CardHeader className="text-center bg-gradient-to-r from-valorwell-50 to-valorwell-100 rounded-t-lg">
-            <CardTitle className="text-3xl text-valorwell-700">Welcome to ValorWell!</CardTitle>
-            <CardDescription className="text-lg mt-2">
-              We're glad you're here. Before scheduling with a therapist, 
-              we need to get a little more information about you. Please confirm your information below.
-            </CardDescription>
-            <p className="mt-4 text-valorwell-600">
-              This process will only take 5-10 minutes of your time.
-            </p>
-          </CardHeader>
-          <CardContent className="pt-6">
-            {currentStep === 1 && renderStepOne()}
-            {currentStep === 2 && renderStepTwo()}
-            {currentStep === 3 && renderStepThree()}
-            {currentStep === 4 && renderStepFour()}
-            {currentStep === 5 && renderStepFive()}
-            {currentStep === 6 && renderStepSix()}
-          </CardContent>
-        </Card>
-      </div>
-    </Layout>
-  );
-};
-
-export default ProfileSetup;
+        <div className="flex justify-between
