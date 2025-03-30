@@ -21,6 +21,7 @@ import SignupTricare from '@/components/signup/SignupTricare';
 import SignupVaCcn from '@/components/signup/SignupVaCcn';
 import SignupVeteran from '@/components/signup/SignupVeteran';
 import SignupNotAVeteran from '@/components/signup/SignupNotAVeteran';
+import AdditionalInsurance from '@/components/signup/AdditionalInsurance';
 
 const ProfileSetup = () => {
   const navigate = useNavigate();
@@ -61,6 +62,14 @@ const ProfileSetup = () => {
       tricareInsuranceAgreement: false,
       veteranRelationship: '',
       situationExplanation: '',
+      additionalInsuranceCompany: '',
+      additionalInsurancePlanType: '',
+      additionalInsuranceSubscriberName: '',
+      additionalInsuranceSubscriberRelationship: '',
+      additionalInsuranceSubscriberDob: undefined as Date | undefined,
+      additionalInsuranceGroupNumber: '',
+      additionalInsurancePolicyNumber: '',
+      hasMoreInsurance: '',
     }
   });
 
@@ -89,6 +98,11 @@ const ProfileSetup = () => {
           let dischargeDate = undefined;
           if (data.client_discharge_date) {
             dischargeDate = new Date(data.client_discharge_date);
+          }
+          
+          let additionalInsuranceSubscriberDob = undefined;
+          if (data.client_additional_insurance_subscriber_dob) {
+            additionalInsuranceSubscriberDob = new Date(data.client_additional_insurance_subscriber_dob);
           }
           
           // Populate form with existing data
@@ -123,6 +137,14 @@ const ProfileSetup = () => {
             tricareInsuranceAgreement: data.client_tricare_insurance_agreement || false,
             veteranRelationship: data.client_veteran_relationship || '',
             situationExplanation: data.client_situation_explanation || '',
+            additionalInsuranceCompany: data.client_additional_insurance_company || '',
+            additionalInsurancePlanType: data.client_additional_insurance_plan_type || '',
+            additionalInsuranceSubscriberName: data.client_additional_insurance_subscriber_name || '',
+            additionalInsuranceSubscriberRelationship: data.client_additional_insurance_subscriber_relationship || '',
+            additionalInsuranceSubscriberDob: additionalInsuranceSubscriberDob,
+            additionalInsuranceGroupNumber: data.client_additional_insurance_group_number || '',
+            additionalInsurancePolicyNumber: data.client_additional_insurance_policy_number || '',
+            hasMoreInsurance: data.client_has_more_insurance || '',
           });
         } else if (error) {
           console.error('Error fetching client data:', error);
@@ -138,7 +160,9 @@ const ProfileSetup = () => {
   };
 
   const handleGoBack = () => {
-    if (currentStep === 3) {
+    if (currentStep === 4) {
+      setCurrentStep(3);
+    } else if (currentStep === 3) {
       setCurrentStep(2);
     } else if (currentStep === 2) {
       setCurrentStep(1);
@@ -147,12 +171,21 @@ const ProfileSetup = () => {
 
   const handleNext = () => {
     const vaCoverage = form.getValues('vaCoverage');
+    const otherInsurance = form.getValues('otherInsurance');
     
     if (currentStep === 2) {
       // Move to the third step which will conditionally render based on vaCoverage
       setCurrentStep(3);
     } else if (currentStep === 3) {
-      // Submit the form (completing the profile)
+      // If they have other insurance and they're on CHAMPVA or TRICARE, go to additional insurance step
+      if (otherInsurance === "Yes" && (vaCoverage === "CHAMPVA" || vaCoverage === "TRICARE")) {
+        setCurrentStep(4);
+      } else {
+        // Submit the form (completing the profile)
+        handleSubmit();
+      }
+    } else if (currentStep === 4) {
+      // From additional insurance, complete profile
       handleSubmit();
     }
   };
@@ -172,6 +205,8 @@ const ProfileSetup = () => {
     // Format dates to ISO strings if they exist
     const formattedDateOfBirth = values.dateOfBirth ? format(values.dateOfBirth, 'yyyy-MM-dd') : null;
     const formattedDischargeDate = values.dischargeDate ? format(values.dischargeDate, 'yyyy-MM-dd') : null;
+    const formattedSubscriberDob = values.additionalInsuranceSubscriberDob ? 
+      format(values.additionalInsuranceSubscriberDob, 'yyyy-MM-dd') : null;
     
     const { error } = await supabase
       .from('clients')
@@ -205,6 +240,14 @@ const ProfileSetup = () => {
         client_tricare_insurance_agreement: values.tricareInsuranceAgreement,
         client_veteran_relationship: values.veteranRelationship,
         client_situation_explanation: values.situationExplanation,
+        client_additional_insurance_company: values.additionalInsuranceCompany,
+        client_additional_insurance_plan_type: values.additionalInsurancePlanType,
+        client_additional_insurance_subscriber_name: values.additionalInsuranceSubscriberName,
+        client_additional_insurance_subscriber_relationship: values.additionalInsuranceSubscriberRelationship,
+        client_additional_insurance_subscriber_dob: formattedSubscriberDob,
+        client_additional_insurance_group_number: values.additionalInsuranceGroupNumber,
+        client_additional_insurance_policy_number: values.additionalInsurancePolicyNumber,
+        client_has_more_insurance: values.hasMoreInsurance,
         client_status: 'Profile Complete',
         client_is_profile_complete: 'true'
       })
@@ -427,7 +470,38 @@ const ProfileSetup = () => {
             
             <Button 
               type="button" 
-              onClick={handleSubmit}
+              onClick={handleNext}
+              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+            >
+              Next
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </Form>
+    );
+  };
+  
+  const renderStepFour = () => {
+    return (
+      <Form {...form}>
+        <div className="space-y-6">
+          <AdditionalInsurance form={form} />
+          
+          <div className="flex justify-between mt-8">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handleGoBack}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            
+            <Button 
+              type="button" 
+              onClick={handleNext}
               className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
             >
               Complete Profile
@@ -457,6 +531,7 @@ const ProfileSetup = () => {
             {currentStep === 1 && renderStepOne()}
             {currentStep === 2 && renderStepTwo()}
             {currentStep === 3 && renderStepThree()}
+            {currentStep === 4 && renderStepFour()}
           </CardContent>
         </Card>
       </div>
