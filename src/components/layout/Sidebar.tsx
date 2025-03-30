@@ -12,7 +12,8 @@ import {
   UserCheck,
   LayoutDashboard,
   FileText,
-  UserPlus
+  UserPlus,
+  UserCog
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -46,6 +47,14 @@ const Sidebar = () => {
         >
           <UserPlus size={18} />
           <span>Sign-Up</span>
+        </Link>
+
+        <Link 
+          to="/profile-setup" 
+          className={`sidebar-link ${isActive('/profile-setup') ? 'active' : ''}`}
+        >
+          <UserCog size={18} />
+          <span>Profile Setup</span>
         </Link>
 
         <Link 
