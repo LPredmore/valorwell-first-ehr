@@ -147,7 +147,7 @@ const ProfileSetup = () => {
             client_tricare_insurance_agreement: data.client_tricare_insurance_agreement || false,
             client_veteran_relationship: data.client_veteran_relationship || '',
             client_situation_explanation: data.client_situation_explanation || '',
-            client_therapy_goals: data.client_therapy_goals || '',
+            client_self_goal: data.client_self_goal || '',
             client_referral_source: data.client_referral_source || '',
           });
         }
