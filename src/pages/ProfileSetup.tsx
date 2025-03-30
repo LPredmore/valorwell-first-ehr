@@ -55,6 +55,7 @@ const ProfileSetup = () => {
       tricarePolicyId: '',
       tricareHasReferral: '',
       tricareReferralNumber: '',
+      tricareInsuranceAgreement: false,
     }
   });
 
@@ -107,6 +108,7 @@ const ProfileSetup = () => {
             tricarePolicyId: data.client_tricare_policy_id || '',
             tricareHasReferral: data.client_tricare_has_referral || false,
             tricareReferralNumber: data.client_tricare_referral_number || '',
+            tricareInsuranceAgreement: data.client_tricare_insurance_agreement || false,
           });
         } else if (error) {
           console.error('Error fetching client data:', error);
@@ -183,6 +185,7 @@ const ProfileSetup = () => {
         client_tricare_policy_id: values.tricarePolicyId,
         client_tricare_has_referral: values.tricareHasReferral,
         client_tricare_referral_number: values.tricareReferralNumber,
+        client_tricare_insurance_agreement: values.tricareInsuranceAgreement,
         client_status: 'Profile Complete',
         client_is_profile_complete: 'true'
       })
