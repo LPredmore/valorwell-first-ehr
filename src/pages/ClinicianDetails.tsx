@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -590,25 +591,30 @@ const ClinicianDetails = () => {
                     )}
                   </div>
                 </div>
-                
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Biography
-                  </label>
-                  {isEditing ? (
-                    <Textarea 
-                      value={editedClinician?.clinician_bio || ''} 
-                      onChange={(e) => handleInputChange('clinician_bio', e.target.value)}
-                      className="min-h-[100px]"
-                    />
-                  ) : (
-                    <p className="p-2 border rounded-md bg-gray-50 min-h-[100px] whitespace-pre-wrap">
-                      {clinician.clinician_bio || '—'}
-                    </p>
-                  )}
-                </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Biography</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Biography
+            </label>
+            {isEditing ? (
+              <Textarea 
+                value={editedClinician?.clinician_bio || ''} 
+                onChange={(e) => handleInputChange('clinician_bio', e.target.value)}
+                className="min-h-[100px]"
+              />
+            ) : (
+              <p className="p-2 border rounded-md bg-gray-50 min-h-[100px] whitespace-pre-wrap">
+                {clinician.clinician_bio || '—'}
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -649,6 +655,32 @@ const ClinicianDetails = () => {
                 ) : (
                   <p className="p-2 border rounded-md bg-gray-50">
                     {clinician.clinician_taxonomy_code || '—'}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Clinician License Type
+                </label>
+                {isEditing ? (
+                  <Select 
+                    value={editedClinician?.clinician_license_type || ''}
+                    onValueChange={(value) => handleInputChange('clinician_license_type', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select license type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {licenseTypes.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="p-2 border rounded-md bg-gray-50">
+                    {clinician.clinician_license_type || '—'}
                   </p>
                 )}
               </div>
@@ -720,32 +752,6 @@ const ClinicianDetails = () => {
                 ) : (
                   <p className="p-2 border rounded-md bg-gray-50">
                     {clinician.clinician_type || '—'}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Clinician License Type
-                </label>
-                {isEditing ? (
-                  <Select 
-                    value={editedClinician?.clinician_license_type || ''}
-                    onValueChange={(value) => handleInputChange('clinician_license_type', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select license type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {licenseTypes.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="p-2 border rounded-md bg-gray-50">
-                    {clinician.clinician_license_type || '—'}
                   </p>
                 )}
               </div>
