@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const TherapistSelection = () => {
   const { toast } = useToast();
@@ -72,19 +73,18 @@ const TherapistSelection = () => {
                   <Card key={therapist.id} className="hover:shadow-lg transition-shadow">
                     <CardContent className="pt-6">
                       <div className="flex flex-col items-center">
-                        <div className="w-24 h-24 rounded-full bg-valorwell-100 flex items-center justify-center mb-4">
+                        <Avatar className="w-24 h-24 mb-4">
                           {therapist.clinician_profile_image ? (
-                            <img 
+                            <AvatarImage 
                               src={therapist.clinician_profile_image} 
                               alt={`${therapist.clinician_first_name} ${therapist.clinician_last_name}`}
-                              className="w-full h-full object-cover rounded-full"
                             />
                           ) : (
-                            <span className="text-2xl text-valorwell-600">
+                            <AvatarFallback className="text-2xl bg-valorwell-100 text-valorwell-600">
                               {therapist.clinician_first_name?.[0]}{therapist.clinician_last_name?.[0]}
-                            </span>
+                            </AvatarFallback>
                           )}
-                        </div>
+                        </Avatar>
                         <h3 className="text-xl font-semibold">
                           {therapist.clinician_first_name} {therapist.clinician_last_name}
                         </h3>

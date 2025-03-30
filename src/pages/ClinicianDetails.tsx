@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -59,7 +58,6 @@ const ClinicianDetails = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Time zone options
   const timeZones = [
     "Eastern Time (ET)",
     "Central Time (CT)",
@@ -69,13 +67,11 @@ const ClinicianDetails = () => {
     "Hawaii-Aleutian Time (HAT)"
   ];
 
-  // Clinician type options
   const clinicianTypeOptions = [
     "Mental Health",
     "Speech Therapy"
   ];
 
-  // License types
   const licenseTypes = [
     "LPC", 
     "LCSW", 
@@ -85,7 +81,6 @@ const ClinicianDetails = () => {
     "SLP"
   ];
 
-  // States with full names
   const states = [
     { code: "Alabama", name: "Alabama" },
     { code: "Alaska", name: "Alaska" },
@@ -147,14 +142,10 @@ const ClinicianDetails = () => {
 
   useEffect(() => {
     if (clinician?.clinician_licensed_states) {
-      // Convert any state abbreviations to full names
       const fullStateNames = clinician.clinician_licensed_states.map(state => {
-        // Check if state is already a full name
         if (states.some(s => s.name === state)) {
           return state;
         }
-        
-        // Otherwise, try to find the full name
         const stateObj = states.find(s => s.code === state);
         return stateObj ? stateObj.name : state;
       });
@@ -162,14 +153,12 @@ const ClinicianDetails = () => {
     }
   }, [clinician]);
 
-  // Set initial image preview when clinician data is loaded
   useEffect(() => {
     if (clinician?.clinician_image_url) {
       setImagePreview(clinician.clinician_image_url);
     }
   }, [clinician]);
 
-  // Update image preview when a new file is selected
   useEffect(() => {
     if (profileImage) {
       const reader = new FileReader();
@@ -197,21 +186,16 @@ const ClinicianDetails = () => {
       setClinician(data);
       setEditedClinician(data);
       if (data.clinician_licensed_states) {
-        // Convert any state abbreviations to full names
         const fullStateNames = data.clinician_licensed_states.map(state => {
-          // Check if state is already a full name
           if (states.some(s => s.name === state)) {
             return state;
           }
-          
-          // Otherwise, try to find the full name
           const stateObj = states.find(s => s.code === state);
           return stateObj ? stateObj.name : state;
         });
         setSelectedStates(fullStateNames);
       }
       
-      // Set image preview if available
       if (data.clinician_image_url) {
         setImagePreview(data.clinician_image_url);
       }
@@ -240,7 +224,6 @@ const ClinicianDetails = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files && e.target.files[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         toast({
           title: "Invalid file type",
@@ -250,7 +233,6 @@ const ClinicianDetails = () => {
         return;
       }
       
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast({
           title: "File too large",
@@ -270,12 +252,10 @@ const ClinicianDetails = () => {
     setIsUploading(true);
     
     try {
-      // Create a unique filename
       const fileExt = profileImage.name.split('.').pop();
       const fileName = `${clinicianId}-${Date.now()}.${fileExt}`;
       const filePath = `profile-images/${fileName}`;
       
-      // Upload the file to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('clinician-images')
         .upload(filePath, profileImage, {
@@ -285,7 +265,6 @@ const ClinicianDetails = () => {
       
       if (uploadError) throw uploadError;
       
-      // Get the public URL
       const { data: publicUrlData } = supabase.storage
         .from('clinician-images')
         .getPublicUrl(filePath);
@@ -312,7 +291,6 @@ const ClinicianDetails = () => {
       
       let imageUrl = editedClinician.clinician_image_url;
       
-      // Upload profile image if a new one was selected
       if (profileImage) {
         const uploadedUrl = await uploadProfileImage();
         if (uploadedUrl) {
@@ -353,7 +331,6 @@ const ClinicianDetails = () => {
         description: "Clinician details updated successfully.",
       });
       
-      // Refresh data to ensure we have the latest version
       fetchClinicianData();
       
     } catch (error) {
@@ -375,7 +352,6 @@ const ClinicianDetails = () => {
     }
     setIsEditing(false);
     setProfileImage(null);
-    // Reset image preview to the original image
     setImagePreview(clinician?.clinician_image_url || null);
   };
 
@@ -445,13 +421,12 @@ const ClinicianDetails = () => {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col md:flex-row gap-6">
-              {/* Profile Image Section */}
               <div className="md:w-1/3">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Profile Picture
                 </label>
                 <div className="flex flex-col items-center">
-                  <div className="relative w-48 h-48 mb-4 border rounded-md overflow-hidden bg-gray-100 flex items-center justify-center">
+                  <div className="relative w-48 h-48 mb-4 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                     {imagePreview ? (
                       <img 
                         src={imagePreview} 
@@ -465,7 +440,7 @@ const ClinicianDetails = () => {
                     {isEditing && (
                       <label 
                         htmlFor="profile-image" 
-                        className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white cursor-pointer opacity-0 hover:opacity-100 transition-opacity"
+                        className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white cursor-pointer opacity-0 hover:opacity-100 transition-opacity rounded-full"
                       >
                         <div className="flex flex-col items-center">
                           <Camera size={32} />
@@ -502,7 +477,6 @@ const ClinicianDetails = () => {
                 </div>
               </div>
               
-              {/* Personal Information Fields */}
               <div className="md:w-2/3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
