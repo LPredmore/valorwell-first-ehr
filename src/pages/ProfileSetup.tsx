@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -56,6 +57,8 @@ const ProfileSetup = () => {
       tricareHasReferral: '',
       tricareReferralNumber: '',
       tricareInsuranceAgreement: false,
+      tricareDateOfDischarge: undefined as Date | undefined,
+      tricareDisabilityRating: '',
     }
   });
 
@@ -79,6 +82,12 @@ const ProfileSetup = () => {
           let dateOfBirth = undefined;
           if (data.client_date_of_birth) {
             dateOfBirth = new Date(data.client_date_of_birth);
+          }
+          
+          // Parse date of discharge if it exists
+          let dateOfDischarge = undefined;
+          if (data.client_tricare_date_of_discharge) {
+            dateOfDischarge = new Date(data.client_tricare_date_of_discharge);
           }
           
           // Populate form with existing data
@@ -109,6 +118,8 @@ const ProfileSetup = () => {
             tricareHasReferral: data.client_tricare_has_referral || false,
             tricareReferralNumber: data.client_tricare_referral_number || '',
             tricareInsuranceAgreement: data.client_tricare_insurance_agreement || false,
+            tricareDateOfDischarge: dateOfDischarge,
+            tricareDisabilityRating: data.client_tricare_disability_rating || '',
           });
         } else if (error) {
           console.error('Error fetching client data:', error);
@@ -157,6 +168,7 @@ const ProfileSetup = () => {
 
     // Format date to ISO string if it exists
     const formattedDateOfBirth = values.dateOfBirth ? format(values.dateOfBirth, 'yyyy-MM-dd') : null;
+    const formattedDateOfDischarge = values.tricareDateOfDischarge ? format(values.tricareDateOfDischarge, 'yyyy-MM-dd') : null;
     
     const { error } = await supabase
       .from('clients')
@@ -186,6 +198,8 @@ const ProfileSetup = () => {
         client_tricare_has_referral: values.tricareHasReferral,
         client_tricare_referral_number: values.tricareReferralNumber,
         client_tricare_insurance_agreement: values.tricareInsuranceAgreement,
+        client_tricare_date_of_discharge: formattedDateOfDischarge,
+        client_tricare_disability_rating: values.tricareDisabilityRating,
         client_status: 'Profile Complete',
         client_is_profile_complete: 'true'
       })
