@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -47,6 +48,7 @@ const ProfileSetup = () => {
       vaCoverage: '',
       otherInsurance: '',
       champvaNumber: '',
+      champvaAgreement: false, // Keep for form validation only, won't be saved to DB
       mentalHealthReferral: '',
       branchOfService: '',
       dischargeDate: undefined as Date | undefined,
@@ -120,6 +122,7 @@ const ProfileSetup = () => {
             vaCoverage: data.client_va_coverage || '',
             otherInsurance: data.client_other_insurance || '',
             champvaNumber: data.client_champva || '',
+            champvaAgreement: false, // Default to false as it's only for validation
             mentalHealthReferral: data.client_mental_health_referral || '',
             branchOfService: data.client_branch_of_service || '',
             dischargeDate: dischargeDate,
