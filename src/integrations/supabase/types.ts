@@ -130,6 +130,7 @@ export type Database = {
           client_assigned_therapist: string | null
           client_attitude: string | null
           client_behavior: string | null
+          client_champva: string | null
           client_date_of_birth: string | null
           client_diagnosis: string[] | null
           client_email: string | null
@@ -219,6 +220,7 @@ export type Database = {
           client_assigned_therapist?: string | null
           client_attitude?: string | null
           client_behavior?: string | null
+          client_champva?: string | null
           client_date_of_birth?: string | null
           client_diagnosis?: string[] | null
           client_email?: string | null
@@ -308,6 +310,7 @@ export type Database = {
           client_assigned_therapist?: string | null
           client_attitude?: string | null
           client_behavior?: string | null
+          client_champva?: string | null
           client_date_of_birth?: string | null
           client_diagnosis?: string[] | null
           client_email?: string | null
