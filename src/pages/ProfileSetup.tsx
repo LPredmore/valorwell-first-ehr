@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -43,10 +42,19 @@ const ProfileSetup = () => {
       state: '',
       timeZone: '',
       vaCoverage: '',
-      // Additional fields for specialized forms
       otherInsurance: '',
+      champvaAgreement: false,
       mentalHealthReferral: '',
       branchOfService: '',
+      tricareBeneficiaryCategory: '',
+      tricareSponsorName: '',
+      tricareSponsorBranch: '',
+      tricareSponsorId: '',
+      tricarePlan: '',
+      tricareRegion: '',
+      tricarePolicyId: '',
+      tricareHasReferral: '',
+      tricareReferralNumber: '',
     }
   });
 
@@ -87,8 +95,18 @@ const ProfileSetup = () => {
             timeZone: data.client_time_zone || '',
             vaCoverage: data.client_va_coverage || '',
             otherInsurance: data.client_other_insurance || '',
+            champvaAgreement: data.client_champva_agreement || false,
             mentalHealthReferral: data.client_mental_health_referral || '',
             branchOfService: data.client_branch_of_service || '',
+            tricareBeneficiaryCategory: data.client_tricare_beneficiary_category || '',
+            tricareSponsorName: data.client_tricare_sponsor_name || '',
+            tricareSponsorBranch: data.client_tricare_sponsor_branch || '',
+            tricareSponsorId: data.client_tricare_sponsor_id || '',
+            tricarePlan: data.client_tricare_plan || '',
+            tricareRegion: data.client_tricare_region || '',
+            tricarePolicyId: data.client_tricare_policy_id || '',
+            tricareHasReferral: data.client_tricare_has_referral || false,
+            tricareReferralNumber: data.client_tricare_referral_number || '',
           });
         } else if (error) {
           console.error('Error fetching client data:', error);
@@ -155,6 +173,16 @@ const ProfileSetup = () => {
         client_other_insurance: values.otherInsurance,
         client_mental_health_referral: values.mentalHealthReferral,
         client_branch_of_service: values.branchOfService,
+        client_champva_agreement: values.champvaAgreement,
+        client_tricare_beneficiary_category: values.tricareBeneficiaryCategory,
+        client_tricare_sponsor_name: values.tricareSponsorName,
+        client_tricare_sponsor_branch: values.tricareSponsorBranch,
+        client_tricare_sponsor_id: values.tricareSponsorId,
+        client_tricare_plan: values.tricarePlan,
+        client_tricare_region: values.tricareRegion,
+        client_tricare_policy_id: values.tricarePolicyId,
+        client_tricare_has_referral: values.tricareHasReferral,
+        client_tricare_referral_number: values.tricareReferralNumber,
         client_status: 'Profile Complete',
         client_is_profile_complete: 'true'
       })

@@ -199,6 +199,15 @@ export type Database = {
           client_treatmentfrequency: string | null
           client_treatmentgoal: string | null
           client_treatmentplan_startdate: string | null
+          client_tricare_beneficiary_category: string | null
+          client_tricare_has_referral: string | null
+          client_tricare_plan: string | null
+          client_tricare_policy_id: string | null
+          client_tricare_referral_number: string | null
+          client_tricare_region: string | null
+          client_tricare_sponsor_branch: string | null
+          client_tricare_sponsor_id: string | null
+          client_tricare_sponsor_name: string | null
           created_at: string
           id: string
           updated_at: string
@@ -279,6 +288,15 @@ export type Database = {
           client_treatmentfrequency?: string | null
           client_treatmentgoal?: string | null
           client_treatmentplan_startdate?: string | null
+          client_tricare_beneficiary_category?: string | null
+          client_tricare_has_referral?: string | null
+          client_tricare_plan?: string | null
+          client_tricare_policy_id?: string | null
+          client_tricare_referral_number?: string | null
+          client_tricare_region?: string | null
+          client_tricare_sponsor_branch?: string | null
+          client_tricare_sponsor_id?: string | null
+          client_tricare_sponsor_name?: string | null
           created_at?: string
           id: string
           updated_at?: string
@@ -359,6 +377,15 @@ export type Database = {
           client_treatmentfrequency?: string | null
           client_treatmentgoal?: string | null
           client_treatmentplan_startdate?: string | null
+          client_tricare_beneficiary_category?: string | null
+          client_tricare_has_referral?: string | null
+          client_tricare_plan?: string | null
+          client_tricare_policy_id?: string | null
+          client_tricare_referral_number?: string | null
+          client_tricare_region?: string | null
+          client_tricare_sponsor_branch?: string | null
+          client_tricare_sponsor_id?: string | null
+          client_tricare_sponsor_name?: string | null
           created_at?: string
           id?: string
           updated_at?: string
