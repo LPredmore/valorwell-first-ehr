@@ -21,7 +21,7 @@ const SignupLast: React.FC<SignupLastProps> = ({ form }) => {
       <div className="grid grid-cols-1 gap-6">
         <FormField
           control={form.control}
-          name="therapyGoals"
+          name="client_self_goal"
           render={({ field }) => (
             <FormItem>
               <FormLabel>What is your Goal for Therapy?</FormLabel>
@@ -40,7 +40,7 @@ const SignupLast: React.FC<SignupLastProps> = ({ form }) => {
         
         <FormFieldWrapper
           control={form.control}
-          name="referralSource"
+          name="client_referral_source"
           label="How did you hear about us?"
           type="select"
           options={[

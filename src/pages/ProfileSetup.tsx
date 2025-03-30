@@ -79,7 +79,7 @@ const ProfileSetup = () => {
       client_policy_number_secondary: '',
       hasMoreInsurance: '',
       client_has_even_more_insurance: '',
-      client_therapy_goals: '',
+      client_self_goal: '',
       client_referral_source: '',
       tricareInsuranceAgreement: false
     }
@@ -542,7 +542,7 @@ const ProfileSetup = () => {
         client_tricare_insurance_agreement: values.client_tricare_insurance_agreement,
         client_veteran_relationship: values.client_veteran_relationship,
         client_situation_explanation: values.client_situation_explanation,
-        client_therapy_goals: values.client_therapy_goals,
+        client_self_goal: values.client_self_goal,
         client_referral_source: values.client_referral_source,
         client_status: 'Profile Complete',
         client_is_profile_complete: 'true'
@@ -890,13 +890,4 @@ const ProfileSetup = () => {
             {currentStep === 2 && renderStepTwo()}
             {currentStep === 3 && renderStepThree()}
             {currentStep === 4 && renderStepFour()}
-            {currentStep === 5 && renderStepFive()}
-            {currentStep === 6 && renderStepSix()}
-          </CardContent>
-        </Card>
-      </div>
-    </Layout>
-  );
-};
-
-export default ProfileSetup;
+            {currentStep ===
