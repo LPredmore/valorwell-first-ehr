@@ -426,7 +426,7 @@ const ClinicianDetails = () => {
                   Profile Picture
                 </label>
                 <div className="flex flex-col items-center">
-                  <div className="relative w-48 h-48 mb-2 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                  <div className="relative w-48 h-48 mb-4 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                     {imagePreview ? (
                       <img 
                         src={imagePreview} 
@@ -457,37 +457,22 @@ const ClinicianDetails = () => {
                     )}
                   </div>
                   
-                  {isEditing ? (
-                    <div className="flex flex-col items-center">
-                      <label 
-                        htmlFor="profile-image"
-                        className="text-sm text-blue-600 hover:text-blue-800 cursor-pointer mb-2"
-                      >
-                        Upload Image
-                      </label>
-                      
-                      {profileImage && (
-                        <p className="text-sm text-gray-500 text-center">
-                          {profileImage.name} ({Math.round(profileImage.size / 1024)} KB)
-                        </p>
-                      )}
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        type="button" 
-                        className="flex items-center gap-1 mt-2"
-                        onClick={() => document.getElementById('profile-image')?.click()}
-                      >
-                        <Upload size={16} /> Choose Image
-                      </Button>
-                    </div>
-                  ) : (
-                    clinician?.clinician_image_url && (
-                      <div className="text-sm text-gray-500 mt-1">
-                        Profile Image
-                      </div>
-                    )
+                  {isEditing && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      type="button" 
+                      className="flex items-center gap-1 mb-2"
+                      onClick={() => document.getElementById('profile-image')?.click()}
+                    >
+                      <Upload size={16} /> Choose Image
+                    </Button>
+                  )}
+                  
+                  {isEditing && profileImage && (
+                    <p className="text-sm text-gray-500 text-center">
+                      {profileImage.name} ({Math.round(profileImage.size / 1024)} KB)
+                    </p>
                   )}
                 </div>
               </div>
