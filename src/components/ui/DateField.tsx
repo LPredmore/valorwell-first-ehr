@@ -12,9 +12,10 @@ interface DateFieldProps {
   control: any;
   name: string;
   label: string;
+  required?: boolean;
 }
 
-export const DateField: React.FC<DateFieldProps> = ({ control, name, label }) => {
+export const DateField: React.FC<DateFieldProps> = ({ control, name, label, required = false }) => {
   const [calendarOpen, setCalendarOpen] = React.useState(false);
   const [yearPickerOpen, setYearPickerOpen] = React.useState(false);
   const [currentYear, setCurrentYear] = React.useState(() => new Date().getFullYear());
@@ -59,7 +60,7 @@ export const DateField: React.FC<DateFieldProps> = ({ control, name, label }) =>
       name={name}
       render={({ field }) => (
         <FormItem className="flex flex-col">
-          <FormLabel>{label}</FormLabel>
+          <FormLabel>{label}{required && <span className="text-red-500 ml-1">*</span>}</FormLabel>
           <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
             <PopoverTrigger asChild>
               <FormControl>

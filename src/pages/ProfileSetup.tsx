@@ -785,105 +785,123 @@ const ProfileSetup = () => {
     );
   };
 
-  const renderStepTwo = () => (
-    <Form {...form}>
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <DateField
-            control={form.control}
-            name="client_date_of_birth"
-            label="Date of Birth"
-          />
+  const renderStepTwo = () => {
+    const isDateOfBirthValid = !!form.getValues('client_date_of_birth');
+    const isGenderValid = !!form.getValues('client_gender');
+    const isGenderIdentityValid = !!form.getValues('client_gender_identity');
+    const isStateValid = !!form.getValues('client_state');
+    const isTimeZoneValid = !!form.getValues('client_time_zone');
+    const isVACoverageValid = !!form.getValues('client_vacoverage');
+    
+    const isStep2Valid = 
+      isDateOfBirthValid && 
+      isGenderValid && 
+      isGenderIdentityValid && 
+      isStateValid && 
+      isTimeZoneValid && 
+      isVACoverageValid;
+
+    return (
+      <Form {...form}>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <DateField
+              control={form.control}
+              name="client_date_of_birth"
+              label="Date of Birth"
+              required={true}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_gender"
+              label="Birth Gender"
+              type="select"
+              options={["Male", "Female"]}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_gender_identity"
+              label="Gender Identity"
+              type="select"
+              options={["Male", "Female", "Other"]}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_state"
+              label="State of Primary Residence"
+              type="select"
+              options={[
+                "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", 
+                "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", 
+                "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", 
+                "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", 
+                "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", 
+                "New Hampshire", "New Jersey", "New Mexico", "New York", 
+                "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", 
+                "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", 
+                "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", 
+                "West Virginia", "Wisconsin", "Wyoming"
+              ]}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_time_zone"
+              label="Time Zone"
+              type="select"
+              options={timezoneOptions.map(tz => tz.label)}
+              valueMapper={(label) => {
+                const option = timezoneOptions.find(tz => tz.label === label);
+                return option ? option.value : '';
+              }}
+              labelMapper={(value) => {
+                const option = timezoneOptions.find(tz => tz.value === value);
+                return option ? option.label : '';
+              }}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_vacoverage"
+              label="What type of VA Coverage do you have?"
+              type="select"
+              options={[
+                "CHAMPVA", 
+                "TRICARE", 
+                "VA Community Care", 
+                "None - I am a veteran", 
+                "None - I am not a veteran"
+              ]}
+            />
+          </div>
           
-          <FormFieldWrapper
-            control={form.control}
-            name="client_gender"
-            label="Birth Gender"
-            type="select"
-            options={["Male", "Female"]}
-          />
-          
-          <FormFieldWrapper
-            control={form.control}
-            name="client_gender_identity"
-            label="Gender Identity"
-            type="select"
-            options={["Male", "Female", "Other"]}
-          />
-          
-          <FormFieldWrapper
-            control={form.control}
-            name="client_state"
-            label="State of Primary Residence"
-            type="select"
-            options={[
-              "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", 
-              "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", 
-              "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", 
-              "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", 
-              "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", 
-              "New Hampshire", "New Jersey", "New Mexico", "New York", 
-              "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", 
-              "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", 
-              "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", 
-              "West Virginia", "Wisconsin", "Wyoming"
-            ]}
-          />
-          
-          <FormFieldWrapper
-            control={form.control}
-            name="client_time_zone"
-            label="Time Zone"
-            type="select"
-            options={timezoneOptions.map(tz => tz.label)}
-            valueMapper={(label) => {
-              const option = timezoneOptions.find(tz => tz.label === label);
-              return option ? option.value : '';
-            }}
-            labelMapper={(value) => {
-              const option = timezoneOptions.find(tz => tz.value === value);
-              return option ? option.label : '';
-            }}
-          />
-          
-          <FormFieldWrapper
-            control={form.control}
-            name="client_vacoverage"
-            label="What type of VA Coverage do you have?"
-            type="select"
-            options={[
-              "CHAMPVA", 
-              "TRICARE", 
-              "VA Community Care", 
-              "None - I am a veteran", 
-              "None - I am not a veteran"
-            ]}
-          />
+          <div className="flex justify-between mt-8">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handleGoBack}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            
+            <Button 
+              type="button" 
+              onClick={handleNext}
+              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+            >
+              Next
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        
-        <div className="flex justify-between mt-8">
-          <Button 
-            type="button" 
-            variant="outline"
-            onClick={handleGoBack}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-          
-          <Button 
-            type="button" 
-            onClick={handleNext}
-            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
-          >
-            Next
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </Form>
-  );
+      </Form>
+    );
+  };
 
   const renderStepThree = () => {
     const vaCoverage = form.getValues('client_vacoverage');
