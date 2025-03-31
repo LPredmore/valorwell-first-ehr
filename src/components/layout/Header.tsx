@@ -1,14 +1,16 @@
-import { Bell, Search, LogOut, User } from 'lucide-react';
+import { Bell, LogOut } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEffect, useState } from "react";
+
 interface HeaderProps {
   userName?: string;
   userAvatar?: string;
 }
+
 const Header: React.FC<HeaderProps> = ({
   userName,
   userAvatar
@@ -21,7 +23,6 @@ const Header: React.FC<HeaderProps> = ({
   const [lastName, setLastName] = useState('');
   const [initials, setInitials] = useState('');
 
-  // Get user profile data
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -40,7 +41,6 @@ const Header: React.FC<HeaderProps> = ({
             setFirstName(data.first_name || '');
             setLastName(data.last_name || '');
 
-            // Generate initials
             const firstInitial = data.first_name ? data.first_name.charAt(0).toUpperCase() : '';
             const lastInitial = data.last_name ? data.last_name.charAt(0).toUpperCase() : '';
             setInitials(firstInitial + lastInitial);
@@ -53,7 +53,6 @@ const Header: React.FC<HeaderProps> = ({
     fetchUserProfile();
   }, []);
 
-  // Get current time to display greeting
   const hours = new Date().getHours();
   let greeting = 'Good morning';
   if (hours >= 12 && hours < 17) {
@@ -61,6 +60,7 @@ const Header: React.FC<HeaderProps> = ({
   } else if (hours >= 17) {
     greeting = 'Good evening';
   }
+
   const handleLogout = async () => {
     try {
       const {
@@ -82,17 +82,10 @@ const Header: React.FC<HeaderProps> = ({
     }
   };
 
-  // Create display name from first and last name, fallback to the provided userName prop
   const displayName = firstName && lastName ? `${firstName} ${lastName}` : userName || 'User';
   return <header className="h-16 border-b bg-white flex items-center justify-between px-6">
       
-      
-      <div className="relative flex-1 max-w-lg mx-8">
-        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
-          <Search size={16} />
-        </div>
-        
-      </div>
+      <div className="flex-1"></div>
       
       <div className="flex items-center gap-4">
         <button className="relative p-2 text-gray-600 rounded-full hover:bg-gray-100">
@@ -125,4 +118,5 @@ const Header: React.FC<HeaderProps> = ({
       </div>
     </header>;
 };
+
 export default Header;
