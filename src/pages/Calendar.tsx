@@ -26,7 +26,8 @@ interface Clinician {
   clinician_professional_name: string;
 }
 
-const Calendar = () => {
+// Renamed from 'Calendar' to 'CalendarPage' to avoid naming conflict
+const CalendarPage = () => {
   const [view, setView] = useState<ViewType>('week');
   const [showAvailability, setShowAvailability] = useState(false);
   const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(null);
@@ -35,7 +36,7 @@ const Calendar = () => {
   const { clinicianData } = useClinicianData();
   const [userTimeZone, setUserTimeZone] = useState<string>('');
   
-  // New state for appointment creation dialog
+  // State for appointment creation dialog
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isRecurring, setIsRecurring] = useState(false);
@@ -204,7 +205,6 @@ const Calendar = () => {
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
-                    mode="single"
                     selected={selectedDate}
                     onSelect={setSelectedDate}
                     initialFocus
@@ -267,4 +267,4 @@ const Calendar = () => {
   );
 };
 
-export default Calendar;
+export default CalendarPage;
