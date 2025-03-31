@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -34,6 +33,7 @@ interface AvailabilityBlock {
   end_time: string;
   clinician_id?: string;
   is_active?: boolean;
+  isException?: boolean;
 }
 
 interface AvailabilityException {
@@ -91,7 +91,6 @@ const WeekView: React.FC<WeekViewProps> = ({
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
 
-  // Calculate date ranges and time slots using useMemo
   const { days, timeSlots } = useMemo(() => {
     const days = eachDayOfInterval({
       start: startOfWeek(currentDate, { weekStartsOn: 0 }),
@@ -106,7 +105,6 @@ const WeekView: React.FC<WeekViewProps> = ({
     return { days, timeSlots };
   }, [currentDate]);
 
-  // Process appointments when they change
   useEffect(() => {
     if (!appointments.length) {
       setAppointmentBlocks([]);
@@ -135,7 +133,6 @@ const WeekView: React.FC<WeekViewProps> = ({
     setAppointmentBlocks(blocks);
   }, [appointments, getClientName]);
 
-  // Fetch availability data
   useEffect(() => {
     const fetchAvailability = async () => {
       setLoading(true);
@@ -165,7 +162,6 @@ const WeekView: React.FC<WeekViewProps> = ({
             const endDateStr = format(days[days.length - 1], 'yyyy-MM-dd');
             const availabilityIds = availabilityData.map(block => block.id);
             
-            // Only fetch exceptions if we have availability IDs
             if (availabilityIds.length > 0) {
               const { data: exceptionsData, error: exceptionsError } = await supabase
                 .from('availability_exceptions')
@@ -300,7 +296,6 @@ const WeekView: React.FC<WeekViewProps> = ({
     setTimeBlocks(allTimeBlocks);
   };
 
-  // Memoize helper functions to reduce calculations during render
   const {
     isTimeSlotAvailable,
     getBlockForTimeSlot,

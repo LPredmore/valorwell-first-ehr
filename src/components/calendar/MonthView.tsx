@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -32,6 +31,7 @@ interface AvailabilityBlock {
   end_time: string;
   clinician_id?: string;
   is_active?: boolean;
+  isException?: boolean;
 }
 
 interface AvailabilityException {
@@ -69,7 +69,6 @@ const MonthView: React.FC<MonthViewProps> = ({
   const [availabilityData, setAvailabilityData] = useState<AvailabilityBlock[]>([]);
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
 
-  // Calculate date ranges only when currentDate changes
   const { monthStart, monthEnd, startDate, endDate, days } = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
@@ -80,12 +79,10 @@ const MonthView: React.FC<MonthViewProps> = ({
     return { monthStart, monthEnd, startDate, endDate, days };
   }, [currentDate]);
 
-  // Fetch availability and exceptions data
   useEffect(() => {
     const fetchAvailabilityAndExceptions = async () => {
       setLoading(true);
       try {
-        // 1. Fetch regular availability
         let query = supabase
           .from('availability')
           .select('*')
@@ -104,13 +101,11 @@ const MonthView: React.FC<MonthViewProps> = ({
           console.log('MonthView fetched availability data:', data);
           setAvailabilityData(data || []);
           
-          // 2. Fetch exceptions for the month's date range
           if (clinicianId && data && data.length > 0) {
             const startDateStr = format(startDate, 'yyyy-MM-dd');
             const endDateStr = format(endDate, 'yyyy-MM-dd');
             const availabilityIds = data.map((block: AvailabilityBlock) => block.id);
             
-            // Only fetch exceptions if we have availability IDs
             if (availabilityIds.length > 0) {
               const { data: exceptionsData, error: exceptionsError } = await supabase
                 .from('availability_exceptions')
@@ -146,7 +141,6 @@ const MonthView: React.FC<MonthViewProps> = ({
     fetchAvailabilityAndExceptions();
   }, [clinicianId, refreshTrigger, startDate, endDate]);
 
-  // Memoize day availability checks to reduce calculations during render
   const dayAvailabilityMap = useMemo(() => {
     const result = new Map<string, { hasAvailability: boolean, isModified: boolean }>();
     
@@ -154,7 +148,6 @@ const MonthView: React.FC<MonthViewProps> = ({
       const dayOfWeek = format(day, 'EEEE');
       const dateStr = format(day, 'yyyy-MM-dd');
       
-      // Get regular availability for this day of week
       const regularAvailability = availabilityData.filter(
         slot => slot.day_of_week === dayOfWeek
       );
@@ -163,7 +156,6 @@ const MonthView: React.FC<MonthViewProps> = ({
       let isModified = false;
       
       if (regularAvailability.length > 0) {
-        // Check for exceptions that delete availability
         const availabilityIds = regularAvailability.map(slot => slot.id);
         const deletedExceptions = exceptions.filter(
           exception => 
@@ -172,10 +164,8 @@ const MonthView: React.FC<MonthViewProps> = ({
             exception.is_deleted
         );
         
-        // If not all availability slots are deleted, the day has availability
         hasAvailability = deletedExceptions.length < regularAvailability.length;
         
-        // Check for modified availability
         const modifiedExceptions = exceptions.filter(
           exception => 
             exception.specific_date === dateStr && 
@@ -198,7 +188,6 @@ const MonthView: React.FC<MonthViewProps> = ({
     
     const dayOfWeek = format(day, 'EEEE');
     
-    // Get the first availability block for this day
     const firstAvailability = availabilityData.find(
       slot => slot.day_of_week === dayOfWeek
     );
@@ -208,7 +197,6 @@ const MonthView: React.FC<MonthViewProps> = ({
     }
   };
 
-  // Memoize day appointments to reduce calculations during render
   const dayAppointmentsMap = useMemo(() => {
     const result = new Map<string, Appointment[]>();
     
@@ -229,7 +217,6 @@ const MonthView: React.FC<MonthViewProps> = ({
     );
   }
 
-  // Weekly header names
   const weekDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   return (
