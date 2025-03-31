@@ -36,6 +36,7 @@ const MyInsurance: React.FC<MyInsuranceProps> = ({
 }) => {
   // Add debugging to check if client_champva exists in clientData
   console.log("Client data in MyInsurance:", clientData);
+  console.log("Form values in MyInsurance:", form.getValues());
   
   return (
     <Card>

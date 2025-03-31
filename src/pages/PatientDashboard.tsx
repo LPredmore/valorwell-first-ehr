@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -77,7 +76,18 @@ const PatientDashboard: React.FC = () => {
       client_group_number_tertiary: '',
       client_subscriber_name_tertiary: '',
       client_subscriber_relationship_tertiary: '',
-      client_subscriber_dob_tertiary: ''
+      client_subscriber_dob_tertiary: '',
+      client_champva: '',
+      client_tricare_beneficiary_category: '',
+      client_tricare_sponsor_name: '',
+      client_tricare_sponsor_branch: '',
+      client_tricare_sponsor_id: '',
+      client_tricare_plan: '',
+      client_tricare_region: '',
+      client_tricare_policy_id: '',
+      client_tricare_has_referral: '',
+      client_tricare_referral_number: '',
+      mentalHealthReferral: ''
     }
   });
 
@@ -173,7 +183,18 @@ const PatientDashboard: React.FC = () => {
           client_group_number_tertiary: client.client_group_number_tertiary || '',
           client_subscriber_name_tertiary: client.client_subscriber_name_tertiary || '',
           client_subscriber_relationship_tertiary: client.client_subscriber_relationship_tertiary || '',
-          client_subscriber_dob_tertiary: client.client_subscriber_dob_tertiary || ''
+          client_subscriber_dob_tertiary: client.client_subscriber_dob_tertiary || '',
+          client_champva: client.client_champva || '',
+          client_tricare_beneficiary_category: client.client_tricare_beneficiary_category || '',
+          client_tricare_sponsor_name: client.client_tricare_sponsor_name || '',
+          client_tricare_sponsor_branch: client.client_tricare_sponsor_branch || '',
+          client_tricare_sponsor_id: client.client_tricare_sponsor_id || '',
+          client_tricare_plan: client.client_tricare_plan || '',
+          client_tricare_region: client.client_tricare_region || '',
+          client_tricare_policy_id: client.client_tricare_policy_id || '',
+          client_tricare_has_referral: client.client_tricare_has_referral || '',
+          client_tricare_referral_number: client.client_tricare_referral_number || '',
+          mentalHealthReferral: client.mentalHealthReferral || ''
         });
       } else {
         toast({
@@ -239,7 +260,18 @@ const PatientDashboard: React.FC = () => {
         client_group_number_tertiary: formValues.client_group_number_tertiary,
         client_subscriber_name_tertiary: formValues.client_subscriber_name_tertiary,
         client_subscriber_relationship_tertiary: formValues.client_subscriber_relationship_tertiary,
-        client_subscriber_dob_tertiary: formValues.client_subscriber_dob_tertiary
+        client_subscriber_dob_tertiary: formValues.client_subscriber_dob_tertiary,
+        client_champva: formValues.client_champva,
+        client_tricare_beneficiary_category: formValues.client_tricare_beneficiary_category,
+        client_tricare_sponsor_name: formValues.client_tricare_sponsor_name,
+        client_tricare_sponsor_branch: formValues.client_tricare_sponsor_branch,
+        client_tricare_sponsor_id: formValues.client_tricare_sponsor_id,
+        client_tricare_plan: formValues.client_tricare_plan,
+        client_tricare_region: formValues.client_tricare_region,
+        client_tricare_policy_id: formValues.client_tricare_policy_id,
+        client_tricare_has_referral: formValues.client_tricare_has_referral,
+        client_tricare_referral_number: formValues.client_tricare_referral_number,
+        mentalHealthReferral: formValues.mentalHealthReferral
       };
 
       console.log("Sending updates to database:", updates);
