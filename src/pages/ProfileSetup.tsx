@@ -942,19 +942,20 @@ const ProfileSetup = () => {
           'client_tricare_has_referral'
         ];
         
-        const hasReferral = form.watch('client_tricare_has_referral');
+        const formValues = form.getValues();
         
         // Check if all required fields have values
         const allRequiredFieldsValid = requiredFields.every(field => {
-          const value = form.watch(field);
+          const value = formValues[field];
           return value && typeof value === 'string' && value.trim() !== '';
         });
         
         if (!allRequiredFieldsValid) return false;
         
         // If referral is "Yes", then referral number is required
+        const hasReferral = formValues.client_tricare_has_referral;
         if (hasReferral === "Yes") {
-          const referralNumber = form.watch('client_tricare_referral_number');
+          const referralNumber = formValues.client_tricare_referral_number;
           if (!referralNumber || typeof referralNumber !== 'string' || referralNumber.trim() === '') return false;
         }
         
