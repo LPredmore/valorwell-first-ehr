@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -221,30 +222,31 @@ const MyPortal: React.FC<MyPortalProps> = ({
         </CardHeader>
         <CardContent>
           {clientData && clientData.client_assigned_therapist && clinicianData ? (
-            <>
-              <div className="bg-gray-50 p-4 rounded-md mb-4 flex items-start gap-4">
-                <Avatar className="h-20 w-20 border-2 border-white shadow-md">
+            <div className="bg-gray-50 p-4 rounded-md mb-4">
+              <div className="flex flex-row gap-6 items-start">
+                <Avatar className="h-48 w-48 border-2 border-white shadow-md rounded-md flex-shrink-0">
                   {clinicianData.clinician_image_url ? (
-                    <AvatarImage src={clinicianData.clinician_image_url} alt={clinicianName || 'Therapist'} />
+                    <AvatarImage src={clinicianData.clinician_image_url} alt={clinicianName || 'Therapist'} className="object-cover h-full w-full" />
                   ) : (
-                    <AvatarFallback className="text-lg font-medium bg-valorwell-100 text-valorwell-700">
+                    <AvatarFallback className="text-4xl font-medium bg-valorwell-100 text-valorwell-700 h-full w-full">
                       {clinicianData.clinician_first_name?.[0] || ''}{clinicianData.clinician_last_name?.[0] || ''}
                     </AvatarFallback>
                   )}
                 </Avatar>
-                <div>
-                  <h3 className="text-lg font-medium">{clinicianName || 'Your Therapist'}</h3>
-                  <p className="text-sm text-gray-500">{clinicianData.clinician_type || 'Therapist'}</p>
+                
+                <div className="flex-1">
+                  <h3 className="text-xl font-medium">{clinicianName || 'Your Therapist'}</h3>
+                  <p className="text-sm text-gray-500 mb-4">{clinicianData.clinician_type || 'Therapist'}</p>
+                  
+                  {clinicianData.clinician_bio && (
+                    <>
+                      <h4 className="font-medium text-lg mb-2">About {clinicianName}</h4>
+                      <p className="text-gray-700 text-sm whitespace-pre-line">{clinicianData.clinician_bio}</p>
+                    </>
+                  )}
                 </div>
               </div>
-              
-              {clinicianData.clinician_bio && (
-                <div className="mt-4">
-                  <h4 className="font-medium text-lg mb-2">About {clinicianName}</h4>
-                  <p className="text-gray-700 text-sm whitespace-pre-line">{clinicianData.clinician_bio}</p>
-                </div>
-              )}
-            </>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Calendar className="h-12 w-12 text-gray-300 mb-3" />
