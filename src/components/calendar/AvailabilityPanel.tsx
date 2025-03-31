@@ -327,44 +327,105 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         return;
       }
 
-      const { error: deleteError } = await supabase
+      const { data: existingAvailability, error: fetchError } = await supabase
         .from('availability')
-        .delete()
-        .eq('clinician_id', clinicianIdToUse);
+        .select('id, day_of_week, start_time, end_time')
+        .eq('clinician_id', clinicianIdToUse)
+        .eq('is_active', true);
 
-      if (deleteError) {
-        console.error('Error deleting existing availability:', deleteError);
+      if (fetchError) {
+        console.error('Error fetching existing availability:', fetchError);
         toast({
-          title: "Error Deleting Existing Availability",
-          description: deleteError.message,
+          title: "Error Fetching Existing Availability",
+          description: fetchError.message,
           variant: "destructive"
         });
         setIsSaving(false);
         return;
       }
 
-      const uniqueEntries = new Map();
-      
+      const { data: exceptions, error: exceptionsError } = await supabase
+        .from('availability_exceptions')
+        .select('original_availability_id')
+        .eq('clinician_id', clinicianIdToUse);
+
+      if (exceptionsError) {
+        console.error('Error fetching exceptions:', exceptionsError);
+        toast({
+          title: "Error Fetching Exceptions",
+          description: exceptionsError.message,
+          variant: "destructive"
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      const referencedIds = new Set(
+        exceptions?.map(exception => exception.original_availability_id) || []
+      );
+
+      const existingAvailabilityMap = new Map();
+      existingAvailability?.forEach(slot => {
+        const key = `${slot.day_of_week}-${slot.start_time.substring(0, 5)}-${slot.end_time.substring(0, 5)}`;
+        existingAvailabilityMap.set(key, slot);
+      });
+
+      const availabilityToKeep = new Set();
+      const availabilityToUpdate = [];
+      const availabilityIdsToDelete = [];
+      const availabilityToInsert = [];
+
       weekSchedule.forEach(day => {
         if (!day.isOpen) return;
 
         day.timeSlots.forEach(slot => {
-          const key = `${day.day}-${slot.startTime}-${slot.endTime}`;
-          uniqueEntries.set(key, {
-            clinician_id: clinicianIdToUse,
-            day_of_week: day.day,
-            start_time: slot.startTime,
-            end_time: slot.endTime,
-            is_active: true
-          });
+          const formattedStartTime = slot.startTime;
+          const formattedEndTime = slot.endTime;
+          const key = `${day.day}-${formattedStartTime}-${formattedEndTime}`;
+          
+          const existingSlot = existingAvailabilityMap.get(key);
+          
+          if (existingSlot) {
+            availabilityToKeep.add(existingSlot.id);
+          } else {
+            availabilityToInsert.push({
+              clinician_id: clinicianIdToUse,
+              day_of_week: day.day,
+              start_time: formattedStartTime,
+              end_time: formattedEndTime,
+              is_active: true
+            });
+          }
         });
       });
 
-      const availabilityToInsert = Array.from(uniqueEntries.values());
-      
-      console.log('Inserting new availability:', availabilityToInsert);
+      existingAvailability?.forEach(slot => {
+        if (!availabilityToKeep.has(slot.id) && !referencedIds.has(slot.id)) {
+          availabilityIdsToDelete.push(slot.id);
+        }
+      });
+
+      if (availabilityIdsToDelete.length > 0) {
+        console.log('Deleting availability IDs:', availabilityIdsToDelete);
+        const { error: deleteError } = await supabase
+          .from('availability')
+          .delete()
+          .in('id', availabilityIdsToDelete);
+
+        if (deleteError) {
+          console.error('Error deleting availability:', deleteError);
+          toast({
+            title: "Error Deleting Availability",
+            description: deleteError.message,
+            variant: "destructive"
+          });
+          setIsSaving(false);
+          return;
+        }
+      }
 
       if (availabilityToInsert.length > 0) {
+        console.log('Inserting new availability:', availabilityToInsert);
         const { error: insertError } = await supabase
           .from('availability')
           .insert(availabilityToInsert);
@@ -376,20 +437,18 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
             description: insertError.message,
             variant: "destructive"
           });
-        } else {
-          toast({
-            title: "Availability Saved",
-            description: "Your availability has been updated successfully",
-          });
-          if (onAvailabilityUpdated) {
-            onAvailabilityUpdated();
-          }
+          setIsSaving(false);
+          return;
         }
-      } else {
-        toast({
-          title: "No Availability Set",
-          description: "No available time slots were found to save",
-        });
+      }
+
+      toast({
+        title: "Availability Saved",
+        description: "Your availability has been updated successfully",
+      });
+      
+      if (onAvailabilityUpdated) {
+        onAvailabilityUpdated();
       }
     } catch (error) {
       console.error('Error saving availability:', error);
