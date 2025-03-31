@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, startOfToday } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
+import { useToast } from '@/components/ui/use-toast';
 
 interface PastAppointment {
   id: string | number;
@@ -15,6 +16,7 @@ interface PastAppointment {
   time: string;
   type: string;
   therapist: string;
+  rawDate?: string;
 }
 
 interface MyAppointmentsProps {
@@ -26,6 +28,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
   const [pastAppointments, setPastAppointments] = useState<PastAppointment[]>([]);
   const [clinicianName, setClinicianName] = useState<string | null>(null);
   const [clientData, setClientData] = useState<any>(null);
+  const { toast } = useToast();
   const clientTimeZone = clientData?.client_time_zone || getUserTimeZone();
 
   useEffect(() => {
@@ -95,35 +98,80 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
 
         if (error) {
           console.error('Error fetching past appointments:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load appointment history",
+            variant: "destructive"
+          });
           return;
         }
 
         if (data && data.length > 0) {
+          console.log("Past appointments data:", data);
           const formattedAppointments = data.map(appointment => {
-            const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
-            const dateTimeString = `${appointment.date}T${appointment.start_time}`;
-            const formattedTime = formatInTimeZone(parseISO(dateTimeString), clientTimeZone, 'h:mm a');
-            return {
-              id: appointment.id,
-              date: formattedDate,
-              time: formattedTime,
-              type: appointment.type,
-              therapist: clinicianName || 'Your Therapist'
-            };
+            try {
+              const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
+              
+              // Format time with proper error handling
+              let formattedTime = '';
+              try {
+                if (appointment.start_time) {
+                  const dateTimeString = `${appointment.date}T${appointment.start_time}`;
+                  formattedTime = formatInTimeZone(
+                    parseISO(dateTimeString), 
+                    clientTimeZone, 
+                    'h:mm a'
+                  );
+                } else {
+                  formattedTime = 'Time unavailable';
+                }
+              } catch (error) {
+                console.error('Error formatting time:', error, appointment);
+                formattedTime = appointment.start_time || 'Time unavailable';
+              }
+              
+              return {
+                id: appointment.id,
+                date: formattedDate,
+                time: formattedTime,
+                type: appointment.type || 'Appointment',
+                therapist: clinicianName || 'Your Therapist',
+                rawDate: appointment.date
+              };
+            } catch (error) {
+              console.error('Error processing appointment:', error, appointment);
+              // Return a fallback object to prevent breaking the UI
+              return {
+                id: appointment.id || 'unknown-id',
+                date: 'Date unavailable',
+                time: 'Time unavailable',
+                type: appointment.type || 'Appointment',
+                therapist: clinicianName || 'Your Therapist',
+                rawDate: null
+              };
+            }
           });
+          
+          console.log("Formatted past appointments:", formattedAppointments);
           setPastAppointments(formattedAppointments);
         } else {
+          console.log("No past appointments found");
           setPastAppointments([]);
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Error in fetchPastAppointments:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load your appointment history",
+          variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }
     };
     
     fetchPastAppointments();
-  }, [clientData, clinicianName, clientTimeZone]);
+  }, [clientData, clinicianName, clientTimeZone, toast]);
 
   return (
     <Card>
