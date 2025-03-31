@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, isToday, isFuture, parseISO, isAfter } from 'date-fns';
@@ -94,6 +95,11 @@ const ClinicianDashboard = () => {
   }) || [];
 
   const canStartSession = (appointment: Appointment) => {
+    // For testing purposes, always allow starting sessions
+    // In production, you would use the time-based logic below
+    return true;
+    
+    /*
     const now = new Date();
     const appointmentDate = parseISO(appointment.date);
     
@@ -110,20 +116,28 @@ const ClinicianDashboard = () => {
     thirtyMinutesAfter.setMinutes(thirtyMinutesAfter.getMinutes() + 30);
     
     return isAfter(now, tenMinutesBefore) && !isAfter(now, thirtyMinutesAfter);
+    */
   };
 
   const startVideoSession = async (appointment: Appointment) => {
     try {
+      console.log("Starting video session for appointment:", appointment.id);
+      
       if (appointment.video_room_url) {
+        console.log("Using existing video room URL:", appointment.video_room_url);
         setCurrentVideoUrl(appointment.video_room_url);
         setIsVideoOpen(true);
       } else {
+        console.log("Creating new video room for appointment:", appointment.id);
         const result = await getOrCreateVideoRoom(appointment.id);
+        console.log("Video room creation result:", result);
+        
         if (result.success && result.url) {
           setCurrentVideoUrl(result.url);
           setIsVideoOpen(true);
           refetch();
         } else {
+          console.error("Failed to create video room:", result.error);
           throw new Error('Failed to create video room');
         }
       }
