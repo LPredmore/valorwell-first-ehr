@@ -31,6 +31,7 @@ interface WeekViewProps {
   }>;
   getClientName?: (clientId: string) => string;
   onAppointmentClick?: (appointment: any) => void;
+  onAvailabilityClick?: (date: Date, availabilityBlock: any) => void;
   userTimeZone?: string;
 }
 
@@ -42,11 +43,21 @@ interface AvailabilityBlock {
   clinician_id?: string;
 }
 
+interface AvailabilityException {
+  id: string;
+  specific_date: string;
+  original_availability_id: string;
+  start_time: string | null;
+  end_time: string | null;
+  is_deleted: boolean;
+}
+
 interface TimeBlock {
   day: Date;
   start: Date;
   end: Date;
   availabilityIds: string[];
+  isException?: boolean;
 }
 
 interface AppointmentBlock {
@@ -66,10 +77,13 @@ const WeekView: React.FC<WeekViewProps> = ({
   appointments = [],
   getClientName = () => 'Client',
   onAppointmentClick,
+  onAvailabilityClick,
   userTimeZone
 }) => {
   const [loading, setLoading] = useState(true);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
+  const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
+  const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
 
   const days = eachDayOfInterval({
@@ -123,14 +137,36 @@ const WeekView: React.FC<WeekViewProps> = ({
           query = query.eq('clinician_id', clinicianId);
         }
 
-        const { data, error } = await query;
+        const { data: availabilityData, error } = await query;
 
         if (error) {
           console.error('Error fetching availability:', error);
         } else {
-          console.log('WeekView fetched availability data:', data);
-          console.log('Current clinician ID:', clinicianId);
-          processAvailabilityBlocks(data || []);
+          console.log('WeekView availability data:', availabilityData);
+          setAvailabilityBlocks(availabilityData || []);
+          
+          if (clinicianId && availabilityData && availabilityData.length > 0) {
+            const startDateStr = format(days[0], 'yyyy-MM-dd');
+            const endDateStr = format(days[days.length - 1], 'yyyy-MM-dd');
+            const availabilityIds = availabilityData.map(block => block.id);
+            
+            const { data: exceptionsData, error: exceptionsError } = await supabase
+              .from('availability_exceptions')
+              .select('*')
+              .eq('clinician_id', clinicianId)
+              .gte('specific_date', startDateStr)
+              .lte('specific_date', endDateStr)
+              .in('original_availability_id', availabilityIds);
+              
+            if (exceptionsError) {
+              console.error('Error fetching exceptions:', exceptionsError);
+            } else {
+              console.log('WeekView exceptions data:', exceptionsData);
+              setExceptions(exceptionsData || []);
+            }
+          }
+          
+          processAvailabilityWithExceptions(availabilityData || [], exceptions || []);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -140,19 +176,53 @@ const WeekView: React.FC<WeekViewProps> = ({
     };
 
     fetchAvailability();
-  }, [clinicianId, refreshTrigger]);
+  }, [clinicianId, refreshTrigger, days]);
 
-  const processAvailabilityBlocks = (blocks: AvailabilityBlock[]) => {
+  const getAvailabilityForBlock = (blockId: string) => {
+    return availabilityBlocks.find(block => block.id === blockId);
+  };
+
+  const processAvailabilityWithExceptions = (blocks: AvailabilityBlock[], exceptionsData: AvailabilityException[]) => {
     if (!blocks.length) {
       setTimeBlocks([]);
       return;
     }
 
+    const exceptionsByDate: Record<string, Record<string, AvailabilityException>> = {};
+    exceptionsData.forEach(exception => {
+      if (!exceptionsByDate[exception.specific_date]) {
+        exceptionsByDate[exception.specific_date] = {};
+      }
+      exceptionsByDate[exception.specific_date][exception.original_availability_id] = exception;
+    });
+
     const allTimeBlocks: TimeBlock[] = [];
 
     days.forEach(day => {
       const dayOfWeek = format(day, 'EEEE');
-      const dayBlocks = blocks.filter(block => block.day_of_week === dayOfWeek);
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const exceptionsForDay = exceptionsByDate[dateStr] || {};
+      
+      const dayBlocks = blocks
+        .filter(block => block.day_of_week === dayOfWeek)
+        .filter(block => {
+          const exception = exceptionsForDay[block.id];
+          return !exception || !exception.is_deleted;
+        })
+        .map(block => {
+          const exception = exceptionsForDay[block.id];
+          
+          if (exception && exception.start_time && exception.end_time) {
+            return {
+              ...block,
+              start_time: exception.start_time,
+              end_time: exception.end_time,
+              isException: true
+            };
+          }
+          
+          return block;
+        });
 
       const parsedBlocks = dayBlocks.map(block => {
         const [startHour, startMinute] = block.start_time.split(':').map(Number);
@@ -165,7 +235,8 @@ const WeekView: React.FC<WeekViewProps> = ({
           id: block.id,
           day,
           start,
-          end
+          end,
+          isException: block.isException
         };
       });
 
@@ -181,12 +252,16 @@ const WeekView: React.FC<WeekViewProps> = ({
             lastBlock.end = block.end;
           }
           lastBlock.availabilityIds.push(block.id);
+          if (block.isException) {
+            lastBlock.isException = true;
+          }
         } else {
           mergedBlocks.push({
             day: block.day,
             start: block.start,
             end: block.end,
-            availabilityIds: [block.id]
+            availabilityIds: [block.id],
+            isException: block.isException
           });
         }
       });
@@ -221,6 +296,17 @@ const WeekView: React.FC<WeekViewProps> = ({
       slotTime >= block.start &&
       slotTime < block.end
     );
+  };
+
+  const handleAvailabilityBlockClick = (day: Date, block: TimeBlock) => {
+    if (!onAvailabilityClick || !block.availabilityIds.length) return;
+    
+    const availabilityId = block.availabilityIds[0];
+    const availabilityBlock = getAvailabilityForBlock(availabilityId);
+    
+    if (availabilityBlock) {
+      onAvailabilityClick(day, availabilityBlock);
+    }
   };
 
   const getAppointmentForTimeSlot = (day: Date, timeSlot: Date) => {
@@ -342,10 +428,16 @@ const WeekView: React.FC<WeekViewProps> = ({
                     </div>
                   ) : isAvailable ? (
                     <div
-                      className={`p-1 bg-green-50 border-l-4 border-green-500 ${continuousBlockClass} h-full text-xs`}
+                      className={`p-1 ${currentBlock?.isException ? 'bg-teal-50 border-teal-500' : 'bg-green-50 border-green-500'} border-l-4 ${continuousBlockClass} h-full text-xs cursor-pointer hover:opacity-90 transition-colors`}
+                      onClick={() => currentBlock && handleAvailabilityBlockClick(day, currentBlock)}
                     >
                       {isStartOfBlock && (
-                        <div className="font-medium truncate">Available</div>
+                        <div className="font-medium truncate flex items-center">
+                          Available
+                          {currentBlock?.isException && (
+                            <span className="ml-1 text-[10px] px-1 py-0.5 bg-teal-100 text-teal-800 rounded-full">Modified</span>
+                          )}
+                        </div>
                       )}
                     </div>
                   ) : (

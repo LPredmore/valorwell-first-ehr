@@ -31,6 +31,7 @@ interface MonthViewProps {
   }>;
   getClientName?: (clientId: string) => string;
   onAppointmentClick?: (appointment: any) => void;
+  onAvailabilityClick?: (date: Date, availabilityBlock: any) => void;
   userTimeZone?: string;
 }
 
@@ -41,10 +42,12 @@ const MonthView: React.FC<MonthViewProps> = ({
   appointments = [],
   getClientName = () => 'Client',
   onAppointmentClick,
+  onAvailabilityClick,
   userTimeZone
 }) => {
   const [loading, setLoading] = useState(true);
   const [availabilityData, setAvailabilityData] = useState<any[]>([]);
+  const [exceptionsData, setExceptionsData] = useState<any[]>([]);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -54,9 +57,10 @@ const MonthView: React.FC<MonthViewProps> = ({
   const days = eachDayOfInterval({ start: startDate, end: endDate });
 
   useEffect(() => {
-    const fetchAvailability = async () => {
+    const fetchAvailabilityAndExceptions = async () => {
       setLoading(true);
       try {
+        // 1. Fetch regular availability
         let query = supabase
           .from('availability')
           .select('*')
@@ -73,6 +77,28 @@ const MonthView: React.FC<MonthViewProps> = ({
         } else {
           console.log('MonthView fetched availability data:', data);
           setAvailabilityData(data || []);
+          
+          // 2. Fetch exceptions for the month's date range
+          if (clinicianId && data && data.length > 0) {
+            const startDateStr = format(startDate, 'yyyy-MM-dd');
+            const endDateStr = format(endDate, 'yyyy-MM-dd');
+            const availabilityIds = data.map((block: any) => block.id);
+            
+            const { data: exceptions, error: exceptionsError } = await supabase
+              .from('availability_exceptions')
+              .select('*')
+              .eq('clinician_id', clinicianId)
+              .gte('specific_date', startDateStr)
+              .lte('specific_date', endDateStr)
+              .in('original_availability_id', availabilityIds);
+              
+            if (exceptionsError) {
+              console.error('Error fetching exceptions:', exceptionsError);
+            } else {
+              console.log('MonthView exceptions data:', exceptions);
+              setExceptionsData(exceptions || []);
+            }
+          }
         }
       } catch (error) {
         console.error('Error:', error);
@@ -81,12 +107,69 @@ const MonthView: React.FC<MonthViewProps> = ({
       }
     };
 
-    fetchAvailability();
-  }, [clinicianId, refreshTrigger]);
+    fetchAvailabilityAndExceptions();
+  }, [clinicianId, refreshTrigger, startDate, endDate]);
 
+  // Check if a day has availability with exceptions applied
   const hasDayAvailability = (day: Date) => {
     const dayOfWeek = format(day, 'EEEE');
-    return availabilityData.some(slot => slot.day_of_week === dayOfWeek);
+    const dateStr = format(day, 'yyyy-MM-dd');
+    
+    // Get regular availability for this day of week
+    const regularAvailability = availabilityData.filter(
+      slot => slot.day_of_week === dayOfWeek
+    );
+    
+    if (regularAvailability.length === 0) {
+      return false;
+    }
+    
+    // Check for exceptions that delete availability
+    const availabilityIds = regularAvailability.map(slot => slot.id);
+    const deletedExceptions = exceptionsData.filter(
+      exception => 
+        exception.specific_date === dateStr && 
+        availabilityIds.includes(exception.original_availability_id) &&
+        exception.is_deleted
+    );
+    
+    // If all availability slots are deleted, return false
+    if (deletedExceptions.length === regularAvailability.length) {
+      return false;
+    }
+    
+    return true;
+  };
+  
+  // Check if a day has modified availability
+  const hasDayModifiedAvailability = (day: Date) => {
+    const dateStr = format(day, 'yyyy-MM-dd');
+    
+    // Check for exceptions that modify availability times
+    const modifiedExceptions = exceptionsData.filter(
+      exception => 
+        exception.specific_date === dateStr && 
+        !exception.is_deleted &&
+        exception.start_time && 
+        exception.end_time
+    );
+    
+    return modifiedExceptions.length > 0;
+  };
+
+  const handleDayAvailabilityClick = (day: Date) => {
+    if (!onAvailabilityClick) return;
+    
+    const dayOfWeek = format(day, 'EEEE');
+    
+    // Get the first availability block for this day
+    const firstAvailability = availabilityData.find(
+      slot => slot.day_of_week === dayOfWeek
+    );
+    
+    if (firstAvailability) {
+      onAvailabilityClick(day, firstAvailability);
+    }
   };
 
   const getDayAppointments = (day: Date) => {
@@ -113,6 +196,8 @@ const MonthView: React.FC<MonthViewProps> = ({
 
         {days.map((day) => {
           const dayAppointments = getDayAppointments(day);
+          const dayHasAvailability = hasDayAvailability(day);
+          const dayHasModifiedAvailability = hasDayModifiedAvailability(day);
           
           return (
             <div
@@ -123,9 +208,12 @@ const MonthView: React.FC<MonthViewProps> = ({
                 <span className={`text-sm font-medium ${isSameDay(day, new Date()) ? 'text-valorwell-500' : ''}`}>
                   {format(day, 'd')}
                 </span>
-                {hasDayAvailability(day) && isSameMonth(day, monthStart) && (
-                  <div className="bg-green-100 text-green-800 text-xs px-1 py-0.5 rounded">
-                    Available
+                {dayHasAvailability && isSameMonth(day, monthStart) && (
+                  <div 
+                    className={`${dayHasModifiedAvailability ? 'bg-teal-100 text-teal-800' : 'bg-green-100 text-green-800'} text-xs px-1 py-0.5 rounded cursor-pointer hover:opacity-80 transition-colors`}
+                    onClick={() => handleDayAvailabilityClick(day)}
+                  >
+                    {dayHasModifiedAvailability ? 'Modified' : 'Available'}
                   </div>
                 )}
               </div>

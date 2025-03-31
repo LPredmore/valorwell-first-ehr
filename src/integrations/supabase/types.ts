@@ -104,6 +104,50 @@ export type Database = {
         }
         Relationships: []
       }
+      availability_exceptions: {
+        Row: {
+          clinician_id: string
+          created_at: string | null
+          end_time: string | null
+          id: string
+          is_deleted: boolean | null
+          original_availability_id: string | null
+          specific_date: string
+          start_time: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          clinician_id: string
+          created_at?: string | null
+          end_time?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          original_availability_id?: string | null
+          specific_date: string
+          start_time?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          clinician_id?: string
+          created_at?: string | null
+          end_time?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          original_availability_id?: string | null
+          specific_date?: string
+          start_time?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_exceptions_original_availability_id_fkey"
+            columns: ["original_availability_id"]
+            isOneToOne: false
+            referencedRelation: "availability"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       availability_settings: {
         Row: {
           clinician_id: string

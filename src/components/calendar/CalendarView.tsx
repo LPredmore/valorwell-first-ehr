@@ -9,8 +9,10 @@ import WeekView from './WeekView';
 import MonthView from './MonthView';
 import AvailabilityPanel from './AvailabilityPanel';
 import AppointmentDetailsDialog from './AppointmentDetailsDialog';
+import AvailabilityEditDialog from './AvailabilityEditDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
+
 interface CalendarViewProps {
   view: 'day' | 'week' | 'month';
   showAvailability: boolean;
@@ -18,6 +20,7 @@ interface CalendarViewProps {
   userTimeZone?: string;
   refreshTrigger?: number;
 }
+
 interface Appointment {
   id: string;
   client_id: string;
@@ -27,6 +30,14 @@ interface Appointment {
   type: string;
   status: string;
 }
+
+interface AvailabilityBlock {
+  id: string;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+}
+
 const CalendarView: React.FC<CalendarViewProps> = ({
   view,
   showAvailability,
@@ -43,7 +54,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   } | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
+  const [selectedAvailability, setSelectedAvailability] = useState<AvailabilityBlock | null>(null);
+  const [selectedAvailabilityDate, setSelectedAvailabilityDate] = useState<Date | null>(null);
+  const [isAvailabilityDialogOpen, setIsAvailabilityDialogOpen] = useState(false);
+
   const userTimeZone = propTimeZone || getUserTimeZone();
+
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!clinicianId) return;
@@ -98,6 +114,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     };
     fetchAppointments();
   }, [clinicianId, currentDate, view, availabilityRefreshTrigger, appointmentRefreshTrigger, refreshTrigger]);
+
   const navigatePrevious = () => {
     if (view === 'day') {
       setCurrentDate(subDays(currentDate, 1));
@@ -107,6 +124,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       setCurrentDate(subMonths(currentDate, 1));
     }
   };
+
   const navigateNext = () => {
     if (view === 'day') {
       setCurrentDate(addDays(currentDate, 1));
@@ -116,12 +134,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       setCurrentDate(addMonths(currentDate, 1));
     }
   };
+
   const navigateToday = () => {
     setCurrentDate(new Date());
   };
+
   const handleAvailabilityUpdated = () => {
     setAvailabilityRefreshTrigger(prev => prev + 1);
   };
+
   const getHeaderText = () => {
     if (view === 'day') {
       return format(currentDate, 'MMMM d, yyyy');
@@ -141,6 +162,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       return format(currentDate, 'MMMM yyyy');
     }
   };
+
   const getClientName = (clientId: string) => {
     const client = clientsMap[clientId];
     if (!client) return 'Unknown Client';
@@ -150,10 +172,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     const displayName = preferredName || firstName;
     return `${displayName} ${lastName}`;
   };
+
   const getClientTimeZone = (clientId: string): string => {
     const client = clientsMap[clientId];
     return client?.client_time_zone || getUserTimeZone();
   };
+
   const handleAppointmentClick = (appointment: Appointment) => {
     const appointmentWithClientName = {
       ...appointment,
@@ -162,9 +186,17 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     setSelectedAppointment(appointmentWithClientName);
     setIsDetailsDialogOpen(true);
   };
+
   const handleAppointmentUpdated = () => {
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
+
+  const handleAvailabilityClick = (date: Date, availabilityBlock: AvailabilityBlock) => {
+    setSelectedAvailability(availabilityBlock);
+    setSelectedAvailabilityDate(date);
+    setIsAvailabilityDialogOpen(true);
+  };
+
   return <div className="flex flex-col space-y-4">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
@@ -179,15 +211,40 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           </Button>
           <h2 className="text-lg font-semibold ml-2">{getHeaderText()}</h2>
         </div>
-
-        
       </div>
 
       <div className="flex gap-4">
         <div className={cn("flex-1", showAvailability ? "w-3/4" : "w-full")}>
-          {view === 'day' && <DayView currentDate={currentDate} clinicianId={clinicianId} refreshTrigger={availabilityRefreshTrigger} appointments={appointments.filter(app => app.date === format(currentDate, 'yyyy-MM-dd'))} getClientName={getClientName} onAppointmentClick={handleAppointmentClick} userTimeZone={userTimeZone} />}
-          {view === 'week' && <WeekView currentDate={currentDate} clinicianId={clinicianId} refreshTrigger={availabilityRefreshTrigger} appointments={appointments} getClientName={getClientName} onAppointmentClick={handleAppointmentClick} userTimeZone={userTimeZone} />}
-          {view === 'month' && <MonthView currentDate={currentDate} clinicianId={clinicianId} refreshTrigger={availabilityRefreshTrigger} appointments={appointments} getClientName={getClientName} onAppointmentClick={handleAppointmentClick} userTimeZone={userTimeZone} />}
+          {view === 'day' && <DayView 
+            currentDate={currentDate} 
+            clinicianId={clinicianId} 
+            refreshTrigger={availabilityRefreshTrigger} 
+            appointments={appointments.filter(app => app.date === format(currentDate, 'yyyy-MM-dd'))} 
+            getClientName={getClientName} 
+            onAppointmentClick={handleAppointmentClick} 
+            onAvailabilityClick={handleAvailabilityClick}
+            userTimeZone={userTimeZone} 
+          />}
+          {view === 'week' && <WeekView 
+            currentDate={currentDate} 
+            clinicianId={clinicianId} 
+            refreshTrigger={availabilityRefreshTrigger} 
+            appointments={appointments} 
+            getClientName={getClientName} 
+            onAppointmentClick={handleAppointmentClick} 
+            onAvailabilityClick={handleAvailabilityClick}
+            userTimeZone={userTimeZone} 
+          />}
+          {view === 'month' && <MonthView 
+            currentDate={currentDate} 
+            clinicianId={clinicianId} 
+            refreshTrigger={availabilityRefreshTrigger} 
+            appointments={appointments} 
+            getClientName={getClientName} 
+            onAppointmentClick={handleAppointmentClick} 
+            onAvailabilityClick={handleAvailabilityClick}
+            userTimeZone={userTimeZone} 
+          />}
         </div>
 
         {showAvailability && <div className="w-1/4">
@@ -195,7 +252,24 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           </div>}
       </div>
 
-      <AppointmentDetailsDialog isOpen={isDetailsDialogOpen} onClose={() => setIsDetailsDialogOpen(false)} appointment={selectedAppointment} onAppointmentUpdated={handleAppointmentUpdated} userTimeZone={userTimeZone} clientTimeZone={selectedAppointment ? getClientTimeZone(selectedAppointment.client_id) : ''} />
+      <AppointmentDetailsDialog 
+        isOpen={isDetailsDialogOpen} 
+        onClose={() => setIsDetailsDialogOpen(false)} 
+        appointment={selectedAppointment} 
+        onAppointmentUpdated={handleAppointmentUpdated} 
+        userTimeZone={userTimeZone} 
+        clientTimeZone={selectedAppointment ? getClientTimeZone(selectedAppointment.client_id) : ''} 
+      />
+
+      <AvailabilityEditDialog
+        isOpen={isAvailabilityDialogOpen}
+        onClose={() => setIsAvailabilityDialogOpen(false)}
+        availabilityBlock={selectedAvailability}
+        specificDate={selectedAvailabilityDate}
+        clinicianId={clinicianId}
+        onAvailabilityUpdated={handleAvailabilityUpdated}
+      />
     </div>;
 };
+
 export default CalendarView;

@@ -19,6 +19,7 @@ interface DayViewProps {
   }>;
   getClientName?: (clientId: string) => string;
   onAppointmentClick?: (appointment: any) => void;
+  onAvailabilityClick?: (date: Date, availabilityBlock: any) => void;
   userTimeZone?: string;
 }
 
@@ -29,10 +30,20 @@ interface AvailabilityBlock {
   end_time: string;
 }
 
+interface AvailabilityException {
+  id: string;
+  specific_date: string;
+  original_availability_id: string;
+  start_time: string | null;
+  end_time: string | null;
+  is_deleted: boolean;
+}
+
 interface TimeBlock {
   start: Date;
   end: Date;
   availabilityIds: string[];
+  isException?: boolean;
 }
 
 interface AppointmentBlock {
@@ -51,10 +62,13 @@ const DayView: React.FC<DayViewProps> = ({
   appointments = [],
   getClientName = () => 'Client',
   onAppointmentClick,
+  onAvailabilityClick,
   userTimeZone
 }) => {
   const [loading, setLoading] = useState(true);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
+  const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
+  const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
 
   const timeSlots = Array.from({ length: 21 }, (_, i) => {
@@ -63,6 +77,7 @@ const DayView: React.FC<DayViewProps> = ({
   });
 
   const dayOfWeek = format(currentDate, 'EEEE');
+  const formattedDate = format(currentDate, 'yyyy-MM-dd');
 
   useEffect(() => {
     if (!appointments.length) {
@@ -92,26 +107,46 @@ const DayView: React.FC<DayViewProps> = ({
   }, [appointments, getClientName]);
 
   useEffect(() => {
-    const fetchAvailability = async () => {
+    const fetchAvailabilityAndExceptions = async () => {
       setLoading(true);
       try {
-        let query = supabase
+        let availabilityQuery = supabase
           .from('availability')
           .select('*')
           .eq('day_of_week', dayOfWeek)
           .eq('is_active', true);
 
         if (clinicianId) {
-          query = query.eq('clinician_id', clinicianId);
+          availabilityQuery = availabilityQuery.eq('clinician_id', clinicianId);
         }
 
-        const { data, error } = await query;
+        const { data: availabilityData, error: availabilityError } = await availabilityQuery;
 
-        if (error) {
-          console.error('Error fetching availability:', error);
+        if (availabilityError) {
+          console.error('Error fetching availability:', availabilityError);
         } else {
-          console.log('DayView availability data:', data);
-          processAvailabilityBlocks(data || []);
+          console.log('DayView availability data:', availabilityData);
+          setAvailabilityBlocks(availabilityData || []);
+          
+          if (availabilityData && availabilityData.length > 0 && clinicianId) {
+            const availabilityIds = availabilityData.map(block => block.id);
+            
+            const { data: exceptionsData, error: exceptionsError } = await supabase
+              .from('availability_exceptions')
+              .select('*')
+              .eq('clinician_id', clinicianId)
+              .eq('specific_date', formattedDate)
+              .in('original_availability_id', availabilityIds);
+              
+            if (exceptionsError) {
+              console.error('Error fetching availability exceptions:', exceptionsError);
+            } else {
+              console.log('DayView exceptions data:', exceptionsData);
+              setExceptions(exceptionsData || []);
+            }
+          }
+          
+          processAvailabilityWithExceptions(availabilityData || [], exceptionsData || []);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -120,16 +155,41 @@ const DayView: React.FC<DayViewProps> = ({
       }
     };
 
-    fetchAvailability();
-  }, [dayOfWeek, clinicianId, refreshTrigger]);
+    fetchAvailabilityAndExceptions();
+  }, [dayOfWeek, clinicianId, refreshTrigger, formattedDate]);
 
-  const processAvailabilityBlocks = (blocks: AvailabilityBlock[]) => {
+  const processAvailabilityWithExceptions = (blocks: AvailabilityBlock[], exceptionsData: AvailabilityException[]) => {
     if (!blocks.length) {
       setTimeBlocks([]);
       return;
     }
 
-    const parsedBlocks = blocks.map(block => {
+    const exceptionsMap: Record<string, AvailabilityException> = {};
+    exceptionsData.forEach(exception => {
+      exceptionsMap[exception.original_availability_id] = exception;
+    });
+
+    const effectiveBlocks = blocks
+      .filter(block => {
+        const exception = exceptionsMap[block.id];
+        return !exception || !exception.is_deleted;
+      })
+      .map(block => {
+        const exception = exceptionsMap[block.id];
+        
+        if (exception && exception.start_time && exception.end_time) {
+          return {
+            ...block,
+            start_time: exception.start_time,
+            end_time: exception.end_time,
+            isException: true
+          };
+        }
+        
+        return block;
+      });
+
+    const parsedBlocks = effectiveBlocks.map(block => {
       const [startHour, startMinute] = block.start_time.split(':').map(Number);
       const [endHour, endMinute] = block.end_time.split(':').map(Number);
 
@@ -139,7 +199,8 @@ const DayView: React.FC<DayViewProps> = ({
       return {
         id: block.id,
         start,
-        end
+        end,
+        isException: block.isException
       };
     });
 
@@ -155,11 +216,15 @@ const DayView: React.FC<DayViewProps> = ({
           lastBlock.end = block.end;
         }
         lastBlock.availabilityIds.push(block.id);
+        if (block.isException) {
+          lastBlock.isException = true;
+        }
       } else {
         mergedBlocks.push({
           start: block.start,
           end: block.end,
-          availabilityIds: [block.id]
+          availabilityIds: [block.id],
+          isException: block.isException
         });
       }
     });
@@ -179,6 +244,21 @@ const DayView: React.FC<DayViewProps> = ({
       timeSlot >= block.start &&
       timeSlot < block.end
     );
+  };
+
+  const getAvailabilityForBlock = (blockId: string) => {
+    return availabilityBlocks.find(block => block.id === blockId);
+  };
+
+  const handleAvailabilityBlockClick = (block: TimeBlock) => {
+    if (!onAvailabilityClick || !block.availabilityIds.length) return;
+    
+    const availabilityId = block.availabilityIds[0];
+    const availabilityBlock = getAvailabilityForBlock(availabilityId);
+    
+    if (availabilityBlock) {
+      onAvailabilityClick(currentDate, availabilityBlock);
+    }
   };
 
   const getAppointmentForTimeSlot = (timeSlot: Date) => {
@@ -272,11 +352,17 @@ const DayView: React.FC<DayViewProps> = ({
                   </div>
                 ) : showContinuousBlock ? (
                   <div
-                    className={`p-2 bg-green-50 border-l-4 border-green-500 ${continuousBlockClass} rounded text-sm h-full`}
+                    className={`p-2 ${currentBlock?.isException ? 'bg-teal-50 border-teal-500' : 'bg-green-50 border-green-500'} border-l-4 ${continuousBlockClass} rounded text-sm h-full cursor-pointer hover:opacity-90 transition-colors`}
+                    onClick={() => currentBlock && handleAvailabilityBlockClick(currentBlock)}
                   >
                     {isStartOfBlock && (
                       <>
-                        <div className="font-medium">Available</div>
+                        <div className="font-medium flex items-center">
+                          Available
+                          {currentBlock?.isException && (
+                            <span className="ml-2 text-xs px-1.5 py-0.5 bg-teal-100 text-teal-800 rounded-full">Modified</span>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-600">
                           {format(currentBlock.start, 'h:mm a')} - {format(currentBlock.end, 'h:mm a')}
                         </div>
