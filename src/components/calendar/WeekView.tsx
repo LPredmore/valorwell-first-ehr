@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -34,12 +35,13 @@ interface AvailabilityBlock {
   clinician_id?: string;
   is_active?: boolean;
   isException?: boolean;
+  isStandalone?: boolean; // Added this property to fix the TypeScript error
 }
 
 interface AvailabilityException {
   id: string;
   specific_date: string;
-  original_availability_id: string;
+  original_availability_id: string | null;
   start_time: string | null;
   end_time: string | null;
   is_deleted: boolean;
