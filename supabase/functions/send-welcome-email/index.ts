@@ -37,19 +37,11 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Only allow POST requests
-  if (req.method !== "POST") {
-    console.log(`Method not allowed: ${req.method}`);
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  // Check for test mode
+  // Check for test mode BEFORE method validation - this is the key change
   const url = new URL(req.url);
   const isTestMode = url.searchParams.get("test") === "true";
   
+  // For test mode, allow both GET and POST requests
   if (isTestMode) {
     console.log("Running in test mode");
     try {
@@ -130,6 +122,15 @@ serve(async (req) => {
         }
       );
     }
+  }
+
+  // For non-test mode, only allow POST requests
+  if (req.method !== "POST") {
+    console.log(`Method not allowed: ${req.method}`);
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
