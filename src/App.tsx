@@ -69,6 +69,13 @@ const App: React.FC = () => {
                   </ProtectedRoute>
                 } />
                 
+                {/* Modified: Allow clients to view their own profile */}
+                <Route path="/clients/:clientId" element={
+                  <ProtectedRoute allowedRoles={['admin', 'moderator', 'client']} blockNewClients={true}>
+                    <ClientDetails />
+                  </ProtectedRoute>
+                } />
+                
                 {/* Protected routes - clinician, admin, moderator */}
                 <Route path="/clinician-dashboard" element={
                   <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
@@ -101,11 +108,7 @@ const App: React.FC = () => {
                     <Clients />
                   </ProtectedRoute>
                 } />
-                <Route path="/clients/:clientId" element={
-                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
-                    <ClientDetails />
-                  </ProtectedRoute>
-                } />
+                
                 <Route path="/analytics" element={
                   <ProtectedRoute allowedRoles={['admin', 'moderator']}>
                     <Analytics />
