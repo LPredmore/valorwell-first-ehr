@@ -34,6 +34,8 @@ const MyInsurance: React.FC<MyInsuranceProps> = ({
   insuranceTypes,
   relationshipTypes
 }) => {
+  console.log("MyInsurance clientData:", clientData); // Debug log to see what data we have
+  
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
