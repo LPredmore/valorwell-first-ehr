@@ -22,6 +22,7 @@ interface MyPortalProps {
     time: string;
     type: string;
     therapist: string;
+    rawDate?: string;
   }>;
   clientData: any | null;
   clinicianName: string | null;
@@ -198,7 +199,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
                     <TableCell>{appointment.type}</TableCell>
                     <TableCell>{appointment.therapist}</TableCell>
                     <TableCell className="text-right">
-                      {isAppointmentToday(appointment.rawDate) ? (
+                      {isAppointmentToday(appointment.rawDate || '') ? (
                         <Button variant="outline" size="sm" onClick={() => handleStartSession(appointment.id)} disabled={isLoadingVideoSession}>
                           {isLoadingVideoSession ? "Loading..." : "Start Session"}
                         </Button>
