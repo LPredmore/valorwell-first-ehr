@@ -47,7 +47,7 @@ const MonthView: React.FC<MonthViewProps> = ({
 }) => {
   const [loading, setLoading] = useState(true);
   const [availabilityData, setAvailabilityData] = useState<any[]>([]);
-  const [exceptionsData, setExceptionsData] = useState<any[]>([]);
+  const [exceptions, setExceptions] = useState<any[]>([]);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -84,7 +84,7 @@ const MonthView: React.FC<MonthViewProps> = ({
             const endDateStr = format(endDate, 'yyyy-MM-dd');
             const availabilityIds = data.map((block: any) => block.id);
             
-            const { data: exceptions, error: exceptionsError } = await supabase
+            const { data: exceptionsData, error: exceptionsError } = await supabase
               .from('availability_exceptions')
               .select('*')
               .eq('clinician_id', clinicianId)
@@ -95,8 +95,8 @@ const MonthView: React.FC<MonthViewProps> = ({
             if (exceptionsError) {
               console.error('Error fetching exceptions:', exceptionsError);
             } else {
-              console.log('MonthView exceptions data:', exceptions);
-              setExceptionsData(exceptions || []);
+              console.log('MonthView exceptions data:', exceptionsData);
+              setExceptions(exceptionsData || []);
             }
           }
         }
@@ -126,7 +126,7 @@ const MonthView: React.FC<MonthViewProps> = ({
     
     // Check for exceptions that delete availability
     const availabilityIds = regularAvailability.map(slot => slot.id);
-    const deletedExceptions = exceptionsData.filter(
+    const deletedExceptions = exceptions.filter(
       exception => 
         exception.specific_date === dateStr && 
         availabilityIds.includes(exception.original_availability_id) &&
@@ -146,7 +146,7 @@ const MonthView: React.FC<MonthViewProps> = ({
     const dateStr = format(day, 'yyyy-MM-dd');
     
     // Check for exceptions that modify availability times
-    const modifiedExceptions = exceptionsData.filter(
+    const modifiedExceptions = exceptions.filter(
       exception => 
         exception.specific_date === dateStr && 
         !exception.is_deleted &&

@@ -393,7 +393,7 @@ const WeekView: React.FC<WeekViewProps> = ({
 
               return (
                 <div
-                  key={`${day}-${timeSlot}`}
+                  key={`${day.toString()}-${timeSlot.toString()}`}
                   className="col-span-1 min-h-[40px] border-t border-l border-gray-100 p-1 group hover:bg-gray-50"
                 >
                   {appointment && isStartOfAppointment ? (
