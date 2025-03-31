@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import CalendarView from '../components/calendar/CalendarView';
@@ -36,7 +35,6 @@ interface Client {
   displayName: string;
 }
 
-// This function generates recurring dates based on the pattern
 const generateRecurringDates = (
   startDate: Date,
   recurrenceType: string,
@@ -54,7 +52,6 @@ const generateRecurringDates = (
       currentDate = addWeeks(currentDate, 4); // Every 4 weeks
     }
     
-    // Limit to 6 months of appointments
     if (currentDate > addMonths(startDate, 6)) {
       break;
     }
@@ -68,9 +65,6 @@ const generateRecurringDates = (
 const CalendarPage = () => {
   const [view, setView] = useState<ViewType>('week');
   const [showAvailability, setShowAvailability] = useState(false);
-  const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(null);
-  const [clinicians, setClinicians] = useState<Clinician[]>([]);
-  const [loadingClinicians, setLoadingClinicians] = useState(true);
   const { clinicianData } = useClinicianData();
   const [userTimeZone, setUserTimeZone] = useState<string>('');
   
@@ -94,35 +88,8 @@ const CalendarPage = () => {
   }, [clinicianData]);
 
   useEffect(() => {
-    const fetchClinicians = async () => {
-      setLoadingClinicians(true);
-      try {
-        const { data, error } = await supabase
-          .from('clinicians')
-          .select('id, clinician_professional_name')
-          .order('clinician_professional_name');
-
-        if (error) {
-          console.error('Error fetching clinicians:', error);
-        } else {
-          setClinicians(data || []);
-          if (data && data.length > 0 && !selectedClinicianId) {
-            setSelectedClinicianId(data[0].id);
-          }
-        }
-      } catch (error) {
-        console.error('Error:', error);
-      } finally {
-        setLoadingClinicians(false);
-      }
-    };
-
-    fetchClinicians();
-  }, []);
-
-  useEffect(() => {
     const fetchClientsForClinician = async () => {
-      if (!selectedClinicianId) return;
+      if (!clinicianData?.id) return;
       
       setLoadingClients(true);
       setClients([]);
@@ -132,7 +99,7 @@ const CalendarPage = () => {
         const { data, error } = await supabase
           .from('clients')
           .select('id, client_preferred_name, client_last_name')
-          .eq('client_assigned_therapist', selectedClinicianId)
+          .eq('client_assigned_therapist', clinicianData.id)
           .order('client_last_name');
           
         if (error) {
@@ -152,7 +119,7 @@ const CalendarPage = () => {
     };
 
     fetchClientsForClinician();
-  }, [selectedClinicianId]);
+  }, [clinicianData]);
 
   const generateTimeOptions = () => {
     const options = [];
@@ -188,7 +155,6 @@ const CalendarPage = () => {
       
       const endTime = `${endDateTime.getHours().toString().padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}`;
 
-      // If it's a recurring appointment, we need to generate multiple dates
       if (isRecurring) {
         const recurringGroupId = uuidv4(); // Generate a unique ID to link recurring appointments
         const recurringDates = generateRecurringDates(selectedDate, recurrenceType);
@@ -205,7 +171,6 @@ const CalendarPage = () => {
           recurring_group_id: recurringGroupId
         }));
 
-        // Insert all recurring appointments in a batch
         const { data, error } = await supabase
           .from('appointments')
           .insert(appointmentsToInsert)
@@ -221,7 +186,6 @@ const CalendarPage = () => {
           description: `Created ${recurringDates.length} recurring appointments.`,
         });
       } else {
-        // Create a single appointment
         const formattedDate = format(selectedDate, 'yyyy-MM-dd');
 
         const { data, error } = await supabase
@@ -232,7 +196,7 @@ const CalendarPage = () => {
             date: formattedDate,
             start_time: startTime,
             end_time: endTime,
-            type: "Therapy Session", // Hardcoded default type
+            type: "Therapy Session",
             status: 'scheduled'
           }])
           .select();
@@ -253,7 +217,6 @@ const CalendarPage = () => {
       setIsDialogOpen(false);
       setIsRecurring(false);
       
-      // Trigger a refresh of the calendar view
       setAppointmentRefreshTrigger(prev => prev + 1);
 
     } catch (error) {
@@ -302,38 +265,13 @@ const CalendarPage = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 New Appointment
               </Button>
-
-              <div className="w-64">
-                <Select
-                  value={selectedClinicianId || undefined}
-                  onValueChange={(value) => setSelectedClinicianId(value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a clinician" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {loadingClinicians ? (
-                      <div className="flex items-center justify-center p-2">
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Loading...
-                      </div>
-                    ) : (
-                      clinicians.map((clinician) => (
-                        <SelectItem key={clinician.id} value={clinician.id}>
-                          {clinician.clinician_professional_name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
           </div>
 
           <CalendarView
             view={view}
             showAvailability={showAvailability}
-            clinicianId={selectedClinicianId}
+            clinicianId={clinicianData?.id}
             userTimeZone={userTimeZone}
             refreshTrigger={appointmentRefreshTrigger}
           />
