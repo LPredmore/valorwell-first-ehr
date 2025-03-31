@@ -33,6 +33,17 @@ const profileStep1Schema = z.object({
   client_relationship: z.string().min(1, "Relationship is required"),
 });
 
+const profileStep2Schema = z.object({
+  client_date_of_birth: z.date({
+    required_error: "Date of birth is required",
+  }),
+  client_gender: z.string().min(1, "Birth gender is required"),
+  client_gender_identity: z.string().min(1, "Gender identity is required"),
+  client_state: z.string().min(1, "State is required"),
+  client_time_zone: z.string().min(1, "Time zone is required"),
+  client_vacoverage: z.string().min(1, "VA coverage information is required"),
+});
+
 type ProfileFormValues = z.infer<typeof profileStep1Schema> & {
   client_date_of_birth: Date | undefined;
   client_gender: string;
@@ -89,7 +100,13 @@ const ProfileSetup = () => {
   const [otherInsurance, setOtherInsurance] = useState<string>('');
   
   const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileStep1Schema),
+    resolver: zodResolver(
+      currentStep === 1 
+        ? profileStep1Schema 
+        : currentStep === 2 
+          ? profileStep2Schema 
+          : profileStep1Schema
+    ),
     mode: "onChange",
     defaultValues: {
       client_first_name: '',
@@ -786,21 +803,8 @@ const ProfileSetup = () => {
   };
 
   const renderStepTwo = () => {
-    const isDateOfBirthValid = !!form.getValues('client_date_of_birth');
-    const isGenderValid = !!form.getValues('client_gender');
-    const isGenderIdentityValid = !!form.getValues('client_gender_identity');
-    const isStateValid = !!form.getValues('client_state');
-    const isTimeZoneValid = !!form.getValues('client_time_zone');
-    const isVACoverageValid = !!form.getValues('client_vacoverage');
+    const isStep2Valid = form.formState.isValid;
     
-    const isStep2Valid = 
-      isDateOfBirthValid && 
-      isGenderValid && 
-      isGenderIdentityValid && 
-      isStateValid && 
-      isTimeZoneValid && 
-      isVACoverageValid;
-
     return (
       <Form {...form}>
         <div className="space-y-6">
@@ -818,6 +822,7 @@ const ProfileSetup = () => {
               label="Birth Gender"
               type="select"
               options={["Male", "Female"]}
+              required={true}
             />
             
             <FormFieldWrapper
@@ -826,6 +831,7 @@ const ProfileSetup = () => {
               label="Gender Identity"
               type="select"
               options={["Male", "Female", "Other"]}
+              required={true}
             />
             
             <FormFieldWrapper
@@ -845,6 +851,7 @@ const ProfileSetup = () => {
                 "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", 
                 "West Virginia", "Wisconsin", "Wyoming"
               ]}
+              required={true}
             />
             
             <FormFieldWrapper
@@ -861,6 +868,7 @@ const ProfileSetup = () => {
                 const option = timezoneOptions.find(tz => tz.value === value);
                 return option ? option.label : '';
               }}
+              required={true}
             />
             
             <FormFieldWrapper
@@ -875,6 +883,7 @@ const ProfileSetup = () => {
                 "None - I am a veteran", 
                 "None - I am not a veteran"
               ]}
+              required={true}
             />
           </div>
           
@@ -892,7 +901,8 @@ const ProfileSetup = () => {
             <Button 
               type="button" 
               onClick={handleNext}
-              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+              disabled={!isStep2Valid}
+              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
               <ArrowRight className="h-4 w-4" />
