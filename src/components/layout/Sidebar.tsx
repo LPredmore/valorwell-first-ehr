@@ -55,23 +55,27 @@ const Sidebar = () => {
       </div>
       
       <nav className="flex-1 py-4 space-y-1 px-2">
-        {/* Always visible links */}
-        <Link 
-          to="/signup" 
-          className={`sidebar-link ${isActive('/signup') ? 'active' : ''}`}
-        >
-          <UserPlus size={18} />
-          <span>Sign-Up</span>
-        </Link>
+        {/* Sign-Up link - hide for clinicians */}
+        {!isClinician && (
+          <Link 
+            to="/signup" 
+            className={`sidebar-link ${isActive('/signup') ? 'active' : ''}`}
+          >
+            <UserPlus size={18} />
+            <span>Sign-Up</span>
+          </Link>
+        )}
 
-        {/* Profile setup visible to all */}
-        <Link 
-          to="/profile-setup" 
-          className={`sidebar-link ${isActive('/profile-setup') ? 'active' : ''}`}
-        >
-          <UserCog size={18} />
-          <span>Profile Setup</span>
-        </Link>
+        {/* Profile setup - hide for clinicians */}
+        {!isClinician && (
+          <Link 
+            to="/profile-setup" 
+            className={`sidebar-link ${isActive('/profile-setup') ? 'active' : ''}`}
+          >
+            <UserCog size={18} />
+            <span>Profile Setup</span>
+          </Link>
+        )}
         
         {/* Links only visible to non-new clients */}
         {isClient && !isNewClient && (
