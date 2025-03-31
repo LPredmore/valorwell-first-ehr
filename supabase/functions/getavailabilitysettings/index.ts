@@ -30,6 +30,8 @@ serve(async (req) => {
       throw new Error('Clinician ID is required')
     }
     
+    console.log(`Fetching availability settings for clinician ID: ${clinicianId}`)
+    
     // Fetch the clinician's availability settings
     const { data, error } = await supabaseClient
       .from('availability_settings')
@@ -39,11 +41,18 @@ serve(async (req) => {
     
     if (error) {
       console.error('Error fetching availability settings:', error)
+      console.error(`Clinician ID used in query: ${clinicianId}`)
       // Return default settings if not found
       return new Response(
-        JSON.stringify({ time_granularity: 'hour' }),
+        JSON.stringify({ time_granularity: 'hour', min_days_ahead: 1 }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+    
+    // Ensure min_days_ahead is a number
+    if (data) {
+      data.min_days_ahead = Number(data.min_days_ahead) || 1;
+      console.log(`Successfully retrieved settings: ${JSON.stringify(data, null, 2)}`)
     }
     
     return new Response(

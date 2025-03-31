@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ interface AvailabilitySettings {
 id: string;
 clinician_id: string;
 time_granularity: 'hour' | 'half-hour';
+min_days_ahead: number;
 created_at: string;
 updated_at: string;
 }
@@ -45,6 +47,7 @@ const [availabilityEnabled, setAvailabilityEnabled] = useState(true);
 const [loading, setLoading] = useState(false);
 const [isSaving, setIsSaving] = useState(false);
 const [timeGranularity, setTimeGranularity] = useState<'hour' | 'half-hour'>('hour');
+const [minDaysAhead, setMinDaysAhead] = useState<number>(1);
 const { toast } = useToast();
 
 const [weekSchedule, setWeekSchedule] = useState<DaySchedule[]>([
@@ -115,6 +118,7 @@ const { data: settingsData } = await supabase.functions.invoke('get-availability
 
 if (settingsData) {
 setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
+setMinDaysAhead(Number(settingsData.min_days_ahead) || 1);
 }
 
 availabilityData.forEach(slot => {
@@ -303,7 +307,8 @@ await supabase
 .from('availability_settings')
 .upsert({
 clinician_id: clinicianIdToUse,
-time_granularity: timeGranularity
+time_granularity: timeGranularity,
+min_days_ahead: minDaysAhead
 }, {
 onConflict: 'clinician_id'
 });
@@ -457,6 +462,27 @@ className="flex flex-col space-y-1"
 <Label htmlFor="half-hour">Hour and half-hour marks (e.g., 1:00, 1:30)</Label>
 </div>
 </RadioGroup>
+</div>
+
+<div>
+<p className="text-sm text-muted-foreground mb-2">
+How soon can clients schedule with you?
+</p>
+<Select 
+  value={minDaysAhead.toString()} 
+  onValueChange={(value) => setMinDaysAhead(Number(value))}
+>
+  <SelectTrigger className="w-full max-w-xs">
+    <SelectValue placeholder="Select days in advance" />
+  </SelectTrigger>
+  <SelectContent>
+    {Array.from({ length: 15 }, (_, i) => i + 1).map((day) => (
+      <SelectItem key={day} value={day.toString()}>
+        {day} {day === 1 ? 'day' : 'days'} in advance
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
 </div>
 </div>
 </div>
