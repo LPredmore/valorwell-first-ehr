@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
 format,
@@ -41,6 +42,7 @@ interface AvailabilityBlock {
   start_time: string;
   end_time: string;
   clinician_id?: string;
+  isException?: boolean; // Added isException property
 }
 
 interface AvailabilityException {
