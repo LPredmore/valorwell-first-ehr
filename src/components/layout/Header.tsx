@@ -85,13 +85,13 @@ const Header: React.FC<HeaderProps> = ({
   // Create display name from first and last name, fallback to the provided userName prop
   const displayName = firstName && lastName ? `${firstName} ${lastName}` : userName || 'User';
   return <header className="h-16 border-b bg-white flex items-center justify-between px-6">
-      <h1 className="text-2xl font-semibold text-gray-800">{title}</h1>
+      
       
       <div className="relative flex-1 max-w-lg mx-8">
         <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
           <Search size={16} />
         </div>
-        <input type="search" className="w-full p-2 pl-10 text-sm text-gray-900 bg-gray-50 rounded-md border border-gray-300 focus:ring-1 focus:outline-none focus:ring-valorwell-500" placeholder="Search..." />
+        
       </div>
       
       <div className="flex items-center gap-4">
