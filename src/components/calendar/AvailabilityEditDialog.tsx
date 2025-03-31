@@ -90,6 +90,14 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
     try {
       const formattedDate = format(specificDate, 'yyyy-MM-dd');
       
+      console.log('Saving availability exception:', {
+        clinicianId,
+        specificDate: formattedDate,
+        originalAvailabilityId: availabilityBlock.id,
+        startTime,
+        endTime
+      });
+      
       // Check if an exception already exists for this day and availability block
       const { data: existingException, error: checkError } = await supabase
         .from('availability_exceptions')
@@ -97,14 +105,17 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
         .eq('clinician_id', clinicianId)
         .eq('specific_date', formattedDate)
         .eq('original_availability_id', availabilityBlock.id)
-        .single();
+        .maybeSingle();
         
+      console.log('Existing exception check result:', { existingException, error: checkError });
+      
       if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is 'not found' error
         throw checkError;
       }
       
       if (existingException) {
         // Update existing exception
+        console.log('Updating existing exception:', existingException.id);
         const { error: updateError } = await supabase
           .from('availability_exceptions')
           .update({
@@ -115,9 +126,13 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
           })
           .eq('id', existingException.id);
           
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Error updating exception:', updateError);
+          throw updateError;
+        }
       } else {
         // Create new exception
+        console.log('Creating new exception');
         const { error: insertError } = await supabase
           .from('availability_exceptions')
           .insert({
@@ -129,7 +144,10 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
             is_deleted: false
           });
           
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error('Error inserting exception:', insertError);
+          throw insertError;
+        }
       }
       
       toast({
@@ -170,6 +188,12 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
     try {
       const formattedDate = format(specificDate, 'yyyy-MM-dd');
       
+      console.log('Cancelling availability:', {
+        clinicianId,
+        specificDate: formattedDate,
+        originalAvailabilityId: availabilityBlock.id
+      });
+      
       // Check if an exception already exists
       const { data: existingException, error: checkError } = await supabase
         .from('availability_exceptions')
@@ -177,14 +201,17 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
         .eq('clinician_id', clinicianId)
         .eq('specific_date', formattedDate)
         .eq('original_availability_id', availabilityBlock.id)
-        .single();
+        .maybeSingle();
         
+      console.log('Existing exception check for delete:', { existingException, error: checkError });
+      
       if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is 'not found' error
         throw checkError;
       }
       
       if (existingException) {
         // Update existing exception to mark as deleted
+        console.log('Updating existing exception to deleted:', existingException.id);
         const { error: updateError } = await supabase
           .from('availability_exceptions')
           .update({
@@ -193,9 +220,13 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
           })
           .eq('id', existingException.id);
           
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Error updating exception to deleted:', updateError);
+          throw updateError;
+        }
       } else {
         // Create new exception marked as deleted
+        console.log('Creating new deleted exception');
         const { error: insertError } = await supabase
           .from('availability_exceptions')
           .insert({
@@ -205,7 +236,10 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
             is_deleted: true
           });
           
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error('Error inserting deleted exception:', insertError);
+          throw insertError;
+        }
       }
       
       toast({
