@@ -6,13 +6,15 @@ import { useUser } from '@/context/UserContext';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles: string[];
+  blockNewClients?: boolean; // New prop to block "New" clients
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
-  allowedRoles 
+  allowedRoles,
+  blockNewClients = false
 }) => {
-  const { userRole, isLoading } = useUser();
+  const { userRole, clientStatus, isLoading } = useUser();
   
   if (isLoading) {
     return <div className="flex h-screen w-full items-center justify-center">
@@ -20,8 +22,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     </div>;
   }
   
+  // First check role-based access
   if (!userRole || !allowedRoles.includes(userRole)) {
     return <Navigate to="/patient-dashboard" replace />;
+  }
+  
+  // For clients, check if they're "New" and should be blocked from this route
+  if (userRole === 'client' && blockNewClients && clientStatus === 'New') {
+    return <Navigate to="/profile-setup" replace />;
   }
   
   return <>{children}</>;

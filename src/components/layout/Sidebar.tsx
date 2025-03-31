@@ -21,8 +21,9 @@ import { useUser } from '@/context/UserContext';
 const Sidebar = () => {
   const location = useLocation();
   const currentPath = location.pathname;
-  const { userRole, isLoading } = useUser();
+  const { userRole, clientStatus, isLoading } = useUser();
   const isClient = userRole === 'client';
+  const isNewClient = isClient && clientStatus === 'New';
   
   const isActive = (path: string) => {
     return currentPath === path;
@@ -53,7 +54,7 @@ const Sidebar = () => {
       </div>
       
       <nav className="flex-1 py-4 space-y-1 px-2">
-        {/* Always visible links, even for clients */}
+        {/* Always visible links */}
         <Link 
           to="/signup" 
           className={`sidebar-link ${isActive('/signup') ? 'active' : ''}`}
@@ -62,6 +63,7 @@ const Sidebar = () => {
           <span>Sign-Up</span>
         </Link>
 
+        {/* Profile setup visible to all */}
         <Link 
           to="/profile-setup" 
           className={`sidebar-link ${isActive('/profile-setup') ? 'active' : ''}`}
@@ -70,29 +72,34 @@ const Sidebar = () => {
           <span>Profile Setup</span>
         </Link>
         
-        <Link 
-          to="/therapist-selection" 
-          className={`sidebar-link ${isActive('/therapist-selection') ? 'active' : ''}`}
-        >
-          <UserSearch size={18} />
-          <span>Therapist Selection</span>
-        </Link>
+        {/* Links only visible to non-new clients */}
+        {isClient && !isNewClient && (
+          <>
+            <Link 
+              to="/therapist-selection" 
+              className={`sidebar-link ${isActive('/therapist-selection') ? 'active' : ''}`}
+            >
+              <UserSearch size={18} />
+              <span>Therapist Selection</span>
+            </Link>
 
-        <Link 
-          to="/patient-dashboard" 
-          className={`sidebar-link ${isActive('/patient-dashboard') ? 'active' : ''}`}
-        >
-          <LayoutDashboard size={18} />
-          <span>Patient Dashboard</span>
-        </Link>
-        
-        <Link 
-          to="/patient-documents" 
-          className={`sidebar-link ${isActive('/patient-documents') ? 'active' : ''}`}
-        >
-          <FileText size={18} />
-          <span>Patient Documents</span>
-        </Link>
+            <Link 
+              to="/patient-dashboard" 
+              className={`sidebar-link ${isActive('/patient-dashboard') ? 'active' : ''}`}
+            >
+              <LayoutDashboard size={18} />
+              <span>Patient Dashboard</span>
+            </Link>
+            
+            <Link 
+              to="/patient-documents" 
+              className={`sidebar-link ${isActive('/patient-documents') ? 'active' : ''}`}
+            >
+              <FileText size={18} />
+              <span>Patient Documents</span>
+            </Link>
+          </>
+        )}
         
         {/* Admin/Staff only links */}
         {!isClient && (

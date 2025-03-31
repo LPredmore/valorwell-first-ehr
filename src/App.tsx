@@ -48,9 +48,25 @@ const App: React.FC = () => {
                 
                 {/* Client accessible routes */}
                 <Route path="/profile-setup" element={<ProfileSetup />} />
-                <Route path="/therapist-selection" element={<TherapistSelection />} />
-                <Route path="/patient-dashboard" element={<PatientDashboard />} />
-                <Route path="/patient-documents" element={<PatientDocuments />} />
+                
+                {/* Routes that block "New" clients */}
+                <Route path="/therapist-selection" element={
+                  <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
+                    <TherapistSelection />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/patient-dashboard" element={
+                  <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
+                    <PatientDashboard />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/patient-documents" element={
+                  <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
+                    <PatientDocuments />
+                  </ProtectedRoute>
+                } />
                 
                 {/* Protected routes - non-client only */}
                 <Route path="/my-clients" element={

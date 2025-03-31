@@ -4,17 +4,23 @@ import { supabase } from '@/integrations/supabase/client';
 
 type UserContextType = {
   userRole: string | null;
+  clientStatus: string | null;
   isLoading: boolean;
 };
 
-const UserContext = createContext<UserContextType>({ userRole: null, isLoading: true });
+const UserContext = createContext<UserContextType>({ 
+  userRole: null, 
+  clientStatus: null,
+  isLoading: true 
+});
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [clientStatus, setClientStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUserRole = async () => {
+    const fetchUserData = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -25,19 +31,33 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
             .single();
             
           if (error) throw error;
-          setUserRole(data?.role || null);
+          const role = data?.role || null;
+          setUserRole(role);
+          
+          // If user is a client, fetch client status from clients table
+          if (role === 'client') {
+            const { data: clientData, error: clientError } = await supabase
+              .from('clients')
+              .select('client_status')
+              .eq('id', user.id)
+              .single();
+              
+            if (!clientError && clientData) {
+              setClientStatus(clientData.client_status);
+            }
+          }
         }
       } catch (error) {
-        console.error('Error fetching user role:', error);
+        console.error('Error fetching user data:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchUserRole();
+    fetchUserData();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      fetchUserRole();
+      fetchUserData();
     });
 
     return () => {
@@ -46,7 +66,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <UserContext.Provider value={{ userRole, isLoading }}>
+    <UserContext.Provider value={{ userRole, clientStatus, isLoading }}>
       {children}
     </UserContext.Provider>
   );
