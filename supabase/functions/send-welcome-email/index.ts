@@ -87,8 +87,9 @@ serve(async (req) => {
       console.log(`Sending test email to ${testEmail}`);
       
       try {
+        // Using the default Resend from address temporarily until domain is verified
         const { data, error } = await resend.emails.send({
-          from: "TheraPal <noreply@updates.valorwell.org>",
+          from: "onboarding@resend.dev",
           to: testEmail,
           subject: "TheraPal Email Test",
           html: `
@@ -101,7 +102,7 @@ serve(async (req) => {
           `,
         });
         
-        console.log("Email send operation completed");
+        console.log("Email send operation response:", JSON.stringify(data), JSON.stringify(error));
         
         if (error) {
           console.error("Error from Resend API during test:", error);
@@ -118,7 +119,22 @@ serve(async (req) => {
           );
         }
         
-        console.log("Test email sent successfully:", data);
+        if (!data || !data.id) {
+          console.error("No email ID returned from Resend API");
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: "Email service did not confirm delivery",
+              response: data
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 500,
+            }
+          );
+        }
+        
+        console.log("Test email sent successfully, ID:", data.id);
         return new Response(
           JSON.stringify({ 
             success: true, 
@@ -254,8 +270,9 @@ serve(async (req) => {
       // Send the welcome email
       console.log("Sending welcome email...");
       try {
+        // Using the default Resend from address temporarily until domain is verified
         const { data, error } = await resend.emails.send({
-          from: "TheraPal <noreply@updates.valorwell.org>",
+          from: "onboarding@resend.dev",
           to: email,
           subject: "Welcome to TheraPal - Your Account Information",
           html: `
@@ -277,12 +294,29 @@ serve(async (req) => {
           `,
         });
 
+        console.log("Email send operation response:", JSON.stringify(data), JSON.stringify(error));
+
         if (error) {
           console.error("Error from Resend API:", error);
           throw error;
         }
 
-        console.log("Email sent successfully:", data);
+        if (!data || !data.id) {
+          console.error("No email ID returned from Resend API");
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: "Email service did not confirm delivery",
+              response: data
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 500,
+            }
+          );
+        }
+
+        console.log("Email sent successfully, ID:", data.id);
         
         return new Response(
           JSON.stringify({ success: true, message: "Welcome email sent", data }),
