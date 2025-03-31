@@ -72,10 +72,10 @@ const PatientDashboard: React.FC = () => {
       client_tricare_region: '',
       client_tricare_policy_id: '',
       client_tricare_has_referral: '',
-      client_tricare_referral_number: '',
-      mentalHealthReferral: ''
+      client_tricare_referral_number: ''
     }
   });
+
   const fetchClinicianName = async (clinicianId: string) => {
     if (!clinicianId) return;
     try {
@@ -90,6 +90,7 @@ const PatientDashboard: React.FC = () => {
       console.error("Error fetching clinician name:", error);
     }
   };
+
   const fetchClientData = async () => {
     setLoading(true);
     try {
@@ -168,8 +169,7 @@ const PatientDashboard: React.FC = () => {
           client_tricare_region: client.client_tricare_region || '',
           client_tricare_policy_id: client.client_tricare_policy_id || '',
           client_tricare_has_referral: client.client_tricare_has_referral || '',
-          client_tricare_referral_number: client.client_tricare_referral_number || '',
-          mentalHealthReferral: client.mentalHealthReferral || ''
+          client_tricare_referral_number: client.client_tricare_referral_number || ''
         });
       } else {
         toast({
@@ -189,6 +189,7 @@ const PatientDashboard: React.FC = () => {
       setLoading(false);
     }
   };
+
   const handleSaveProfile = async () => {
     if (!clientData) {
       console.error("Cannot save: No client data available");
@@ -241,8 +242,7 @@ const PatientDashboard: React.FC = () => {
         client_tricare_region: formValues.client_tricare_region,
         client_tricare_policy_id: formValues.client_tricare_policy_id,
         client_tricare_has_referral: formValues.client_tricare_has_referral,
-        client_tricare_referral_number: formValues.client_tricare_referral_number,
-        mentalHealthReferral: formValues.mentalHealthReferral
+        client_tricare_referral_number: formValues.client_tricare_referral_number
       };
       console.log("Sending updates to database:", updates);
       const result = await updateClientProfile(clientData.id, updates);
@@ -269,15 +269,18 @@ const PatientDashboard: React.FC = () => {
       setIsSaving(false);
     }
   };
+
   const handleCancelEdit = () => {
     console.log("Edit cancelled");
     setIsEditing(false);
     fetchClientData();
   };
+
   useEffect(() => {
     console.log("PatientDashboard component mounted");
     fetchClientData();
   }, []);
+
   const upcomingAppointments = [{
     id: 1,
     date: 'May 15, 2024',
@@ -291,6 +294,7 @@ const PatientDashboard: React.FC = () => {
     type: 'Follow-up',
     therapist: 'Dr. Sarah Johnson'
   }];
+
   const pastAppointments = [{
     id: 1,
     date: 'April 30, 2024',
@@ -304,6 +308,7 @@ const PatientDashboard: React.FC = () => {
     type: 'Therapy Session',
     therapist: 'Dr. Sarah Johnson'
   }];
+
   return <Layout>
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
