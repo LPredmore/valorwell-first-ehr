@@ -37,9 +37,10 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({
       
       <div className="grid grid-cols-1 gap-6">
         <FormFieldWrapper control={form.control} name="client_champva" label="CHAMPVA #" type="text" maxLength={9} />
-        <p className="text-sm text-gray-500 italic -mt-4">
-          We understand that this is your SSN. And although we do not necessarily agree with them using this as their patient identifier, we do have to follow their process. The only way to verify your coverage is to have this.
-        </p>
+        <p className="text-sm text-gray-500 -mt-4">We understand that this is your SSN. And although we do not necessarily agree with them using this as their patient identifier, we do have to follow their process. The only way to verify your coverage is to have this.
+
+
+      </p>
         
         <Separator className="my-4" />
         
