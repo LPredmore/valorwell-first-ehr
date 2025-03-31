@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,9 @@ interface AvailabilityBlock {
   day_of_week: string;
   start_time: string;
   end_time: string;
+  clinician_id?: string;
+  is_active?: boolean;
+  isException?: boolean;
 }
 
 interface AvailabilityEditDialogProps {
@@ -35,8 +38,8 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
   onAvailabilityUpdated
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [startTime, setStartTime] = useState(availabilityBlock?.start_time || '09:00');
-  const [endTime, setEndTime] = useState(availabilityBlock?.end_time || '17:00');
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('17:00');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
 
@@ -55,13 +58,22 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
 
   const timeOptions = generateTimeOptions();
 
-  // Update state when props change
-  React.useEffect(() => {
-    if (availabilityBlock) {
-      setStartTime(availabilityBlock.start_time);
-      setEndTime(availabilityBlock.end_time);
+  // Initialize state when props change
+  useEffect(() => {
+    if (availabilityBlock && isOpen) {
+      // Format the times from "HH:MM:SS" format to "HH:MM" format if needed
+      const formattedStartTime = availabilityBlock.start_time.substring(0, 5);
+      const formattedEndTime = availabilityBlock.end_time.substring(0, 5);
+      
+      console.log('Setting times from availability block:', {
+        original: { start: availabilityBlock.start_time, end: availabilityBlock.end_time },
+        formatted: { start: formattedStartTime, end: formattedEndTime }
+      });
+      
+      setStartTime(formattedStartTime);
+      setEndTime(formattedEndTime);
     }
-  }, [availabilityBlock]);
+  }, [availabilityBlock, isOpen]);
 
   const handleSaveClick = async () => {
     if (!clinicianId || !specificDate || !availabilityBlock) {
