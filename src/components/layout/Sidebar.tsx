@@ -110,6 +110,14 @@ const Sidebar = () => {
         {isClinician && (
           <>
             <Link 
+              to="/clinician-dashboard" 
+              className={`sidebar-link ${isActive('/clinician-dashboard') ? 'active' : ''}`}
+            >
+              <LayoutDashboard size={18} />
+              <span>Dashboard</span>
+            </Link>
+            
+            <Link 
               to="/my-clients" 
               className={`sidebar-link ${isActive('/my-clients') ? 'active' : ''}`}
             >
@@ -130,6 +138,14 @@ const Sidebar = () => {
         {/* Admin/Staff only links - exclude clinicians */}
         {userRole === 'admin' || userRole === 'moderator' ? (
           <>
+            <Link 
+              to="/clinician-dashboard" 
+              className={`sidebar-link ${isActive('/clinician-dashboard') ? 'active' : ''}`}
+            >
+              <LayoutDashboard size={18} />
+              <span>Dashboard</span>
+            </Link>
+            
             <Link 
               to="/my-clients" 
               className={`sidebar-link ${isActive('/my-clients') ? 'active' : ''}`}

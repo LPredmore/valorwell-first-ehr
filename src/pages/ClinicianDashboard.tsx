@@ -1,0 +1,282 @@
+
+import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { format, isToday, isFuture, parseISO, isAfter } from 'date-fns';
+import { AlertCircle, Calendar, Clock, UserCircle, Video } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
+import Layout from '@/components/layout/Layout';
+import VideoChat from '@/components/video/VideoChat';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useUser } from '@/context/UserContext';
+
+type Appointment = {
+  id: string;
+  client_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  type: string;
+  status: string;
+  video_room_url: string | null;
+  client?: {
+    client_first_name: string;
+    client_last_name: string;
+  };
+};
+
+const ClinicianDashboard = () => {
+  const { toast } = useToast();
+  const { userId } = useUser();
+  const [isVideoOpen, setIsVideoOpen] = useState(false);
+  const [currentVideoUrl, setCurrentVideoUrl] = useState('');
+
+  // Fetch all appointments for the clinician
+  const { data: appointments, isLoading, error, refetch } = useQuery({
+    queryKey: ['clinician-appointments', userId],
+    queryFn: async () => {
+      console.log('Fetching appointments for clinician:', userId);
+      const { data, error } = await supabase
+        .from('appointments')
+        .select(`
+          id,
+          client_id,
+          date,
+          start_time,
+          end_time,
+          type,
+          status,
+          video_room_url,
+          clients (
+            client_first_name,
+            client_last_name
+          )
+        `)
+        .eq('clinician_id', userId)
+        .order('date')
+        .order('start_time');
+
+      if (error) {
+        console.error('Error fetching appointments:', error);
+        throw error;
+      }
+
+      // Map the clients data to a more accessible format
+      return data.map((appointment: any) => ({
+        ...appointment,
+        client: appointment.clients
+      }));
+    },
+    enabled: !!userId
+  });
+
+  // Filter for today's appointments
+  const todayAppointments = appointments?.filter(appointment => {
+    const appointmentDate = parseISO(appointment.date);
+    return isToday(appointmentDate);
+  }) || [];
+
+  // Filter for upcoming appointments (future dates excluding today)
+  const upcomingAppointments = appointments?.filter(appointment => {
+    const appointmentDate = parseISO(appointment.date);
+    return isFuture(appointmentDate) && !isToday(appointmentDate);
+  }) || [];
+
+  // Check if appointment is within the time window to start (10 minutes before to 30 minutes after)
+  const canStartSession = (appointment: Appointment) => {
+    const now = new Date();
+    const appointmentDate = parseISO(appointment.date);
+    
+    if (!isToday(appointmentDate)) return false;
+    
+    const [hours, minutes] = appointment.start_time.split(':').map(Number);
+    const startTime = new Date(appointmentDate);
+    startTime.setHours(hours, minutes);
+    
+    const tenMinutesBefore = new Date(startTime);
+    tenMinutesBefore.setMinutes(tenMinutesBefore.getMinutes() - 10);
+    
+    const thirtyMinutesAfter = new Date(startTime);
+    thirtyMinutesAfter.setMinutes(thirtyMinutesAfter.getMinutes() + 30);
+    
+    return isAfter(now, tenMinutesBefore) && !isAfter(now, thirtyMinutesAfter);
+  };
+
+  // Start a video session for an appointment
+  const startVideoSession = async (appointment: Appointment) => {
+    try {
+      if (appointment.video_room_url) {
+        setCurrentVideoUrl(appointment.video_room_url);
+        setIsVideoOpen(true);
+      } else {
+        const result = await getOrCreateVideoRoom(appointment.id);
+        if (result.success && result.url) {
+          setCurrentVideoUrl(result.url);
+          setIsVideoOpen(true);
+          // Refresh the appointments to get the updated video_room_url
+          refetch();
+        } else {
+          throw new Error('Failed to create video room');
+        }
+      }
+    } catch (error) {
+      console.error('Error starting video session:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not start the video session. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Format time from "HH:MM:00" to "HH:MM AM/PM"
+  const formatTime = (timeString: string) => {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const formattedHour = hour % 12 || 12;
+    return `${formattedHour}:${minutes} ${ampm}`;
+  };
+
+  // Render appointment card
+  const renderAppointmentCard = (appointment: Appointment, showStartButton = false) => (
+    <Card key={appointment.id} className="mb-3">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-semibold flex items-center">
+          <Clock className="h-4 w-4 mr-2" />
+          {formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}
+        </CardTitle>
+        <CardDescription className="flex items-center">
+          <Calendar className="h-4 w-4 mr-2" />
+          {format(parseISO(appointment.date), 'EEEE, MMMM do, yyyy')}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pb-2">
+        <div className="flex items-center">
+          <UserCircle className="h-4 w-4 mr-2" />
+          <span className="text-sm">
+            {appointment.client?.client_first_name} {appointment.client?.client_last_name}
+          </span>
+        </div>
+        <div className="text-sm mt-1">{appointment.type}</div>
+      </CardContent>
+      {showStartButton && (
+        <CardFooter>
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full"
+            disabled={!canStartSession(appointment)}
+            onClick={() => startVideoSession(appointment)}
+          >
+            <Video className="h-4 w-4 mr-2" />
+            Start Session
+          </Button>
+        </CardFooter>
+      )}
+    </Card>
+  );
+
+  return (
+    <Layout>
+      <div className="container mx-auto">
+        <h1 className="text-2xl font-bold mb-6">Clinician Dashboard</h1>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Today's Appointments */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <Calendar className="h-5 w-5 mr-2" />
+              Today's Appointments
+            </h2>
+            {isLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i} className="mb-3">
+                  <CardHeader className="pb-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-4 w-48 mt-1" />
+                  </CardHeader>
+                  <CardContent className="pb-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-4 w-24 mt-2" />
+                  </CardContent>
+                  <CardFooter>
+                    <Skeleton className="h-9 w-full" />
+                  </CardFooter>
+                </Card>
+              ))
+            ) : error ? (
+              <div className="text-red-500 flex items-center">
+                <AlertCircle className="h-5 w-5 mr-2" />
+                Error loading appointments
+              </div>
+            ) : todayAppointments.length === 0 ? (
+              <p className="text-gray-500">No appointments scheduled for today.</p>
+            ) : (
+              todayAppointments.map(appointment => renderAppointmentCard(appointment, true))
+            )}
+          </div>
+          
+          {/* Outstanding Documentation */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <AlertCircle className="h-5 w-5 mr-2" />
+              Outstanding Documentation
+            </h2>
+            <p className="text-gray-500">No outstanding documentation.</p>
+          </div>
+          
+          {/* Upcoming Appointments */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <Calendar className="h-5 w-5 mr-2" />
+              Upcoming Appointments
+            </h2>
+            {isLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i} className="mb-3">
+                  <CardHeader className="pb-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-4 w-48 mt-1" />
+                  </CardHeader>
+                  <CardContent>
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-4 w-24 mt-2" />
+                  </CardContent>
+                </Card>
+              ))
+            ) : error ? (
+              <div className="text-red-500 flex items-center">
+                <AlertCircle className="h-5 w-5 mr-2" />
+                Error loading appointments
+              </div>
+            ) : upcomingAppointments.length === 0 ? (
+              <p className="text-gray-500">No upcoming appointments scheduled.</p>
+            ) : (
+              upcomingAppointments.slice(0, 5).map(appointment => renderAppointmentCard(appointment))
+            )}
+            {upcomingAppointments.length > 5 && (
+              <Button variant="link" className="mt-2 p-0">
+                View all {upcomingAppointments.length} upcoming appointments
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {isVideoOpen && (
+        <VideoChat
+          roomUrl={currentVideoUrl}
+          isOpen={isVideoOpen}
+          onClose={() => setIsVideoOpen(false)}
+        />
+      )}
+    </Layout>
+  );
+};
+
+export default ClinicianDashboard;

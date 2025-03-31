@@ -27,6 +27,7 @@ import PatientDashboard from "./pages/PatientDashboard";
 import PatientDocuments from "./pages/PatientDocuments";
 import ProfileSetup from "./pages/ProfileSetup";
 import TherapistSelection from "./pages/TherapistSelection";
+import ClinicianDashboard from "./pages/ClinicianDashboard";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -69,6 +70,12 @@ const App: React.FC = () => {
                 } />
                 
                 {/* Protected routes - clinician, admin, moderator */}
+                <Route path="/clinician-dashboard" element={
+                  <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
+                    <ClinicianDashboard />
+                  </ProtectedRoute>
+                } />
+                
                 <Route path="/my-clients" element={
                   <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
                     <MyClients />
