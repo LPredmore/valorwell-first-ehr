@@ -915,21 +915,6 @@ const ProfileSetup = () => {
 
   const renderStepThree = () => {
     const vaCoverage = form.getValues('client_vacoverage');
-    const isValid = form.formState.isValid;
-    const otherInsurance = form.watch('other_insurance');
-    const champvaAgreement = form.watch('champva_agreement');
-    
-    const isStep3Valid = () => {
-      if (vaCoverage === 'CHAMPVA') {
-        // For CHAMPVA, validate other_insurance field is selected
-        if (!otherInsurance) return false;
-        // If "No" is selected, check that the agreement is checked
-        if (otherInsurance === "No" && !champvaAgreement) return false;
-      }
-      // Add validation for other coverage types as needed
-      
-      return true;
-    };
     
     return (
       <Form {...form}>
@@ -974,8 +959,7 @@ const ProfileSetup = () => {
             <Button 
               type="button" 
               onClick={handleNext}
-              disabled={!isStep3Valid()}
-              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
             >
               Next
               <ArrowRight className="h-4 w-4" />
