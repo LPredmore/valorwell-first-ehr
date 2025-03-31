@@ -810,7 +810,7 @@ const ProfileSetup = () => {
     const isStep2Valid = form.formState.isValid;
     
     return (
-      <Form {...form}>
+      <form onSubmit={e => e.preventDefault()}>
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <DateField
@@ -896,4 +896,4 @@ const ProfileSetup = () => {
               type="button" 
               variant="outline"
               onClick={handleGoBack}
-              className="flex items-
+              className="flex
