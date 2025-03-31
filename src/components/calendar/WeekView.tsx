@@ -52,6 +52,7 @@ interface TimeBlock {
   end: Date;
   availabilityIds: string[];
   isException?: boolean;
+  isStandalone?: boolean;
 }
 
 interface AppointmentBlock {
@@ -169,7 +170,7 @@ const WeekView: React.FC<WeekViewProps> = ({
                 .eq('clinician_id', clinicianId)
                 .gte('specific_date', startDateStr)
                 .lte('specific_date', endDateStr)
-                .in('original_availability_id', availabilityIds);
+                .or(`original_availability_id.in.(${availabilityIds.join(',')}),original_availability_id.is.null`);
                 
               if (exceptionsError) {
                 console.error('Error fetching exceptions:', exceptionsError);
@@ -181,12 +182,52 @@ const WeekView: React.FC<WeekViewProps> = ({
                 processAvailabilityWithExceptions(availabilityData || [], exceptionsData || []);
               }
             } else {
+              const { data: exceptionsData, error: exceptionsError } = await supabase
+                .from('availability_exceptions')
+                .select('*')
+                .eq('clinician_id', clinicianId)
+                .eq('is_deleted', false)
+                .is('original_availability_id', null)
+                .gte('specific_date', startDateStr)
+                .lte('specific_date', endDateStr);
+                
+              if (exceptionsError) {
+                console.error('Error fetching standalone exceptions:', exceptionsError);
+                setExceptions([]);
+                processAvailabilityWithExceptions(availabilityData || [], []);
+              } else {
+                console.log('WeekView standalone exceptions data:', exceptionsData);
+                setExceptions(exceptionsData || []);
+                processAvailabilityWithExceptions(availabilityData || [], exceptionsData || []);
+              }
+            }
+          } else {
+            if (clinicianId) {
+              const startDateStr = format(days[0], 'yyyy-MM-dd');
+              const endDateStr = format(days[days.length - 1], 'yyyy-MM-dd');
+              
+              const { data: exceptionsData, error: exceptionsError } = await supabase
+                .from('availability_exceptions')
+                .select('*')
+                .eq('clinician_id', clinicianId)
+                .eq('is_deleted', false)
+                .is('original_availability_id', null)
+                .gte('specific_date', startDateStr)
+                .lte('specific_date', endDateStr);
+                
+              if (exceptionsError) {
+                console.error('Error fetching standalone exceptions:', exceptionsError);
+                setExceptions([]);
+                processAvailabilityWithExceptions([], []);
+              } else {
+                console.log('WeekView standalone exceptions data:', exceptionsData);
+                setExceptions(exceptionsData || []);
+                processAvailabilityWithExceptions([], exceptionsData || []);
+              }
+            } else {
               setExceptions([]);
               processAvailabilityWithExceptions(availabilityData || [], []);
             }
-          } else {
-            setExceptions([]);
-            processAvailabilityWithExceptions(availabilityData || [], []);
           }
         }
       } catch (error) {
@@ -207,34 +248,21 @@ const WeekView: React.FC<WeekViewProps> = ({
   };
 
   const processAvailabilityWithExceptions = (blocks: AvailabilityBlock[], exceptionsData: AvailabilityException[]) => {
-    if (!blocks.length) {
-      setTimeBlocks([]);
-      return;
-    }
-
-    const exceptionsByDate: Record<string, Record<string, AvailabilityException>> = {};
-    exceptionsData.forEach(exception => {
-      if (!exceptionsByDate[exception.specific_date]) {
-        exceptionsByDate[exception.specific_date] = {};
-      }
-      exceptionsByDate[exception.specific_date][exception.original_availability_id] = exception;
-    });
-
     const allTimeBlocks: TimeBlock[] = [];
 
     days.forEach(day => {
       const dayOfWeek = format(day, 'EEEE');
       const dateStr = format(day, 'yyyy-MM-dd');
-      const exceptionsForDay = exceptionsByDate[dateStr] || {};
+      const exceptionsForDay = exceptionsData.filter(exc => exc.specific_date === dateStr);
       
       const dayBlocks = blocks
         .filter(block => block.day_of_week === dayOfWeek)
         .filter(block => {
-          const exception = exceptionsForDay[block.id];
+          const exception = exceptionsForDay.find(e => e.original_availability_id === block.id);
           return !exception || !exception.is_deleted;
         })
         .map(block => {
-          const exception = exceptionsForDay[block.id];
+          const exception = exceptionsForDay.find(e => e.original_availability_id === block.id);
           
           if (exception && exception.start_time && exception.end_time) {
             return {
@@ -248,7 +276,23 @@ const WeekView: React.FC<WeekViewProps> = ({
           return block;
         });
 
-      const parsedBlocks = dayBlocks.map(block => {
+      const standaloneExceptions = exceptionsForDay
+        .filter(exception => exception.original_availability_id === null && !exception.is_deleted && exception.start_time && exception.end_time);
+      
+      const standaloneBlocks = standaloneExceptions.map(exception => ({
+        id: exception.id,
+        day_of_week: dayOfWeek,
+        start_time: exception.start_time,
+        end_time: exception.end_time,
+        clinician_id: exception.clinician_id,
+        is_active: true,
+        isException: true,
+        isStandalone: true
+      }));
+      
+      const allDayBlocks = [...dayBlocks, ...standaloneBlocks];
+
+      const parsedBlocks = allDayBlocks.map(block => {
         const [startHour, startMinute] = block.start_time.split(':').map(Number);
         const [endHour, endMinute] = block.end_time.split(':').map(Number);
 
@@ -260,7 +304,8 @@ const WeekView: React.FC<WeekViewProps> = ({
           day,
           start,
           end,
-          isException: block.isException
+          isException: block.isException,
+          isStandalone: block.isStandalone
         };
       });
 
@@ -279,13 +324,17 @@ const WeekView: React.FC<WeekViewProps> = ({
           if (block.isException) {
             lastBlock.isException = true;
           }
+          if (block.isStandalone) {
+            lastBlock.isStandalone = true;
+          }
         } else {
           mergedBlocks.push({
             day: block.day,
             start: block.start,
             end: block.end,
             availabilityIds: [block.id],
-            isException: block.isException
+            isException: block.isException,
+            isStandalone: block.isStandalone
           });
         }
       });
@@ -351,6 +400,25 @@ const WeekView: React.FC<WeekViewProps> = ({
     if (!onAvailabilityClick || !block.availabilityIds.length) return;
     
     const availabilityId = block.availabilityIds[0];
+    
+    if (block.isStandalone) {
+      const exception = exceptions.find(exc => exc.id === availabilityId);
+      if (exception) {
+        const availabilityBlock: AvailabilityBlock = {
+          id: exception.id,
+          day_of_week: format(day, 'EEEE'),
+          start_time: exception.start_time || '',
+          end_time: exception.end_time || '',
+          clinician_id: exception.clinician_id,
+          is_active: true,
+          isException: true,
+          isStandalone: true
+        };
+        onAvailabilityClick(day, availabilityBlock);
+      }
+      return;
+    }
+    
     const availabilityBlock = getAvailabilityForBlock(availabilityId);
     
     if (availabilityBlock) {

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Clock, Plus, X, Copy, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { Clock, Plus, X, Copy, ChevronDown, ChevronUp, Loader2, Calendar, CalendarPlus } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +12,10 @@ import { useToast } from "@/hooks/use-toast";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format, isSameDay } from 'date-fns';
+import { cn } from "@/lib/utils";
 
 interface TimeSlot {
   id: string;
@@ -59,6 +63,10 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
     { day: 'Saturday', isOpen: false, timeSlots: [] },
     { day: 'Sunday', isOpen: false, timeSlots: [] },
   ]);
+
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [singleDateTimeSlots, setSingleDateTimeSlots] = useState<TimeSlot[]>([]);
+  const [existingSingleAvailability, setExistingSingleAvailability] = useState<{[date: string]: TimeSlot[]}>({});
 
   useEffect(() => {
     async function fetchAvailability() {
@@ -159,6 +167,44 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
 
             setWeekSchedule(newSchedule);
           }
+
+          const { data: singleAvailabilityData, error: singleAvailabilityError } = await supabase
+            .from('availability_exceptions')
+            .select('*')
+            .eq('clinician_id', clinicianToQuery)
+            .eq('is_deleted', false)
+            .is('original_availability_id', null);
+
+          if (singleAvailabilityError) {
+            console.error('Error fetching single availability:', singleAvailabilityError);
+          } else if (singleAvailabilityData && singleAvailabilityData.length > 0) {
+            console.log('Fetched single availability data:', singleAvailabilityData);
+            
+            const byDate: {[date: string]: TimeSlot[]} = {};
+            
+            singleAvailabilityData.forEach(slot => {
+              if (slot.specific_date && slot.start_time && slot.end_time) {
+                const dateStr = slot.specific_date;
+                if (!byDate[dateStr]) {
+                  byDate[dateStr] = [];
+                }
+                
+                byDate[dateStr].push({
+                  id: slot.id,
+                  startTime: slot.start_time.substring(0, 5),
+                  endTime: slot.end_time.substring(0, 5)
+                });
+              }
+            });
+            
+            setExistingSingleAvailability(byDate);
+            
+            if (selectedDate && byDate[format(selectedDate, 'yyyy-MM-dd')]) {
+              setSingleDateTimeSlots(byDate[format(selectedDate, 'yyyy-MM-dd')]);
+            } else {
+              setSingleDateTimeSlots([]);
+            }
+          }
         }
       } catch (error) {
         console.error('Error:', error);
@@ -169,6 +215,17 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
 
     fetchAvailability();
   }, [clinicianId]);
+
+  useEffect(() => {
+    if (selectedDate) {
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      if (existingSingleAvailability[dateStr]) {
+        setSingleDateTimeSlots(existingSingleAvailability[dateStr]);
+      } else {
+        setSingleDateTimeSlots([]);
+      }
+    }
+  }, [selectedDate, existingSingleAvailability]);
 
   const toggleDayOpen = (dayIndex: number) => {
     setWeekSchedule(prev => {
@@ -231,6 +288,192 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
 
       return updated;
     });
+  };
+
+  const addSingleDateTimeSlot = () => {
+    if (!selectedDate) return;
+    
+    setSingleDateTimeSlots(prev => [
+      ...prev,
+      {
+        id: `single-${Date.now()}-${prev.length + 1}`,
+        startTime: '09:00',
+        endTime: '17:00'
+      }
+    ]);
+  };
+
+  const deleteSingleDateTimeSlot = (slotId: string) => {
+    setSingleDateTimeSlots(prev => prev.filter(slot => slot.id !== slotId));
+  };
+
+  const updateSingleDateTimeSlot = (slotId: string, field: 'startTime' | 'endTime', value: string) => {
+    setSingleDateTimeSlots(prev => 
+      prev.map(slot => slot.id === slotId ? { ...slot, [field]: value } : slot)
+    );
+  };
+
+  const saveSingleDateAvailability = async () => {
+    if (!selectedDate || singleDateTimeSlots.length === 0) {
+      toast({
+        title: "No time slots added",
+        description: "Please add at least one time slot before saving.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    console.log('Saving single date availability...');
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+
+      if (!sessionData?.session?.user) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to save availability",
+          variant: "destructive"
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      let clinicianIdToUse = clinicianId;
+
+      if (!clinicianIdToUse) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', sessionData.session.user.id)
+          .single();
+
+        if (!profileData) {
+          toast({
+            title: "Profile Error",
+            description: "Could not find your profile",
+            variant: "destructive"
+          });
+          setIsSaving(false);
+          return;
+        }
+
+        const { data: clinicianData } = await supabase
+          .from('clinicians')
+          .select('id')
+          .eq('clinician_email', profileData.email)
+          .single();
+
+        if (!clinicianData) {
+          toast({
+            title: "Clinician Error",
+            description: "Could not find your clinician record",
+            variant: "destructive"
+          });
+          setIsSaving(false);
+          return;
+        }
+
+        clinicianIdToUse = clinicianData.id;
+      }
+
+      if (!clinicianIdToUse) {
+        toast({
+          title: "Error",
+          description: "No clinician ID found to save availability",
+          variant: "destructive"
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+      
+      const { data: existingData, error: fetchError } = await supabase
+        .from('availability_exceptions')
+        .select('id')
+        .eq('clinician_id', clinicianIdToUse)
+        .eq('specific_date', formattedDate)
+        .is('original_availability_id', null);
+        
+      if (fetchError) {
+        console.error('Error fetching existing single availability:', fetchError);
+        toast({
+          title: "Error",
+          description: "Could not check for existing availability",
+          variant: "destructive"
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      if (existingData && existingData.length > 0) {
+        const existingIds = existingData.map(item => item.id);
+        const { error: deleteError } = await supabase
+          .from('availability_exceptions')
+          .delete()
+          .in('id', existingIds);
+          
+        if (deleteError) {
+          console.error('Error deleting existing single availability:', deleteError);
+          toast({
+            title: "Error",
+            description: "Could not update existing availability",
+            variant: "destructive"
+          });
+          setIsSaving(false);
+          return;
+        }
+      }
+      
+      const recordsToInsert = singleDateTimeSlots.map(slot => ({
+        clinician_id: clinicianIdToUse,
+        specific_date: formattedDate,
+        start_time: slot.startTime,
+        end_time: slot.endTime,
+        original_availability_id: null,
+        is_deleted: false
+      }));
+      
+      const { error: insertError } = await supabase
+        .from('availability_exceptions')
+        .insert(recordsToInsert);
+        
+      if (insertError) {
+        console.error('Error saving single availability:', insertError);
+        toast({
+          title: "Error",
+          description: "Could not save single date availability",
+          variant: "destructive"
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      setExistingSingleAvailability(prev => ({
+        ...prev,
+        [dateStr]: singleDateTimeSlots
+      }));
+      
+      toast({
+        title: "Availability Saved",
+        description: `Single day availability for ${format(selectedDate, 'MMMM d, yyyy')} has been saved.`,
+      });
+      
+      if (onAvailabilityUpdated) {
+        onAvailabilityUpdated();
+      }
+    } catch (error) {
+      console.error('Error saving single date availability:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const saveAvailability = async () => {
@@ -529,9 +772,19 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="set">Set Hours</TabsTrigger>
-            <TabsTrigger value="share">Share Link</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="set">
+              <Clock className="h-4 w-4 mr-2" />
+              Weekly
+            </TabsTrigger>
+            <TabsTrigger value="single">
+              <CalendarPlus className="h-4 w-4 mr-2" />
+              Single Day
+            </TabsTrigger>
+            <TabsTrigger value="share">
+              <Copy className="h-4 w-4 mr-2" />
+              Share Link
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </CardHeader>
@@ -689,6 +942,142 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSaving ? 'Saving...' : 'Save Availability'}
             </Button>
+          </div>
+        )}
+
+        {activeTab === 'single' && (
+          <div className="space-y-4">
+            <div className="p-3 border rounded-md">
+              <h3 className="font-medium mb-2">Single Day Availability</h3>
+              <Separator className="my-2" />
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Select a specific date to set availability:
+                  </p>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !selectedDate && "text-muted-foreground"
+                        )}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                        modifiers={{
+                          hasAvailability: Object.keys(existingSingleAvailability).map(date => new Date(date)),
+                        }}
+                        modifiersClassNames={{
+                          hasAvailability: "bg-green-100 text-green-800 font-medium",
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+            </div>
+
+            {selectedDate && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-3 bg-gray-50 border rounded-md">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="font-medium">
+                      {format(selectedDate, 'MMMM d, yyyy')}
+                    </Badge>
+                    {Object.keys(existingSingleAvailability).some(dateStr => 
+                      isSameDay(new Date(dateStr), selectedDate)
+                    ) && (
+                      <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
+                        Has availability
+                      </Badge>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={addSingleDateTimeSlot}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="p-3 space-y-2 border rounded-md">
+                  {singleDateTimeSlots.length === 0 ? (
+                    <div className="text-sm text-gray-500 text-center py-4">
+                      No time slots added for this date. Click the + button to add one.
+                    </div>
+                  ) : (
+                    singleDateTimeSlots.map((slot) => (
+                      <div key={`single-slot-${slot.id}`} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
+                        <div className="grid grid-cols-2 gap-2 flex-1">
+                          <Select
+                            value={slot.startTime}
+                            onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'startTime', value)}
+                          >
+                            <SelectTrigger className="h-8">
+                              <SelectValue placeholder="Start time" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {timeOptions.map((time) => (
+                                <SelectItem key={`single-start-${slot.id}-${time}`} value={time}>
+                                  {time}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          <Select
+                            value={slot.endTime}
+                            onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'endTime', value)}
+                          >
+                            <SelectTrigger className="h-8">
+                              <SelectValue placeholder="End time" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {timeOptions.map((time) => (
+                                <SelectItem key={`single-end-${slot.id}-${time}`} value={time}>
+                                  {time}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteSingleDateTimeSlot(slot.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <Button
+                  className="w-full"
+                  onClick={saveSingleDateAvailability}
+                  disabled={isSaving || singleDateTimeSlots.length === 0}
+                >
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isSaving ? 'Saving...' : 'Save Single Day Availability'}
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
