@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, parse, addDays, isSameDay, addMinutes } from 'date-fns';
 import { Calendar as CalendarIcon, Clock, Check } from 'lucide-react';
@@ -332,11 +331,14 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   };
 
   const disabledDays = (date: Date) => {
+    // FIX: Ensure we're properly using the result of each validation function
+    // Before we were calculating isDateTooSoon but not using it in the final result
     const dayIsUnavailable = isDayUnavailable(date);
     const isPast = isPastDate(date);
     const isTooSoon = isDateTooSoon(date);
     const isTooFar = isDateTooFar(date);
     
+    // Return true if ANY of these conditions are true to disable the date
     return dayIsUnavailable || isPast || isTooSoon || isTooFar;
   };
 

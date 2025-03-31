@@ -60,8 +60,8 @@ serve(async (req) => {
     // Ensure numeric values are returned as numbers, not strings
     const cleanedData = {
       ...data,
-      min_days_ahead: parseInt(data.min_days_ahead) || 1,
-      max_days_ahead: parseInt(data.max_days_ahead) || 60
+      min_days_ahead: parseInt(String(data.min_days_ahead)) || 1,
+      max_days_ahead: parseInt(String(data.max_days_ahead)) || 60
     }
     
     console.log('Returning cleaned settings:', cleanedData)
