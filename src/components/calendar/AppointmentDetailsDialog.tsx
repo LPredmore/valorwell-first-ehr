@@ -5,13 +5,14 @@ import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Clock, User, MapPin, AlertTriangle, MoreVertical, Trash, X } from 'lucide-react';
+import { Calendar, Clock, User, MapPin, AlertTriangle, MoreVertical, Trash, X, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import EditAppointmentDialog from './EditAppointmentDialog';
 
 interface AppointmentDetailsDialogProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [deleteOption, setDeleteOption] = useState<'single' | 'series'>('single');
   const [isRecurring, setIsRecurring] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
     // Check if appointment is part of a recurring series
@@ -121,6 +123,10 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
     }
   };
 
+  const handleEditClick = () => {
+    setIsEditDialogOpen(true);
+  };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -143,6 +149,10 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleEditClick}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Appointment
+                  </DropdownMenuItem>
                   <DropdownMenuItem 
                     className="text-destructive focus:text-destructive" 
                     onClick={() => setIsDeleteDialogOpen(true)}
@@ -223,6 +233,15 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {appointment && (
+        <EditAppointmentDialog
+          isOpen={isEditDialogOpen}
+          onClose={() => setIsEditDialogOpen(false)}
+          appointment={appointment}
+          onAppointmentUpdated={onAppointmentUpdated}
+        />
+      )}
     </>
   );
 };
