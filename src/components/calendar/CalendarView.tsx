@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
 format,
@@ -40,6 +39,7 @@ interface CalendarViewProps {
   showAvailability: boolean;
   clinicianId: string | null;
   userTimeZone?: string;
+  refreshTrigger?: number;
 }
 
 interface Appointment {
@@ -56,7 +56,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   view, 
   showAvailability, 
   clinicianId,
-  userTimeZone: propTimeZone
+  userTimeZone: propTimeZone,
+  refreshTrigger = 0
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [availabilityRefreshTrigger, setAvailabilityRefreshTrigger] = useState(0);
@@ -125,7 +126,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     };
 
     fetchAppointments();
-  }, [clinicianId, currentDate, view, availabilityRefreshTrigger, appointmentRefreshTrigger]);
+  }, [clinicianId, currentDate, view, availabilityRefreshTrigger, appointmentRefreshTrigger, refreshTrigger]);
 
   const navigatePrevious = () => {
     if (view === 'day') {

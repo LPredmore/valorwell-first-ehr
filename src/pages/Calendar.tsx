@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import CalendarView from '../components/calendar/CalendarView';
@@ -18,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 type ViewType = 'day' | 'week' | 'month';
 
@@ -31,7 +31,6 @@ interface Client {
   displayName: string;
 }
 
-// Renamed from 'Calendar' to 'CalendarPage' to avoid naming conflict
 const CalendarPage = () => {
   const [view, setView] = useState<ViewType>('week');
   const [showAvailability, setShowAvailability] = useState(false);
@@ -41,20 +40,21 @@ const CalendarPage = () => {
   const { clinicianData } = useClinicianData();
   const [userTimeZone, setUserTimeZone] = useState<string>('');
   
-  // State for appointment creation dialog
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState<string>('weekly');
   const [startTime, setStartTime] = useState<string>('09:00');
   
-  // New state for clients
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  
+  const [appointmentType, setAppointmentType] = useState<string>("therapy");
+  const [appointmentDuration, setAppointmentDuration] = useState<number>(60);
+  const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
 
   useEffect(() => {
-    // Set the user's time zone
     if (clinicianData?.clinician_time_zone) {
       setUserTimeZone(clinicianData.clinician_time_zone);
     } else {
@@ -75,7 +75,6 @@ const CalendarPage = () => {
           console.error('Error fetching clinicians:', error);
         } else {
           setClinicians(data || []);
-          // Set the first clinician as default if available
           if (data && data.length > 0 && !selectedClinicianId) {
             setSelectedClinicianId(data[0].id);
           }
@@ -90,7 +89,6 @@ const CalendarPage = () => {
     fetchClinicians();
   }, []);
 
-  // Fetch clients for the selected clinician
   useEffect(() => {
     const fetchClientsForClinician = async () => {
       if (!selectedClinicianId) return;
@@ -109,7 +107,6 @@ const CalendarPage = () => {
         if (error) {
           console.error('Error fetching clients:', error);
         } else {
-          // Transform data to display format
           const formattedClients = data.map(client => ({
             id: client.id,
             displayName: `${client.client_preferred_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
@@ -126,7 +123,6 @@ const CalendarPage = () => {
     fetchClientsForClinician();
   }, [selectedClinicianId]);
 
-  // Generate time options for the dropdown
   const generateTimeOptions = () => {
     const options = [];
     for (let hour = 0; hour < 24; hour++) {
@@ -140,6 +136,64 @@ const CalendarPage = () => {
   };
 
   const timeOptions = generateTimeOptions();
+
+  const handleCreateAppointment = async () => {
+    if (!selectedClientId || !selectedDate || !startTime || !selectedClinicianId) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const startTimeParts = startTime.split(':').map(Number);
+      const startDateTime = new Date();
+      startDateTime.setHours(startTimeParts[0], startTimeParts[1], 0, 0);
+      
+      const endDateTime = new Date(startDateTime);
+      endDateTime.setMinutes(endDateTime.getMinutes() + appointmentDuration);
+      
+      const endTime = `${endDateTime.getHours().toString().padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}`;
+
+      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+
+      const { data, error } = await supabase
+        .from('appointments')
+        .insert([{
+          client_id: selectedClientId,
+          clinician_id: selectedClinicianId,
+          date: formattedDate,
+          start_time: startTime,
+          end_time: endTime,
+          type: appointmentType,
+          status: 'scheduled'
+        }])
+        .select();
+
+      if (error) throw error;
+
+      toast({
+        title: "Appointment Created",
+        description: "The appointment has been successfully scheduled.",
+      });
+
+      setSelectedClientId(null);
+      setStartTime("09:00");
+      setIsDialogOpen(false);
+      
+      setAppointmentRefreshTrigger(prev => prev + 1);
+
+    } catch (error) {
+      console.error('Error creating appointment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create appointment. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <Layout>
@@ -210,11 +264,11 @@ const CalendarPage = () => {
             showAvailability={showAvailability}
             clinicianId={selectedClinicianId}
             userTimeZone={userTimeZone}
+            refreshTrigger={appointmentRefreshTrigger}
           />
         </div>
       </div>
 
-      {/* Appointment Creation Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -294,6 +348,38 @@ const CalendarPage = () => {
               </Select>
             </div>
 
+            <div className="grid gap-2">
+              <Label htmlFor="type">Appointment Type</Label>
+              <Select value={appointmentType} onValueChange={setAppointmentType}>
+                <SelectTrigger id="type">
+                  <SelectValue placeholder="Select appointment type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="therapy">Therapy Session</SelectItem>
+                  <SelectItem value="intake">Intake Assessment</SelectItem>
+                  <SelectItem value="consultation">Consultation</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="duration">Duration</Label>
+              <Select 
+                value={appointmentDuration.toString()} 
+                onValueChange={(value) => setAppointmentDuration(Number(value))}
+              >
+                <SelectTrigger id="duration">
+                  <SelectValue placeholder="Select duration" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">30 minutes</SelectItem>
+                  <SelectItem value="45">45 minutes</SelectItem>
+                  <SelectItem value="60">60 minutes</SelectItem>
+                  <SelectItem value="90">90 minutes</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="flex items-center space-x-2 pt-2">
               <Checkbox 
                 id="recurring" 
@@ -323,7 +409,7 @@ const CalendarPage = () => {
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button type="button">Create Appointment</Button>
+            <Button type="button" onClick={handleCreateAppointment}>Create Appointment</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
