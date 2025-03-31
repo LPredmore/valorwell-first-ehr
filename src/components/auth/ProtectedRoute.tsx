@@ -1,7 +1,9 @@
 
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { useUser } from '@/context/UserContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useState } from 'react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -15,8 +17,26 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   blockNewClients = false
 }) => {
   const { userRole, clientStatus, isLoading } = useUser();
+  const { clinicianId } = useParams();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isCheckingUser, setIsCheckingUser] = useState(false);
   
-  if (isLoading) {
+  useEffect(() => {
+    const getCurrentUserId = async () => {
+      if (clinicianId) {
+        setIsCheckingUser(true);
+        const { data } = await supabase.auth.getUser();
+        if (data?.user) {
+          setCurrentUserId(data.user.id);
+        }
+        setIsCheckingUser(false);
+      }
+    };
+    
+    getCurrentUserId();
+  }, [clinicianId]);
+  
+  if (isLoading || isCheckingUser) {
     return <div className="flex h-screen w-full items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-valorwell-600"></div>
     </div>;
