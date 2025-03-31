@@ -6,24 +6,29 @@ type UserContextType = {
   userRole: string | null;
   clientStatus: string | null;
   isLoading: boolean;
+  userId: string | null;
 };
 
 const UserContext = createContext<UserContextType>({ 
   userRole: null, 
   clientStatus: null,
-  isLoading: true 
+  isLoading: true,
+  userId: null
 });
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [clientStatus, setClientStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          setUserId(user.id);
+          
           const { data, error } = await supabase
             .from('profiles')
             .select('role')
@@ -66,7 +71,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <UserContext.Provider value={{ userRole, clientStatus, isLoading }}>
+    <UserContext.Provider value={{ userRole, clientStatus, isLoading, userId }}>
       {children}
     </UserContext.Provider>
   );

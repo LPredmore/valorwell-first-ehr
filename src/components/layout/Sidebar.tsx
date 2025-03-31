@@ -21,7 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 const Sidebar = () => {
   const location = useLocation();
   const currentPath = location.pathname;
-  const { userRole, clientStatus, isLoading } = useUser();
+  const { userRole, clientStatus, isLoading, userId } = useUser();
   const isClient = userRole === 'client';
   const isClinician = userRole === 'clinician';
   const isNewClient = isClient && clientStatus === 'New';
@@ -78,6 +78,14 @@ const Sidebar = () => {
             >
               <LayoutDashboard size={18} />
               <span>Patient Dashboard</span>
+            </Link>
+            
+            <Link 
+              to="/patient-profile" 
+              className={`sidebar-link ${isActive('/patient-profile') ? 'active' : ''}`}
+            >
+              <User size={18} />
+              <span>Patient Profile</span>
             </Link>
             
             <Link 
