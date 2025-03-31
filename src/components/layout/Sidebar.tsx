@@ -14,9 +14,12 @@ import {
   FileText,
   UserPlus,
   UserCog,
-  UserSearch
+  UserSearch,
+  User
 } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Sidebar = () => {
   const location = useLocation();
@@ -25,6 +28,20 @@ const Sidebar = () => {
   const isClient = userRole === 'client';
   const isClinician = userRole === 'clinician';
   const isNewClient = isClient && clientStatus === 'New';
+  const [clinicianId, setClinicianId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        setClinicianId(data.user.id);
+      }
+    };
+    
+    if (isClinician || userRole === 'admin' || userRole === 'moderator') {
+      fetchUserId();
+    }
+  }, [isClinician, userRole]);
   
   const isActive = (path: string) => {
     return currentPath === path;
@@ -117,6 +134,16 @@ const Sidebar = () => {
               <span>Dashboard</span>
             </Link>
             
+            {clinicianId && (
+              <Link 
+                to={`/clinicians/${clinicianId}`} 
+                className={`sidebar-link ${isActive(`/clinicians/${clinicianId}`) ? 'active' : ''}`}
+              >
+                <User size={18} />
+                <span>Profile</span>
+              </Link>
+            )}
+            
             <Link 
               to="/my-clients" 
               className={`sidebar-link ${isActive('/my-clients') ? 'active' : ''}`}
@@ -145,6 +172,16 @@ const Sidebar = () => {
               <LayoutDashboard size={18} />
               <span>Dashboard</span>
             </Link>
+            
+            {clinicianId && (
+              <Link 
+                to={`/clinicians/${clinicianId}`} 
+                className={`sidebar-link ${isActive(`/clinicians/${clinicianId}`) ? 'active' : ''}`}
+              >
+                <User size={18} />
+                <span>Profile</span>
+              </Link>
+            )}
             
             <Link 
               to="/my-clients" 
