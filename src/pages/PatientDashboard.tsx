@@ -4,7 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { LayoutDashboard, User, Clock3, Shield, ClipboardList } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById } from '@/integrations/supabase/client';
+import { getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById, formatDateForDB } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
 // Import the new tab components
@@ -13,6 +13,7 @@ import MyProfile from '@/components/patient/MyProfile';
 import MyAppointments from '@/components/patient/MyAppointments';
 import MyInsurance from '@/components/patient/MyInsurance';
 import MyDocuments from '@/components/patient/MyDocuments';
+
 const PatientDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -29,6 +30,7 @@ const PatientDashboard: React.FC = () => {
   const timeZoneOptions = ['Eastern Standard Time (EST)', 'Central Standard Time (CST)', 'Mountain Standard Time (MST)', 'Pacific Standard Time (PST)', 'Alaska Standard Time (AKST)', 'Hawaii-Aleutian Standard Time (HST)', 'Atlantic Standard Time (AST)'];
   const insuranceTypes = ['PPO', 'HMO', 'EPO', 'POS', 'HDHP', 'Medicare', 'Medicaid', 'Other'];
   const relationshipTypes = ['Self', 'Spouse', 'Child', 'Other'];
+
   const form = useForm({
     defaultValues: {
       firstName: '',
@@ -205,6 +207,7 @@ const PatientDashboard: React.FC = () => {
     try {
       const formValues = form.getValues();
       console.log("Form values to save:", formValues);
+      
       const updates = {
         client_preferred_name: formValues.preferredName,
         client_phone: formValues.phone,
@@ -218,21 +221,27 @@ const PatientDashboard: React.FC = () => {
         client_group_number_primary: formValues.client_group_number_primary,
         client_subscriber_name_primary: formValues.client_subscriber_name_primary,
         client_subscriber_relationship_primary: formValues.client_subscriber_relationship_primary,
-        client_subscriber_dob_primary: formValues.client_subscriber_dob_primary,
+        client_subscriber_dob_primary: formValues.client_subscriber_dob_primary ? 
+          formatDateForDB(new Date(formValues.client_subscriber_dob_primary)) : null,
+        
         client_insurance_company_secondary: formValues.client_insurance_company_secondary,
         client_insurance_type_secondary: formValues.client_insurance_type_secondary,
         client_policy_number_secondary: formValues.client_policy_number_secondary,
         client_group_number_secondary: formValues.client_group_number_secondary,
         client_subscriber_name_secondary: formValues.client_subscriber_name_secondary,
         client_subscriber_relationship_secondary: formValues.client_subscriber_relationship_secondary,
-        client_subscriber_dob_secondary: formValues.client_subscriber_dob_secondary,
+        client_subscriber_dob_secondary: formValues.client_subscriber_dob_secondary ? 
+          formatDateForDB(new Date(formValues.client_subscriber_dob_secondary)) : null,
+        
         client_insurance_company_tertiary: formValues.client_insurance_company_tertiary,
         client_insurance_type_tertiary: formValues.client_insurance_type_tertiary,
         client_policy_number_tertiary: formValues.client_policy_number_tertiary,
         client_group_number_tertiary: formValues.client_group_number_tertiary,
         client_subscriber_name_tertiary: formValues.client_subscriber_name_tertiary,
         client_subscriber_relationship_tertiary: formValues.client_subscriber_relationship_tertiary,
-        client_subscriber_dob_tertiary: formValues.client_subscriber_dob_tertiary,
+        client_subscriber_dob_tertiary: formValues.client_subscriber_dob_tertiary ? 
+          formatDateForDB(new Date(formValues.client_subscriber_dob_tertiary)) : null,
+        
         client_champva: formValues.client_champva,
         client_tricare_beneficiary_category: formValues.client_tricare_beneficiary_category,
         client_tricare_sponsor_name: formValues.client_tricare_sponsor_name,
@@ -244,6 +253,7 @@ const PatientDashboard: React.FC = () => {
         client_tricare_has_referral: formValues.client_tricare_has_referral,
         client_tricare_referral_number: formValues.client_tricare_referral_number
       };
+      
       console.log("Sending updates to database:", updates);
       const result = await updateClientProfile(clientData.id, updates);
       if (result.success) {
@@ -366,4 +376,5 @@ const PatientDashboard: React.FC = () => {
       </div>
     </Layout>;
 };
+
 export default PatientDashboard;
