@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +11,11 @@ import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, startOfToday, isBefore, isToday } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import VideoChat from '@/components/video/VideoChat';
-import { getUserTimeZone } from '@/utils/timeZoneUtils';
+import { 
+  getUserTimeZone,
+  formatTimeZoneDisplay,
+  formatInUserTimeZone
+} from '@/utils/timeZoneUtils';
 import PHQ9Template from '@/components/templates/PHQ9Template';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -83,6 +86,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
         const todayStr = format(today, 'yyyy-MM-dd');
         
         console.log("Fetching appointments for client:", clientData.id);
+        console.log("Using time zone:", clientTimeZone);
         
         const { data, error } = await supabase
           .from('appointments')
@@ -108,8 +112,12 @@ const MyPortal: React.FC<MyPortalProps> = ({
               // Create the dateTimeString with proper error handling
               let formattedTime = '';
               try {
-                const dateTimeString = `${appointment.date}T${appointment.start_time}`;
-                formattedTime = formatInTimeZone(parseISO(dateTimeString), clientTimeZone, 'h:mm a');
+                formattedTime = formatInUserTimeZone(
+                  appointment.date,
+                  appointment.start_time,
+                  clientTimeZone,
+                  'h:mm a'
+                );
               } catch (error) {
                 console.error('Error formatting time:', error);
                 formattedTime = appointment.start_time || 'Time unavailable';
@@ -121,7 +129,8 @@ const MyPortal: React.FC<MyPortalProps> = ({
                 time: formattedTime,
                 type: appointment.type,
                 therapist: clinicianName || 'Your Therapist',
-                rawDate: appointment.date
+                rawDate: appointment.date,
+                rawTime: appointment.start_time
               };
             } catch (error) {
               console.error('Error processing appointment:', error, appointment);
@@ -215,6 +224,8 @@ const MyPortal: React.FC<MyPortalProps> = ({
     setIsVideoSessionOpen(false);
   };
 
+  const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);
+
   return <div className="grid grid-cols-1 gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -229,7 +240,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Time <span className="text-xs text-gray-500">({clientTimeZone.split('/').pop()?.replace('_', ' ')})</span></TableHead>
+                  <TableHead>Time <span className="text-xs text-gray-500">({timeZoneDisplay})</span></TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Therapist</TableHead>
                   <TableHead className="text-right">Actions</TableHead>

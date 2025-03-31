@@ -109,6 +109,8 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
 
         if (data && data.length > 0) {
           console.log("Past appointments data:", data);
+          console.log("Using client time zone:", clientTimeZone);
+          
           const formattedAppointments = data.map(appointment => {
             try {
               const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
@@ -137,7 +139,8 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
                 time: formattedTime,
                 type: appointment.type || 'Appointment',
                 therapist: clinicianName || 'Your Therapist',
-                rawDate: appointment.date
+                rawDate: appointment.date,
+                rawTime: appointment.start_time // Store raw time for potential reformatting
               };
             } catch (error) {
               console.error('Error processing appointment:', error, appointment);
@@ -171,7 +174,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
     };
     
     fetchPastAppointments();
-  }, [clientData, clinicianName, clientTimeZone, toast]);
+  }, [clientData, clinicianName, clientTimeZone, toast]); // Added clientTimeZone dependency
 
   // Format the time zone name for display
   const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);

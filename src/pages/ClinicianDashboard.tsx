@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser } from '@/context/UserContext';
-import { formatTime12Hour } from '@/utils/timeZoneUtils';
+import { formatTime12Hour, getUserTimeZone, formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
 
 type Appointment = {
   id: string;
@@ -29,10 +29,11 @@ type Appointment = {
 
 const ClinicianDashboard = () => {
   const { toast } = useToast();
-  const { userRole } = useUser();
+  const { userRole, userId } = useUser();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
+  const clinicianTimeZone = getUserTimeZone(); // Get clinician's timezone
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -134,12 +135,15 @@ const ClinicianDashboard = () => {
     return formatTime12Hour(timeString);
   };
 
+  const timeZoneDisplay = formatTimeZoneDisplay(clinicianTimeZone);
+
   const renderAppointmentCard = (appointment: Appointment, showStartButton = false) => (
     <Card key={appointment.id} className="mb-3">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-semibold flex items-center">
           <Clock className="h-4 w-4 mr-2" />
-          {formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}
+          {formatTime(appointment.start_time)} - {formatTime(appointment.end_time)} 
+          <span className="text-xs text-gray-500 ml-1">({timeZoneDisplay})</span>
         </CardTitle>
         <CardDescription className="flex items-center">
           <Calendar className="h-4 w-4 mr-2" />
