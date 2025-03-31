@@ -37,7 +37,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Check for test mode BEFORE method validation - this is the key change
+  // Check for test mode BEFORE method validation
   const url = new URL(req.url);
   const isTestMode = url.searchParams.get("test") === "true";
   
@@ -62,33 +62,18 @@ serve(async (req) => {
       }
       console.log("Resend API key is configured for test");
       
-      // Initialize Resend
-      const resend = new Resend(apiKey);
-      
-      // Send a test email
-      const testEmail = url.searchParams.get("email") || "test@example.com";
-      console.log(`Sending test email to ${testEmail}`);
-      
-      const { data, error } = await resend.emails.send({
-        from: "TheraPal <noreply@updates.valorwell.org>",
-        to: testEmail,
-        subject: "TheraPal Email Test",
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-            <h2 style="color: #4a6cf7;">TheraPal Email Test</h2>
-            <p>This is a test email from TheraPal to verify the email system is working correctly.</p>
-            <p>If you received this email, the system is configured properly.</p>
-            <p>Test time: ${new Date().toISOString()}</p>
-          </div>
-        `,
-      });
-      
-      if (error) {
-        console.error("Error from Resend API during test:", error);
+      // Initialize Resend with better error handling
+      let resend;
+      try {
+        resend = new Resend(apiKey);
+        console.log("Resend client initialized successfully");
+      } catch (initError) {
+        console.error("Failed to initialize Resend client:", initError);
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: error.message || "Failed to send test email" 
+            error: "Failed to initialize email service with provided API key",
+            details: initError.message || "Unknown initialization error"
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -97,24 +82,75 @@ serve(async (req) => {
         );
       }
       
-      console.log("Test email sent successfully:", data);
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: "Test email sent successfully", 
-          data 
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
+      // Send a test email with detailed logging
+      const testEmail = url.searchParams.get("email") || "test@example.com";
+      console.log(`Sending test email to ${testEmail}`);
+      
+      try {
+        const { data, error } = await resend.emails.send({
+          from: "TheraPal <noreply@updates.valorwell.org>",
+          to: testEmail,
+          subject: "TheraPal Email Test",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+              <h2 style="color: #4a6cf7;">TheraPal Email Test</h2>
+              <p>This is a test email from TheraPal to verify the email system is working correctly.</p>
+              <p>If you received this email, the system is configured properly.</p>
+              <p>Test time: ${new Date().toISOString()}</p>
+            </div>
+          `,
+        });
+        
+        console.log("Email send operation completed");
+        
+        if (error) {
+          console.error("Error from Resend API during test:", error);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: error.message || "Failed to send test email",
+              details: error
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 500,
+            }
+          );
         }
-      );
+        
+        console.log("Test email sent successfully:", data);
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Test email sent successfully", 
+            data 
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          }
+        );
+      } catch (sendError) {
+        console.error("Error sending email with Resend:", sendError);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: sendError.message || "Exception occurred during email sending",
+            stack: sendError.stack
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          }
+        );
+      }
     } catch (testError) {
       console.error("Error in test mode:", testError);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: testError.message || "An error occurred during testing" 
+          error: testError.message || "An error occurred during testing",
+          stack: testError.stack 
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -192,7 +228,24 @@ serve(async (req) => {
       console.log(`Preparing to send welcome email to ${email} with role ${payload.record.role}`);
       
       // Initialize Resend with API key
-      const resend = new Resend(apiKey);
+      let resend;
+      try {
+        resend = new Resend(apiKey);
+        console.log("Resend client initialized successfully for webhook");
+      } catch (initError) {
+        console.error("Failed to initialize Resend client for webhook:", initError);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: "Failed to initialize email service",
+            details: initError.message || "Unknown initialization error"
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          }
+        );
+      }
       
       // Frontend URL with login path
       const frontendUrl = Deno.env.get("FRONTEND_URL") || "https://valorwell.org/login";
