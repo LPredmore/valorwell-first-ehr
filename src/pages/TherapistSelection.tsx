@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,13 +40,11 @@ const TherapistSelection = () => {
   const [selectingTherapist, setSelectingTherapist] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   
-  // Fetch client data
   useEffect(() => {
     const fetchClientData = async () => {
       try {
         setLoadingClient(true);
         
-        // Get current user
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         
         if (authError || !user) {
@@ -62,16 +59,13 @@ const TherapistSelection = () => {
           return;
         }
         
-        // Store user ID for later use
         setUserId(user.id);
         
-        // Get client data by ID first
         let { data, error } = await supabase
           .from('clients')
           .select('client_state, client_age')
           .eq('id', user.id);
           
-        // If no client found by ID, try by email as fallback
         if ((!data || data.length === 0) && user.email) {
           const { data: emailData, error: emailError } = await supabase
             .from('clients')
@@ -104,13 +98,11 @@ const TherapistSelection = () => {
     fetchClientData();
   }, [navigate, toast]);
   
-  // Fetch therapists based on client data
   useEffect(() => {
     const fetchTherapists = async () => {
       try {
         setLoading(true);
         
-        // Get all active clinicians
         const { data, error } = await supabase
           .from('clinicians')
           .select('*')
@@ -123,11 +115,8 @@ const TherapistSelection = () => {
         console.log("Total active therapists:", data?.length || 0);
         console.log("Sample therapist data:", data?.[0]);
         
-        // Store all therapists
         setAllTherapists(data || []);
         
-        // If filtering is enabled and we have client data, filter the results client-side
-        // to handle case-insensitive matching
         if (filteringEnabled && clientData && data) {
           console.log("Client state:", clientData.client_state);
           console.log("Client age:", clientData.client_age);
@@ -136,17 +125,14 @@ const TherapistSelection = () => {
             let matchesState = true;
             let matchesAge = true;
             
-            // Check if therapist is licensed in client's state (case-insensitive)
             if (clientData.client_state && therapist.clinician_licensed_states && therapist.clinician_licensed_states.length > 0) {
               const clientStateNormalized = clientData.client_state.toLowerCase().trim();
               console.log(`Therapist: ${therapist.clinician_first_name}, Licensed states:`, therapist.clinician_licensed_states);
               
-              // More flexible matching - either contains the other
               const matchingState = therapist.clinician_licensed_states.some(state => {
                 if (!state) return false;
                 const stateNormalized = state.toLowerCase().trim();
                 
-                // Check if either contains the other or exact match
                 return stateNormalized.includes(clientStateNormalized) || 
                        clientStateNormalized.includes(stateNormalized);
               });
@@ -154,11 +140,9 @@ const TherapistSelection = () => {
               matchesState = matchingState;
             }
             
-            // Check if therapist accepts client's age
             if (clientData.client_age !== null && therapist.clinician_min_client_age !== null) {
               matchesAge = therapist.clinician_min_client_age <= clientData.client_age;
             } else {
-              // If client age is null, don't filter based on age
               matchesAge = true;
             }
             
@@ -167,26 +151,21 @@ const TherapistSelection = () => {
           
           console.log("Filtered therapists count:", filteredTherapists.length);
           
-          // If no therapists match the criteria and we have at least one therapist,
-          // show all therapists instead of an empty list
           if (filteredTherapists.length === 0 && data.length > 0) {
             console.log("No matching therapists found, showing all therapists");
             setTherapists(data);
             
-            // Show a toast notification
             toast({
               title: "No exact matches found",
               description: "Showing all available therapists instead",
               variant: "default"
             });
             
-            // Disable filtering automatically
             setFilteringEnabled(false);
           } else {
             setTherapists(filteredTherapists);
           }
         } else {
-          // If filtering is disabled, show all active therapists
           setTherapists(data || []);
         }
       } catch (error) {
@@ -204,7 +183,6 @@ const TherapistSelection = () => {
     fetchTherapists();
   }, [toast, clientData, filteringEnabled]);
   
-  // Function to handle therapist selection
   const handleSelectTherapist = async (therapist: Therapist) => {
     if (!userId) {
       toast({
@@ -219,7 +197,6 @@ const TherapistSelection = () => {
     try {
       setSelectingTherapist(true);
       
-      // Update client record with selected therapist ID
       const { error } = await supabase
         .from('clients')
         .update({ client_assigned_therapist: therapist.id })
@@ -235,13 +212,11 @@ const TherapistSelection = () => {
         return;
       }
       
-      // Show success message
       toast({
         title: "Therapist Selected",
         description: `You have selected ${therapist.clinician_first_name} ${therapist.clinician_last_name} as your therapist.`,
       });
       
-      // Navigate to patient dashboard
       navigate('/patient-dashboard');
     } catch (error) {
       console.error("Exception in handleSelectTherapist:", error);
@@ -296,15 +271,6 @@ const TherapistSelection = () => {
                           <>Showing all available therapists.</>
                         )}
                       </AlertDescription>
-                      <div className="mt-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => setFilteringEnabled(!filteringEnabled)}
-                        >
-                          {filteringEnabled ? "Show All Therapists" : "Show Matching Therapists"}
-                        </Button>
-                      </div>
                     </Alert>
                   </div>
                 )}
@@ -323,14 +289,6 @@ const TherapistSelection = () => {
                       >
                         Refresh
                       </Button>
-                      {filteringEnabled && (
-                        <Button 
-                          variant="outline"
-                          onClick={() => setFilteringEnabled(false)}
-                        >
-                          View All Therapists
-                        </Button>
-                      )}
                     </div>
                   </div>
                 ) : (
@@ -341,7 +299,6 @@ const TherapistSelection = () => {
                           <div className="flex flex-col md:flex-row gap-6">
                             <div className="md:w-1/4 flex flex-col items-center">
                               <Avatar className="w-32 h-32 mb-4">
-                                {/* Updated to check both profile image fields */}
                                 {(therapist.clinician_image_url || therapist.clinician_profile_image) ? (
                                   <AvatarImage 
                                     src={therapist.clinician_image_url || therapist.clinician_profile_image} 
