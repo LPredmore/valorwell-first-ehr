@@ -16,7 +16,7 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form, onOtherInsuranceCha
   const [showReferralField, setShowReferralField] = useState(false);
   const [showInsuranceDisclaimer, setShowInsuranceDisclaimer] = useState(false);
   
-  // Watch for changes to the hasReferral and otherInsurance fields
+  // Use consistent field names with client_ prefix 
   const hasReferral = form.watch('client_tricare_has_referral');
   const otherInsurance = form.watch('otherInsurance');
   
@@ -157,6 +157,7 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form, onOtherInsuranceCha
           label="Do you have any other insurance?"
           type="select"
           options={["Yes", "No"]}
+          required={true}
         />
 
         {showInsuranceDisclaimer && (

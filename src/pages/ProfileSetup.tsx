@@ -406,7 +406,7 @@ const ProfileSetup = () => {
   const handleNext = async () => {
     const values = form.getValues();
     const vaCoverage = values.client_vacoverage;
-    const hasMoreInsurance = values.hasMoreInsurance; // Updated to use the local field
+    const hasMoreInsurance = values.hasMoreInsurance;
     
     if (currentStep === 2) {
       if (clientId) {
@@ -898,4 +898,231 @@ const ProfileSetup = () => {
             >
               <ArrowLeft className="h-4 w-4" />
               Back
-            </Button
+            </Button>
+            
+            <Button 
+              type="button"
+              onClick={handleNext}
+              disabled={!isStep2Valid}
+              className="flex items-center gap-2"
+            >
+              Next
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </Form>
+    );
+  };
+
+  const renderStepThree = () => {
+    const vaCoverage = form.watch('client_vacoverage');
+    const isStep3Valid = form.formState.isValid;
+    
+    const canProceed = () => {
+      const otherInsurance = form.getValues('client_other_insurance');
+      
+      if (vaCoverage === "CHAMPVA") {
+        if (otherInsurance === "No") {
+          return !!form.getValues('client_champva_agreement');
+        }
+        return otherInsurance === "Yes";
+      } else if (vaCoverage === "TRICARE") {
+        const hasOtherInsurance = form.getValues('otherInsurance');
+        if (hasOtherInsurance === "No") {
+          return !!form.getValues('tricareInsuranceAgreement');
+        }
+        return hasOtherInsurance === "Yes";
+      }
+      
+      return true;
+    };
+    
+    return (
+      <Form {...form}>
+        <div className="space-y-6">
+          {vaCoverage === "CHAMPVA" && (
+            <SignupChampva 
+              form={form} 
+              onOtherInsuranceChange={handleOtherInsuranceChange}
+            />
+          )}
+          
+          {vaCoverage === "TRICARE" && (
+            <SignupTricare 
+              form={form} 
+              onOtherInsuranceChange={handleOtherInsuranceChange}
+            />
+          )}
+          
+          {vaCoverage === "VA Community Care" && (
+            <SignupVaCcn form={form} />
+          )}
+          
+          {vaCoverage === "None - I am a veteran" && (
+            <SignupVeteran form={form} />
+          )}
+          
+          {vaCoverage === "None - I am not a veteran" && (
+            <SignupNotAVeteran form={form} />
+          )}
+          
+          <div className="flex justify-between mt-8">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handleGoBack}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            
+            <Button 
+              type="button"
+              onClick={handleNext}
+              disabled={!canProceed()}
+              className="flex items-center gap-2"
+            >
+              Next
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </Form>
+    );
+  };
+
+  const renderStepFour = () => {
+    return (
+      <Form {...form}>
+        <div className="space-y-6">
+          <AdditionalInsurance form={form} />
+          
+          <div className="flex justify-between mt-8">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handleGoBack}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            
+            <Button 
+              type="button"
+              onClick={handleNext}
+              className="flex items-center gap-2"
+            >
+              Next
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </Form>
+    );
+  };
+
+  const renderStepFive = () => {
+    return (
+      <Form {...form}>
+        <div className="space-y-6">
+          <MoreAdditionalInsurance form={form} />
+          
+          <div className="flex justify-between mt-8">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handleGoBack}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            
+            <Button 
+              type="button"
+              onClick={handleNext}
+              className="flex items-center gap-2"
+            >
+              Next
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </Form>
+    );
+  };
+
+  const renderStepSix = () => {
+    return (
+      <Form {...form}>
+        <div className="space-y-6">
+          <SignupLast form={form} />
+          
+          <div className="flex justify-between mt-8">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handleGoBack}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            
+            <Button 
+              type="button"
+              onClick={handleNext}
+              className="flex items-center gap-2"
+            >
+              Complete Profile
+              <Check className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </Form>
+    );
+  };
+
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        return renderStepOne();
+      case 2:
+        return renderStepTwo();
+      case 3:
+        return renderStepThree();
+      case 4:
+        return renderStepFour();
+      case 5:
+        return renderStepFive();
+      case 6:
+        return renderStepSix();
+      default:
+        return renderStepOne();
+    }
+  };
+
+  return (
+    <Layout>
+      <div className="container max-w-4xl mx-auto py-8 px-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Complete Your Profile</CardTitle>
+            <CardDescription>
+              Please provide the following information to complete your profile.
+              Step {currentStep} of 6
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {renderCurrentStep()}
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
+  );
+};
+
+export default ProfileSetup;

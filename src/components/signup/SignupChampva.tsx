@@ -68,26 +68,26 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({
             </p>
             
             <FormField control={form.control} name="client_champva_agreement" rules={{
-          validate: value => {
-            // Only require the checkbox when "No" is selected
-            if (otherInsurance === "No" && !value) {
-              return "You must agree to this statement";
-            }
-            return true;
-          }
-        }} render={({
-          field
-        }) => <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <Label className="font-medium cursor-pointer">
-                      I agree
-                    </Label>
-                    <FormMessage />
-                  </div>
-                </FormItem>} />
+              validate: value => {
+                // Only require the checkbox when "No" is selected
+                if (otherInsurance === "No" && !value) {
+                  return "You must agree to this statement";
+                }
+                return true;
+              }
+            }} render={({
+              field
+            }) => <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <Label className="font-medium cursor-pointer">
+                          I agree
+                        </Label>
+                        <FormMessage />
+                      </div>
+                    </FormItem>} />
           </div>}
       </div>
     </div>;
