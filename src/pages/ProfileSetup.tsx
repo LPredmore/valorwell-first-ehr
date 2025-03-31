@@ -928,7 +928,7 @@ const ProfileSetup = () => {
         }
         return otherInsurance === "Yes";
       } else if (vaCoverage === "TRICARE") {
-        const hasOtherInsurance = form.getValues('otherInsurance');
+        const hasOtherInsurance = form.getValues('client_other_insurance');
         if (hasOtherInsurance === "No") {
           return !!form.getValues('tricareInsuranceAgreement');
         }
