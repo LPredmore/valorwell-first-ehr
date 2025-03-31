@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, parse, addDays, isSameDay, isAfter, differenceInCalendarDays } from 'date-fns';
 import { Calendar as CalendarIcon, Clock, Check } from 'lucide-react';
@@ -223,6 +224,20 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
       toast({
         title: "Missing information",
         description: "Please select a date and time",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Add validation to ensure the selected date meets the minimum days ahead requirement
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysFromToday = differenceInCalendarDays(selectedDate, today);
+    
+    if (daysFromToday < minDaysAhead) {
+      toast({
+        title: "Invalid date selection",
+        description: `Appointments must be booked at least ${minDaysAhead} day${minDaysAhead !== 1 ? 's' : ''} in advance.`,
         variant: "destructive"
       });
       return;
