@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, isToday, isFuture, parseISO, isAfter } from 'date-fns';
@@ -10,7 +9,6 @@ import VideoChat from '@/components/video/VideoChat';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/context/UserContext';
 
 type Appointment = {
@@ -30,15 +28,28 @@ type Appointment = {
 
 const ClinicianDashboard = () => {
   const { toast } = useToast();
-  const { userId } = useUser();
+  const { userRole } = useUser();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
 
-  // Fetch all appointments for the clinician
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        setCurrentUserId(data.user.id);
+      }
+    };
+    
+    fetchUserId();
+  }, []);
+
   const { data: appointments, isLoading, error, refetch } = useQuery({
-    queryKey: ['clinician-appointments', userId],
+    queryKey: ['clinician-appointments', currentUserId],
     queryFn: async () => {
-      console.log('Fetching appointments for clinician:', userId);
+      if (!currentUserId) return [];
+      
+      console.log('Fetching appointments for clinician:', currentUserId);
       const { data, error } = await supabase
         .from('appointments')
         .select(`
@@ -55,7 +66,7 @@ const ClinicianDashboard = () => {
             client_last_name
           )
         `)
-        .eq('clinician_id', userId)
+        .eq('clinician_id', currentUserId)
         .order('date')
         .order('start_time');
 
@@ -64,28 +75,24 @@ const ClinicianDashboard = () => {
         throw error;
       }
 
-      // Map the clients data to a more accessible format
       return data.map((appointment: any) => ({
         ...appointment,
         client: appointment.clients
       }));
     },
-    enabled: !!userId
+    enabled: !!currentUserId
   });
 
-  // Filter for today's appointments
   const todayAppointments = appointments?.filter(appointment => {
     const appointmentDate = parseISO(appointment.date);
     return isToday(appointmentDate);
   }) || [];
 
-  // Filter for upcoming appointments (future dates excluding today)
   const upcomingAppointments = appointments?.filter(appointment => {
     const appointmentDate = parseISO(appointment.date);
     return isFuture(appointmentDate) && !isToday(appointmentDate);
   }) || [];
 
-  // Check if appointment is within the time window to start (10 minutes before to 30 minutes after)
   const canStartSession = (appointment: Appointment) => {
     const now = new Date();
     const appointmentDate = parseISO(appointment.date);
@@ -105,7 +112,6 @@ const ClinicianDashboard = () => {
     return isAfter(now, tenMinutesBefore) && !isAfter(now, thirtyMinutesAfter);
   };
 
-  // Start a video session for an appointment
   const startVideoSession = async (appointment: Appointment) => {
     try {
       if (appointment.video_room_url) {
@@ -116,7 +122,6 @@ const ClinicianDashboard = () => {
         if (result.success && result.url) {
           setCurrentVideoUrl(result.url);
           setIsVideoOpen(true);
-          // Refresh the appointments to get the updated video_room_url
           refetch();
         } else {
           throw new Error('Failed to create video room');
@@ -132,7 +137,6 @@ const ClinicianDashboard = () => {
     }
   };
 
-  // Format time from "HH:MM:00" to "HH:MM AM/PM"
   const formatTime = (timeString: string) => {
     if (!timeString) return '';
     const [hours, minutes] = timeString.split(':');
@@ -142,7 +146,6 @@ const ClinicianDashboard = () => {
     return `${formattedHour}:${minutes} ${ampm}`;
   };
 
-  // Render appointment card
   const renderAppointmentCard = (appointment: Appointment, showStartButton = false) => (
     <Card key={appointment.id} className="mb-3">
       <CardHeader className="pb-2">
@@ -187,7 +190,6 @@ const ClinicianDashboard = () => {
         <h1 className="text-2xl font-bold mb-6">Clinician Dashboard</h1>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Today's Appointments */}
           <div>
             <h2 className="text-xl font-semibold mb-4 flex items-center">
               <Calendar className="h-5 w-5 mr-2" />
@@ -221,7 +223,6 @@ const ClinicianDashboard = () => {
             )}
           </div>
           
-          {/* Outstanding Documentation */}
           <div>
             <h2 className="text-xl font-semibold mb-4 flex items-center">
               <AlertCircle className="h-5 w-5 mr-2" />
@@ -230,7 +231,6 @@ const ClinicianDashboard = () => {
             <p className="text-gray-500">No outstanding documentation.</p>
           </div>
           
-          {/* Upcoming Appointments */}
           <div>
             <h2 className="text-xl font-semibold mb-4 flex items-center">
               <Calendar className="h-5 w-5 mr-2" />
