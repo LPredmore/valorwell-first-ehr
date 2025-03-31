@@ -8,7 +8,7 @@ import WeekView from '@/components/calendar/WeekView';
 import AppointmentBookingDialog from './AppointmentBookingDialog';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { format, parseISO, startOfToday, isBefore } from 'date-fns';
+import { format, parseISO, startOfToday, isBefore, isToday } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import VideoChat from '@/components/video/VideoChat';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
@@ -102,7 +102,8 @@ const MyPortal: React.FC<MyPortalProps> = ({
               date: formattedDate,
               time: formattedTime,
               type: appointment.type,
-              therapist: clinicianName || 'Your Therapist'
+              therapist: clinicianName || 'Your Therapist',
+              rawDate: appointment.date
             };
           });
           setUpcomingAppointments(formattedAppointments);
@@ -115,6 +116,11 @@ const MyPortal: React.FC<MyPortalProps> = ({
     };
     fetchAppointments();
   }, [clientData, clinicianName, refreshAppointments, clientTimeZone]);
+
+  const isAppointmentToday = (rawDate: string) => {
+    if (!rawDate) return false;
+    return isToday(parseISO(rawDate));
+  };
 
   const handleBookingComplete = () => {
     setRefreshAppointments(prev => prev + 1);
@@ -192,9 +198,13 @@ const MyPortal: React.FC<MyPortalProps> = ({
                     <TableCell>{appointment.type}</TableCell>
                     <TableCell>{appointment.therapist}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm" onClick={() => handleStartSession(appointment.id)} disabled={isLoadingVideoSession}>
-                        {isLoadingVideoSession ? "Loading..." : "Start Session"}
-                      </Button>
+                      {isAppointmentToday(appointment.rawDate) ? (
+                        <Button variant="outline" size="sm" onClick={() => handleStartSession(appointment.id)} disabled={isLoadingVideoSession}>
+                          {isLoadingVideoSession ? "Loading..." : "Start Session"}
+                        </Button>
+                      ) : (
+                        <span className="text-sm text-gray-500">Available on session day</span>
+                      )}
                     </TableCell>
                   </TableRow>)}
               </TableBody>
