@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Save, X, Upload, Camera, Image, User } from 'lucide-react';
+import { Pencil, Save, X, Upload, Camera, User } from 'lucide-react';
 import { 
   Card, 
   CardContent, 
@@ -256,16 +256,23 @@ const ClinicianDetails = () => {
     try {
       const fileExt = profileImage.name.split('.').pop();
       const fileName = `${clinicianId}-${Date.now()}.${fileExt}`;
-      const filePath = `profile-images/${fileName}`;
+      const filePath = `${fileName}`;
       
-      const { error: uploadError } = await supabase.storage
+      console.log("Attempting to upload file to storage bucket:", filePath);
+      
+      const { error: uploadError, data } = await supabase.storage
         .from('clinician-images')
         .upload(filePath, profileImage, {
           cacheControl: '3600',
           upsert: true
         });
       
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Error uploading file:", uploadError);
+        throw uploadError;
+      }
+      
+      console.log("Upload successful, data:", data);
       
       const { data: publicUrlData } = supabase.storage
         .from('clinician-images')
@@ -278,7 +285,7 @@ const ClinicianDetails = () => {
       console.error('Error uploading profile image:', error);
       toast({
         title: "Error",
-        description: "Failed to upload profile image.",
+        description: `Failed to upload profile image: ${error.message || "Unknown error"}`,
         variant: "destructive",
       });
       return null;
@@ -294,9 +301,13 @@ const ClinicianDetails = () => {
       let imageUrl = editedClinician.clinician_image_url;
       
       if (profileImage) {
+        console.log("Uploading profile image...");
         const uploadedUrl = await uploadProfileImage();
         if (uploadedUrl) {
+          console.log("Profile image uploaded, URL:", uploadedUrl);
           imageUrl = uploadedUrl;
+        } else {
+          console.error("Failed to upload profile image");
         }
       }
       
