@@ -26,6 +26,7 @@ interface Therapist {
   clinician_licensed_states: string[] | null;
   clinician_min_client_age: number | null;
   clinician_profile_image: string | null;
+  clinician_image_url: string | null; // Added this field to match the database
 }
 
 const TherapistSelection = () => {
@@ -340,9 +341,10 @@ const TherapistSelection = () => {
                           <div className="flex flex-col md:flex-row gap-6">
                             <div className="md:w-1/4 flex flex-col items-center">
                               <Avatar className="w-32 h-32 mb-4">
-                                {therapist.clinician_profile_image ? (
+                                {/* Updated to check both profile image fields */}
+                                {(therapist.clinician_image_url || therapist.clinician_profile_image) ? (
                                   <AvatarImage 
-                                    src={therapist.clinician_profile_image} 
+                                    src={therapist.clinician_image_url || therapist.clinician_profile_image} 
                                     alt={`${therapist.clinician_first_name} ${therapist.clinician_last_name}`}
                                   />
                                 ) : (
