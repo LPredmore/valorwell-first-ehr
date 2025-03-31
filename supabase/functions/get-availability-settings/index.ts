@@ -27,18 +27,23 @@ serve(async (req) => {
     const { clinicianId } = await req.json()
     
     if (!clinicianId) {
+      console.error('No clinician ID provided')
       throw new Error('Clinician ID is required')
     }
+    
+    console.log('Fetching availability settings for clinician ID:', clinicianId)
     
     // Fetch the clinician's availability settings
     const { data, error } = await supabaseClient
       .from('availability_settings')
       .select('*')
-      .eq('clinician_id', clinicianId.toString()) // Convert to string explicitly
+      .eq('clinician_id', String(clinicianId))
       .single()
     
     if (error) {
       console.error('Error fetching availability settings:', error)
+      console.error('Clinician ID used in query:', String(clinicianId))
+      
       // Return default settings if not found
       return new Response(
         JSON.stringify({ 
@@ -49,6 +54,8 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+    
+    console.log('Successfully retrieved settings:', data)
     
     return new Response(
       JSON.stringify(data),

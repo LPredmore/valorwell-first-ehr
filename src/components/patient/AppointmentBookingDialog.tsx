@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, parse, addDays, isSameDay, addMinutes } from 'date-fns';
 import { Calendar as CalendarIcon, Clock, Check } from 'lucide-react';
@@ -81,20 +80,33 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
       
       setLoading(true);
       try {
+        console.log('Fetching availability settings for clinician:', clinicianId);
+        
         // Fetch availability settings first
         const { data: settingsData, error: settingsError } = await supabase
           .functions.invoke('get-availability-settings', {
-            body: { clinicianId }
+            body: { clinicianId: String(clinicianId) }
           });
           
         if (settingsError) {
           console.error('Error fetching availability settings:', settingsError);
         } else if (settingsData) {
+          console.log('Received settings data:', settingsData);
+          const minDaysAhead = parseInt(settingsData.min_days_ahead) || 1;
+          
           setSettings({
             time_granularity: settingsData.time_granularity || 'hour',
-            min_days_ahead: settingsData.min_days_ahead || 1,
+            min_days_ahead: minDaysAhead,
             max_days_ahead: settingsData.max_days_ahead || 60
           });
+          
+          console.log('Applied settings:', {
+            time_granularity: settingsData.time_granularity || 'hour',
+            min_days_ahead: minDaysAhead,
+            max_days_ahead: settingsData.max_days_ahead || 60
+          });
+        } else {
+          console.log('No settings data received, using defaults');
         }
         
         // Then fetch availability blocks
@@ -147,7 +159,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
       const endTime = parse(block.end_time, 'HH:mm:ss', new Date());
       
       let currentTime = startTime;
-      // Increment based on the time granularity setting
       const incrementMinutes = settings.time_granularity === 'half-hour' ? 30 : 60;
       
       while (currentTime < endTime) {
@@ -157,7 +168,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           available: true
         });
         
-        // Add the appropriate time increment
         currentTime = addMinutes(currentTime, incrementMinutes);
       }
     });
@@ -218,7 +228,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     
     try {
       const startTime = selectedTime;
-      // Determine end time based on time granularity setting
       const incrementMinutes = settings.time_granularity === 'half-hour' ? 30 : 60;
       const endTimeObj = parse(selectedTime, 'HH:mm', new Date());
       endTimeObj.setMinutes(endTimeObj.getMinutes() + incrementMinutes);
@@ -289,6 +298,13 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     const minDate = new Date(today);
     minDate.setDate(today.getDate() + settings.min_days_ahead);
     
+    console.log('Checking if date is too soon:', { 
+      date: format(date, 'yyyy-MM-dd'),
+      minDate: format(minDate, 'yyyy-MM-dd'),
+      min_days_ahead: settings.min_days_ahead,
+      isTooSoon: date < minDate
+    });
+    
     return date < minDate;
   };
 
@@ -303,7 +319,12 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   };
 
   const disabledDays = (date: Date) => {
-    return isDayUnavailable(date) || isPastDate(date) || isDateTooSoon(date) || isDateTooFar(date);
+    const isDayUnavailable = isDayUnavailable(date);
+    const isPast = isPastDate(date);
+    const isTooSoon = isDateTooSoon(date);
+    const isTooFar = isDateTooFar(date);
+    
+    return isDayUnavailable || isPast || isTooSoon || isTooFar;
   };
 
   const formatTimeDisplay = (timeString: string) => {
