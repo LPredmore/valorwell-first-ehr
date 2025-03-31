@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import CalendarView from '../components/calendar/CalendarView';
@@ -36,7 +35,6 @@ interface Client {
   displayName: string;
 }
 
-// This function generates recurring dates based on the pattern
 const generateRecurringDates = (
   startDate: Date,
   recurrenceType: string,
@@ -54,7 +52,6 @@ const generateRecurringDates = (
       currentDate = addWeeks(currentDate, 4); // Every 4 weeks
     }
     
-    // Limit to 6 months of appointments
     if (currentDate > addMonths(startDate, 6)) {
       break;
     }
@@ -188,7 +185,6 @@ const CalendarPage = () => {
       
       const endTime = `${endDateTime.getHours().toString().padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}`;
 
-      // If it's a recurring appointment, we need to generate multiple dates
       if (isRecurring) {
         const recurringGroupId = uuidv4(); // Generate a unique ID to link recurring appointments
         const recurringDates = generateRecurringDates(selectedDate, recurrenceType);
@@ -205,7 +201,6 @@ const CalendarPage = () => {
           recurring_group_id: recurringGroupId
         }));
 
-        // Insert all recurring appointments in a batch
         const { data, error } = await supabase
           .from('appointments')
           .insert(appointmentsToInsert)
@@ -221,7 +216,6 @@ const CalendarPage = () => {
           description: `Created ${recurringDates.length} recurring appointments.`,
         });
       } else {
-        // Create a single appointment
         const formattedDate = format(selectedDate, 'yyyy-MM-dd');
 
         const { data, error } = await supabase
@@ -232,7 +226,7 @@ const CalendarPage = () => {
             date: formattedDate,
             start_time: startTime,
             end_time: endTime,
-            type: "Therapy Session", // Hardcoded default type
+            type: "Therapy Session",
             status: 'scheduled'
           }])
           .select();
@@ -253,7 +247,6 @@ const CalendarPage = () => {
       setIsDialogOpen(false);
       setIsRecurring(false);
       
-      // Trigger a refresh of the calendar view
       setAppointmentRefreshTrigger(prev => prev + 1);
 
     } catch (error) {
@@ -303,7 +296,7 @@ const CalendarPage = () => {
                 New Appointment
               </Button>
 
-              <div className="w-64">
+              <div className="hidden">
                 <Select
                   value={selectedClinicianId || undefined}
                   onValueChange={(value) => setSelectedClinicianId(value)}
