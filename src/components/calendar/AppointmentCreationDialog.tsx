@@ -95,6 +95,11 @@ interface AppointmentCreationDialogProps {
   onAppointmentCreated: () => void;
 }
 
+interface Client {
+  id: string;
+  name: string;
+}
+
 const AppointmentCreationDialog: React.FC<AppointmentCreationDialogProps> = ({
   clinicianId,
   isOpen,
@@ -133,30 +138,38 @@ const AppointmentCreationDialog: React.FC<AppointmentCreationDialogProps> = ({
   }, [startTime, form]);
 
   // Fetch clients for this clinician
-  const { data: clients = [], isLoading: isLoadingClients } = useQuery({
+  const { data: clientsData = [], isLoading: isLoadingClients } = useQuery({
     queryKey: ["clients", clinicianId],
     queryFn: async () => {
       if (!clinicianId) return [];
 
-      const { data, error } = await supabase
-        .from("clients")
-        .select("id, client_first_name, client_last_name, client_preferred_name")
-        .eq("client_assigned_therapist", clinicianId);
+      try {
+        const { data, error } = await supabase
+          .from("clients")
+          .select("id, client_first_name, client_last_name, client_preferred_name")
+          .eq("client_assigned_therapist", clinicianId);
 
-      if (error) {
-        console.error("Error fetching clients:", error);
+        if (error) {
+          console.error("Error fetching clients:", error);
+          return [];
+        }
+
+        return (data || []).map((client) => ({
+          id: client.id,
+          name: client.client_preferred_name 
+            ? `${client.client_preferred_name} ${client.client_last_name}`
+            : `${client.client_first_name} ${client.client_last_name}`,
+        }));
+      } catch (e) {
+        console.error("Exception when fetching clients:", e);
         return [];
       }
-
-      return data.map((client) => ({
-        id: client.id,
-        name: client.client_preferred_name 
-          ? `${client.client_preferred_name} ${client.client_last_name}`
-          : `${client.client_first_name} ${client.client_last_name}`,
-      }));
     },
     enabled: !!clinicianId && isOpen,
   });
+
+  // Ensure we always have a valid array for clients
+  const clients: Client[] = Array.isArray(clientsData) ? clientsData : [];
 
   const createRecurringAppointments = (baseAppointment, recurrenceType, count) => {
     const appointments = [];
@@ -249,6 +262,13 @@ const AppointmentCreationDialog: React.FC<AppointmentCreationDialogProps> = ({
     }
   };
 
+  // Reset form when dialog opens or closes
+  useEffect(() => {
+    if (!isOpen) {
+      form.reset();
+    }
+  }, [isOpen, form]);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
@@ -275,39 +295,46 @@ const AppointmentCreationDialog: React.FC<AppointmentCreationDialogProps> = ({
                             !field.value && "text-muted-foreground"
                           )}
                         >
-                          {field.value
-                            ? clients.find((client) => client.id === field.value)?.name
+                          {field.value && clients.length > 0
+                            ? clients.find((client) => client.id === field.value)?.name || "Select client"
                             : "Select client"}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
                     <PopoverContent className="p-0 w-full">
-                      <Command>
-                        <CommandInput placeholder="Search client..." />
-                        <CommandEmpty>No client found.</CommandEmpty>
-                        <CommandGroup>
-                          {clients.map((client) => (
-                            <CommandItem
-                              key={client.id}
-                              value={client.name}
-                              onSelect={() => {
-                                form.setValue("clientId", client.id);
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  client.id === field.value
-                                    ? "opacity-100"
-                                    : "opacity-0"
-                                )}
-                              />
-                              {client.name}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </Command>
+                      {isLoadingClients ? (
+                        <div className="flex items-center justify-center p-4">
+                          <CalendarIcon className="mr-2 h-4 w-4 animate-spin" />
+                          <p>Loading clients...</p>
+                        </div>
+                      ) : (
+                        <Command>
+                          <CommandInput placeholder="Search client..." />
+                          <CommandEmpty>No client found.</CommandEmpty>
+                          <CommandGroup>
+                            {clients.map((client) => (
+                              <CommandItem
+                                key={client.id}
+                                value={client.name}
+                                onSelect={() => {
+                                  form.setValue("clientId", client.id);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    client.id === field.value
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {client.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </Command>
+                      )}
                     </PopoverContent>
                   </Popover>
                   <FormMessage />
