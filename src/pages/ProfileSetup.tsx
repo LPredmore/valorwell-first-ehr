@@ -406,7 +406,7 @@ const ProfileSetup = () => {
   const handleNext = async () => {
     const values = form.getValues();
     const vaCoverage = values.client_vacoverage;
-    const hasMoreInsurance = values.hasMoreInsurance; // Updated to use the local field
+    const hasMoreInsurance = values.hasMoreInsurance;
     
     if (currentStep === 2) {
       if (clientId) {
@@ -459,7 +459,9 @@ const ProfileSetup = () => {
           const { error } = await supabase
             .from('clients')
             .update({
-              client_champva: values.client_champva
+              client_champva: values.client_champva,
+              client_other_insurance: values.client_other_insurance,
+              client_champva_agreement: values.client_champva_agreement
             })
             .eq('id', clientId);
             
@@ -499,7 +501,9 @@ const ProfileSetup = () => {
               client_tricare_region: values.client_tricare_region,
               client_tricare_policy_id: values.client_tricare_policy_id,
               client_tricare_has_referral: values.client_tricare_has_referral,
-              client_tricare_referral_number: values.client_tricare_referral_number
+              client_tricare_referral_number: values.client_tricare_referral_number,
+              client_other_insurance: values.client_other_insurance,
+              client_tricare_insurance_agreement: values.tricareInsuranceAgreement
             })
             .eq('id', clientId);
             
@@ -915,7 +919,7 @@ const ProfileSetup = () => {
 
   const renderStepThree = () => {
     const vaCoverage = form.watch('client_vacoverage');
-    const otherInsurance = form.watch('otherInsurance');
+    const otherInsurance = form.watch('client_other_insurance');
     const champvaAgreement = form.watch('client_champva_agreement');
     const tricareAgreement = form.watch('tricareInsuranceAgreement');
     
@@ -943,7 +947,7 @@ const ProfileSetup = () => {
         // Check if all required fields have values
         const allRequiredFieldsValid = requiredFields.every(field => {
           const value = form.watch(field);
-          return value && value.trim() !== '';
+          return value && typeof value === 'string' && value.trim() !== '';
         });
         
         if (!allRequiredFieldsValid) return false;
@@ -951,7 +955,7 @@ const ProfileSetup = () => {
         // If referral is "Yes", then referral number is required
         if (hasReferral === "Yes") {
           const referralNumber = form.watch('client_tricare_referral_number');
-          if (!referralNumber || referralNumber.trim() === '') return false;
+          if (!referralNumber || typeof referralNumber !== 'string' || referralNumber.trim() === '') return false;
         }
         
         // Check if otherInsurance field is set
