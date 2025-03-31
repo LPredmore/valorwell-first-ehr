@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,8 @@ import {
   getUserTimeZone, 
   formatTime12Hour, 
   formatTimeZoneDisplay,
-  formatWithTimeZone 
+  formatWithTimeZone,
+  formatTimeInUserTimeZone
 } from '@/utils/timeZoneUtils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -118,12 +118,11 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
               let formattedTime = '';
               try {
                 if (appointment.start_time) {
-                  // Use the enhanced formatting with time zone context
-                  formattedTime = formatInUserTimeZone(
+                  formattedTime = formatWithTimeZone(
                     appointment.date,
                     appointment.start_time,
                     clientTimeZone,
-                    'h:mm a'
+                    false
                   );
                 } else {
                   formattedTime = 'Time unavailable';
@@ -140,7 +139,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
                 type: appointment.type || 'Appointment',
                 therapist: clinicianName || 'Your Therapist',
                 rawDate: appointment.date,
-                rawTime: appointment.start_time // Store raw time for potential reformatting
+                rawTime: appointment.start_time
               };
             } catch (error) {
               console.error('Error processing appointment:', error, appointment);
@@ -174,9 +173,8 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
     };
     
     fetchPastAppointments();
-  }, [clientData, clinicianName, clientTimeZone, toast]); // Added clientTimeZone dependency
+  }, [clientData, clinicianName, clientTimeZone, toast]);
 
-  // Format the time zone name for display
   const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);
 
   return (

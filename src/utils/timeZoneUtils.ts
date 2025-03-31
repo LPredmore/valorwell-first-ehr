@@ -69,37 +69,6 @@ export const convertToUserTimeZone = (
 };
 
 /**
- * Formats a date in the user's timezone
- */
-export const formatInUserTimeZone = (
-  date: string | Date,
-  time: string,
-  userTimeZone: string,
-  formatStr: string = 'h:mm a'
-): string => {
-  try {
-    const ianaTimeZone = ensureIANATimeZone(userTimeZone);
-    const dateObj = typeof date === 'string' ? parseISO(date) : date;
-    const [hours, minutes] = time.split(':').map(Number);
-    
-    // Create a combined date time object
-    const dateTime = new Date(
-      dateObj.getFullYear(),
-      dateObj.getMonth(),
-      dateObj.getDate(),
-      hours,
-      minutes
-    );
-    
-    return formatInTimeZone(dateTime, ianaTimeZone, formatStr);
-  } catch (error) {
-    console.error('Error formatting in user timezone:', error, { date, time, userTimeZone, formatStr });
-    // Return a fallback format
-    return time ? formatTime12Hour(time) : format(new Date(), 'h:mm a');
-  }
-};
-
-/**
  * Formats a time string in the user's timezone
  */
 export const formatTimeInUserTimeZone = (
@@ -184,7 +153,24 @@ export const formatWithTimeZone = (
 ): string => {
   try {
     const ianaTimeZone = ensureIANATimeZone(timeZone);
-    const formattedTime = formatInUserTimeZone(date, time, ianaTimeZone);
+    
+    // Parse the date object if it's a string
+    const dateObj = typeof date === 'string' ? parseISO(date) : date;
+    
+    // Parse the time string and create a combined date time object
+    const [hours, minutes] = time.split(':').map(Number);
+    
+    // Create a combined date time object
+    const dateTime = new Date(
+      dateObj.getFullYear(),
+      dateObj.getMonth(),
+      dateObj.getDate(),
+      hours,
+      minutes
+    );
+    
+    // Format the time using date-fns-tz
+    const formattedTime = formatInTimeZone(dateTime, ianaTimeZone, 'h:mm a');
     
     if (!includeTimeZone) {
       return formattedTime;
@@ -266,3 +252,4 @@ export const formatTimeZoneDisplay = (timeZone: string): string => {
     return timeZone || '';
   }
 };
+
