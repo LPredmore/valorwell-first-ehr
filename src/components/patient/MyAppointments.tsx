@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,8 +6,12 @@ import { Calendar } from 'lucide-react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, startOfToday } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
-import { getUserTimeZone, formatTime12Hour } from '@/utils/timeZoneUtils';
+import { 
+  getUserTimeZone, 
+  formatTime12Hour, 
+  formatTimeZoneDisplay,
+  formatWithTimeZone 
+} from '@/utils/timeZoneUtils';
 import { useToast } from '@/hooks/use-toast';
 
 interface PastAppointment {
@@ -111,7 +116,13 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
               let formattedTime = '';
               try {
                 if (appointment.start_time) {
-                  formattedTime = formatTime12Hour(appointment.start_time);
+                  // Use the enhanced formatting with time zone context
+                  formattedTime = formatWithTimeZone(
+                    appointment.date,
+                    appointment.start_time,
+                    clientTimeZone,
+                    false // Don't include time zone in each row to avoid clutter
+                  );
                 } else {
                   formattedTime = 'Time unavailable';
                 }
@@ -162,6 +173,9 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
     fetchPastAppointments();
   }, [clientData, clinicianName, clientTimeZone, toast]);
 
+  // Format the time zone name for display
+  const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);
+
   return (
     <Card>
       <CardHeader>
@@ -176,7 +190,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
-                <TableHead>Time <span className="text-xs text-gray-500">({clientTimeZone.split('/').pop()?.replace('_', ' ')})</span></TableHead>
+                <TableHead>Time <span className="text-xs text-gray-500">({timeZoneDisplay})</span></TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Therapist</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
