@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,8 +6,8 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, startOfToday } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
-import { getUserTimeZone } from '@/utils/timeZoneUtils';
-import { useToast } from '@/components/ui/use-toast';
+import { getUserTimeZone, formatTime12Hour } from '@/utils/timeZoneUtils';
+import { useToast } from '@/hooks/use-toast';
 
 interface PastAppointment {
   id: string | number;
@@ -32,7 +31,6 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
   const clientTimeZone = clientData?.client_time_zone || getUserTimeZone();
 
   useEffect(() => {
-    // Get the current user data from local storage
     const fetchClientData = async () => {
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -83,17 +81,15 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
       
       setLoading(true);
       try {
-        // Get today's date
         const today = startOfToday();
         const todayStr = format(today, 'yyyy-MM-dd');
         
-        // Fetch only appointments with date before today
         const { data, error } = await supabase
           .from('appointments')
           .select('*')
           .eq('client_id', clientData.id)
-          .lt('date', todayStr) // Only get appointments before today
-          .order('date', { ascending: false }) // Most recent first
+          .lt('date', todayStr)
+          .order('date', { ascending: false })
           .order('start_time', { ascending: false });
 
         if (error) {
@@ -112,16 +108,10 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
             try {
               const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
               
-              // Format time with proper error handling
               let formattedTime = '';
               try {
                 if (appointment.start_time) {
-                  const dateTimeString = `${appointment.date}T${appointment.start_time}`;
-                  formattedTime = formatInTimeZone(
-                    parseISO(dateTimeString), 
-                    clientTimeZone, 
-                    'h:mm a'
-                  );
+                  formattedTime = formatTime12Hour(appointment.start_time);
                 } else {
                   formattedTime = 'Time unavailable';
                 }
@@ -140,7 +130,6 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
               };
             } catch (error) {
               console.error('Error processing appointment:', error, appointment);
-              // Return a fallback object to prevent breaking the UI
               return {
                 id: appointment.id || 'unknown-id',
                 date: 'Date unavailable',

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, isToday, isFuture, parseISO, isAfter } from 'date-fns';
@@ -11,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser } from '@/context/UserContext';
+import { formatTime12Hour } from '@/utils/timeZoneUtils';
 
 type Appointment = {
   id: string;
@@ -95,28 +95,7 @@ const ClinicianDashboard = () => {
   }) || [];
 
   const canStartSession = (appointment: Appointment) => {
-    // For testing purposes, always allow starting sessions
-    // In production, you would use the time-based logic below
     return true;
-    
-    /*
-    const now = new Date();
-    const appointmentDate = parseISO(appointment.date);
-    
-    if (!isToday(appointmentDate)) return false;
-    
-    const [hours, minutes] = appointment.start_time.split(':').map(Number);
-    const startTime = new Date(appointmentDate);
-    startTime.setHours(hours, minutes);
-    
-    const tenMinutesBefore = new Date(startTime);
-    tenMinutesBefore.setMinutes(tenMinutesBefore.getMinutes() - 10);
-    
-    const thirtyMinutesAfter = new Date(startTime);
-    thirtyMinutesAfter.setMinutes(thirtyMinutesAfter.getMinutes() + 30);
-    
-    return isAfter(now, tenMinutesBefore) && !isAfter(now, thirtyMinutesAfter);
-    */
   };
 
   const startVideoSession = async (appointment: Appointment) => {
@@ -152,12 +131,7 @@ const ClinicianDashboard = () => {
   };
 
   const formatTime = (timeString: string) => {
-    if (!timeString) return '';
-    const [hours, minutes] = timeString.split(':');
-    const hour = parseInt(hours, 10);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const formattedHour = hour % 12 || 12;
-    return `${formattedHour}:${minutes} ${ampm}`;
+    return formatTime12Hour(timeString);
   };
 
   const renderAppointmentCard = (appointment: Appointment, showStartButton = false) => (

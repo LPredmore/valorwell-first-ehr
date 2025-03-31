@@ -92,3 +92,34 @@ export const getUserTimeZone = (userTimeZone?: string | null): string => {
   
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 };
+
+/**
+ * Format a time string to 12-hour AM/PM format
+ * For use when displaying raw time values (e.g. from database)
+ */
+export const formatTime12Hour = (timeString: string): string => {
+  if (!timeString) return '';
+  
+  try {
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const formattedHour = hour % 12 || 12;
+    return `${formattedHour}:${minutes} ${ampm}`;
+  } catch (error) {
+    console.error('Error formatting time:', error, timeString);
+    return timeString || '';
+  }
+};
+
+/**
+ * Format a Date object to display time in 12-hour AM/PM format
+ */
+export const formatDateToTime12Hour = (date: Date): string => {
+  try {
+    return format(date, 'h:mm a');
+  } catch (error) {
+    console.error('Error formatting date to time:', error, date);
+    return '';
+  }
+};

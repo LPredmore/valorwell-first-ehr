@@ -3,6 +3,7 @@ import { format, addMinutes, startOfDay, setHours, setMinutes, isSameDay, differ
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
 
 interface DayViewProps {
   currentDate: Date;
@@ -316,7 +317,7 @@ const DayView: React.FC<DayViewProps> = ({
               className="flex p-2 min-h-[60px] group border-b border-gray-100 hover:bg-gray-50"
             >
               <div className="w-20 text-sm text-gray-500 font-medium">
-                {format(timeSlot, 'h:mm a')}
+                {formatDateToTime12Hour(timeSlot)}
               </div>
 
               <div className="flex-1">
@@ -334,7 +335,7 @@ const DayView: React.FC<DayViewProps> = ({
                   >
                     <div className="font-medium">{appointment.clientName}</div>
                     <div className="text-xs text-gray-600">
-                      {appointment.type} - {format(appointment.start, 'h:mm a')} to {format(appointment.end, 'h:mm a')}
+                      {appointment.type} - {formatDateToTime12Hour(appointment.start)} to {formatDateToTime12Hour(appointment.end)}
                     </div>
                   </div>
                 ) : appointment && !isStartOfAppointment ? (
@@ -365,7 +366,7 @@ const DayView: React.FC<DayViewProps> = ({
                           )}
                         </div>
                         <div className="text-xs text-gray-600">
-                          {format(currentBlock.start, 'h:mm a')} - {format(currentBlock.end, 'h:mm a')}
+                          {formatDateToTime12Hour(currentBlock.start)} - {formatDateToTime12Hour(currentBlock.end)}
                         </div>
                       </>
                     )}

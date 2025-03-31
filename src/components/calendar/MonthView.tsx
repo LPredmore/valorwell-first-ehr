@@ -13,6 +13,7 @@ import {
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
 
 interface Appointment {
   id: string;
@@ -260,7 +261,7 @@ const MonthView: React.FC<MonthViewProps> = ({
                       className="bg-blue-100 text-blue-800 text-xs p-1 rounded truncate cursor-pointer hover:bg-blue-200 transition-colors"
                       onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
                     >
-                      {format(parseISO(`2000-01-01T${appointment.start_time}`), 'h:mm a')} - {getClientName(appointment.client_id)}
+                      {formatDateToTime12Hour(parseISO(`2000-01-01T${appointment.start_time}`))} - {getClientName(appointment.client_id)}
                     </div>
                   ))}
                   {dayAppointments.length > 3 && (

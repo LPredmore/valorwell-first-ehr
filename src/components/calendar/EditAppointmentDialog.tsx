@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -13,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { formatTime12Hour } from '@/utils/timeZoneUtils';
 
 interface EditAppointmentDialogProps {
   isOpen: boolean;
@@ -36,7 +36,6 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
   const [editOption, setEditOption] = useState<'single' | 'series'>('single');
   const [isEditOptionDialogOpen, setIsEditOptionDialogOpen] = useState(false);
 
-  // Generate time options for the select dropdown
   const generateTimeOptions = () => {
     const options = [];
     for (let hour = 0; hour < 24; hour++) {
@@ -92,14 +91,12 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       const endTime = calculateEndTime(startTime);
 
       if (mode === 'single') {
-        // Update just this single appointment
         const updateData: any = {
           date: formattedDate,
           start_time: startTime,
           end_time: endTime,
         };
         
-        // If this is breaking from a series, set recurring_group_id to null
         if (isRecurring) {
           updateData.recurring_group_id = null;
           updateData.appointment_recurring = null;
@@ -117,7 +114,6 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
           description: "The appointment has been updated.",
         });
       } else if (mode === 'series' && appointment.recurring_group_id) {
-        // Update all future appointments in the series
         const { error } = await supabase
           .from('appointments')
           .update({
@@ -206,7 +202,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
                 <SelectContent>
                   {timeOptions.map((time) => (
                     <SelectItem key={time} value={time}>
-                      {format(new Date(`2023-01-01T${time}`), 'h:mm a')}
+                      {formatTime12Hour(time)}
                     </SelectItem>
                   ))}
                 </SelectContent>
