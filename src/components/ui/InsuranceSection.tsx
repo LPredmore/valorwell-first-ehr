@@ -9,11 +9,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { UseFormReturn } from "react-hook-form";
 
 interface InsuranceSectionProps {
   title: string;
   prefix: string;
-  form: any;
+  form: UseFormReturn<any>;
   isEditing: boolean;
   insuranceTypes: string[];
   relationshipTypes: string[];

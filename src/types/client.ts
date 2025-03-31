@@ -1,4 +1,3 @@
-
 export interface ClientDetails {
   id: string;
   client_first_name: string | null;
@@ -75,6 +74,18 @@ export interface ClientDetails {
   client_sessionnarrative: string | null;
   client_medications: string | null;
   client_personsinattendance: string | null;
+  // VA Insurance related fields
+  client_vacoverage: string | null;
+  client_champva: string | null;
+  client_tricare_beneficiary_category: string | null;
+  client_tricare_sponsor_name: string | null;
+  client_tricare_sponsor_branch: string | null;
+  client_tricare_sponsor_id: string | null;
+  client_tricare_plan: string | null;
+  client_tricare_region: string | null;
+  client_tricare_policy_id: string | null;
+  client_tricare_has_referral: string | null;
+  client_tricare_referral_number: string | null;
 }
 
 export interface Clinician {
