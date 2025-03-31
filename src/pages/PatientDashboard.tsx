@@ -291,33 +291,7 @@ const PatientDashboard: React.FC = () => {
     fetchClientData();
   }, []);
 
-  const upcomingAppointments = [{
-    id: 1,
-    date: 'May 15, 2024',
-    time: '10:00 AM',
-    type: 'Therapy Session',
-    therapist: 'Dr. Sarah Johnson'
-  }, {
-    id: 2,
-    date: 'May 22, 2024',
-    time: '11:30 AM',
-    type: 'Follow-up',
-    therapist: 'Dr. Sarah Johnson'
-  }];
-
-  const pastAppointments = [{
-    id: 1,
-    date: 'April 30, 2024',
-    time: '10:00 AM',
-    type: 'Initial Consultation',
-    therapist: 'Dr. Sarah Johnson'
-  }, {
-    id: 2,
-    date: 'April 15, 2024',
-    time: '11:30 AM',
-    type: 'Therapy Session',
-    therapist: 'Dr. Sarah Johnson'
-  }];
+  const upcomingAppointments = [];
 
   return <Layout>
       <div className="flex flex-col gap-6">
@@ -362,7 +336,7 @@ const PatientDashboard: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="pastAppointments" className="mt-0">
-            <MyAppointments pastAppointments={pastAppointments} />
+            <MyAppointments />
           </TabsContent>
 
           <TabsContent value="insurance" className="mt-0">

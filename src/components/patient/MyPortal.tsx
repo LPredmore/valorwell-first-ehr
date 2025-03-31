@@ -8,12 +8,13 @@ import WeekView from '@/components/calendar/WeekView';
 import AppointmentBookingDialog from './AppointmentBookingDialog';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfToday, isBefore } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import VideoChat from '@/components/video/VideoChat';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
 import PHQ9Template from '@/components/templates/PHQ9Template';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
 interface MyPortalProps {
   upcomingAppointments: Array<{
     id: number;
@@ -26,6 +27,7 @@ interface MyPortalProps {
   clinicianName: string | null;
   loading: boolean;
 }
+
 const MyPortal: React.FC<MyPortalProps> = ({
   upcomingAppointments: initialAppointments,
   clientData,
@@ -45,8 +47,8 @@ const MyPortal: React.FC<MyPortalProps> = ({
     toast
   } = useToast();
   const clientTimeZone = clientData?.client_time_zone || getUserTimeZone();
+
   useEffect(() => {
-    // Fetch clinician data if assigned
     const fetchClinicianData = async () => {
       if (!clientData?.client_assigned_therapist) return;
       try {
@@ -68,22 +70,28 @@ const MyPortal: React.FC<MyPortalProps> = ({
     };
     fetchClinicianData();
   }, [clientData]);
+
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!clientData?.id) return;
       try {
-        const {
-          data,
-          error
-        } = await supabase.from('appointments').select('*').eq('client_id', clientData.id).eq('status', 'scheduled').order('date', {
-          ascending: true
-        }).order('start_time', {
-          ascending: true
-        });
+        const today = startOfToday();
+        const todayStr = format(today, 'yyyy-MM-dd');
+        
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('client_id', clientData.id)
+          .eq('status', 'scheduled')
+          .gte('date', todayStr)
+          .order('date', { ascending: true })
+          .order('start_time', { ascending: true });
+
         if (error) {
           console.error('Error fetching appointments:', error);
           return;
         }
+
         if (data && data.length > 0) {
           const formattedAppointments = data.map(appointment => {
             const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
@@ -107,6 +115,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
     };
     fetchAppointments();
   }, [clientData, clinicianName, refreshAppointments, clientTimeZone]);
+
   const handleBookingComplete = () => {
     setRefreshAppointments(prev => prev + 1);
     toast({
@@ -114,10 +123,12 @@ const MyPortal: React.FC<MyPortalProps> = ({
       description: "Your appointment has been scheduled successfully!"
     });
   };
+
   const handleStartSession = async (appointmentId: string | number) => {
     setPendingAppointmentId(appointmentId);
     setShowPHQ9(true);
   };
+
   const handlePHQ9Complete = async () => {
     setShowPHQ9(false);
     if (pendingAppointmentId) {
@@ -149,9 +160,11 @@ const MyPortal: React.FC<MyPortalProps> = ({
       }
     }
   };
+
   const handleCloseVideoSession = () => {
     setIsVideoSessionOpen(false);
   };
+
   return <div className="grid grid-cols-1 gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -243,4 +256,5 @@ const MyPortal: React.FC<MyPortalProps> = ({
       {videoRoomUrl && <VideoChat roomUrl={videoRoomUrl} isOpen={isVideoSessionOpen} onClose={handleCloseVideoSession} />}
     </div>;
 };
+
 export default MyPortal;
