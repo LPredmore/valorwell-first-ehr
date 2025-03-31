@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,7 +14,6 @@ import VideoChat from '@/components/video/VideoChat';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
 import PHQ9Template from '@/components/templates/PHQ9Template';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-
 interface MyPortalProps {
   upcomingAppointments: Array<{
     id: number;
@@ -28,7 +26,6 @@ interface MyPortalProps {
   clinicianName: string | null;
   loading: boolean;
 }
-
 const MyPortal: React.FC<MyPortalProps> = ({
   upcomingAppointments: initialAppointments,
   clientData,
@@ -44,26 +41,23 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const [showPHQ9, setShowPHQ9] = useState(false);
   const [pendingAppointmentId, setPendingAppointmentId] = useState<string | number | null>(null);
   const [clinicianData, setClinicianData] = useState<any>(null);
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const clientTimeZone = clientData?.client_time_zone || getUserTimeZone();
-
   useEffect(() => {
     // Fetch clinician data if assigned
     const fetchClinicianData = async () => {
       if (!clientData?.client_assigned_therapist) return;
-      
       try {
-        const { data, error } = await supabase
-          .from('clinicians')
-          .select('*')
-          .eq('id', clientData.client_assigned_therapist)
-          .single();
-          
+        const {
+          data,
+          error
+        } = await supabase.from('clinicians').select('*').eq('id', clientData.client_assigned_therapist).single();
         if (error) {
           console.error('Error fetching clinician data:', error);
           return;
         }
-        
         if (data) {
           console.log('Fetched clinician data:', data);
           setClinicianData(data);
@@ -72,10 +66,8 @@ const MyPortal: React.FC<MyPortalProps> = ({
         console.error('Error:', error);
       }
     };
-    
     fetchClinicianData();
   }, [clientData]);
-
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!clientData?.id) return;
@@ -115,7 +107,6 @@ const MyPortal: React.FC<MyPortalProps> = ({
     };
     fetchAppointments();
   }, [clientData, clinicianName, refreshAppointments, clientTimeZone]);
-
   const handleBookingComplete = () => {
     setRefreshAppointments(prev => prev + 1);
     toast({
@@ -123,12 +114,10 @@ const MyPortal: React.FC<MyPortalProps> = ({
       description: "Your appointment has been scheduled successfully!"
     });
   };
-
   const handleStartSession = async (appointmentId: string | number) => {
     setPendingAppointmentId(appointmentId);
     setShowPHQ9(true);
   };
-
   const handlePHQ9Complete = async () => {
     setShowPHQ9(false);
     if (pendingAppointmentId) {
@@ -160,11 +149,9 @@ const MyPortal: React.FC<MyPortalProps> = ({
       }
     }
   };
-
   const handleCloseVideoSession = () => {
     setIsVideoSessionOpen(false);
   };
-
   return <div className="grid grid-cols-1 gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -221,41 +208,31 @@ const MyPortal: React.FC<MyPortalProps> = ({
           <CardTitle>Your Therapist</CardTitle>
         </CardHeader>
         <CardContent>
-          {clientData && clientData.client_assigned_therapist && clinicianData ? (
-            <div className="bg-gray-50 p-4 rounded-md mb-4">
+          {clientData && clientData.client_assigned_therapist && clinicianData ? <div className="bg-gray-50 p-4 rounded-md mb-4">
               <div className="flex flex-row gap-6 items-start">
                 <Avatar className="h-48 w-48 border-2 border-white shadow-md rounded-md flex-shrink-0">
-                  {clinicianData.clinician_image_url ? (
-                    <AvatarImage src={clinicianData.clinician_image_url} alt={clinicianName || 'Therapist'} className="object-cover h-full w-full" />
-                  ) : (
-                    <AvatarFallback className="text-4xl font-medium bg-valorwell-100 text-valorwell-700 h-full w-full">
+                  {clinicianData.clinician_image_url ? <AvatarImage src={clinicianData.clinician_image_url} alt={clinicianName || 'Therapist'} className="object-cover h-full w-full" /> : <AvatarFallback className="text-4xl font-medium bg-valorwell-100 text-valorwell-700 h-full w-full">
                       {clinicianData.clinician_first_name?.[0] || ''}{clinicianData.clinician_last_name?.[0] || ''}
-                    </AvatarFallback>
-                  )}
+                    </AvatarFallback>}
                 </Avatar>
                 
                 <div className="flex-1">
-                  <h3 className="text-xl font-medium">{clinicianName || 'Your Therapist'}</h3>
-                  <p className="text-sm text-gray-500 mb-4">{clinicianData.clinician_type || 'Therapist'}</p>
                   
-                  {clinicianData.clinician_bio && (
-                    <>
+                  
+                  
+                  {clinicianData.clinician_bio && <>
                       <h4 className="font-medium text-lg mb-2">About {clinicianName}</h4>
                       <p className="text-gray-700 text-sm whitespace-pre-line">{clinicianData.clinician_bio}</p>
-                    </>
-                  )}
+                    </>}
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
+            </div> : <div className="flex flex-col items-center justify-center py-8 text-center">
               <Calendar className="h-12 w-12 text-gray-300 mb-3" />
               <h3 className="text-lg font-medium">No Assigned Therapist</h3>
               <p className="text-sm text-gray-500 mt-1">
                 You don't have an assigned therapist yet. Please contact the clinic for assistance.
               </p>
-            </div>
-          )}
+            </div>}
         </CardContent>
       </Card>
 
@@ -266,5 +243,4 @@ const MyPortal: React.FC<MyPortalProps> = ({
       {videoRoomUrl && <VideoChat roomUrl={videoRoomUrl} isOpen={isVideoSessionOpen} onClose={handleCloseVideoSession} />}
     </div>;
 };
-
 export default MyPortal;
