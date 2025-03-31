@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,14 +16,17 @@ import { getUserTimeZone } from '@/utils/timeZoneUtils';
 import PHQ9Template from '@/components/templates/PHQ9Template';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
+interface Appointment {
+  id: number;
+  date: string;
+  time: string;
+  type: string;
+  therapist: string;
+  rawDate?: string;
+}
+
 interface MyPortalProps {
-  upcomingAppointments: Array<{
-    id: number;
-    date: string;
-    time: string;
-    type: string;
-    therapist: string;
-  }>;
+  upcomingAppointments: Appointment[];
   clientData: any | null;
   clinicianName: string | null;
   loading: boolean;
@@ -35,7 +39,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
   loading
 }) => {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
-  const [upcomingAppointments, setUpcomingAppointments] = useState(initialAppointments);
+  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>(initialAppointments);
   const [refreshAppointments, setRefreshAppointments] = useState(0);
   const [isVideoSessionOpen, setIsVideoSessionOpen] = useState(false);
   const [videoRoomUrl, setVideoRoomUrl] = useState<string | null>(null);
@@ -78,6 +82,8 @@ const MyPortal: React.FC<MyPortalProps> = ({
         const today = startOfToday();
         const todayStr = format(today, 'yyyy-MM-dd');
         
+        console.log("Fetching appointments for client:", clientData.id);
+        
         const { data, error } = await supabase
           .from('appointments')
           .select('*')
@@ -92,34 +98,72 @@ const MyPortal: React.FC<MyPortalProps> = ({
           return;
         }
 
+        console.log("Appointments data from Supabase:", data);
+
         if (data && data.length > 0) {
           const formattedAppointments = data.map(appointment => {
-            const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
-            const dateTimeString = `${appointment.date}T${appointment.start_time}`;
-            const formattedTime = formatInTimeZone(parseISO(dateTimeString), clientTimeZone, 'h:mm a');
-            return {
-              id: appointment.id,
-              date: formattedDate,
-              time: formattedTime,
-              type: appointment.type,
-              therapist: clinicianName || 'Your Therapist',
-              rawDate: appointment.date
-            };
+            try {
+              const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
+              
+              // Create the dateTimeString with proper error handling
+              let formattedTime = '';
+              try {
+                const dateTimeString = `${appointment.date}T${appointment.start_time}`;
+                formattedTime = formatInTimeZone(parseISO(dateTimeString), clientTimeZone, 'h:mm a');
+              } catch (error) {
+                console.error('Error formatting time:', error);
+                formattedTime = appointment.start_time || 'Time unavailable';
+              }
+              
+              return {
+                id: appointment.id,
+                date: formattedDate,
+                time: formattedTime,
+                type: appointment.type,
+                therapist: clinicianName || 'Your Therapist',
+                rawDate: appointment.date
+              };
+            } catch (error) {
+              console.error('Error processing appointment:', error, appointment);
+              // Return a fallback object to prevent breaking the UI
+              return {
+                id: appointment.id,
+                date: 'Date processing error',
+                time: 'Time processing error',
+                type: appointment.type || 'Unknown',
+                therapist: clinicianName || 'Your Therapist',
+                rawDate: null
+              };
+            }
           });
+          
+          console.log("Formatted appointments:", formattedAppointments);
           setUpcomingAppointments(formattedAppointments);
         } else {
+          console.log("No appointments found or empty data array");
           setUpcomingAppointments([]);
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Error in fetchAppointments:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load your appointments. Please try again later.",
+          variant: "destructive"
+        });
       }
     };
+    
     fetchAppointments();
   }, [clientData, clinicianName, refreshAppointments, clientTimeZone]);
 
-  const isAppointmentToday = (rawDate: string) => {
+  const isAppointmentToday = (rawDate: string | undefined | null): boolean => {
     if (!rawDate) return false;
-    return isToday(parseISO(rawDate));
+    try {
+      return isToday(parseISO(rawDate));
+    } catch (error) {
+      console.error('Error in isAppointmentToday:', error);
+      return false;
+    }
   };
 
   const handleBookingComplete = () => {
@@ -240,9 +284,6 @@ const MyPortal: React.FC<MyPortalProps> = ({
                 </Avatar>
                 
                 <div className="flex-1">
-                  
-                  
-                  
                   {clinicianData.clinician_bio && <>
                       <h4 className="font-medium text-lg mb-2">About {clinicianName}</h4>
                       <p className="text-gray-700 text-sm whitespace-pre-line">{clinicianData.clinician_bio}</p>
