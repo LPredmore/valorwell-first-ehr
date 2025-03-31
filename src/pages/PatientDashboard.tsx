@@ -13,36 +13,22 @@ import MyProfile from '@/components/patient/MyProfile';
 import MyAppointments from '@/components/patient/MyAppointments';
 import MyInsurance from '@/components/patient/MyInsurance';
 import MyDocuments from '@/components/patient/MyDocuments';
-
 const PatientDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [clientData, setClientData] = useState<any>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [clinicianName, setClinicianName] = useState<string | null>(null);
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const navigate = useNavigate();
-
   const genderOptions = ['Male', 'Female', 'Non-Binary', 'Other', 'Prefer not to say'];
   const genderIdentityOptions = ['Male', 'Female', 'Trans Man', 'Trans Woman', 'Non-Binary', 'Other', 'Prefer not to say'];
-  const stateOptions = [
-    'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut',
-    'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas',
-    'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota',
-    'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey',
-    'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon',
-    'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas',
-    'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
-  ];
-  const timeZoneOptions = [
-    'Eastern Standard Time (EST)', 'Central Standard Time (CST)',
-    'Mountain Standard Time (MST)', 'Pacific Standard Time (PST)', 'Alaska Standard Time (AKST)',
-    'Hawaii-Aleutian Standard Time (HST)', 'Atlantic Standard Time (AST)'
-  ];
-
+  const stateOptions = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'];
+  const timeZoneOptions = ['Eastern Standard Time (EST)', 'Central Standard Time (CST)', 'Mountain Standard Time (MST)', 'Pacific Standard Time (PST)', 'Alaska Standard Time (AKST)', 'Hawaii-Aleutian Standard Time (HST)', 'Atlantic Standard Time (AST)'];
   const insuranceTypes = ['PPO', 'HMO', 'EPO', 'POS', 'HDHP', 'Medicare', 'Medicaid', 'Other'];
   const relationshipTypes = ['Self', 'Spouse', 'Child', 'Other'];
-
   const form = useForm({
     defaultValues: {
       firstName: '',
@@ -90,10 +76,8 @@ const PatientDashboard: React.FC = () => {
       mentalHealthReferral: ''
     }
   });
-
   const fetchClinicianName = async (clinicianId: string) => {
     if (!clinicianId) return;
-
     try {
       const name = await getClinicianNameById(clinicianId);
       if (name) {
@@ -106,13 +90,10 @@ const PatientDashboard: React.FC = () => {
       console.error("Error fetching clinician name:", error);
     }
   };
-
   const fetchClientData = async () => {
     setLoading(true);
-
     try {
       const user = await getCurrentUser();
-
       if (!user) {
         toast({
           title: "Authentication required",
@@ -122,25 +103,20 @@ const PatientDashboard: React.FC = () => {
         navigate('/login');
         return;
       }
-
       console.log("Current user:", user);
       const client = await getClientByUserId(user.id);
       console.log("Retrieved client data:", client);
-
       if (client) {
         setClientData(client);
-
         if (client.client_assigned_therapist) {
           fetchClinicianName(client.client_assigned_therapist);
         }
-
         let age = '';
         if (client.client_date_of_birth) {
           const dob = new Date(client.client_date_of_birth);
           const today = new Date();
           age = String(today.getFullYear() - dob.getFullYear());
         }
-
         let formattedDob = '';
         if (client.client_date_of_birth) {
           const dob = new Date(client.client_date_of_birth);
@@ -150,7 +126,6 @@ const PatientDashboard: React.FC = () => {
             day: 'numeric'
           });
         }
-
         form.reset({
           firstName: client.client_first_name || '',
           lastName: client.client_last_name || '',
@@ -214,7 +189,6 @@ const PatientDashboard: React.FC = () => {
       setLoading(false);
     }
   };
-
   const handleSaveProfile = async () => {
     if (!clientData) {
       console.error("Cannot save: No client data available");
@@ -225,14 +199,11 @@ const PatientDashboard: React.FC = () => {
       });
       return;
     }
-
     console.log("Starting save process for client ID:", clientData.id);
     setIsSaving(true);
-
     try {
       const formValues = form.getValues();
       console.log("Form values to save:", formValues);
-
       const updates = {
         client_preferred_name: formValues.preferredName,
         client_phone: formValues.phone,
@@ -273,15 +244,13 @@ const PatientDashboard: React.FC = () => {
         client_tricare_referral_number: formValues.client_tricare_referral_number,
         mentalHealthReferral: formValues.mentalHealthReferral
       };
-
       console.log("Sending updates to database:", updates);
       const result = await updateClientProfile(clientData.id, updates);
-
       if (result.success) {
         console.log("Profile update successful");
         toast({
           title: "Success",
-          description: "Your profile has been updated successfully",
+          description: "Your profile has been updated successfully"
         });
         setIsEditing(false);
         fetchClientData();
@@ -300,38 +269,48 @@ const PatientDashboard: React.FC = () => {
       setIsSaving(false);
     }
   };
-
   const handleCancelEdit = () => {
     console.log("Edit cancelled");
     setIsEditing(false);
     fetchClientData();
   };
-
   useEffect(() => {
     console.log("PatientDashboard component mounted");
     fetchClientData();
   }, []);
-
-  const upcomingAppointments = [
-    { id: 1, date: 'May 15, 2024', time: '10:00 AM', type: 'Therapy Session', therapist: 'Dr. Sarah Johnson' },
-    { id: 2, date: 'May 22, 2024', time: '11:30 AM', type: 'Follow-up', therapist: 'Dr. Sarah Johnson' },
-  ];
-
-  const pastAppointments = [
-    { id: 1, date: 'April 30, 2024', time: '10:00 AM', type: 'Initial Consultation', therapist: 'Dr. Sarah Johnson' },
-    { id: 2, date: 'April 15, 2024', time: '11:30 AM', type: 'Therapy Session', therapist: 'Dr. Sarah Johnson' },
-  ];
-
-  return (
-    <Layout>
+  const upcomingAppointments = [{
+    id: 1,
+    date: 'May 15, 2024',
+    time: '10:00 AM',
+    type: 'Therapy Session',
+    therapist: 'Dr. Sarah Johnson'
+  }, {
+    id: 2,
+    date: 'May 22, 2024',
+    time: '11:30 AM',
+    type: 'Follow-up',
+    therapist: 'Dr. Sarah Johnson'
+  }];
+  const pastAppointments = [{
+    id: 1,
+    date: 'April 30, 2024',
+    time: '10:00 AM',
+    type: 'Initial Consultation',
+    therapist: 'Dr. Sarah Johnson'
+  }, {
+    id: 2,
+    date: 'April 15, 2024',
+    time: '11:30 AM',
+    type: 'Therapy Session',
+    therapist: 'Dr. Sarah Johnson'
+  }];
+  return <Layout>
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Patient Portal</h1>
           <div className="flex items-center gap-2">
             <User className="h-5 w-5 text-valorwell-600" />
-            <span className="text-sm text-gray-500">
-              {loading ? 'Loading...' : clientData ? `Welcome, ${clientData.client_preferred_name || clientData.client_first_name}` : 'Welcome back'}
-            </span>
+            
           </div>
         </div>
 
@@ -360,29 +339,11 @@ const PatientDashboard: React.FC = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="mt-0">
-            <MyPortal 
-              upcomingAppointments={upcomingAppointments} 
-              clientData={clientData} 
-              clinicianName={clinicianName}
-              loading={loading}
-            />
+            <MyPortal upcomingAppointments={upcomingAppointments} clientData={clientData} clinicianName={clinicianName} loading={loading} />
           </TabsContent>
 
           <TabsContent value="profile" className="mt-0">
-            <MyProfile 
-              clientData={clientData}
-              loading={loading}
-              isEditing={isEditing}
-              setIsEditing={setIsEditing}
-              form={form}
-              isSaving={isSaving}
-              handleSaveProfile={handleSaveProfile}
-              handleCancelEdit={handleCancelEdit}
-              genderOptions={genderOptions}
-              genderIdentityOptions={genderIdentityOptions}
-              stateOptions={stateOptions}
-              timeZoneOptions={timeZoneOptions}
-            />
+            <MyProfile clientData={clientData} loading={loading} isEditing={isEditing} setIsEditing={setIsEditing} form={form} isSaving={isSaving} handleSaveProfile={handleSaveProfile} handleCancelEdit={handleCancelEdit} genderOptions={genderOptions} genderIdentityOptions={genderIdentityOptions} stateOptions={stateOptions} timeZoneOptions={timeZoneOptions} />
           </TabsContent>
 
           <TabsContent value="pastAppointments" className="mt-0">
@@ -390,18 +351,7 @@ const PatientDashboard: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="insurance" className="mt-0">
-            <MyInsurance 
-              clientData={clientData}
-              loading={loading}
-              isEditing={isEditing}
-              setIsEditing={setIsEditing}
-              form={form}
-              isSaving={isSaving}
-              handleSaveProfile={handleSaveProfile}
-              handleCancelEdit={handleCancelEdit}
-              insuranceTypes={insuranceTypes}
-              relationshipTypes={relationshipTypes}
-            />
+            <MyInsurance clientData={clientData} loading={loading} isEditing={isEditing} setIsEditing={setIsEditing} form={form} isSaving={isSaving} handleSaveProfile={handleSaveProfile} handleCancelEdit={handleCancelEdit} insuranceTypes={insuranceTypes} relationshipTypes={relationshipTypes} />
           </TabsContent>
 
           <TabsContent value="documents" className="mt-0">
@@ -409,8 +359,6 @@ const PatientDashboard: React.FC = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </Layout>
-  );
+    </Layout>;
 };
-
 export default PatientDashboard;
