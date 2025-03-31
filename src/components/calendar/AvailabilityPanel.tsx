@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,8 @@ interface AvailabilitySettings {
 id: string;
 clinician_id: string;
 time_granularity: 'hour' | 'half-hour';
+min_days_ahead: number;
+max_days_ahead: number;
 created_at: string;
 updated_at: string;
 }
@@ -45,6 +48,7 @@ const [availabilityEnabled, setAvailabilityEnabled] = useState(true);
 const [loading, setLoading] = useState(false);
 const [isSaving, setIsSaving] = useState(false);
 const [timeGranularity, setTimeGranularity] = useState<'hour' | 'half-hour'>('hour');
+const [minDaysAhead, setMinDaysAhead] = useState<number>(1);
 const { toast } = useToast();
 
 const [weekSchedule, setWeekSchedule] = useState<DaySchedule[]>([
@@ -115,6 +119,7 @@ const { data: settingsData } = await supabase.functions.invoke('get-availability
 
 if (settingsData) {
 setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
+setMinDaysAhead(settingsData.min_days_ahead || 1);
 }
 
 availabilityData.forEach(slot => {
@@ -303,7 +308,9 @@ await supabase
 .from('availability_settings')
 .upsert({
 clinician_id: clinicianIdToUse,
-time_granularity: timeGranularity
+time_granularity: timeGranularity,
+min_days_ahead: minDaysAhead,
+max_days_ahead: 60 // Fixed at 60 days as requested
 }, {
 onConflict: 'clinician_id'
 });
@@ -457,6 +464,33 @@ className="flex flex-col space-y-1"
 <Label htmlFor="half-hour">Hour and half-hour marks (e.g., 1:00, 1:30)</Label>
 </div>
 </RadioGroup>
+</div>
+
+<div className="pt-2">
+<p className="text-sm text-muted-foreground mb-2">
+How soon can clients schedule with you?
+</p>
+<div className="flex items-center">
+<Select
+value={minDaysAhead.toString()}
+onValueChange={(value) => setMinDaysAhead(parseInt(value))}
+>
+<SelectTrigger className="w-24">
+<SelectValue placeholder="Days" />
+</SelectTrigger>
+<SelectContent>
+{Array.from({length: 14}, (_, i) => i + 1).map(day => (
+<SelectItem key={day} value={day.toString()}>
+{day}
+</SelectItem>
+))}
+</SelectContent>
+</Select>
+<span className="ml-2">days</span>
+</div>
+<p className="text-xs text-muted-foreground mt-1">
+Clients can book appointments between {minDaysAhead} and 60 days in advance.
+</p>
 </div>
 </div>
 </div>

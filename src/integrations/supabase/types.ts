@@ -103,6 +103,8 @@ export type Database = {
           clinician_id: string
           created_at: string
           id: string
+          max_days_ahead: number
+          min_days_ahead: number
           time_granularity: string
           updated_at: string
         }
@@ -110,6 +112,8 @@ export type Database = {
           clinician_id: string
           created_at?: string
           id?: string
+          max_days_ahead?: number
+          min_days_ahead?: number
           time_granularity?: string
           updated_at?: string
         }
@@ -117,6 +121,8 @@ export type Database = {
           clinician_id?: string
           created_at?: string
           id?: string
+          max_days_ahead?: number
+          min_days_ahead?: number
           time_granularity?: string
           updated_at?: string
         }

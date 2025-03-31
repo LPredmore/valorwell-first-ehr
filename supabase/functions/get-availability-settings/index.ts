@@ -41,7 +41,11 @@ serve(async (req) => {
       console.error('Error fetching availability settings:', error)
       // Return default settings if not found
       return new Response(
-        JSON.stringify({ time_granularity: 'hour' }),
+        JSON.stringify({ 
+          time_granularity: 'hour',
+          min_days_ahead: 1,
+          max_days_ahead: 60
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -53,7 +57,12 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        time_granularity: 'hour',
+        min_days_ahead: 1,
+        max_days_ahead: 60
+      }),
       { 
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
