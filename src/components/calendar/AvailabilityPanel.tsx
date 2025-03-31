@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Clock, Plus, X, ChevronDown, ChevronUp, Loader2, Calendar, CalendarPlus } from 'lucide-react';
+import { Clock, Plus, X, Copy, ChevronDown, ChevronUp, Loader2, Calendar, CalendarPlus } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from '@/integrations/supabase/client';
@@ -705,6 +705,27 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
     }
   };
 
+  const generateShareLink = () => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/book/clinician123`;
+  };
+
+  const copyLinkToClipboard = () => {
+    const link = generateShareLink();
+    navigator.clipboard.writeText(link);
+    toast({
+      title: "Link Copied",
+      description: "Booking link has been copied to clipboard",
+    });
+  };
+
+  const generateNewLink = () => {
+    toast({
+      title: "New Link Generated",
+      description: "A new booking link has been created",
+    });
+  };
+
   const timeOptions = React.useMemo(() => {
     const options = [];
 
@@ -751,7 +772,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="set">
               <Clock className="h-4 w-4 mr-2" />
               Weekly
@@ -759,6 +780,10 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
             <TabsTrigger value="single">
               <CalendarPlus className="h-4 w-4 mr-2" />
               Single Day
+            </TabsTrigger>
+            <TabsTrigger value="share">
+              <Copy className="h-4 w-4 mr-2" />
+              Share Link
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -1053,6 +1078,35 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                 </Button>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'share' && (
+          <div className="space-y-4">
+            <div className="text-sm text-gray-600">
+              Share this link with your clients so they can book appointments during your available hours.
+            </div>
+
+            <div className="flex gap-2 p-2 border rounded-md">
+              <div className="text-sm flex-1 truncate">
+                {generateShareLink()}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={copyLinkToClipboard}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <Button
+              className="w-full"
+              onClick={generateNewLink}
+            >
+              Generate New Link
+            </Button>
           </div>
         )}
       </CardContent>

@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import CalendarView from '../components/calendar/CalendarView';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar as CalendarIcon, Users, Clock, Plus } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
@@ -21,9 +23,13 @@ import { v4 as uuidv4 } from 'uuid';
 import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
 import { DateField } from '@/components/ui/DateField';
 import { useForm } from 'react-hook-form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type ViewType = 'day' | 'week' | 'month';
+
+interface Clinician {
+  id: string;
+  clinician_professional_name: string;
+}
 
 interface Client {
   id: string;
@@ -62,6 +68,9 @@ const generateRecurringDates = (
 const CalendarPage = () => {
   const [view, setView] = useState<ViewType>('week');
   const [showAvailability, setShowAvailability] = useState(false);
+  const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(null);
+  const [clinicians, setClinicians] = useState<Clinician[]>([]);
+  const [loadingClinicians, setLoadingClinicians] = useState(true);
   const { clinicianData } = useClinicianData();
   const [userTimeZone, setUserTimeZone] = useState<string>('');
   
@@ -85,8 +94,35 @@ const CalendarPage = () => {
   }, [clinicianData]);
 
   useEffect(() => {
+    const fetchClinicians = async () => {
+      setLoadingClinicians(true);
+      try {
+        const { data, error } = await supabase
+          .from('clinicians')
+          .select('id, clinician_professional_name')
+          .order('clinician_professional_name');
+
+        if (error) {
+          console.error('Error fetching clinicians:', error);
+        } else {
+          setClinicians(data || []);
+          if (data && data.length > 0 && !selectedClinicianId) {
+            setSelectedClinicianId(data[0].id);
+          }
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoadingClinicians(false);
+      }
+    };
+
+    fetchClinicians();
+  }, []);
+
+  useEffect(() => {
     const fetchClientsForClinician = async () => {
-      if (!clinicianData?.id) return;
+      if (!selectedClinicianId) return;
       
       setLoadingClients(true);
       setClients([]);
@@ -96,7 +132,7 @@ const CalendarPage = () => {
         const { data, error } = await supabase
           .from('clients')
           .select('id, client_preferred_name, client_last_name')
-          .eq('client_assigned_therapist', clinicianData.id)
+          .eq('client_assigned_therapist', selectedClinicianId)
           .order('client_last_name');
           
         if (error) {
@@ -116,7 +152,7 @@ const CalendarPage = () => {
     };
 
     fetchClientsForClinician();
-  }, [clinicianData]);
+  }, [selectedClinicianId]);
 
   const generateTimeOptions = () => {
     const options = [];
@@ -133,7 +169,7 @@ const CalendarPage = () => {
   const timeOptions = generateTimeOptions();
 
   const handleCreateAppointment = async () => {
-    if (!selectedClientId || !selectedDate || !startTime || !clinicianData?.id) {
+    if (!selectedClientId || !selectedDate || !startTime || !selectedClinicianId) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
@@ -159,7 +195,7 @@ const CalendarPage = () => {
         
         const appointmentsToInsert = recurringDates.map(date => ({
           client_id: selectedClientId,
-          clinician_id: clinicianData.id,
+          clinician_id: selectedClinicianId,
           date: format(date, 'yyyy-MM-dd'),
           start_time: startTime,
           end_time: endTime,
@@ -192,7 +228,7 @@ const CalendarPage = () => {
           .from('appointments')
           .insert([{
             client_id: selectedClientId,
-            clinician_id: clinicianData.id,
+            clinician_id: selectedClinicianId,
             date: formattedDate,
             start_time: startTime,
             end_time: endTime,
@@ -266,13 +302,38 @@ const CalendarPage = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 New Appointment
               </Button>
+
+              <div className="w-64">
+                <Select
+                  value={selectedClinicianId || undefined}
+                  onValueChange={(value) => setSelectedClinicianId(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a clinician" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loadingClinicians ? (
+                      <div className="flex items-center justify-center p-2">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Loading...
+                      </div>
+                    ) : (
+                      clinicians.map((clinician) => (
+                        <SelectItem key={clinician.id} value={clinician.id}>
+                          {clinician.clinician_professional_name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
           <CalendarView
             view={view}
             showAvailability={showAvailability}
-            clinicianId={clinicianData?.id || null}
+            clinicianId={selectedClinicianId}
             userTimeZone={userTimeZone}
             refreshTrigger={appointmentRefreshTrigger}
           />
