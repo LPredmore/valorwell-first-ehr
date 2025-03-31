@@ -26,6 +26,11 @@ interface Clinician {
   clinician_professional_name: string;
 }
 
+interface Client {
+  id: string;
+  displayName: string;
+}
+
 // Renamed from 'Calendar' to 'CalendarPage' to avoid naming conflict
 const CalendarPage = () => {
   const [view, setView] = useState<ViewType>('week');
@@ -42,6 +47,11 @@ const CalendarPage = () => {
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState<string>('weekly');
   const [startTime, setStartTime] = useState<string>('09:00');
+  
+  // New state for clients
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loadingClients, setLoadingClients] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
   useEffect(() => {
     // Set the user's time zone
@@ -79,6 +89,42 @@ const CalendarPage = () => {
 
     fetchClinicians();
   }, []);
+
+  // Fetch clients for the selected clinician
+  useEffect(() => {
+    const fetchClientsForClinician = async () => {
+      if (!selectedClinicianId) return;
+      
+      setLoadingClients(true);
+      setClients([]);
+      setSelectedClientId(null);
+      
+      try {
+        const { data, error } = await supabase
+          .from('clients')
+          .select('id, client_preferred_name, client_last_name')
+          .eq('client_assigned_therapist', selectedClinicianId)
+          .order('client_last_name');
+          
+        if (error) {
+          console.error('Error fetching clients:', error);
+        } else {
+          // Transform data to display format
+          const formattedClients = data.map(client => ({
+            id: client.id,
+            displayName: `${client.client_preferred_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
+          }));
+          setClients(formattedClients);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoadingClients(false);
+      }
+    };
+
+    fetchClientsForClinician();
+  }, [selectedClinicianId]);
 
   // Generate time options for the dropdown
   const generateTimeOptions = () => {
@@ -177,12 +223,30 @@ const CalendarPage = () => {
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="client">Client Name</Label>
-              <Select>
+              <Select 
+                value={selectedClientId || undefined}
+                onValueChange={(value) => setSelectedClientId(value)}
+              >
                 <SelectTrigger id="client">
                   <SelectValue placeholder="Select a client" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="placeholder">Client list will be added later</SelectItem>
+                  {loadingClients ? (
+                    <div className="flex items-center justify-center p-2">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Loading...
+                    </div>
+                  ) : clients.length > 0 ? (
+                    clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.displayName}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-clients" disabled>
+                      No clients assigned to this clinician
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
