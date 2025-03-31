@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -74,6 +73,7 @@ const App: React.FC = () => {
                     <MyClients />
                   </ProtectedRoute>
                 } />
+                
                 <Route path="/calendar" element={
                   <ProtectedRoute allowedRoles={['admin', 'moderator']}>
                     <Calendar />
