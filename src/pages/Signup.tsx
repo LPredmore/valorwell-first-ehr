@@ -86,7 +86,7 @@ const Signup = () => {
             id: authData.user.id,
             client_first_name: values.firstName, 
             client_last_name: values.lastName,
-            client_preferred_name: values.preferredName || null,
+            client_preferred_name: values.preferredName || values.firstName, // Use firstName as fallback
             client_email: values.email,
             client_phone: values.phone,
             client_state: values.state,
