@@ -183,12 +183,12 @@ serve(async (req) => {
       );
     }
 
-    // Only process if it's an insert to profiles table and role is client
-    if (payload.table === "profiles" && payload.type === "INSERT" && payload.record.role === "client") {
+    // Process any profile insert regardless of role (removing role=client check)
+    if (payload.table === "profiles" && payload.type === "INSERT") {
       const { email, first_name, last_name, temp_password } = payload.record;
       const name = first_name || "";
       
-      console.log(`Preparing to send welcome email to ${email}`);
+      console.log(`Preparing to send welcome email to ${email} with role ${payload.record.role}`);
       
       // Initialize Resend with API key
       const resend = new Resend(apiKey);

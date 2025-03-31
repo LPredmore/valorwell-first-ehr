@@ -209,9 +209,16 @@ export interface PracticeInfo {
 // User management functions
 export const createUser = async (email: string, userData: any) => {
   try {
+    // Ensure userData contains temp_password
+    if (!userData.temp_password) {
+      // Generate a random temporary password if not provided
+      userData.temp_password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+      console.log(`Generated temporary password for ${email}: ${userData.temp_password}`);
+    }
+    
     const { data, error } = await supabase.auth.admin.createUser({
       email,
-      password: 'temppass1234',
+      password: userData.temp_password, // Use the same password for auth and metadata
       email_confirm: true,
       user_metadata: userData
     });

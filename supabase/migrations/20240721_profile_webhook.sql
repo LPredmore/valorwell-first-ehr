@@ -1,4 +1,8 @@
 
+-- Ensure that the 'net' extension is enabled
+CREATE EXTENSION IF NOT EXISTS "http" WITH SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA extensions;
+
 -- Create a function that sends a webhook to our edge function
 CREATE OR REPLACE FUNCTION public.trigger_send_welcome_email()
 RETURNS TRIGGER AS $$
