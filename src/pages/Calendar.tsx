@@ -21,6 +21,8 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
+import { DateField } from '@/components/ui/DateField';
+import { useForm } from 'react-hook-form';
 
 type ViewType = 'day' | 'week' | 'month';
 
@@ -392,8 +394,12 @@ const CalendarPage = () => {
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
+                    mode="single"
                     selected={selectedDate}
-                    onSelect={setSelectedDate}
+                    onSelect={(date) => {
+                      console.log('Date selected:', date);
+                      setSelectedDate(date);
+                    }}
                     initialFocus
                     className="p-3 pointer-events-auto"
                   />
