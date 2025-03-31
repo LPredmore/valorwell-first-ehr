@@ -1,48 +1,25 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
-import { CalendarClock, User, Clock, AlertTriangle } from 'lucide-react';
-import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import VideoChat from '@/components/video/VideoChat';
-import PHQ9Template from '@/components/templates/PHQ9Template';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Calendar, Clock, User, MapPin, AlertTriangle, MoreVertical, Trash, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { toast } from '@/hooks/use-toast';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface AppointmentDetailsDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  appointment: {
-    id: string;
-    client_id: string;
-    date: string;
-    start_time: string;
-    end_time: string;
-    type: string;
-    status: string;
-    clientName?: string;
-  } | null;
-  onAppointmentUpdated?: () => void;
-  userTimeZone?: string;
-  clientTimeZone?: string;
+  appointment: any | null;
+  onAppointmentUpdated: () => void;
+  userTimeZone: string;
+  clientTimeZone: string;
 }
 
 const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
@@ -53,232 +30,199 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
   userTimeZone,
   clientTimeZone
 }) => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isVideoSessionOpen, setIsVideoSessionOpen] = useState(false);
-  const [videoRoomUrl, setVideoRoomUrl] = useState<string | null>(null);
-  const [isLoadingVideoSession, setIsLoadingVideoSession] = useState(false);
-  const [showPHQ9, setShowPHQ9] = useState(false);
-  const [pendingAppointmentId, setPendingAppointmentId] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [deleteOption, setDeleteOption] = useState<'single' | 'series'>('single');
+  const [isRecurring, setIsRecurring] = useState(false);
+
+  useEffect(() => {
+    // Check if appointment is part of a recurring series
+    if (appointment?.recurring_group_id) {
+      setIsRecurring(true);
+    } else {
+      setIsRecurring(false);
+    }
+  }, [appointment]);
 
   if (!appointment) return null;
 
-  const handleClientClick = () => {
-    navigate(`/clients/${appointment.client_id}`);
-    onClose();
-  };
-
-  const handleCancelClick = () => {
-    setIsCancelDialogOpen(true);
-  };
-
-  const handleCancelConfirm = async () => {
-    if (!appointment) return;
-    
-    setIsDeleting(true);
+  const appointmentDate = appointment.date ? new Date(appointment.date) : new Date();
+  const formattedDate = format(appointmentDate, 'EEEE, MMMM d, yyyy');
+  
+  const formatTime = (timeString: string) => {
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .delete()
-        .eq('id', appointment.id);
+      const [hours, minutes] = timeString.split(':').map(Number);
+      const date = new Date();
+      date.setHours(hours, minutes, 0, 0);
+      return format(date, 'h:mm a');
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return timeString;
+    }
+  };
+
+  const handleDeleteAppointment = async () => {
+    setIsLoading(true);
+    try {
+      if (isRecurring && deleteOption === 'series') {
+        // Delete all future appointments in the series
+        const { error } = await supabase
+          .from('appointments')
+          .delete()
+          .eq('recurring_group_id', appointment.recurring_group_id)
+          .gte('date', appointment.date);
+
+        if (error) throw error;
         
-      if (error) {
-        console.error('Error cancelling appointment:', error);
         toast({
-          title: "Error",
-          description: "Failed to cancel the appointment. Please try again.",
-          variant: "destructive"
+          title: "Success",
+          description: "All future recurring appointments have been deleted.",
         });
       } else {
+        // Delete only this specific appointment
+        const { error } = await supabase
+          .from('appointments')
+          .delete()
+          .eq('id', appointment.id);
+
+        if (error) throw error;
+        
         toast({
-          title: "Appointment Cancelled",
-          description: "The appointment has been successfully cancelled."
+          title: "Success",
+          description: "The appointment has been deleted.",
         });
-        if (onAppointmentUpdated) {
-          onAppointmentUpdated();
-        }
-        onClose();
       }
+      
+      setIsDeleteDialogOpen(false);
+      onClose();
+      onAppointmentUpdated();
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error deleting appointment:', error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: "Failed to delete the appointment.",
         variant: "destructive"
       });
     } finally {
-      setIsDeleting(false);
-      setIsCancelDialogOpen(false);
+      setIsLoading(false);
     }
   };
 
-  const handleStartSession = async () => {
-    if (!appointment) return;
-    
-    // Instead of starting video session directly, show PHQ-9 first
-    setPendingAppointmentId(appointment.id);
-    setShowPHQ9(true);
-  };
-
-  const handlePHQ9Complete = async () => {
-    // After PHQ-9 is completed, start the video session
-    setShowPHQ9(false);
-    
-    if (pendingAppointmentId) {
-      setIsLoadingVideoSession(true);
-      try {
-        const result = await getOrCreateVideoRoom(pendingAppointmentId);
-        
-        if (!result.success || !result.url) {
-          throw new Error(result.error || 'Failed to create video room');
-        }
-        
-        setVideoRoomUrl(result.url);
-        setIsVideoSessionOpen(true);
-        
-        toast({
-          title: "Video Session Ready",
-          description: "You are entering the video session now."
-        });
-      } catch (error) {
-        console.error('Error starting video session:', error);
-        toast({
-          title: "Error",
-          description: "Failed to start the video session. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoadingVideoSession(false);
-        setPendingAppointmentId(null);
-      }
+  const getRecurrenceText = () => {
+    switch (appointment.appointment_recurring) {
+      case 'weekly':
+        return 'Repeats weekly';
+      case 'biweekly':
+        return 'Repeats every 2 weeks';
+      case 'monthly':
+        return 'Repeats every 4 weeks';
+      default:
+        return '';
     }
-  };
-
-  const handleCloseVideoSession = () => {
-    setIsVideoSessionOpen(false);
   };
 
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Appointment Details</DialogTitle>
-            <DialogDescription>
-              View details for this appointment
-            </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <User className="h-5 w-5 text-gray-500 mt-0.5" />
-                <div>
-                  <div className="font-medium">Client</div>
-                  <button 
-                    onClick={handleClientClick} 
-                    className="text-sm text-primary hover:underline focus:outline-none"
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-gray-500" />
+                <span className="font-medium">{appointment.clientName || 'Unknown Client'}</span>
+              </div>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem 
+                    className="text-destructive focus:text-destructive" 
+                    onClick={() => setIsDeleteDialogOpen(true)}
                   >
-                    {appointment.clientName || 'Unknown Client'}
-                  </button>
-                </div>
+                    <Trash className="h-4 w-4 mr-2" />
+                    Delete Appointment
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            
+            <Separator />
+            
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-gray-500" />
+                <span>{formattedDate}</span>
               </div>
               
-              <div className="flex items-start gap-3">
-                <CalendarClock className="h-5 w-5 text-gray-500 mt-0.5" />
-                <div>
-                  <div className="font-medium">Date</div>
-                  <div className="text-sm text-gray-600">
-                    {format(parseISO(appointment.date), 'EEEE, MMMM d, yyyy')}
-                  </div>
-                </div>
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-gray-500" />
+                <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
               </div>
               
-              <div className="flex items-start gap-3">
-                <Clock className="h-5 w-5 text-gray-500 mt-0.5" />
-                <div>
-                  <div className="font-medium">Time</div>
-                  <div className="text-sm text-gray-600">
-                    {format(parseISO(`2000-01-01T${appointment.start_time}`), 'h:mm a')} - 
-                    {format(parseISO(`2000-01-01T${appointment.end_time}`), 'h:mm a')}
-                  </div>
+              {isRecurring && (
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-blue-50">
+                    <Calendar className="h-3 w-3 mr-1" />
+                    {getRecurrenceText()}
+                  </Badge>
                 </div>
-              </div>
+              )}
               
-              <div className="flex items-start gap-3">
-                <div className="h-5 w-5 flex items-center justify-center text-gray-500 mt-0.5">
-                  <div className={`h-3 w-3 rounded-full ${appointment.status === 'scheduled' ? 'bg-green-500' : 'bg-gray-500'}`}></div>
-                </div>
-                <div>
-                  <div className="font-medium">Status</div>
-                  <div className="text-sm text-gray-600 capitalize">{appointment.status}</div>
-                </div>
+              <div>
+                <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                  {appointment.status || 'Scheduled'}
+                </Badge>
               </div>
             </div>
           </div>
-          <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
-            <Button variant="destructive" onClick={handleCancelClick}>
-              Cancel Appointment
-            </Button>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={onClose}>
-                Close
-              </Button>
-              <Button 
-                onClick={handleStartSession}
-                disabled={isLoadingVideoSession}
-              >
-                {isLoadingVideoSession ? "Loading..." : "Start Session"}
-              </Button>
-            </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+      
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Appointment</AlertDialogTitle>
+            <AlertDialogTitle>Delete Appointment{isRecurring ? 's' : ''}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel this appointment? This action cannot be undone.
+              {isRecurring ? (
+                <div className="space-y-4">
+                  <p>This is a recurring appointment. Would you like to delete just this appointment or all future appointments in this series?</p>
+                  
+                  <RadioGroup value={deleteOption} onValueChange={(value) => setDeleteOption(value as 'single' | 'series')}>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="single" id="single" />
+                      <Label htmlFor="single">Delete only this appointment</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="series" id="series" />
+                      <Label htmlFor="series">Delete this and all future appointments in the series</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              ) : (
+                "Are you sure you want to delete this appointment? This action cannot be undone."
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>No, keep it</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleCancelConfirm} 
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? "Cancelling..." : "Yes, cancel appointment"}
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAppointment} disabled={isLoading}>
+              {isLoading ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* PHQ-9 Template Dialog */}
-      {showPHQ9 && (
-        <PHQ9Template
-          onClose={() => setShowPHQ9(false)}
-          clinicianName={"Your Therapist"}
-          clientData={{
-            client_id: appointment.client_id,
-            client_first_name: appointment.clientName?.split(' ')[0] || 'Client',
-            client_last_name: appointment.clientName?.split(' ').slice(1).join(' ') || ''
-          } as any}
-          onComplete={handlePHQ9Complete}
-        />
-      )}
-
-      {/* Video Session Dialog */}
-      {videoRoomUrl && (
-        <VideoChat 
-          roomUrl={videoRoomUrl} 
-          isOpen={isVideoSessionOpen} 
-          onClose={handleCloseVideoSession} 
-        />
-      )}
     </>
   );
 };

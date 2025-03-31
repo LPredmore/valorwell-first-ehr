@@ -16,9 +16,11 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { format, addWeeks, addMonths, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { v4 as uuidv4 } from 'uuid';
+import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
 
 type ViewType = 'day' | 'week' | 'month';
 
@@ -31,6 +33,35 @@ interface Client {
   id: string;
   displayName: string;
 }
+
+// This function generates recurring dates based on the pattern
+const generateRecurringDates = (
+  startDate: Date,
+  recurrenceType: string,
+  count = 26 // 6 months (26 weeks) of appointments
+): Date[] => {
+  const dates: Date[] = [new Date(startDate)];
+  let currentDate = new Date(startDate);
+  
+  for (let i = 1; i < count; i++) {
+    if (recurrenceType === 'weekly') {
+      currentDate = addWeeks(currentDate, 1);
+    } else if (recurrenceType === 'biweekly') {
+      currentDate = addWeeks(currentDate, 2);
+    } else if (recurrenceType === 'monthly') {
+      currentDate = addWeeks(currentDate, 4); // Every 4 weeks
+    }
+    
+    // Limit to 6 months of appointments
+    if (currentDate > addMonths(startDate, 6)) {
+      break;
+    }
+    
+    dates.push(new Date(currentDate));
+  }
+  
+  return dates;
+};
 
 const CalendarPage = () => {
   const [view, setView] = useState<ViewType>('week');
@@ -155,34 +186,70 @@ const CalendarPage = () => {
       
       const endTime = `${endDateTime.getHours().toString().padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}`;
 
-      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-
-      const { data, error } = await supabase
-        .from('appointments')
-        .insert([{
+      // If it's a recurring appointment, we need to generate multiple dates
+      if (isRecurring) {
+        const recurringGroupId = uuidv4(); // Generate a unique ID to link recurring appointments
+        const recurringDates = generateRecurringDates(selectedDate, recurrenceType);
+        
+        const appointmentsToInsert = recurringDates.map(date => ({
           client_id: selectedClientId,
           clinician_id: selectedClinicianId,
-          date: formattedDate,
+          date: format(date, 'yyyy-MM-dd'),
           start_time: startTime,
           end_time: endTime,
-          type: "Therapy Session", // Hardcoded default type
-          status: 'scheduled'
-        }])
-        .select();
+          type: "Therapy Session",
+          status: 'scheduled',
+          appointment_recurring: recurrenceType,
+          recurring_group_id: recurringGroupId
+        }));
 
-      if (error) {
-        console.error('Error details:', error.message, error);
-        throw error;
+        // Insert all recurring appointments in a batch
+        const { data, error } = await supabase
+          .from('appointments')
+          .insert(appointmentsToInsert)
+          .select();
+
+        if (error) {
+          console.error('Error details:', error.message, error);
+          throw error;
+        }
+
+        toast({
+          title: "Recurring Appointments Created",
+          description: `Created ${recurringDates.length} recurring appointments.`,
+        });
+      } else {
+        // Create a single appointment
+        const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+
+        const { data, error } = await supabase
+          .from('appointments')
+          .insert([{
+            client_id: selectedClientId,
+            clinician_id: selectedClinicianId,
+            date: formattedDate,
+            start_time: startTime,
+            end_time: endTime,
+            type: "Therapy Session", // Hardcoded default type
+            status: 'scheduled'
+          }])
+          .select();
+
+        if (error) {
+          console.error('Error details:', error.message, error);
+          throw error;
+        }
+
+        toast({
+          title: "Appointment Created",
+          description: "The appointment has been successfully scheduled.",
+        });
       }
-
-      toast({
-        title: "Appointment Created",
-        description: "The appointment has been successfully scheduled.",
-      });
 
       setSelectedClientId(null);
       setStartTime("09:00");
       setIsDialogOpen(false);
+      setIsRecurring(false);
       
       // Trigger a refresh of the calendar view
       setAppointmentRefreshTrigger(prev => prev + 1);
@@ -372,6 +439,9 @@ const CalendarPage = () => {
                     <SelectItem value="monthly">Every 4 weeks</SelectItem>
                   </SelectContent>
                 </Select>
+                <div className="text-xs text-muted-foreground mt-1">
+                  This will create appointments for the next 6 months following this pattern.
+                </div>
               </div>
             )}
           </div>
@@ -379,7 +449,9 @@ const CalendarPage = () => {
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button type="button" onClick={handleCreateAppointment}>Create Appointment</Button>
+            <Button type="button" onClick={handleCreateAppointment}>
+              {isRecurring ? "Create Recurring Appointments" : "Create Appointment"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
