@@ -47,6 +47,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
   const [isSaving, setIsSaving] = useState(false);
   const [timeGranularity, setTimeGranularity] = useState<'hour' | 'half-hour'>('hour');
   const [minDaysAhead, setMinDaysAhead] = useState<number>(1);
+  const [maxDaysAhead, setMaxDaysAhead] = useState<number>(90);
   const { toast } = useToast();
 
   const [weekSchedule, setWeekSchedule] = useState<DaySchedule[]>([
@@ -111,32 +112,48 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           } else if (availabilityData && availabilityData.length > 0) {
             const newSchedule = [...weekSchedule];
 
-            const { data: settingsData } = await supabase.functions.invoke('get-availability-settings', {
-              body: { clinicianId: clinicianToQuery }
-            });
+            try {
+              const { data: settingsData } = await supabase.functions.invoke('get-availability-settings', {
+                body: { clinicianId: clinicianToQuery }
+              });
 
-            if (settingsData) {
-              setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
-              setMinDaysAhead(Number(settingsData.min_days_ahead) || 1);
+              if (settingsData) {
+                console.log('Retrieved settings:', settingsData);
+                setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
+                setMinDaysAhead(Number(settingsData.min_days_ahead) || 1);
+                setMaxDaysAhead(Number(settingsData.max_days_ahead) || 90);
+              }
+            } catch (settingsError) {
+              console.error('Error fetching availability settings:', settingsError);
             }
 
             newSchedule.forEach(day => {
               day.timeSlots = [];
             });
 
+            const uniqueSlots = new Set();
+
             availabilityData.forEach(slot => {
               const dayIndex = newSchedule.findIndex(day => day.day === slot.day_of_week);
               if (dayIndex !== -1) {
                 const startTime = slot.start_time.substring(0, 5);
                 const endTime = slot.end_time.substring(0, 5);
+                
+                const slotKey = `${slot.day_of_week}-${startTime}-${endTime}`;
+                
+                if (!uniqueSlots.has(slotKey)) {
+                  uniqueSlots.add(slotKey);
+                  
+                  newSchedule[dayIndex].timeSlots.push({
+                    id: slot.id,
+                    startTime: startTime,
+                    endTime: endTime,
+                  });
 
-                newSchedule[dayIndex].timeSlots.push({
-                  id: slot.id,
-                  startTime: startTime,
-                  endTime: endTime,
-                });
-
-                newSchedule[dayIndex].isOpen = true;
+                  newSchedule[dayIndex].isOpen = true;
+                } else {
+                  console.log(`Skipping duplicate slot: ${slotKey}`);
+                }
               }
             });
 
@@ -168,7 +185,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
     setWeekSchedule(prev => {
       const updated = [...prev];
       const day = updated[dayIndex];
-      const newId = `${day.day.toLowerCase().substring(0,3)}-${day.timeSlots.length + 1}`;
+      const newId = `${day.day.toLowerCase().substring(0,3)}-${Date.now()}-${day.timeSlots.length + 1}`;
 
       updated[dayIndex] = {
         ...day,
@@ -212,17 +229,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         )
       };
 
-      return updated;
-    });
-  };
-
-  const toggleDayAvailability = (dayIndex: number) => {
-    setWeekSchedule(prev => {
-      const updated = [...prev];
-      updated[dayIndex] = {
-        ...updated[dayIndex],
-        isOpen: !updated[dayIndex].isOpen
-      };
       return updated;
     });
   };
@@ -295,14 +301,17 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       console.log('Saving settings for clinician:', clinicianIdToUse);
       console.log('Time granularity:', timeGranularity);
       console.log('Min days ahead:', minDaysAhead);
+      console.log('Max days ahead:', maxDaysAhead);
 
+      const safeMaxDaysAhead = Math.max(minDaysAhead + 30, maxDaysAhead);
+      
       const { error: settingsError } = await supabase
         .from('availability_settings')
         .upsert({
           clinician_id: clinicianIdToUse,
           time_granularity: timeGranularity,
           min_days_ahead: minDaysAhead,
-          max_days_ahead: 90
+          max_days_ahead: safeMaxDaysAhead
         }, {
           onConflict: 'clinician_id'
         });
@@ -334,18 +343,25 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         return;
       }
 
-      const availabilityToInsert = weekSchedule.flatMap(day => {
-        if (!day.isOpen) return [];
+      const uniqueEntries = new Map();
+      
+      weekSchedule.forEach(day => {
+        if (!day.isOpen) return;
 
-        return day.timeSlots.map(slot => ({
-          clinician_id: clinicianIdToUse,
-          day_of_week: day.day,
-          start_time: slot.startTime,
-          end_time: slot.endTime,
-          is_active: true
-        }));
+        day.timeSlots.forEach(slot => {
+          const key = `${day.day}-${slot.startTime}-${slot.endTime}`;
+          uniqueEntries.set(key, {
+            clinician_id: clinicianIdToUse,
+            day_of_week: day.day,
+            start_time: slot.startTime,
+            end_time: slot.endTime,
+            is_active: true
+          });
+        });
       });
 
+      const availabilityToInsert = Array.from(uniqueEntries.values());
+      
       console.log('Inserting new availability:', availabilityToInsert);
 
       if (availabilityToInsert.length > 0) {
@@ -565,7 +581,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                                 </SelectTrigger>
                                 <SelectContent>
                                   {timeOptions.map((time) => (
-                                    <SelectItem key={`start-time-${time}-${slot.id}`} value={time}>
+                                    <SelectItem key={`start-${day.day}-${slot.id}-${time}`} value={time}>
                                       {time}
                                     </SelectItem>
                                   ))}
@@ -581,7 +597,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                                 </SelectTrigger>
                                 <SelectContent>
                                   {timeOptions.map((time) => (
-                                    <SelectItem key={`end-time-${time}-${slot.id}`} value={time}>
+                                    <SelectItem key={`end-${day.day}-${slot.id}-${time}`} value={time}>
                                       {time}
                                     </SelectItem>
                                   ))}
