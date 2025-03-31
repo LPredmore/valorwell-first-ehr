@@ -74,6 +74,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     
     const fetchSettings = async () => {
       try {
+        console.log('Fetching availability settings for clinician ID:', clinicianId);
         const { data: settingsData, error: settingsError } = await supabase.functions.invoke('getavailabilitysettings', {
           body: { clinicianId }
         });
@@ -81,10 +82,16 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
         if (settingsError) {
           console.error('Error fetching availability settings:', settingsError);
         } else if (settingsData) {
-          setMinDaysAhead(Number(settingsData.min_days_ahead) || 1);
+          const parsedMinDays = Number(settingsData.min_days_ahead);
+          console.log('Received availability settings:', settingsData);
+          console.log('Parsed min_days_ahead:', parsedMinDays);
+          setMinDaysAhead(parsedMinDays || 1);
+          console.log('Set minDaysAhead state to:', parsedMinDays || 1);
+        } else {
+          console.log('No settings data received, using default value of 1 for minDaysAhead');
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Caught error in fetchSettings:', error);
       }
     };
     
@@ -161,6 +168,18 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
       if (!selectedDate || !clinicianId) return;
       
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      console.log('Checking appointments for date:', dateStr);
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const daysFromToday = differenceInCalendarDays(selectedDate, today);
+      console.log('Days from today:', daysFromToday, 'minDaysAhead:', minDaysAhead);
+      
+      if (daysFromToday < minDaysAhead) {
+        console.log('Selected date is too soon, should be blocked');
+        setTimeSlots([]);
+        return;
+      }
       
       try {
         const { data, error } = await supabase
@@ -197,7 +216,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     };
     
     checkExistingAppointments();
-  }, [selectedDate, availabilityBlocks, clinicianId]);
+  }, [selectedDate, availabilityBlocks, clinicianId, minDaysAhead]);
 
   const handleBookAppointment = async () => {
     if (!selectedDate || !selectedTime || !clinicianId || !clientId) {
@@ -279,11 +298,36 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const daysFromToday = differenceInCalendarDays(date, today);
-    return daysFromToday < minDaysAhead;
+    const result = daysFromToday < minDaysAhead;
+    console.log('isDateTooSoon check:', {
+      date: format(date, 'yyyy-MM-dd'),
+      today: format(today, 'yyyy-MM-dd'),
+      daysFromToday,
+      minDaysAhead,
+      isTooSoon: result
+    });
+    return result;
   };
 
   const disabledDays = (date: Date) => {
-    return isDayUnavailable(date) || isPastDate(date) || isDateTooSoon(date);
+    const unavailable = isDayUnavailable(date);
+    const pastDate = isPastDate(date);
+    const tooSoon = isDateTooSoon(date);
+    
+    const today = new Date();
+    const daysFromToday = differenceInCalendarDays(date, today);
+    if (daysFromToday >= 0 && daysFromToday < 10) {
+      console.log('Checking date:', format(date, 'yyyy-MM-dd'), {
+        unavailable,
+        pastDate,
+        tooSoon,
+        minDaysAhead,
+        daysFromToday,
+        disabled: unavailable || pastDate || tooSoon
+      });
+    }
+    
+    return unavailable || pastDate || tooSoon;
   };
 
   const formatTimeDisplay = (timeString: string) => {
@@ -328,10 +372,16 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h3 className="text-sm font-medium mb-2">Select Date</h3>
+                  <div className="text-xs text-gray-600 mb-1">
+                    Minimum advance booking: {minDaysAhead} day{minDaysAhead !== 1 ? 's' : ''}
+                  </div>
                   <Calendar
                     mode="single"
                     selected={selectedDate}
-                    onSelect={setSelectedDate}
+                    onSelect={(date) => {
+                      console.log('Date selected:', date ? format(date, 'yyyy-MM-dd') : 'none');
+                      setSelectedDate(date);
+                    }}
                     disabled={disabledDays}
                     className="border rounded-md"
                   />
