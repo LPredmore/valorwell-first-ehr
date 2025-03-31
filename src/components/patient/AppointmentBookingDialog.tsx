@@ -93,19 +93,25 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           console.error('Error fetching availability settings:', settingsError);
         } else if (settingsData) {
           console.log('Received settings data:', settingsData);
-          const minDaysAhead = parseInt(settingsData.min_days_ahead) || 1;
           
-          setSettings({
+          // Make sure settings values are properly typed as numbers
+          const minDaysAhead = typeof settingsData.min_days_ahead === 'string' 
+            ? parseInt(settingsData.min_days_ahead) 
+            : (settingsData.min_days_ahead || 1);
+            
+          const maxDaysAhead = typeof settingsData.max_days_ahead === 'string'
+            ? parseInt(settingsData.max_days_ahead)
+            : (settingsData.max_days_ahead || 60);
+          
+          const updatedSettings = {
             time_granularity: settingsData.time_granularity || 'hour',
             min_days_ahead: minDaysAhead,
-            max_days_ahead: settingsData.max_days_ahead || 60
-          });
+            max_days_ahead: maxDaysAhead
+          };
           
-          console.log('Applied settings:', {
-            time_granularity: settingsData.time_granularity || 'hour',
-            min_days_ahead: minDaysAhead,
-            max_days_ahead: settingsData.max_days_ahead || 60
-          });
+          setSettings(updatedSettings);
+          
+          console.log('Applied settings:', updatedSettings);
         } else {
           console.log('No settings data received, using defaults');
         }
@@ -296,13 +302,16 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // Ensure min_days_ahead is treated as a number
+    const minDaysAheadValue = Number(settings.min_days_ahead);
+    
     const minDate = new Date(today);
-    minDate.setDate(today.getDate() + settings.min_days_ahead);
+    minDate.setDate(today.getDate() + minDaysAheadValue);
     
     console.log('Checking if date is too soon:', { 
       date: format(date, 'yyyy-MM-dd'),
       minDate: format(minDate, 'yyyy-MM-dd'),
-      min_days_ahead: settings.min_days_ahead,
+      min_days_ahead: minDaysAheadValue,
       isTooSoon: date < minDate
     });
     
@@ -313,8 +322,11 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // Ensure max_days_ahead is treated as a number
+    const maxDaysAheadValue = Number(settings.max_days_ahead);
+    
     const maxDate = new Date(today);
-    maxDate.setDate(today.getDate() + settings.max_days_ahead);
+    maxDate.setDate(today.getDate() + maxDaysAheadValue);
     
     return date > maxDate;
   };

@@ -57,8 +57,17 @@ serve(async (req) => {
     
     console.log('Successfully retrieved settings:', data)
     
+    // Ensure numeric values are returned as numbers, not strings
+    const cleanedData = {
+      ...data,
+      min_days_ahead: parseInt(data.min_days_ahead) || 1,
+      max_days_ahead: parseInt(data.max_days_ahead) || 60
+    }
+    
+    console.log('Returning cleaned settings:', cleanedData)
+    
     return new Response(
-      JSON.stringify(data),
+      JSON.stringify(cleanedData),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
