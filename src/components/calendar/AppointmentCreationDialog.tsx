@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { Check, ChevronsUpDown, CalendarIcon, Clock } from "lucide-react";
+import { Check, ChevronsUpDown, CalendarIcon, Clock, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -138,7 +138,7 @@ const AppointmentCreationDialog: React.FC<AppointmentCreationDialogProps> = ({
   }, [startTime, form]);
 
   // Fetch clients for this clinician
-  const { data: clientsData = [], isLoading: isLoadingClients } = useQuery({
+  const { data: clientsData, isLoading: isLoadingClients, error: clientsError } = useQuery({
     queryKey: ["clients", clinicianId],
     queryFn: async () => {
       if (!clinicianId) return [];
@@ -265,7 +265,16 @@ const AppointmentCreationDialog: React.FC<AppointmentCreationDialogProps> = ({
   // Reset form when dialog opens or closes
   useEffect(() => {
     if (!isOpen) {
-      form.reset();
+      form.reset({
+        date: new Date(),
+        startTime: "09:00",
+        endTime: "10:00",
+        appointmentType: "Therapy Session",
+        notes: "",
+        isRecurring: false,
+        recurrenceType: "weekly",
+        recurrenceCount: 4,
+      });
     }
   }, [isOpen, form]);
 
@@ -305,34 +314,40 @@ const AppointmentCreationDialog: React.FC<AppointmentCreationDialogProps> = ({
                     <PopoverContent className="p-0 w-full">
                       {isLoadingClients ? (
                         <div className="flex items-center justify-center p-4">
-                          <CalendarIcon className="mr-2 h-4 w-4 animate-spin" />
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           <p>Loading clients...</p>
+                        </div>
+                      ) : clientsError ? (
+                        <div className="p-4 text-sm text-red-500">
+                          Error loading clients. Please try again.
                         </div>
                       ) : (
                         <Command>
                           <CommandInput placeholder="Search client..." />
                           <CommandEmpty>No client found.</CommandEmpty>
-                          <CommandGroup>
-                            {clients.map((client) => (
-                              <CommandItem
-                                key={client.id}
-                                value={client.name}
-                                onSelect={() => {
-                                  form.setValue("clientId", client.id);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    client.id === field.value
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                                {client.name}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
+                          {clients.length > 0 && (
+                            <CommandGroup>
+                              {clients.map((client) => (
+                                <CommandItem
+                                  key={client.id}
+                                  value={client.name}
+                                  onSelect={() => {
+                                    form.setValue("clientId", client.id);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      client.id === field.value
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                    )}
+                                  />
+                                  {client.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          )}
                         </Command>
                       )}
                     </PopoverContent>
