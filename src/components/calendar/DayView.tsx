@@ -147,7 +147,7 @@ const DayView: React.FC<DayViewProps> = ({
             }
           }
           
-          processAvailabilityWithExceptions(availabilityData || [], exceptionsData || []);
+          processAvailabilityWithExceptions(availabilityData || [], exceptions || []);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -159,14 +159,14 @@ const DayView: React.FC<DayViewProps> = ({
     fetchAvailabilityAndExceptions();
   }, [dayOfWeek, clinicianId, refreshTrigger, formattedDate]);
 
-  const processAvailabilityWithExceptions = (blocks: AvailabilityBlock[], exceptionsData: AvailabilityException[]) => {
+  const processAvailabilityWithExceptions = (blocks: AvailabilityBlock[], exceptions: AvailabilityException[]) => {
     if (!blocks.length) {
       setTimeBlocks([]);
       return;
     }
 
     const exceptionsMap: Record<string, AvailabilityException> = {};
-    exceptionsData.forEach(exception => {
+    exceptions.forEach(exception => {
       exceptionsMap[exception.original_availability_id] = exception;
     });
 
