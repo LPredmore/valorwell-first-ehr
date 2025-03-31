@@ -11,9 +11,6 @@ import {
   ChevronLeft,
   UserCheck,
   LayoutDashboard,
-  FileText,
-  UserPlus,
-  UserCog,
   UserSearch,
   User
 } from 'lucide-react';
@@ -72,39 +69,9 @@ const Sidebar = () => {
       </div>
       
       <nav className="flex-1 py-4 space-y-1 px-2">
-        {/* Sign-Up link - hide for clinicians */}
-        {!isClinician && (
-          <Link 
-            to="/signup" 
-            className={`sidebar-link ${isActive('/signup') ? 'active' : ''}`}
-          >
-            <UserPlus size={18} />
-            <span>Sign-Up</span>
-          </Link>
-        )}
-
-        {/* Profile setup - hide for clinicians */}
-        {!isClinician && (
-          <Link 
-            to="/profile-setup" 
-            className={`sidebar-link ${isActive('/profile-setup') ? 'active' : ''}`}
-          >
-            <UserCog size={18} />
-            <span>Profile Setup</span>
-          </Link>
-        )}
-        
         {/* Links only visible to non-new clients */}
         {isClient && !isNewClient && (
           <>
-            <Link 
-              to="/therapist-selection" 
-              className={`sidebar-link ${isActive('/therapist-selection') ? 'active' : ''}`}
-            >
-              <UserSearch size={18} />
-              <span>Therapist Selection</span>
-            </Link>
-
             <Link 
               to="/patient-dashboard" 
               className={`sidebar-link ${isActive('/patient-dashboard') ? 'active' : ''}`}
@@ -114,11 +81,11 @@ const Sidebar = () => {
             </Link>
             
             <Link 
-              to="/patient-documents" 
-              className={`sidebar-link ${isActive('/patient-documents') ? 'active' : ''}`}
+              to="/therapist-selection" 
+              className={`sidebar-link ${isActive('/therapist-selection') ? 'active' : ''}`}
             >
-              <FileText size={18} />
-              <span>Patient Documents</span>
+              <UserSearch size={18} />
+              <span>Therapist Selection</span>
             </Link>
           </>
         )}
