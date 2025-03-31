@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Check, ArrowLeft, ArrowRight } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,6 +24,62 @@ import AdditionalInsurance from '@/components/signup/AdditionalInsurance';
 import MoreAdditionalInsurance from '@/components/signup/MoreAdditionalInsurance';
 import SignupLast from '@/components/signup/SignupLast';
 
+const profileStep1Schema = z.object({
+  client_first_name: z.string().min(1, "First name is required"),
+  client_last_name: z.string().min(1, "Last name is required"),
+  client_preferred_name: z.string().optional(),
+  client_email: z.string().email("Valid email is required"),
+  client_phone: z.string().min(10, "Valid phone number is required"),
+  client_relationship: z.string().min(1, "Relationship is required"),
+});
+
+type ProfileFormValues = z.infer<typeof profileStep1Schema> & {
+  client_date_of_birth: Date | undefined;
+  client_gender: string;
+  client_gender_identity: string;
+  client_state: string;
+  client_time_zone: string;
+  client_vacoverage: string;
+  client_champva: string;
+  client_other_insurance: string;
+  client_champva_agreement: boolean;
+  client_mental_health_referral: string;
+  client_branchOS: string;
+  client_recentdischarge: Date | undefined;
+  client_disabilityrating: string;
+  client_tricare_beneficiary_category: string;
+  client_tricare_sponsor_name: string;
+  client_tricare_sponsor_branch: string;
+  client_tricare_sponsor_id: string;
+  client_tricare_plan: string;
+  client_tricare_region: string;
+  client_tricare_policy_id: string;
+  client_tricare_has_referral: string;
+  client_tricare_referral_number: string;
+  client_tricare_insurance_agreement: boolean;
+  client_veteran_relationship: string;
+  client_situation_explanation: string;
+  client_insurance_company_primary: string;
+  client_insurance_type_primary: string;
+  client_subscriber_name_primary: string;
+  client_subscriber_relationship_primary: string;
+  client_subscriber_dob_primary: Date | undefined;
+  client_group_number_primary: string;
+  client_policy_number_primary: string;
+  client_insurance_company_secondary: string;
+  client_insurance_type_secondary: string;
+  client_subscriber_name_secondary: string;
+  client_subscriber_relationship_secondary: string;
+  client_subscriber_dob_secondary: Date | undefined;
+  client_group_number_secondary: string;
+  client_policy_number_secondary: string;
+  hasMoreInsurance: string;
+  client_has_even_more_insurance: string;
+  client_self_goal: string;
+  client_referral_source: string;
+  tricareInsuranceAgreement: boolean;
+};
+
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -30,7 +88,9 @@ const ProfileSetup = () => {
   const [navigationHistory, setNavigationHistory] = useState<number[]>([1]);
   const [otherInsurance, setOtherInsurance] = useState<string>('');
   
-  const form = useForm({
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileStep1Schema),
+    mode: "onChange",
     defaultValues: {
       client_first_name: '',
       client_preferred_name: '',
@@ -90,7 +150,6 @@ const ProfileSetup = () => {
       try {
         console.log("Starting fetchUser function");
         
-        // Get current user
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         
         console.log("Auth getUser result:", { user, authError });
@@ -104,7 +163,6 @@ const ProfileSetup = () => {
         console.log("User ID:", user.id);
         console.log("User email:", user.email);
         
-        // First try to get client by ID
         let { data: clientData, error: clientIdError } = await supabase
           .from('clients')
           .select('*')
@@ -112,7 +170,6 @@ const ProfileSetup = () => {
           
         console.log("Client query by ID result:", { clientData, clientIdError });
         
-        // If no client found by ID, check by email as fallback
         if ((!clientData || clientData.length === 0) && user.email) {
           console.log("No client found by ID, checking by email:", user.email);
           
@@ -126,9 +183,6 @@ const ProfileSetup = () => {
           if (!emailError && emailData && emailData.length > 0) {
             clientData = emailData;
             
-            // Optionally update client ID to match user ID for future consistency
-            console.log("Updating client ID to match user ID");
-            
             const { error: updateError } = await supabase
               .from('clients')
               .update({ id: user.id })
@@ -137,7 +191,6 @@ const ProfileSetup = () => {
             if (updateError) {
               console.error("Error updating client ID:", updateError);
             } else {
-              // Re-fetch with updated ID
               const { data: updatedData } = await supabase
                 .from('clients')
                 .select('*')
@@ -150,11 +203,9 @@ const ProfileSetup = () => {
           }
         }
         
-        // If still no client found, create a new one
         if (!clientData || clientData.length === 0) {
           console.log("No client record found, creating new one for user:", user.id);
           
-          // Create new client record
           const { data: newClient, error: insertError } = await supabase
             .from('clients')
             .insert([
@@ -179,7 +230,6 @@ const ProfileSetup = () => {
           console.log("Created new client record:", clientData);
         }
         
-        // Process the client data
         if (clientData && clientData.length > 0) {
           const data = clientData[0];
           console.log("Processing client data:", data);
@@ -240,7 +290,6 @@ const ProfileSetup = () => {
           form.reset(formValues);
           console.log("Form reset completed");
           
-          // Check if form values were actually set
           setTimeout(() => {
             const currentValues = form.getValues();
             console.log("Current form values after reset:", currentValues);
@@ -267,6 +316,11 @@ const ProfileSetup = () => {
   };
 
   const handleConfirmIdentity = async () => {
+    const isValid = await form.trigger();
+    if (!isValid) {
+      return;
+    }
+
     if (!clientId) {
       toast({
         title: "Error",
@@ -620,7 +674,6 @@ const ProfileSetup = () => {
         client_is_profile_complete: 'true'
       });
 
-      // Only update necessary fields for final step
       const { error } = await supabase
         .from('clients')
         .update({
@@ -647,7 +700,6 @@ const ProfileSetup = () => {
         description: "Your information has been saved. You can now select a therapist.",
       });
       
-      // Navigate to therapist selection
       navigate('/therapist-selection');
     } catch (error) {
       console.error("Exception in handleSubmit:", error);
@@ -659,68 +711,79 @@ const ProfileSetup = () => {
     }
   };
 
-  const renderStepOne = () => (
-    <Form {...form}>
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormFieldWrapper
-            control={form.control}
-            name="client_first_name"
-            label="First Name"
-          />
+  const renderStepOne = () => {
+    const { formState } = form;
+    const isStep1Valid = formState.isValid;
+    
+    return (
+      <Form {...form}>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormFieldWrapper
+              control={form.control}
+              name="client_first_name"
+              label="First Name"
+              required={true}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_last_name"
+              label="Last Name"
+              required={true}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_preferred_name"
+              label="Preferred Name (optional)"
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_email"
+              label="Email"
+              type="email"
+              readOnly={true}
+              required={true}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_phone"
+              label="Phone"
+              type="tel"
+              required={true}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_relationship"
+              label="What is your relationship with the patient?"
+              type="select"
+              options={[
+                "Self", "Parent/Guardian", "Spouse", "Child", "Other"
+              ]}
+              required={true}
+            />
+          </div>
           
-          <FormFieldWrapper
-            control={form.control}
-            name="client_last_name"
-            label="Last Name"
-          />
-          
-          <FormFieldWrapper
-            control={form.control}
-            name="client_preferred_name"
-            label="Preferred Name (optional)"
-          />
-          
-          <FormFieldWrapper
-            control={form.control}
-            name="client_email"
-            label="Email"
-            type="email"
-            readOnly={true}
-          />
-          
-          <FormFieldWrapper
-            control={form.control}
-            name="client_phone"
-            label="Phone"
-            type="tel"
-          />
-          
-          <FormFieldWrapper
-            control={form.control}
-            name="client_relationship"
-            label="What is your relationship with the patient?"
-            type="select"
-            options={[
-              "Self", "Parent/Guardian", "Spouse", "Child", "Other"
-            ]}
-          />
+          <div className="flex justify-center mt-8">
+            <Button 
+              type="button" 
+              size="lg" 
+              onClick={handleConfirmIdentity}
+              disabled={!isStep1Valid}
+              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Check className="h-5 w-5" />
+              I confirm that this is me
+            </Button>
+          </div>
         </div>
-        
-        <div className="flex justify-center mt-8">
-          <Button 
-            type="button" 
-            size="lg" 
-            onClick={handleConfirmIdentity}
-            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
-          >
-            <Check className="h-5 w-5" />
-            I confirm that this is me
-          </Button>
-        </div>
-      </div>
-    </Form>
-  );
+      </Form>
+    );
+  };
 
   const renderStepTwo = () => (
     <Form {...form}>

@@ -14,7 +14,7 @@ interface FormFieldWrapperProps {
   valueMapper?: (label: string) => string;
   labelMapper?: (value: string) => string;
   maxLength?: number;
-  required?: boolean; // Add the required property
+  required?: boolean;
 }
 
 const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
@@ -27,7 +27,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
   valueMapper,
   labelMapper,
   maxLength,
-  required = false // Default to false
+  required = false
 }) => {
   return (
     <FormField
