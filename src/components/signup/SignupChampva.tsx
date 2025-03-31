@@ -18,8 +18,8 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({
 }) => {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
 
-  // Watch for changes to the client_other_insurance field - using consistent naming
-  const otherInsurance = form.watch('client_other_insurance');
+  // Watch for changes to the otherInsurance field - using local field name
+  const otherInsurance = form.watch('other_insurance');
   
   useEffect(() => {
     // Show disclaimer only when "No" is selected
@@ -27,7 +27,7 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({
 
     // When other insurance is changed, clear the agreement if disclaimer is hidden
     if (otherInsurance !== "No") {
-      form.setValue('client_champva_agreement', false);
+      form.setValue('champva_agreement', false);
     }
 
     // Call the callback if provided
@@ -55,7 +55,7 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({
         
         <FormFieldWrapper 
           control={form.control} 
-          name="client_other_insurance" 
+          name="other_insurance" 
           label="Do you have any other insurance?" 
           type="select" 
           options={["Yes", "No"]} 
@@ -67,20 +67,17 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({
               I understand that if I have any other insurance, I have to include it here, even if it doesn't cover the services I will be receiving. CHAMPVA requires other insurances to be billed first, even if it is out of network or they don't cover the service. I understand that if I have other insurance and fail to provide it here, my claims will likely not be covered by CHAMPVA and I will be responsible for the entire cost.
             </p>
             
-            <FormField 
-              control={form.control} 
-              name="client_champva_agreement" 
-              rules={{
-                validate: value => {
-                  // Only require the checkbox when "No" is selected
-                  if (otherInsurance === "No" && !value) {
-                    return "You must agree to this statement";
-                  }
-                  return true;
-                }
-              }} 
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+            <FormField control={form.control} name="champva_agreement" rules={{
+          validate: value => {
+            // Only require the checkbox when "No" is selected
+            if (otherInsurance === "No" && !value) {
+              return "You must agree to this statement";
+            }
+            return true;
+          }
+        }} render={({
+          field
+        }) => <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                   <FormControl>
                     <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
@@ -90,9 +87,7 @@ const SignupChampva: React.FC<SignupChampvaProps> = ({
                     </Label>
                     <FormMessage />
                   </div>
-                </FormItem>
-              )} 
-            />
+                </FormItem>} />
           </div>}
       </div>
     </div>;

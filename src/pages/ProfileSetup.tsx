@@ -406,7 +406,7 @@ const ProfileSetup = () => {
   const handleNext = async () => {
     const values = form.getValues();
     const vaCoverage = values.client_vacoverage;
-    const hasMoreInsurance = values.hasMoreInsurance;
+    const hasMoreInsurance = values.hasMoreInsurance; // Updated to use the local field
     
     if (currentStep === 2) {
       if (clientId) {
@@ -459,9 +459,7 @@ const ProfileSetup = () => {
           const { error } = await supabase
             .from('clients')
             .update({
-              client_champva: values.client_champva,
-              client_other_insurance: values.client_other_insurance,
-              client_champva_agreement: values.client_champva_agreement
+              client_champva: values.client_champva
             })
             .eq('id', clientId);
             
@@ -501,9 +499,7 @@ const ProfileSetup = () => {
               client_tricare_region: values.client_tricare_region,
               client_tricare_policy_id: values.client_tricare_policy_id,
               client_tricare_has_referral: values.client_tricare_has_referral,
-              client_tricare_referral_number: values.client_tricare_referral_number,
-              client_other_insurance: values.client_other_insurance,
-              client_tricare_insurance_agreement: values.tricareInsuranceAgreement
+              client_tricare_referral_number: values.client_tricare_referral_number
             })
             .eq('id', clientId);
             
@@ -810,7 +806,7 @@ const ProfileSetup = () => {
     const isStep2Valid = form.formState.isValid;
     
     return (
-      <form onSubmit={e => e.preventDefault()}>
+      <Form {...form}>
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <DateField
@@ -896,4 +892,219 @@ const ProfileSetup = () => {
               type="button" 
               variant="outline"
               onClick={handleGoBack}
-              className="flex
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            
+            <Button 
+              type="button" 
+              onClick={handleNext}
+              disabled={!isStep2Valid}
+              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </Form>
+    );
+  };
+
+  const renderStepThree = () => {
+    const vaCoverage = form.getValues('client_vacoverage');
+    const isValid = form.formState.isValid;
+    const otherInsurance = form.watch('other_insurance');
+    const champvaAgreement = form.watch('champva_agreement');
+    
+    const isStep3Valid = () => {
+      if (vaCoverage === 'CHAMPVA') {
+        // For CHAMPVA, validate other_insurance field is selected
+        if (!otherInsurance) return false;
+        // If "No" is selected, check that the agreement is checked
+        if (otherInsurance === "No" && !champvaAgreement) return false;
+      }
+      // Add validation for other coverage types as needed
+      
+      return true;
+    };
+    
+    return (
+      <Form {...form}>
+        <div className="space-y-6">
+          {vaCoverage === 'CHAMPVA' && (
+            <SignupChampva 
+              form={form} 
+              onOtherInsuranceChange={handleOtherInsuranceChange}
+            />
+          )}
+          
+          {vaCoverage === 'TRICARE' && (
+            <SignupTricare 
+              form={form}
+              onOtherInsuranceChange={handleOtherInsuranceChange}
+            />
+          )}
+          
+          {vaCoverage === 'VA Community Care' && (
+            <SignupVaCcn form={form} />
+          )}
+          
+          {vaCoverage === 'None - I am a veteran' && (
+            <SignupVeteran form={form} />
+          )}
+          
+          {vaCoverage === 'None - I am not a veteran' && (
+            <SignupNotAVeteran form={form} />
+          )}
+          
+          <div className="flex justify-between mt-8">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handleGoBack}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            
+            <Button 
+              type="button" 
+              onClick={handleNext}
+              disabled={!isStep3Valid()}
+              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </Form>
+    );
+  };
+
+  const renderStepFour = () => (
+    <Form {...form}>
+      <div className="space-y-6">
+        <AdditionalInsurance form={form} />
+        
+        <div className="flex justify-between mt-8">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          
+          <Button 
+            type="button" 
+            onClick={handleNext}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
+            Next
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </Form>
+  );
+
+  const renderStepFive = () => (
+    <Form {...form}>
+      <div className="space-y-6">
+        <MoreAdditionalInsurance form={form} />
+        
+        <div className="flex justify-between mt-8">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          
+          <Button 
+            type="button" 
+            onClick={handleNext}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
+            Next
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </Form>
+  );
+
+  const renderStepSix = () => (
+    <Form {...form}>
+      <div className="space-y-6">
+        <SignupLast form={form} />
+        
+        <div className="flex justify-between mt-8">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          
+          <Button 
+            type="button" 
+            onClick={handleSubmit}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
+            Complete Profile
+          </Button>
+        </div>
+      </div>
+    </Form>
+  );
+
+  return (
+    <Layout>
+      <div className="max-w-5xl mx-auto">
+        <Card className="border-valorwell-200 shadow-xl">
+          <CardHeader className="bg-gradient-to-r from-valorwell-500 to-valorwell-600 text-white rounded-t-lg p-6">
+            <CardTitle className="text-xl sm:text-2xl font-semibold">Profile Setup</CardTitle>
+            <CardDescription className="text-valorwell-50">Tell us about yourself to get started</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 sm:p-8">
+            <div className="mb-6">
+              <div className="flex justify-between mb-2">
+                <span className="text-sm text-valorwell-700">Step {currentStep} of 6</span>
+                <span className="text-sm text-valorwell-700">{Math.round((currentStep / 6) * 100)}% Complete</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-valorwell-600 h-2.5 rounded-full" 
+                  style={{ width: `${(currentStep / 6) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+            
+            {currentStep === 1 && renderStepOne()}
+            {currentStep === 2 && renderStepTwo()}
+            {currentStep === 3 && renderStepThree()}
+            {currentStep === 4 && renderStepFour()}
+            {currentStep === 5 && renderStepFive()}
+            {currentStep === 6 && renderStepSix()}
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
+  );
+};
+
+export default ProfileSetup;

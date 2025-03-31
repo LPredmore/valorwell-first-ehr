@@ -18,7 +18,7 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form, onOtherInsuranceCha
   
   // Watch for changes to the hasReferral and otherInsurance fields
   const hasReferral = form.watch('client_tricare_has_referral');
-  const otherInsurance = form.watch('client_other_insurance');
+  const otherInsurance = form.watch('otherInsurance');
   
   useEffect(() => {
     // Show referral number field only when "Yes" is selected
@@ -60,7 +60,6 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form, onOtherInsuranceCha
             "Former Spouse",
             "Children with Disabilities"
           ]}
-          required={true}
         />
         
         <FormFieldWrapper
@@ -68,7 +67,6 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form, onOtherInsuranceCha
           name="client_tricare_sponsor_name"
           label="TRICARE Sponsor's Name"
           type="text"
-          required={true}
         />
         
         <FormFieldWrapper
@@ -86,7 +84,6 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form, onOtherInsuranceCha
             "Space Force",
             "USPHS"
           ]}
-          required={true}
         />
         
         <FormFieldWrapper
@@ -94,7 +91,6 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form, onOtherInsuranceCha
           name="client_tricare_sponsor_id"
           label="TRICARE Sponsor's SSN or DOD ID Number"
           type="text"
-          required={true}
         />
         
         <FormFieldWrapper
@@ -115,7 +111,6 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form, onOtherInsuranceCha
             "TRICARE Retired Reserve",
             "TRICARE Young Adult"
           ]}
-          required={true}
         />
         
         <FormFieldWrapper
@@ -128,7 +123,6 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form, onOtherInsuranceCha
             "TRICARE West",
             "TRICARE Overseas"
           ]}
-          required={true}
         />
         
         <FormFieldWrapper
@@ -136,7 +130,6 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form, onOtherInsuranceCha
           name="client_tricare_policy_id"
           label="Policy #/Plan ID"
           type="text"
-          required={true}
         />
         
         <FormFieldWrapper
@@ -145,7 +138,6 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form, onOtherInsuranceCha
           label="Do you have a Referral Number?"
           type="select"
           options={["Yes", "No"]}
-          required={true}
         />
         
         {showReferralField && (
@@ -154,7 +146,6 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form, onOtherInsuranceCha
             name="client_tricare_referral_number"
             label="Referral Number"
             type="text"
-            required={hasReferral === "Yes"}
           />
         )}
         
@@ -162,11 +153,10 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form, onOtherInsuranceCha
         
         <FormFieldWrapper
           control={form.control}
-          name="client_other_insurance"
+          name="otherInsurance"
           label="Do you have any other insurance?"
           type="select"
           options={["Yes", "No"]}
-          required={true}
         />
 
         {showInsuranceDisclaimer && (
