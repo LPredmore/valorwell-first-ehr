@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { format, parse, addDays, isSameDay } from 'date-fns';
+import { format, parse, addDays, isSameDay, isAfter, differenceInCalendarDays } from 'date-fns';
 import { Calendar as CalendarIcon, Clock, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -45,6 +44,11 @@ interface TimeSlot {
   available: boolean;
 }
 
+interface AvailabilitySettings {
+  time_granularity: string;
+  min_days_ahead: number;
+}
+
 const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   open,
   onOpenChange,
@@ -61,8 +65,31 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [bookingInProgress, setBookingInProgress] = useState<boolean>(false);
+  const [minDaysAhead, setMinDaysAhead] = useState<number>(1);
   const { toast } = useToast();
   const userTimeZone = propTimeZone || getUserTimeZone();
+
+  useEffect(() => {
+    if (!open || !clinicianId) return;
+    
+    const fetchSettings = async () => {
+      try {
+        const { data: settingsData, error: settingsError } = await supabase.functions.invoke('getavailabilitysettings', {
+          body: { clinicianId }
+        });
+        
+        if (settingsError) {
+          console.error('Error fetching availability settings:', settingsError);
+        } else if (settingsData) {
+          setMinDaysAhead(Number(settingsData.min_days_ahead) || 1);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
+    
+    fetchSettings();
+  }, [clinicianId, open]);
 
   useEffect(() => {
     const fetchAvailability = async () => {
@@ -248,8 +275,15 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     return date < today;
   };
 
+  const isDateTooSoon = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysFromToday = differenceInCalendarDays(date, today);
+    return daysFromToday < minDaysAhead;
+  };
+
   const disabledDays = (date: Date) => {
-    return isDayUnavailable(date) || isPastDate(date);
+    return isDayUnavailable(date) || isPastDate(date) || isDateTooSoon(date);
   };
 
   const formatTimeDisplay = (timeString: string) => {
