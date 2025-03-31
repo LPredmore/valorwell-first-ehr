@@ -1,6 +1,6 @@
 
 import * as React from "react";
-import { format } from "date-fns";
+import { format, addMonths, subMonths } from "date-fns";
 import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,20 @@ export const DateField: React.FC<DateFieldProps> = ({ control, name, label, requ
     return Array.from({ length: currentYear - 1899 }, (_, i) => currentYear - i);
   }, []);
 
+  // Handle previous month navigation
+  const handlePrevMonth = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setViewDate(prevDate => subMonths(prevDate, 1));
+  };
+
+  // Handle next month navigation
+  const handleNextMonth = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setViewDate(prevDate => addMonths(prevDate, 1));
+  };
+
   // Custom rendering for calendar caption
   const captionComponent = React.useCallback(
     ({ displayMonth }: { displayMonth: Date }) => {
@@ -35,6 +49,15 @@ export const DateField: React.FC<DateFieldProps> = ({ control, name, label, requ
 
       return (
         <div className="flex h-10 justify-center pt-1 relative items-center">
+          <button
+            type="button"
+            onClick={handlePrevMonth}
+            className="absolute left-1 h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 rounded-md border border-input"
+            aria-label="Previous month"
+          >
+            <ChevronLeft className="h-4 w-4 mx-auto" />
+          </button>
+          
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -48,6 +71,15 @@ export const DateField: React.FC<DateFieldProps> = ({ control, name, label, requ
             </button>
             <span className="text-sm font-medium">{month}</span>
           </div>
+          
+          <button
+            type="button"
+            onClick={handleNextMonth}
+            className="absolute right-1 h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 rounded-md border border-input"
+            aria-label="Next month"
+          >
+            <ChevronRight className="h-4 w-4 mx-auto" />
+          </button>
         </div>
       );
     },
@@ -113,14 +145,13 @@ export const DateField: React.FC<DateFieldProps> = ({ control, name, label, requ
                     setCalendarOpen(false);
                   }}
                   defaultMonth={viewDate}
+                  month={viewDate}
                   onMonthChange={setViewDate}
                   disabled={(date) =>
                     date > new Date() || date < new Date("1900-01-01")
                   }
                   components={{
-                    Caption: captionComponent,
-                    IconLeft: () => <ChevronLeft className="h-4 w-4" />,
-                    IconRight: () => <ChevronRight className="h-4 w-4" />
+                    Caption: captionComponent
                   }}
                   initialFocus
                   className={cn("p-3 pointer-events-auto")}
