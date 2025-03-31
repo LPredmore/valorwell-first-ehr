@@ -34,6 +34,9 @@ const MyInsurance: React.FC<MyInsuranceProps> = ({
   insuranceTypes,
   relationshipTypes
 }) => {
+  // Add debugging to check if client_champva exists in clientData
+  console.log("Client data in MyInsurance:", clientData);
+  
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
