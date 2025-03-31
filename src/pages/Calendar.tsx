@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import CalendarView from '../components/calendar/CalendarView';
@@ -49,9 +50,6 @@ const CalendarPage = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  
-  const [appointmentType, setAppointmentType] = useState<string>("therapy");
-  const [appointmentDuration, setAppointmentDuration] = useState<number>(60);
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
 
   useEffect(() => {
@@ -153,7 +151,7 @@ const CalendarPage = () => {
       startDateTime.setHours(startTimeParts[0], startTimeParts[1], 0, 0);
       
       const endDateTime = new Date(startDateTime);
-      endDateTime.setMinutes(endDateTime.getMinutes() + appointmentDuration);
+      endDateTime.setMinutes(endDateTime.getMinutes() + 60); // Always 60 minutes
       
       const endTime = `${endDateTime.getHours().toString().padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}`;
 
@@ -167,12 +165,15 @@ const CalendarPage = () => {
           date: formattedDate,
           start_time: startTime,
           end_time: endTime,
-          type: appointmentType,
+          type: "Therapy Session", // Hardcoded default type
           status: 'scheduled'
         }])
         .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error details:', error.message, error);
+        throw error;
+      }
 
       toast({
         title: "Appointment Created",
@@ -183,6 +184,7 @@ const CalendarPage = () => {
       setStartTime("09:00");
       setIsDialogOpen(false);
       
+      // Trigger a refresh of the calendar view
       setAppointmentRefreshTrigger(prev => prev + 1);
 
     } catch (error) {
@@ -344,38 +346,6 @@ const CalendarPage = () => {
                       {format(new Date(`2023-01-01T${time}`), 'h:mm a')}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="type">Appointment Type</Label>
-              <Select value={appointmentType} onValueChange={setAppointmentType}>
-                <SelectTrigger id="type">
-                  <SelectValue placeholder="Select appointment type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="therapy">Therapy Session</SelectItem>
-                  <SelectItem value="intake">Intake Assessment</SelectItem>
-                  <SelectItem value="consultation">Consultation</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="duration">Duration</Label>
-              <Select 
-                value={appointmentDuration.toString()} 
-                onValueChange={(value) => setAppointmentDuration(Number(value))}
-              >
-                <SelectTrigger id="duration">
-                  <SelectValue placeholder="Select duration" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="30">30 minutes</SelectItem>
-                  <SelectItem value="45">45 minutes</SelectItem>
-                  <SelectItem value="60">60 minutes</SelectItem>
-                  <SelectItem value="90">90 minutes</SelectItem>
                 </SelectContent>
               </Select>
             </div>
