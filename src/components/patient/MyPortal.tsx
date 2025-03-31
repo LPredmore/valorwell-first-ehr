@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,7 +15,7 @@ import VideoChat from '@/components/video/VideoChat';
 import { 
   getUserTimeZone,
   formatTimeZoneDisplay,
-  formatInUserTimeZone,
+  formatTimeInUserTimeZone, // Fixed: replaced formatInUserTimeZone with formatTimeInUserTimeZone
   formatTime12Hour
 } from '@/utils/timeZoneUtils';
 import PHQ9Template from '@/components/templates/PHQ9Template';
@@ -113,8 +114,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
               // Create the dateTimeString with proper error handling
               let formattedTime = '';
               try {
-                formattedTime = formatInUserTimeZone(
-                  appointment.date,
+                formattedTime = formatTimeInUserTimeZone( // Fixed: replaced formatInUserTimeZone with formatTimeInUserTimeZone
                   appointment.start_time,
                   clientTimeZone,
                   'h:mm a'
