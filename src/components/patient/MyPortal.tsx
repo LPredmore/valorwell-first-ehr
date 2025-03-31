@@ -13,7 +13,6 @@ import { formatInTimeZone } from 'date-fns-tz';
 import VideoChat from '@/components/video/VideoChat';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
 import PHQ9Template from '@/components/templates/PHQ9Template';
-
 interface MyPortalProps {
   upcomingAppointments: Array<{
     id: number;
@@ -26,12 +25,11 @@ interface MyPortalProps {
   clinicianName: string | null;
   loading: boolean;
 }
-
-const MyPortal: React.FC<MyPortalProps> = ({ 
-  upcomingAppointments: initialAppointments, 
-  clientData, 
+const MyPortal: React.FC<MyPortalProps> = ({
+  upcomingAppointments: initialAppointments,
+  clientData,
   clinicianName,
-  loading 
+  loading
 }) => {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [upcomingAppointments, setUpcomingAppointments] = useState(initialAppointments);
@@ -41,38 +39,31 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const [isLoadingVideoSession, setIsLoadingVideoSession] = useState(false);
   const [showPHQ9, setShowPHQ9] = useState(false);
   const [pendingAppointmentId, setPendingAppointmentId] = useState<string | number | null>(null);
-  const { toast } = useToast();
-
+  const {
+    toast
+  } = useToast();
   const clientTimeZone = clientData?.client_time_zone || getUserTimeZone();
-
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!clientData?.id) return;
-
       try {
-        const { data, error } = await supabase
-          .from('appointments')
-          .select('*')
-          .eq('client_id', clientData.id)
-          .eq('status', 'scheduled')
-          .order('date', { ascending: true })
-          .order('start_time', { ascending: true });
-          
+        const {
+          data,
+          error
+        } = await supabase.from('appointments').select('*').eq('client_id', clientData.id).eq('status', 'scheduled').order('date', {
+          ascending: true
+        }).order('start_time', {
+          ascending: true
+        });
         if (error) {
           console.error('Error fetching appointments:', error);
           return;
         }
-
         if (data && data.length > 0) {
-          const formattedAppointments = data.map((appointment) => {
+          const formattedAppointments = data.map(appointment => {
             const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
             const dateTimeString = `${appointment.date}T${appointment.start_time}`;
-            const formattedTime = formatInTimeZone(
-              parseISO(dateTimeString), 
-              clientTimeZone, 
-              'h:mm a'
-            );
-            
+            const formattedTime = formatInTimeZone(parseISO(dateTimeString), clientTimeZone, 'h:mm a');
             return {
               id: appointment.id,
               date: formattedDate,
@@ -81,7 +72,6 @@ const MyPortal: React.FC<MyPortalProps> = ({
               therapist: clinicianName || 'Your Therapist'
             };
           });
-          
           setUpcomingAppointments(formattedAppointments);
         } else {
           setUpcomingAppointments([]);
@@ -90,41 +80,33 @@ const MyPortal: React.FC<MyPortalProps> = ({
         console.error('Error:', error);
       }
     };
-
     fetchAppointments();
   }, [clientData, clinicianName, refreshAppointments, clientTimeZone]);
-
   const handleBookingComplete = () => {
     setRefreshAppointments(prev => prev + 1);
     toast({
       title: "Appointment Booked",
-      description: "Your appointment has been scheduled successfully!",
+      description: "Your appointment has been scheduled successfully!"
     });
   };
-
   const handleStartSession = async (appointmentId: string | number) => {
     setPendingAppointmentId(appointmentId);
     setShowPHQ9(true);
   };
-
   const handlePHQ9Complete = async () => {
     setShowPHQ9(false);
-    
     if (pendingAppointmentId) {
       setIsLoadingVideoSession(true);
       try {
         console.log('Starting session for appointment:', pendingAppointmentId);
         const result = await getOrCreateVideoRoom(pendingAppointmentId.toString());
-        
         if (!result.success || !result.url) {
           console.error('Error result from getOrCreateVideoRoom:', result);
           throw new Error(result.error?.message || result.error || 'Failed to create video room');
         }
-        
         console.log('Video room URL obtained:', result.url);
         setVideoRoomUrl(result.url);
         setIsVideoSessionOpen(true);
-        
         toast({
           title: "Video Session Ready",
           description: "You are entering the video session now."
@@ -142,13 +124,10 @@ const MyPortal: React.FC<MyPortalProps> = ({
       }
     }
   };
-
   const handleCloseVideoSession = () => {
     setIsVideoSessionOpen(false);
   };
-
-  return (
-    <div className="grid grid-cols-1 gap-6">
+  return <div className="grid grid-cols-1 gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
@@ -158,8 +137,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
           <Calendar className="h-5 w-5 text-valorwell-600" />
         </CardHeader>
         <CardContent>
-          {upcomingAppointments.length > 0 ? (
-            <Table>
+          {upcomingAppointments.length > 0 ? <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
@@ -170,47 +148,30 @@ const MyPortal: React.FC<MyPortalProps> = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {upcomingAppointments.map((appointment) => (
-                  <TableRow key={appointment.id}>
+                {upcomingAppointments.map(appointment => <TableRow key={appointment.id}>
                     <TableCell>{appointment.date}</TableCell>
                     <TableCell>{appointment.time}</TableCell>
                     <TableCell>{appointment.type}</TableCell>
                     <TableCell>{appointment.therapist}</TableCell>
                     <TableCell className="text-right">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleStartSession(appointment.id)}
-                        disabled={isLoadingVideoSession}
-                      >
+                      <Button variant="outline" size="sm" onClick={() => handleStartSession(appointment.id)} disabled={isLoadingVideoSession}>
                         {isLoadingVideoSession ? "Loading..." : "Start Session"}
                       </Button>
                     </TableCell>
-                  </TableRow>
-                ))}
+                  </TableRow>)}
               </TableBody>
-            </Table>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-6 text-center">
+            </Table> : <div className="flex flex-col items-center justify-center py-6 text-center">
               <Calendar className="h-12 w-12 text-gray-300 mb-3" />
               <h3 className="text-lg font-medium">No upcoming appointments</h3>
               <p className="text-sm text-gray-500 mt-1">Schedule a session with your therapist</p>
-              <Button 
-                className="mt-4"
-                onClick={() => setIsBookingOpen(true)}
-              >
+              <Button className="mt-4" onClick={() => setIsBookingOpen(true)}>
                 Book Appointment
               </Button>
-            </div>
-          )}
+            </div>}
         </CardContent>
         <CardFooter className="flex justify-between">
           <Button variant="ghost" size="sm">View All Appointments</Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setIsBookingOpen(true)}
-          >
+          <Button variant="outline" size="sm" onClick={() => setIsBookingOpen(true)}>
             <CalendarIcon className="mr-2 h-4 w-4" />
             Book New Appointment
           </Button>
@@ -219,92 +180,32 @@ const MyPortal: React.FC<MyPortalProps> = ({
 
       <Card>
         <CardHeader>
-          <CardTitle>Therapist Availability</CardTitle>
-          <CardDescription>View your therapist's schedule</CardDescription>
+          <CardTitle>Your Therapist</CardTitle>
+          
         </CardHeader>
         <CardContent>
-          {clientData && clientData.client_assigned_therapist ? (
-            <>
+          {clientData && clientData.client_assigned_therapist ? <>
               <div className="bg-gray-50 p-3 rounded-md mb-4">
-                <h3 className="font-medium">Your Assigned Therapist</h3>
-                <p className="text-lg mt-2">{clinicianName || 'Loading therapist information...'}</p>
+                
+                
               </div>
 
-              <Tabs defaultValue="weekly">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="weekly">Weekly View</TabsTrigger>
-                  <TabsTrigger value="monthly">Monthly View</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="weekly" className="space-y-4">
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <h3 className="font-medium mb-2">Available Time Slots</h3>
-                    <p className="text-sm text-gray-500 mb-4">Available time slots for the current week</p>
-
-                    <WeekView 
-                      currentDate={new Date()} 
-                      clinicianId={clientData?.client_assigned_therapist || null} 
-                      userTimeZone={clientTimeZone} 
-                    />
-                  </div>
-                  <div className="flex justify-end">
-                    <Button onClick={() => setIsBookingOpen(true)}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Book a Time Slot
-                    </Button>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="monthly">
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <h3 className="font-medium mb-2">Monthly Availability</h3>
-                    <p className="text-sm text-gray-500 mb-4">View available slots for the entire month</p>
-                    <div className="flex justify-center">
-                      <p className="text-gray-500">Monthly calendar view will be displayed here</p>
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
+              
+            </> : <div className="flex flex-col items-center justify-center py-8 text-center">
               <Calendar className="h-12 w-12 text-gray-300 mb-3" />
               <h3 className="text-lg font-medium">No Assigned Therapist</h3>
               <p className="text-sm text-gray-500 mt-1">
                 You don't have an assigned therapist yet. Please contact the clinic for assistance.
               </p>
-            </div>
-          )}
+            </div>}
         </CardContent>
       </Card>
 
-      <AppointmentBookingDialog
-        open={isBookingOpen}
-        onOpenChange={setIsBookingOpen}
-        clinicianId={clientData?.client_assigned_therapist || null}
-        clinicianName={clinicianName}
-        clientId={clientData?.id || null}
-        onAppointmentBooked={handleBookingComplete}
-      />
+      <AppointmentBookingDialog open={isBookingOpen} onOpenChange={setIsBookingOpen} clinicianId={clientData?.client_assigned_therapist || null} clinicianName={clinicianName} clientId={clientData?.id || null} onAppointmentBooked={handleBookingComplete} />
 
-      {showPHQ9 && (
-        <PHQ9Template
-          onClose={() => setShowPHQ9(false)}
-          clinicianName={clinicianName || "Your Therapist"}
-          clientData={clientData}
-          onComplete={handlePHQ9Complete}
-        />
-      )}
+      {showPHQ9 && <PHQ9Template onClose={() => setShowPHQ9(false)} clinicianName={clinicianName || "Your Therapist"} clientData={clientData} onComplete={handlePHQ9Complete} />}
 
-      {videoRoomUrl && (
-        <VideoChat 
-          roomUrl={videoRoomUrl} 
-          isOpen={isVideoSessionOpen} 
-          onClose={handleCloseVideoSession} 
-        />
-      )}
-    </div>
-  );
+      {videoRoomUrl && <VideoChat roomUrl={videoRoomUrl} isOpen={isVideoSessionOpen} onClose={handleCloseVideoSession} />}
+    </div>;
 };
-
 export default MyPortal;
