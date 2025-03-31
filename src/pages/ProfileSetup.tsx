@@ -406,7 +406,7 @@ const ProfileSetup = () => {
   const handleNext = async () => {
     const values = form.getValues();
     const vaCoverage = values.client_vacoverage;
-    const hasMoreInsurance = values.hasMoreInsurance;
+    const hasMoreInsurance = values.hasMoreInsurance; // Updated to use the local field
     
     if (currentStep === 2) {
       if (clientId) {
@@ -459,9 +459,7 @@ const ProfileSetup = () => {
           const { error } = await supabase
             .from('clients')
             .update({
-              client_champva: values.client_champva,
-              client_other_insurance: values.client_other_insurance,
-              client_champva_agreement: values.client_champva_agreement
+              client_champva: values.client_champva
             })
             .eq('id', clientId);
             
@@ -901,10 +899,10 @@ const ProfileSetup = () => {
             </Button>
             
             <Button 
-              type="button"
+              type="button" 
               onClick={handleNext}
               disabled={!isStep2Valid}
-              className="flex items-center gap-2"
+              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
               <ArrowRight className="h-4 w-4" />
@@ -916,24 +914,19 @@ const ProfileSetup = () => {
   };
 
   const renderStepThree = () => {
-    const vaCoverage = form.watch('client_vacoverage');
-    const isStep3Valid = form.formState.isValid;
+    const vaCoverage = form.getValues('client_vacoverage');
+    const isValid = form.formState.isValid;
+    const otherInsurance = form.watch('other_insurance');
+    const champvaAgreement = form.watch('champva_agreement');
     
-    const canProceed = () => {
-      const otherInsurance = form.getValues('client_other_insurance');
-      
-      if (vaCoverage === "CHAMPVA") {
-        if (otherInsurance === "No") {
-          return !!form.getValues('client_champva_agreement');
-        }
-        return otherInsurance === "Yes";
-      } else if (vaCoverage === "TRICARE") {
-        const hasOtherInsurance = form.getValues('client_other_insurance');
-        if (hasOtherInsurance === "No") {
-          return !!form.getValues('tricareInsuranceAgreement');
-        }
-        return hasOtherInsurance === "Yes";
+    const isStep3Valid = () => {
+      if (vaCoverage === 'CHAMPVA') {
+        // For CHAMPVA, validate other_insurance field is selected
+        if (!otherInsurance) return false;
+        // If "No" is selected, check that the agreement is checked
+        if (otherInsurance === "No" && !champvaAgreement) return false;
       }
+      // Add validation for other coverage types as needed
       
       return true;
     };
@@ -941,29 +934,29 @@ const ProfileSetup = () => {
     return (
       <Form {...form}>
         <div className="space-y-6">
-          {vaCoverage === "CHAMPVA" && (
+          {vaCoverage === 'CHAMPVA' && (
             <SignupChampva 
               form={form} 
               onOtherInsuranceChange={handleOtherInsuranceChange}
             />
           )}
           
-          {vaCoverage === "TRICARE" && (
+          {vaCoverage === 'TRICARE' && (
             <SignupTricare 
-              form={form} 
+              form={form}
               onOtherInsuranceChange={handleOtherInsuranceChange}
             />
           )}
           
-          {vaCoverage === "VA Community Care" && (
+          {vaCoverage === 'VA Community Care' && (
             <SignupVaCcn form={form} />
           )}
           
-          {vaCoverage === "None - I am a veteran" && (
+          {vaCoverage === 'None - I am a veteran' && (
             <SignupVeteran form={form} />
           )}
           
-          {vaCoverage === "None - I am not a veteran" && (
+          {vaCoverage === 'None - I am not a veteran' && (
             <SignupNotAVeteran form={form} />
           )}
           
@@ -979,10 +972,10 @@ const ProfileSetup = () => {
             </Button>
             
             <Button 
-              type="button"
+              type="button" 
               onClick={handleNext}
-              disabled={!canProceed()}
-              className="flex items-center gap-2"
+              disabled={!isStep3Valid()}
+              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
               <ArrowRight className="h-4 w-4" />
@@ -993,131 +986,120 @@ const ProfileSetup = () => {
     );
   };
 
-  const renderStepFour = () => {
-    return (
-      <Form {...form}>
-        <div className="space-y-6">
-          <AdditionalInsurance form={form} />
+  const renderStepFour = () => (
+    <Form {...form}>
+      <div className="space-y-6">
+        <AdditionalInsurance form={form} />
+        
+        <div className="flex justify-between mt-8">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
           
-          <div className="flex justify-between mt-8">
-            <Button 
-              type="button" 
-              variant="outline"
-              onClick={handleGoBack}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-            
-            <Button 
-              type="button"
-              onClick={handleNext}
-              className="flex items-center gap-2"
-            >
-              Next
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button 
+            type="button" 
+            onClick={handleNext}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
+            Next
+            <ArrowRight className="h-4 w-4" />
+          </Button>
         </div>
-      </Form>
-    );
-  };
+      </div>
+    </Form>
+  );
 
-  const renderStepFive = () => {
-    return (
-      <Form {...form}>
-        <div className="space-y-6">
-          <MoreAdditionalInsurance form={form} />
+  const renderStepFive = () => (
+    <Form {...form}>
+      <div className="space-y-6">
+        <MoreAdditionalInsurance form={form} />
+        
+        <div className="flex justify-between mt-8">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
           
-          <div className="flex justify-between mt-8">
-            <Button 
-              type="button" 
-              variant="outline"
-              onClick={handleGoBack}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-            
-            <Button 
-              type="button"
-              onClick={handleNext}
-              className="flex items-center gap-2"
-            >
-              Next
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button 
+            type="button" 
+            onClick={handleNext}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
+            Next
+            <ArrowRight className="h-4 w-4" />
+          </Button>
         </div>
-      </Form>
-    );
-  };
+      </div>
+    </Form>
+  );
 
-  const renderStepSix = () => {
-    return (
-      <Form {...form}>
-        <div className="space-y-6">
-          <SignupLast form={form} />
+  const renderStepSix = () => (
+    <Form {...form}>
+      <div className="space-y-6">
+        <SignupLast form={form} />
+        
+        <div className="flex justify-between mt-8">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
           
-          <div className="flex justify-between mt-8">
-            <Button 
-              type="button" 
-              variant="outline"
-              onClick={handleGoBack}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-            
-            <Button 
-              type="button"
-              onClick={handleNext}
-              className="flex items-center gap-2"
-            >
-              Complete Profile
-              <Check className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button 
+            type="button" 
+            onClick={handleSubmit}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
+            Complete Profile
+          </Button>
         </div>
-      </Form>
-    );
-  };
-
-  const renderCurrentStep = () => {
-    switch (currentStep) {
-      case 1:
-        return renderStepOne();
-      case 2:
-        return renderStepTwo();
-      case 3:
-        return renderStepThree();
-      case 4:
-        return renderStepFour();
-      case 5:
-        return renderStepFive();
-      case 6:
-        return renderStepSix();
-      default:
-        return renderStepOne();
-    }
-  };
+      </div>
+    </Form>
+  );
 
   return (
     <Layout>
-      <div className="container max-w-4xl mx-auto py-8 px-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Complete Your Profile</CardTitle>
-            <CardDescription>
-              Please provide the following information to complete your profile.
-              Step {currentStep} of 6
-            </CardDescription>
+      <div className="max-w-5xl mx-auto">
+        <Card className="border-valorwell-200 shadow-xl">
+          <CardHeader className="bg-gradient-to-r from-valorwell-500 to-valorwell-600 text-white rounded-t-lg p-6">
+            <CardTitle className="text-xl sm:text-2xl font-semibold">Profile Setup</CardTitle>
+            <CardDescription className="text-valorwell-50">Tell us about yourself to get started</CardDescription>
           </CardHeader>
-          <CardContent>
-            {renderCurrentStep()}
+          <CardContent className="p-6 sm:p-8">
+            <div className="mb-6">
+              <div className="flex justify-between mb-2">
+                <span className="text-sm text-valorwell-700">Step {currentStep} of 6</span>
+                <span className="text-sm text-valorwell-700">{Math.round((currentStep / 6) * 100)}% Complete</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-valorwell-600 h-2.5 rounded-full" 
+                  style={{ width: `${(currentStep / 6) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+            
+            {currentStep === 1 && renderStepOne()}
+            {currentStep === 2 && renderStepTwo()}
+            {currentStep === 3 && renderStepThree()}
+            {currentStep === 4 && renderStepFour()}
+            {currentStep === 5 && renderStepFive()}
+            {currentStep === 6 && renderStepSix()}
           </CardContent>
         </Card>
       </div>

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
@@ -15,9 +16,9 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form, onOtherInsuranceCha
   const [showReferralField, setShowReferralField] = useState(false);
   const [showInsuranceDisclaimer, setShowInsuranceDisclaimer] = useState(false);
   
-  // Use consistent field names with client_ prefix 
+  // Watch for changes to the hasReferral and otherInsurance fields
   const hasReferral = form.watch('client_tricare_has_referral');
-  const otherInsurance = form.watch('client_other_insurance');
+  const otherInsurance = form.watch('otherInsurance');
   
   useEffect(() => {
     // Show referral number field only when "Yes" is selected
@@ -152,11 +153,10 @@ const SignupTricare: React.FC<SignupTricareProps> = ({ form, onOtherInsuranceCha
         
         <FormFieldWrapper
           control={form.control}
-          name="client_other_insurance"
+          name="otherInsurance"
           label="Do you have any other insurance?"
           type="select"
           options={["Yes", "No"]}
-          required={true}
         />
 
         {showInsuranceDisclaimer && (
