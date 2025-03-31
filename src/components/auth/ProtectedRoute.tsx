@@ -24,7 +24,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   
   // First check role-based access
   if (!userRole || !allowedRoles.includes(userRole)) {
-    return <Navigate to="/patient-dashboard" replace />;
+    // Redirect clinicians to Calendar page
+    if (userRole === 'clinician') {
+      return <Navigate to="/calendar" replace />;
+    }
+    // Redirect clients to patient dashboard
+    else if (userRole === 'client') {
+      return <Navigate to="/patient-dashboard" replace />;
+    }
+    // Redirect everyone else to login
+    else {
+      return <Navigate to="/login" replace />;
+    }
   }
   
   // For clients, check if they're "New" and should be blocked from this route

@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -67,18 +68,20 @@ const App: React.FC = () => {
                   </ProtectedRoute>
                 } />
                 
-                {/* Protected routes - non-client only */}
+                {/* Protected routes - clinician, admin, moderator */}
                 <Route path="/my-clients" element={
-                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                  <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
                     <MyClients />
                   </ProtectedRoute>
                 } />
                 
                 <Route path="/calendar" element={
-                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                  <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
                     <Calendar />
                   </ProtectedRoute>
                 } />
+                
+                {/* Protected routes - admin and moderator only */}
                 <Route path="/clients" element={
                   <ProtectedRoute allowedRoles={['admin', 'moderator']}>
                     <Clients />

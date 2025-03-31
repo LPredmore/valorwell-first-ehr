@@ -23,6 +23,7 @@ const Sidebar = () => {
   const currentPath = location.pathname;
   const { userRole, clientStatus, isLoading } = useUser();
   const isClient = userRole === 'client';
+  const isClinician = userRole === 'clinician';
   const isNewClient = isClient && clientStatus === 'New';
   
   const isActive = (path: string) => {
@@ -101,8 +102,29 @@ const Sidebar = () => {
           </>
         )}
         
-        {/* Admin/Staff only links */}
-        {!isClient && (
+        {/* Clinician only links */}
+        {isClinician && (
+          <>
+            <Link 
+              to="/my-clients" 
+              className={`sidebar-link ${isActive('/my-clients') ? 'active' : ''}`}
+            >
+              <UserCheck size={18} />
+              <span>My Clients</span>
+            </Link>
+            
+            <Link 
+              to="/calendar" 
+              className={`sidebar-link ${isActive('/calendar') ? 'active' : ''}`}
+            >
+              <Calendar size={18} />
+              <span>Calendar</span>
+            </Link>
+          </>
+        )}
+        
+        {/* Admin/Staff only links - exclude clinicians */}
+        {userRole === 'admin' || userRole === 'moderator' ? (
           <>
             <Link 
               to="/my-clients" 
@@ -152,11 +174,12 @@ const Sidebar = () => {
               <span>Settings</span>
             </Link>
           </>
-        )}
+        ) : null}
       </nav>
       
       <div className="border-t py-4 space-y-1 px-2">
-        {!isClient && (
+        {/* Only show these links for admin/moderator roles */}
+        {(userRole === 'admin' || userRole === 'moderator') && (
           <>
             <Link 
               to="/reminders" 
