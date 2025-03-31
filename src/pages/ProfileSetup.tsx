@@ -568,9 +568,9 @@ const ProfileSetup = () => {
         }
       }
       
-      if (vaCoverage === "TRICARE" && otherInsurance === "No") {
+      if (vaCoverage === "TRICARE" && values.client_other_insurance === "No") {
         navigateToStep(6);
-      } else if (otherInsurance === "Yes" && (vaCoverage === "TRICARE" || vaCoverage === "CHAMPVA")) {
+      } else if (values.client_other_insurance === "Yes" && (vaCoverage === "TRICARE" || vaCoverage === "CHAMPVA")) {
         navigateToStep(4);
       } else {
         navigateToStep(6);
@@ -921,14 +921,17 @@ const ProfileSetup = () => {
     const vaCoverage = form.watch('client_vacoverage');
     const otherInsurance = form.watch('client_other_insurance');
     const champvaAgreement = form.watch('client_champva_agreement');
-    const tricareAgreement = form.watch('tricareInsuranceAgreement');
+    const tricareAgreement = form.watch('client_tricare_insurance_agreement');
     
     const isStep3Valid = () => {
+      const formValues = form.getValues();
+      
       if (vaCoverage === 'CHAMPVA') {
         // For CHAMPVA, validate other_insurance field is selected
-        if (!otherInsurance) return false;
+        if (!formValues.client_other_insurance) return false;
         // If "No" is selected, check that the agreement is checked
-        if (otherInsurance === "No" && !champvaAgreement) return false;
+        if (formValues.client_other_insurance === "No" && !formValues.client_champva_agreement) return false;
+        return true;
       } else if (vaCoverage === 'TRICARE') {
         // For TRICARE, validate all required fields
         const requiredFields = [
@@ -941,8 +944,6 @@ const ProfileSetup = () => {
           'client_tricare_policy_id',
           'client_tricare_has_referral'
         ];
-        
-        const formValues = form.getValues();
         
         // Check if all required fields have values
         const allRequiredFieldsValid = requiredFields.every(field => {
@@ -960,10 +961,10 @@ const ProfileSetup = () => {
         }
         
         // Check if otherInsurance field is set
-        if (!otherInsurance) return false;
+        if (!formValues.client_other_insurance) return false;
         
         // If "No" is selected for other insurance, agreement must be checked
-        if (otherInsurance === "No" && !tricareAgreement) return false;
+        if (formValues.client_other_insurance === "No" && !formValues.client_tricare_insurance_agreement) return false;
       }
       
       // Add validation for other coverage types as needed
