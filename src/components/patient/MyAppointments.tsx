@@ -119,18 +119,18 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
               try {
                 if (appointment.start_time) {
                   // Use the enhanced formatting with time zone context
-                  formattedTime = formatWithTimeZone(
+                  formattedTime = formatInUserTimeZone(
                     appointment.date,
                     appointment.start_time,
                     clientTimeZone,
-                    false // Don't include time zone in each row to avoid clutter
+                    'h:mm a'
                   );
                 } else {
                   formattedTime = 'Time unavailable';
                 }
               } catch (error) {
                 console.error('Error formatting time:', error, appointment);
-                formattedTime = appointment.start_time || 'Time unavailable';
+                formattedTime = formatTime12Hour(appointment.start_time) || 'Time unavailable';
               }
               
               return {

@@ -3,6 +3,43 @@ import { format, parse, parseISO } from 'date-fns';
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 
 /**
+ * Map of common timezone display names to IANA format
+ */
+const TIME_ZONE_MAP: Record<string, string> = {
+  'Eastern Standard Time (EST)': 'America/New_York',
+  'Central Standard Time (CST)': 'America/Chicago',
+  'Mountain Standard Time (MST)': 'America/Denver',
+  'Pacific Standard Time (PST)': 'America/Los_Angeles',
+  'Alaska Standard Time (AKST)': 'America/Anchorage',
+  'Hawaii-Aleutian Standard Time (HST)': 'Pacific/Honolulu',
+  'Atlantic Standard Time (AST)': 'America/Puerto_Rico'
+};
+
+/**
+ * Ensure timezone is in IANA format
+ * This function is now used across all time zone operations
+ */
+export const ensureIANATimeZone = (timeZone: string): string => {
+  // If already in IANA format (contains a slash)
+  if (timeZone && timeZone.includes('/')) {
+    return timeZone;
+  }
+  
+  // Check if it's a known display name
+  if (timeZone && TIME_ZONE_MAP[timeZone]) {
+    return TIME_ZONE_MAP[timeZone];
+  }
+  
+  // Fallback to browser's timezone
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch (error) {
+    console.error('Error getting system timezone, using America/New_York as fallback:', error);
+    return 'America/New_York'; // Safe fallback
+  }
+};
+
+/**
  * Converts a UTC date/time to the user's timezone
  */
 export const convertToUserTimeZone = (
@@ -11,6 +48,7 @@ export const convertToUserTimeZone = (
   userTimeZone: string
 ): Date => {
   try {
+    const ianaTimeZone = ensureIANATimeZone(userTimeZone);
     const dateObj = typeof date === 'string' ? parseISO(date) : date;
     const [hours, minutes] = time.split(':').map(Number);
     
@@ -22,7 +60,7 @@ export const convertToUserTimeZone = (
       minutes
     );
     
-    return toZonedTime(utcDate, userTimeZone);
+    return toZonedTime(utcDate, ianaTimeZone);
   } catch (error) {
     console.error('Error converting to user timezone:', error, { date, time, userTimeZone });
     // Return original date as fallback
@@ -40,10 +78,12 @@ export const formatInUserTimeZone = (
   formatStr: string = 'h:mm a'
 ): string => {
   try {
+    const ianaTimeZone = ensureIANATimeZone(userTimeZone);
     const dateObj = typeof date === 'string' ? parseISO(date) : date;
     const [hours, minutes] = time.split(':').map(Number);
     
-    const utcDate = new Date(
+    // Create a combined date time object
+    const dateTime = new Date(
       dateObj.getFullYear(),
       dateObj.getMonth(),
       dateObj.getDate(),
@@ -51,11 +91,11 @@ export const formatInUserTimeZone = (
       minutes
     );
     
-    return formatInTimeZone(utcDate, userTimeZone, formatStr);
+    return formatInTimeZone(dateTime, ianaTimeZone, formatStr);
   } catch (error) {
     console.error('Error formatting in user timezone:', error, { date, time, userTimeZone, formatStr });
     // Return a fallback format
-    return time || format(new Date(), 'h:mm a');
+    return time ? formatTime12Hour(time) : format(new Date(), 'h:mm a');
   }
 };
 
@@ -68,6 +108,8 @@ export const formatTimeInUserTimeZone = (
   formatStr: string = 'h:mm a'
 ): string => {
   try {
+    const ianaTimeZone = ensureIANATimeZone(userTimeZone);
+    
     // Parse the time string (expected format: "HH:mm:ss" or "HH:mm")
     const timeParts = timeStr.split(':').map(Number);
     const hours = timeParts[0];
@@ -77,42 +119,22 @@ export const formatTimeInUserTimeZone = (
     const date = new Date();
     date.setHours(hours, minutes, 0, 0);
     
-    return formatInTimeZone(date, userTimeZone, formatStr);
+    return formatInTimeZone(date, ianaTimeZone, formatStr);
   } catch (error) {
     console.error('Error formatting time in user timezone:', error, { timeStr, userTimeZone, formatStr });
-    return timeStr || '';
+    return timeStr ? formatTime12Hour(timeStr) : '';
   }
 };
 
 /**
- * Get current timezone if not specified
+ * Get current timezone if not specified, ensuring it's in IANA format
  */
 export const getUserTimeZone = (userTimeZone?: string | null): string => {
-  try {
-    if (userTimeZone && userTimeZone.includes('/')) {
-      // Already in IANA format (e.g. "America/New_York")
-      return userTimeZone;
-    } else if (userTimeZone) {
-      // Handle legacy format or other formats
-      // Map common timezone names to IANA format
-      const timezoneMap: Record<string, string> = {
-        'Eastern Standard Time (EST)': 'America/New_York',
-        'Central Standard Time (CST)': 'America/Chicago',
-        'Mountain Standard Time (MST)': 'America/Denver',
-        'Pacific Standard Time (PST)': 'America/Los_Angeles',
-        'Alaska Standard Time (AKST)': 'America/Anchorage',
-        'Hawaii-Aleutian Standard Time (HST)': 'Pacific/Honolulu',
-        'Atlantic Standard Time (AST)': 'America/Puerto_Rico'
-      };
-      
-      return timezoneMap[userTimeZone] || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    }
-    
+  if (!userTimeZone) {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
-  } catch (error) {
-    console.error('Error getting user timezone:', error, { userTimeZone });
-    return 'America/New_York'; // Default fallback timezone
   }
+  
+  return ensureIANATimeZone(userTimeZone);
 };
 
 /**
@@ -150,7 +172,7 @@ export const formatDateToTime12Hour = (date: Date): string => {
  * Formats a date and time in a specific timezone with clear timezone indicator
  * @param date The date string or Date object
  * @param time The time string (HH:MM format)
- * @param timeZone The IANA timezone string
+ * @param timeZone The timezone string (display name or IANA)
  * @param includeTimeZone Whether to include timezone in the output
  * @returns Formatted date and time with timezone indicator
  */
@@ -161,18 +183,19 @@ export const formatWithTimeZone = (
   includeTimeZone: boolean = true
 ): string => {
   try {
-    const formattedTime = formatInUserTimeZone(date, time, timeZone);
+    const ianaTimeZone = ensureIANATimeZone(timeZone);
+    const formattedTime = formatInUserTimeZone(date, time, ianaTimeZone);
     
     if (!includeTimeZone) {
       return formattedTime;
     }
     
     // Extract timezone abbreviation/name for display
-    const timeZoneDisplay = timeZone.split('/').pop()?.replace('_', ' ') || timeZone;
+    const timeZoneDisplay = formatTimeZoneDisplay(timeZone);
     return `${formattedTime} (${timeZoneDisplay})`;
   } catch (error) {
     console.error('Error formatting with timezone:', error, { date, time, timeZone });
-    return time || '';
+    return time ? formatTime12Hour(time) : '';
   }
 };
 
@@ -186,6 +209,7 @@ export const isDSTTransitionTime = (
   timeZone: string
 ): boolean => {
   try {
+    const ianaTimeZone = ensureIANATimeZone(timeZone);
     // Create two Date objects 1 hour apart
     const dateObj = typeof date === 'string' ? parseISO(date) : date;
     const [hours, minutes] = time.split(':').map(Number);
@@ -202,8 +226,8 @@ export const isDSTTransitionTime = (
     oneHourLater.setHours(oneHourLater.getHours() + 1);
     
     // Convert both to the specified timezone
-    const zonedBase = toZonedTime(baseDate, timeZone);
-    const zonedLater = toZonedTime(oneHourLater, timeZone);
+    const zonedBase = toZonedTime(baseDate, ianaTimeZone);
+    const zonedLater = toZonedTime(oneHourLater, ianaTimeZone);
     
     // Calculate the actual difference
     const diffInHours = (zonedLater.getTime() - zonedBase.getTime()) / (1000 * 60 * 60);
@@ -218,21 +242,27 @@ export const isDSTTransitionTime = (
 
 /**
  * Generate a formatted time zone display name
- * @param timeZone IANA time zone identifier
+ * @param timeZone IANA time zone identifier or display name
  * @returns User-friendly time zone display
  */
 export const formatTimeZoneDisplay = (timeZone: string): string => {
   try {
     if (!timeZone) return '';
     
-    // Extract the location part (after the /)
-    const location = timeZone.split('/').pop() || timeZone;
+    // If it's a display name already, just return it without the parentheses part
+    if (timeZone.includes('(') && timeZone.includes(')')) {
+      return timeZone.split('(')[0].trim();
+    }
     
-    // Replace underscores with spaces and format
-    return location.replace(/_/g, ' ');
+    // If it's an IANA identifier, extract the location part (after the /)
+    if (timeZone.includes('/')) {
+      const location = timeZone.split('/').pop() || timeZone;
+      return location.replace(/_/g, ' ');
+    }
+    
+    return timeZone;
   } catch (error) {
     console.error('Error formatting time zone display:', error, timeZone);
     return timeZone || '';
   }
 };
-

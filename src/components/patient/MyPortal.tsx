@@ -14,7 +14,8 @@ import VideoChat from '@/components/video/VideoChat';
 import { 
   getUserTimeZone,
   formatTimeZoneDisplay,
-  formatInUserTimeZone
+  formatInUserTimeZone,
+  formatTime12Hour
 } from '@/utils/timeZoneUtils';
 import PHQ9Template from '@/components/templates/PHQ9Template';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -120,7 +121,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
                 );
               } catch (error) {
                 console.error('Error formatting time:', error);
-                formattedTime = appointment.start_time || 'Time unavailable';
+                formattedTime = formatTime12Hour(appointment.start_time) || 'Time unavailable';
               }
               
               return {
