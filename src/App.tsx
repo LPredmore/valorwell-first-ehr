@@ -5,6 +5,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { UserProvider } from "./context/UserContext";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 // Pages
 import Index from "./pages/Index";
@@ -35,28 +37,76 @@ const App: React.FC = () => {
       <BrowserRouter>
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/my-clients" element={<MyClients />} />
-              <Route path="/patient-dashboard" element={<PatientDashboard />} />
-              <Route path="/patient-documents" element={<PatientDocuments />} />
-              <Route path="/profile-setup" element={<ProfileSetup />} />
-              <Route path="/therapist-selection" element={<TherapistSelection />} />
-              <Route path="/calendar" element={<Calendar />} />
-              <Route path="/clients" element={<Clients />} />
-              <Route path="/clients/:clientId" element={<ClientDetails />} />
-              <Route path="/clinicians/:clinicianId" element={<ClinicianDetails />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/activity" element={<Activity />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/reminders" element={<Reminders />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <UserProvider>
+              <Toaster />
+              <Sonner />
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+                
+                {/* Client accessible routes */}
+                <Route path="/profile-setup" element={<ProfileSetup />} />
+                <Route path="/therapist-selection" element={<TherapistSelection />} />
+                <Route path="/patient-dashboard" element={<PatientDashboard />} />
+                <Route path="/patient-documents" element={<PatientDocuments />} />
+                
+                {/* Protected routes - non-client only */}
+                <Route path="/my-clients" element={
+                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                    <MyClients />
+                  </ProtectedRoute>
+                } />
+                <Route path="/calendar" element={
+                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                    <Calendar />
+                  </ProtectedRoute>
+                } />
+                <Route path="/clients" element={
+                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                    <Clients />
+                  </ProtectedRoute>
+                } />
+                <Route path="/clients/:clientId" element={
+                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                    <ClientDetails />
+                  </ProtectedRoute>
+                } />
+                <Route path="/clinicians/:clinicianId" element={
+                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                    <ClinicianDetails />
+                  </ProtectedRoute>
+                } />
+                <Route path="/analytics" element={
+                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                    <Analytics />
+                  </ProtectedRoute>
+                } />
+                <Route path="/activity" element={
+                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                    <Activity />
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings" element={
+                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                    <Settings />
+                  </ProtectedRoute>
+                } />
+                <Route path="/reminders" element={
+                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                    <Reminders />
+                  </ProtectedRoute>
+                } />
+                <Route path="/messages" element={
+                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                    <Messages />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </UserProvider>
           </TooltipProvider>
         </QueryClientProvider>
       </BrowserRouter>

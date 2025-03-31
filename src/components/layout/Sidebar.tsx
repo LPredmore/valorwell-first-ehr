@@ -16,14 +16,25 @@ import {
   UserCog,
   UserSearch
 } from 'lucide-react';
+import { useUser } from '@/context/UserContext';
 
 const Sidebar = () => {
   const location = useLocation();
   const currentPath = location.pathname;
+  const { userRole, isLoading } = useUser();
+  const isClient = userRole === 'client';
   
   const isActive = (path: string) => {
     return currentPath === path;
   };
+
+  if (isLoading) {
+    return (
+      <div className="w-[220px] min-h-screen border-r bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-valorwell-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-[220px] min-h-screen border-r bg-white flex flex-col">
@@ -42,6 +53,7 @@ const Sidebar = () => {
       </div>
       
       <nav className="flex-1 py-4 space-y-1 px-2">
+        {/* Always visible links, even for clients */}
         <Link 
           to="/signup" 
           className={`sidebar-link ${isActive('/signup') ? 'active' : ''}`}
@@ -67,14 +79,6 @@ const Sidebar = () => {
         </Link>
 
         <Link 
-          to="/my-clients" 
-          className={`sidebar-link ${isActive('/my-clients') ? 'active' : ''}`}
-        >
-          <UserCheck size={18} />
-          <span>My Clients</span>
-        </Link>
-
-        <Link 
           to="/patient-dashboard" 
           className={`sidebar-link ${isActive('/patient-dashboard') ? 'active' : ''}`}
         >
@@ -90,63 +94,80 @@ const Sidebar = () => {
           <span>Patient Documents</span>
         </Link>
         
-        <Link 
-          to="/calendar" 
-          className={`sidebar-link ${isActive('/calendar') ? 'active' : ''}`}
-        >
-          <Calendar size={18} />
-          <span>Calendar</span>
-        </Link>
-        
-        <Link 
-          to="/clients" 
-          className={`sidebar-link ${isActive('/clients') ? 'active' : ''}`}
-        >
-          <Users size={18} />
-          <span>Clients</span>
-        </Link>
-        
-        <Link 
-          to="/analytics" 
-          className={`sidebar-link ${isActive('/analytics') ? 'active' : ''}`}
-        >
-          <BarChart2 size={18} />
-          <span>Analytics</span>
-        </Link>
-        
-        <Link 
-          to="/activity" 
-          className={`sidebar-link ${isActive('/activity') ? 'active' : ''}`}
-        >
-          <Activity size={18} />
-          <span>Activity</span>
-        </Link>
-        
-        <Link 
-          to="/settings" 
-          className={`sidebar-link ${isActive('/settings') ? 'active' : ''}`}
-        >
-          <Settings size={18} />
-          <span>Settings</span>
-        </Link>
+        {/* Admin/Staff only links */}
+        {!isClient && (
+          <>
+            <Link 
+              to="/my-clients" 
+              className={`sidebar-link ${isActive('/my-clients') ? 'active' : ''}`}
+            >
+              <UserCheck size={18} />
+              <span>My Clients</span>
+            </Link>
+            
+            <Link 
+              to="/calendar" 
+              className={`sidebar-link ${isActive('/calendar') ? 'active' : ''}`}
+            >
+              <Calendar size={18} />
+              <span>Calendar</span>
+            </Link>
+            
+            <Link 
+              to="/clients" 
+              className={`sidebar-link ${isActive('/clients') ? 'active' : ''}`}
+            >
+              <Users size={18} />
+              <span>Clients</span>
+            </Link>
+            
+            <Link 
+              to="/analytics" 
+              className={`sidebar-link ${isActive('/analytics') ? 'active' : ''}`}
+            >
+              <BarChart2 size={18} />
+              <span>Analytics</span>
+            </Link>
+            
+            <Link 
+              to="/activity" 
+              className={`sidebar-link ${isActive('/activity') ? 'active' : ''}`}
+            >
+              <Activity size={18} />
+              <span>Activity</span>
+            </Link>
+            
+            <Link 
+              to="/settings" 
+              className={`sidebar-link ${isActive('/settings') ? 'active' : ''}`}
+            >
+              <Settings size={18} />
+              <span>Settings</span>
+            </Link>
+          </>
+        )}
       </nav>
       
       <div className="border-t py-4 space-y-1 px-2">
-        <Link 
-          to="/reminders" 
-          className={`sidebar-link ${isActive('/reminders') ? 'active' : ''}`}
-        >
-          <Bell size={18} />
-          <span>Reminders</span>
-        </Link>
-        
-        <Link 
-          to="/messages" 
-          className={`sidebar-link ${isActive('/messages') ? 'active' : ''}`}
-        >
-          <MessageSquare size={18} />
-          <span>Messages</span>
-        </Link>
+        {!isClient && (
+          <>
+            <Link 
+              to="/reminders" 
+              className={`sidebar-link ${isActive('/reminders') ? 'active' : ''}`}
+            >
+              <Bell size={18} />
+              <span>Reminders</span>
+            </Link>
+            
+            <Link 
+              to="/messages" 
+              className={`sidebar-link ${isActive('/messages') ? 'active' : ''}`}
+            >
+              <MessageSquare size={18} />
+              <span>Messages</span>
+            </Link>
+          </>
+        )}
       </div>
     </div>
   );
