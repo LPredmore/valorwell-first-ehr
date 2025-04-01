@@ -43,7 +43,6 @@ const ClinicianDashboard = () => {
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>();
   const [showSessionTemplate, setShowSessionTemplate] = useState(false);
   const [clientData, setClientData] = useState<ClientDetails | null>(null);
-  const [isClientDataLoading, setIsClientDataLoading] = useState(false);
   const { clinicianData } = useClinicianData();
   const clinicianTimeZone = getUserTimeZone(); // Get clinician's timezone
 
@@ -62,8 +61,6 @@ const ClinicianDashboard = () => {
     const fetchClientData = async () => {
       if (currentAppointment && currentAppointment.client_id) {
         try {
-          setIsClientDataLoading(true);
-          
           const { data, error } = await supabase
             .from('clients')
             .select('*')
@@ -72,26 +69,12 @@ const ClinicianDashboard = () => {
           
           if (error) {
             console.error('Error fetching client data:', error);
-            toast({
-              title: "Error",
-              description: "Could not fetch client data. Please try again.",
-              variant: "destructive"
-            });
-            setIsClientDataLoading(false);
             return;
           }
           
-          console.log('Client data fetched successfully:', data);
           setClientData(data as ClientDetails);
         } catch (error) {
           console.error('Error in fetchClientData:', error);
-          toast({
-            title: "Error",
-            description: "An unexpected error occurred.",
-            variant: "destructive"
-          });
-        } finally {
-          setIsClientDataLoading(false);
         }
       }
     };
@@ -99,7 +82,7 @@ const ClinicianDashboard = () => {
     if (currentAppointment) {
       fetchClientData();
     }
-  }, [currentAppointment, toast]);
+  }, [currentAppointment]);
 
   const { data: appointments, isLoading, error, refetch } = useQuery({
     queryKey: ['clinician-appointments', currentUserId],
@@ -335,42 +318,9 @@ const ClinicianDashboard = () => {
     </Card>
   );
 
-  if (showSessionTemplate) {
-    if (isClientDataLoading) {
-      return (
-        <Layout>
-          <div className="flex items-center justify-center h-screen">
-            <div className="text-center">
-              <div className="mb-4">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-valorwell-600 mx-auto"></div>
-              </div>
-              <p className="text-gray-500">Loading client data...</p>
-            </div>
-          </div>
-        </Layout>
-      );
-    }
-    
-    if (!clientData) {
-      return (
-        <Layout>
-          <div className="flex items-center justify-center h-screen">
-            <div className="text-center p-8 border rounded-md bg-red-50 max-w-md">
-              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <h2 className="text-lg font-semibold text-red-800 mb-2">Client Data Not Available</h2>
-              <p className="text-gray-700 mb-4">Unable to load client information. Please try again or contact support.</p>
-              <Button onClick={closeSessionTemplate}>Return to Dashboard</Button>
-            </div>
-          </div>
-        </Layout>
-      );
-    }
-    
+  if (showSessionTemplate && currentAppointment) {
     console.log("Rendering SessionNoteTemplate with clientData:", clientData);
-    if (currentAppointment) {
-      console.log("Appointment date:", currentAppointment.date);
-    }
-
+    console.log("Appointment date:", currentAppointment.date);
     return (
       <Layout>
         <SessionNoteTemplate 
@@ -378,8 +328,7 @@ const ClinicianDashboard = () => {
           clinicianName={clinicianData?.clinician_professional_name || ''}
           clinicianNameInsurance={clinicianData?.clinician_nameinsurance || ''}
           clientData={clientData}
-          appointmentId={currentAppointment?.id}
-          appointmentDate={currentAppointment?.date}
+          appointmentDate={currentAppointment.date}
         />
       </Layout>
     );
