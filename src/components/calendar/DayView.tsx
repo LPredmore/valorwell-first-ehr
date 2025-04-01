@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, addMinutes, startOfDay, setHours, setMinutes, isSameDay, differenceInMinutes, parseISO } from 'date-fns';
 import { Card } from '@/components/ui/card';
@@ -73,9 +74,10 @@ const DayView: React.FC<DayViewProps> = ({
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
 
-  const timeSlots = Array.from({ length: 21 }, (_, i) => {
+  // Updated to show from 6:00 AM to 10:00 PM (32 half-hour slots)
+  const timeSlots = Array.from({ length: 32 }, (_, i) => {
     const minutes = i * 30;
-    return addMinutes(setHours(startOfDay(currentDate), 8), minutes);
+    return addMinutes(setHours(startOfDay(currentDate), 6), minutes);
   });
 
   const dayOfWeek = format(currentDate, 'EEEE');
