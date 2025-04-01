@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -246,21 +245,7 @@ export const useSessionNoteForm = ({
     setIsSubmitting(true);
 
     try {
-      let diagnosisValue = formState.diagnosis;
-      
-      // If diagnosis contains comma-separated values, convert to an array
-      if (typeof diagnosisValue === 'string' && diagnosisValue.includes(',')) {
-        diagnosisValue = diagnosisValue.split(',').map((d: string) => d.trim()).filter(Boolean);
-      } else if (typeof diagnosisValue === 'string' && diagnosisValue.trim()) {
-        // Single value string, convert to array with one item
-        diagnosisValue = [diagnosisValue.trim()];
-      } else if (!diagnosisValue || (typeof diagnosisValue === 'string' && !diagnosisValue.trim())) {
-        // Empty value, use empty array
-        diagnosisValue = [];
-      }
-
       const updates = {
-        client_diagnosis: diagnosisValue,
         client_appearance: formState.appearance,
         client_attitude: formState.attitude,
         client_behavior: formState.behavior,
