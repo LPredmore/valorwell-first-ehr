@@ -107,5 +107,10 @@ export interface TabProps {
   handleRemoveDiagnosis?: (index: number) => void;
 }
 
+export interface SessionNoteTemplateProps {
+  onClose: () => void;
+  appointment: any;
+}
+
 export const relationshipOptions = ["Self", "Spouse", "Child", "Other"];
 export const insuranceTypeOptions = ["Commercial", "Medicaid", "Medicare", "TRICARE", "Other"];

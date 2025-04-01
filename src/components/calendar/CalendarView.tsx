@@ -222,30 +222,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     setIsAvailabilityDialogOpen(true);
   };
   
-  const navigatePrevious = () => {
-    if (view === 'day') {
-      setCurrentDate(subDays(currentDate, 1));
-    } else if (view === 'week') {
-      setCurrentDate(subWeeks(currentDate, 1));
-    } else if (view === 'month') {
-      setCurrentDate(subMonths(currentDate, 1));
-    }
-  };
-
-  const navigateNext = () => {
-    if (view === 'day') {
-      setCurrentDate(addDays(currentDate, 1));
-    } else if (view === 'week') {
-      setCurrentDate(addWeeks(currentDate, 1));
-    } else if (view === 'month') {
-      setCurrentDate(addMonths(currentDate, 1));
-    }
-  };
-
-  const navigateToday = () => {
-    setCurrentDate(new Date());
-  };
-
   return <div className="flex flex-col space-y-4">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">

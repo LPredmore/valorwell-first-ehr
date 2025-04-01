@@ -83,8 +83,8 @@ const CalendarPage = () => {
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
 
   useEffect(() => {
-    if (clinicianData?.clinician_time_zone) {
-      setUserTimeZone(clinicianData.clinician_time_zone);
+    if (clinicianData?.clinician_timezone) {
+      setUserTimeZone(clinicianData.clinician_timezone);
     } else {
       setUserTimeZone(getUserTimeZone());
     }
