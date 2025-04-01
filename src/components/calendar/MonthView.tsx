@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -143,7 +144,11 @@ const MonthView: React.FC<MonthViewProps> = ({
   }, [clinicianId, refreshTrigger, startDate, endDate]);
 
   const dayAvailabilityMap = useMemo(() => {
-    const result = new Map<string, { hasAvailability: boolean, isModified: boolean }>();
+    const result = new Map<string, { 
+      hasAvailability: boolean, 
+      isModified: boolean,
+      displayHours: string 
+    }>();
     
     days.forEach(day => {
       const dayOfWeek = format(day, 'EEEE');
@@ -155,6 +160,7 @@ const MonthView: React.FC<MonthViewProps> = ({
       
       let hasAvailability = false;
       let isModified = false;
+      let displayHours = '';
       
       if (regularAvailability.length > 0) {
         const availabilityIds = regularAvailability.map(slot => slot.id);
@@ -176,9 +182,32 @@ const MonthView: React.FC<MonthViewProps> = ({
         );
         
         isModified = modifiedExceptions.length > 0;
+        
+        // Generate display hours (6:00 AM to 10:00 PM time range)
+        if (hasAvailability) {
+          const earliestHour = 6; // 6:00 AM
+          const latestHour = 22; // 10:00 PM
+          
+          let firstAvailableSlot = regularAvailability[0].start_time;
+          let lastAvailableSlot = regularAvailability[0].end_time;
+          
+          // If there are exceptions, use their times when appropriate
+          if (isModified) {
+            const exceptionWithTimes = modifiedExceptions.find(e => e.start_time && e.end_time);
+            if (exceptionWithTimes && exceptionWithTimes.start_time && exceptionWithTimes.end_time) {
+              firstAvailableSlot = exceptionWithTimes.start_time;
+              lastAvailableSlot = exceptionWithTimes.end_time;
+            }
+          }
+          
+          const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${firstAvailableSlot}`));
+          const endHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${lastAvailableSlot}`));
+          
+          displayHours = `${startHourFormatted}-${endHourFormatted}`;
+        }
       }
       
-      result.set(dateStr, { hasAvailability, isModified });
+      result.set(dateStr, { hasAvailability, isModified, displayHours });
     });
     
     return result;
@@ -232,7 +261,11 @@ const MonthView: React.FC<MonthViewProps> = ({
         {days.map((day) => {
           const dateStr = format(day, 'yyyy-MM-dd');
           const dayAppointments = dayAppointmentsMap.get(dateStr) || [];
-          const dayAvailability = dayAvailabilityMap.get(dateStr) || { hasAvailability: false, isModified: false };
+          const dayAvailability = dayAvailabilityMap.get(dateStr) || { 
+            hasAvailability: false, 
+            isModified: false,
+            displayHours: ''
+          };
           
           return (
             <div
@@ -249,6 +282,9 @@ const MonthView: React.FC<MonthViewProps> = ({
                     onClick={() => handleDayAvailabilityClick(day)}
                   >
                     {dayAvailability.isModified ? 'Modified' : 'Available'}
+                    {dayAvailability.displayHours && (
+                      <div className="text-xs mt-0.5">{dayAvailability.displayHours}</div>
+                    )}
                   </div>
                 )}
               </div>
