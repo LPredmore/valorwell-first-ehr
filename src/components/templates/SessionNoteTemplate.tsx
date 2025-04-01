@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +30,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
 }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
 
   const [formState, setFormState] = useState({
     sessionDate: '',
@@ -159,6 +159,52 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     }
   }, [clientData, clinicianName, appointmentDate]);
 
+  useEffect(() => {
+    validateForm();
+  }, [formState]);
+
+  const validateForm = () => {
+    const requiredFields = [
+      'medications', 
+      'sessionType', 
+      'personsInAttendance',
+      
+      ...(formState.appearance && formState.appearance !== 'Normal Appearance & Grooming' ? ['appearance'] : []),
+      ...(formState.attitude && formState.attitude !== 'Calm & Cooperative' ? ['attitude'] : []),
+      ...(formState.behavior && formState.behavior !== 'No unusual behavior or psychomotor changes' ? ['behavior'] : []),
+      ...(formState.speech && formState.speech !== 'Normal rate/tone/volume w/out pressure' ? ['speech'] : []),
+      ...(formState.affect && formState.affect !== 'Normal range/congruent' ? ['affect'] : []),
+      ...(formState.thoughtProcess && formState.thoughtProcess !== 'Goal Oriented/Directed' ? ['thoughtProcess'] : []),
+      ...(formState.perception && formState.perception !== 'No Hallucinations or Delusions' ? ['perception'] : []),
+      ...(formState.orientation && formState.orientation !== 'Oriented x3' ? ['orientation'] : []),
+      ...(formState.memoryConcentration && formState.memoryConcentration !== 'Short & Long Term Intact' ? ['memoryConcentration'] : []),
+      ...(formState.insightJudgement && formState.insightJudgement !== 'Good' ? ['insightJudgement'] : []),
+      
+      'mood',
+      'substanceAbuseRisk',
+      'suicidalIdeation',
+      'homicidalIdeation',
+      
+      'currentSymptoms',
+      'functioning',
+      'prognosis',
+      'progress',
+      'sessionNarrative',
+      'signature'
+    ];
+    
+    let valid = true;
+    
+    for (const field of requiredFields) {
+      if (!formState[field] || formState[field].trim() === '') {
+        valid = false;
+        break;
+      }
+    }
+    
+    setIsFormValid(valid);
+  };
+
   const handleChange = (field: string, value: string) => {
     setFormState({
       ...formState,
@@ -181,6 +227,15 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
       toast({
         title: "Error",
         description: "No client ID found. Cannot save session note.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isFormValid) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields before saving.",
         variant: "destructive",
       });
       return;
@@ -302,6 +357,10 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
 
   const hasTreatmentPlan = !!clientData?.client_primaryobjective;
 
+  const RequiredFieldIndicator = () => (
+    <span className="text-red-500 ml-1">*</span>
+  );
+
   return (
     <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-2">
@@ -399,7 +458,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Medications</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Medications<RequiredFieldIndicator />
+            </label>
             <Input
               placeholder="List current medications"
               value={formState.medications}
@@ -407,7 +468,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Session Type</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Session Type<RequiredFieldIndicator />
+            </label>
             <Input
               placeholder="Enter session type"
               value={formState.sessionType}
@@ -417,7 +480,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Person's in Attendance</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Person's in Attendance<RequiredFieldIndicator />
+          </label>
           <Input
             placeholder="List all attendees"
             value={formState.personsInAttendance}
@@ -678,7 +743,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mood</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Mood<RequiredFieldIndicator />
+            </label>
             <Input
               placeholder="Describe mood"
               value={formState.mood}
@@ -686,7 +753,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Substance Abuse Risk</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Substance Abuse Risk<RequiredFieldIndicator />
+            </label>
             <Select
               value={formState.substanceAbuseRisk}
               onValueChange={(value) => handleChange('substanceAbuseRisk', value)}
@@ -706,7 +775,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Suicidal Ideation</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Suicidal Ideation<RequiredFieldIndicator />
+            </label>
             <Select
               value={formState.suicidalIdeation}
               onValueChange={(value) => handleChange('suicidalIdeation', value)}
@@ -722,7 +793,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Homicidal Ideation</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Homicidal Ideation<RequiredFieldIndicator />
+            </label>
             <Select
               value={formState.homicidalIdeation}
               onValueChange={(value) => handleChange('homicidalIdeation', value)}
@@ -784,7 +857,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <h4 className="text-md font-medium text-gray-800 mb-4">Session Assessment</h4>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Current Symptoms</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Current Symptoms<RequiredFieldIndicator />
+          </label>
           <Textarea
             placeholder="Describe current symptoms"
             className="min-h-[100px]"
@@ -794,7 +869,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Functioning</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Functioning<RequiredFieldIndicator />
+          </label>
           <Textarea
             placeholder="Describe client functioning"
             className="min-h-[100px]"
@@ -804,7 +881,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Prognosis</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Prognosis<RequiredFieldIndicator />
+          </label>
           <Textarea
             placeholder="Describe prognosis"
             className="min-h-[100px]"
@@ -814,7 +893,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Progress</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Progress<RequiredFieldIndicator />
+          </label>
           <Textarea
             placeholder="Describe progress"
             className="min-h-[100px]"
@@ -846,7 +927,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Session Narrative</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Session Narrative<RequiredFieldIndicator />
+          </label>
           <Textarea
             placeholder="Provide a detailed narrative of the session"
             className="min-h-[100px]"
@@ -858,7 +941,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <h4 className="text-md font-medium text-gray-800 mb-4">Plan & Signature</h4>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Signature</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Signature<RequiredFieldIndicator />
+          </label>
           <Input
             placeholder="Enter signature"
             value={formState.signature}
@@ -866,7 +951,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           />
         </div>
 
-        {/* Add Private Note Section */}
         <div className="mb-6 border-t pt-6">
           <div className="flex items-center gap-2 mb-3">
             <LockKeyhole className="h-4 w-4 text-amber-500" />
@@ -886,7 +970,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <div className="flex justify-end mt-6">
           <Button 
             onClick={handleSave} 
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isFormValid}
             className="w-full md:w-auto"
           >
             {isSubmitting ? 'Saving...' : 'Save Session Note'}
