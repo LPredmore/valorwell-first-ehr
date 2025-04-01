@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 import { useUser } from '@/context/UserContext';
 import { formatTime12Hour, getUserTimeZone, formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
 
@@ -37,6 +38,8 @@ const ClinicianDashboard = () => {
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
   const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
   const [currentAppointment, setCurrentAppointment] = useState<Appointment | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string | undefined>();
+  const [showSessionTemplate, setShowSessionTemplate] = useState(false);
   const clinicianTimeZone = getUserTimeZone(); // Get clinician's timezone
 
   useEffect(() => {
@@ -149,6 +152,61 @@ const ClinicianDashboard = () => {
   const openDocumentDialog = (appointment: Appointment) => {
     setCurrentAppointment(appointment);
     setIsDocumentDialogOpen(true);
+    setSelectedStatus(undefined);
+  };
+
+  const handleStatusChange = (value: string) => {
+    setSelectedStatus(value);
+    if (value === 'occurred') {
+      setIsDocumentDialogOpen(false);
+      setShowSessionTemplate(true);
+    }
+  };
+
+  const handleProvideDocumentation = async () => {
+    if (!currentAppointment || !selectedStatus || selectedStatus === 'occurred') return;
+    
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ 
+          status: 'Documented',
+          type: selectedStatus === 'no-show' ? 'Late Cancel/No Show' : 'Cancelled'
+        })
+        .eq('id', currentAppointment.id);
+      
+      if (error) {
+        console.error('Error updating appointment:', error);
+        toast({
+          title: 'Error',
+          description: 'Could not update appointment status. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      toast({
+        title: 'Success',
+        description: 'Appointment has been documented successfully.',
+      });
+      
+      setIsDocumentDialogOpen(false);
+      setSelectedStatus(undefined);
+      refetch();
+      
+    } catch (error) {
+      console.error('Error in handleProvideDocumentation:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const closeSessionTemplate = () => {
+    setShowSessionTemplate(false);
+    setSelectedStatus(undefined);
   };
 
   const renderAppointmentCard = (appointment: Appointment, showStartButton = false) => (
@@ -224,6 +282,17 @@ const ClinicianDashboard = () => {
       </CardFooter>
     </Card>
   );
+
+  if (showSessionTemplate && currentAppointment) {
+    return (
+      <Layout>
+        <SessionNoteTemplate 
+          onClose={closeSessionTemplate}
+          appointment={currentAppointment}
+        />
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -348,7 +417,7 @@ const ClinicianDashboard = () => {
             <DialogTitle>Document Session</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <Select>
+            <Select onValueChange={handleStatusChange} value={selectedStatus}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
@@ -360,7 +429,11 @@ const ClinicianDashboard = () => {
             </Select>
           </div>
           <DialogFooter>
-            <Button type="button">
+            <Button 
+              type="button" 
+              onClick={handleProvideDocumentation}
+              disabled={!selectedStatus || selectedStatus === 'occurred'}
+            >
               Provide Documentation
             </Button>
           </DialogFooter>

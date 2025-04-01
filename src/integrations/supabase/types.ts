@@ -576,6 +576,21 @@ export type Database = {
         }
         Relationships: []
       }
+      completed_appointments: {
+        Row: {
+          created_at: string
+          id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+        }
+        Update: {
+          created_at?: string
+          id?: number
+        }
+        Relationships: []
+      }
       cpt_codes: {
         Row: {
           clinical_type: string | null
