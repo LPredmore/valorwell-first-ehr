@@ -51,6 +51,25 @@ const ClinicianDashboard = () => {
     isLoading: isLoadingClientData 
   } = useClientData(currentAppointment?.client_id || null);
 
+  // Create or get a video room for an appointment
+  const getOrCreateVideoRoom = async (appointmentId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('create-daily-room', {
+        body: { appointmentId }
+      });
+      
+      if (error) {
+        console.error('Error creating video room:', error);
+        return { success: false, error };
+      }
+      
+      return { success: true, url: data?.url };
+    } catch (error) {
+      console.error('Error in getOrCreateVideoRoom:', error);
+      return { success: false, error };
+    }
+  };
+
   // Handler for starting a video session
   const startVideoSession = async (appointment: Appointment) => {
     try {
