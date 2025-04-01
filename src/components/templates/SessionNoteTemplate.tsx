@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ import { ClientDetails } from '@/types/client';
 interface SessionNoteTemplateProps {
   onClose: () => void;
   clinicianName?: string;
+  clinicianNameInsurance?: string; // Added new prop for insurance name
   clientData?: ClientDetails | null;
   appointmentDate?: string;
 }
