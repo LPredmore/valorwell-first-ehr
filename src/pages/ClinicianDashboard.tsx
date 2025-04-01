@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { format, isToday, isFuture, parseISO, isAfter } from 'date-fns';
-import { AlertCircle, Calendar, Clock, UserCircle, Video } from 'lucide-react';
+import { format, isToday, isFuture, parseISO, isAfter, isBefore } from 'date-fns';
+import { AlertCircle, Calendar, Clock, UserCircle, Video, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import Layout from '@/components/layout/Layout';
@@ -95,6 +96,11 @@ const ClinicianDashboard = () => {
     return isFuture(appointmentDate) && !isToday(appointmentDate);
   }) || [];
 
+  const pastAppointments = appointments?.filter(appointment => {
+    const appointmentDate = parseISO(appointment.date);
+    return isBefore(appointmentDate, new Date()) && !isToday(appointmentDate);
+  }) || [];
+
   const canStartSession = (appointment: Appointment) => {
     return true;
   };
@@ -176,6 +182,40 @@ const ClinicianDashboard = () => {
     </Card>
   );
 
+  const renderPastAppointmentCard = (appointment: Appointment) => (
+    <Card key={appointment.id} className="mb-3">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-semibold flex items-center">
+          <UserCircle className="h-4 w-4 mr-2" />
+          {appointment.client?.client_first_name} {appointment.client?.client_last_name}
+        </CardTitle>
+        <CardDescription className="flex items-center">
+          <Calendar className="h-4 w-4 mr-2" />
+          {format(parseISO(appointment.date), 'EEEE, MMMM do, yyyy')}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pb-2">
+        <div className="flex items-center">
+          <Clock className="h-4 w-4 mr-2" />
+          <span className="text-sm">
+            {formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}
+          </span>
+        </div>
+        <div className="text-sm mt-1">{appointment.type}</div>
+      </CardContent>
+      <CardFooter>
+        <Button
+          variant="default"
+          size="sm"
+          className="w-full"
+        >
+          <FileText className="h-4 w-4 mr-2" />
+          Document Session
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+
   return (
     <Layout>
       <div className="container mx-auto">
@@ -220,7 +260,32 @@ const ClinicianDashboard = () => {
               <AlertCircle className="h-5 w-5 mr-2" />
               Outstanding Documentation
             </h2>
-            <p className="text-gray-500">No outstanding documentation.</p>
+            {isLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i} className="mb-3">
+                  <CardHeader className="pb-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-4 w-48 mt-1" />
+                  </CardHeader>
+                  <CardContent className="pb-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-4 w-24 mt-2" />
+                  </CardContent>
+                  <CardFooter>
+                    <Skeleton className="h-9 w-full" />
+                  </CardFooter>
+                </Card>
+              ))
+            ) : error ? (
+              <div className="text-red-500 flex items-center">
+                <AlertCircle className="h-5 w-5 mr-2" />
+                Error loading appointments
+              </div>
+            ) : pastAppointments.length === 0 ? (
+              <p className="text-gray-500">No outstanding documentation.</p>
+            ) : (
+              pastAppointments.map(appointment => renderPastAppointmentCard(appointment))
+            )}
           </div>
           
           <div>
