@@ -276,12 +276,12 @@ setIsSubmitting(false);
 // Helper function to determine if a field should be read-only
 const isReadOnlyField = (fieldName: string) => {
 const readOnlyFields = [
-patientName', 'patientDOB', 'clinicianName', 'diagnosis',
-planType', 'treatmentFrequency', 'sessionDate',
-primaryObjective', 'intervention1', 'intervention2',
-secondaryObjective', 'intervention3', 'intervention4',
-tertiaryObjective', 'intervention5', 'intervention6',
-problemNarrative', 'treatmentGoalNarrative', 'nextTreatmentPlanUpdate'
+'patientName', 'patientDOB', 'clinicianName', 'diagnosis',
+'planType', 'treatmentFrequency', 'sessionDate',
+'primaryObjective', 'intervention1', 'intervention2',
+'secondaryObjective', 'intervention3', 'intervention4',
+'tertiaryObjective', 'intervention5', 'intervention6',
+'problemNarrative', 'treatmentGoalNarrative', 'nextTreatmentPlanUpdate'
 ];
 return readOnlyFields.includes(fieldName);
 };
