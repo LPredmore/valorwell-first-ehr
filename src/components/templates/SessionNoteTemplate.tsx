@@ -263,7 +263,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     return readOnlyFields.includes(fieldName);
   };
 
-  // Define treatment plan data structure for conditional rendering
   const treatmentPlanSections = [
     {
       title: "Primary Objective",
@@ -297,7 +296,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     }
   ];
 
-  // Check if client has any treatment plan data
   const hasTreatmentPlan = !!clientData?.client_primaryobjective;
 
   return (
@@ -856,4 +854,26 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <h4 className="text-md font-medium text-gray-800 mb-4">Plan & Signature</h4>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700
+          <label className="block text-sm font-medium text-gray-700 mb-1">Signature</label>
+          <Input
+            placeholder="Enter signature"
+            value={formState.signature}
+            onChange={(e) => handleChange('signature', e.target.value)}
+          />
+        </div>
+
+        <div className="flex justify-end mt-6">
+          <Button 
+            onClick={handleSave} 
+            disabled={isSubmitting}
+            className="w-full md:w-auto"
+          >
+            {isSubmitting ? 'Saving...' : 'Save Session Note'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SessionNoteTemplate;
