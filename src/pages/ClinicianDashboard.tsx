@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, isToday, isFuture, parseISO, isAfter, isBefore } from 'date-fns';
@@ -58,7 +57,6 @@ const ClinicianDashboard = () => {
     fetchUserId();
   }, []);
 
-  // Effect to fetch client data when appointment is selected for documentation
   useEffect(() => {
     const fetchClientData = async () => {
       if (currentAppointment && currentAppointment.client_id) {
@@ -323,6 +321,7 @@ const ClinicianDashboard = () => {
           onClose={closeSessionTemplate}
           clinicianName={clinicianData?.clinician_name || ''}
           clientData={clientData}
+          appointmentDate={currentAppointment.date}
         />
       </Layout>
     );
