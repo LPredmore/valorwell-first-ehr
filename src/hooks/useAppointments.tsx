@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { format, isToday, isFuture, parseISO, isBefore } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
@@ -26,9 +27,9 @@ export const useAppointments = (userId: string | null) => {
   const [currentAppointment, setCurrentAppointment] = useState<Appointment | null>(null);
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
   const [isVideoOpen, setIsVideoOpen] = useState(false);
-  const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<string | undefined>();
   const [showSessionTemplate, setShowSessionTemplate] = useState(false);
+  const [clientData, setClientData] = useState<any>(null);
+  const [isLoadingClientData, setIsLoadingClientData] = useState(false);
 
   const { data: appointments, isLoading, error, refetch } = useQuery({
     queryKey: ['clinician-appointments', userId],
@@ -117,64 +118,51 @@ export const useAppointments = (userId: string | null) => {
     }
   };
 
-  const openDocumentDialog = (appointment: Appointment) => {
-    setCurrentAppointment(appointment);
-    setIsDocumentDialogOpen(true);
-    setSelectedStatus(undefined);
-  };
-
-  const handleStatusChange = (value: string) => {
-    setSelectedStatus(value);
-    if (value === 'occurred') {
-      setIsDocumentDialogOpen(false);
-      setShowSessionTemplate(true);
-    }
-  };
-
-  const handleProvideDocumentation = async () => {
-    if (!currentAppointment || !selectedStatus || selectedStatus === 'occurred') return;
-    
-    try {
-      const { error } = await supabase
-        .from('appointments')
-        .update({ 
-          status: 'Documented',
-          type: selectedStatus === 'no-show' ? 'Late Cancel/No Show' : 'Cancelled'
-        })
-        .eq('id', currentAppointment.id);
-      
-      if (error) {
-        console.error('Error updating appointment:', error);
-        toast({
-          title: 'Error',
-          description: 'Could not update appointment status. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      toast({
-        title: 'Success',
-        description: 'Appointment has been documented successfully.',
-      });
-      
-      setIsDocumentDialogOpen(false);
-      setSelectedStatus(undefined);
-      refetch();
-      
-    } catch (error) {
-      console.error('Error in handleProvideDocumentation:', error);
+  // New function to fetch client data and open session template directly
+  const openSessionTemplate = async (appointment: Appointment) => {
+    if (!appointment || !appointment.client_id) {
       toast({
         title: 'Error',
-        description: 'An unexpected error occurred. Please try again.',
+        description: 'Could not find client information for this appointment.',
         variant: 'destructive',
       });
+      return;
+    }
+
+    try {
+      setIsLoadingClientData(true);
+      setCurrentAppointment(appointment);
+      
+      // Fetch full client data
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', appointment.client_id)
+        .single();
+        
+      if (error) {
+        throw error;
+      }
+      
+      // Set client data and show session template
+      setClientData(data);
+      setShowSessionTemplate(true);
+    } catch (error) {
+      console.error('Error fetching client data:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not load client information. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingClientData(false);
     }
   };
 
   const closeSessionTemplate = () => {
     setShowSessionTemplate(false);
-    setSelectedStatus(undefined);
+    setClientData(null);
+    setCurrentAppointment(null);
   };
 
   const closeVideoSession = () => {
@@ -192,15 +180,12 @@ export const useAppointments = (userId: string | null) => {
     currentAppointment,
     isVideoOpen,
     currentVideoUrl,
-    isDocumentDialogOpen,
-    selectedStatus,
     showSessionTemplate,
+    clientData,
+    isLoadingClientData,
     startVideoSession,
-    openDocumentDialog,
-    handleStatusChange,
-    handleProvideDocumentation,
+    openSessionTemplate,
     closeSessionTemplate,
-    closeVideoSession,
-    setIsDocumentDialogOpen
+    closeVideoSession
   };
 };

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { format, parseISO } from 'date-fns';
 import { Calendar, Clock, UserCircle, Video, FileText } from 'lucide-react';
@@ -83,6 +82,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
     );
   }
 
+  
   return (
     <Card key={appointment.id} className="mb-3">
       <CardHeader className="pb-2">

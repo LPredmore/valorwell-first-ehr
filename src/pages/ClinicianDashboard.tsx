@@ -7,7 +7,6 @@ import Layout from '@/components/layout/Layout';
 import VideoChat from '@/components/video/VideoChat';
 import { getUserTimeZone, formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
 import { AppointmentsList } from '@/components/dashboard/AppointmentsList';
-import { DocumentationDialog } from '@/components/dashboard/DocumentationDialog';
 import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 import { useAppointments } from '@/hooks/useAppointments';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
@@ -61,16 +60,13 @@ const ClinicianDashboard = () => {
     currentAppointment,
     isVideoOpen,
     currentVideoUrl,
-    isDocumentDialogOpen,
-    selectedStatus,
     showSessionTemplate,
+    clientData,
+    isLoadingClientData,
     startVideoSession,
-    openDocumentDialog,
-    handleStatusChange,
-    handleProvideDocumentation,
+    openSessionTemplate,
     closeSessionTemplate,
-    closeVideoSession,
-    setIsDocumentDialogOpen
+    closeVideoSession
   } = useAppointments(currentUserId);
 
   if (showSessionTemplate && currentAppointment) {
@@ -80,6 +76,7 @@ const ClinicianDashboard = () => {
           onClose={closeSessionTemplate}
           appointment={currentAppointment}
           clinicianName={userId}
+          clientData={clientData}
         />
       </Layout>
     );
@@ -113,12 +110,12 @@ const ClinicianDashboard = () => {
               title="Outstanding Documentation"
               icon={<AlertCircle className="h-5 w-5 mr-2" />}
               appointments={pastAppointments}
-              isLoading={isLoading || isLoadingTimeZone}
+              isLoading={isLoading || isLoadingTimeZone || isLoadingClientData}
               error={error}
               emptyMessage="No outstanding documentation."
               timeZoneDisplay={timeZoneDisplay}
               userTimeZone={clinicianTimeZone}
-              onDocumentSession={openDocumentDialog}
+              onDocumentSession={openSessionTemplate}
             />
           </div>
           
@@ -147,15 +144,6 @@ const ClinicianDashboard = () => {
           onClose={closeVideoSession}
         />
       )}
-
-      {/* Documentation Dialog */}
-      <DocumentationDialog
-        isOpen={isDocumentDialogOpen}
-        onOpenChange={setIsDocumentDialogOpen}
-        selectedStatus={selectedStatus}
-        onStatusChange={handleStatusChange}
-        onProvideDocumentation={handleProvideDocumentation}
-      />
     </Layout>
   );
 };
