@@ -30,6 +30,11 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     onClose
   });
 
+  // Check if problem and treatment goal narratives have values
+  const hasProblemNarrative = !!formState.problemNarrative?.trim();
+  const hasTreatmentGoalNarrative = !!formState.treatmentGoalNarrative?.trim();
+  const showProblemTreatmentSection = hasProblemNarrative || hasTreatmentGoalNarrative;
+
   return (
     <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-2">
@@ -62,32 +67,38 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           toggleEditMode={toggleEditMode} 
         />
         
-        {/* Problem Narrative and Treatment Goal - Moved up from Session Assessment */}
-        <div className="mb-6 mt-6">
-          <h4 className="text-md font-medium text-gray-800 mb-4">Problem & Treatment Goals</h4>
-          
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Problem Narrative</label>
-            <Textarea
-              placeholder="Describe the problem narrative"
-              className="min-h-[100px] bg-gray-100"
-              value={formState.problemNarrative}
-              onChange={(e) => handleChange('problemNarrative', e.target.value)}
-              readOnly
-            />
-          </div>
+        {/* Problem Narrative and Treatment Goal - Only show if they have values */}
+        {showProblemTreatmentSection && (
+          <div className="mb-6 mt-6">
+            <h4 className="text-md font-medium text-gray-800 mb-4">Problem & Treatment Goals</h4>
+            
+            {hasProblemNarrative && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Problem Narrative</label>
+                <Textarea
+                  placeholder="Describe the problem narrative"
+                  className="min-h-[100px] bg-gray-100"
+                  value={formState.problemNarrative}
+                  onChange={(e) => handleChange('problemNarrative', e.target.value)}
+                  readOnly
+                />
+              </div>
+            )}
 
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Goal Narrative</label>
-            <Textarea
-              placeholder="Describe the treatment goals"
-              className="min-h-[100px] bg-gray-100"
-              value={formState.treatmentGoalNarrative}
-              onChange={(e) => handleChange('treatmentGoalNarrative', e.target.value)}
-              readOnly
-            />
+            {hasTreatmentGoalNarrative && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Goal Narrative</label>
+                <Textarea
+                  placeholder="Describe the treatment goals"
+                  className="min-h-[100px] bg-gray-100"
+                  value={formState.treatmentGoalNarrative}
+                  onChange={(e) => handleChange('treatmentGoalNarrative', e.target.value)}
+                  readOnly
+                />
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
         {/* Treatment Objectives & Interventions */}
         <TreatmentObjectivesSection 
