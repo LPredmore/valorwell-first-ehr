@@ -61,7 +61,7 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
         <label className="block text-sm font-medium text-gray-700 mb-1">Current Symptoms</label>
         <Textarea
           placeholder="Describe current symptoms"
-          className="min-h-[100px]"
+          className="min-h-[100px] resize-y"
           value={formState.currentSymptoms}
           onChange={(e) => handleChange('currentSymptoms', e.target.value)}
         />
@@ -122,7 +122,7 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
         <label className="block text-sm font-medium text-gray-700 mb-1">Session Narrative</label>
         <Textarea
           placeholder="Provide a detailed narrative of the session"
-          className="min-h-[100px]"
+          className="min-h-[100px] resize-y"
           value={formState.sessionNarrative}
           onChange={(e) => handleChange('sessionNarrative', e.target.value)}
         />
