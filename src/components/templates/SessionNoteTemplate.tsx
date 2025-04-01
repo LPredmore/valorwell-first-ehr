@@ -206,12 +206,12 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         suicidalIdeation: clientData.client_suicidalideation || '',
         homicidalIdeation: clientData.client_homicidalideation || '',
         primaryObjective: clientData.client_primaryobjective || '',
-        secondaryObjective: clientData.client_secondaryobjective || '',
-        tertiaryObjective: clientData.client_tertiaryobjective || '',
         intervention1: clientData.client_intervention1 || '',
         intervention2: clientData.client_intervention2 || '',
+        secondaryObjective: clientData.client_secondaryobjective || '',
         intervention3: clientData.client_intervention3 || '',
         intervention4: clientData.client_intervention4 || '',
+        tertiaryObjective: clientData.client_tertiaryobjective || '',
         intervention5: clientData.client_intervention5 || '',
         intervention6: clientData.client_intervention6 || '',
         currentSymptoms: clientData.client_functioning || '',
@@ -241,6 +241,17 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
       setIsLoading(false);
     }
   }, [clientData, clinicianName, clinicianNameInsurance, appointmentDate]);
+
+  // Additional useEffect to properly manage overall loading state
+  useEffect(() => {
+    // Set overall loading state based on all individual loading states
+    const allDataLoaded = !isLoadingPHQ9 && !isLoadingSessionTypes && clientData !== null;
+    if (allDataLoaded) {
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
+  }, [isLoadingPHQ9, isLoadingSessionTypes, clientData]);
 
   useEffect(() => {
     validateForm();
@@ -432,7 +443,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
 
   const RequiredFieldIndicator = () => <span className="text-red-500 ml-1">*</span>;
 
-  if (isLoading || isLoadingPHQ9 || isLoadingSessionTypes) {
+  // Enhanced loading state with better UI
+  if (isLoading) {
     return (
       <div className="animate-fade-in p-6 space-y-6">
         <div className="flex justify-between items-center mb-2">
@@ -478,7 +490,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     );
   }
 
-  return <div className="animate-fade-in">
+  // Fixed syntax error: added parentheses around the JSX return statement
+  return (
+    <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-2">
         <div>
           <h2 className="text-xl font-semibold">Session Note Template</h2>
@@ -699,178 +713,4 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Insight/Judgement</label>
-            {editModes.insightJudgement ? <Input value={formState.insightJudgement} onChange={e => handleChange('insightJudgement', e.target.value)} placeholder="Describe insight/judgement" className="w-full" /> : <Select value={formState.insightJudgement} onValueChange={value => toggleEditMode('insightJudgement', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select insight/judgement" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Good">Good</SelectItem>
-                  <SelectItem value="Other">Other (Free Text)</SelectItem>
-                </SelectContent>
-              </Select>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Mood<RequiredFieldIndicator />
-            </label>
-            <Input placeholder="Describe mood" value={formState.mood} onChange={e => handleChange('mood', e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Substance Abuse Risk<RequiredFieldIndicator />
-            </label>
-            <Select value={formState.substanceAbuseRisk} onValueChange={value => handleChange('substanceAbuseRisk', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select risk level" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="None">None</SelectItem>
-                <SelectItem value="Low">Low</SelectItem>
-                <SelectItem value="Medium">Medium</SelectItem>
-                <SelectItem value="High">High</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Suicidal Ideation<RequiredFieldIndicator />
-            </label>
-            <Select value={formState.suicidalIdeation} onValueChange={value => handleChange('suicidalIdeation', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select ideation level" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="None">None</SelectItem>
-                <SelectItem value="Passive">Passive</SelectItem>
-                <SelectItem value="Active">Active</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Homicidal Ideation<RequiredFieldIndicator />
-            </label>
-            <Select value={formState.homicidalIdeation} onValueChange={value => handleChange('homicidalIdeation', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select ideation level" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="None">None</SelectItem>
-                <SelectItem value="Passive">Passive</SelectItem>
-                <SelectItem value="Active">Active</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {hasTreatmentPlan && <>
-            <h4 className="text-md font-medium text-gray-800 mb-4">Treatment Objectives & Interventions</h4>
-            
-            {treatmentPlanSections.map((section, index) => section.objectiveField && <React.Fragment key={index}>
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{section.title}</label>
-                    <Textarea placeholder={`Describe the ${section.title.toLowerCase()}`} className="min-h-[100px] bg-gray-100" value={section.objectiveValue} onChange={e => handleChange(section.objectiveKey, e.target.value)} readOnly />
-                  </div>
-                  
-                  {section.interventions.some(i => i.field) && <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                      {section.interventions.map((intervention, idx) => intervention.field && <div key={idx}>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">{`Intervention ${intervention.number}`}</label>
-                            <Input placeholder="Describe intervention" value={intervention.value} onChange={e => handleChange(intervention.key, e.target.value)} readOnly className="bg-gray-100" />
-                          </div>)}
-                    </div>}
-                </React.Fragment>)}
-          </>}
-
-        <h4 className="text-md font-medium text-gray-800 mb-4">Session Assessment</h4>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Current Symptoms<RequiredFieldIndicator />
-          </label>
-          <Textarea placeholder="Describe current symptoms" className="min-h-[100px]" value={formState.currentSymptoms} onChange={e => handleChange('currentSymptoms', e.target.value)} />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Functioning<RequiredFieldIndicator />
-          </label>
-          <Textarea placeholder="Describe client functioning" className="min-h-[100px]" value={formState.functioning} onChange={e => handleChange('functioning', e.target.value)} />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Prognosis<RequiredFieldIndicator />
-          </label>
-          <Textarea placeholder="Describe prognosis" className="min-h-[100px]" value={formState.prognosis} onChange={e => handleChange('prognosis', e.target.value)} />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Progress<RequiredFieldIndicator />
-          </label>
-          <Textarea placeholder="Describe progress" className="min-h-[100px]" value={formState.progress} onChange={e => handleChange('progress', e.target.value)} />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Problem Narrative</label>
-          <Textarea placeholder="Describe the problem narrative" className="min-h-[100px] bg-gray-100" value={formState.problemNarrative} onChange={e => handleChange('problemNarrative', e.target.value)} readOnly />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Goal Narrative</label>
-          <Textarea placeholder="Describe the treatment goals" className="min-h-[100px] bg-gray-100" value={formState.treatmentGoalNarrative} onChange={e => handleChange('treatmentGoalNarrative', e.target.value)} readOnly />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Session Narrative<RequiredFieldIndicator />
-          </label>
-          <Textarea placeholder="Provide a detailed narrative of the session" className="min-h-[100px]" value={formState.sessionNarrative} onChange={e => handleChange('sessionNarrative', e.target.value)} />
-        </div>
-
-        {phq9Narrative && (
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              PHQ-9 Assessment
-            </label>
-            <Textarea 
-              className="min-h-[100px] bg-gray-100 whitespace-pre-wrap" 
-              value={formState.phq9Narrative} 
-              readOnly
-            />
-          </div>
-        )}
-
-        <h4 className="text-md font-medium text-gray-800 mb-4">Plan & Signature</h4>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Signature<RequiredFieldIndicator />
-          </label>
-          <Input placeholder="Enter signature" value={formState.signature} onChange={e => handleChange('signature', e.target.value)} />
-        </div>
-
-        <div className="mb-6 border-t pt-6">
-          <div className="flex items-center gap-2 mb-3">
-            <LockKeyhole className="h-4 w-4 text-amber-500" />
-            <h4 className="text-md font-medium text-gray-800">Private Note</h4>
-          </div>
-          <p className="text-sm text-gray-500 mb-3">
-            This note is private and will only be visible to clinicians. It will not be included in any client-facing documentation.
-          </p>
-          <Textarea placeholder="Enter private notes about this client" className="min-h-[100px]" value={formState.privateNote} onChange={e => handleChange('privateNote', e.target.value)} />
-        </div>
-
-        <div className="flex justify-end mt-6">
-          <Button onClick={handleSave} disabled={isSubmitting || !isFormValid} className="w-full md:w-auto">
-            {isSubmitting ? 'Saving...' : 'Save Session Note'}
-          </Button>
-        </div>
-      </div>
-    </div>;
-};
-
-export default SessionNoteTemplate;
+            {editModes.insightJudgement ? <Input value={formState.insightJudgement} onChange={e => handleChange('insightJudgement', e.target.value)} placeholder="Describe insight/judgement" className="w-full" /> : <Select value={formState.insightJudgement} onValueChange={value => toggleEditMode('insightJud

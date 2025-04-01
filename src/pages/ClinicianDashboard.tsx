@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, isToday, isFuture, parseISO, isAfter, isBefore } from 'date-fns';
@@ -44,6 +45,7 @@ const ClinicianDashboard = () => {
   const [showSessionTemplate, setShowSessionTemplate] = useState(false);
   const [clientData, setClientData] = useState<ClientDetails | null>(null);
   const [isLoadingClientData, setIsLoadingClientData] = useState(false);
+  const [clientDataError, setClientDataError] = useState<string | null>(null);
   const { clinicianData } = useClinicianData();
   const clinicianTimeZone = getUserTimeZone(); // Get clinician's timezone
 
@@ -63,6 +65,9 @@ const ClinicianDashboard = () => {
       if (currentAppointment && currentAppointment.client_id) {
         try {
           setIsLoadingClientData(true);
+          setClientDataError(null);
+          console.log('Fetching client data for:', currentAppointment.client_id);
+          
           const { data, error } = await supabase
             .from('clients')
             .select('*')
@@ -71,6 +76,7 @@ const ClinicianDashboard = () => {
           
           if (error) {
             console.error('Error fetching client data:', error);
+            setClientDataError(error.message);
             toast({
               title: "Error",
               description: "Could not load client data. Please try again.",
@@ -79,9 +85,11 @@ const ClinicianDashboard = () => {
             return;
           }
           
+          console.log('Client data fetched successfully:', data);
           setClientData(data as ClientDetails);
         } catch (error) {
           console.error('Error in fetchClientData:', error);
+          setClientDataError('An unexpected error occurred while loading client data.');
           toast({
             title: "Error",
             description: "An unexpected error occurred while loading client data.",
@@ -205,13 +213,33 @@ const ClinicianDashboard = () => {
     console.log("Status changed to:", value);
     setSelectedStatus(value);
     if (value === 'occurred') {
-      if (!clientData && !isLoadingClientData) {
+      // Only proceed if client data is fully loaded
+      if (isLoadingClientData) {
         toast({
           title: "Loading Client Data",
           description: "Please wait while we load the client data for the session note.",
         });
         return;
       }
+      
+      if (clientDataError) {
+        toast({
+          title: "Error",
+          description: "Could not load client data. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (!clientData) {
+        toast({
+          title: "Missing Data",
+          description: "Client data is required to create a session note.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       setIsDocumentDialogOpen(false);
       setShowSessionTemplate(true);
     }
@@ -262,6 +290,7 @@ const ClinicianDashboard = () => {
     console.log("Closing session template");
     setShowSessionTemplate(false);
     setSelectedStatus(undefined);
+    setClientData(null); // Clear client data
     refetch(); // Refresh appointments after closing template
   };
 
@@ -339,7 +368,8 @@ const ClinicianDashboard = () => {
     </Card>
   );
 
-  if (showSessionTemplate && currentAppointment) {
+  // If session template is being shown but client data is loading or has error
+  if (showSessionTemplate) {
     if (isLoadingClientData) {
       return (
         <Layout>
@@ -355,8 +385,42 @@ const ClinicianDashboard = () => {
       );
     }
     
+    if (clientDataError) {
+      return (
+        <Layout>
+          <div className="container mx-auto py-8">
+            <div className="bg-white p-6 border rounded-md">
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <AlertCircle className="h-10 w-10 text-red-500" />
+                <h2 className="text-xl font-semibold">Error Loading Client Data</h2>
+                <p className="text-center">{clientDataError}</p>
+                <Button onClick={closeSessionTemplate}>Return to Dashboard</Button>
+              </div>
+            </div>
+          </div>
+        </Layout>
+      );
+    }
+    
+    if (!clientData) {
+      return (
+        <Layout>
+          <div className="container mx-auto py-8">
+            <div className="bg-white p-6 border rounded-md">
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <AlertCircle className="h-10 w-10 text-yellow-500" />
+                <h2 className="text-xl font-semibold">Client Data Not Available</h2>
+                <p className="text-center">The client data required for this session note could not be found.</p>
+                <Button onClick={closeSessionTemplate}>Return to Dashboard</Button>
+              </div>
+            </div>
+          </div>
+        </Layout>
+      );
+    }
+    
     console.log("Rendering SessionNoteTemplate with clientData:", clientData);
-    console.log("Appointment date:", currentAppointment.date);
+    console.log("Appointment date:", currentAppointment?.date);
     return (
       <Layout>
         <SessionNoteTemplate 
@@ -364,7 +428,7 @@ const ClinicianDashboard = () => {
           clinicianName={clinicianData?.clinician_professional_name || ''}
           clinicianNameInsurance={clinicianData?.clinician_nameinsurance || ''}
           clientData={clientData}
-          appointmentDate={currentAppointment.date}
+          appointmentDate={currentAppointment?.date}
         />
       </Layout>
     );
