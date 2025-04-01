@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClientDetails } from '@/types/client';
+import { ClientDetails } from "@/types/client";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, formatDateForDB, getCurrentUser } from "@/integrations/supabase/client";
 import { DiagnosisSelector } from "@/components/DiagnosisSelector";
@@ -20,7 +20,6 @@ import { generateAndSavePDF } from "@/utils/pdfUtils";
 interface TreatmentPlanTemplateProps {
   onClose: () => void;
   clinicianName?: string;
-  clinicianNameInsurance?: string; // Added new prop for insurance name
   clientName?: string;
   clientDob?: string;
   clientData?: ClientDetails | null;

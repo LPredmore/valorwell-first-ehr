@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,10 +15,10 @@ import { format } from "date-fns";
 interface PCL5TemplateProps {
   onClose: () => void;
   clinicianName: string;
-  clinicianNameInsurance?: string;
   clientData?: ClientDetails | null;
 }
 
+// PCL-5 questions based on the official assessment
 const pcl5Questions = [
   "Repeated, disturbing, and unwanted memories of the stressful experience?",
   "Repeated, disturbing dreams of the stressful experience?",
@@ -41,6 +42,7 @@ const pcl5Questions = [
   "Trouble falling or staying asleep?"
 ];
 
+// Answer options
 const answerOptions = [
   { value: 0, label: "Not at all" },
   { value: 1, label: "A little bit" },
@@ -49,29 +51,24 @@ const answerOptions = [
   { value: 4, label: "Extremely" }
 ];
 
-const PCL5Template: React.FC<PCL5TemplateProps> = ({ 
-  onClose, 
-  clinicianName, 
-  clinicianNameInsurance,
-  clientData 
-}) => {
+const PCL5Template: React.FC<PCL5TemplateProps> = ({ onClose, clinicianName, clientData }) => {
   const { toast } = useToast();
   const [scores, setScores] = useState<number[]>(new Array(20).fill(0));
   const [additionalNotes, setAdditionalNotes] = useState("");
   
-  const displayClinicianName = clinicianNameInsurance || clinicianName;
-  
   const form = useForm({
     defaultValues: {
       date: format(new Date(), "yyyy-MM-dd"),
-      clinicianName: displayClinicianName,
+      clinicianName: clinicianName,
       patientName: clientData ? `${clientData.client_first_name} ${clientData.client_last_name}` : "",
       eventDescription: ""
     }
   });
 
+  // Calculate total score
   const totalScore = scores.reduce((sum, score) => sum + score, 0);
   
+  // Get interpretation based on total score
   const getInterpretation = (score: number) => {
     if (score >= 33) {
       return "Score suggests PTSD diagnosis may be appropriate";
@@ -96,6 +93,7 @@ const PCL5Template: React.FC<PCL5TemplateProps> = ({
   };
 
   const calculateClusterScores = () => {
+    // Clusters according to DSM-5 PTSD symptom clusters
     const intrusion = scores.slice(0, 5).reduce((sum, score) => sum + score, 0);
     const avoidance = scores.slice(5, 7).reduce((sum, score) => sum + score, 0);
     const negativeAlterations = scores.slice(7, 14).reduce((sum, score) => sum + score, 0);

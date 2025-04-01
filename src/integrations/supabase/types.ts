@@ -188,7 +188,6 @@ export type Database = {
           client_behavior: string | null
           client_branchOS: string | null
           client_champva: string | null
-          client_currentsymptoms: string | null
           client_date_of_birth: string | null
           client_diagnosis: string[] | null
           client_disabilityrating: string | null
@@ -284,7 +283,6 @@ export type Database = {
           client_behavior?: string | null
           client_branchOS?: string | null
           client_champva?: string | null
-          client_currentsymptoms?: string | null
           client_date_of_birth?: string | null
           client_diagnosis?: string[] | null
           client_disabilityrating?: string | null
@@ -380,7 +378,6 @@ export type Database = {
           client_behavior?: string | null
           client_branchOS?: string | null
           client_champva?: string | null
-          client_currentsymptoms?: string | null
           client_date_of_birth?: string | null
           client_diagnosis?: string[] | null
           client_disabilityrating?: string | null
@@ -521,7 +518,6 @@ export type Database = {
           clinician_license_type: string | null
           clinician_licensed_states: string[] | null
           clinician_min_client_age: number | null
-          clinician_nameinsurance: string | null
           clinician_npi_number: string | null
           clinician_phone: string | null
           clinician_professional_name: string | null
@@ -544,7 +540,6 @@ export type Database = {
           clinician_license_type?: string | null
           clinician_licensed_states?: string[] | null
           clinician_min_client_age?: number | null
-          clinician_nameinsurance?: string | null
           clinician_npi_number?: string | null
           clinician_phone?: string | null
           clinician_professional_name?: string | null
@@ -567,7 +562,6 @@ export type Database = {
           clinician_license_type?: string | null
           clinician_licensed_states?: string[] | null
           clinician_min_client_age?: number | null
-          clinician_nameinsurance?: string | null
           clinician_npi_number?: string | null
           clinician_phone?: string | null
           clinician_professional_name?: string | null
@@ -605,7 +599,6 @@ export type Database = {
           description: string | null
           fee: number
           name: string
-          status: string | null
           updated_at: string
         }
         Insert: {
@@ -615,7 +608,6 @@ export type Database = {
           description?: string | null
           fee: number
           name: string
-          status?: string | null
           updated_at?: string
         }
         Update: {
@@ -625,7 +617,6 @@ export type Database = {
           description?: string | null
           fee?: number
           name?: string
-          status?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -757,7 +748,6 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
-          phq9_narrative: string | null
           question_1: number
           question_2: number
           question_3: number
@@ -775,7 +765,6 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
-          phq9_narrative?: string | null
           question_1: number
           question_2: number
           question_3: number
@@ -793,7 +782,6 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
-          phq9_narrative?: string | null
           question_1?: number
           question_2?: number
           question_3?: number
@@ -898,57 +886,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      session_notes_history: {
-        Row: {
-          appointment_id: string | null
-          client_id: string
-          clinician_id: string | null
-          created_at: string
-          id: string
-          pdf_path: string | null
-          session_data: Json
-          session_date: string
-          session_type: string | null
-        }
-        Insert: {
-          appointment_id?: string | null
-          client_id: string
-          clinician_id?: string | null
-          created_at?: string
-          id?: string
-          pdf_path?: string | null
-          session_data: Json
-          session_date: string
-          session_type?: string | null
-        }
-        Update: {
-          appointment_id?: string | null
-          client_id?: string
-          clinician_id?: string | null
-          created_at?: string
-          id?: string
-          pdf_path?: string | null
-          session_data?: Json
-          session_date?: string
-          session_type?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "session_notes_history_appointment_id_fkey"
-            columns: ["appointment_id"]
-            isOneToOne: false
-            referencedRelation: "appointments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "session_notes_history_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       staff_licenses: {
         Row: {

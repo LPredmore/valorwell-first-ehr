@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import { Appointment } from '@/hooks/useAppointments';
 
 // Check for required environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -44,15 +43,15 @@ export const formatDateForDB = (date: Date | null): string | null => {
 };
 
 // New function to get or create a video room for an appointment
-export const getOrCreateVideoRoom = async (appointment: Appointment) => {
+export const getOrCreateVideoRoom = async (appointmentId: string) => {
   try {
-    console.log('Getting or creating video room for appointment:', appointment.id);
+    console.log('Getting or creating video room for appointment:', appointmentId);
     
     // First check if the appointment already has a video room URL
-    const { data: appointmentData, error: fetchError } = await supabase
+    const { data: appointment, error: fetchError } = await supabase
       .from('appointments')
       .select('video_room_url')
-      .eq('id', appointment.id)
+      .eq('id', appointmentId)
       .single();
       
     if (fetchError) {
@@ -61,15 +60,15 @@ export const getOrCreateVideoRoom = async (appointment: Appointment) => {
     }
     
     // If a video room URL already exists, return it
-    if (appointmentData && appointmentData.video_room_url) {
-      console.log('Appointment already has video room URL:', appointmentData.video_room_url);
-      return { url: appointmentData.video_room_url, success: true };
+    if (appointment && appointment.video_room_url) {
+      console.log('Appointment already has video room URL:', appointment.video_room_url);
+      return { url: appointment.video_room_url, success: true };
     }
     
     console.log('Creating new video room via Edge Function');
     // Otherwise, create a new room via the Edge Function
     const { data, error } = await supabase.functions.invoke('create-daily-room', {
-      body: { appointmentId: appointment.id }
+      body: { appointmentId }
     });
     
     if (error) {
@@ -88,7 +87,7 @@ export const getOrCreateVideoRoom = async (appointment: Appointment) => {
     const { error: updateError } = await supabase
       .from('appointments')
       .update({ video_room_url: data.url })
-      .eq('id', appointment.id);
+      .eq('id', appointmentId);
       
     if (updateError) {
       console.error('Error updating appointment with video URL:', updateError);
@@ -149,27 +148,20 @@ export interface PHQ9Assessment {
   question_9: number;
   total_score: number;
   additional_notes?: string;
-  phq9_narrative?: string;
 }
 
 // New function to save PHQ-9 assessment
 export const savePHQ9Assessment = async (assessment: PHQ9Assessment) => {
   try {
-    console.log('Saving PHQ9 assessment:', assessment);
     const { data, error } = await supabase
       .from('phq9_assessments')
       .insert([assessment])
       .select();
       
-    if (error) {
-      console.error('Error in savePHQ9Assessment:', error);
-      throw error;
-    }
-    
-    console.log('PHQ9 assessment saved successfully:', data);
+    if (error) throw error;
     return { success: true, data };
   } catch (error) {
-    console.error('Exception in savePHQ9Assessment:', error);
+    console.error('Error saving PHQ9 assessment:', error);
     return { success: false, error };
   }
 };
@@ -183,14 +175,10 @@ export const fetchPHQ9Assessments = async (clientId: string) => {
       .eq('client_id', clientId)
       .order('assessment_date', { ascending: false });
       
-    if (error) {
-      console.error('Error fetching PHQ9 assessments:', error);
-      throw error;
-    }
-    
+    if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Exception in fetchPHQ9Assessments:', error);
+    console.error('Error fetching PHQ9 assessments:', error);
     return [];
   }
 };

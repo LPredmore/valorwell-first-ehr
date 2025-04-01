@@ -94,33 +94,6 @@ const Clients = () => {
     }
   };
 
-  const calculateAge = (dateOfBirth: string | null): number | null => {
-    if (!dateOfBirth) return null;
-    
-    try {
-      const dob = new Date(dateOfBirth);
-      const today = new Date();
-      
-      if (isNaN(dob.getTime())) {
-        return null;
-      }
-      
-      let age = today.getFullYear() - dob.getFullYear();
-      
-      const hasBirthdayOccurredThisYear = 
-        today.getMonth() > dob.getMonth() || 
-        (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
-        
-      if (!hasBirthdayOccurredThisYear) {
-        age--;
-      }
-      
-      return age;
-    } catch (error) {
-      return null;
-    }
-  };
-
   const handleClientClick = (clientId: string) => {
     console.log(`Navigating to client details for ID: ${clientId}`);
     navigate(`/clients/${clientId}`);
@@ -198,7 +171,6 @@ const Clients = () => {
                   <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">Phone</th>
                   <th className="px-4 py-3">Date Of Birth</th>
-                  <th className="px-4 py-3">Age</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Therapist</th>
                   <th className="px-4 py-3">Actions</th>
@@ -207,11 +179,11 @@ const Clients = () => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-4">Loading clients...</td>
+                    <td colSpan={8} className="text-center py-4">Loading clients...</td>
                   </tr>
                 ) : currentClients.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-4">No clients found</td>
+                    <td colSpan={8} className="text-center py-4">No clients found</td>
                   </tr>
                 ) : (
                   currentClients.map((client) => (
@@ -231,7 +203,6 @@ const Clients = () => {
                       <td className="px-4 py-3">{client.client_email || '-'}</td>
                       <td className="px-4 py-3">{client.client_phone || '-'}</td>
                       <td className="px-4 py-3">{formatDateOfBirth(client.client_date_of_birth)}</td>
-                      <td className="px-4 py-3">{calculateAge(client.client_date_of_birth) || '-'}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 ${
                           client.client_status === 'Waiting' ? 'bg-yellow-100 text-yellow-800' :

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { format } from "date-fns";
 import {
@@ -145,12 +146,7 @@ const PersonalInfoTab: React.FC<TabProps> = ({ isEditing, form, clientData }) =>
               <FormItem>
                 <FormLabel>Age</FormLabel>
                 <FormControl>
-                  <Input 
-                    value={field.value !== null ? field.value : 'Calculated from DOB'} 
-                    readOnly={true} 
-                    disabled={true}
-                    className="bg-gray-100"
-                  />
+                  <Input {...field} readOnly={!isEditing} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

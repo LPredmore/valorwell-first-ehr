@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById, formatDateForDB } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
-// Import the tab components
+// Import the new tab components
 import MyPortal from '@/components/patient/MyPortal';
 import MyProfile from '@/components/patient/MyProfile';
 import MyAppointments from '@/components/patient/MyAppointments';
@@ -286,12 +286,12 @@ const PatientDashboard: React.FC = () => {
     fetchClientData();
   };
 
-  const upcomingAppointments: any[] = [];
-
   useEffect(() => {
     console.log("PatientDashboard component mounted");
     fetchClientData();
   }, []);
+
+  const upcomingAppointments = [];
 
   return <Layout>
       <div className="flex flex-col gap-6">
@@ -328,12 +328,7 @@ const PatientDashboard: React.FC = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="mt-0">
-            <MyPortal 
-              upcomingAppointments={upcomingAppointments} 
-              clientData={clientData} 
-              clinicianName={clinicianName} 
-              loading={loading} 
-            />
+            <MyPortal upcomingAppointments={upcomingAppointments} clientData={clientData} clinicianName={clinicianName} loading={loading} />
           </TabsContent>
 
           <TabsContent value="profile" className="mt-0">

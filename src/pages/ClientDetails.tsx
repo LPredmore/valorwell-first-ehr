@@ -21,7 +21,6 @@ import InsuranceTab from "@/components/client/InsuranceTab";
 import TreatmentTab from "@/components/client/TreatmentTab";
 import DocumentationTab from "@/components/client/DocumentationTab";
 import { ClientDetails as ClientDetailsType, Clinician } from "@/types/client";
-import LoadingState from "@/components/dashboard/LoadingState";
 
 const ClientDetails = () => {
   const { clientId } = useParams();
@@ -33,35 +32,6 @@ const ClientDetails = () => {
   const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("personal");
-
-  const calculateAge = (dateOfBirth: string | null): number | null => {
-    if (!dateOfBirth) return null;
-    
-    try {
-      const dob = new Date(dateOfBirth);
-      const today = new Date();
-      
-      if (isNaN(dob.getTime())) {
-        console.error('Invalid date of birth:', dateOfBirth);
-        return null;
-      }
-      
-      let age = today.getFullYear() - dob.getFullYear();
-      
-      const hasBirthdayOccurredThisYear = 
-        today.getMonth() > dob.getMonth() || 
-        (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
-        
-      if (!hasBirthdayOccurredThisYear) {
-        age--;
-      }
-      
-      return age;
-    } catch (error) {
-      console.error('Error calculating age:', error);
-      return null;
-    }
-  };
 
   useEffect(() => {
     const fetchClient = async () => {
@@ -76,12 +46,7 @@ const ClientDetails = () => {
           throw error;
         }
 
-        const clientWithCalculatedAge = {
-          ...data,
-          client_age: calculateAge(data.client_date_of_birth)
-        } as ClientDetailsType;
-
-        setClientData(clientWithCalculatedAge);
+        setClientData(data);
         setIsLoading(false);
       } catch (err) {
         console.error('Error fetching client:', err);
@@ -292,9 +257,8 @@ const ClientDetails = () => {
         client_subscriber_dob_primary: values.client_subscriber_dob_primary ? formatDateForDB(values.client_subscriber_dob_primary) : null,
         client_subscriber_dob_secondary: values.client_subscriber_dob_secondary ? formatDateForDB(values.client_subscriber_dob_secondary) : null,
         client_subscriber_dob_tertiary: values.client_subscriber_dob_tertiary ? formatDateForDB(values.client_subscriber_dob_tertiary) : null,
+        client_age: values.client_age ? parseInt(values.client_age) : null,
       };
-
-      delete (formattedValues as any).client_age;
 
       const { error } = await supabase
         .from('clients')
@@ -319,12 +283,7 @@ const ClientDetails = () => {
         .single();
 
       if (data) {
-        const updatedClientWithAge = {
-          ...data,
-          client_age: calculateAge(data.client_date_of_birth)
-        } as ClientDetailsType;
-        
-        setClientData(updatedClientWithAge);
+        setClientData(data);
       }
     } catch (err) {
       console.error('Error updating client:', err);
@@ -357,7 +316,9 @@ const ClientDetails = () => {
   if (isLoading) {
     return (
       <Layout>
-        <LoadingState title="Loading Client" message="Loading client details..." />
+        <div className="flex justify-center items-center h-full">
+          <p>Loading client details...</p>
+        </div>
       </Layout>
     );
   }

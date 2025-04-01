@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   Dialog,
@@ -19,12 +18,11 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { X } from "lucide-react";
-import { savePHQ9Assessment, supabase } from "@/integrations/supabase/client";
+import { savePHQ9Assessment } from "@/integrations/supabase/client";
 
 interface PHQ9TemplateProps {
   onClose: () => void;
   clinicianName: string;
-  clinicianNameInsurance?: string; // Add new prop for insurance name
   clientData?: ClientDetails | null;
   onComplete?: () => void; // Callback for when assessment is completed
 }
@@ -50,26 +48,17 @@ const answerOptions = [
   { value: 3, label: "Nearly every day" }
 ];
 
-const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ 
-  onClose, 
-  clinicianName, 
-  clinicianNameInsurance,
-  clientData, 
-  onComplete 
-}) => {
+const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, clientData, onComplete }) => {
   const { toast } = useToast();
   const [scores, setScores] = useState<number[]>(new Array(9).fill(0));
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [isOpen, setIsOpen] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Use insurance name if available, otherwise fall back to professional name
-  const displayClinicianName = clinicianNameInsurance || clinicianName;
-  
   const form = useForm({
     defaultValues: {
       date: format(new Date(), "yyyy-MM-dd"),
-      clinicianName: displayClinicianName,
+      clinicianName: clinicianName,
       patientName: clientData ? `${clientData.client_first_name} ${clientData.client_last_name}` : "",
     }
   });
@@ -90,55 +79,6 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({
     const newScores = [...scores];
     newScores[index] = value;
     setScores(newScores);
-  };
-
-  // Function to generate the PHQ-9 narrative using our new edge function
-  const generatePHQ9Narrative = async (assessmentData: any) => {
-    try {
-      console.log('Calling generate-phq9-narrative edge function with data:', {
-        assessment: assessmentData,
-        clientId: clientData?.id
-      });
-      
-      const { data, error } = await supabase.functions.invoke('generate-phq9-narrative', {
-        body: {
-          assessment: assessmentData,
-          clientId: clientData?.id
-        }
-      });
-      
-      if (error) {
-        console.error('Error calling generate-phq9-narrative edge function:', error);
-        toast({
-          title: "Error",
-          description: `Failed to generate narrative: ${error.message}`,
-          variant: "destructive"
-        });
-        return null;
-      }
-      
-      console.log('Edge function response:', data);
-      
-      if (!data || !data.narrative) {
-        console.error('Edge function did not return a narrative:', data);
-        toast({
-          title: "Warning",
-          description: "The narrative generation service returned an invalid response",
-          variant: "destructive"
-        });
-        return null;
-      }
-      
-      return data.narrative;
-    } catch (error) {
-      console.error('Exception in generatePHQ9Narrative:', error);
-      toast({
-        title: "Error",
-        description: `Error generating narrative: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive"
-      });
-      return null;
-    }
   };
 
   const handleSubmit = async () => {
@@ -164,8 +104,6 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({
           additional_notes: additionalNotes
         };
         
-        console.log('Saving PHQ-9 assessment data:', assessmentData);
-        
         // Save the assessment to the database
         const result = await savePHQ9Assessment(assessmentData);
         
@@ -179,57 +117,6 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({
           // Still continue with the flow even if saving fails
         } else {
           console.log('PHQ-9 assessment saved successfully:', result.data);
-          
-          // Generate the narrative if the save was successful
-          if (result.data && result.data[0]) {
-            try {
-              // Add the ID to the assessment data
-              const assessmentWithId = {
-                ...assessmentData,
-                id: result.data[0].id
-              };
-              
-              console.log('Generating narrative for assessment with ID:', assessmentWithId.id);
-              
-              // Call the edge function to generate and save the narrative
-              const narrative = await generatePHQ9Narrative(assessmentWithId);
-              
-              if (narrative) {
-                console.log('Narrative generated successfully:', narrative.substring(0, 50) + '...');
-                
-                // Verify if the narrative was saved by the edge function
-                const { data: updatedAssessment, error: verifyError } = await supabase
-                  .from('phq9_assessments')
-                  .select('phq9_narrative')
-                  .eq('id', assessmentWithId.id)
-                  .single();
-                
-                if (verifyError) {
-                  console.error('Error verifying narrative save:', verifyError);
-                } else {
-                  console.log('Verified narrative in database:', updatedAssessment?.phq9_narrative ? 'Present' : 'Missing');
-                  if (!updatedAssessment?.phq9_narrative) {
-                    console.warn('Narrative seems to be missing from database after edge function call');
-                    
-                    // Attempt to save narrative directly if edge function didn't do it
-                    const { error: manualUpdateError } = await supabase
-                      .from('phq9_assessments')
-                      .update({ phq9_narrative: narrative })
-                      .eq('id', assessmentWithId.id);
-                    
-                    if (manualUpdateError) {
-                      console.error('Failed manual narrative update:', manualUpdateError);
-                    } else {
-                      console.log('Manual narrative update successful');
-                    }
-                  }
-                }
-              }
-            } catch (narrativeError) {
-              console.error('Error generating or saving narrative:', narrativeError);
-              // We don't want to block the flow if narrative generation fails
-            }
-          }
         }
       } else {
         console.warn('Cannot save PHQ-9 assessment: Missing client data or ID');
