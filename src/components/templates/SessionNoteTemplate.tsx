@@ -685,7 +685,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">Homicidal Ideation</label>
             <Select
               value={formState.homicidalIdeation}
-              onValueChange={(value) => handleChange('homicidalIdeation', e.target.value)}
+              onValueChange={(value) => handleChange('homicidalIdeation', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select ideation level" />
