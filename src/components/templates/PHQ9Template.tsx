@@ -23,6 +23,7 @@ import { savePHQ9Assessment } from "@/integrations/supabase/client";
 interface PHQ9TemplateProps {
   onClose: () => void;
   clinicianName: string;
+  clinicianNameInsurance?: string; // Add new prop for insurance name
   clientData?: ClientDetails | null;
   onComplete?: () => void; // Callback for when assessment is completed
 }
@@ -48,17 +49,26 @@ const answerOptions = [
   { value: 3, label: "Nearly every day" }
 ];
 
-const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, clientData, onComplete }) => {
+const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ 
+  onClose, 
+  clinicianName, 
+  clinicianNameInsurance,
+  clientData, 
+  onComplete 
+}) => {
   const { toast } = useToast();
   const [scores, setScores] = useState<number[]>(new Array(9).fill(0));
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [isOpen, setIsOpen] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
+  // Use insurance name if available, otherwise fall back to professional name
+  const displayClinicianName = clinicianNameInsurance || clinicianName;
+  
   const form = useForm({
     defaultValues: {
       date: format(new Date(), "yyyy-MM-dd"),
-      clinicianName: clinicianName,
+      clinicianName: displayClinicianName,
       patientName: clientData ? `${clientData.client_first_name} ${clientData.client_last_name}` : "",
     }
   });

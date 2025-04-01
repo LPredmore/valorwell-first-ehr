@@ -6,10 +6,16 @@ import { ClientDetails } from '@/types/client';
 interface GAD7TemplateProps {
   onClose: () => void;
   clinicianName: string;
+  clinicianNameInsurance?: string; // Add new prop for insurance name
   clientDetails?: ClientDetails;
 }
 
-const GAD7Template = ({ onClose, clinicianName, clientDetails }: GAD7TemplateProps) => {
+const GAD7Template = ({ 
+  onClose, 
+  clinicianName, 
+  clinicianNameInsurance, 
+  clientDetails 
+}: GAD7TemplateProps) => {
   const [responses, setResponses] = useState<number[]>(Array(7).fill(0));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -74,6 +80,9 @@ const GAD7Template = ({ onClose, clinicianName, clientDetails }: GAD7TemplatePro
   const interpretation = getScoreInterpretation(totalScore);
   const currentDate = new Date().toLocaleDateString();
   
+  // Use the insurance name if available, otherwise fall back to regular clinician name
+  const displayClinicianName = clinicianNameInsurance || clinicianName;
+  
   return (
     <div className="bg-white p-6 rounded-md">
       <div className="flex justify-between items-center mb-6">
@@ -100,7 +109,7 @@ const GAD7Template = ({ onClose, clinicianName, clientDetails }: GAD7TemplatePro
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Clinician</label>
-            <p className="p-2 border rounded-md bg-gray-50">{clinicianName || "Not specified"}</p>
+            <p className="p-2 border rounded-md bg-gray-50">{displayClinicianName || "Not specified"}</p>
           </div>
         </div>
         

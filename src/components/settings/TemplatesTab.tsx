@@ -15,6 +15,7 @@ import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 import PHQ9Template from '@/components/templates/PHQ9Template';
 import GAD7Template from '@/components/templates/GAD7Template';
 import PCL5Template from '@/components/templates/PCL5Template';
+import { useClinicianData } from "@/hooks/useClinicianData";
 
 const TemplatesTab = () => {
   const [showTreatmentPlanTemplate, setShowTreatmentPlanTemplate] = useState(false);
@@ -22,6 +23,7 @@ const TemplatesTab = () => {
   const [showPHQ9Template, setShowPHQ9Template] = useState(false);
   const [showGAD7Template, setShowGAD7Template] = useState(false);
   const [showPCL5Template, setShowPCL5Template] = useState(false);
+  const { clinicianData } = useClinicianData();
 
   const handleCloseTreatmentPlan = () => {
     setShowTreatmentPlanTemplate(false);
@@ -46,15 +48,35 @@ const TemplatesTab = () => {
   return (
     <div className="p-6 animate-fade-in">
       {showTreatmentPlanTemplate ? (
-        <TreatmentPlanTemplate onClose={() => setShowTreatmentPlanTemplate(false)} />
+        <TreatmentPlanTemplate 
+          onClose={() => setShowTreatmentPlanTemplate(false)}
+          clinicianName={clinicianData?.clinician_professional_name || ''} 
+          clinicianNameInsurance={clinicianData?.clinician_nameinsurance || ''}
+        />
       ) : showSessionNoteTemplate ? (
-        <SessionNoteTemplate onClose={() => setShowSessionNoteTemplate(false)} />
+        <SessionNoteTemplate 
+          onClose={() => setShowSessionNoteTemplate(false)} 
+          clinicianName={clinicianData?.clinician_professional_name || ''} 
+          clinicianNameInsurance={clinicianData?.clinician_nameinsurance || ''}
+        />
       ) : showPHQ9Template ? (
-        <PHQ9Template onClose={() => setShowPHQ9Template(false)} clinicianName="" />
+        <PHQ9Template 
+          onClose={() => setShowPHQ9Template(false)} 
+          clinicianName={clinicianData?.clinician_professional_name || ''} 
+          clinicianNameInsurance={clinicianData?.clinician_nameinsurance || ''}
+        />
       ) : showGAD7Template ? (
-        <GAD7Template onClose={() => setShowGAD7Template(false)} clinicianName="" />
+        <GAD7Template 
+          onClose={() => setShowGAD7Template(false)} 
+          clinicianName={clinicianData?.clinician_professional_name || ''} 
+          clinicianNameInsurance={clinicianData?.clinician_nameinsurance || ''}
+        />
       ) : showPCL5Template ? (
-        <PCL5Template onClose={() => setShowPCL5Template(false)} clinicianName="" />
+        <PCL5Template 
+          onClose={() => setShowPCL5Template(false)} 
+          clinicianName={clinicianData?.clinician_professional_name || ''} 
+          clinicianNameInsurance={clinicianData?.clinician_nameinsurance || ''}
+        />
       ) : (
         <>
           <div className="mb-8">

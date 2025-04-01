@@ -518,6 +518,7 @@ export type Database = {
           clinician_license_type: string | null
           clinician_licensed_states: string[] | null
           clinician_min_client_age: number | null
+          clinician_nameinsurance: string | null
           clinician_npi_number: string | null
           clinician_phone: string | null
           clinician_professional_name: string | null
@@ -540,6 +541,7 @@ export type Database = {
           clinician_license_type?: string | null
           clinician_licensed_states?: string[] | null
           clinician_min_client_age?: number | null
+          clinician_nameinsurance?: string | null
           clinician_npi_number?: string | null
           clinician_phone?: string | null
           clinician_professional_name?: string | null
@@ -562,6 +564,7 @@ export type Database = {
           clinician_license_type?: string | null
           clinician_licensed_states?: string[] | null
           clinician_min_client_age?: number | null
+          clinician_nameinsurance?: string | null
           clinician_npi_number?: string | null
           clinician_phone?: string | null
           clinician_professional_name?: string | null

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Card,
@@ -44,7 +43,6 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
   const { clinicianData } = useClinicianData();
   const { toast } = useToast();
 
-  // Fetch documents when the component mounts or when the client changes
   useEffect(() => {
     if (clientData?.id) {
       setIsLoading(true);
@@ -67,7 +65,6 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
 
   const handleCloseTreatmentPlan = () => {
     setShowTreatmentPlanTemplate(false);
-    // Refresh documents after closing the template
     if (clientData?.id) {
       fetchClinicalDocuments(clientData.id)
         .then(docs => setDocuments(docs))
@@ -77,7 +74,6 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
 
   const handleCloseSessionNote = () => {
     setShowSessionNoteTemplate(false);
-    // Refresh documents after closing the template
     if (clientData?.id) {
       fetchClinicalDocuments(clientData.id)
         .then(docs => setDocuments(docs))
@@ -87,7 +83,6 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
 
   const handleClosePHQ9 = () => {
     setShowPHQ9Template(false);
-    // Refresh documents after closing the template
     if (clientData?.id) {
       fetchClinicalDocuments(clientData.id)
         .then(docs => setDocuments(docs))
@@ -97,7 +92,6 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
   
   const handleClosePCL5 = () => {
     setShowPCL5Template(false);
-    // Refresh documents after closing the template
     if (clientData?.id) {
       fetchClinicalDocuments(clientData.id)
         .then(docs => setDocuments(docs))
@@ -129,7 +123,6 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      {/* Charting Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -158,12 +151,12 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
         </CardContent>
       </Card>
 
-      {/* Conditionally render the templates right after the Charting card */}
       {showTreatmentPlanTemplate && (
         <div className="animate-fade-in">
           <TreatmentPlanTemplate
             onClose={handleCloseTreatmentPlan}
             clinicianName={clinicianData?.clinician_professional_name || ''}
+            clinicianNameInsurance={clinicianData?.clinician_nameinsurance || ''}
             clientData={clientData}
           />
         </div>
@@ -174,6 +167,7 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
           <SessionNoteTemplate
             onClose={handleCloseSessionNote}
             clinicianName={clinicianData?.clinician_professional_name || ''}
+            clinicianNameInsurance={clinicianData?.clinician_nameinsurance || ''}
             clientData={clientData}
           />
         </div>
@@ -184,6 +178,7 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
           <PHQ9Template
             onClose={handleClosePHQ9}
             clinicianName={clinicianData?.clinician_professional_name || ''}
+            clinicianNameInsurance={clinicianData?.clinician_nameinsurance || ''}
             clientData={clientData}
           />
         </div>
@@ -194,12 +189,12 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
           <PCL5Template
             onClose={handleClosePCL5}
             clinicianName={clinicianData?.clinician_professional_name || ''}
+            clinicianNameInsurance={clinicianData?.clinician_nameinsurance || ''}
             clientData={clientData}
           />
         </div>
       )}
 
-      {/* Assessments Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -213,7 +208,6 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
         </CardContent>
       </Card>
 
-      {/* Completed Notes Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

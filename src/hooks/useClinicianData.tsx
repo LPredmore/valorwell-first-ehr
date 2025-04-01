@@ -15,7 +15,7 @@ export const useClinicianData = () => {
         // Get the first clinician for now (in a real app, you would get the current user's clinician)
         const { data, error } = await supabase
           .from('clinicians')
-          .select('*')
+          .select('*, clinician_nameinsurance')
           .limit(1)
           .single();
 
@@ -42,7 +42,7 @@ export const getClinicianById = async (clinicianId: string) => {
   try {
     const { data, error } = await supabase
       .from('clinicians')
-      .select('*')
+      .select('*, clinician_nameinsurance')
       .eq('id', clinicianId)
       .single();
       
