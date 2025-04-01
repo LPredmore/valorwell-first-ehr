@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -110,4 +111,9 @@
   margin: 0 auto;
   padding: 15mm;
   font-size: 12pt;
+}
+
+/* Hide private note section when generating PDF */
+.generating-pdf .private-note-container {
+  display: none !important;
 }

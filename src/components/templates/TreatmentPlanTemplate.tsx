@@ -477,16 +477,17 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
                 onChange={(e) => handleChange('nextUpdate', e.target.value)}
               />
             </div>
-            
-            <div className="space-y-2 mb-2">
-              <Label htmlFor="private-note" className="text-sm text-valorwell-700 font-semibold">Private Note</Label>
-              <Input 
-                id="private-note" 
-                placeholder="Notes visible only to providers"
-                value={formState.privateNote}
-                onChange={(e) => handleChange('privateNote', e.target.value)}
-              />
-            </div>
+          </div>
+          
+          {/* Private note section moved outside the element that will be turned into PDF */}
+          <div className="space-y-2 mb-2 private-note-container">
+            <Label htmlFor="private-note" className="text-sm text-valorwell-700 font-semibold">Private Note</Label>
+            <Input 
+              id="private-note" 
+              placeholder="Notes visible only to providers"
+              value={formState.privateNote}
+              onChange={(e) => handleChange('privateNote', e.target.value)}
+            />
           </div>
           
           <div className="flex justify-end">
