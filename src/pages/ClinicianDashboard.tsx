@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, isToday, isFuture, parseISO, isAfter, isBefore } from 'date-fns';
-import { AlertCircle, Calendar, Clock, UserCircle, Video, FileText } from 'lucide-react';
+import { AlertCircle, Calendar, Clock, UserCircle, Video, FileText, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import Layout from '@/components/layout/Layout';
@@ -43,6 +43,7 @@ const ClinicianDashboard = () => {
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>();
   const [showSessionTemplate, setShowSessionTemplate] = useState(false);
   const [clientData, setClientData] = useState<ClientDetails | null>(null);
+  const [isLoadingClientData, setIsLoadingClientData] = useState(false);
   const { clinicianData } = useClinicianData();
   const clinicianTimeZone = getUserTimeZone(); // Get clinician's timezone
 
@@ -61,6 +62,7 @@ const ClinicianDashboard = () => {
     const fetchClientData = async () => {
       if (currentAppointment && currentAppointment.client_id) {
         try {
+          setIsLoadingClientData(true);
           const { data, error } = await supabase
             .from('clients')
             .select('*')
@@ -69,12 +71,24 @@ const ClinicianDashboard = () => {
           
           if (error) {
             console.error('Error fetching client data:', error);
+            toast({
+              title: "Error",
+              description: "Could not load client data. Please try again.",
+              variant: "destructive"
+            });
             return;
           }
           
           setClientData(data as ClientDetails);
         } catch (error) {
           console.error('Error in fetchClientData:', error);
+          toast({
+            title: "Error",
+            description: "An unexpected error occurred while loading client data.",
+            variant: "destructive"
+          });
+        } finally {
+          setIsLoadingClientData(false);
         }
       }
     };
@@ -82,7 +96,7 @@ const ClinicianDashboard = () => {
     if (currentAppointment) {
       fetchClientData();
     }
-  }, [currentAppointment]);
+  }, [currentAppointment, toast]);
 
   const { data: appointments, isLoading, error, refetch } = useQuery({
     queryKey: ['clinician-appointments', currentUserId],
@@ -191,6 +205,13 @@ const ClinicianDashboard = () => {
     console.log("Status changed to:", value);
     setSelectedStatus(value);
     if (value === 'occurred') {
+      if (!clientData && !isLoadingClientData) {
+        toast({
+          title: "Loading Client Data",
+          description: "Please wait while we load the client data for the session note.",
+        });
+        return;
+      }
       setIsDocumentDialogOpen(false);
       setShowSessionTemplate(true);
     }
@@ -319,6 +340,21 @@ const ClinicianDashboard = () => {
   );
 
   if (showSessionTemplate && currentAppointment) {
+    if (isLoadingClientData) {
+      return (
+        <Layout>
+          <div className="container mx-auto py-8">
+            <div className="bg-white p-6 border rounded-md">
+              <div className="flex items-center justify-center space-x-2">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span>Loading client data for session note...</span>
+              </div>
+            </div>
+          </div>
+        </Layout>
+      );
+    }
+    
     console.log("Rendering SessionNoteTemplate with clientData:", clientData);
     console.log("Appointment date:", currentAppointment.date);
     return (

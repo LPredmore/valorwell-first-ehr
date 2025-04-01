@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { X, FileText, LockKeyhole } from 'lucide-react';
+import { X, FileText, LockKeyhole, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DiagnosisSelector } from '@/components/DiagnosisSelector';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClientDetails } from '@/types/client';
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface SessionNoteTemplateProps {
   onClose: () => void;
@@ -31,6 +32,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   const [hasExistingDiagnosis, setHasExistingDiagnosis] = useState(false);
   const [sessionTypes, setSessionTypes] = useState<{code: string, name: string}[]>([]);
   const [phq9Narrative, setPhq9Narrative] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingPHQ9, setIsLoadingPHQ9] = useState(false);
+  const [isLoadingSessionTypes, setIsLoadingSessionTypes] = useState(false);
   
   const [formState, setFormState] = useState({
     sessionDate: '',
@@ -95,6 +99,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   useEffect(() => {
     const fetchSessionTypes = async () => {
       try {
+        setIsLoadingSessionTypes(true);
         console.log("Fetching CPT codes for session types");
         const { data, error } = await supabase
           .from('cpt_codes')
@@ -103,6 +108,11 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           
         if (error) {
           console.error('Error fetching CPT codes:', error);
+          toast({
+            title: "Error",
+            description: "Could not load session types. Please try again.",
+            variant: "destructive"
+          });
           return;
         }
         
@@ -110,17 +120,25 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         setSessionTypes(data || []);
       } catch (error) {
         console.error('Error in fetchSessionTypes:', error);
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred while loading session types.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoadingSessionTypes(false);
       }
     };
     
     fetchSessionTypes();
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     const fetchLatestPHQ9 = async () => {
       if (!clientData?.id) return;
       
       try {
+        setIsLoadingPHQ9(true);
         console.log("Fetching latest PHQ9 assessment for client:", clientData.id);
         const { data, error } = await supabase
           .from('phq9_assessments')
@@ -141,6 +159,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         }
       } catch (error) {
         console.error('Error in fetchLatestPHQ9:', error);
+      } finally {
+        setIsLoadingPHQ9(false);
       }
     };
     
@@ -217,6 +237,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         memoryConcentration: clientData.client_memoryconcentration && !['Short & Long Term Intact'].includes(clientData.client_memoryconcentration),
         insightJudgement: clientData.client_insightjudgement && !['Good'].includes(clientData.client_insightjudgement)
       });
+      
+      setIsLoading(false);
     }
   }, [clientData, clinicianName, clinicianNameInsurance, appointmentDate]);
 
@@ -409,6 +431,52 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   const hasTreatmentPlan = !!clientData?.client_primaryobjective;
 
   const RequiredFieldIndicator = () => <span className="text-red-500 ml-1">*</span>;
+
+  if (isLoading || isLoadingPHQ9 || isLoadingSessionTypes) {
+    return (
+      <div className="animate-fade-in p-6 space-y-6">
+        <div className="flex justify-between items-center mb-2">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <Button variant="outline" size="icon" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        <div className="border rounded-md p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <FileText className="h-5 w-5 text-gray-700" />
+            <Skeleton className="h-6 w-48" />
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {[...Array(3)].map((_, i) => (
+              <div key={i}>
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {[...Array(3)].map((_, i) => (
+              <div key={i}>
+                <Skeleton className="h-4 w-32 mb-2" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex justify-center my-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-2 text-gray-600">Loading session data...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-2">
