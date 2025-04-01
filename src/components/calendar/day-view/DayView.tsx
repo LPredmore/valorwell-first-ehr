@@ -28,10 +28,10 @@ const DayView: React.FC<DayViewProps> = ({
   userTimeZone
 }) => {
   const {
-    loading,
     timeBlocks,
-    availabilityBlocks,
     appointmentBlocks,
+    isLoading,
+    availabilityBlocks,
     getAvailabilityForBlock
   } = useDayViewData({
     currentDate,
@@ -63,7 +63,7 @@ const DayView: React.FC<DayViewProps> = ({
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Card className="p-4 flex justify-center items-center h-[500px]">
         <Loader2 className="h-6 w-6 animate-spin text-valorwell-500" />

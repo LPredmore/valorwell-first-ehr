@@ -1,8 +1,9 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilityBlock, AvailabilityException, TimeBlock, AppointmentBlock, AppointmentData } from './types';
 import { format, parse, startOfDay, addMinutes, isEqual, isBefore, isAfter } from 'date-fns';
-import { utcToZonedTime } from 'date-fns-tz';
+import { toZonedTime } from 'date-fns-tz';
 
 // Helper to convert time string to Date object for a given date
 const timeToDate = (date: Date, timeStr: string): Date => {
@@ -12,13 +13,13 @@ const timeToDate = (date: Date, timeStr: string): Date => {
   return result;
 };
 
-export const useDayViewData = (
-  currentDate: Date,
-  clinicianId: string | null,
+export const useDayViewData = ({
+  currentDate,
+  clinicianId,
   refreshTrigger = 0,
-  appointments?: AppointmentData[],
-  userTimeZone?: string
-) => {
+  appointments = [],
+  getClientName = () => 'Client'
+}) => {
   const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,6 +30,11 @@ export const useDayViewData = (
   // Format date for database queries
   const formattedDate = format(currentDate, 'yyyy-MM-dd');
   const dayOfWeek = format(currentDate, 'EEEE').toLowerCase();
+
+  // Helper function to get availability block by ID
+  const getAvailabilityForBlock = useCallback((availabilityId: string) => {
+    return availabilityBlocks.find(block => block.id === availabilityId);
+  }, [availabilityBlocks]);
 
   // Fetch availability and exceptions
   useEffect(() => {
@@ -165,12 +171,13 @@ export const useDayViewData = (
         clientId: apt.client_id,
         start: startDate,
         end: endDate,
-        type: apt.type
+        type: apt.type,
+        clientName: getClientName(apt.client_id)
       };
     });
 
     setAppointmentBlocks(blocks);
-  }, [appointments, currentDate, formattedDate]);
+  }, [appointments, currentDate, formattedDate, getClientName]);
 
   return {
     timeBlocks,
@@ -178,6 +185,7 @@ export const useDayViewData = (
     isLoading,
     error,
     availabilityBlocks,
-    exceptions
+    exceptions,
+    getAvailabilityForBlock
   };
 };
