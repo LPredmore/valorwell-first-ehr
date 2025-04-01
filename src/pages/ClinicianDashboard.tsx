@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, isToday, isFuture, parseISO, isAfter, isBefore } from 'date-fns';
@@ -10,6 +9,8 @@ import VideoChat from '@/components/video/VideoChat';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useUser } from '@/context/UserContext';
 import { formatTime12Hour, getUserTimeZone, formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
 
@@ -34,6 +35,8 @@ const ClinicianDashboard = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
+  const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
+  const [currentAppointment, setCurrentAppointment] = useState<Appointment | null>(null);
   const clinicianTimeZone = getUserTimeZone(); // Get clinician's timezone
 
   useEffect(() => {
@@ -143,6 +146,11 @@ const ClinicianDashboard = () => {
 
   const timeZoneDisplay = formatTimeZoneDisplay(clinicianTimeZone);
 
+  const openDocumentDialog = (appointment: Appointment) => {
+    setCurrentAppointment(appointment);
+    setIsDocumentDialogOpen(true);
+  };
+
   const renderAppointmentCard = (appointment: Appointment, showStartButton = false) => (
     <Card key={appointment.id} className="mb-3">
       <CardHeader className="pb-2">
@@ -208,6 +216,7 @@ const ClinicianDashboard = () => {
           variant="default"
           size="sm"
           className="w-full"
+          onClick={() => openDocumentDialog(appointment)}
         >
           <FileText className="h-4 w-4 mr-2" />
           Document Session
@@ -332,6 +341,31 @@ const ClinicianDashboard = () => {
           onClose={() => setIsVideoOpen(false)}
         />
       )}
+
+      <Dialog open={isDocumentDialogOpen} onOpenChange={setIsDocumentDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Document Session</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="occurred">Session Occurred</SelectItem>
+                <SelectItem value="no-show">Late Cancel/No Show</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button type="button">
+              Provide Documentation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };
