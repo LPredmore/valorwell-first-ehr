@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { Appointment } from '@/hooks/useAppointments';
 
 // Check for required environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -43,15 +44,15 @@ export const formatDateForDB = (date: Date | null): string | null => {
 };
 
 // New function to get or create a video room for an appointment
-export const getOrCreateVideoRoom = async (appointmentId: string) => {
+export const getOrCreateVideoRoom = async (appointment: Appointment) => {
   try {
-    console.log('Getting or creating video room for appointment:', appointmentId);
+    console.log('Getting or creating video room for appointment:', appointment.id);
     
     // First check if the appointment already has a video room URL
-    const { data: appointment, error: fetchError } = await supabase
+    const { data: appointmentData, error: fetchError } = await supabase
       .from('appointments')
       .select('video_room_url')
-      .eq('id', appointmentId)
+      .eq('id', appointment.id)
       .single();
       
     if (fetchError) {
@@ -60,15 +61,15 @@ export const getOrCreateVideoRoom = async (appointmentId: string) => {
     }
     
     // If a video room URL already exists, return it
-    if (appointment && appointment.video_room_url) {
-      console.log('Appointment already has video room URL:', appointment.video_room_url);
-      return { url: appointment.video_room_url, success: true };
+    if (appointmentData && appointmentData.video_room_url) {
+      console.log('Appointment already has video room URL:', appointmentData.video_room_url);
+      return { url: appointmentData.video_room_url, success: true };
     }
     
     console.log('Creating new video room via Edge Function');
     // Otherwise, create a new room via the Edge Function
     const { data, error } = await supabase.functions.invoke('create-daily-room', {
-      body: { appointmentId }
+      body: { appointmentId: appointment.id }
     });
     
     if (error) {
@@ -87,7 +88,7 @@ export const getOrCreateVideoRoom = async (appointmentId: string) => {
     const { error: updateError } = await supabase
       .from('appointments')
       .update({ video_room_url: data.url })
-      .eq('id', appointmentId);
+      .eq('id', appointment.id);
       
     if (updateError) {
       console.error('Error updating appointment with video URL:', updateError);
