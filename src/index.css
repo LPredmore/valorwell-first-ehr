@@ -1,73 +1,73 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Base styles for our application */
+ 
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-   
+    --foreground: 224 71.4% 4.1%;
+ 
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+ 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    
+    --popover-foreground: 224 71.4% 4.1%;
+ 
+    --card: 0 0% 100%;
+    --card-foreground: 224 71.4% 4.1%;
+ 
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+ 
+    --primary: 220.9 39.3% 11%;
+    --primary-foreground: 210 20% 98%;
+ 
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
+ 
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 220.9 39.3% 11%;
+ 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    
+    --destructive-foreground: 210 20% 98%;
+ 
+    --ring: 217.9 10.6% 64.9%;
+ 
     --radius: 0.5rem;
   }
-
+ 
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    
+    --background: 224 71.4% 4.1%;
+    --foreground: 210 20% 98%;
+ 
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+ 
+    --popover: 224 71.4% 4.1%;
+    --popover-foreground: 210 20% 98%;
+ 
+    --card: 224 71.4% 4.1%;
+    --card-foreground: 210 20% 98%;
+ 
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+ 
+    --primary: 210 20% 98%;
+    --primary-foreground: 220.9 39.3% 11%;
+ 
+    --secondary: 215 27.9% 16.9%;
+    --secondary-foreground: 210 20% 98%;
+ 
+    --accent: 215 27.9% 16.9%;
+    --accent-foreground: 210 20% 98%;
+ 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --destructive-foreground: 0 85.7% 97.3%;
+ 
+    --ring: 215 27.9% 16.9%;
   }
 }
-
+ 
 @layer base {
   * {
     @apply border-border;
@@ -77,68 +77,37 @@
   }
 }
 
-/* Custom components */
-@layer components {
-  .settings-tab {
-    @apply px-4 py-3 text-gray-600 text-sm font-medium hover:bg-gray-50 border-b-2 border-transparent;
-  }
-  
-  .settings-tab.active {
-    @apply text-valorwell-700 border-valorwell-700 bg-gray-50;
-  }
-  
-  .sidebar-link {
-    @apply flex items-center gap-2 px-3 py-2 rounded-md text-gray-600 transition-colors hover:bg-gray-100;
-  }
-  
-  .sidebar-link.active {
-    @apply bg-valorwell-50 text-valorwell-700 font-medium;
-  }
-  
-  /* Animation for fade-in effect */
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease-in-out;
-  }
-  
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  
-  /* Calendar specific styles */
-  .calendar-day {
-    @apply h-full w-full p-1 relative hover:bg-gray-50 transition-colors;
-  }
-  
-  .calendar-day-current-month {
-    @apply bg-white;
-  }
-  
-  .calendar-day-other-month {
-    @apply bg-gray-50 text-gray-400;
-  }
-  
-  .calendar-appointment {
-    @apply p-1 my-1 text-xs rounded border-l-4 truncate cursor-pointer hover:shadow-sm transition-shadow;
-  }
-  
-  .calendar-appointment-consultation {
-    @apply bg-blue-50 border-blue-500;
-  }
-  
-  .calendar-appointment-session {
-    @apply bg-green-50 border-green-500;
-  }
-  
-  .calendar-appointment-group {
-    @apply bg-purple-50 border-purple-500;
-  }
-  
-  .calendar-appointment-assessment {
-    @apply bg-amber-50 border-amber-500;
-  }
+/* Custom CSS for the Settings page tabs */
+.settings-tab {
+  @apply px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 border-b-2 border-transparent;
+}
+
+.settings-tab.active {
+  @apply text-blue-600 border-blue-600;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* PDF Generation Styles */
+.generating-pdf .form-control {
+  border: none !important;
+  background: white !important;
+}
+
+.generating-pdf button {
+  display: none !important;
+}
+
+.generating-pdf {
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 15mm;
+  font-size: 12pt;
 }

@@ -3,10 +3,25 @@ import { format, addMinutes, startOfDay, setHours, setMinutes, isSameDay, differ
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
 
 interface DayViewProps {
   currentDate: Date;
   clinicianId: string | null;
+  refreshTrigger?: number;
+  appointments?: Array<{
+    id: string;
+    client_id: string;
+    date: string; 
+    start_time: string;
+    end_time: string;
+    type: string;
+    status: string;
+  }>;
+  getClientName?: (clientId: string) => string;
+  onAppointmentClick?: (appointment: any) => void;
+  onAvailabilityClick?: (date: Date, availabilityBlock: any) => void;
+  userTimeZone?: string;
 }
 
 interface AvailabilityBlock {
@@ -14,51 +29,126 @@ interface AvailabilityBlock {
   day_of_week: string;
   start_time: string;
   end_time: string;
+  isException?: boolean;
+}
+
+interface AvailabilityException {
+  id: string;
+  specific_date: string;
+  original_availability_id: string;
+  start_time: string | null;
+  end_time: string | null;
+  is_deleted: boolean;
 }
 
 interface TimeBlock {
   start: Date;
   end: Date;
   availabilityIds: string[];
+  isException?: boolean;
 }
 
-const DayView: React.FC<DayViewProps> = ({ currentDate, clinicianId }) => {
+interface AppointmentBlock {
+  id: string;
+  start: Date;
+  end: Date;
+  clientId: string;
+  type: string;
+  clientName?: string;
+}
+
+const DayView: React.FC<DayViewProps> = ({ 
+  currentDate, 
+  clinicianId, 
+  refreshTrigger = 0,
+  appointments = [],
+  getClientName = () => 'Client',
+  onAppointmentClick,
+  onAvailabilityClick,
+  userTimeZone
+}) => {
   const [loading, setLoading] = useState(true);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
+  const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
+  const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
+  const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
 
-  // Generate time slots for the day (from 8 AM to 6 PM, in 30-minute increments)
   const timeSlots = Array.from({ length: 21 }, (_, i) => {
-    const minutes = i * 30; // 30-minute increments
+    const minutes = i * 30;
     return addMinutes(setHours(startOfDay(currentDate), 8), minutes);
   });
 
-  // Get day of week from current date
-  const dayOfWeek = format(currentDate, 'EEEE'); // Returns Monday, Tuesday, etc.
+  const dayOfWeek = format(currentDate, 'EEEE');
+  const formattedDate = format(currentDate, 'yyyy-MM-dd');
 
   useEffect(() => {
-    const fetchAvailability = async () => {
+    if (!appointments.length) {
+      setAppointmentBlocks([]);
+      return;
+    }
+
+    const blocks: AppointmentBlock[] = appointments.map(appointment => {
+      const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
+      const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
+
+      const dateObj = parseISO(appointment.date);
+      const start = setMinutes(setHours(startOfDay(dateObj), startHour), startMinute);
+      const end = setMinutes(setHours(startOfDay(dateObj), endHour), endMinute);
+
+      return {
+        id: appointment.id,
+        start,
+        end,
+        clientId: appointment.client_id,
+        type: appointment.type,
+        clientName: getClientName(appointment.client_id)
+      };
+    });
+
+    setAppointmentBlocks(blocks);
+  }, [appointments, getClientName]);
+
+  useEffect(() => {
+    const fetchAvailabilityAndExceptions = async () => {
       setLoading(true);
       try {
-        // Build query for availability blocks
-        let query = supabase
+        let availabilityQuery = supabase
           .from('availability')
           .select('*')
           .eq('day_of_week', dayOfWeek)
           .eq('is_active', true);
 
-        // Add clinician filter if provided
         if (clinicianId) {
-          query = query.eq('clinician_id', clinicianId);
+          availabilityQuery = availabilityQuery.eq('clinician_id', clinicianId);
         }
 
-        const { data, error } = await query;
+        const { data: availabilityData, error: availabilityError } = await availabilityQuery;
 
-        if (error) {
-          console.error('Error fetching availability:', error);
+        if (availabilityError) {
+          console.error('Error fetching availability:', availabilityError);
         } else {
-          console.log('DayView availability data:', data);
-          // Process availability data into continuous blocks
-          processAvailabilityBlocks(data || []);
+          console.log('DayView availability data:', availabilityData);
+          setAvailabilityBlocks(availabilityData || []);
+          
+          if (availabilityData && availabilityData.length > 0 && clinicianId) {
+            const availabilityIds = availabilityData.map(block => block.id);
+            
+            const { data: exceptionsData, error: exceptionsError } = await supabase
+              .from('availability_exceptions')
+              .select('*')
+              .eq('clinician_id', clinicianId)
+              .eq('specific_date', formattedDate)
+              .in('original_availability_id', availabilityIds);
+              
+            if (exceptionsError) {
+              console.error('Error fetching availability exceptions:', exceptionsError);
+            } else {
+              console.log('DayView exceptions data:', exceptionsData);
+              setExceptions(exceptionsData || []);
+            }
+          }
+          
+          processAvailabilityWithExceptions(availabilityData || [], exceptions || []);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -67,18 +157,41 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, clinicianId }) => {
       }
     };
 
-    fetchAvailability();
-  }, [dayOfWeek, clinicianId]);
+    fetchAvailabilityAndExceptions();
+  }, [dayOfWeek, clinicianId, refreshTrigger, formattedDate]);
 
-  // Process availability blocks into continuous time blocks
-  const processAvailabilityBlocks = (blocks: AvailabilityBlock[]) => {
+  const processAvailabilityWithExceptions = (blocks: AvailabilityBlock[], exceptions: AvailabilityException[]) => {
     if (!blocks.length) {
       setTimeBlocks([]);
       return;
     }
 
-    // Parse blocks into Date objects
-    const parsedBlocks = blocks.map(block => {
+    const exceptionsMap: Record<string, AvailabilityException> = {};
+    exceptions.forEach(exception => {
+      exceptionsMap[exception.original_availability_id] = exception;
+    });
+
+    const effectiveBlocks = blocks
+      .filter(block => {
+        const exception = exceptionsMap[block.id];
+        return !exception || !exception.is_deleted;
+      })
+      .map(block => {
+        const exception = exceptionsMap[block.id];
+        
+        if (exception && exception.start_time && exception.end_time) {
+          return {
+            ...block,
+            start_time: exception.start_time,
+            end_time: exception.end_time,
+            isException: true
+          };
+        }
+        
+        return block;
+      });
+
+    const parsedBlocks = effectiveBlocks.map(block => {
       const [startHour, startMinute] = block.start_time.split(':').map(Number);
       const [endHour, endMinute] = block.end_time.split(':').map(Number);
 
@@ -88,32 +201,32 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, clinicianId }) => {
       return {
         id: block.id,
         start,
-        end
+        end,
+        isException: block.isException
       };
     });
 
-    // Sort blocks by start time
     parsedBlocks.sort((a, b) => a.start.getTime() - b.start.getTime());
 
-    // Merge overlapping blocks
     const mergedBlocks: TimeBlock[] = [];
 
     parsedBlocks.forEach(block => {
       const lastBlock = mergedBlocks[mergedBlocks.length - 1];
 
       if (lastBlock && block.start <= lastBlock.end) {
-        // Blocks overlap, extend the end time if needed
         if (block.end > lastBlock.end) {
           lastBlock.end = block.end;
         }
-        // Add this block's ID to the list of availability IDs
         lastBlock.availabilityIds.push(block.id);
+        if (block.isException) {
+          lastBlock.isException = true;
+        }
       } else {
-        // No overlap, add as a new block
         mergedBlocks.push({
           start: block.start,
           end: block.end,
-          availabilityIds: [block.id]
+          availabilityIds: [block.id],
+          isException: block.isException
         });
       }
     });
@@ -121,7 +234,6 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, clinicianId }) => {
     setTimeBlocks(mergedBlocks);
   };
 
-  // Check if a time slot is within an availability block
   const isTimeSlotAvailable = (timeSlot: Date) => {
     return timeBlocks.some(block =>
       timeSlot >= block.start &&
@@ -129,12 +241,33 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, clinicianId }) => {
     );
   };
 
-  // Get the continuous block that a time slot belongs to
   const getBlockForTimeSlot = (timeSlot: Date) => {
     return timeBlocks.find(block =>
       timeSlot >= block.start &&
       timeSlot < block.end
     );
+  };
+
+  const getAvailabilityForBlock = (blockId: string) => {
+    return availabilityBlocks.find(block => block.id === blockId);
+  };
+
+  const handleAvailabilityBlockClick = (block: TimeBlock) => {
+    if (!onAvailabilityClick || !block.availabilityIds.length) return;
+    
+    const availabilityId = block.availabilityIds[0];
+    const availabilityBlock = getAvailabilityForBlock(availabilityId);
+    
+    if (availabilityBlock) {
+      onAvailabilityClick(currentDate, availabilityBlock);
+    }
+  };
+
+  const getAppointmentForTimeSlot = (timeSlot: Date) => {
+    return appointmentBlocks.find(block => {
+      const slotTime = new Date(timeSlot);
+      return slotTime >= block.start && slotTime < block.end;
+    });
   };
 
   if (loading) {
@@ -151,29 +284,29 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, clinicianId }) => {
         {timeSlots.map((timeSlot, index) => {
           const isAvailable = isTimeSlotAvailable(timeSlot);
           const currentBlock = getBlockForTimeSlot(timeSlot);
+          const appointment = getAppointmentForTimeSlot(timeSlot);
+          
           const isStartOfBlock = currentBlock &&
             differenceInMinutes(timeSlot, currentBlock.start) < 30;
           const isEndOfBlock = currentBlock &&
             differenceInMinutes(currentBlock.end, addMinutes(timeSlot, 30)) < 30;
 
-          // Determine if this slot should show a continuous block visual
+          const isStartOfAppointment = appointment && 
+            differenceInMinutes(timeSlot, appointment.start) < 30;
+
           let showContinuousBlock = false;
           let continuousBlockClass = "";
 
-          if (isAvailable) {
+          if (isAvailable && !appointment) {
             showContinuousBlock = true;
 
             if (isStartOfBlock && isEndOfBlock) {
-              // This is a single-slot block
               continuousBlockClass = "rounded";
             } else if (isStartOfBlock) {
-              // This is the start of a block
               continuousBlockClass = "rounded-t border-b-0";
             } else if (isEndOfBlock) {
-              // This is the end of a block
               continuousBlockClass = "rounded-b";
             } else {
-              // This is the middle of a block
               continuousBlockClass = "border-t-0 border-b-0";
             }
           }
@@ -184,19 +317,56 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, clinicianId }) => {
               className="flex p-2 min-h-[60px] group border-b border-gray-100 hover:bg-gray-50"
             >
               <div className="w-20 text-sm text-gray-500 font-medium">
-                {format(timeSlot, 'h:mm a')}
+                {formatDateToTime12Hour(timeSlot)}
               </div>
 
               <div className="flex-1">
-                {showContinuousBlock ? (
+                {appointment && isStartOfAppointment ? (
+                  <div 
+                    className="p-2 bg-blue-50 border-l-4 border-blue-500 rounded text-sm h-full cursor-pointer hover:bg-blue-100 transition-colors"
+                    onClick={() => {
+                      if (onAppointmentClick) {
+                        const originalAppointment = appointments.find(app => app.id === appointment.id);
+                        if (originalAppointment) {
+                          onAppointmentClick(originalAppointment);
+                        }
+                      }
+                    }}
+                  >
+                    <div className="font-medium">{appointment.clientName}</div>
+                    <div className="text-xs text-gray-600">
+                      {appointment.type} - {formatDateToTime12Hour(appointment.start)} to {formatDateToTime12Hour(appointment.end)}
+                    </div>
+                  </div>
+                ) : appointment && !isStartOfAppointment ? (
+                  <div 
+                    className="p-2 bg-blue-50 border-l-4 border-blue-500 border-t-0 text-sm h-full opacity-75 cursor-pointer hover:bg-blue-100 transition-colors"
+                    onClick={() => {
+                      if (onAppointmentClick) {
+                        const originalAppointment = appointments.find(app => app.id === appointment.id);
+                        if (originalAppointment) {
+                          onAppointmentClick(originalAppointment);
+                        }
+                      }
+                    }}
+                  >
+                    {/* Continuation of appointment block */}
+                  </div>
+                ) : showContinuousBlock ? (
                   <div
-                    className={`p-2 bg-green-50 border-l-4 border-green-500 ${continuousBlockClass} rounded text-sm h-full`}
+                    className={`p-2 ${currentBlock?.isException ? 'bg-teal-50 border-teal-500' : 'bg-green-50 border-green-500'} border-l-4 ${continuousBlockClass} rounded text-sm h-full cursor-pointer hover:opacity-90 transition-colors`}
+                    onClick={() => currentBlock && handleAvailabilityBlockClick(currentBlock)}
                   >
                     {isStartOfBlock && (
                       <>
-                        <div className="font-medium">Available</div>
+                        <div className="font-medium flex items-center">
+                          Available
+                          {currentBlock?.isException && (
+                            <span className="ml-2 text-xs px-1.5 py-0.5 bg-teal-100 text-teal-800 rounded-full">Modified</span>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-600">
-                          {format(currentBlock.start, 'h:mm a')} - {format(currentBlock.end, 'h:mm a')}
+                          {formatDateToTime12Hour(currentBlock.start)} - {formatDateToTime12Hour(currentBlock.end)}
                         </div>
                       </>
                     )}

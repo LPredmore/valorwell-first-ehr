@@ -42,6 +42,147 @@ export const formatDateForDB = (date: Date | null): string | null => {
   return date.toISOString().split('T')[0];
 };
 
+// New function to get or create a video room for an appointment
+export const getOrCreateVideoRoom = async (appointmentId: string) => {
+  try {
+    console.log('Getting or creating video room for appointment:', appointmentId);
+    
+    // First check if the appointment already has a video room URL
+    const { data: appointment, error: fetchError } = await supabase
+      .from('appointments')
+      .select('video_room_url')
+      .eq('id', appointmentId)
+      .single();
+      
+    if (fetchError) {
+      console.error('Error fetching appointment:', fetchError);
+      throw fetchError;
+    }
+    
+    // If a video room URL already exists, return it
+    if (appointment && appointment.video_room_url) {
+      console.log('Appointment already has video room URL:', appointment.video_room_url);
+      return { url: appointment.video_room_url, success: true };
+    }
+    
+    console.log('Creating new video room via Edge Function');
+    // Otherwise, create a new room via the Edge Function
+    const { data, error } = await supabase.functions.invoke('create-daily-room', {
+      body: { appointmentId }
+    });
+    
+    if (error) {
+      console.error('Edge function error:', error);
+      throw error;
+    }
+    
+    if (!data?.url) {
+      console.error('No URL returned from edge function:', data);
+      throw new Error('Failed to get video room URL');
+    }
+    
+    console.log('Video room created, URL:', data.url);
+    
+    // Store the room URL in the appointment record
+    const { error: updateError } = await supabase
+      .from('appointments')
+      .update({ video_room_url: data.url })
+      .eq('id', appointmentId);
+      
+    if (updateError) {
+      console.error('Error updating appointment with video URL:', updateError);
+      throw updateError;
+    }
+    
+    return { url: data.url, success: true };
+  } catch (error) {
+    console.error('Error getting/creating video room:', error);
+    return { success: false, error };
+  }
+};
+
+// New function to fetch clinical documents for a client
+export const fetchClinicalDocuments = async (clientId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('clinical_documents')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('document_date', { ascending: false });
+      
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching clinical documents:', error);
+    return [];
+  }
+};
+
+// New function to get document download URL
+export const getDocumentDownloadURL = async (filePath: string) => {
+  try {
+    const { data, error } = await supabase.storage
+      .from('clinical_documents')
+      .createSignedUrl(filePath, 60); // 60 seconds expiration
+      
+    if (error) throw error;
+    return data.signedUrl;
+  } catch (error) {
+    console.error('Error getting document download URL:', error);
+    return null;
+  }
+};
+
+// New interface for PHQ9 assessment data
+export interface PHQ9Assessment {
+  client_id: string;
+  assessment_date: string;
+  question_1: number;
+  question_2: number;
+  question_3: number;
+  question_4: number;
+  question_5: number;
+  question_6: number;
+  question_7: number;
+  question_8: number;
+  question_9: number;
+  total_score: number;
+  additional_notes?: string;
+}
+
+// New function to save PHQ-9 assessment
+export const savePHQ9Assessment = async (assessment: PHQ9Assessment) => {
+  try {
+    const { data, error } = await supabase
+      .from('phq9_assessments')
+      .insert([assessment])
+      .select();
+      
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error saving PHQ9 assessment:', error);
+    return { success: false, error };
+  }
+};
+
+// Function to fetch PHQ-9 assessments for a client
+export const fetchPHQ9Assessments = async (clientId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('phq9_assessments')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('assessment_date', { ascending: false });
+      
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching PHQ9 assessments:', error);
+    return [];
+  }
+};
+
 // Interface for CPT Code
 export interface CPTCode {
   code: string;
@@ -68,9 +209,16 @@ export interface PracticeInfo {
 // User management functions
 export const createUser = async (email: string, userData: any) => {
   try {
+    // Ensure userData contains temp_password
+    if (!userData.temp_password) {
+      // Generate a random temporary password if not provided
+      userData.temp_password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+      console.log(`Generated temporary password for ${email}: ${userData.temp_password}`);
+    }
+    
     const { data, error } = await supabase.auth.admin.createUser({
       email,
-      password: 'temppass1234',
+      password: userData.temp_password, // Use the same password for auth and metadata
       email_confirm: true,
       user_metadata: userData
     });
