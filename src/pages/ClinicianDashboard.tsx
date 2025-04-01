@@ -319,7 +319,8 @@ const ClinicianDashboard = () => {
       <Layout>
         <SessionNoteTemplate 
           onClose={closeSessionTemplate}
-          clinicianName={clinicianData?.clinician_name || ''}
+          clinicianName={clinicianData?.clinician_professional_name || ''}
+          clinicianNameInsurance={clinicianData?.clinician_nameinsurance || ''}
           clientData={clientData}
           appointmentDate={currentAppointment.date}
         />

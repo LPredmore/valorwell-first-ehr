@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +18,7 @@ import { ClientDetails } from '@/types/client';
 interface SessionNoteTemplateProps {
   onClose: () => void;
   clinicianName?: string;
-  clinicianNameInsurance?: string; // Added new prop for insurance name
+  clinicianNameInsurance?: string;
   clientData?: ClientDetails | null;
   appointmentDate?: string;
 }
@@ -27,6 +26,7 @@ interface SessionNoteTemplateProps {
 const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   onClose,
   clinicianName = '',
+  clinicianNameInsurance = '',
   clientData = null,
   appointmentDate = ''
 }) => {
@@ -103,7 +103,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         sessionDate: appointmentDate,
         patientName: `${clientData.client_first_name || ''} ${clientData.client_last_name || ''}`,
         patientDOB: clientData.client_date_of_birth || '',
-        clinicianName: clinicianName || '',
+        clinicianName: clinicianNameInsurance || clinicianName || '',
         diagnosis: (clientData.client_diagnosis || []).join(', '),
         planType: clientData.client_planlength || '',
         treatmentFrequency: clientData.client_treatmentfrequency || '',
@@ -159,7 +159,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         insightJudgement: clientData.client_insightjudgement && !['Good'].includes(clientData.client_insightjudgement)
       });
     }
-  }, [clientData, clinicianName, appointmentDate]);
+  }, [clientData, clinicianName, clinicianNameInsurance, appointmentDate]);
 
   useEffect(() => {
     validateForm();
