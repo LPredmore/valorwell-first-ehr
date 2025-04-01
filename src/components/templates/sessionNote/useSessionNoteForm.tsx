@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { supabase, fetchPHQ9Assessments } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClientDetails } from '@/types/client';
 
@@ -19,7 +19,6 @@ export const useSessionNoteForm = ({
 }: UseSessionNoteFormProps) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingPHQ9, setIsLoadingPHQ9] = useState(false);
 
   const [formState, setFormState] = useState({
     sessionDate: '',
@@ -66,23 +65,7 @@ export const useSessionNoteForm = ({
     treatmentGoalNarrative: '',
     sessionNarrative: '',
     nextTreatmentPlanUpdate: '',
-    signature: '',
-    
-    // New PHQ-9 assessment data
-    phq9Assessment: null as {
-      totalScore: number | null;
-      assessmentDate: string | null;
-      question1: number | null;
-      question2: number | null;
-      question3: number | null;
-      question4: number | null;
-      question5: number | null;
-      question6: number | null;
-      question7: number | null;
-      question8: number | null;
-      question9: number | null;
-      additionalNotes: string | null;
-    } | null
+    signature: ''
   });
 
   const [editModes, setEditModes] = useState({
@@ -161,7 +144,7 @@ export const useSessionNoteForm = ({
     }
   }, [clientData, clinicianName]);
 
-  // Load appointment data and fetch PHQ9 assessment
+  // Load appointment data
   useEffect(() => {
     if (appointment && appointment.client) {
       const appointmentDate = appointment.date ? new Date(appointment.date).toISOString().split('T')[0] : '';
@@ -174,50 +157,8 @@ export const useSessionNoteForm = ({
           ? `${appointment.client.client_first_name} ${appointment.client.client_last_name}`
           : prevState.patientName
       }));
-
-      // Fetch PHQ-9 assessment for this client and session date
-      if (clientData?.id && appointmentDate) {
-        fetchPHQ9Assessment(clientData.id, appointmentDate);
-      }
     }
-  }, [appointment, clientData]);
-
-  // Function to fetch PHQ-9 assessment
-  const fetchPHQ9Assessment = async (clientId: string, sessionDate: string) => {
-    try {
-      setIsLoadingPHQ9(true);
-      const assessments = await fetchPHQ9Assessments(clientId);
-      
-      // Find assessment with matching date or closest previous date
-      const matchingAssessment = assessments
-        .filter(assessment => assessment.assessment_date <= sessionDate)
-        .sort((a, b) => new Date(b.assessment_date).getTime() - new Date(a.assessment_date).getTime())[0];
-      
-      if (matchingAssessment) {
-        setFormState(prevState => ({
-          ...prevState,
-          phq9Assessment: {
-            totalScore: matchingAssessment.total_score,
-            assessmentDate: matchingAssessment.assessment_date,
-            question1: matchingAssessment.question_1,
-            question2: matchingAssessment.question_2,
-            question3: matchingAssessment.question_3,
-            question4: matchingAssessment.question_4,
-            question5: matchingAssessment.question_5,
-            question6: matchingAssessment.question_6,
-            question7: matchingAssessment.question_7,
-            question8: matchingAssessment.question_8,
-            question9: matchingAssessment.question_9,
-            additionalNotes: matchingAssessment.additional_notes || null
-          }
-        }));
-      }
-    } catch (error) {
-      console.error('Error fetching PHQ-9 assessment:', error);
-    } finally {
-      setIsLoadingPHQ9(false);
-    }
-  };
+  }, [appointment]);
 
   const handleChange = (field: string, value: string) => {
     setFormState({
@@ -318,7 +259,6 @@ export const useSessionNoteForm = ({
     formState,
     editModes,
     isSubmitting,
-    isLoadingPHQ9,
     handleChange,
     toggleEditMode,
     handleSave

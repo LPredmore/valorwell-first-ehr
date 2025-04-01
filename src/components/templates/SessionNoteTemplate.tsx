@@ -8,7 +8,6 @@ import { ClientInfoSection } from './sessionNote/ClientInfoSection';
 import { MentalStatusSection } from './sessionNote/MentalStatusSection';
 import { TreatmentObjectivesSection } from './sessionNote/TreatmentObjectivesSection';
 import { SessionAssessmentSection } from './sessionNote/SessionAssessmentSection';
-import { PHQ9AssessmentSection } from './sessionNote/PHQ9AssessmentSection';
 import { Textarea } from "@/components/ui/textarea";
 
 const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
@@ -21,7 +20,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     formState,
     editModes,
     isSubmitting,
-    isLoadingPHQ9,
     handleChange,
     toggleEditMode,
     handleSave
@@ -107,16 +105,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           formState={formState} 
           handleChange={handleChange} 
         />
-
-        {/* PHQ-9 Assessment Section */}
-        {isLoadingPHQ9 ? (
-          <div className="mb-6 mt-6">
-            <h4 className="text-md font-medium text-gray-800 mb-4">PHQ-9 Assessment</h4>
-            <p className="text-gray-500">Loading PHQ-9 assessment data...</p>
-          </div>
-        ) : (
-          <PHQ9AssessmentSection formState={formState} />
-        )}
 
         {/* Session Assessment Section */}
         <SessionAssessmentSection 
