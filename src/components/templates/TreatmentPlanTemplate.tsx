@@ -37,6 +37,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [showSecondaryObjective, setShowSecondaryObjective] = useState(false);
   const [showTertiaryObjective, setShowTertiaryObjective] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
   
   // Initialize form state from client data
   const [formState, setFormState] = useState({
@@ -61,6 +62,38 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
     nextUpdate: clientData?.client_nexttreatmentplanupdate || '',
     privateNote: clientData?.client_privatenote || ''
   });
+
+  // Validate form fields
+  const validateForm = () => {
+    // Check required fields that are always visible
+    const baseFieldsValid = [
+      !!formState.planLength,
+      !!formState.treatmentFrequency,
+      formState.diagnosisCodes?.length > 0,
+      !!formState.problemNarrative.trim(),
+      !!formState.treatmentGoalNarrative.trim(),
+      !!formState.primaryObjective.trim(),
+      !!formState.intervention1.trim(),
+      !!formState.intervention2.trim(),
+      !!formState.nextUpdate.trim()
+    ].every(Boolean);
+    
+    // Check secondary objective fields if visible
+    const secondaryFieldsValid = !showSecondaryObjective || [
+      !!formState.secondaryObjective.trim(),
+      !!formState.intervention3.trim(),
+      !!formState.intervention4.trim()
+    ].every(Boolean);
+    
+    // Check tertiary objective fields if visible
+    const tertiaryFieldsValid = !showTertiaryObjective || [
+      !!formState.tertiaryObjective.trim(),
+      !!formState.intervention5.trim(),
+      !!formState.intervention6.trim()
+    ].every(Boolean);
+    
+    return baseFieldsValid && secondaryFieldsValid && tertiaryFieldsValid;
+  };
 
   // Update form state if clientData changes
   useEffect(() => {
@@ -93,6 +126,11 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
       setShowTertiaryObjective(!!clientData.client_tertiaryobjective);
     }
   }, [clientData, clinicianName]);
+
+  // Check form validity whenever form state changes
+  useEffect(() => {
+    setIsFormValid(validateForm());
+  }, [formState, showSecondaryObjective, showTertiaryObjective]);
 
   const handleChange = (field: string, value: any) => {
     setFormState(prev => ({ ...prev, [field]: value }));
@@ -495,7 +533,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
             <Button 
               className="bg-valorwell-700 hover:bg-valorwell-800" 
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || !isFormValid}
             >
               {isSaving ? "Saving..." : "Save Treatment Plan"}
             </Button>
