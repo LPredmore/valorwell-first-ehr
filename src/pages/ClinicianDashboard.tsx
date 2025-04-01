@@ -181,12 +181,14 @@ const ClinicianDashboard = () => {
   const timeZoneDisplay = formatTimeZoneDisplay(clinicianTimeZone);
 
   const openDocumentDialog = (appointment: Appointment) => {
+    console.log("Opening document dialog for appointment:", appointment);
     setCurrentAppointment(appointment);
     setIsDocumentDialogOpen(true);
     setSelectedStatus(undefined);
   };
 
   const handleStatusChange = (value: string) => {
+    console.log("Status changed to:", value);
     setSelectedStatus(value);
     if (value === 'occurred') {
       setIsDocumentDialogOpen(false);
@@ -236,8 +238,10 @@ const ClinicianDashboard = () => {
   };
 
   const closeSessionTemplate = () => {
+    console.log("Closing session template");
     setShowSessionTemplate(false);
     setSelectedStatus(undefined);
+    refetch(); // Refresh appointments after closing template
   };
 
   const renderAppointmentCard = (appointment: Appointment, showStartButton = false) => (
@@ -315,6 +319,8 @@ const ClinicianDashboard = () => {
   );
 
   if (showSessionTemplate && currentAppointment) {
+    console.log("Rendering SessionNoteTemplate with clientData:", clientData);
+    console.log("Appointment date:", currentAppointment.date);
     return (
       <Layout>
         <SessionNoteTemplate 

@@ -95,6 +95,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   useEffect(() => {
     const fetchSessionTypes = async () => {
       try {
+        console.log("Fetching CPT codes for session types");
         const { data, error } = await supabase
           .from('cpt_codes')
           .select('code, name')
@@ -105,6 +106,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           return;
         }
         
+        console.log("Fetched session types:", data);
         setSessionTypes(data || []);
       } catch (error) {
         console.error('Error in fetchSessionTypes:', error);
@@ -119,6 +121,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
       if (!clientData?.id) return;
       
       try {
+        console.log("Fetching latest PHQ9 assessment for client:", clientData.id);
         const { data, error } = await supabase
           .from('phq9_assessments')
           .select('phq9_narrative')
@@ -131,6 +134,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           return;
         }
         
+        console.log("Fetched PHQ9 narrative:", data);
         if (data && data.length > 0 && data[0].phq9_narrative) {
           setPhq9Narrative(data[0].phq9_narrative);
           handleChange('phq9Narrative', data[0].phq9_narrative);
@@ -145,6 +149,11 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
 
   useEffect(() => {
     if (clientData) {
+      console.log("Setting form state from client data:", clientData);
+      console.log("Clinician name:", clinicianName);
+      console.log("Clinician name insurance:", clinicianNameInsurance);
+      console.log("Appointment date:", appointmentDate);
+      
       const existingDiagnosis = clientData.client_diagnosis && clientData.client_diagnosis.length > 0;
       setHasExistingDiagnosis(existingDiagnosis);
       if (existingDiagnosis) {
