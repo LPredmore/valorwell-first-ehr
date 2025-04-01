@@ -191,13 +191,14 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
       console.log('Cancelling availability:', {
         clinicianId,
         specificDate: formattedDate,
-        originalAvailabilityId: availabilityBlock.id
+        originalAvailabilityId: availabilityBlock.id,
+        isException: availabilityBlock.isException
       });
       
       // Check if an exception already exists
       const { data: existingException, error: checkError } = await supabase
         .from('availability_exceptions')
-        .select('id')
+        .select('id, original_availability_id')
         .eq('clinician_id', clinicianId)
         .eq('specific_date', formattedDate)
         .eq('original_availability_id', availabilityBlock.id)
@@ -226,15 +227,24 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
         }
       } else {
         // Create new exception marked as deleted
-        console.log('Creating new deleted exception');
+        // For availability blocks that are already exceptions, use null for original_availability_id
+        const insertData = {
+          clinician_id: clinicianId,
+          specific_date: formattedDate,
+          is_deleted: true
+        };
+
+        // Only add original_availability_id if it references a valid entry in the availability table
+        // If it's an exception, don't include the original_availability_id field
+        if (!availabilityBlock.isException) {
+          // @ts-ignore - TypeScript doesn't know we're conditionally adding a field
+          insertData.original_availability_id = availabilityBlock.id;
+        }
+        
+        console.log('Creating new deleted exception with data:', insertData);
         const { error: insertError } = await supabase
           .from('availability_exceptions')
-          .insert({
-            clinician_id: clinicianId,
-            specific_date: formattedDate,
-            original_availability_id: availabilityBlock.id,
-            is_deleted: true
-          });
+          .insert(insertData);
           
         if (insertError) {
           console.error('Error inserting deleted exception:', insertError);
