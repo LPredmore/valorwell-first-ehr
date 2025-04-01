@@ -14,22 +14,46 @@ serve(async (req) => {
   }
 
   try {
+    console.log("generate-phq9-narrative function called");
+    
     // Get the request body
-    const { assessment, clientId } = await req.json();
+    const requestData = await req.json();
+    console.log("Request data received:", JSON.stringify(requestData, null, 2));
+    
+    const { assessment, clientId } = requestData;
+    
+    if (!assessment || !clientId) {
+      console.error('Missing required parameters:', { 
+        hasAssessment: !!assessment, 
+        hasClientId: !!clientId 
+      });
+      throw new Error('Assessment data and client ID are required');
+    }
     
     // Get environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY') || '';
     
+    console.log("Environment variables check:", { 
+      hasSupabaseUrl: !!supabaseUrl, 
+      hasSupabaseServiceKey: !!supabaseServiceKey, 
+      hasDeepseekApiKey: !!deepseekApiKey 
+    });
+    
     if (!deepseekApiKey) {
       throw new Error('DeepSeek API key not configured');
+    }
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase configuration missing');
     }
 
     // Initialize Supabase client with service role for admin access
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Fetch client details
+    console.log("Fetching client data for ID:", clientId);
     const { data: clientData, error: clientError } = await supabase
       .from('clients')
       .select('client_first_name, client_last_name')
@@ -41,7 +65,10 @@ serve(async (req) => {
       throw new Error('Could not fetch client information');
     }
     
+    console.log("Client data retrieved:", clientData);
+    
     // Fetch historical PHQ-9 assessments for this client (up to the last 5)
+    console.log("Fetching historical PHQ-9 assessments");
     const { data: historicalAssessments, error: historyError } = await supabase
       .from('phq9_assessments')
       .select('*')
@@ -54,10 +81,14 @@ serve(async (req) => {
       throw new Error('Could not fetch historical assessment data');
     }
     
+    console.log(`Retrieved ${historicalAssessments?.length || 0} historical assessments`);
+    
     // Filter out the current assessment to get only previous ones
     const previousAssessments = historicalAssessments.filter(
       item => item.id !== assessment.id
     ).slice(0, 5); // Limit to 5 previous assessments
+    
+    console.log(`Found ${previousAssessments.length} previous assessments for comparison`);
     
     // Get severity description based on total score
     const getSeverity = (score) => {
@@ -146,13 +177,17 @@ The impression should be factual, objective, and based only on the PHQ-9 data pr
       })
     });
     
+    const deepseekResponseStatus = deepseekResponse.status;
+    console.log(`DeepSeek API response status: ${deepseekResponseStatus}`);
+    
     if (!deepseekResponse.ok) {
-      const errorData = await deepseekResponse.text();
-      console.error('DeepSeek API error:', errorData);
-      throw new Error(`DeepSeek API returned error: ${deepseekResponse.status}`);
+      const errorText = await deepseekResponse.text();
+      console.error('DeepSeek API error:', errorText);
+      throw new Error(`DeepSeek API returned error ${deepseekResponseStatus}: ${errorText}`);
     }
     
     const aiData = await deepseekResponse.json();
+    console.log("DeepSeek API response:", JSON.stringify(aiData, null, 2));
     
     if (!aiData.choices || !aiData.choices[0] || !aiData.choices[0].message) {
       console.error('Unexpected DeepSeek API response format:', aiData);
@@ -163,6 +198,7 @@ The impression should be factual, objective, and based only on the PHQ-9 data pr
     console.log("Generated narrative:", narrative);
     
     // Update the assessment with the generated narrative
+    console.log(`Updating assessment ${assessment.id} with generated narrative`);
     const { error: updateError } = await supabase
       .from('phq9_assessments')
       .update({ phq9_narrative: narrative })
@@ -172,6 +208,8 @@ The impression should be factual, objective, and based only on the PHQ-9 data pr
       console.error('Error updating assessment with narrative:', updateError);
       throw new Error('Failed to save narrative to assessment');
     }
+    
+    console.log("Successfully updated assessment with narrative");
     
     // Return the generated narrative
     return new Response(

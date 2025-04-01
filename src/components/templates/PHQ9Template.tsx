@@ -95,6 +95,11 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({
   // Function to generate the PHQ-9 narrative using our new edge function
   const generatePHQ9Narrative = async (assessmentData: any) => {
     try {
+      console.log('Calling generate-phq9-narrative edge function with data:', {
+        assessment: assessmentData,
+        clientId: clientData?.id
+      });
+      
       const { data, error } = await supabase.functions.invoke('generate-phq9-narrative', {
         body: {
           assessment: assessmentData,
@@ -103,13 +108,35 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({
       });
       
       if (error) {
-        console.error('Error generating PHQ-9 narrative:', error);
+        console.error('Error calling generate-phq9-narrative edge function:', error);
+        toast({
+          title: "Error",
+          description: `Failed to generate narrative: ${error.message}`,
+          variant: "destructive"
+        });
+        return null;
+      }
+      
+      console.log('Edge function response:', data);
+      
+      if (!data || !data.narrative) {
+        console.error('Edge function did not return a narrative:', data);
+        toast({
+          title: "Warning",
+          description: "The narrative generation service returned an invalid response",
+          variant: "destructive"
+        });
         return null;
       }
       
       return data.narrative;
     } catch (error) {
       console.error('Exception in generatePHQ9Narrative:', error);
+      toast({
+        title: "Error",
+        description: `Error generating narrative: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive"
+      });
       return null;
     }
   };
@@ -137,6 +164,8 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({
           additional_notes: additionalNotes
         };
         
+        console.log('Saving PHQ-9 assessment data:', assessmentData);
+        
         // Save the assessment to the database
         const result = await savePHQ9Assessment(assessmentData);
         
@@ -160,10 +189,44 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({
                 id: result.data[0].id
               };
               
+              console.log('Generating narrative for assessment with ID:', assessmentWithId.id);
+              
               // Call the edge function to generate and save the narrative
-              await generatePHQ9Narrative(assessmentWithId);
+              const narrative = await generatePHQ9Narrative(assessmentWithId);
+              
+              if (narrative) {
+                console.log('Narrative generated successfully:', narrative.substring(0, 50) + '...');
+                
+                // Verify if the narrative was saved by the edge function
+                const { data: updatedAssessment, error: verifyError } = await supabase
+                  .from('phq9_assessments')
+                  .select('phq9_narrative')
+                  .eq('id', assessmentWithId.id)
+                  .single();
+                
+                if (verifyError) {
+                  console.error('Error verifying narrative save:', verifyError);
+                } else {
+                  console.log('Verified narrative in database:', updatedAssessment?.phq9_narrative ? 'Present' : 'Missing');
+                  if (!updatedAssessment?.phq9_narrative) {
+                    console.warn('Narrative seems to be missing from database after edge function call');
+                    
+                    // Attempt to save narrative directly if edge function didn't do it
+                    const { error: manualUpdateError } = await supabase
+                      .from('phq9_assessments')
+                      .update({ phq9_narrative: narrative })
+                      .eq('id', assessmentWithId.id);
+                    
+                    if (manualUpdateError) {
+                      console.error('Failed manual narrative update:', manualUpdateError);
+                    } else {
+                      console.log('Manual narrative update successful');
+                    }
+                  }
+                }
+              }
             } catch (narrativeError) {
-              console.error('Error generating narrative:', narrativeError);
+              console.error('Error generating or saving narrative:', narrativeError);
               // We don't want to block the flow if narrative generation fails
             }
           }

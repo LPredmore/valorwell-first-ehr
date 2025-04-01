@@ -154,15 +154,21 @@ export interface PHQ9Assessment {
 // New function to save PHQ-9 assessment
 export const savePHQ9Assessment = async (assessment: PHQ9Assessment) => {
   try {
+    console.log('Saving PHQ9 assessment:', assessment);
     const { data, error } = await supabase
       .from('phq9_assessments')
       .insert([assessment])
       .select();
       
-    if (error) throw error;
+    if (error) {
+      console.error('Error in savePHQ9Assessment:', error);
+      throw error;
+    }
+    
+    console.log('PHQ9 assessment saved successfully:', data);
     return { success: true, data };
   } catch (error) {
-    console.error('Error saving PHQ9 assessment:', error);
+    console.error('Exception in savePHQ9Assessment:', error);
     return { success: false, error };
   }
 };
@@ -176,10 +182,14 @@ export const fetchPHQ9Assessments = async (clientId: string) => {
       .eq('client_id', clientId)
       .order('assessment_date', { ascending: false });
       
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching PHQ9 assessments:', error);
+      throw error;
+    }
+    
     return data || [];
   } catch (error) {
-    console.error('Error fetching PHQ9 assessments:', error);
+    console.error('Exception in fetchPHQ9Assessments:', error);
     return [];
   }
 };
