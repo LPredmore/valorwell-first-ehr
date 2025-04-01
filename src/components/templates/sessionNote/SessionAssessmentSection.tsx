@@ -57,28 +57,6 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
       </div>
 
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Problem Narrative</label>
-        <Textarea
-          placeholder="Describe the problem narrative"
-          className="min-h-[100px] bg-gray-100"
-          value={formState.problemNarrative}
-          onChange={(e) => handleChange('problemNarrative', e.target.value)}
-          readOnly
-        />
-      </div>
-
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Goal Narrative</label>
-        <Textarea
-          placeholder="Describe the treatment goals"
-          className="min-h-[100px] bg-gray-100"
-          value={formState.treatmentGoalNarrative}
-          onChange={(e) => handleChange('treatmentGoalNarrative', e.target.value)}
-          readOnly
-        />
-      </div>
-
-      <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-1">Session Narrative</label>
         <Textarea
           placeholder="Provide a detailed narrative of the session"

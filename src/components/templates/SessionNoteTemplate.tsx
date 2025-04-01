@@ -8,6 +8,7 @@ import { ClientInfoSection } from './sessionNote/ClientInfoSection';
 import { MentalStatusSection } from './sessionNote/MentalStatusSection';
 import { TreatmentObjectivesSection } from './sessionNote/TreatmentObjectivesSection';
 import { SessionAssessmentSection } from './sessionNote/SessionAssessmentSection';
+import { Textarea } from "@/components/ui/textarea";
 
 const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   onClose,
@@ -60,6 +61,33 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           handleChange={handleChange} 
           toggleEditMode={toggleEditMode} 
         />
+        
+        {/* Problem Narrative and Treatment Goal - Moved up from Session Assessment */}
+        <div className="mb-6 mt-6">
+          <h4 className="text-md font-medium text-gray-800 mb-4">Problem & Treatment Goals</h4>
+          
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Problem Narrative</label>
+            <Textarea
+              placeholder="Describe the problem narrative"
+              className="min-h-[100px] bg-gray-100"
+              value={formState.problemNarrative}
+              onChange={(e) => handleChange('problemNarrative', e.target.value)}
+              readOnly
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Goal Narrative</label>
+            <Textarea
+              placeholder="Describe the treatment goals"
+              className="min-h-[100px] bg-gray-100"
+              value={formState.treatmentGoalNarrative}
+              onChange={(e) => handleChange('treatmentGoalNarrative', e.target.value)}
+              readOnly
+            />
+          </div>
+        </div>
 
         {/* Treatment Objectives & Interventions */}
         <TreatmentObjectivesSection 
