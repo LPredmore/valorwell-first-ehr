@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,9 +29,7 @@ clientData = null
 const { toast } = useToast();
 const [isSubmitting, setIsSubmitting] = useState(false);
 
-// Initialize form state with all fields from the session note
 const [formState, setFormState] = useState({
-// Basic session info
 sessionDate: '',
 patientName: '',
 patientDOB: '',
@@ -44,7 +41,6 @@ medications: '',
 sessionType: '',
 personsInAttendance: '',
 
-// Mental status exam fields
 appearance: '',
 attitude: '',
 behavior: '',
@@ -60,7 +56,6 @@ substanceAbuseRisk: '',
 suicidalIdeation: '',
 homicidalIdeation: '',
 
-// Treatment objectives and interventions
 primaryObjective: '',
 intervention1: '',
 intervention2: '',
@@ -71,7 +66,6 @@ tertiaryObjective: '',
 intervention5: '',
 intervention6: '',
 
-// Session assessment
 currentSymptoms: '',
 functioning: '',
 prognosis: '',
@@ -79,13 +73,10 @@ progress: '',
 problemNarrative: '',
 treatmentGoalNarrative: '',
 sessionNarrative: '',
-
-// Plan and signature
 nextTreatmentPlanUpdate: '',
 signature: ''
 });
 
-// State to track when fields are in "Other" mode
 const [editModes, setEditModes] = useState({
 appearance: false,
 attitude: false,
@@ -99,7 +90,6 @@ memoryConcentration: false,
 insightJudgement: false
 });
 
-// Populate form with client data on initial load and when client data changes
 useEffect(() => {
 if (clientData) {
 setFormState(prevState => ({
@@ -113,7 +103,6 @@ treatmentFrequency: clientData.client_treatmentfrequency || '',
 medications: clientData.client_medications || '',
 personsInAttendance: clientData.client_personsinattendance || '',
 
-// Mental status exam values from client data
 appearance: clientData.client_appearance || '',
 attitude: clientData.client_attitude || '',
 behavior: clientData.client_behavior || '',
@@ -129,7 +118,6 @@ substanceAbuseRisk: clientData.client_substanceabuserisk || '',
 suicidalIdeation: clientData.client_suicidalideation || '',
 homicidalIdeation: clientData.client_homicidalideation || '',
 
-// Treatment objectives from client data
 primaryObjective: clientData.client_primaryobjective || '',
 secondaryObjective: clientData.client_secondaryobjective || '',
 tertiaryObjective: clientData.client_tertiaryobjective || '',
@@ -140,19 +128,15 @@ intervention4: clientData.client_intervention4 || '',
 intervention5: clientData.client_intervention5 || '',
 intervention6: clientData.client_intervention6 || '',
 
-// Session assessment fields
 functioning: clientData.client_functioning || '',
 prognosis: clientData.client_prognosis || '',
 progress: clientData.client_progress || '',
 problemNarrative: clientData.client_problem || '',
 treatmentGoalNarrative: clientData.client_treatmentgoal || '',
 sessionNarrative: clientData.client_sessionnarrative || '',
-
-// Plan fields
 nextTreatmentPlanUpdate: clientData.client_nexttreatmentplanupdate || ''
 }));
 
-// Set edit modes based on client data values
 setEditModes({
 appearance: clientData.client_appearance && !['Normal Appearance & Grooming'].includes(clientData.client_appearance),
 attitude: clientData.client_attitude && !['Calm & Cooperative'].includes(clientData.client_attitude),
@@ -168,7 +152,6 @@ insightJudgement: clientData.client_insightjudgement && !['Good'].includes(clien
 }
 }, [clientData, clinicianName]);
 
-// Universal handle change function for any field
 const handleChange = (field: string, value: string) => {
 setFormState({
 ...formState,
@@ -176,11 +159,9 @@ setFormState({
 });
 };
 
-// Toggle edit mode for mental status exam fields
 const toggleEditMode = (field: string, value: string) => {
 if (value === 'Other') {
 setEditModes({ ...editModes, [field]: true });
-// Clear the field when switching to edit mode
 handleChange(field, '');
 } else {
 setEditModes({ ...editModes, [field]: false });
@@ -188,7 +169,6 @@ handleChange(field, value);
 }
 };
 
-// Save the session note to the database
 const handleSave = async () => {
 if (!clientData?.id) {
 toast({
@@ -202,9 +182,7 @@ return;
 setIsSubmitting(true);
 
 try {
-// Map formState fields to database column names
 const updates = {
-// Mental status exam fields
 client_appearance: formState.appearance,
 client_attitude: formState.attitude,
 client_behavior: formState.behavior,
@@ -220,7 +198,6 @@ client_substanceabuserisk: formState.substanceAbuseRisk,
 client_suicidalideation: formState.suicidalIdeation,
 client_homicidalideation: formState.homicidalIdeation,
 
-// Treatment objectives
 client_primaryobjective: formState.primaryObjective,
 client_secondaryobjective: formState.secondaryObjective,
 client_tertiaryobjective: formState.tertiaryObjective,
@@ -231,7 +208,6 @@ client_intervention4: formState.intervention4,
 client_intervention5: formState.intervention5,
 client_intervention6: formState.intervention6,
 
-// Session assessment
 client_functioning: formState.functioning,
 client_prognosis: formState.prognosis,
 client_progress: formState.progress,
@@ -241,7 +217,6 @@ client_sessionnarrative: formState.sessionNarrative,
 client_medications: formState.medications,
 client_personsinattendance: formState.personsInAttendance,
 
-// Plan
 client_nexttreatmentplanupdate: formState.nextTreatmentPlanUpdate,
 };
 
@@ -259,7 +234,6 @@ title: "Success",
 description: "Session note saved successfully.",
 });
 
-// Close the form after successful save
 onClose();
 } catch (error) {
 console.error('Error saving session note:', error);
@@ -273,15 +247,14 @@ setIsSubmitting(false);
 }
 };
 
-// Helper function to determine if a field should be read-only
 const isReadOnlyField = (fieldName: string) => {
 const readOnlyFields = [
-patientName', 'patientDOB', 'clinicianName', 'diagnosis',
-planType', 'treatmentFrequency', 'sessionDate',
-primaryObjective', 'intervention1', 'intervention2',
-secondaryObjective', 'intervention3', 'intervention4',
-tertiaryObjective', 'intervention5', 'intervention6',
-problemNarrative', 'treatmentGoalNarrative', 'nextTreatmentPlanUpdate'
+'patientName', 'patientDOB', 'clinicianName', 'diagnosis',
+'planType', 'treatmentFrequency', 'sessionDate',
+'primaryObjective', 'intervention1', 'intervention2',
+'secondaryObjective', 'intervention3', 'intervention4',
+'tertiaryObjective', 'intervention5', 'intervention6',
+'problemNarrative', 'treatmentGoalNarrative', 'nextTreatmentPlanUpdate'
 ];
 return readOnlyFields.includes(fieldName);
 };
@@ -560,9 +533,6 @@ onValueChange={(value) => toggleEditMode('thoughtProcess', value)}
 )}
 </div>
 </div>
-
-{/* Continue with the rest of the mental status fields and other sections */}
-{/* ... remaining fields follow the same pattern */}
 
 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
 <div>
