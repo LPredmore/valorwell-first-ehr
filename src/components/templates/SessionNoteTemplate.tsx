@@ -8,6 +8,7 @@ import { ClientInfoSection } from './sessionNote/ClientInfoSection';
 import { MentalStatusSection } from './sessionNote/MentalStatusSection';
 import { TreatmentObjectivesSection } from './sessionNote/TreatmentObjectivesSection';
 import { SessionAssessmentSection } from './sessionNote/SessionAssessmentSection';
+import { PHQ9AssessmentSection } from './sessionNote/PHQ9AssessmentSection';
 import { Textarea } from "@/components/ui/textarea";
 
 const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
@@ -20,6 +21,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     formState,
     editModes,
     isSubmitting,
+    phq9Data,
     handleChange,
     toggleEditMode,
     handleSave
@@ -66,6 +68,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           handleChange={handleChange} 
           toggleEditMode={toggleEditMode} 
         />
+        
+        {/* PHQ-9 Assessment Section - New section */}
+        {phq9Data && <PHQ9AssessmentSection phq9Data={phq9Data} />}
         
         {/* Problem Narrative and Treatment Goal - Only show if they have values */}
         {showProblemTreatmentSection && (

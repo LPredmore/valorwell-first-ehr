@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +18,7 @@ export const useSessionNoteForm = ({
 }: UseSessionNoteFormProps) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [phq9Data, setPhq9Data] = useState<any>(null);
 
   const [formState, setFormState] = useState({
     sessionDate: '',
@@ -81,7 +81,6 @@ export const useSessionNoteForm = ({
     insightJudgement: false
   });
 
-  // Load client data
   useEffect(() => {
     if (clientData) {
       setFormState(prevState => ({
@@ -144,7 +143,6 @@ export const useSessionNoteForm = ({
     }
   }, [clientData, clinicianName]);
 
-  // Load appointment data
   useEffect(() => {
     if (appointment && appointment.client) {
       const appointmentDate = appointment.date ? new Date(appointment.date).toISOString().split('T')[0] : '';
@@ -157,8 +155,32 @@ export const useSessionNoteForm = ({
           ? `${appointment.client.client_first_name} ${appointment.client.client_last_name}`
           : prevState.patientName
       }));
+
+      if (clientData?.id && appointmentDate) {
+        fetchPHQ9Assessment(clientData.id, appointmentDate);
+      }
     }
-  }, [appointment]);
+  }, [appointment, clientData]);
+
+  const fetchPHQ9Assessment = async (clientId: string, assessmentDate: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('phq9_assessments')
+        .select('*')
+        .eq('client_id', clientId)
+        .eq('assessment_date', assessmentDate)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching PHQ-9 assessment:', error);
+        return;
+      }
+
+      setPhq9Data(data);
+    } catch (error) {
+      console.error('Error in fetchPHQ9Assessment:', error);
+    }
+  };
 
   const handleChange = (field: string, value: string) => {
     setFormState({
@@ -259,6 +281,7 @@ export const useSessionNoteForm = ({
     formState,
     editModes,
     isSubmitting,
+    phq9Data,
     handleChange,
     toggleEditMode,
     handleSave
