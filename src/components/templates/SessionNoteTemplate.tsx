@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -420,55 +421,68 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     return readOnlyFields.includes(fieldName);
   };
 
-  const treatmentPlanSections = [{
-    title: "Primary Objective",
-    objectiveValue: formState.primaryObjective,
-    objectiveKey: 'primaryObjective',
-    objectiveField: clientData?.client_primaryobjective,
-    interventions: [{
-      key: 'intervention1',
-      value: formState.intervention1,
-      field: clientData?.client_intervention1,
-      number: 1
-    }, {
-      key: 'intervention2',
-      value: formState.intervention2,
-      field: clientData?.client_intervention2,
-      number: 2
-    }]
-  }, {
-    title: "Secondary Objective",
-    objectiveValue: formState.secondaryObjective,
-    objectiveKey: 'secondaryObjective',
-    objectiveField: clientData?.client_secondaryobjective,
-    interventions: [{
-      key: 'intervention3',
-      value: formState.intervention3,
-      field: clientData?.client_intervention3,
-      number: 3
-    }, {
-      key: 'intervention4',
-      value: formState.intervention4,
-      field: clientData?.client_intervention4,
-      number: 4
-    }]
-  }, {
-    title: "Tertiary Objective",
-    objectiveValue: formState.tertiaryObjective,
-    objectiveKey: 'tertiaryObjective',
-    objectiveField: clientData?.client_tertiaryobjective,
-    interventions: [{
-      key: 'intervention5',
-      value: formState.intervention5,
-      field: clientData?.client_intervention5,
-      number: 5
-    }, {
-      key: 'intervention6',
-      value: formState.intervention6,
-      field: clientData?.client_intervention6,
-      number: 6
-    }]
-  }];
+  const treatmentPlanSections = [
+    {
+      title: "Primary Objective",
+      objectiveValue: formState.primaryObjective,
+      objectiveKey: 'primaryObjective',
+      objectiveField: clientData?.client_primaryobjective,
+      interventions: [
+        {
+          key: 'intervention1',
+          value: formState.intervention1,
+          field: clientData?.client_intervention1,
+          number: 1
+        }, 
+        {
+          key: 'intervention2',
+          value: formState.intervention2,
+          field: clientData?.client_intervention2,
+          number: 2
+        }
+      ]
+    }, 
+    {
+      title: "Secondary Objective",
+      objectiveValue: formState.secondaryObjective,
+      objectiveKey: 'secondaryObjective',
+      objectiveField: clientData?.client_secondaryobjective,
+      interventions: [
+        {
+          key: 'intervention3',
+          value: formState.intervention3,
+          field: clientData?.client_intervention3,
+          number: 3
+        }, 
+        {
+          key: 'intervention4',
+          value: formState.intervention4,
+          field: clientData?.client_intervention4,
+          number: 4
+        }
+      ]
+    }, 
+    {
+      title: "Tertiary Objective",
+      objectiveValue: formState.tertiaryObjective,
+      objectiveKey: 'tertiaryObjective',
+      objectiveField: clientData?.client_tertiaryobjective,
+      interventions: [
+        {
+          key: 'intervention5',
+          value: formState.intervention5,
+          field: clientData?.client_intervention5,
+          number: 5
+        }, 
+        {
+          key: 'intervention6',
+          value: formState.intervention6,
+          field: clientData?.client_intervention6,
+          number: 6
+        }
+      ]
+    }
+  ];
 
   const hasTreatmentPlan = !!clientData?.client_primaryobjective;
 

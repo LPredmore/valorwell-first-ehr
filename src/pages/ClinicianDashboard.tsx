@@ -145,7 +145,7 @@ const ClinicianDashboard = () => {
     );
   }
   
-  // Show session template if it's active and client data is loaded
+  // Only show session template if it's active, client data is loaded, and not null
   if (showSessionTemplate && currentAppointment && clientData) {
     return (
       <Layout>

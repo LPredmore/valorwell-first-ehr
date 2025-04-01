@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Card,
@@ -39,7 +40,7 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
   const [showPHQ9Template, setShowPHQ9Template] = useState(false);
   const [showPCL5Template, setShowPCL5Template] = useState(false);
   const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { clinicianData } = useClinicianData();
   const { toast } = useToast();
 
