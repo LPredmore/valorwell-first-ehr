@@ -6,13 +6,13 @@ import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
  * Map of common timezone display names to IANA format
  */
 const TIME_ZONE_MAP: Record<string, string> = {
-  'Eastern Standard Time (EST)': 'America/New_York',
-  'Central Standard Time (CST)': 'America/Chicago',
-  'Mountain Standard Time (MST)': 'America/Denver',
-  'Pacific Standard Time (PST)': 'America/Los_Angeles',
-  'Alaska Standard Time (AKST)': 'America/Anchorage',
-  'Hawaii-Aleutian Standard Time (HST)': 'Pacific/Honolulu',
-  'Atlantic Standard Time (AST)': 'America/Puerto_Rico'
+  'Eastern Time (ET)': 'America/New_York',
+  'Central Time (CT)': 'America/Chicago',
+  'Mountain Time (MT)': 'America/Denver',
+  'Pacific Time (PT)': 'America/Los_Angeles',
+  'Alaska Time (AKT)': 'America/Anchorage',
+  'Hawaii-Aleutian Time (HST)': 'Pacific/Honolulu',
+  'Atlantic Time (AST)': 'America/Puerto_Rico'
 };
 
 /**
@@ -35,7 +35,7 @@ export const ensureIANATimeZone = (timeZone: string): string => {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
   } catch (error) {
     console.error('Error getting system timezone, using America/New_York as fallback:', error);
-    return 'America/New_York'; // Safe fallback
+    return 'America/Chicago'; // Safe fallback, changed to match our app default
   }
 };
 

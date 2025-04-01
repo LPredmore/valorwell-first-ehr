@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, isSameDay, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import AppointmentDetailsDialog from './AppointmentDetailsDialog';
 import AvailabilityEditDialog from './AvailabilityEditDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
+import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 
 interface CalendarViewProps {
   view: 'day' | 'week' | 'month';
@@ -57,8 +59,31 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   const [selectedAvailability, setSelectedAvailability] = useState<AvailabilityBlock | null>(null);
   const [selectedAvailabilityDate, setSelectedAvailabilityDate] = useState<Date | null>(null);
   const [isAvailabilityDialogOpen, setIsAvailabilityDialogOpen] = useState(false);
+  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago');
+  const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
 
-  const userTimeZone = propTimeZone || getUserTimeZone();
+  // Fetch the clinician's timezone
+  useEffect(() => {
+    const fetchClinicianTimeZone = async () => {
+      if (clinicianId) {
+        setIsLoadingTimeZone(true);
+        try {
+          const timeZone = await getClinicianTimeZone(clinicianId);
+          console.log("Fetched clinician timezone:", timeZone);
+          setClinicianTimeZone(timeZone);
+        } catch (error) {
+          console.error("Error fetching clinician timezone:", error);
+        } finally {
+          setIsLoadingTimeZone(false);
+        }
+      }
+    };
+    
+    fetchClinicianTimeZone();
+  }, [clinicianId]);
+
+  // Use the clinician's timezone or fallback to props or system default
+  const userTimeZone = propTimeZone || (isLoadingTimeZone ? getUserTimeZone() : clinicianTimeZone);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -196,6 +221,30 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     setSelectedAvailabilityDate(date);
     setIsAvailabilityDialogOpen(true);
   };
+  
+  const navigatePrevious = () => {
+    if (view === 'day') {
+      setCurrentDate(subDays(currentDate, 1));
+    } else if (view === 'week') {
+      setCurrentDate(subWeeks(currentDate, 1));
+    } else if (view === 'month') {
+      setCurrentDate(subMonths(currentDate, 1));
+    }
+  };
+
+  const navigateNext = () => {
+    if (view === 'day') {
+      setCurrentDate(addDays(currentDate, 1));
+    } else if (view === 'week') {
+      setCurrentDate(addWeeks(currentDate, 1));
+    } else if (view === 'month') {
+      setCurrentDate(addMonths(currentDate, 1));
+    }
+  };
+
+  const navigateToday = () => {
+    setCurrentDate(new Date());
+  };
 
   return <div className="flex flex-col space-y-4">
       <div className="flex justify-between items-center mb-4">
@@ -211,6 +260,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           </Button>
           <h2 className="text-lg font-semibold ml-2">{getHeaderText()}</h2>
         </div>
+        {!isLoadingTimeZone && (
+          <div className="text-sm text-gray-500">
+            Showing times in {userTimeZone.replace('_', ' ')}
+          </div>
+        )}
       </div>
 
       <div className="flex gap-4">

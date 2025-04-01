@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
+import { timezoneOptions } from '@/utils/timezoneOptions';
 
 interface Clinician {
   id: string;
@@ -44,6 +45,7 @@ interface Clinician {
   clinician_type: string | null;
   clinician_licensed_states: string[] | null;
   clinician_image_url: string | null;
+  clinician_timezone: string | null;
 }
 
 const ClinicianDetails = () => {
@@ -60,20 +62,6 @@ const ClinicianDetails = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const timeZones = [
-    "Eastern Time (ET)",
-    "Central Time (CT)",
-    "Mountain Time (MT)",
-    "Pacific Time (PT)",
-    "Alaska Time (AKT)",
-    "Hawaii-Aleutian Time (HAT)"
-  ];
-
-  const clinicianTypeOptions = [
-    "Mental Health",
-    "Speech Therapy"
-  ];
-
   const licenseTypes = [
     "LPC", 
     "LCSW", 
@@ -81,6 +69,11 @@ const ClinicianDetails = () => {
     "LMFT", 
     "Psychologist", 
     "SLP"
+  ];
+
+  const clinicianTypeOptions = [
+    "Mental Health",
+    "Speech Therapy"
   ];
 
   const states = [
@@ -581,23 +574,24 @@ const ClinicianDetails = () => {
                     </label>
                     {isEditing ? (
                       <Select 
-                        value="Central Time (CT)" 
-                        onValueChange={(value) => {}}
+                        value={editedClinician?.clinician_timezone || 'America/Chicago'} 
+                        onValueChange={(value) => handleInputChange('clinician_timezone', value)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select time zone" />
                         </SelectTrigger>
                         <SelectContent>
-                          {timeZones.map((zone) => (
-                            <SelectItem key={zone} value={zone}>
-                              {zone}
+                          {timezoneOptions.map((zone) => (
+                            <SelectItem key={zone.value} value={zone.value}>
+                              {zone.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     ) : (
                       <p className="p-2 border rounded-md bg-gray-50">
-                        Central Time (CT)
+                        {timezoneOptions.find(tz => tz.value === clinician.clinician_timezone)?.label || 
+                          (clinician.clinician_timezone || 'Central Time (CT)')}
                       </p>
                     )}
                   </div>

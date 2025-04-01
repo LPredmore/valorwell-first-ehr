@@ -1,9 +1,10 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Clinician } from "@/types/client";
 
 export const useClinicianData = () => {
-  const [clinicianData, setClinicianData] = useState<any>(null);
+  const [clinicianData, setClinicianData] = useState<Clinician | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -51,5 +52,23 @@ export const getClinicianById = async (clinicianId: string) => {
   } catch (error) {
     console.error('Error fetching clinician:', error);
     return null;
+  }
+};
+
+export const getClinicianTimeZone = async (clinicianId: string): Promise<string> => {
+  try {
+    const { data, error } = await supabase
+      .from('clinicians')
+      .select('clinician_timezone')
+      .eq('id', clinicianId)
+      .single();
+      
+    if (error) throw error;
+    
+    // Return the timezone or a default if not set
+    return data?.clinician_timezone || 'America/Chicago';
+  } catch (error) {
+    console.error('Error fetching clinician timezone:', error);
+    return 'America/Chicago'; // Default to Central Time
   }
 };
