@@ -128,6 +128,8 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
         />
       </div>
 
+      <h4 className="text-md font-medium text-gray-800 mb-4">Plan & Signature</h4>
+
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-1">Next Treatment Plan Update</label>
         <Input

@@ -29,14 +29,12 @@ export const PHQ9AssessmentSection: React.FC<PHQ9AssessmentSectionProps> = ({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          {/* PHQ-9 left column details if needed */}
+          {/* Additional PHQ-9 data can be added here if needed */}
         </div>
         <div>
-          {/* PHQ-9 right column details if needed */}
+          {/* Additional PHQ-9 data can be added here if needed */}
         </div>
       </div>
-      
-      <h4 className="text-md font-medium text-gray-800 mb-4 mt-6">Plan & Signature</h4>
     </div>
   );
 };
