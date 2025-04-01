@@ -602,6 +602,7 @@ export type Database = {
           description: string | null
           fee: number
           name: string
+          status: string | null
           updated_at: string
         }
         Insert: {
@@ -611,6 +612,7 @@ export type Database = {
           description?: string | null
           fee: number
           name: string
+          status?: string | null
           updated_at?: string
         }
         Update: {
@@ -620,6 +622,7 @@ export type Database = {
           description?: string | null
           fee?: number
           name?: string
+          status?: string | null
           updated_at?: string
         }
         Relationships: []

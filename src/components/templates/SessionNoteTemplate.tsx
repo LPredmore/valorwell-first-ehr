@@ -8,6 +8,7 @@ import { DiagnosisSelector } from '@/components/DiagnosisSelector';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClientDetails } from '@/types/client';
+
 interface SessionNoteTemplateProps {
   onClose: () => void;
   clinicianName?: string;
@@ -15,6 +16,7 @@ interface SessionNoteTemplateProps {
   clientData?: ClientDetails | null;
   appointmentDate?: string;
 }
+
 const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   onClose,
   clinicianName = '',
@@ -22,13 +24,14 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   clientData = null,
   appointmentDate = ''
 }) => {
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
   const [diagnosisCodes, setDiagnosisCodes] = useState<string[]>([]);
   const [hasExistingDiagnosis, setHasExistingDiagnosis] = useState(false);
+  const [sessionTypes, setSessionTypes] = useState<{code: string, name: string}[]>([]);
+  const [phq9Narrative, setPhq9Narrative] = useState<string>('');
+  
   const [formState, setFormState] = useState({
     sessionDate: '',
     patientName: '',
@@ -70,10 +73,12 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     problemNarrative: '',
     treatmentGoalNarrative: '',
     sessionNarrative: '',
+    phq9Narrative: '',
     nextTreatmentPlanUpdate: '',
     privateNote: '',
     signature: ''
   });
+  
   const [editModes, setEditModes] = useState({
     appearance: false,
     attitude: false,
@@ -86,6 +91,58 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     memoryConcentration: false,
     insightJudgement: false
   });
+
+  useEffect(() => {
+    const fetchSessionTypes = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('cpt_codes')
+          .select('code, name')
+          .eq('status', 'Active');
+          
+        if (error) {
+          console.error('Error fetching CPT codes:', error);
+          return;
+        }
+        
+        setSessionTypes(data || []);
+      } catch (error) {
+        console.error('Error in fetchSessionTypes:', error);
+      }
+    };
+    
+    fetchSessionTypes();
+  }, []);
+
+  useEffect(() => {
+    const fetchLatestPHQ9 = async () => {
+      if (!clientData?.id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('phq9_assessments')
+          .select('phq9_narrative')
+          .eq('client_id', clientData.id)
+          .order('assessment_date', { ascending: false })
+          .limit(1);
+          
+        if (error) {
+          console.error('Error fetching PHQ-9 assessment:', error);
+          return;
+        }
+        
+        if (data && data.length > 0 && data[0].phq9_narrative) {
+          setPhq9Narrative(data[0].phq9_narrative);
+          handleChange('phq9Narrative', data[0].phq9_narrative);
+        }
+      } catch (error) {
+        console.error('Error in fetchLatestPHQ9:', error);
+      }
+    };
+    
+    fetchLatestPHQ9();
+  }, [clientData]);
+
   useEffect(() => {
     if (clientData) {
       const existingDiagnosis = clientData.client_diagnosis && clientData.client_diagnosis.length > 0;
@@ -93,17 +150,18 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
       if (existingDiagnosis) {
         setDiagnosisCodes(clientData.client_diagnosis || []);
       }
+      
       setFormState(prevState => ({
         ...prevState,
-        sessionDate: appointmentDate,
+        sessionDate: appointmentDate || '',
         patientName: `${clientData.client_first_name || ''} ${clientData.client_last_name || ''}`,
         patientDOB: clientData.client_date_of_birth || '',
-        clinicianName: clinicianNameInsurance || clinicianName || '',
         diagnosis: (clientData.client_diagnosis || []).join(', '),
         planType: clientData.client_planlength || '',
         treatmentFrequency: clientData.client_treatmentfrequency || '',
         medications: clientData.client_medications || '',
         personsInAttendance: clientData.client_personsinattendance || '',
+        clinicianName: clinicianNameInsurance || clinicianName || '',
         appearance: clientData.client_appearance || '',
         attitude: clientData.client_attitude || '',
         behavior: clientData.client_behavior || '',
@@ -137,6 +195,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         nextTreatmentPlanUpdate: clientData.client_nexttreatmentplanupdate || '',
         privateNote: clientData.client_privatenote || ''
       }));
+      
       setEditModes({
         appearance: clientData.client_appearance && !['Normal Appearance & Grooming'].includes(clientData.client_appearance),
         attitude: clientData.client_attitude && !['Calm & Cooperative'].includes(clientData.client_attitude),
@@ -151,9 +210,11 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
       });
     }
   }, [clientData, clinicianName, clinicianNameInsurance, appointmentDate]);
+
   useEffect(() => {
     validateForm();
   }, [formState]);
+
   useEffect(() => {
     if (diagnosisCodes.length > 0) {
       handleChange('diagnosis', diagnosisCodes.join(', '));
@@ -161,6 +222,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
       handleChange('diagnosis', '');
     }
   }, [diagnosisCodes]);
+
   const validateForm = () => {
     const requiredFields = ['medications', 'sessionType', 'personsInAttendance', ...(formState.appearance && formState.appearance !== 'Normal Appearance & Grooming' ? ['appearance'] : []), ...(formState.attitude && formState.attitude !== 'Calm & Cooperative' ? ['attitude'] : []), ...(formState.behavior && formState.behavior !== 'No unusual behavior or psychomotor changes' ? ['behavior'] : []), ...(formState.speech && formState.speech !== 'Normal rate/tone/volume w/out pressure' ? ['speech'] : []), ...(formState.affect && formState.affect !== 'Normal range/congruent' ? ['affect'] : []), ...(formState.thoughtProcess && formState.thoughtProcess !== 'Goal Oriented/Directed' ? ['thoughtProcess'] : []), ...(formState.perception && formState.perception !== 'No Hallucinations or Delusions' ? ['perception'] : []), ...(formState.orientation && formState.orientation !== 'Oriented x3' ? ['orientation'] : []), ...(formState.memoryConcentration && formState.memoryConcentration !== 'Short & Long Term Intact' ? ['memoryConcentration'] : []), ...(formState.insightJudgement && formState.insightJudgement !== 'Good' ? ['insightJudgement'] : []), 'mood', 'substanceAbuseRisk', 'suicidalIdeation', 'homicidalIdeation', 'currentSymptoms', 'functioning', 'prognosis', 'progress', 'sessionNarrative', 'signature'];
     let valid = true;
@@ -172,15 +234,18 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     }
     setIsFormValid(valid);
   };
+
   const handleChange = (field: string, value: string) => {
     setFormState({
       ...formState,
       [field]: value
     });
   };
+
   const handleDiagnosisChange = (codes: string[]) => {
     setDiagnosisCodes(codes);
   };
+
   const toggleEditMode = (field: string, value: string) => {
     if (value === 'Other') {
       setEditModes({
@@ -196,6 +261,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
       handleChange(field, value);
     }
   };
+
   const handleSave = async () => {
     if (!clientData?.id) {
       toast({
@@ -275,10 +341,12 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
       setIsSubmitting(false);
     }
   };
+
   const isReadOnlyField = (fieldName: string) => {
     const readOnlyFields = ['patientName', 'patientDOB', 'clinicianName', 'diagnosis', 'planType', 'treatmentFrequency', 'sessionDate', 'primaryObjective', 'intervention1', 'intervention2', 'secondaryObjective', 'intervention3', 'intervention4', 'tertiaryObjective', 'intervention5', 'intervention6', 'problemNarrative', 'treatmentGoalNarrative', 'nextTreatmentPlanUpdate'];
     return readOnlyFields.includes(fieldName);
   };
+
   const treatmentPlanSections = [{
     title: "Primary Objective",
     objectiveValue: formState.primaryObjective,
@@ -328,8 +396,11 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
       number: 6
     }]
   }];
+
   const hasTreatmentPlan = !!clientData?.client_primaryobjective;
+
   const RequiredFieldIndicator = () => <span className="text-red-500 ml-1">*</span>;
+
   return <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-2">
         <div>
@@ -380,19 +451,41 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Session Date</label>
-            <Input type="date" value={formState.sessionDate} onChange={e => handleChange('sessionDate', e.target.value)} placeholder="Select date" readOnly className="bg-gray-100" />
+            <Input 
+              type="date" 
+              value={formState.sessionDate} 
+              onChange={e => handleChange('sessionDate', e.target.value)} 
+              placeholder="Select date" 
+              readOnly 
+              className="bg-gray-100" 
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Medications<RequiredFieldIndicator />
             </label>
-            <Input placeholder="List current medications" value={formState.medications} onChange={e => handleChange('medications', e.target.value)} />
+            <Input 
+              placeholder="List current medications" 
+              value={formState.medications} 
+              onChange={e => handleChange('medications', e.target.value)} 
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Session Type<RequiredFieldIndicator />
             </label>
-            <Input placeholder="Enter session type" value={formState.sessionType} onChange={e => handleChange('sessionType', e.target.value)} />
+            <Select value={formState.sessionType} onValueChange={value => handleChange('sessionType', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select session type" />
+              </SelectTrigger>
+              <SelectContent>
+                {sessionTypes.map(type => (
+                  <SelectItem key={type.code} value={type.name}>
+                    {type.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -400,7 +493,11 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Person's in Attendance<RequiredFieldIndicator />
           </label>
-          <Input placeholder="List all attendees" value={formState.personsInAttendance} onChange={e => handleChange('personsInAttendance', e.target.value)} />
+          <Input 
+            placeholder="List all attendees" 
+            value={formState.personsInAttendance} 
+            onChange={e => handleChange('personsInAttendance', e.target.value)} 
+          />
         </div>
 
         <h4 className="text-md font-medium text-gray-800 mb-4">Mental Status Examination</h4>
@@ -657,6 +754,19 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           <Textarea placeholder="Provide a detailed narrative of the session" className="min-h-[100px]" value={formState.sessionNarrative} onChange={e => handleChange('sessionNarrative', e.target.value)} />
         </div>
 
+        {phq9Narrative && (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              PHQ-9 Assessment
+            </label>
+            <Textarea 
+              className="min-h-[100px] bg-gray-100 whitespace-pre-wrap" 
+              value={formState.phq9Narrative} 
+              readOnly
+            />
+          </div>
+        )}
+
         <h4 className="text-md font-medium text-gray-800 mb-4">Plan & Signature</h4>
 
         <div className="mb-6">
@@ -685,4 +795,5 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
       </div>
     </div>;
 };
+
 export default SessionNoteTemplate;
