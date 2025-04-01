@@ -2,18 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { X, FileText, LockKeyhole } from 'lucide-react';
+import { X, FileText, LockKeyhole, AlertCircle, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DiagnosisSelector } from '@/components/DiagnosisSelector';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClientDetails } from '@/types/client';
+import { useSessionData } from '@/hooks/useSessionData';
 
 interface SessionNoteTemplateProps {
   onClose: () => void;
   clinicianName?: string;
   clinicianNameInsurance?: string;
   clientData?: ClientDetails | null;
+  appointmentId?: string | null;
   appointmentDate?: string;
 }
 
@@ -22,15 +24,27 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   clinicianName = '',
   clinicianNameInsurance = '',
   clientData = null,
+  appointmentId = null,
   appointmentDate = ''
 }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
-  const [diagnosisCodes, setDiagnosisCodes] = useState<string[]>([]);
-  const [hasExistingDiagnosis, setHasExistingDiagnosis] = useState(false);
-  const [sessionTypes, setSessionTypes] = useState<{code: string, name: string}[]>([]);
-  const [phq9Narrative, setPhq9Narrative] = useState<string>('');
+  
+  // Use our new custom hook for session data
+  const { 
+    isLoading,
+    error,
+    sessionTypes,
+    phq9Narrative,
+    diagnosisCodes,
+    hasExistingDiagnosis,
+    saveSessionHistory
+  } = useSessionData({
+    clientId: clientData?.id || null,
+    appointmentId,
+    appointmentDate
+  });
   
   const [formState, setFormState] = useState({
     sessionDate: '',
@@ -92,73 +106,20 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     insightJudgement: false
   });
 
+  // Update formState when phq9Narrative changes
   useEffect(() => {
-    const fetchSessionTypes = async () => {
-      try {
-        console.log("Fetching CPT codes for session types");
-        const { data, error } = await supabase
-          .from('cpt_codes')
-          .select('code, name')
-          .eq('status', 'Active');
-          
-        if (error) {
-          console.error('Error fetching CPT codes:', error);
-          return;
-        }
-        
-        console.log("Fetched session types:", data);
-        setSessionTypes(data || []);
-      } catch (error) {
-        console.error('Error in fetchSessionTypes:', error);
-      }
-    };
-    
-    fetchSessionTypes();
-  }, []);
+    if (phq9Narrative) {
+      handleChange('phq9Narrative', phq9Narrative);
+    }
+  }, [phq9Narrative]);
 
-  useEffect(() => {
-    const fetchLatestPHQ9 = async () => {
-      if (!clientData?.id) return;
-      
-      try {
-        console.log("Fetching latest PHQ9 assessment for client:", clientData.id);
-        const { data, error } = await supabase
-          .from('phq9_assessments')
-          .select('phq9_narrative')
-          .eq('client_id', clientData.id)
-          .order('assessment_date', { ascending: false })
-          .limit(1);
-          
-        if (error) {
-          console.error('Error fetching PHQ-9 assessment:', error);
-          return;
-        }
-        
-        console.log("Fetched PHQ9 narrative:", data);
-        if (data && data.length > 0 && data[0].phq9_narrative) {
-          setPhq9Narrative(data[0].phq9_narrative);
-          handleChange('phq9Narrative', data[0].phq9_narrative);
-        }
-      } catch (error) {
-        console.error('Error in fetchLatestPHQ9:', error);
-      }
-    };
-    
-    fetchLatestPHQ9();
-  }, [clientData]);
-
+  // Update form state from client data
   useEffect(() => {
     if (clientData) {
       console.log("Setting form state from client data:", clientData);
       console.log("Clinician name:", clinicianName);
       console.log("Clinician name insurance:", clinicianNameInsurance);
       console.log("Appointment date:", appointmentDate);
-      
-      const existingDiagnosis = clientData.client_diagnosis && clientData.client_diagnosis.length > 0;
-      setHasExistingDiagnosis(existingDiagnosis);
-      if (existingDiagnosis) {
-        setDiagnosisCodes(clientData.client_diagnosis || []);
-      }
       
       setFormState(prevState => ({
         ...prevState,
@@ -252,7 +213,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   };
 
   const handleDiagnosisChange = (codes: string[]) => {
-    setDiagnosisCodes(codes);
+    // This will be picked up by the useEffect to update formState.diagnosis
   };
 
   const toggleEditMode = (field: string, value: string) => {
@@ -290,6 +251,10 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     }
     setIsSubmitting(true);
     try {
+      // First, save to session history
+      await saveSessionHistory(formState);
+      
+      // Then update client record with latest data
       const updates: Partial<ClientDetails> = {
         client_appearance: formState.appearance,
         client_attitude: formState.attitude,
@@ -334,6 +299,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
       if (error) {
         throw error;
       }
+      
       toast({
         title: "Success",
         description: "Session note saved successfully."
@@ -350,6 +316,32 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
       setIsSubmitting(false);
     }
   };
+
+  // Show loading state if data is still being fetched
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-valorwell-500 mx-auto mb-4" />
+          <p className="text-gray-500">Loading session data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if there was a problem
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <div className="text-center p-6 border rounded-md bg-red-50 max-w-md">
+          <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Data</h3>
+          <p className="text-gray-700 mb-4">{error}</p>
+          <Button onClick={onClose} variant="outline">Return to Dashboard</Button>
+        </div>
+      </div>
+    );
+  }
 
   const isReadOnlyField = (fieldName: string) => {
     const readOnlyFields = ['patientName', 'patientDOB', 'clinicianName', 'diagnosis', 'planType', 'treatmentFrequency', 'sessionDate', 'primaryObjective', 'intervention1', 'intervention2', 'secondaryObjective', 'intervention3', 'intervention4', 'tertiaryObjective', 'intervention5', 'intervention6', 'problemNarrative', 'treatmentGoalNarrative', 'nextTreatmentPlanUpdate'];
@@ -707,102 +699,4 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
                     <Textarea placeholder={`Describe the ${section.title.toLowerCase()}`} className="min-h-[100px] bg-gray-100" value={section.objectiveValue} onChange={e => handleChange(section.objectiveKey, e.target.value)} readOnly />
                   </div>
                   
-                  {section.interventions.some(i => i.field) && <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                      {section.interventions.map((intervention, idx) => intervention.field && <div key={idx}>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">{`Intervention ${intervention.number}`}</label>
-                            <Input placeholder="Describe intervention" value={intervention.value} onChange={e => handleChange(intervention.key, e.target.value)} readOnly className="bg-gray-100" />
-                          </div>)}
-                    </div>}
-                </React.Fragment>)}
-          </>}
-
-        <h4 className="text-md font-medium text-gray-800 mb-4">Session Assessment</h4>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Current Symptoms<RequiredFieldIndicator />
-          </label>
-          <Textarea placeholder="Describe current symptoms" className="min-h-[100px]" value={formState.currentSymptoms} onChange={e => handleChange('currentSymptoms', e.target.value)} />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Functioning<RequiredFieldIndicator />
-          </label>
-          <Textarea placeholder="Describe client functioning" className="min-h-[100px]" value={formState.functioning} onChange={e => handleChange('functioning', e.target.value)} />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Prognosis<RequiredFieldIndicator />
-          </label>
-          <Textarea placeholder="Describe prognosis" className="min-h-[100px]" value={formState.prognosis} onChange={e => handleChange('prognosis', e.target.value)} />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Progress<RequiredFieldIndicator />
-          </label>
-          <Textarea placeholder="Describe progress" className="min-h-[100px]" value={formState.progress} onChange={e => handleChange('progress', e.target.value)} />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Problem Narrative</label>
-          <Textarea placeholder="Describe the problem narrative" className="min-h-[100px] bg-gray-100" value={formState.problemNarrative} onChange={e => handleChange('problemNarrative', e.target.value)} readOnly />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Goal Narrative</label>
-          <Textarea placeholder="Describe the treatment goals" className="min-h-[100px] bg-gray-100" value={formState.treatmentGoalNarrative} onChange={e => handleChange('treatmentGoalNarrative', e.target.value)} readOnly />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Session Narrative<RequiredFieldIndicator />
-          </label>
-          <Textarea placeholder="Provide a detailed narrative of the session" className="min-h-[100px]" value={formState.sessionNarrative} onChange={e => handleChange('sessionNarrative', e.target.value)} />
-        </div>
-
-        {phq9Narrative && (
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              PHQ-9 Assessment
-            </label>
-            <Textarea 
-              className="min-h-[100px] bg-gray-100 whitespace-pre-wrap" 
-              value={formState.phq9Narrative} 
-              readOnly
-            />
-          </div>
-        )}
-
-        <h4 className="text-md font-medium text-gray-800 mb-4">Plan & Signature</h4>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Signature<RequiredFieldIndicator />
-          </label>
-          <Input placeholder="Enter signature" value={formState.signature} onChange={e => handleChange('signature', e.target.value)} />
-        </div>
-
-        <div className="mb-6 border-t pt-6">
-          <div className="flex items-center gap-2 mb-3">
-            <LockKeyhole className="h-4 w-4 text-amber-500" />
-            <h4 className="text-md font-medium text-gray-800">Private Note</h4>
-          </div>
-          <p className="text-sm text-gray-500 mb-3">
-            This note is private and will only be visible to clinicians. It will not be included in any client-facing documentation.
-          </p>
-          <Textarea placeholder="Enter private notes about this client" className="min-h-[100px]" value={formState.privateNote} onChange={e => handleChange('privateNote', e.target.value)} />
-        </div>
-
-        <div className="flex justify-end mt-6">
-          <Button onClick={handleSave} disabled={isSubmitting || !isFormValid} className="w-full md:w-auto">
-            {isSubmitting ? 'Saving...' : 'Save Session Note'}
-          </Button>
-        </div>
-      </div>
-    </div>;
-};
-
-export default SessionNoteTemplate;
+                  {section.interventions.some(i => i.field)
