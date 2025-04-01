@@ -215,11 +215,18 @@ export const useSessionNoteForm = ({
     }
   };
 
-  const handleChange = (field: string, value: string) => {
-    setFormState({
-      ...formState,
-      [field]: value
-    });
+  const handleChange = (field: string, value: string | string[]) => {
+    if (field === 'diagnosis' && Array.isArray(value)) {
+      setFormState({
+        ...formState,
+        [field]: value.join(', ')
+      });
+    } else {
+      setFormState({
+        ...formState,
+        [field]: value
+      });
+    }
   };
 
   const toggleEditMode = (field: string, value: string) => {
@@ -245,6 +252,15 @@ export const useSessionNoteForm = ({
     setIsSubmitting(true);
 
     try {
+      let client_diagnosis = formState.diagnosis;
+      if (typeof formState.diagnosis === 'string' && formState.diagnosis.trim()) {
+        client_diagnosis = formState.diagnosis.split(',').map(d => d.trim()).filter(Boolean);
+      } else if (Array.isArray(formState.diagnosis)) {
+        client_diagnosis = formState.diagnosis;
+      } else {
+        client_diagnosis = [];
+      }
+
       const updates = {
         client_appearance: formState.appearance,
         client_attitude: formState.attitude,
@@ -279,6 +295,7 @@ export const useSessionNoteForm = ({
         client_sessionnarrative: formState.sessionNarrative,
         client_medications: formState.medications,
         client_personsinattendance: formState.personsInAttendance,
+        client_diagnosis: client_diagnosis,
 
         client_nexttreatmentplanupdate: formState.nextTreatmentPlanUpdate,
       };
