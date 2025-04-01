@@ -38,6 +38,7 @@ interface Clinician {
   clinician_phone: string | null;
   clinician_bio: string | null;
   clinician_professional_name: string | null;
+  clinician_nameinsurance: string | null;
   clinician_npi_number: string | null;
   clinician_taxonomy_code: string | null;
   clinician_license_type: string | null;
@@ -525,14 +526,15 @@ const ClinicianDetails = () => {
                     {isEditing ? (
                       <Input 
                         type="text" 
-                        value={`${editedClinician?.clinician_first_name || ''} ${editedClinician?.clinician_last_name || ''}`} 
-                        readOnly
+                        value={editedClinician?.clinician_nameinsurance || ''} 
+                        onChange={(e) => handleInputChange('clinician_nameinsurance', e.target.value)}
                       />
                     ) : (
                       <p className="p-2 border rounded-md bg-gray-50">
-                        {clinician.clinician_first_name && clinician.clinician_last_name 
-                          ? `${clinician.clinician_first_name} ${clinician.clinician_last_name}` 
-                          : '—'}
+                        {clinician.clinician_nameinsurance || 
+                          (clinician.clinician_first_name && clinician.clinician_last_name 
+                            ? `${clinician.clinician_first_name} ${clinician.clinician_last_name}` 
+                            : '—')}
                       </p>
                     )}
                   </div>

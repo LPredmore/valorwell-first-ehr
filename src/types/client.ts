@@ -96,6 +96,7 @@ export interface Clinician {
   clinician_first_name: string | null;
   clinician_last_name: string | null;
   clinician_timezone: string | null;
+  clinician_nameinsurance: string | null;
 }
 
 export interface TabProps {
