@@ -348,61 +348,66 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     return readOnlyFields.includes(fieldName);
   };
 
-  const treatmentPlanSections = [{
-    title: "Primary Objective",
-    objectiveValue: formState.primaryObjective,
-    objectiveKey: 'primaryObjective',
-    objectiveField: clientData?.client_primaryobjective,
-    interventions: [{
-      key: 'intervention1',
-      value: formState.intervention1,
-      field: clientData?.client_intervention1,
-      number: 1
-    }, {
-      key: 'intervention2',
-      value: formState.intervention2,
-      field: clientData?.client_intervention2,
-      number: 2
-    }]
-  }, {
-    title: "Secondary Objective",
-    objectiveValue: formState.secondaryObjective,
-    objectiveKey: 'secondaryObjective',
-    objectiveField: clientData?.client_secondaryobjective,
-    interventions: [{
-      key: 'intervention3',
-      value: formState.intervention3,
-      field: clientData?.client_intervention3,
-      number: 3
-    }, {
-      key: 'intervention4',
-      value: formState.intervention4,
-      field: clientData?.client_intervention4,
-      number: 4
-    }]
-  }, {
-    title: "Tertiary Objective",
-    objectiveValue: formState.tertiaryObjective,
-    objectiveKey: 'tertiaryObjective',
-    objectiveField: clientData?.client_tertiaryobjective,
-    interventions: [{
-      key: 'intervention5',
-      value: formState.intervention5,
-      field: clientData?.client_intervention5,
-      number: 5
-    }, {
-      key: 'intervention6',
-      value: formState.intervention6,
-      field: clientData?.client_intervention6,
-      number: 6
-    }]
-  }];
+  const treatmentPlanSections = [
+    {
+      title: "Primary Objective",
+      objectiveValue: formState.primaryObjective,
+      objectiveKey: 'primaryObjective',
+      objectiveField: clientData?.client_primaryobjective,
+      interventions: [{
+        key: 'intervention1',
+        value: formState.intervention1,
+        field: clientData?.client_intervention1,
+        number: 1
+      }, {
+        key: 'intervention2',
+        value: formState.intervention2,
+        field: clientData?.client_intervention2,
+        number: 2
+      }]
+    },
+    {
+      title: "Secondary Objective",
+      objectiveValue: formState.secondaryObjective,
+      objectiveKey: 'secondaryObjective',
+      objectiveField: clientData?.client_secondaryobjective,
+      interventions: [{
+        key: 'intervention3',
+        value: formState.intervention3,
+        field: clientData?.client_intervention3,
+        number: 3
+      }, {
+        key: 'intervention4',
+        value: formState.intervention4,
+        field: clientData?.client_intervention4,
+        number: 4
+      }]
+    },
+    {
+      title: "Tertiary Objective",
+      objectiveValue: formState.tertiaryObjective,
+      objectiveKey: 'tertiaryObjective',
+      objectiveField: clientData?.client_tertiaryobjective,
+      interventions: [{
+        key: 'intervention5',
+        value: formState.intervention5,
+        field: clientData?.client_intervention5,
+        number: 5
+      }, {
+        key: 'intervention6',
+        value: formState.intervention6,
+        field: clientData?.client_intervention6,
+        number: 6
+      }]
+    }
+  ];
 
   const hasTreatmentPlan = !!clientData?.client_primaryobjective;
 
   const RequiredFieldIndicator = () => <span className="text-red-500 ml-1">*</span>;
 
-  return <div className="animate-fade-in">
+  return (
+    <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-2">
         <div>
           <h2 className="text-xl font-semibold">Session Note Template</h2>
@@ -690,13 +695,175 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           </div>
         </div>
 
-        {hasTreatmentPlan && <>
+        {hasTreatmentPlan && (
+          <>
             <h4 className="text-md font-medium text-gray-800 mb-4">Treatment Objectives & Interventions</h4>
             
-            {treatmentPlanSections.map((section, index) => section.objectiveField && <React.Fragment key={index}>
+            {treatmentPlanSections.map((section, index) => 
+              section.objectiveField && (
+                <React.Fragment key={index}>
                   <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-700 mb-1">{section.title}</label>
-                    <Textarea placeholder={`Describe the ${section.title.toLowerCase()}`} className="min-h-[100px] bg-gray-100" value={section.objectiveValue} onChange={e => handleChange(section.objectiveKey, e.target.value)} readOnly />
+                    <Textarea 
+                      placeholder={`Describe the ${section.title.toLowerCase()}`} 
+                      className="min-h-[100px] bg-gray-100" 
+                      value={section.objectiveValue} 
+                      onChange={e => handleChange(section.objectiveKey, e.target.value)} 
+                      readOnly 
+                    />
                   </div>
                   
-                  {section.interventions.some(i => i.field)
+                  {section.interventions.some(i => i.field) && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                      {section.interventions.map((intervention, i) => 
+                        intervention.field && (
+                          <div key={i}>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Intervention {intervention.number}
+                            </label>
+                            <Textarea
+                              placeholder={`Describe intervention ${intervention.number}`}
+                              className="min-h-[80px] bg-gray-100"
+                              value={intervention.value}
+                              onChange={e => handleChange(intervention.key, e.target.value)}
+                              readOnly
+                            />
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+                </React.Fragment>
+              )
+            )}
+          </>
+        )}
+
+        <h4 className="text-md font-medium text-gray-800 mb-4">Session Assessment</h4>
+        
+        <div className="grid grid-cols-1 gap-6 mb-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Current Symptoms/Problems<RequiredFieldIndicator />
+            </label>
+            <Textarea
+              placeholder="Describe current symptoms and problems"
+              className="min-h-[100px]"
+              value={formState.currentSymptoms}
+              onChange={e => handleChange('currentSymptoms', e.target.value)}
+            />
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Functioning<RequiredFieldIndicator />
+            </label>
+            <Textarea
+              placeholder="Describe client's functioning"
+              className="min-h-[100px]"
+              value={formState.functioning}
+              onChange={e => handleChange('functioning', e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Prognosis<RequiredFieldIndicator />
+            </label>
+            <Textarea
+              placeholder="Describe prognosis"
+              className="min-h-[100px]"
+              value={formState.prognosis}
+              onChange={e => handleChange('prognosis', e.target.value)}
+            />
+          </div>
+        </div>
+        
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Progress<RequiredFieldIndicator />
+          </label>
+          <Textarea
+            placeholder="Describe progress since last session"
+            className="min-h-[100px]"
+            value={formState.progress}
+            onChange={e => handleChange('progress', e.target.value)}
+          />
+        </div>
+        
+        {formState.phq9Narrative && (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              PHQ-9 Assessment
+            </label>
+            <Textarea
+              placeholder="PHQ-9 Narrative"
+              className="min-h-[100px]"
+              value={formState.phq9Narrative}
+              onChange={e => handleChange('phq9Narrative', e.target.value)}
+            />
+          </div>
+        )}
+        
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Session Narrative<RequiredFieldIndicator />
+          </label>
+          <Textarea
+            placeholder="Describe the session in detail"
+            className="min-h-[150px]"
+            value={formState.sessionNarrative}
+            onChange={e => handleChange('sessionNarrative', e.target.value)}
+          />
+        </div>
+        
+        <div className="mb-6">
+          <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+            <LockKeyhole className="h-4 w-4 mr-1" />
+            Private Notes (not included in official documentation)
+          </label>
+          <Textarea
+            placeholder="Private notes for clinician reference only"
+            className="min-h-[100px]"
+            value={formState.privateNote}
+            onChange={e => handleChange('privateNote', e.target.value)}
+          />
+        </div>
+        
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Clinician Signature<RequiredFieldIndicator />
+          </label>
+          <Input
+            placeholder="Type your full name as signature"
+            value={formState.signature}
+            onChange={e => handleChange('signature', e.target.value)}
+          />
+        </div>
+        
+        <div className="flex justify-end gap-3">
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            disabled={!isFormValid || isSubmitting}
+            className="relative"
+          >
+            {isSubmitting && (
+              <span className="absolute inset-0 flex items-center justify-center">
+                <Loader2 className="h-4 w-4 animate-spin" />
+              </span>
+            )}
+            <span className={isSubmitting ? "opacity-0" : ""}>
+              Save Session Note
+            </span>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SessionNoteTemplate;
