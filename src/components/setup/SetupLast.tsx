@@ -1,10 +1,10 @@
 
 import React from 'react';
 import { UseFormReturn } from 'react-hook-form';
-import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { FormField, FormItem, FormControl, FormLabel } from '@/components/ui/form';
+import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 
 interface SetupLastProps {
   form: UseFormReturn<any>;
@@ -21,7 +21,7 @@ const SetupLast: React.FC<SetupLastProps> = ({ form }) => {
       <div className="grid grid-cols-1 gap-6">
         <FormField
           control={form.control}
-          name="client_self_goal"
+          name="selfGoal"
           render={({ field }) => (
             <FormItem>
               <FormLabel>What is your Goal for Therapy?</FormLabel>
@@ -40,7 +40,7 @@ const SetupLast: React.FC<SetupLastProps> = ({ form }) => {
         
         <FormFieldWrapper
           control={form.control}
-          name="client_referral_source"
+          name="referralSource"
           label="How did you hear about us?"
           type="select"
           options={[

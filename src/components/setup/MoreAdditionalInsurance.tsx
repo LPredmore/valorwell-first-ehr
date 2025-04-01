@@ -23,14 +23,14 @@ const MoreAdditionalInsurance: React.FC<MoreAdditionalInsuranceProps> = ({ form 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormFieldWrapper
               control={form.control}
-              name="client_insurance_company_secondary"
+              name="insuranceCompanySecondary"
               label="Insurance Company Name"
               type="text"
             />
             
             <FormFieldWrapper
               control={form.control}
-              name="client_insurance_type_secondary"
+              name="insuranceTypeSecondary"
               label="Insurance Plan Type"
               type="select"
               options={[
@@ -48,14 +48,14 @@ const MoreAdditionalInsurance: React.FC<MoreAdditionalInsuranceProps> = ({ form 
             
             <FormFieldWrapper
               control={form.control}
-              name="client_subscriber_name_secondary"
+              name="subscriberNameSecondary"
               label="Subscriber Name"
               type="text"
             />
             
             <FormFieldWrapper
               control={form.control}
-              name="client_subscriber_relationship_secondary"
+              name="subscriberRelationshipSecondary"
               label="Subscriber Relationship"
               type="select"
               options={["Self", "Child", "Spouse", "Other"]}
@@ -63,20 +63,20 @@ const MoreAdditionalInsurance: React.FC<MoreAdditionalInsuranceProps> = ({ form 
             
             <DateField
               control={form.control}
-              name="client_subscriber_dob_secondary"
+              name="subscriberDobSecondary"
               label="Subscriber Date of Birth"
             />
             
             <FormFieldWrapper
               control={form.control}
-              name="client_group_number_secondary"
+              name="groupNumberSecondary"
               label="Group Number"
               type="text"
             />
             
             <FormFieldWrapper
               control={form.control}
-              name="client_policy_number_secondary"
+              name="policyNumberSecondary"
               label="Policy Number"
               type="text"
             />

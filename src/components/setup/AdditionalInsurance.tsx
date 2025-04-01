@@ -23,14 +23,14 @@ const AdditionalInsurance: React.FC<AdditionalInsuranceProps> = ({ form }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormFieldWrapper
               control={form.control}
-              name="client_insurance_company_primary"
+              name="insuranceCompanyPrimary"
               label="Insurance Company Name"
               type="text"
             />
             
             <FormFieldWrapper
               control={form.control}
-              name="client_insurance_type_primary"
+              name="insuranceTypePrimary"
               label="Insurance Plan Type"
               type="select"
               options={[
@@ -48,14 +48,14 @@ const AdditionalInsurance: React.FC<AdditionalInsuranceProps> = ({ form }) => {
             
             <FormFieldWrapper
               control={form.control}
-              name="client_subscriber_name_primary"
+              name="subscriberNamePrimary"
               label="Subscriber Name"
               type="text"
             />
             
             <FormFieldWrapper
               control={form.control}
-              name="client_subscriber_relationship_primary"
+              name="subscriberRelationshipPrimary"
               label="Subscriber Relationship"
               type="select"
               options={["Self", "Child", "Spouse", "Other"]}
@@ -63,20 +63,20 @@ const AdditionalInsurance: React.FC<AdditionalInsuranceProps> = ({ form }) => {
             
             <DateField
               control={form.control}
-              name="client_subscriber_dob_primary"
+              name="subscriberDobPrimary"
               label="Subscriber Date of Birth"
             />
             
             <FormFieldWrapper
               control={form.control}
-              name="client_group_number_primary"
+              name="groupNumberPrimary"
               label="Group Number"
               type="text"
             />
             
             <FormFieldWrapper
               control={form.control}
-              name="client_policy_number_primary"
+              name="policyNumberPrimary"
               label="Policy Number"
               type="text"
             />
@@ -93,7 +93,6 @@ const AdditionalInsurance: React.FC<AdditionalInsuranceProps> = ({ form }) => {
           label="Do you have any other Insurance you would like to add?"
           type="select"
           options={["Yes", "No"]}
-          required={true}
         />
       </div>
     </div>

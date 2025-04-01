@@ -19,7 +19,7 @@ const SetupVeteran: React.FC<SetupVeteranProps> = ({ form }) => {
       <div className="grid grid-cols-1 gap-6">
         <FormFieldWrapper
           control={form.control}
-          name="client_branchOS"
+          name="branchOS"
           label="Branch of Service"
           type="select"
           options={[
@@ -36,13 +36,13 @@ const SetupVeteran: React.FC<SetupVeteranProps> = ({ form }) => {
 
         <DateField
           control={form.control}
-          name="client_recentdischarge"
+          name="recentDischarge"
           label="Date of Most Recent Discharge"
         />
 
         <FormFieldWrapper
           control={form.control}
-          name="client_disabilityrating"
+          name="disabilityRating"
           label="Current VA Disability Rating"
           type="select"
           options={[
