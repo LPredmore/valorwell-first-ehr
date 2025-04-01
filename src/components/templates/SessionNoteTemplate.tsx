@@ -267,7 +267,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     setIsSubmitting(true);
 
     try {
-      const updates = {
+      const updates: Partial<ClientDetails> = {
         client_appearance: formState.appearance,
         client_attitude: formState.attitude,
         client_behavior: formState.behavior,
