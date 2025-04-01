@@ -69,9 +69,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           toggleEditMode={toggleEditMode} 
         />
         
-        {/* PHQ-9 Assessment Section - New section */}
-        {phq9Data && <PHQ9AssessmentSection phq9Data={phq9Data} />}
-        
         {/* Problem Narrative and Treatment Goal - Only show if they have values */}
         {showProblemTreatmentSection && (
           <div className="mb-6 mt-6">
@@ -116,6 +113,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           formState={formState} 
           handleChange={handleChange} 
         />
+        
+        {/* PHQ-9 Assessment Section - Moved right after Session Assessment */}
+        {phq9Data && <PHQ9AssessmentSection phq9Data={phq9Data} />}
       </div>
 
       <div className="flex justify-end gap-2 mt-6">
