@@ -22,7 +22,7 @@ const DayView: React.FC<DayViewProps> = ({
   clinicianId, 
   refreshTrigger = 0,
   appointments = [],
-  getClientName = () => 'Client',
+  getClientName = (clientId) => 'Client',
   onAppointmentClick,
   onAvailabilityClick,
   userTimeZone

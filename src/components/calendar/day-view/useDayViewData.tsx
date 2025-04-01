@@ -13,13 +13,21 @@ const timeToDate = (date: Date, timeStr: string): Date => {
   return result;
 };
 
+interface UseDayViewDataProps {
+  currentDate: Date;
+  clinicianId: string | null;
+  refreshTrigger?: number;
+  appointments?: AppointmentData[];
+  getClientName?: (clientId: string) => string;
+}
+
 export const useDayViewData = ({
   currentDate,
   clinicianId,
   refreshTrigger = 0,
   appointments = [],
-  getClientName = () => 'Client'
-}) => {
+  getClientName = (clientId: string) => 'Client'
+}: UseDayViewDataProps) => {
   const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [isLoading, setIsLoading] = useState(true);
