@@ -252,13 +252,9 @@ export const useSessionNoteForm = ({
     setIsSubmitting(true);
 
     try {
-      let client_diagnosis = formState.diagnosis;
+      let client_diagnosis: string[] = [];
       if (typeof formState.diagnosis === 'string' && formState.diagnosis.trim()) {
         client_diagnosis = formState.diagnosis.split(',').map(d => d.trim()).filter(Boolean);
-      } else if (Array.isArray(formState.diagnosis)) {
-        client_diagnosis = formState.diagnosis;
-      } else {
-        client_diagnosis = [];
       }
 
       const updates = {
