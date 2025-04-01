@@ -751,6 +751,7 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
+          phq9_narrative: string | null
           question_1: number
           question_2: number
           question_3: number
@@ -768,6 +769,7 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
+          phq9_narrative?: string | null
           question_1: number
           question_2: number
           question_3: number
@@ -785,6 +787,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
+          phq9_narrative?: string | null
           question_1?: number
           question_2?: number
           question_3?: number

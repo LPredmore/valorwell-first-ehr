@@ -6,3 +6,5 @@ verify_jwt = true
 verify_jwt = true
 [functions.getavailabilitysettings]
 verify_jwt = true
+[functions.generate-phq9-narrative]
+verify_jwt = true
