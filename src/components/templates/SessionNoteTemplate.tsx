@@ -33,6 +33,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
+  const [diagnosisCodes, setDiagnosisCodes] = useState<string[]>([]);
+  const [hasExistingDiagnosis, setHasExistingDiagnosis] = useState(false);
 
   const [formState, setFormState] = useState({
     sessionDate: '',
@@ -98,6 +100,13 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
 
   useEffect(() => {
     if (clientData) {
+      const existingDiagnosis = clientData.client_diagnosis && clientData.client_diagnosis.length > 0;
+      setHasExistingDiagnosis(existingDiagnosis);
+      
+      if (existingDiagnosis) {
+        setDiagnosisCodes(clientData.client_diagnosis || []);
+      }
+      
       setFormState(prevState => ({
         ...prevState,
         sessionDate: appointmentDate,
@@ -165,6 +174,14 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     validateForm();
   }, [formState]);
 
+  useEffect(() => {
+    if (diagnosisCodes.length > 0) {
+      handleChange('diagnosis', diagnosisCodes.join(', '));
+    } else {
+      handleChange('diagnosis', '');
+    }
+  }, [diagnosisCodes]);
+
   const validateForm = () => {
     const requiredFields = [
       'medications', 
@@ -212,6 +229,10 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
       ...formState,
       [field]: value
     });
+  };
+
+  const handleDiagnosisChange = (codes: string[]) => {
+    setDiagnosisCodes(codes);
   };
 
   const toggleEditMode = (field: string, value: string) => {
@@ -284,6 +305,10 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
 
         client_nexttreatmentplanupdate: formState.nextTreatmentPlanUpdate,
       };
+
+      if (!hasExistingDiagnosis && diagnosisCodes.length > 0) {
+        updates.client_diagnosis = diagnosisCodes;
+      }
 
       const { error } = await supabase
         .from('clients')
@@ -417,13 +442,20 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis</label>
-            <Input
-              placeholder="Select diagnosis code"
-              value={formState.diagnosis}
-              onChange={(e) => handleChange('diagnosis', e.target.value)}
-              readOnly
-              className="bg-gray-100"
-            />
+            {hasExistingDiagnosis ? (
+              <Input
+                placeholder="Select diagnosis code"
+                value={formState.diagnosis}
+                onChange={(e) => handleChange('diagnosis', e.target.value)}
+                readOnly
+                className="bg-gray-100"
+              />
+            ) : (
+              <DiagnosisSelector
+                value={diagnosisCodes}
+                onChange={handleDiagnosisChange}
+              />
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Plan Type</label>
