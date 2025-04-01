@@ -896,57 +896,6 @@ export type Database = {
         }
         Relationships: []
       }
-      session_notes_history: {
-        Row: {
-          appointment_id: string | null
-          client_id: string
-          clinician_id: string | null
-          created_at: string
-          id: string
-          pdf_path: string | null
-          session_data: Json
-          session_date: string
-          session_type: string | null
-        }
-        Insert: {
-          appointment_id?: string | null
-          client_id: string
-          clinician_id?: string | null
-          created_at?: string
-          id?: string
-          pdf_path?: string | null
-          session_data: Json
-          session_date: string
-          session_type?: string | null
-        }
-        Update: {
-          appointment_id?: string | null
-          client_id?: string
-          clinician_id?: string | null
-          created_at?: string
-          id?: string
-          pdf_path?: string | null
-          session_data?: Json
-          session_date?: string
-          session_type?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "session_notes_history_appointment_id_fkey"
-            columns: ["appointment_id"]
-            isOneToOne: false
-            referencedRelation: "appointments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "session_notes_history_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       staff_licenses: {
         Row: {
           created_at: string | null
