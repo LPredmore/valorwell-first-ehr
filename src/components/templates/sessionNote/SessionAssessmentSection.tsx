@@ -2,6 +2,13 @@
 import React from 'react';
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue 
+} from "@/components/ui/select";
 
 interface SessionAssessmentSectionProps {
   formState: any;
@@ -12,6 +19,40 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
   formState,
   handleChange
 }) => {
+  // Options for the dropdown menus
+  const functioningOptions = [
+    "Excellent - Fully capable in all areas of life",
+    "Good - Managing well with minimal impairment",
+    "Satisfactory - Some challenges but maintaining essential functions",
+    "Fair - Moderate impairment in one or more areas",
+    "Limited - Significant impairment in multiple areas",
+    "Poor - Severe impairment in daily functioning",
+    "Very poor - Unable to function independently in most areas",
+    "Crisis - Immediate intervention needed"
+  ];
+
+  const prognosisOptions = [
+    "Excellent - Highly likely to achieve all treatment goals",
+    "Very Good - Strong likelihood of achieving most treatment goals",
+    "Good - Likely to achieve primary treatment goals",
+    "Fair - May achieve some treatment goals with consistent effort",
+    "Guarded - Limited expectation of achieving treatment goals",
+    "Poor - Significant barriers to achieving treatment goals",
+    "Uncertain - Unable to determine likelihood at this time"
+  ];
+
+  const progressOptions = [
+    "Exceptional - Exceeding expectations in all goal areas",
+    "Substantial - Significant improvement toward most goals",
+    "Steady - Consistent improvement at expected pace",
+    "Moderate - Some improvement in key areas",
+    "Minimal - Slight improvements noted",
+    "Fluctuating - Inconsistent progress with periods of improvement and regression",
+    "Stalled - No significant changes since last assessment",
+    "Early stage - Too early in treatment to evaluate progress",
+    "Regression - Decline in functioning or symptoms worsening"
+  ];
+
   return (
     <>
       <h4 className="text-md font-medium text-gray-800 mb-4">Session Assessment</h4>
@@ -28,32 +69,53 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
 
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-1">Functioning</label>
-        <Textarea
-          placeholder="Describe client functioning"
-          className="min-h-[100px]"
-          value={formState.functioning}
-          onChange={(e) => handleChange('functioning', e.target.value)}
-        />
+        <Select 
+          value={formState.functioning || ""}
+          onValueChange={(value) => handleChange('functioning', value)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select client's level of functioning" />
+          </SelectTrigger>
+          <SelectContent>
+            {functioningOptions.map((option) => (
+              <SelectItem key={option} value={option}>{option}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-1">Prognosis</label>
-        <Textarea
-          placeholder="Describe prognosis"
-          className="min-h-[100px]"
-          value={formState.prognosis}
-          onChange={(e) => handleChange('prognosis', e.target.value)}
-        />
+        <Select 
+          value={formState.prognosis || ""}
+          onValueChange={(value) => handleChange('prognosis', value)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select client's prognosis" />
+          </SelectTrigger>
+          <SelectContent>
+            {prognosisOptions.map((option) => (
+              <SelectItem key={option} value={option}>{option}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-1">Progress</label>
-        <Textarea
-          placeholder="Describe progress"
-          className="min-h-[100px]"
-          value={formState.progress}
-          onChange={(e) => handleChange('progress', e.target.value)}
-        />
+        <Select 
+          value={formState.progress || ""}
+          onValueChange={(value) => handleChange('progress', value)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select client's progress level" />
+          </SelectTrigger>
+          <SelectContent>
+            {progressOptions.map((option) => (
+              <SelectItem key={option} value={option}>{option}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="mb-6">
