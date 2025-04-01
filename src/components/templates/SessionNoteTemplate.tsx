@@ -31,7 +31,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
   
-  // Use our new custom hook for session data
   const { 
     isLoading,
     error,
@@ -106,14 +105,12 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     insightJudgement: false
   });
 
-  // Update formState when phq9Narrative changes
   useEffect(() => {
     if (phq9Narrative) {
       handleChange('phq9Narrative', phq9Narrative);
     }
   }, [phq9Narrative]);
 
-  // Update form state from client data
   useEffect(() => {
     if (clientData) {
       console.log("Setting form state from client data:", clientData);
@@ -213,7 +210,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   };
 
   const handleDiagnosisChange = (codes: string[]) => {
-    // This will be picked up by the useEffect to update formState.diagnosis
   };
 
   const toggleEditMode = (field: string, value: string) => {
@@ -251,10 +247,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     }
     setIsSubmitting(true);
     try {
-      // First, save to session history
       await saveSessionHistory(formState);
       
-      // Then update client record with latest data
       const updates: Partial<ClientDetails> = {
         client_appearance: formState.appearance,
         client_attitude: formState.attitude,
@@ -317,7 +311,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     }
   };
 
-  // Show loading state if data is still being fetched
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
@@ -329,7 +322,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     );
   }
 
-  // Show error state if there was a problem
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
