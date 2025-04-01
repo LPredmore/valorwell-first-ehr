@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Plus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
@@ -35,6 +35,9 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
   const { toast } = useToast();
   const treatmentPlanRef = useRef<HTMLDivElement>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showSecondaryObjective, setShowSecondaryObjective] = useState(false);
+  const [showTertiaryObjective, setShowTertiaryObjective] = useState(false);
+  
   // Initialize form state from client data
   const [formState, setFormState] = useState({
     clientName: clientName || `${clientData?.client_first_name || ''} ${clientData?.client_last_name || ''}`,
@@ -84,11 +87,23 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         nextUpdate: clientData.client_nexttreatmentplanupdate || '',
         privateNote: clientData.client_privatenote || ''
       });
+      
+      // Show objectives if they exist in client data
+      setShowSecondaryObjective(!!clientData.client_secondaryobjective);
+      setShowTertiaryObjective(!!clientData.client_tertiaryobjective);
     }
   }, [clientData, clinicianName]);
 
   const handleChange = (field: string, value: any) => {
     setFormState(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleAddObjective = () => {
+    if (!showSecondaryObjective) {
+      setShowSecondaryObjective(true);
+    } else if (!showTertiaryObjective) {
+      setShowTertiaryObjective(true);
+    }
   };
 
   const handleSave = async () => {
@@ -334,7 +349,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
               />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div className="space-y-2">
                 <Label htmlFor="intervention-1" className="text-sm text-valorwell-700 font-semibold">Intervention 1</Label>
                 <Input 
@@ -355,69 +370,103 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
               </div>
             </div>
             
-            <div className="space-y-2 mb-4">
-              <Label htmlFor="secondary-objective" className="text-sm text-valorwell-700 font-semibold">Secondary Objective</Label>
-              <Textarea 
-                id="secondary-objective" 
-                placeholder="Describe the secondary objective" 
-                className="min-h-[100px]"
-                value={formState.secondaryObjective}
-                onChange={(e) => handleChange('secondaryObjective', e.target.value)}
-              />
-            </div>
+            {!showSecondaryObjective && !showTertiaryObjective && (
+              <div className="mb-6">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handleAddObjective}
+                  className="flex items-center gap-2"
+                >
+                  <Plus size={16} /> Add Another Objective
+                </Button>
+              </div>
+            )}
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="space-y-2">
-                <Label htmlFor="sec-intervention-1" className="text-sm text-valorwell-700 font-semibold">Intervention 3</Label>
-                <Input 
-                  id="sec-intervention-1" 
-                  placeholder="Describe intervention"
-                  value={formState.intervention3}
-                  onChange={(e) => handleChange('intervention3', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sec-intervention-2" className="text-sm text-valorwell-700 font-semibold">Intervention 4</Label>
-                <Input 
-                  id="sec-intervention-2" 
-                  placeholder="Describe intervention"
-                  value={formState.intervention4}
-                  onChange={(e) => handleChange('intervention4', e.target.value)}
-                />
-              </div>
-            </div>
+            {showSecondaryObjective && (
+              <>
+                <div className="space-y-2 mt-6 mb-4">
+                  <Label htmlFor="secondary-objective" className="text-sm text-valorwell-700 font-semibold">Secondary Objective</Label>
+                  <Textarea 
+                    id="secondary-objective" 
+                    placeholder="Describe the secondary objective" 
+                    className="min-h-[100px]"
+                    value={formState.secondaryObjective}
+                    onChange={(e) => handleChange('secondaryObjective', e.target.value)}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="sec-intervention-1" className="text-sm text-valorwell-700 font-semibold">Intervention 3</Label>
+                    <Input 
+                      id="sec-intervention-1" 
+                      placeholder="Describe intervention"
+                      value={formState.intervention3}
+                      onChange={(e) => handleChange('intervention3', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sec-intervention-2" className="text-sm text-valorwell-700 font-semibold">Intervention 4</Label>
+                    <Input 
+                      id="sec-intervention-2" 
+                      placeholder="Describe intervention"
+                      value={formState.intervention4}
+                      onChange={(e) => handleChange('intervention4', e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                {!showTertiaryObjective && (
+                  <div className="mb-6">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={handleAddObjective}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus size={16} /> Add Another Objective
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
             
-            <div className="space-y-2 mb-4">
-              <Label htmlFor="tertiary-objective" className="text-sm text-valorwell-700 font-semibold">Tertiary Objective</Label>
-              <Textarea 
-                id="tertiary-objective" 
-                placeholder="Describe the tertiary objective" 
-                className="min-h-[100px]"
-                value={formState.tertiaryObjective}
-                onChange={(e) => handleChange('tertiaryObjective', e.target.value)}
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="space-y-2">
-                <Label htmlFor="tert-intervention-1" className="text-sm text-valorwell-700 font-semibold">Intervention 5</Label>
-                <Input 
-                  id="tert-intervention-1" 
-                  placeholder="Describe intervention"
-                  value={formState.intervention5}
-                  onChange={(e) => handleChange('intervention5', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tert-intervention-2" className="text-sm text-valorwell-700 font-semibold">Intervention 6</Label>
-                <Input 
-                  id="tert-intervention-2" 
-                  placeholder="Describe intervention"
-                  value={formState.intervention6}
-                  onChange={(e) => handleChange('intervention6', e.target.value)}
-                />
-              </div>
-            </div>
+            {showTertiaryObjective && (
+              <>
+                <div className="space-y-2 mt-6 mb-4">
+                  <Label htmlFor="tertiary-objective" className="text-sm text-valorwell-700 font-semibold">Tertiary Objective</Label>
+                  <Textarea 
+                    id="tertiary-objective" 
+                    placeholder="Describe the tertiary objective" 
+                    className="min-h-[100px]"
+                    value={formState.tertiaryObjective}
+                    onChange={(e) => handleChange('tertiaryObjective', e.target.value)}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="tert-intervention-1" className="text-sm text-valorwell-700 font-semibold">Intervention 5</Label>
+                    <Input 
+                      id="tert-intervention-1" 
+                      placeholder="Describe intervention"
+                      value={formState.intervention5}
+                      onChange={(e) => handleChange('intervention5', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tert-intervention-2" className="text-sm text-valorwell-700 font-semibold">Intervention 6</Label>
+                    <Input 
+                      id="tert-intervention-2" 
+                      placeholder="Describe intervention"
+                      value={formState.intervention6}
+                      onChange={(e) => handleChange('intervention6', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
             
             <div className="space-y-2 mb-6">
               <Label htmlFor="next-update" className="text-sm text-valorwell-700 font-semibold">Next Treatment Plan Update</Label>
