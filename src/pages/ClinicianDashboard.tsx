@@ -10,11 +10,13 @@ import { AppointmentsList } from '@/components/dashboard/AppointmentsList';
 import { DocumentationDialog } from '@/components/dashboard/DocumentationDialog';
 import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 import { useAppointments } from '@/hooks/useAppointments';
+import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 
 const ClinicianDashboard = () => {
   const { userRole, userId } = useUser();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const clinicianTimeZone = getUserTimeZone();
+  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>(getUserTimeZone());
+  const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
   const timeZoneDisplay = formatTimeZoneDisplay(clinicianTimeZone);
 
   useEffect(() => {
@@ -27,6 +29,28 @@ const ClinicianDashboard = () => {
     
     fetchUserId();
   }, []);
+
+  // Fetch clinician's timezone
+  useEffect(() => {
+    const fetchClinicianTimeZone = async () => {
+      if (currentUserId) {
+        setIsLoadingTimeZone(true);
+        try {
+          const timeZone = await getClinicianTimeZone(currentUserId);
+          console.log("Fetched clinician timezone:", timeZone);
+          setClinicianTimeZone(timeZone);
+        } catch (error) {
+          console.error("Error fetching clinician timezone:", error);
+          // Fallback to system timezone
+          setClinicianTimeZone(getUserTimeZone());
+        } finally {
+          setIsLoadingTimeZone(false);
+        }
+      }
+    };
+    
+    fetchClinicianTimeZone();
+  }, [currentUserId]);
 
   const {
     todayAppointments,
@@ -55,6 +79,7 @@ const ClinicianDashboard = () => {
         <SessionNoteTemplate 
           onClose={closeSessionTemplate}
           appointment={currentAppointment}
+          clinicianName={userId}
         />
       </Layout>
     );
@@ -72,10 +97,11 @@ const ClinicianDashboard = () => {
               title="Today's Appointments"
               icon={<Calendar className="h-5 w-5 mr-2" />}
               appointments={todayAppointments}
-              isLoading={isLoading}
+              isLoading={isLoading || isLoadingTimeZone}
               error={error}
               emptyMessage="No appointments scheduled for today."
               timeZoneDisplay={timeZoneDisplay}
+              userTimeZone={clinicianTimeZone}
               showStartButton={true}
               onStartSession={startVideoSession}
             />
@@ -87,10 +113,11 @@ const ClinicianDashboard = () => {
               title="Outstanding Documentation"
               icon={<AlertCircle className="h-5 w-5 mr-2" />}
               appointments={pastAppointments}
-              isLoading={isLoading}
+              isLoading={isLoading || isLoadingTimeZone}
               error={error}
               emptyMessage="No outstanding documentation."
               timeZoneDisplay={timeZoneDisplay}
+              userTimeZone={clinicianTimeZone}
               onDocumentSession={openDocumentDialog}
             />
           </div>
@@ -101,10 +128,11 @@ const ClinicianDashboard = () => {
               title="Upcoming Appointments"
               icon={<Calendar className="h-5 w-5 mr-2" />}
               appointments={upcomingAppointments}
-              isLoading={isLoading}
+              isLoading={isLoading || isLoadingTimeZone}
               error={error}
               emptyMessage="No upcoming appointments scheduled."
               timeZoneDisplay={timeZoneDisplay}
+              userTimeZone={clinicianTimeZone}
               showViewAllButton={true}
             />
           </div>

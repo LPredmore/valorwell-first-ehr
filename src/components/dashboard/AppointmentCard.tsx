@@ -4,7 +4,7 @@ import { format, parseISO } from 'date-fns';
 import { Calendar, Clock, UserCircle, Video, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatTime12Hour, formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
+import { formatTime12Hour, formatTimeInUserTimeZone } from '@/utils/timeZoneUtils';
 
 export interface AppointmentCardProps {
   appointment: {
@@ -22,6 +22,7 @@ export interface AppointmentCardProps {
     };
   };
   timeZoneDisplay: string;
+  userTimeZone: string;
   showStartButton?: boolean;
   onStartSession?: (appointment: AppointmentCardProps['appointment']) => void;
   onDocumentSession?: (appointment: AppointmentCardProps['appointment']) => void;
@@ -30,12 +31,19 @@ export interface AppointmentCardProps {
 export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   appointment,
   timeZoneDisplay,
+  userTimeZone,
   showStartButton = false,
   onStartSession,
   onDocumentSession
 }) => {
-  const formatTime = (timeString: string) => {
-    return formatTime12Hour(timeString);
+  // Format time for display in user's time zone
+  const formatTimeDisplay = (timeString: string) => {
+    try {
+      return formatTimeInUserTimeZone(timeString, userTimeZone, 'h:mm a');
+    } catch (error) {
+      console.error('Error formatting time with time zone:', error);
+      return formatTime12Hour(timeString);
+    }
   };
 
   if (onDocumentSession) {
@@ -55,7 +63,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
           <div className="flex items-center">
             <Clock className="h-4 w-4 mr-2" />
             <span className="text-sm">
-              {formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}
+              {formatTimeDisplay(appointment.start_time)} - {formatTimeDisplay(appointment.end_time)}
             </span>
           </div>
           <div className="text-sm mt-1">{appointment.type}</div>
@@ -80,7 +88,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-semibold flex items-center">
           <Clock className="h-4 w-4 mr-2" />
-          {formatTime(appointment.start_time)} - {formatTime(appointment.end_time)} 
+          {formatTimeDisplay(appointment.start_time)} - {formatTimeDisplay(appointment.end_time)} 
           <span className="text-xs text-gray-500 ml-1">({timeZoneDisplay})</span>
         </CardTitle>
         <CardDescription className="flex items-center">

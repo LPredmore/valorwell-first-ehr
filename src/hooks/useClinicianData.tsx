@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Clinician } from "@/types/client";
@@ -63,7 +62,10 @@ export const getClinicianTimeZone = async (clinicianId: string): Promise<string>
       .eq('id', clinicianId)
       .single();
       
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching clinician timezone:', error);
+      return 'America/Chicago'; // Default to Central Time
+    }
     
     // Return the timezone or a default if not set
     return data?.clinician_timezone || 'America/Chicago';

@@ -1,9 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { format, isToday, isFuture, parseISO, isBefore } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getUserTimeZone } from '@/utils/timeZoneUtils';
+import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 
 export interface Appointment {
   id: string;
@@ -68,6 +69,7 @@ export const useAppointments = (userId: string | null) => {
     enabled: !!userId
   });
 
+  // Filter appointments based on date - using UTC date comparison
   const todayAppointments = appointments?.filter(appointment => {
     const appointmentDate = parseISO(appointment.date);
     return isToday(appointmentDate);

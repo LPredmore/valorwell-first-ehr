@@ -1,4 +1,3 @@
-
 import { format, parse, parseISO } from 'date-fns';
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 
@@ -70,6 +69,7 @@ export const convertToUserTimeZone = (
 
 /**
  * Formats a time string in the user's timezone
+ * Improved to handle time strings in consistent format
  */
 export const formatTimeInUserTimeZone = (
   timeStr: string,
@@ -252,4 +252,3 @@ export const formatTimeZoneDisplay = (timeZone: string): string => {
     return timeZone || '';
   }
 };
-

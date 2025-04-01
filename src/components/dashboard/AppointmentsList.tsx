@@ -13,6 +13,7 @@ interface AppointmentsListProps {
   error: Error | null;
   emptyMessage: string;
   timeZoneDisplay: string;
+  userTimeZone: string;
   showStartButton?: boolean;
   showViewAllButton?: boolean;
   onStartSession?: (appointment: AppointmentCardProps['appointment']) => void;
@@ -27,6 +28,7 @@ export const AppointmentsList: React.FC<AppointmentsListProps> = ({
   error,
   emptyMessage,
   timeZoneDisplay,
+  userTimeZone,
   showStartButton = false,
   showViewAllButton = false,
   onStartSession,
@@ -57,6 +59,7 @@ export const AppointmentsList: React.FC<AppointmentsListProps> = ({
               key={appointment.id}
               appointment={appointment}
               timeZoneDisplay={timeZoneDisplay}
+              userTimeZone={userTimeZone}
               showStartButton={showStartButton}
               onStartSession={onStartSession}
               onDocumentSession={onDocumentSession}
