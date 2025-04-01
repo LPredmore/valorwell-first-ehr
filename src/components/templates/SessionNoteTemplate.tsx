@@ -79,7 +79,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-1">Problem Narrative</label>
                 <Textarea
                   placeholder="Describe the problem narrative"
-                  className="min-h-[100px] bg-gray-100 resize-y"
+                  className="min-h-[100px] bg-gray-100"
                   value={formState.problemNarrative}
                   onChange={(e) => handleChange('problemNarrative', e.target.value)}
                   readOnly
@@ -92,7 +92,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Goal Narrative</label>
                 <Textarea
                   placeholder="Describe the treatment goals"
-                  className="min-h-[100px] bg-gray-100 resize-y"
+                  className="min-h-[100px] bg-gray-100"
                   value={formState.treatmentGoalNarrative}
                   onChange={(e) => handleChange('treatmentGoalNarrative', e.target.value)}
                   readOnly
@@ -114,7 +114,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           handleChange={handleChange} 
         />
         
-        {/* PHQ-9 Assessment Section - Move just before Plan & Signature */}
+        {/* PHQ-9 Assessment Section - Moved right before Plan & Signature */}
         {phq9Data && <PHQ9AssessmentSection phq9Data={phq9Data} />}
       </div>
 
