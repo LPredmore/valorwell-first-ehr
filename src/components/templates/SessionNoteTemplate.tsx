@@ -1,13 +1,15 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { X, FileText, LockKeyhole } from 'lucide-react';
+import { X, FileText, LockKeyhole, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DiagnosisSelector } from '@/components/DiagnosisSelector';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClientDetails } from '@/types/client';
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface SessionNoteTemplateProps {
   onClose: () => void;
@@ -31,6 +33,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   const [hasExistingDiagnosis, setHasExistingDiagnosis] = useState(false);
   const [sessionTypes, setSessionTypes] = useState<{code: string, name: string}[]>([]);
   const [phq9Narrative, setPhq9Narrative] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingPHQ9, setIsLoadingPHQ9] = useState(false);
+  const [isLoadingSessionTypes, setIsLoadingSessionTypes] = useState(false);
   
   const [formState, setFormState] = useState({
     sessionDate: '',
@@ -95,6 +100,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   useEffect(() => {
     const fetchSessionTypes = async () => {
       try {
+        setIsLoadingSessionTypes(true);
         console.log("Fetching CPT codes for session types");
         const { data, error } = await supabase
           .from('cpt_codes')
@@ -103,6 +109,11 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           
         if (error) {
           console.error('Error fetching CPT codes:', error);
+          toast({
+            title: "Error",
+            description: "Could not load session types. Please try again.",
+            variant: "destructive"
+          });
           return;
         }
         
@@ -110,17 +121,25 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         setSessionTypes(data || []);
       } catch (error) {
         console.error('Error in fetchSessionTypes:', error);
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred while loading session types.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoadingSessionTypes(false);
       }
     };
     
     fetchSessionTypes();
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     const fetchLatestPHQ9 = async () => {
       if (!clientData?.id) return;
       
       try {
+        setIsLoadingPHQ9(true);
         console.log("Fetching latest PHQ9 assessment for client:", clientData.id);
         const { data, error } = await supabase
           .from('phq9_assessments')
@@ -141,6 +160,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         }
       } catch (error) {
         console.error('Error in fetchLatestPHQ9:', error);
+      } finally {
+        setIsLoadingPHQ9(false);
       }
     };
     
@@ -186,12 +207,12 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         suicidalIdeation: clientData.client_suicidalideation || '',
         homicidalIdeation: clientData.client_homicidalideation || '',
         primaryObjective: clientData.client_primaryobjective || '',
-        secondaryObjective: clientData.client_secondaryobjective || '',
-        tertiaryObjective: clientData.client_tertiaryobjective || '',
         intervention1: clientData.client_intervention1 || '',
         intervention2: clientData.client_intervention2 || '',
+        secondaryObjective: clientData.client_secondaryobjective || '',
         intervention3: clientData.client_intervention3 || '',
         intervention4: clientData.client_intervention4 || '',
+        tertiaryObjective: clientData.client_tertiaryobjective || '',
         intervention5: clientData.client_intervention5 || '',
         intervention6: clientData.client_intervention6 || '',
         currentSymptoms: clientData.client_functioning || '',
@@ -217,8 +238,21 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         memoryConcentration: clientData.client_memoryconcentration && !['Short & Long Term Intact'].includes(clientData.client_memoryconcentration),
         insightJudgement: clientData.client_insightjudgement && !['Good'].includes(clientData.client_insightjudgement)
       });
+      
+      setIsLoading(false);
     }
   }, [clientData, clinicianName, clinicianNameInsurance, appointmentDate]);
+
+  // Additional useEffect to properly manage overall loading state
+  useEffect(() => {
+    // Set overall loading state based on all individual loading states
+    const allDataLoaded = !isLoadingPHQ9 && !isLoadingSessionTypes && clientData !== null;
+    if (allDataLoaded) {
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
+  }, [isLoadingPHQ9, isLoadingSessionTypes, clientData]);
 
   useEffect(() => {
     validateForm();
@@ -410,7 +444,56 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
 
   const RequiredFieldIndicator = () => <span className="text-red-500 ml-1">*</span>;
 
-  return <div className="animate-fade-in">
+  // Enhanced loading state with better UI
+  if (isLoading) {
+    return (
+      <div className="animate-fade-in p-6 space-y-6">
+        <div className="flex justify-between items-center mb-2">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <Button variant="outline" size="icon" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        <div className="border rounded-md p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <FileText className="h-5 w-5 text-gray-700" />
+            <Skeleton className="h-6 w-48" />
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {[...Array(3)].map((_, i) => (
+              <div key={i}>
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {[...Array(3)].map((_, i) => (
+              <div key={i}>
+                <Skeleton className="h-4 w-32 mb-2" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex justify-center my-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-2 text-gray-600">Loading session data...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Fixed syntax error: added parentheses around the JSX return statement
+  return (
+    <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-2">
         <div>
           <h2 className="text-xl font-semibold">Session Note Template</h2>
@@ -429,7 +512,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
             <Input placeholder="Enter patient name" value={formState.patientName} onChange={e => handleChange('patientName', e.target.value)} readOnly className="bg-gray-100" />
           </div>
           <div>
@@ -514,7 +597,15 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Appearance</label>
-            {editModes.appearance ? <Input value={formState.appearance} onChange={e => handleChange('appearance', e.target.value)} placeholder="Describe appearance" className="w-full" /> : <Select value={formState.appearance} onValueChange={value => toggleEditMode('appearance', value)}>
+            {editModes.appearance ? (
+              <Input 
+                value={formState.appearance} 
+                onChange={e => handleChange('appearance', e.target.value)} 
+                placeholder="Describe appearance" 
+                className="w-full" 
+              />
+            ) : (
+              <Select value={formState.appearance} onValueChange={value => toggleEditMode('appearance', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select appearance" />
                 </SelectTrigger>
@@ -522,11 +613,20 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
                   <SelectItem value="Normal Appearance & Grooming">Normal Appearance & Grooming</SelectItem>
                   <SelectItem value="Other">Other (Free Text)</SelectItem>
                 </SelectContent>
-              </Select>}
+              </Select>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Attitude</label>
-            {editModes.attitude ? <Input value={formState.attitude} onChange={e => handleChange('attitude', e.target.value)} placeholder="Describe attitude" className="w-full" /> : <Select value={formState.attitude} onValueChange={value => toggleEditMode('attitude', value)}>
+            {editModes.attitude ? (
+              <Input 
+                value={formState.attitude} 
+                onChange={e => handleChange('attitude', e.target.value)} 
+                placeholder="Describe attitude" 
+                className="w-full" 
+              />
+            ) : (
+              <Select value={formState.attitude} onValueChange={value => toggleEditMode('attitude', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select attitude" />
                 </SelectTrigger>
@@ -534,38 +634,69 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
                   <SelectItem value="Calm & Cooperative">Calm & Cooperative</SelectItem>
                   <SelectItem value="Other">Other (Free Text)</SelectItem>
                 </SelectContent>
-              </Select>}
+              </Select>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Behavior</label>
-            {editModes.behavior ? <Input value={formState.behavior} onChange={e => handleChange('behavior', e.target.value)} placeholder="Describe behavior" className="w-full" /> : <Select value={formState.behavior} onValueChange={value => toggleEditMode('behavior', value)}>
+            {editModes.behavior ? (
+              <Input 
+                value={formState.behavior} 
+                onChange={e => handleChange('behavior', e.target.value)} 
+                placeholder="Describe behavior" 
+                className="w-full" 
+              />
+            ) : (
+              <Select value={formState.behavior} onValueChange={value => toggleEditMode('behavior', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select behavior" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="No unusual behavior or psychomotor changes">No unusual behavior or psychomotor changes</SelectItem>
+                  <SelectItem value="No unusual behavior or psychomotor changes">
+                    No unusual behavior or psychomotor changes
+                  </SelectItem>
                   <SelectItem value="Other">Other (Free Text)</SelectItem>
                 </SelectContent>
-              </Select>}
+              </Select>
+            )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Speech</label>
-            {editModes.speech ? <Input value={formState.speech} onChange={e => handleChange('speech', e.target.value)} placeholder="Describe speech" className="w-full" /> : <Select value={formState.speech} onValueChange={value => toggleEditMode('speech', value)}>
+            {editModes.speech ? (
+              <Input 
+                value={formState.speech} 
+                onChange={e => handleChange('speech', e.target.value)} 
+                placeholder="Describe speech" 
+                className="w-full" 
+              />
+            ) : (
+              <Select value={formState.speech} onValueChange={value => toggleEditMode('speech', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select speech" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Normal rate/tone/volume w/out pressure">Normal rate/tone/volume w/out pressure</SelectItem>
+                  <SelectItem value="Normal rate/tone/volume w/out pressure">
+                    Normal rate/tone/volume w/out pressure
+                  </SelectItem>
                   <SelectItem value="Other">Other (Free Text)</SelectItem>
                 </SelectContent>
-              </Select>}
+              </Select>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Affect</label>
-            {editModes.affect ? <Input value={formState.affect} onChange={e => handleChange('affect', e.target.value)} placeholder="Describe affect" className="w-full" /> : <Select value={formState.affect} onValueChange={value => toggleEditMode('affect', value)}>
+            {editModes.affect ? (
+              <Input 
+                value={formState.affect} 
+                onChange={e => handleChange('affect', e.target.value)} 
+                placeholder="Describe affect" 
+                className="w-full" 
+              />
+            ) : (
+              <Select value={formState.affect} onValueChange={value => toggleEditMode('affect', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select affect" />
                 </SelectTrigger>
@@ -573,11 +704,20 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
                   <SelectItem value="Normal range/congruent">Normal range/congruent</SelectItem>
                   <SelectItem value="Other">Other (Free Text)</SelectItem>
                 </SelectContent>
-              </Select>}
+              </Select>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Thought Process</label>
-            {editModes.thoughtProcess ? <Input value={formState.thoughtProcess} onChange={e => handleChange('thoughtProcess', e.target.value)} placeholder="Describe thought process" className="w-full" /> : <Select value={formState.thoughtProcess} onValueChange={value => toggleEditMode('thoughtProcess', value)}>
+            {editModes.thoughtProcess ? (
+              <Input 
+                value={formState.thoughtProcess} 
+                onChange={e => handleChange('thoughtProcess', e.target.value)} 
+                placeholder="Describe thought process" 
+                className="w-full" 
+              />
+            ) : (
+              <Select value={formState.thoughtProcess} onValueChange={value => toggleEditMode('thoughtProcess', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select thought process" />
                 </SelectTrigger>
@@ -585,14 +725,23 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
                   <SelectItem value="Goal Oriented/Directed">Goal Oriented/Directed</SelectItem>
                   <SelectItem value="Other">Other (Free Text)</SelectItem>
                 </SelectContent>
-              </Select>}
+              </Select>
+            )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Perception</label>
-            {editModes.perception ? <Input value={formState.perception} onChange={e => handleChange('perception', e.target.value)} placeholder="Describe perception" className="w-full" /> : <Select value={formState.perception} onValueChange={value => toggleEditMode('perception', value)}>
+            {editModes.perception ? (
+              <Input 
+                value={formState.perception} 
+                onChange={e => handleChange('perception', e.target.value)} 
+                placeholder="Describe perception" 
+                className="w-full" 
+              />
+            ) : (
+              <Select value={formState.perception} onValueChange={value => toggleEditMode('perception', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select perception" />
                 </SelectTrigger>
@@ -600,11 +749,20 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
                   <SelectItem value="No Hallucinations or Delusions">No Hallucinations or Delusions</SelectItem>
                   <SelectItem value="Other">Other (Free Text)</SelectItem>
                 </SelectContent>
-              </Select>}
+              </Select>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Orientation</label>
-            {editModes.orientation ? <Input value={formState.orientation} onChange={e => handleChange('orientation', e.target.value)} placeholder="Describe orientation" className="w-full" /> : <Select value={formState.orientation} onValueChange={value => toggleEditMode('orientation', value)}>
+            {editModes.orientation ? (
+              <Input 
+                value={formState.orientation} 
+                onChange={e => handleChange('orientation', e.target.value)} 
+                placeholder="Describe orientation" 
+                className="w-full" 
+              />
+            ) : (
+              <Select value={formState.orientation} onValueChange={value => toggleEditMode('orientation', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select orientation" />
                 </SelectTrigger>
@@ -612,11 +770,23 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
                   <SelectItem value="Oriented x3">Oriented x3</SelectItem>
                   <SelectItem value="Other">Other (Free Text)</SelectItem>
                 </SelectContent>
-              </Select>}
+              </Select>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Memory/Concentration</label>
-            {editModes.memoryConcentration ? <Input value={formState.memoryConcentration} onChange={e => handleChange('memoryConcentration', e.target.value)} placeholder="Describe memory/concentration" className="w-full" /> : <Select value={formState.memoryConcentration} onValueChange={value => toggleEditMode('memoryConcentration', value)}>
+            {editModes.memoryConcentration ? (
+              <Input 
+                value={formState.memoryConcentration} 
+                onChange={e => handleChange('memoryConcentration', e.target.value)} 
+                placeholder="Describe memory/concentration" 
+                className="w-full" 
+              />
+            ) : (
+              <Select 
+                value={formState.memoryConcentration}
+                onValueChange={value => toggleEditMode('memoryConcentration', value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select memory/concentration" />
                 </SelectTrigger>
@@ -624,14 +794,26 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
                   <SelectItem value="Short & Long Term Intact">Short & Long Term Intact</SelectItem>
                   <SelectItem value="Other">Other (Free Text)</SelectItem>
                 </SelectContent>
-              </Select>}
+              </Select>
+            )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Insight/Judgement</label>
-            {editModes.insightJudgement ? <Input value={formState.insightJudgement} onChange={e => handleChange('insightJudgement', e.target.value)} placeholder="Describe insight/judgement" className="w-full" /> : <Select value={formState.insightJudgement} onValueChange={value => toggleEditMode('insightJudgement', value)}>
+            {editModes.insightJudgement ? (
+              <Input 
+                value={formState.insightJudgement} 
+                onChange={e => handleChange('insightJudgement', e.target.value)} 
+                placeholder="Describe insight/judgement" 
+                className="w-full" 
+              />
+            ) : (
+              <Select 
+                value={formState.insightJudgement}
+                onValueChange={value => toggleEditMode('insightJudgement', value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select insight/judgement" />
                 </SelectTrigger>
@@ -639,13 +821,18 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
                   <SelectItem value="Good">Good</SelectItem>
                   <SelectItem value="Other">Other (Free Text)</SelectItem>
                 </SelectContent>
-              </Select>}
+              </Select>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Mood<RequiredFieldIndicator />
             </label>
-            <Input placeholder="Describe mood" value={formState.mood} onChange={e => handleChange('mood', e.target.value)} />
+            <Input 
+              placeholder="Describe mood" 
+              value={formState.mood} 
+              onChange={e => handleChange('mood', e.target.value)} 
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -698,23 +885,49 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           </div>
         </div>
 
-        {hasTreatmentPlan && <>
+        {hasTreatmentPlan && (
+          <>
             <h4 className="text-md font-medium text-gray-800 mb-4">Treatment Objectives & Interventions</h4>
             
-            {treatmentPlanSections.map((section, index) => section.objectiveField && <React.Fragment key={index}>
+            {treatmentPlanSections.map((section, index) => 
+              section.objectiveField && (
+                <React.Fragment key={index}>
                   <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-700 mb-1">{section.title}</label>
-                    <Textarea placeholder={`Describe the ${section.title.toLowerCase()}`} className="min-h-[100px] bg-gray-100" value={section.objectiveValue} onChange={e => handleChange(section.objectiveKey, e.target.value)} readOnly />
+                    <Textarea 
+                      placeholder={`Describe the ${section.title.toLowerCase()}`} 
+                      className="min-h-[100px] bg-gray-100" 
+                      value={section.objectiveValue} 
+                      onChange={e => handleChange(section.objectiveKey, e.target.value)} 
+                      readOnly 
+                    />
                   </div>
                   
-                  {section.interventions.some(i => i.field) && <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                      {section.interventions.map((intervention, idx) => intervention.field && <div key={idx}>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">{`Intervention ${intervention.number}`}</label>
-                            <Input placeholder="Describe intervention" value={intervention.value} onChange={e => handleChange(intervention.key, e.target.value)} readOnly className="bg-gray-100" />
-                          </div>)}
-                    </div>}
-                </React.Fragment>)}
-          </>}
+                  {section.interventions.some(i => i.field) && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                      {section.interventions.map((intervention, idx) => 
+                        intervention.field && (
+                          <div key={idx}>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {`Intervention ${intervention.number}`}
+                            </label>
+                            <Input 
+                              placeholder="Describe intervention" 
+                              value={intervention.value} 
+                              onChange={e => handleChange(intervention.key, e.target.value)} 
+                              readOnly 
+                              className="bg-gray-100" 
+                            />
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+                </React.Fragment>
+              )
+            )}
+          </>
+        )}
 
         <h4 className="text-md font-medium text-gray-800 mb-4">Session Assessment</h4>
 
@@ -722,45 +935,82 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Current Symptoms<RequiredFieldIndicator />
           </label>
-          <Textarea placeholder="Describe current symptoms" className="min-h-[100px]" value={formState.currentSymptoms} onChange={e => handleChange('currentSymptoms', e.target.value)} />
+          <Textarea 
+            placeholder="Describe current symptoms" 
+            className="min-h-[100px]" 
+            value={formState.currentSymptoms} 
+            onChange={e => handleChange('currentSymptoms', e.target.value)} 
+          />
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Functioning<RequiredFieldIndicator />
           </label>
-          <Textarea placeholder="Describe client functioning" className="min-h-[100px]" value={formState.functioning} onChange={e => handleChange('functioning', e.target.value)} />
+          <Textarea 
+            placeholder="Describe client functioning" 
+            className="min-h-[100px]" 
+            value={formState.functioning} 
+            onChange={e => handleChange('functioning', e.target.value)} 
+          />
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Prognosis<RequiredFieldIndicator />
           </label>
-          <Textarea placeholder="Describe prognosis" className="min-h-[100px]" value={formState.prognosis} onChange={e => handleChange('prognosis', e.target.value)} />
+          <Textarea 
+            placeholder="Describe prognosis" 
+            className="min-h-[100px]" 
+            value={formState.prognosis} 
+            onChange={e => handleChange('prognosis', e.target.value)} 
+          />
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Progress<RequiredFieldIndicator />
           </label>
-          <Textarea placeholder="Describe progress" className="min-h-[100px]" value={formState.progress} onChange={e => handleChange('progress', e.target.value)} />
+          <Textarea 
+            placeholder="Describe progress" 
+            className="min-h-[100px]" 
+            value={formState.progress} 
+            onChange={e => handleChange('progress', e.target.value)} 
+          />
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">Problem Narrative</label>
-          <Textarea placeholder="Describe the problem narrative" className="min-h-[100px] bg-gray-100" value={formState.problemNarrative} onChange={e => handleChange('problemNarrative', e.target.value)} readOnly />
+          <Textarea 
+            placeholder="Describe the problem narrative" 
+            className="min-h-[100px] bg-gray-100" 
+            value={formState.problemNarrative} 
+            onChange={e => handleChange('problemNarrative', e.target.value)} 
+            readOnly 
+          />
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Goal Narrative</label>
-          <Textarea placeholder="Describe the treatment goals" className="min-h-[100px] bg-gray-100" value={formState.treatmentGoalNarrative} onChange={e => handleChange('treatmentGoalNarrative', e.target.value)} readOnly />
+          <Textarea 
+            placeholder="Describe the treatment goals" 
+            className="min-h-[100px] bg-gray-100" 
+            value={formState.treatmentGoalNarrative} 
+            onChange={e => handleChange('treatmentGoalNarrative', e.target.value)} 
+            readOnly 
+          />
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Session Narrative<RequiredFieldIndicator />
           </label>
-          <Textarea placeholder="Provide a detailed narrative of the session" className="min-h-[100px]" value={formState.sessionNarrative} onChange={e => handleChange('sessionNarrative', e.target.value)} />
+          <Textarea 
+            placeholder="Provide a detailed narrative of the session" 
+            className="min-h-[100px]" 
+            value={formState.sessionNarrative} 
+            onChange={e => handleChange('sessionNarrative', e.target.value)} 
+          />
         </div>
 
         {phq9Narrative && (
@@ -782,7 +1032,11 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Signature<RequiredFieldIndicator />
           </label>
-          <Input placeholder="Enter signature" value={formState.signature} onChange={e => handleChange('signature', e.target.value)} />
+          <Input 
+            placeholder="Enter signature" 
+            value={formState.signature} 
+            onChange={e => handleChange('signature', e.target.value)} 
+          />
         </div>
 
         <div className="mb-6 border-t pt-6">
@@ -793,16 +1047,26 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           <p className="text-sm text-gray-500 mb-3">
             This note is private and will only be visible to clinicians. It will not be included in any client-facing documentation.
           </p>
-          <Textarea placeholder="Enter private notes about this client" className="min-h-[100px]" value={formState.privateNote} onChange={e => handleChange('privateNote', e.target.value)} />
+          <Textarea 
+            placeholder="Enter private notes about this client" 
+            className="min-h-[100px]" 
+            value={formState.privateNote} 
+            onChange={e => handleChange('privateNote', e.target.value)} 
+          />
         </div>
 
         <div className="flex justify-end mt-6">
-          <Button onClick={handleSave} disabled={isSubmitting || !isFormValid} className="w-full md:w-auto">
+          <Button 
+            onClick={handleSave} 
+            disabled={isSubmitting || !isFormValid} 
+            className="w-full md:w-auto"
+          >
             {isSubmitting ? 'Saving...' : 'Save Session Note'}
           </Button>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
 
 export default SessionNoteTemplate;
