@@ -131,6 +131,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         intervention5: clientData.client_intervention5 || '',
         intervention6: clientData.client_intervention6 || '',
 
+        currentSymptoms: clientData.client_functioning || '',
         functioning: clientData.client_functioning || '',
         prognosis: clientData.client_prognosis || '',
         progress: clientData.client_progress || '',
@@ -261,6 +262,43 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     ];
     return readOnlyFields.includes(fieldName);
   };
+
+  // Define treatment plan data structure for conditional rendering
+  const treatmentPlanSections = [
+    {
+      title: "Primary Objective",
+      objectiveValue: formState.primaryObjective,
+      objectiveKey: 'primaryObjective',
+      objectiveField: clientData?.client_primaryobjective,
+      interventions: [
+        { key: 'intervention1', value: formState.intervention1, field: clientData?.client_intervention1, number: 1 },
+        { key: 'intervention2', value: formState.intervention2, field: clientData?.client_intervention2, number: 2 }
+      ]
+    },
+    {
+      title: "Secondary Objective",
+      objectiveValue: formState.secondaryObjective,
+      objectiveKey: 'secondaryObjective',
+      objectiveField: clientData?.client_secondaryobjective,
+      interventions: [
+        { key: 'intervention3', value: formState.intervention3, field: clientData?.client_intervention3, number: 3 },
+        { key: 'intervention4', value: formState.intervention4, field: clientData?.client_intervention4, number: 4 }
+      ]
+    },
+    {
+      title: "Tertiary Objective",
+      objectiveValue: formState.tertiaryObjective,
+      objectiveKey: 'tertiaryObjective',
+      objectiveField: clientData?.client_tertiaryobjective,
+      interventions: [
+        { key: 'intervention5', value: formState.intervention5, field: clientData?.client_intervention5, number: 5 },
+        { key: 'intervention6', value: formState.intervention6, field: clientData?.client_intervention6, number: 6 }
+      ]
+    }
+  ];
+
+  // Check if client has any treatment plan data
+  const hasTreatmentPlan = !!clientData?.client_primaryobjective;
 
   return (
     <div className="animate-fade-in">
@@ -699,109 +737,47 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           </div>
         </div>
 
-        <h4 className="text-md font-medium text-gray-800 mb-4">Treatment Objectives & Interventions</h4>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Primary Objective</label>
-          <Textarea
-            placeholder="Describe the primary objective"
-            className="min-h-[100px] bg-gray-100"
-            value={formState.primaryObjective}
-            onChange={(e) => handleChange('primaryObjective', e.target.value)}
-            readOnly
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 1</label>
-            <Input
-              placeholder="Describe intervention"
-              value={formState.intervention1}
-              onChange={(e) => handleChange('intervention1', e.target.value)}
-              readOnly
-              className="bg-gray-100"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 2</label>
-            <Input
-              placeholder="Describe intervention"
-              value={formState.intervention2}
-              onChange={(e) => handleChange('intervention2', e.target.value)}
-              readOnly
-              className="bg-gray-100"
-            />
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Objective</label>
-          <Textarea
-            placeholder="Describe the secondary objective"
-            className="min-h-[100px] bg-gray-100"
-            value={formState.secondaryObjective}
-            onChange={(e) => handleChange('secondaryObjective', e.target.value)}
-            readOnly
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 3</label>
-            <Input
-              placeholder="Describe intervention"
-              value={formState.intervention3}
-              onChange={(e) => handleChange('intervention3', e.target.value)}
-              readOnly
-              className="bg-gray-100"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 4</label>
-            <Input
-              placeholder="Describe intervention"
-              value={formState.intervention4}
-              onChange={(e) => handleChange('intervention4', e.target.value)}
-              readOnly
-              className="bg-gray-100"
-            />
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tertiary Objective</label>
-          <Textarea
-            placeholder="Describe the tertiary objective"
-            className="min-h-[100px] bg-gray-100"
-            value={formState.tertiaryObjective}
-            onChange={(e) => handleChange('tertiaryObjective', e.target.value)}
-            readOnly
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 5</label>
-            <Input
-              placeholder="Describe intervention"
-              value={formState.intervention5}
-              onChange={(e) => handleChange('intervention5', e.target.value)}
-              readOnly
-              className="bg-gray-100"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 6</label>
-            <Input
-              placeholder="Describe intervention"
-              value={formState.intervention6}
-              onChange={(e) => handleChange('intervention6', e.target.value)}
-              readOnly
-              className="bg-gray-100"
-            />
-          </div>
-        </div>
+        {hasTreatmentPlan && (
+          <>
+            <h4 className="text-md font-medium text-gray-800 mb-4">Treatment Objectives & Interventions</h4>
+            
+            {treatmentPlanSections.map((section, index) => (
+              section.objectiveField && (
+                <React.Fragment key={index}>
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{section.title}</label>
+                    <Textarea
+                      placeholder={`Describe the ${section.title.toLowerCase()}`}
+                      className="min-h-[100px] bg-gray-100"
+                      value={section.objectiveValue}
+                      onChange={(e) => handleChange(section.objectiveKey, e.target.value)}
+                      readOnly
+                    />
+                  </div>
+                  
+                  {section.interventions.some(i => i.field) && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                      {section.interventions.map((intervention, idx) => (
+                        intervention.field && (
+                          <div key={idx}>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{`Intervention ${intervention.number}`}</label>
+                            <Input
+                              placeholder="Describe intervention"
+                              value={intervention.value}
+                              onChange={(e) => handleChange(intervention.key, e.target.value)}
+                              readOnly
+                              className="bg-gray-100"
+                            />
+                          </div>
+                        )
+                      ))}
+                    </div>
+                  )}
+                </React.Fragment>
+              )
+            ))}
+          </>
+        )}
 
         <h4 className="text-md font-medium text-gray-800 mb-4">Session Assessment</h4>
 
@@ -880,38 +856,4 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <h4 className="text-md font-medium text-gray-800 mb-4">Plan & Signature</h4>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Next Treatment Plan Update</label>
-          <Input
-            placeholder="When will this plan be reviewed next"
-            value={formState.nextTreatmentPlanUpdate}
-            onChange={(e) => handleChange('nextTreatmentPlanUpdate', e.target.value)}
-            readOnly
-            className="bg-gray-100"
-          />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Signature</label>
-          <Input
-            placeholder="Digital signature"
-            value={formState.signature}
-            onChange={(e) => handleChange('signature', e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-2 mt-6">
-        <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Close</Button>
-        <Button
-          className="bg-valorwell-700 hover:bg-valorwell-800"
-          onClick={handleSave}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Saving...' : 'Save Session Note'}
-        </Button>
-      </div>
-    </div>
-  );
-};
-
-export default SessionNoteTemplate;
+          <label className="block text-sm font-medium text-gray-700
