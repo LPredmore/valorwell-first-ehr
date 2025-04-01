@@ -31,7 +31,15 @@ export const useClientData = (clientId: string | null) => {
           return;
         }
         
-        setClientData(data as ClientDetails);
+        // Calculate age from date of birth
+        if (data) {
+          const clientWithCalculatedAge = {
+            ...data,
+            client_age: calculateAge(data.client_date_of_birth)
+          } as ClientDetails;
+          
+          setClientData(clientWithCalculatedAge);
+        }
       } catch (error) {
         console.error('Error in fetchClientData:', error);
         toast({
@@ -48,6 +56,39 @@ export const useClientData = (clientId: string | null) => {
       fetchClientData();
     }
   }, [clientId, toast]);
+
+  // Function to calculate age based on date of birth
+  const calculateAge = (dateOfBirth: string | null): number | null => {
+    if (!dateOfBirth) return null;
+    
+    try {
+      const dob = new Date(dateOfBirth);
+      const today = new Date();
+      
+      // Check for invalid date
+      if (isNaN(dob.getTime())) {
+        console.error('Invalid date of birth:', dateOfBirth);
+        return null;
+      }
+      
+      // Calculate age based on year difference
+      let age = today.getFullYear() - dob.getFullYear();
+      
+      // Adjust age if birthday hasn't occurred yet this year
+      const hasBirthdayOccurredThisYear = 
+        today.getMonth() > dob.getMonth() || 
+        (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+        
+      if (!hasBirthdayOccurredThisYear) {
+        age--;
+      }
+      
+      return age;
+    } catch (error) {
+      console.error('Error calculating age:', error);
+      return null;
+    }
+  };
 
   return { clientData, isLoading };
 };
