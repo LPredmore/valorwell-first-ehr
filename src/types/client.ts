@@ -110,7 +110,9 @@ export interface TabProps {
 
 export interface SessionNoteTemplateProps {
   onClose: () => void;
-  appointment: any;
+  appointment?: any;
+  clinicianName?: string;
+  clientData?: ClientDetails | null;
 }
 
 export const relationshipOptions = ["Self", "Spouse", "Child", "Other"];

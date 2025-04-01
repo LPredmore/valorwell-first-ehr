@@ -13,16 +13,11 @@ SelectValue
 import { DiagnosisSelector } from '@/components/DiagnosisSelector';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ClientDetails } from '@/types/client';
-
-interface SessionNoteTemplateProps {
-onClose: () => void;
-clinicianName?: string;
-clientData?: ClientDetails | null;
-}
+import { ClientDetails, SessionNoteTemplateProps } from '@/types/client';
 
 const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
 onClose,
+appointment,
 clinicianName = '',
 clientData = null
 }) => {
@@ -151,6 +146,21 @@ insightJudgement: clientData.client_insightjudgement && !['Good'].includes(clien
 });
 }
 }, [clientData, clinicianName]);
+
+useEffect(() => {
+  if (appointment && appointment.client) {
+    const appointmentDate = appointment.date ? new Date(appointment.date).toISOString().split('T')[0] : '';
+    
+    setFormState(prevState => ({
+      ...prevState,
+      sessionDate: appointmentDate,
+      sessionType: appointment.type || '',
+      patientName: appointment.client.client_first_name && appointment.client.client_last_name 
+        ? `${appointment.client.client_first_name} ${appointment.client.client_last_name}`
+        : prevState.patientName
+    }));
+  }
+}, [appointment]);
 
 const handleChange = (field: string, value: string) => {
 setFormState({
