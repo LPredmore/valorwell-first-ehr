@@ -38,6 +38,7 @@ interface AvailabilityBlock {
   day_of_week: string;
   start_time: string;
   end_time: string;
+  isException?: boolean;
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({
@@ -165,6 +166,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   };
 
   const handleAvailabilityUpdated = () => {
+    console.log("Availability updated - refreshing calendar view");
+    // Increment the counter to trigger a refresh
     setAvailabilityRefreshTrigger(prev => prev + 1);
   };
 

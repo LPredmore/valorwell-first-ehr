@@ -95,28 +95,51 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
         specificDate: formattedDate,
         originalAvailabilityId: availabilityBlock.id,
         startTime,
-        endTime
+        endTime,
+        isException: availabilityBlock.isException
       });
       
-      // Check if an exception already exists for this day and availability block
-      const { data: existingException, error: checkError } = await supabase
-        .from('availability_exceptions')
-        .select('id')
-        .eq('clinician_id', clinicianId)
-        .eq('specific_date', formattedDate)
-        .eq('original_availability_id', availabilityBlock.id)
-        .maybeSingle();
+      let existingException = null;
+      let checkError = null;
+      
+      // If it's not already an exception, check if an exception exists
+      if (!availabilityBlock.isException) {
+        const result = await supabase
+          .from('availability_exceptions')
+          .select('id')
+          .eq('clinician_id', clinicianId)
+          .eq('specific_date', formattedDate)
+          .eq('original_availability_id', availabilityBlock.id)
+          .maybeSingle();
+          
+        existingException = result.data;
+        checkError = result.error;
         
-      console.log('Existing exception check result:', { existingException, error: checkError });
+        console.log('Existing exception check result:', { existingException, error: checkError });
+      } else {
+        // For existing exceptions, just look for it by ID
+        const result = await supabase
+          .from('availability_exceptions')
+          .select('id')
+          .eq('id', availabilityBlock.id)
+          .maybeSingle();
+          
+        existingException = result.data;
+        checkError = result.error;
+        
+        console.log('Existing exception (by ID) check result:', { existingException, error: checkError });
+      }
       
       if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is 'not found' error
         throw checkError;
       }
       
+      let updateResult;
+      
       if (existingException) {
         // Update existing exception
         console.log('Updating existing exception:', existingException.id);
-        const { error: updateError } = await supabase
+        updateResult = await supabase
           .from('availability_exceptions')
           .update({
             start_time: startTime,
@@ -126,37 +149,48 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
           })
           .eq('id', existingException.id);
           
-        if (updateError) {
-          console.error('Error updating exception:', updateError);
-          throw updateError;
+        if (updateResult.error) {
+          console.error('Error updating exception:', updateResult.error);
+          throw updateResult.error;
         }
       } else {
         // Create new exception
         console.log('Creating new exception');
-        const { error: insertError } = await supabase
+        const insertData: any = {
+          clinician_id: clinicianId,
+          specific_date: formattedDate,
+          start_time: startTime,
+          end_time: endTime,
+          is_deleted: false
+        };
+        
+        // Only add original_availability_id if this is modifying a regular availability
+        if (!availabilityBlock.isException) {
+          insertData.original_availability_id = availabilityBlock.id;
+        }
+        
+        updateResult = await supabase
           .from('availability_exceptions')
-          .insert({
-            clinician_id: clinicianId,
-            specific_date: formattedDate,
-            original_availability_id: availabilityBlock.id,
-            start_time: startTime,
-            end_time: endTime,
-            is_deleted: false
-          });
+          .insert(insertData);
           
-        if (insertError) {
-          console.error('Error inserting exception:', insertError);
-          throw insertError;
+        if (updateResult.error) {
+          console.error('Error inserting exception:', updateResult.error);
+          throw updateResult.error;
         }
       }
       
+      // Wait a brief moment to ensure the database transaction completes
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Only show success toast if no errors
       toast({
         title: "Success",
         description: `Availability for ${format(specificDate, 'PPP')} has been updated.`,
       });
       
-      onClose();
+      // Explicitly call onAvailabilityUpdated to refresh the calendar view
       onAvailabilityUpdated();
+      onClose();
     } catch (error) {
       console.error('Error updating availability exception:', error);
       toast({
@@ -195,25 +229,45 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
         isException: availabilityBlock.isException
       });
       
-      // Check if an exception already exists
-      const { data: existingException, error: checkError } = await supabase
-        .from('availability_exceptions')
-        .select('id, original_availability_id')
-        .eq('clinician_id', clinicianId)
-        .eq('specific_date', formattedDate)
-        .eq('original_availability_id', availabilityBlock.id)
-        .maybeSingle();
-        
+      let existingException = null;
+      let checkError = null;
+      
+      // If it's not already an exception, check if an exception exists for the original availability
+      if (!availabilityBlock.isException) {
+        const result = await supabase
+          .from('availability_exceptions')
+          .select('id, original_availability_id')
+          .eq('clinician_id', clinicianId)
+          .eq('specific_date', formattedDate)
+          .eq('original_availability_id', availabilityBlock.id)
+          .maybeSingle();
+          
+        existingException = result.data;
+        checkError = result.error;
+      } else {
+        // For existing exceptions, look it up by ID
+        const result = await supabase
+          .from('availability_exceptions')
+          .select('id, original_availability_id')
+          .eq('id', availabilityBlock.id)
+          .maybeSingle();
+          
+        existingException = result.data;
+        checkError = result.error;
+      }
+      
       console.log('Existing exception check for delete:', { existingException, error: checkError });
       
       if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is 'not found' error
         throw checkError;
       }
       
+      let updateResult;
+      
       if (existingException) {
         // Update existing exception to mark as deleted
         console.log('Updating existing exception to deleted:', existingException.id);
-        const { error: updateError } = await supabase
+        updateResult = await supabase
           .from('availability_exceptions')
           .update({
             is_deleted: true,
@@ -221,14 +275,13 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
           })
           .eq('id', existingException.id);
           
-        if (updateError) {
-          console.error('Error updating exception to deleted:', updateError);
-          throw updateError;
+        if (updateResult.error) {
+          console.error('Error updating exception to deleted:', updateResult.error);
+          throw updateResult.error;
         }
       } else {
         // Create new exception marked as deleted
-        // For availability blocks that are already exceptions, use null for original_availability_id
-        const insertData = {
+        const insertData: any = {
           clinician_id: clinicianId,
           specific_date: formattedDate,
           is_deleted: true
@@ -237,29 +290,32 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
         // Only add original_availability_id if it references a valid entry in the availability table
         // If it's an exception, don't include the original_availability_id field
         if (!availabilityBlock.isException) {
-          // @ts-ignore - TypeScript doesn't know we're conditionally adding a field
           insertData.original_availability_id = availabilityBlock.id;
         }
         
         console.log('Creating new deleted exception with data:', insertData);
-        const { error: insertError } = await supabase
+        updateResult = await supabase
           .from('availability_exceptions')
           .insert(insertData);
           
-        if (insertError) {
-          console.error('Error inserting deleted exception:', insertError);
-          throw insertError;
+        if (updateResult.error) {
+          console.error('Error inserting deleted exception:', updateResult.error);
+          throw updateResult.error;
         }
       }
+      
+      // Wait a brief moment to ensure the database transaction completes
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       toast({
         title: "Success",
         description: `Availability for ${format(specificDate, 'PPP')} has been cancelled.`,
       });
       
+      // Explicitly refresh the parent component
       setIsDeleteDialogOpen(false);
-      onClose();
       onAvailabilityUpdated();
+      onClose();
     } catch (error) {
       console.error('Error cancelling availability:', error);
       toast({
