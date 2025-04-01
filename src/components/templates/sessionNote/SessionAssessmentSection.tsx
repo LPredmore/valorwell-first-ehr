@@ -9,15 +9,18 @@ import {
   SelectTrigger,
   SelectValue 
 } from "@/components/ui/select";
+import { PHQ9AssessmentSection } from './PHQ9AssessmentSection';
 
 interface SessionAssessmentSectionProps {
   formState: any;
   handleChange: (field: string, value: string) => void;
+  phq9Data?: any;
 }
 
 export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> = ({
   formState,
-  handleChange
+  handleChange,
+  phq9Data
 }) => {
   // Options for the dropdown menus
   const functioningOptions = [
@@ -127,6 +130,9 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
           onChange={(e) => handleChange('sessionNarrative', e.target.value)}
         />
       </div>
+      
+      {/* PHQ-9 Assessment Section - Now positioned right before the Plan & Signature */}
+      {phq9Data && <PHQ9AssessmentSection phq9Data={phq9Data} />}
 
       <h4 className="text-md font-medium text-gray-800 mb-4">Plan & Signature</h4>
 

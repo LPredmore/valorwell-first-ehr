@@ -8,7 +8,6 @@ import { ClientInfoSection } from './sessionNote/ClientInfoSection';
 import { MentalStatusSection } from './sessionNote/MentalStatusSection';
 import { TreatmentObjectivesSection } from './sessionNote/TreatmentObjectivesSection';
 import { SessionAssessmentSection } from './sessionNote/SessionAssessmentSection';
-import { PHQ9AssessmentSection } from './sessionNote/PHQ9AssessmentSection';
 import { Textarea } from "@/components/ui/textarea";
 
 const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
@@ -108,14 +107,12 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           handleChange={handleChange} 
         />
 
-        {/* Session Assessment Section */}
+        {/* Session Assessment Section - Now includes PHQ-9 assessment before Plan & Signature */}
         <SessionAssessmentSection 
           formState={formState} 
-          handleChange={handleChange} 
+          handleChange={handleChange}
+          phq9Data={phq9Data}
         />
-        
-        {/* PHQ-9 Assessment Section - Move just before Plan & Signature */}
-        {phq9Data && <PHQ9AssessmentSection phq9Data={phq9Data} />}
       </div>
 
       <div className="flex justify-end gap-2 mt-6">
