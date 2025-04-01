@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Input } from "@/components/ui/input";
+import { DiagnosisSelector } from '@/components/DiagnosisSelector';
 
 interface ClientInfoSectionProps {
   formState: any;
@@ -11,6 +12,12 @@ export const ClientInfoSection: React.FC<ClientInfoSectionProps> = ({
   formState,
   handleChange
 }) => {
+  const handleDiagnosisChange = (selectedDiagnoses: string[]) => {
+    handleChange('diagnosis', selectedDiagnoses.join(', '));
+  };
+
+  const isEmptyDiagnosis = !formState.diagnosis || formState.diagnosis.trim() === '';
+
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -49,13 +56,20 @@ export const ClientInfoSection: React.FC<ClientInfoSectionProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis</label>
-          <Input
-            placeholder="Select diagnosis code"
-            value={formState.diagnosis}
-            onChange={(e) => handleChange('diagnosis', e.target.value)}
-            readOnly
-            className="bg-gray-100"
-          />
+          {isEmptyDiagnosis ? (
+            <DiagnosisSelector
+              value={formState.diagnosis ? formState.diagnosis.split(', ').filter(Boolean) : []}
+              onChange={handleDiagnosisChange}
+            />
+          ) : (
+            <Input
+              placeholder="Select diagnosis code"
+              value={formState.diagnosis}
+              onChange={(e) => handleChange('diagnosis', e.target.value)}
+              readOnly
+              className="bg-gray-100"
+            />
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Plan Type</label>
