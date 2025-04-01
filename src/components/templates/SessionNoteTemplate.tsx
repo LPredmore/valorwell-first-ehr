@@ -114,7 +114,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           handleChange={handleChange} 
         />
         
-        {/* PHQ-9 Assessment Section - Moved right before Plan & Signature */}
+        {/* PHQ-9 Assessment Section - Moved right after Session Assessment */}
         {phq9Data && <PHQ9AssessmentSection phq9Data={phq9Data} />}
       </div>
 

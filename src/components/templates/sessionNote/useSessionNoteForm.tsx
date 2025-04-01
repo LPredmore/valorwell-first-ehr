@@ -82,45 +82,12 @@ export const useSessionNoteForm = ({
   });
 
   useEffect(() => {
-    const fetchClinicianInsuranceName = async () => {
-      if (!clientData) return;
-      
-      try {
-        const clinicianId = clientData.client_assigned_therapist;
-        
-        if (clinicianId) {
-          const { data, error } = await supabase
-            .from('clinicians')
-            .select('clinician_nameinsurance')
-            .eq('id', clinicianId)
-            .single();
-            
-          if (error) {
-            console.error('Error fetching clinician insurance name:', error);
-            return;
-          }
-          
-          if (data && data.clinician_nameinsurance) {
-            setFormState(prevState => ({
-              ...prevState,
-              clinicianName: data.clinician_nameinsurance
-            }));
-          }
-        }
-      } catch (error) {
-        console.error('Error in fetchClinicianInsuranceName:', error);
-      }
-    };
-    
-    fetchClinicianInsuranceName();
-  }, [clientData]);
-
-  useEffect(() => {
     if (clientData) {
       setFormState(prevState => ({
         ...prevState,
         patientName: `${clientData.client_first_name || ''} ${clientData.client_last_name || ''}`,
         patientDOB: clientData.client_date_of_birth || '',
+        clinicianName: clinicianName || '',
         diagnosis: (clientData.client_diagnosis || []).join(', '),
         planType: clientData.client_planlength || '',
         treatmentFrequency: clientData.client_treatmentfrequency || '',
