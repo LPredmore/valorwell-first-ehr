@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, Clock, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import Layout from '@/components/layout/Layout';
@@ -12,6 +12,7 @@ import AppointmentsList from '@/components/dashboard/AppointmentsList';
 import DocumentSessionDialog from '@/components/dashboard/DocumentSessionDialog';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import VideoSessionManager, { VideoSessionManagerRef } from '@/components/dashboard/VideoSessionManager';
 
 const ClinicianDashboard = () => {
   const { toast } = useToast();
@@ -22,6 +23,7 @@ const ClinicianDashboard = () => {
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>();
   const [showSessionTemplate, setShowSessionTemplate] = useState(false);
   const { clinicianData } = useClinicianData();
+  const videoSessionManagerRef = useRef<VideoSessionManagerRef>(null);
 
   // Setup user ID from Supabase auth
   useEffect(() => {
@@ -40,7 +42,7 @@ const ClinicianDashboard = () => {
     todayAppointments, 
     upcomingAppointments, 
     pastAppointments,
-    isLoading, 
+    isLoading: isLoadingAppointments, 
     error, 
     refetch 
   } = useAppointments(currentUserId);
@@ -51,53 +53,10 @@ const ClinicianDashboard = () => {
     isLoading: isLoadingClientData 
   } = useClientData(currentAppointment?.client_id || null);
 
-  // Create or get a video room for an appointment
-  const getOrCreateVideoRoom = async (appointmentId: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('create-daily-room', {
-        body: { appointmentId }
-      });
-      
-      if (error) {
-        console.error('Error creating video room:', error);
-        return { success: false, error };
-      }
-      
-      return { success: true, url: data?.url };
-    } catch (error) {
-      console.error('Error in getOrCreateVideoRoom:', error);
-      return { success: false, error };
-    }
-  };
-
   // Handler for starting a video session
   const startVideoSession = async (appointment: Appointment) => {
-    try {
-      console.log("Starting video session for appointment:", appointment.id);
-      
-      if (appointment.video_room_url) {
-        console.log("Using existing video room URL:", appointment.video_room_url);
-        window.open(appointment.video_room_url, '_blank');
-      } else {
-        console.log("Creating new video room for appointment:", appointment.id);
-        const result = await getOrCreateVideoRoom(appointment.id);
-        console.log("Video room creation result:", result);
-        
-        if (result.success && result.url) {
-          window.open(result.url, '_blank');
-          refetch();
-        } else {
-          console.error("Failed to create video room:", result.error);
-          throw new Error('Failed to create video room');
-        }
-      }
-    } catch (error) {
-      console.error('Error starting video session:', error);
-      toast({
-        title: 'Error',
-        description: 'Could not start the video session. Please try again.',
-        variant: 'destructive',
-      });
+    if (videoSessionManagerRef.current) {
+      await videoSessionManagerRef.current.startVideoSession(appointment);
     }
   };
 
@@ -170,19 +129,23 @@ const ClinicianDashboard = () => {
     refetch(); // Refresh appointments after closing template
   };
 
-  // Show loading indicator if client data is still loading
-  if (showSessionTemplate && isLoadingClientData) {
+  // Show loading indicator while everything is loading
+  const isLoading = isLoadingAppointments || (showSessionTemplate && isLoadingClientData);
+  
+  if (isLoading) {
     return (
       <Layout>
         <div className="container mx-auto p-8 text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-gray-600">Loading client data...</p>
+          <p className="text-gray-600">
+            {showSessionTemplate ? "Loading client data..." : "Loading appointments..."}
+          </p>
         </div>
       </Layout>
     );
   }
   
-  // Show session template if it's active
+  // Show session template if it's active and client data is loaded
   if (showSessionTemplate && currentAppointment && clientData) {
     return (
       <Layout>
@@ -208,7 +171,7 @@ const ClinicianDashboard = () => {
             <AppointmentsList
               title={<><Calendar className="h-5 w-5 mr-2" />Today's Appointments</>}
               appointments={todayAppointments}
-              isLoading={isLoading}
+              isLoading={isLoadingAppointments}
               error={error}
               emptyMessage="No appointments scheduled for today."
               showStartButton={true}
@@ -221,7 +184,7 @@ const ClinicianDashboard = () => {
             <AppointmentsList
               title={<><AlertCircle className="h-5 w-5 mr-2" />Outstanding Documentation</>}
               appointments={pastAppointments}
-              isLoading={isLoading}
+              isLoading={isLoadingAppointments}
               error={error}
               emptyMessage="No outstanding documentation."
               onDocumentSession={openDocumentDialog}
@@ -233,7 +196,7 @@ const ClinicianDashboard = () => {
             <AppointmentsList
               title={<><Calendar className="h-5 w-5 mr-2" />Upcoming Appointments</>}
               appointments={upcomingAppointments}
-              isLoading={isLoading}
+              isLoading={isLoadingAppointments}
               error={error}
               emptyMessage="No upcoming appointments scheduled."
               limit={5}
@@ -253,6 +216,12 @@ const ClinicianDashboard = () => {
         selectedStatus={selectedStatus}
         onStatusChange={handleStatusChange}
         onSubmit={handleProvideDocumentation}
+      />
+      
+      {/* Video Session Manager */}
+      <VideoSessionManager 
+        ref={videoSessionManagerRef}
+        onRefetchAppointments={refetch}
       />
     </Layout>
   );

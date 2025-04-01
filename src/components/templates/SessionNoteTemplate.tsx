@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +35,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingPHQ9, setIsLoadingPHQ9] = useState(false);
   const [isLoadingSessionTypes, setIsLoadingSessionTypes] = useState(false);
+  const [dataInitialized, setDataInitialized] = useState(false);
   
   const [formState, setFormState] = useState({
     sessionDate: '',
@@ -165,11 +165,13 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
       }
     };
     
-    fetchLatestPHQ9();
+    if (clientData?.id) {
+      fetchLatestPHQ9();
+    }
   }, [clientData]);
 
   useEffect(() => {
-    if (clientData) {
+    if (clientData && !dataInitialized) {
       console.log("Setting form state from client data:", clientData);
       console.log("Clinician name:", clinicianName);
       console.log("Clinician name insurance:", clinicianNameInsurance);
@@ -239,20 +241,22 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         insightJudgement: clientData.client_insightjudgement && !['Good'].includes(clientData.client_insightjudgement)
       });
       
-      setIsLoading(false);
+      setDataInitialized(true);
     }
-  }, [clientData, clinicianName, clinicianNameInsurance, appointmentDate]);
+  }, [clientData, clinicianName, clinicianNameInsurance, appointmentDate, dataInitialized]);
 
-  // Additional useEffect to properly manage overall loading state
   useEffect(() => {
-    // Set overall loading state based on all individual loading states
-    const allDataLoaded = !isLoadingPHQ9 && !isLoadingSessionTypes && clientData !== null;
-    if (allDataLoaded) {
-      setIsLoading(false);
-    } else {
-      setIsLoading(true);
-    }
-  }, [isLoadingPHQ9, isLoadingSessionTypes, clientData]);
+    const allDataLoaded = !isLoadingPHQ9 && !isLoadingSessionTypes && clientData !== null && dataInitialized;
+    setIsLoading(!allDataLoaded);
+    
+    console.log("Loading states:", {
+      isLoadingPHQ9,
+      isLoadingSessionTypes,
+      hasClientData: clientData !== null,
+      dataInitialized,
+      overallLoading: !allDataLoaded
+    });
+  }, [isLoadingPHQ9, isLoadingSessionTypes, clientData, dataInitialized]);
 
   useEffect(() => {
     validateForm();
@@ -267,7 +271,32 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   }, [diagnosisCodes]);
 
   const validateForm = () => {
-    const requiredFields = ['medications', 'sessionType', 'personsInAttendance', ...(formState.appearance && formState.appearance !== 'Normal Appearance & Grooming' ? ['appearance'] : []), ...(formState.attitude && formState.attitude !== 'Calm & Cooperative' ? ['attitude'] : []), ...(formState.behavior && formState.behavior !== 'No unusual behavior or psychomotor changes' ? ['behavior'] : []), ...(formState.speech && formState.speech !== 'Normal rate/tone/volume w/out pressure' ? ['speech'] : []), ...(formState.affect && formState.affect !== 'Normal range/congruent' ? ['affect'] : []), ...(formState.thoughtProcess && formState.thoughtProcess !== 'Goal Oriented/Directed' ? ['thoughtProcess'] : []), ...(formState.perception && formState.perception !== 'No Hallucinations or Delusions' ? ['perception'] : []), ...(formState.orientation && formState.orientation !== 'Oriented x3' ? ['orientation'] : []), ...(formState.memoryConcentration && formState.memoryConcentration !== 'Short & Long Term Intact' ? ['memoryConcentration'] : []), ...(formState.insightJudgement && formState.insightJudgement !== 'Good' ? ['insightJudgement'] : []), 'mood', 'substanceAbuseRisk', 'suicidalIdeation', 'homicidalIdeation', 'currentSymptoms', 'functioning', 'prognosis', 'progress', 'sessionNarrative', 'signature'];
+    const requiredFields = [
+      'medications', 
+      'sessionType', 
+      'personsInAttendance', 
+      ...(formState.appearance && formState.appearance !== 'Normal Appearance & Grooming' ? ['appearance'] : []), 
+      ...(formState.attitude && formState.attitude !== 'Calm & Cooperative' ? ['attitude'] : []), 
+      ...(formState.behavior && formState.behavior !== 'No unusual behavior or psychomotor changes' ? ['behavior'] : []), 
+      ...(formState.speech && formState.speech !== 'Normal rate/tone/volume w/out pressure' ? ['speech'] : []), 
+      ...(formState.affect && formState.affect !== 'Normal range/congruent' ? ['affect'] : []), 
+      ...(formState.thoughtProcess && formState.thoughtProcess !== 'Goal Oriented/Directed' ? ['thoughtProcess'] : []), 
+      ...(formState.perception && formState.perception !== 'No Hallucinations or Delusions' ? ['perception'] : []), 
+      ...(formState.orientation && formState.orientation !== 'Oriented x3' ? ['orientation'] : []), 
+      ...(formState.memoryConcentration && formState.memoryConcentration !== 'Short & Long Term Intact' ? ['memoryConcentration'] : []), 
+      ...(formState.insightJudgement && formState.insightJudgement !== 'Good' ? ['insightJudgement'] : []), 
+      'mood', 
+      'substanceAbuseRisk', 
+      'suicidalIdeation', 
+      'homicidalIdeation', 
+      'currentSymptoms', 
+      'functioning', 
+      'prognosis', 
+      'progress', 
+      'sessionNarrative', 
+      'signature'
+    ];
+    
     let valid = true;
     for (const field of requiredFields) {
       if (!formState[field] || formState[field].trim() === '') {
@@ -444,7 +473,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
 
   const RequiredFieldIndicator = () => <span className="text-red-500 ml-1">*</span>;
 
-  // Enhanced loading state with better UI
   if (isLoading) {
     return (
       <div className="animate-fade-in p-6 space-y-6">
@@ -491,7 +519,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     );
   }
 
-  // Fixed syntax error: added parentheses around the JSX return statement
   return (
     <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-2">
