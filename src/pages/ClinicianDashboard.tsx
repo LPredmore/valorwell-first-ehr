@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, isToday, isFuture, parseISO, isAfter, isBefore } from 'date-fns';
@@ -14,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 import { useUser } from '@/context/UserContext';
 import { formatTime12Hour, getUserTimeZone, formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
+import { useClinicianData } from '@/hooks/useClinicianData';
+import { ClientDetails } from '@/types/client';
 
 type Appointment = {
   id: string;
@@ -40,6 +43,8 @@ const ClinicianDashboard = () => {
   const [currentAppointment, setCurrentAppointment] = useState<Appointment | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>();
   const [showSessionTemplate, setShowSessionTemplate] = useState(false);
+  const [clientData, setClientData] = useState<ClientDetails | null>(null);
+  const { clinicianData } = useClinicianData();
   const clinicianTimeZone = getUserTimeZone(); // Get clinician's timezone
 
   useEffect(() => {
@@ -52,6 +57,34 @@ const ClinicianDashboard = () => {
     
     fetchUserId();
   }, []);
+
+  // Effect to fetch client data when appointment is selected for documentation
+  useEffect(() => {
+    const fetchClientData = async () => {
+      if (currentAppointment && currentAppointment.client_id) {
+        try {
+          const { data, error } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('id', currentAppointment.client_id)
+            .single();
+          
+          if (error) {
+            console.error('Error fetching client data:', error);
+            return;
+          }
+          
+          setClientData(data as ClientDetails);
+        } catch (error) {
+          console.error('Error in fetchClientData:', error);
+        }
+      }
+    };
+    
+    if (currentAppointment) {
+      fetchClientData();
+    }
+  }, [currentAppointment]);
 
   const { data: appointments, isLoading, error, refetch } = useQuery({
     queryKey: ['clinician-appointments', currentUserId],
@@ -288,7 +321,8 @@ const ClinicianDashboard = () => {
       <Layout>
         <SessionNoteTemplate 
           onClose={closeSessionTemplate}
-          appointment={currentAppointment}
+          clinicianName={clinicianData?.clinician_name || ''}
+          clientData={clientData}
         />
       </Layout>
     );
