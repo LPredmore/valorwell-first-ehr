@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { X, FileText } from 'lucide-react';
+import { X, FileText, LockKeyhole } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -76,6 +77,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     treatmentGoalNarrative: '',
     sessionNarrative: '',
     nextTreatmentPlanUpdate: '',
+    privateNote: '',
     signature: ''
   });
 
@@ -138,7 +140,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         problemNarrative: clientData.client_problem || '',
         treatmentGoalNarrative: clientData.client_treatmentgoal || '',
         sessionNarrative: clientData.client_sessionnarrative || '',
-        nextTreatmentPlanUpdate: clientData.client_nexttreatmentplanupdate || ''
+        nextTreatmentPlanUpdate: clientData.client_nexttreatmentplanupdate || '',
+        privateNote: clientData.client_privatenote || ''
       }));
 
       setEditModes({
@@ -220,6 +223,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         client_sessionnarrative: formState.sessionNarrative,
         client_medications: formState.medications,
         client_personsinattendance: formState.personsInAttendance,
+        client_privatenote: formState.privateNote,
 
         client_nexttreatmentplanupdate: formState.nextTreatmentPlanUpdate,
       };
@@ -859,6 +863,23 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             placeholder="Enter signature"
             value={formState.signature}
             onChange={(e) => handleChange('signature', e.target.value)}
+          />
+        </div>
+
+        {/* Add Private Note Section */}
+        <div className="mb-6 border-t pt-6">
+          <div className="flex items-center gap-2 mb-3">
+            <LockKeyhole className="h-4 w-4 text-amber-500" />
+            <h4 className="text-md font-medium text-gray-800">Private Note</h4>
+          </div>
+          <p className="text-sm text-gray-500 mb-3">
+            This note is private and will only be visible to clinicians. It will not be included in any client-facing documentation.
+          </p>
+          <Textarea
+            placeholder="Enter private notes about this client"
+            className="min-h-[100px]"
+            value={formState.privateNote}
+            onChange={(e) => handleChange('privateNote', e.target.value)}
           />
         </div>
 
