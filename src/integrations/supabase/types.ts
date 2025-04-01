@@ -188,6 +188,7 @@ export type Database = {
           client_behavior: string | null
           client_branchOS: string | null
           client_champva: string | null
+          client_currentsymptoms: string | null
           client_date_of_birth: string | null
           client_diagnosis: string[] | null
           client_disabilityrating: string | null
@@ -283,6 +284,7 @@ export type Database = {
           client_behavior?: string | null
           client_branchOS?: string | null
           client_champva?: string | null
+          client_currentsymptoms?: string | null
           client_date_of_birth?: string | null
           client_diagnosis?: string[] | null
           client_disabilityrating?: string | null
@@ -378,6 +380,7 @@ export type Database = {
           client_behavior?: string | null
           client_branchOS?: string | null
           client_champva?: string | null
+          client_currentsymptoms?: string | null
           client_date_of_birth?: string | null
           client_diagnosis?: string[] | null
           client_disabilityrating?: string | null
