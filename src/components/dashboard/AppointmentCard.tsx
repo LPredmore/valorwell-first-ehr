@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { format, parseISO } from 'date-fns';
-import { Calendar, Clock, UserCircle, Video, FileText } from 'lucide-react';
+import { Calendar, Clock, UserCircle, Video, FileText, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatTime12Hour, formatTimeInUserTimeZone } from '@/utils/timeZoneUtils';
@@ -25,6 +26,7 @@ export interface AppointmentCardProps {
   showStartButton?: boolean;
   onStartSession?: (appointment: AppointmentCardProps['appointment']) => void;
   onDocumentSession?: (appointment: AppointmentCardProps['appointment']) => void;
+  onSessionDidNotOccur?: (appointment: AppointmentCardProps['appointment']) => void;
 }
 
 export const AppointmentCard: React.FC<AppointmentCardProps> = ({
@@ -33,7 +35,8 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   userTimeZone,
   showStartButton = false,
   onStartSession,
-  onDocumentSession
+  onDocumentSession,
+  onSessionDidNotOccur
 }) => {
   // Format time for display in user's time zone
   const formatTimeDisplay = (timeString: string) => {
@@ -67,7 +70,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
           </div>
           <div className="text-sm mt-1">{appointment.type}</div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col gap-2">
           <Button
             variant="default"
             size="sm"
@@ -77,6 +80,18 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
             <FileText className="h-4 w-4 mr-2" />
             Document Session
           </Button>
+          
+          {onSessionDidNotOccur && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+              onClick={() => onSessionDidNotOccur(appointment)}
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Session Did Not Occur
+            </Button>
+          )}
         </CardFooter>
       </Card>
     );

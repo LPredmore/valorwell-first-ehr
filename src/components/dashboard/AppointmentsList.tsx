@@ -18,6 +18,7 @@ interface AppointmentsListProps {
   showViewAllButton?: boolean;
   onStartSession?: (appointment: AppointmentCardProps['appointment']) => void;
   onDocumentSession?: (appointment: AppointmentCardProps['appointment']) => void;
+  onSessionDidNotOccur?: (appointment: AppointmentCardProps['appointment']) => void;
 }
 
 export const AppointmentsList: React.FC<AppointmentsListProps> = ({
@@ -32,7 +33,8 @@ export const AppointmentsList: React.FC<AppointmentsListProps> = ({
   showStartButton = false,
   showViewAllButton = false,
   onStartSession,
-  onDocumentSession
+  onDocumentSession,
+  onSessionDidNotOccur
 }) => {
   return (
     <div>
@@ -63,6 +65,7 @@ export const AppointmentsList: React.FC<AppointmentsListProps> = ({
               showStartButton={showStartButton}
               onStartSession={onStartSession}
               onDocumentSession={onDocumentSession}
+              onSessionDidNotOccur={onSessionDidNotOccur}
             />
           ))}
           

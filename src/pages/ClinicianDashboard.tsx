@@ -10,6 +10,7 @@ import { AppointmentsList } from '@/components/dashboard/AppointmentsList';
 import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 import { useAppointments } from '@/hooks/useAppointments';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
+import { SessionDidNotOccurDialog } from '@/components/dashboard/SessionDidNotOccurDialog';
 
 const ClinicianDashboard = () => {
   const { userRole, userId } = useUser();
@@ -17,6 +18,8 @@ const ClinicianDashboard = () => {
   const [clinicianTimeZone, setClinicianTimeZone] = useState<string>(getUserTimeZone());
   const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
   const timeZoneDisplay = formatTimeZoneDisplay(clinicianTimeZone);
+  const [showSessionDidNotOccurDialog, setShowSessionDidNotOccurDialog] = useState(false);
+  const [selectedAppointmentForNoShow, setSelectedAppointmentForNoShow] = useState<any>(null);
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -57,6 +60,7 @@ const ClinicianDashboard = () => {
     pastAppointments,
     isLoading,
     error,
+    refetch,
     currentAppointment,
     isVideoOpen,
     currentVideoUrl,
@@ -68,6 +72,16 @@ const ClinicianDashboard = () => {
     closeSessionTemplate,
     closeVideoSession
   } = useAppointments(currentUserId);
+
+  const handleSessionDidNotOccur = (appointment: any) => {
+    setSelectedAppointmentForNoShow(appointment);
+    setShowSessionDidNotOccurDialog(true);
+  };
+
+  const closeSessionDidNotOccurDialog = () => {
+    setShowSessionDidNotOccurDialog(false);
+    setSelectedAppointmentForNoShow(null);
+  };
 
   if (showSessionTemplate && currentAppointment) {
     return (
@@ -116,6 +130,7 @@ const ClinicianDashboard = () => {
               timeZoneDisplay={timeZoneDisplay}
               userTimeZone={clinicianTimeZone}
               onDocumentSession={openSessionTemplate}
+              onSessionDidNotOccur={handleSessionDidNotOccur}
             />
           </div>
           
@@ -142,6 +157,16 @@ const ClinicianDashboard = () => {
           roomUrl={currentVideoUrl}
           isOpen={isVideoOpen}
           onClose={closeVideoSession}
+        />
+      )}
+
+      {/* Session Did Not Occur Dialog */}
+      {showSessionDidNotOccurDialog && selectedAppointmentForNoShow && (
+        <SessionDidNotOccurDialog
+          isOpen={showSessionDidNotOccurDialog}
+          onClose={closeSessionDidNotOccurDialog}
+          appointmentId={selectedAppointmentForNoShow.id}
+          onStatusUpdate={refetch}
         />
       )}
     </Layout>
