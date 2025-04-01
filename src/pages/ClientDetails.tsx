@@ -125,17 +125,6 @@ const ClientDetails = () => {
     client_insurance_type_tertiary: z.string().optional().nullable(),
     client_subscriber_dob_tertiary: z.date().optional().nullable(),
     client_subscriber_relationship_tertiary: z.string().optional().nullable(),
-    client_vacoverage: z.string().optional().nullable(),
-    client_champva: z.string().optional().nullable(), 
-    client_tricare_beneficiary_category: z.string().optional().nullable(),
-    client_tricare_sponsor_name: z.string().optional().nullable(),
-    client_tricare_sponsor_branch: z.string().optional().nullable(),
-    client_tricare_sponsor_id: z.string().optional().nullable(),
-    client_tricare_plan: z.string().optional().nullable(),
-    client_tricare_region: z.string().optional().nullable(),
-    client_tricare_policy_id: z.string().optional().nullable(),
-    client_tricare_has_referral: z.string().optional().nullable(),
-    client_tricare_referral_number: z.string().optional().nullable(),
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -179,17 +168,6 @@ const ClientDetails = () => {
       client_insurance_type_tertiary: clientData?.client_insurance_type_tertiary || "",
       client_subscriber_dob_tertiary: clientData?.client_subscriber_dob_tertiary ? parseDateString(clientData.client_subscriber_dob_tertiary) : null,
       client_subscriber_relationship_tertiary: clientData?.client_subscriber_relationship_tertiary || "",
-      client_vacoverage: clientData?.client_vacoverage || "",
-      client_champva: clientData?.client_champva || "",
-      client_tricare_beneficiary_category: clientData?.client_tricare_beneficiary_category || "",
-      client_tricare_sponsor_name: clientData?.client_tricare_sponsor_name || "",
-      client_tricare_sponsor_branch: clientData?.client_tricare_sponsor_branch || "",
-      client_tricare_sponsor_id: clientData?.client_tricare_sponsor_id || "",
-      client_tricare_plan: clientData?.client_tricare_plan || "",
-      client_tricare_region: clientData?.client_tricare_region || "",
-      client_tricare_policy_id: clientData?.client_tricare_policy_id || "",
-      client_tricare_has_referral: clientData?.client_tricare_has_referral || "",
-      client_tricare_referral_number: clientData?.client_tricare_referral_number || "",
     },
   });
 
@@ -234,17 +212,6 @@ const ClientDetails = () => {
         client_insurance_type_tertiary: clientData.client_insurance_type_tertiary || "",
         client_subscriber_dob_tertiary: clientData.client_subscriber_dob_tertiary ? parseDateString(clientData.client_subscriber_dob_tertiary) : null,
         client_subscriber_relationship_tertiary: clientData.client_subscriber_relationship_tertiary || "",
-        client_vacoverage: clientData.client_vacoverage || "",
-        client_champva: clientData.client_champva || "",
-        client_tricare_beneficiary_category: clientData.client_tricare_beneficiary_category || "",
-        client_tricare_sponsor_name: clientData.client_tricare_sponsor_name || "",
-        client_tricare_sponsor_branch: clientData.client_tricare_sponsor_branch || "",
-        client_tricare_sponsor_id: clientData.client_tricare_sponsor_id || "",
-        client_tricare_plan: clientData.client_tricare_plan || "",
-        client_tricare_region: clientData.client_tricare_region || "",
-        client_tricare_policy_id: clientData.client_tricare_policy_id || "",
-        client_tricare_has_referral: clientData.client_tricare_has_referral || "",
-        client_tricare_referral_number: clientData.client_tricare_referral_number || "",
       });
     }
   }, [clientData, form]);

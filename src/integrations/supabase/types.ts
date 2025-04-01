@@ -9,65 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      appointments: {
-        Row: {
-          appointment_recurring: string | null
-          client_id: string
-          clinician_id: string
-          created_at: string
-          date: string
-          end_time: string
-          id: string
-          notes: string | null
-          recurring_group_id: string | null
-          start_time: string
-          status: string
-          type: string
-          updated_at: string
-          video_room_url: string | null
-        }
-        Insert: {
-          appointment_recurring?: string | null
-          client_id: string
-          clinician_id: string
-          created_at?: string
-          date: string
-          end_time: string
-          id?: string
-          notes?: string | null
-          recurring_group_id?: string | null
-          start_time: string
-          status?: string
-          type: string
-          updated_at?: string
-          video_room_url?: string | null
-        }
-        Update: {
-          appointment_recurring?: string | null
-          client_id?: string
-          clinician_id?: string
-          created_at?: string
-          date?: string
-          end_time?: string
-          id?: string
-          notes?: string | null
-          recurring_group_id?: string | null
-          start_time?: string
-          status?: string
-          type?: string
-          updated_at?: string
-          video_room_url?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "appointments_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       availability: {
         Row: {
           clinician_id: string | null
@@ -104,57 +45,11 @@ export type Database = {
         }
         Relationships: []
       }
-      availability_exceptions: {
-        Row: {
-          clinician_id: string
-          created_at: string | null
-          end_time: string | null
-          id: string
-          is_deleted: boolean | null
-          original_availability_id: string | null
-          specific_date: string
-          start_time: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          clinician_id: string
-          created_at?: string | null
-          end_time?: string | null
-          id?: string
-          is_deleted?: boolean | null
-          original_availability_id?: string | null
-          specific_date: string
-          start_time?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          clinician_id?: string
-          created_at?: string | null
-          end_time?: string | null
-          id?: string
-          is_deleted?: boolean | null
-          original_availability_id?: string | null
-          specific_date?: string
-          start_time?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "availability_exceptions_original_availability_id_fkey"
-            columns: ["original_availability_id"]
-            isOneToOne: false
-            referencedRelation: "availability"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       availability_settings: {
         Row: {
           clinician_id: string
           created_at: string
           id: string
-          max_days_ahead: number
-          min_days_ahead: number
           time_granularity: string
           updated_at: string
         }
@@ -162,8 +57,6 @@ export type Database = {
           clinician_id: string
           created_at?: string
           id?: string
-          max_days_ahead: number
-          min_days_ahead: number
           time_granularity?: string
           updated_at?: string
         }
@@ -171,8 +64,6 @@ export type Database = {
           clinician_id?: string
           created_at?: string
           id?: string
-          max_days_ahead?: number
-          min_days_ahead?: number
           time_granularity?: string
           updated_at?: string
         }
@@ -186,11 +77,8 @@ export type Database = {
           client_assigned_therapist: string | null
           client_attitude: string | null
           client_behavior: string | null
-          client_branchOS: string | null
-          client_champva: string | null
           client_date_of_birth: string | null
           client_diagnosis: string[] | null
-          client_disabilityrating: string | null
           client_email: string | null
           client_first_name: string | null
           client_functioning: string | null
@@ -234,9 +122,7 @@ export type Database = {
           client_problem: string | null
           client_prognosis: string | null
           client_progress: string | null
-          client_recentdischarge: string | null
           client_referral_source: string | null
-          client_relationship: string | null
           client_secondaryobjective: string | null
           client_self_goal: string | null
           client_sessionnarrative: string | null
@@ -260,16 +146,6 @@ export type Database = {
           client_treatmentfrequency: string | null
           client_treatmentgoal: string | null
           client_treatmentplan_startdate: string | null
-          client_tricare_beneficiary_category: string | null
-          client_tricare_has_referral: string | null
-          client_tricare_plan: string | null
-          client_tricare_policy_id: string | null
-          client_tricare_referral_number: string | null
-          client_tricare_region: string | null
-          client_tricare_sponsor_branch: string | null
-          client_tricare_sponsor_id: string | null
-          client_tricare_sponsor_name: string | null
-          client_vacoverage: string | null
           created_at: string
           id: string
           updated_at: string
@@ -281,11 +157,8 @@ export type Database = {
           client_assigned_therapist?: string | null
           client_attitude?: string | null
           client_behavior?: string | null
-          client_branchOS?: string | null
-          client_champva?: string | null
           client_date_of_birth?: string | null
           client_diagnosis?: string[] | null
-          client_disabilityrating?: string | null
           client_email?: string | null
           client_first_name?: string | null
           client_functioning?: string | null
@@ -329,9 +202,7 @@ export type Database = {
           client_problem?: string | null
           client_prognosis?: string | null
           client_progress?: string | null
-          client_recentdischarge?: string | null
           client_referral_source?: string | null
-          client_relationship?: string | null
           client_secondaryobjective?: string | null
           client_self_goal?: string | null
           client_sessionnarrative?: string | null
@@ -355,16 +226,6 @@ export type Database = {
           client_treatmentfrequency?: string | null
           client_treatmentgoal?: string | null
           client_treatmentplan_startdate?: string | null
-          client_tricare_beneficiary_category?: string | null
-          client_tricare_has_referral?: string | null
-          client_tricare_plan?: string | null
-          client_tricare_policy_id?: string | null
-          client_tricare_referral_number?: string | null
-          client_tricare_region?: string | null
-          client_tricare_sponsor_branch?: string | null
-          client_tricare_sponsor_id?: string | null
-          client_tricare_sponsor_name?: string | null
-          client_vacoverage?: string | null
           created_at?: string
           id: string
           updated_at?: string
@@ -376,11 +237,8 @@ export type Database = {
           client_assigned_therapist?: string | null
           client_attitude?: string | null
           client_behavior?: string | null
-          client_branchOS?: string | null
-          client_champva?: string | null
           client_date_of_birth?: string | null
           client_diagnosis?: string[] | null
-          client_disabilityrating?: string | null
           client_email?: string | null
           client_first_name?: string | null
           client_functioning?: string | null
@@ -424,9 +282,7 @@ export type Database = {
           client_problem?: string | null
           client_prognosis?: string | null
           client_progress?: string | null
-          client_recentdischarge?: string | null
           client_referral_source?: string | null
-          client_relationship?: string | null
           client_secondaryobjective?: string | null
           client_self_goal?: string | null
           client_sessionnarrative?: string | null
@@ -450,62 +306,11 @@ export type Database = {
           client_treatmentfrequency?: string | null
           client_treatmentgoal?: string | null
           client_treatmentplan_startdate?: string | null
-          client_tricare_beneficiary_category?: string | null
-          client_tricare_has_referral?: string | null
-          client_tricare_plan?: string | null
-          client_tricare_policy_id?: string | null
-          client_tricare_referral_number?: string | null
-          client_tricare_region?: string | null
-          client_tricare_sponsor_branch?: string | null
-          client_tricare_sponsor_id?: string | null
-          client_tricare_sponsor_name?: string | null
-          client_vacoverage?: string | null
           created_at?: string
           id?: string
           updated_at?: string
         }
         Relationships: []
-      }
-      clinical_documents: {
-        Row: {
-          client_id: string
-          created_at: string
-          created_by: string | null
-          document_date: string
-          document_title: string
-          document_type: string
-          file_path: string
-          id: string
-        }
-        Insert: {
-          client_id: string
-          created_at?: string
-          created_by?: string | null
-          document_date: string
-          document_title: string
-          document_type: string
-          file_path: string
-          id?: string
-        }
-        Update: {
-          client_id?: string
-          created_at?: string
-          created_by?: string | null
-          document_date?: string
-          document_title?: string
-          document_type?: string
-          file_path?: string
-          id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "clinical_documents_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       clinicians: {
         Row: {
@@ -726,68 +531,6 @@ export type Database = {
         }
         Relationships: []
       }
-      phq9_assessments: {
-        Row: {
-          additional_notes: string | null
-          assessment_date: string
-          client_id: string
-          created_at: string
-          id: string
-          question_1: number
-          question_2: number
-          question_3: number
-          question_4: number
-          question_5: number
-          question_6: number
-          question_7: number
-          question_8: number
-          question_9: number
-          total_score: number
-        }
-        Insert: {
-          additional_notes?: string | null
-          assessment_date?: string
-          client_id: string
-          created_at?: string
-          id?: string
-          question_1: number
-          question_2: number
-          question_3: number
-          question_4: number
-          question_5: number
-          question_6: number
-          question_7: number
-          question_8: number
-          question_9: number
-          total_score: number
-        }
-        Update: {
-          additional_notes?: string | null
-          assessment_date?: string
-          client_id?: string
-          created_at?: string
-          id?: string
-          question_1?: number
-          question_2?: number
-          question_3?: number
-          question_4?: number
-          question_5?: number
-          question_6?: number
-          question_7?: number
-          question_8?: number
-          question_9?: number
-          total_score?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "phq9_assessments_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       practiceinfo: {
         Row: {
           created_at: string
@@ -843,7 +586,6 @@ export type Database = {
           phone: string | null
           profile_type: string | null
           role: Database["public"]["Enums"]["app_role"]
-          temp_password: string | null
           updated_at: string
         }
         Insert: {
@@ -855,7 +597,6 @@ export type Database = {
           phone?: string | null
           profile_type?: string | null
           role?: Database["public"]["Enums"]["app_role"]
-          temp_password?: string | null
           updated_at?: string
         }
         Update: {
@@ -867,7 +608,6 @@ export type Database = {
           phone?: string | null
           profile_type?: string | null
           role?: Database["public"]["Enums"]["app_role"]
-          temp_password?: string | null
           updated_at?: string
         }
         Relationships: []

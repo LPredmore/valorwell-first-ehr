@@ -103,19 +103,10 @@ const TreatmentTab: React.FC<TabProps> = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="New Lead">New Lead</SelectItem>
-                      <SelectItem value="Activated">Activated</SelectItem>
-                      <SelectItem value="Profile Complete">Profile Complete</SelectItem>
-                      <SelectItem value="Scheduled">Scheduled</SelectItem>
-                      <SelectItem value="First Sessions">First Sessions</SelectItem>
-                      <SelectItem value="Established">Established</SelectItem>
-                      <SelectItem value="At Risk">At Risk</SelectItem>
-                      <SelectItem value="Re-Engaged">Re-Engaged</SelectItem>
-                      <SelectItem value="Went Dark">Went Dark</SelectItem>
-                      <SelectItem value="Success">Success</SelectItem>
-                      <SelectItem value="Do Not Contact">Do Not Contact</SelectItem>
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Inactive">Inactive</SelectItem>
+                      <SelectItem value="On Hold">On Hold</SelectItem>
                       <SelectItem value="Discharged">Discharged</SelectItem>
-                      <SelectItem value="BlackList">BlackList</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

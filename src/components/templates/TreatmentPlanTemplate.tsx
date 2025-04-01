@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -13,9 +12,8 @@ import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClientDetails } from "@/types/client";
 import { useToast } from "@/hooks/use-toast";
-import { supabase, formatDateForDB, getCurrentUser } from "@/integrations/supabase/client";
+import { supabase, formatDateForDB } from "@/integrations/supabase/client";
 import { DiagnosisSelector } from "@/components/DiagnosisSelector";
-import { generateAndSavePDF } from "@/utils/pdfUtils";
 
 interface TreatmentPlanTemplateProps {
   onClose: () => void;
@@ -33,8 +31,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
   clientData = null
 }) => {
   const { toast } = useToast();
-  const treatmentPlanRef = useRef<HTMLDivElement>(null);
-  const [isSaving, setIsSaving] = useState(false);
   // Initialize form state from client data
   const [formState, setFormState] = useState({
     clientName: clientName || `${clientData?.client_first_name || ''} ${clientData?.client_last_name || ''}`,
@@ -92,7 +88,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
   };
 
   const handleSave = async () => {
-    setIsSaving(true);
     try {
       if (!clientData?.id) {
         toast({
@@ -100,7 +95,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
           description: "Cannot save - client data is missing",
           variant: "destructive"
         });
-        setIsSaving(false);
         return;
       }
 
@@ -141,26 +135,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
 
       console.log('Treatment plan saved successfully:', data);
 
-      // Generate and save PDF
-      if (treatmentPlanRef.current) {
-        const currentUser = await getCurrentUser();
-        const documentInfo = {
-          clientId: clientData.id,
-          documentType: 'Treatment Plan',
-          documentDate: formState.startDate || new Date(),
-          documentTitle: `Treatment Plan - ${format(formState.startDate || new Date(), 'yyyy-MM-dd')}`,
-          createdBy: currentUser?.id
-        };
-
-        const pdfPath = await generateAndSavePDF('treatment-plan-content', documentInfo);
-        
-        if (pdfPath) {
-          console.log('PDF saved successfully at path:', pdfPath);
-        } else {
-          console.error('Failed to generate or save PDF');
-        }
-      }
-
       toast({
         title: "Success",
         description: "Treatment plan saved successfully"
@@ -174,8 +148,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         description: "Failed to save treatment plan",
         variant: "destructive"
       });
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -189,11 +161,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
       </CardHeader>
       <CardContent className="pt-4">
         <div className="space-y-6">
-          <div 
-            id="treatment-plan-content"
-            ref={treatmentPlanRef}
-            className="border rounded-md p-4 bg-white"
-          >
+          <div className="border rounded-md p-4 bg-white">
             <h2 className="text-xl font-semibold text-valorwell-800 mb-4">Therapy Treatment Plan</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -441,13 +409,12 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
           </div>
           
           <div className="flex justify-end">
-            <Button variant="outline" onClick={onClose} className="mr-2" disabled={isSaving}>Close</Button>
+            <Button variant="outline" onClick={onClose} className="mr-2">Close</Button>
             <Button 
               className="bg-valorwell-700 hover:bg-valorwell-800" 
               onClick={handleSave}
-              disabled={isSaving}
             >
-              {isSaving ? "Saving..." : "Save Treatment Plan"}
+              Save Treatment Plan
             </Button>
           </div>
         </div>

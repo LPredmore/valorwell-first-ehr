@@ -37,19 +37,3 @@ export const useClinicianData = () => {
 
   return { clinicianData, loading, error };
 };
-
-export const getClinicianById = async (clinicianId: string) => {
-  try {
-    const { data, error } = await supabase
-      .from('clinicians')
-      .select('*')
-      .eq('id', clinicianId)
-      .single();
-      
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error('Error fetching clinician:', error);
-    return null;
-  }
-};
