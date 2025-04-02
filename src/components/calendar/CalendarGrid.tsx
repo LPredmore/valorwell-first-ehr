@@ -37,6 +37,7 @@ interface CalendarGridProps {
   getClientName: (clientId: string) => string;
   onAppointmentClick?: (appointment: Appointment) => void;
   onAvailabilityClick?: (day: Date, availabilityBlock: AvailabilityBlock) => void;
+  weekViewMode?: boolean;
 }
 
 const CalendarGrid: React.FC<CalendarGridProps> = ({
@@ -47,7 +48,8 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
   availabilityByDay,
   getClientName,
   onAppointmentClick,
-  onAvailabilityClick
+  onAvailabilityClick,
+  weekViewMode = false
 }) => {
   const weekDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -80,6 +82,7 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
             onAppointmentClick={onAppointmentClick}
             onAvailabilityClick={onAvailabilityClick}
             firstAvailability={firstAvailability}
+            weekViewMode={weekViewMode}
           />
         );
       })}

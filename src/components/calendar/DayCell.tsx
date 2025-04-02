@@ -36,6 +36,7 @@ interface DayCellProps {
   onAppointmentClick?: (appointment: Appointment) => void;
   onAvailabilityClick?: (day: Date, availabilityBlock: AvailabilityBlock) => void;
   firstAvailability?: AvailabilityBlock;
+  weekViewMode?: boolean;
 }
 
 const DayCell: React.FC<DayCellProps> = ({
@@ -46,7 +47,8 @@ const DayCell: React.FC<DayCellProps> = ({
   getClientName,
   onAppointmentClick,
   onAvailabilityClick,
-  firstAvailability
+  firstAvailability,
+  weekViewMode = false
 }) => {
   const { hasAvailability, isModified, displayHours } = availabilityInfo;
   
@@ -56,15 +58,19 @@ const DayCell: React.FC<DayCellProps> = ({
     }
   };
 
+  const cellHeightClass = weekViewMode ? "min-h-[150px]" : "min-h-[100px]";
+  
   return (
     <div
-      className={`p-2 min-h-[100px] border border-gray-100 ${!isSameMonth(day, monthStart) ? 'bg-gray-50 text-gray-400' : ''} ${isSameDay(day, new Date()) ? 'border-valorwell-500 border-2' : ''}`}
+      className={`p-2 ${cellHeightClass} border border-gray-100 
+        ${!isSameMonth(day, monthStart) && !weekViewMode ? 'bg-gray-50 text-gray-400' : ''} 
+        ${isSameDay(day, new Date()) ? 'border-valorwell-500 border-2' : ''}`}
     >
       <div className="flex justify-between items-start">
         <span className={`text-sm font-medium ${isSameDay(day, new Date()) ? 'text-valorwell-500' : ''}`}>
           {format(day, 'd')}
         </span>
-        {hasAvailability && isSameMonth(day, monthStart) && (
+        {hasAvailability && (weekViewMode || isSameMonth(day, monthStart)) && (
           <div 
             className={`${isModified ? 'bg-teal-100 text-teal-800' : 'bg-green-100 text-green-800'} text-xs px-1 py-0.5 rounded cursor-pointer hover:opacity-80 transition-colors`}
             onClick={handleAvailabilityClick}
@@ -77,9 +83,9 @@ const DayCell: React.FC<DayCellProps> = ({
         )}
       </div>
       
-      {appointments.length > 0 && isSameMonth(day, monthStart) && (
+      {appointments.length > 0 && (weekViewMode || isSameMonth(day, monthStart)) && (
         <div className="mt-1 space-y-1">
-          {appointments.slice(0, 3).map(appointment => (
+          {appointments.slice(0, weekViewMode ? 5 : 3).map(appointment => (
             <div 
               key={appointment.id} 
               className="bg-blue-100 text-blue-800 text-xs p-1 rounded truncate cursor-pointer hover:bg-blue-200 transition-colors"
@@ -88,7 +94,12 @@ const DayCell: React.FC<DayCellProps> = ({
               {formatDateToTime12Hour(parseISO(`2000-01-01T${appointment.start_time}`))} - {getClientName(appointment.client_id)}
             </div>
           ))}
-          {appointments.length > 3 && (
+          {weekViewMode && appointments.length > 5 && (
+            <div className="text-xs text-gray-500 pl-1">
+              +{appointments.length - 5} more
+            </div>
+          )}
+          {!weekViewMode && appointments.length > 3 && (
             <div className="text-xs text-gray-500 pl-1">
               +{appointments.length - 3} more
             </div>

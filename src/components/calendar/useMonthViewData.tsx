@@ -46,21 +46,33 @@ export const useMonthViewData = (
   currentDate: Date,
   clinicianId: string | null,
   refreshTrigger: number = 0,
-  appointments: Appointment[] = []
+  appointments: Appointment[] = [],
+  weekViewMode: boolean = false
 ) => {
   const [loading, setLoading] = useState(true);
   const [availabilityData, setAvailabilityData] = useState<AvailabilityBlock[]>([]);
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
 
   const { monthStart, monthEnd, startDate, endDate, days } = useMemo(() => {
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
-    const startDate = startOfWeek(monthStart, { weekStartsOn: 0 });
-    const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
-    const days = eachDayOfInterval({ start: startDate, end: endDate });
-    
-    return { monthStart, monthEnd, startDate, endDate, days };
-  }, [currentDate]);
+    // If in week view mode, we'll only show the current week
+    if (weekViewMode) {
+      const startDate = startOfWeek(currentDate, { weekStartsOn: 0 });
+      const endDate = endOfWeek(currentDate, { weekStartsOn: 0 });
+      const days = eachDayOfInterval({ start: startDate, end: endDate });
+      
+      console.log("Week view mode: Showing days from", format(startDate, 'yyyy-MM-dd'), "to", format(endDate, 'yyyy-MM-dd'));
+      return { monthStart: startDate, monthEnd: endDate, startDate, endDate, days };
+    } else {
+      // Regular month view logic
+      const monthStart = startOfMonth(currentDate);
+      const monthEnd = endOfMonth(currentDate);
+      const startDate = startOfWeek(monthStart, { weekStartsOn: 0 });
+      const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
+      const days = eachDayOfInterval({ start: startDate, end: endDate });
+      
+      return { monthStart, monthEnd, startDate, endDate, days };
+    }
+  }, [currentDate, weekViewMode]);
 
   useEffect(() => {
     const fetchAvailabilityAndExceptions = async () => {
@@ -204,11 +216,27 @@ export const useMonthViewData = (
   const dayAppointmentsMap = useMemo(() => {
     const result = new Map<string, Appointment[]>();
     
-    days.forEach(day => {
-      const dayStr = format(day, 'yyyy-MM-dd');
-      const dayAppointments = appointments.filter(appointment => appointment.date === dayStr);
-      result.set(dayStr, dayAppointments);
-    });
+    if (appointments && appointments.length > 0) {
+      console.log(`Processing ${appointments.length} appointments for calendar view`);
+      
+      days.forEach(day => {
+        const dayStr = format(day, 'yyyy-MM-dd');
+        const dayAppointments = appointments.filter(appointment => appointment.date === dayStr);
+        
+        if (dayAppointments.length > 0) {
+          console.log(`Found ${dayAppointments.length} appointments for ${dayStr}`);
+        }
+        
+        result.set(dayStr, dayAppointments);
+      });
+    } else {
+      console.log("No appointments to display in calendar");
+      
+      days.forEach(day => {
+        const dayStr = format(day, 'yyyy-MM-dd');
+        result.set(dayStr, []);
+      });
+    }
     
     return result;
   }, [days, appointments]);

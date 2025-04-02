@@ -34,6 +34,7 @@ interface MonthViewProps {
   onAppointmentClick?: (appointment: Appointment) => void;
   onAvailabilityClick?: (date: Date, availabilityBlock: AvailabilityBlock) => void;
   userTimeZone?: string;
+  weekViewMode?: boolean;
 }
 
 const MonthView: React.FC<MonthViewProps> = ({ 
@@ -44,7 +45,8 @@ const MonthView: React.FC<MonthViewProps> = ({
   getClientName = () => 'Client',
   onAppointmentClick,
   onAvailabilityClick,
-  userTimeZone
+  userTimeZone,
+  weekViewMode = false
 }) => {
   const {
     loading,
@@ -53,7 +55,7 @@ const MonthView: React.FC<MonthViewProps> = ({
     dayAvailabilityMap,
     dayAppointmentsMap,
     availabilityByDay
-  } = useMonthViewData(currentDate, clinicianId, refreshTrigger, appointments);
+  } = useMonthViewData(currentDate, clinicianId, refreshTrigger, appointments, weekViewMode);
 
   if (loading) {
     return (
@@ -74,6 +76,7 @@ const MonthView: React.FC<MonthViewProps> = ({
         getClientName={getClientName}
         onAppointmentClick={onAppointmentClick}
         onAvailabilityClick={onAvailabilityClick}
+        weekViewMode={weekViewMode}
       />
     </Card>
   );
