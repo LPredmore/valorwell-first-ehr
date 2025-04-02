@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -96,7 +97,8 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
           .select('*')
           .eq('client_id', clientData.id)
           .lt('date', todayStr)
-          .not('status', 'in', ['scheduled', 'cancelled'])
+          .neq('status', 'scheduled')
+          .neq('status', 'cancelled')
           .order('date', { ascending: false })
           .order('start_time', { ascending: false });
 
