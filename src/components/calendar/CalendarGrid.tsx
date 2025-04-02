@@ -37,6 +37,7 @@ interface CalendarGridProps {
   getClientName: (clientId: string) => string;
   onAppointmentClick?: (appointment: Appointment) => void;
   onAvailabilityClick?: (day: Date, availabilityBlock: AvailabilityBlock) => void;
+  weekViewMode?: boolean;
 }
 
 const CalendarGrid: React.FC<CalendarGridProps> = ({
@@ -47,9 +48,48 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
   availabilityByDay,
   getClientName,
   onAppointmentClick,
-  onAvailabilityClick
+  onAvailabilityClick,
+  weekViewMode = false
 }) => {
   const weekDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  if (weekViewMode) {
+    return (
+      <div className="grid grid-cols-7 gap-1">
+        {weekDayNames.map((day, index) => (
+          <div key={day} className="p-2 text-center font-medium border-b border-gray-200">
+            {day}
+          </div>
+        ))}
+
+        {days.map((day) => {
+          const dateStr = day.toISOString().split('T')[0];
+          const dayAppointments = dayAppointmentsMap.get(dateStr) || [];
+          const dayAvailability = dayAvailabilityMap.get(dateStr) || { 
+            hasAvailability: false, 
+            isModified: false,
+            displayHours: ''
+          };
+          const firstAvailability = availabilityByDay.get(dateStr);
+          
+          return (
+            <DayCell
+              key={day.toString()}
+              day={day}
+              monthStart={monthStart}
+              availabilityInfo={dayAvailability}
+              appointments={dayAppointments}
+              getClientName={getClientName}
+              onAppointmentClick={onAppointmentClick}
+              onAvailabilityClick={onAvailabilityClick}
+              firstAvailability={firstAvailability}
+              weekViewMode={true}
+            />
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-7 gap-1">

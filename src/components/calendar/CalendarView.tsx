@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, isSameDay, addMonths, subMonths, addWeeks, subWeeks, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -20,6 +19,7 @@ interface CalendarViewProps {
   clinicianId: string | null;
   userTimeZone?: string;
   refreshTrigger?: number;
+  monthViewMode?: 'month' | 'week';
 }
 
 interface Appointment {
@@ -45,7 +45,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   showAvailability,
   clinicianId,
   userTimeZone: propTimeZone,
-  refreshTrigger = 0
+  refreshTrigger = 0,
+  monthViewMode = 'month'
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [availabilityRefreshTrigger, setAvailabilityRefreshTrigger] = useState(0);
@@ -62,7 +63,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago');
   const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
 
-  // Fetch the clinician's timezone
   useEffect(() => {
     const fetchClinicianTimeZone = async () => {
       if (clinicianId) {
@@ -82,7 +82,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     fetchClinicianTimeZone();
   }, [clinicianId]);
 
-  // Use the clinician's timezone or fallback to props or system default
   const userTimeZone = propTimeZone || (isLoadingTimeZone ? getUserTimeZone() : clinicianTimeZone);
 
   useEffect(() => {
@@ -161,7 +160,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
   const handleAvailabilityUpdated = () => {
     console.log("Availability updated - refreshing calendar view");
-    // Increment the counter to trigger a refresh
     setAvailabilityRefreshTrigger(prev => prev + 1);
   };
 
@@ -258,7 +256,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             getClientName={getClientName} 
             onAppointmentClick={handleAppointmentClick} 
             onAvailabilityClick={handleAvailabilityClick}
-            userTimeZone={userTimeZone} 
+            userTimeZone={userTimeZone}
+            weekViewMode={monthViewMode === 'week'} 
           />}
         </div>
 

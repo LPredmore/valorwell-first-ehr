@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -46,13 +45,28 @@ export const useMonthViewData = (
   currentDate: Date,
   clinicianId: string | null,
   refreshTrigger: number = 0,
-  appointments: Appointment[] = []
+  appointments: Appointment[] = [],
+  weekViewMode: boolean = false
 ) => {
   const [loading, setLoading] = useState(true);
   const [availabilityData, setAvailabilityData] = useState<AvailabilityBlock[]>([]);
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
 
   const { monthStart, monthEnd, startDate, endDate, days } = useMemo(() => {
+    if (weekViewMode) {
+      const startDate = startOfWeek(currentDate, { weekStartsOn: 0 });
+      const endDate = endOfWeek(currentDate, { weekStartsOn: 0 });
+      const days = eachDayOfInterval({ start: startDate, end: endDate });
+      
+      return { 
+        monthStart: startDate,
+        monthEnd: endDate,
+        startDate, 
+        endDate, 
+        days 
+      };
+    }
+    
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
     const startDate = startOfWeek(monthStart, { weekStartsOn: 0 });
@@ -60,7 +74,7 @@ export const useMonthViewData = (
     const days = eachDayOfInterval({ start: startDate, end: endDate });
     
     return { monthStart, monthEnd, startDate, endDate, days };
-  }, [currentDate]);
+  }, [currentDate, weekViewMode]);
 
   useEffect(() => {
     const fetchAvailabilityAndExceptions = async () => {
