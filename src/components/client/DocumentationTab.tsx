@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,6 @@ import { fetchClinicalDocuments, getDocumentDownloadURL } from "@/integrations/s
 import { format } from "date-fns";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { useUser } from "@/context/UserContext";
 
 interface DocumentationTabProps {
   clientData?: ClientDetails | null;
@@ -45,10 +43,6 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
   const {
     toast
   } = useToast();
-  const { userRole } = useUser();
-
-  console.log("DocumentationTab - User Role:", userRole);
-  console.log("DocumentationTab - clinicianData:", clinicianData);
 
   useEffect(() => {
     if (clientData?.id) {
@@ -118,33 +112,11 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
     }
   };
 
-  // Determine if documentation features should be shown (only for clinicians)
-  const canCreateDocumentation = userRole === 'clinician' || userRole === 'admin';
-
-  console.log("Can create documentation:", canCreateDocumentation);
-  console.log("DocumentationTab rendering with clientData:", clientData?.id);
-
   return <div className="grid grid-cols-1 gap-6">
-      {canCreateDocumentation && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-valorwell-600" />
-              Enter Documentation
-            </CardTitle>
-            <CardDescription>Create documentation for this client</CardDescription>
-          </CardHeader>
-          <CardContent className="flex space-x-4">
-            <Button 
-              onClick={() => setShowTreatmentPlanTemplate(true)}
-              className="flex items-center gap-2"
-            >
-              <FileText className="h-4 w-4" />
-              Treatment Plan
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        
+        
+      </Card>
 
       {showTreatmentPlanTemplate && <div className="animate-fade-in">
           <TreatmentPlanTemplate onClose={handleCloseTreatmentPlan} clinicianName={clinicianData?.clinician_professional_name || ''} clientData={clientData} />
