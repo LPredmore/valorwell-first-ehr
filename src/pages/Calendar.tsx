@@ -4,7 +4,7 @@ import Layout from '../components/layout/Layout';
 import CalendarView from '../components/calendar/CalendarView';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from 'date-fns';
+import { addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { useCalendarState } from '../hooks/useCalendarState';
 import CalendarHeader from '../components/calendar/CalendarHeader';
 import CalendarViewControls from '../components/calendar/CalendarViewControls';
@@ -33,9 +33,7 @@ const CalendarPage = () => {
   } = useCalendarState();
 
   const navigatePrevious = () => {
-    if (view === 'day') {
-      setCurrentDate(subDays(currentDate, 1));
-    } else if (view === 'week') {
+    if (view === 'week') {
       setCurrentDate(subWeeks(currentDate, 1));
     } else if (view === 'month') {
       setCurrentDate(subMonths(currentDate, 1));
@@ -43,9 +41,7 @@ const CalendarPage = () => {
   };
 
   const navigateNext = () => {
-    if (view === 'day') {
-      setCurrentDate(addDays(currentDate, 1));
-    } else if (view === 'week') {
+    if (view === 'week') {
       setCurrentDate(addWeeks(currentDate, 1));
     } else if (view === 'month') {
       setCurrentDate(addMonths(currentDate, 1));
@@ -56,7 +52,7 @@ const CalendarPage = () => {
     setCurrentDate(new Date());
   };
 
-  const handleViewChange = (newView: 'day' | 'week' | 'month') => {
+  const handleViewChange = (newView: 'week' | 'month') => {
     setView(newView);
   };
 

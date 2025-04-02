@@ -10,7 +10,7 @@ interface Client {
 }
 
 export const useCalendarState = (initialClinicianId: string | null = null) => {
-  const [view, setView] = useState<'day' | 'week' | 'month'>('week');
+  const [view, setView] = useState<'week' | 'month'>('week');
   const [showAvailability, setShowAvailability] = useState(false);
   const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(initialClinicianId);
   const [clinicians, setClinicians] = useState<Array<{ id: string; clinician_professional_name: string }>>([]);

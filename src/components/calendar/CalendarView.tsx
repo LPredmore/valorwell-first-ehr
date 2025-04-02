@@ -1,11 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, isSameDay, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, parseISO } from 'date-fns';
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, isSameDay, addMonths, subMonths, addWeeks, subWeeks, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ChevronLeft, ChevronRight, Clock, Calendar as CalendarIcon, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import DayView from './DayView';
 import WeekView from './WeekView';
 import MonthView from './MonthView';
 import AvailabilityPanel from './AvailabilityPanel';
@@ -16,7 +15,7 @@ import { getUserTimeZone } from '@/utils/timeZoneUtils';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 
 interface CalendarViewProps {
-  view: 'day' | 'week' | 'month';
+  view: 'week' | 'month';
   showAvailability: boolean;
   clinicianId: string | null;
   userTimeZone?: string;
@@ -91,10 +90,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       if (!clinicianId) return;
       try {
         let startDate, endDate;
-        if (view === 'day') {
-          startDate = format(currentDate, 'yyyy-MM-dd');
-          endDate = startDate;
-        } else if (view === 'week') {
+        if (view === 'week') {
           const start = startOfWeek(currentDate, {
             weekStartsOn: 0
           });
@@ -109,6 +105,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           startDate = format(start, 'yyyy-MM-dd');
           endDate = format(end, 'yyyy-MM-dd');
         }
+        console.log(`Fetching appointments from ${startDate} to ${endDate} for clinician ${clinicianId}`);
         const {
           data,
           error
@@ -116,6 +113,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         if (error) {
           console.error('Error fetching appointments:', error);
         } else {
+          console.log(`Fetched ${data?.length || 0} appointments:`, data);
           setAppointments(data || []);
           if (data && data.length > 0) {
             const clientIds = [...new Set(data.map(app => app.client_id))];
@@ -142,9 +140,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   }, [clinicianId, currentDate, view, availabilityRefreshTrigger, appointmentRefreshTrigger, refreshTrigger]);
 
   const navigatePrevious = () => {
-    if (view === 'day') {
-      setCurrentDate(subDays(currentDate, 1));
-    } else if (view === 'week') {
+    if (view === 'week') {
       setCurrentDate(subWeeks(currentDate, 1));
     } else if (view === 'month') {
       setCurrentDate(subMonths(currentDate, 1));
@@ -152,9 +148,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   };
 
   const navigateNext = () => {
-    if (view === 'day') {
-      setCurrentDate(addDays(currentDate, 1));
-    } else if (view === 'week') {
+    if (view === 'week') {
       setCurrentDate(addWeeks(currentDate, 1));
     } else if (view === 'month') {
       setCurrentDate(addMonths(currentDate, 1));
@@ -172,9 +166,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   };
 
   const getHeaderText = () => {
-    if (view === 'day') {
-      return format(currentDate, 'MMMM d, yyyy');
-    } else if (view === 'week') {
+    if (view === 'week') {
       const start = startOfWeek(currentDate, {
         weekStartsOn: 0
       });
@@ -248,16 +240,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
       <div className="flex gap-4">
         <div className={cn("flex-1", showAvailability ? "w-3/4" : "w-full")}>
-          {view === 'day' && <DayView 
-            currentDate={currentDate} 
-            clinicianId={clinicianId} 
-            refreshTrigger={availabilityRefreshTrigger} 
-            appointments={appointments.filter(app => app.date === format(currentDate, 'yyyy-MM-dd'))} 
-            getClientName={getClientName} 
-            onAppointmentClick={handleAppointmentClick} 
-            onAvailabilityClick={handleAvailabilityClick}
-            userTimeZone={userTimeZone} 
-          />}
           {view === 'week' && <WeekView 
             currentDate={currentDate} 
             clinicianId={clinicianId} 

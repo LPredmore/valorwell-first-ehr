@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Clock, Calendar as CalendarIcon, Plus } from 'lucide-react';
 
 interface CalendarViewControlsProps {
-  view: 'day' | 'week' | 'month';
+  view: 'week' | 'month';
   showAvailability: boolean;
-  onViewChange: (view: 'day' | 'week' | 'month') => void;
+  onViewChange: (view: 'week' | 'month') => void;
   onToggleAvailability: () => void;
   onNewAppointment: () => void;
 }
@@ -21,12 +21,8 @@ const CalendarViewControls: React.FC<CalendarViewControlsProps> = ({
 }) => {
   return (
     <div className="flex items-center gap-4">
-      <Tabs defaultValue="week" value={view} onValueChange={(value) => onViewChange(value as 'day' | 'week' | 'month')}>
+      <Tabs defaultValue="week" value={view} onValueChange={(value) => onViewChange(value as 'week' | 'month')}>
         <TabsList>
-          <TabsTrigger value="day">
-            <CalendarIcon className="h-4 w-4 mr-2" />
-            Day
-          </TabsTrigger>
           <TabsTrigger value="week">
             <CalendarIcon className="h-4 w-4 mr-2" />
             Week
