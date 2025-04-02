@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart2, ClipboardCheck, FileText, ClipboardList, Download, Calendar, Eye } from "lucide-react";
+import { BarChart2, ClipboardCheck, FileText, ClipboardList, Download, Calendar, Eye, PenLine } from "lucide-react";
 import TreatmentPlanTemplate from "@/components/templates/TreatmentPlanTemplate";
 import SessionNoteTemplate from "@/components/templates/SessionNoteTemplate";
 import PHQ9Template from "@/components/templates/PHQ9Template";
@@ -12,6 +13,7 @@ import { fetchClinicalDocuments, getDocumentDownloadURL } from "@/integrations/s
 import { format } from "date-fns";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/context/UserContext";
 
 interface DocumentationTabProps {
   clientData?: ClientDetails | null;
@@ -43,6 +45,7 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
   const {
     toast
   } = useToast();
+  const { userRole } = useUser();
 
   useEffect(() => {
     if (clientData?.id) {
@@ -112,10 +115,43 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
     }
   };
 
+  // Only show documentation creation options for clinicians and admins
+  const canCreateDocumentation = userRole === 'clinician' || userRole === 'admin';
+
   return <div className="grid grid-cols-1 gap-6">
+      {canCreateDocumentation && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PenLine className="h-5 w-5 text-valorwell-600" />
+              Enter Documentation
+            </CardTitle>
+            <CardDescription>Create documentation for this client</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3">
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2" 
+              onClick={() => setShowTreatmentPlanTemplate(true)}
+            >
+              <FileText className="h-4 w-4" />
+              Treatment Plan
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
-        
-        
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ClipboardCheck className="h-5 w-5 text-valorwell-600" />
+            Assigned Forms
+          </CardTitle>
+          <CardDescription>View and complete patient assessments</CardDescription>
+        </CardHeader>
+        <CardContent className="py-6">
+          {/* Assessment content */}
+        </CardContent>
       </Card>
 
       {showTreatmentPlanTemplate && <div className="animate-fade-in">
@@ -133,19 +169,6 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
       {showPCL5Template && <div className="animate-fade-in">
           <PCL5Template onClose={handleClosePCL5} clinicianName={clinicianData?.clinician_professional_name || ''} clientData={clientData} />
         </div>}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ClipboardCheck className="h-5 w-5 text-valorwell-600" />
-            Assigned Forms
-          </CardTitle>
-          <CardDescription>View and complete patient assessments</CardDescription>
-        </CardHeader>
-        <CardContent className="py-6">
-          {/* Assessment content */}
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
