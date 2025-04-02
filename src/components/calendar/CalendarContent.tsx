@@ -32,6 +32,18 @@ const CalendarContent: React.FC<CalendarContentProps> = ({
   onAvailabilityClick,
   userTimeZone
 }) => {
+  // Create a wrapper function that calls onAvailabilityClick without parameters
+  const handleAvailabilityUpdated = () => {
+    // This function doesn't need parameters as it's just a trigger for refresh
+    if (onAvailabilityClick) {
+      // Since we just need to trigger a refresh, we can call with dummy parameters
+      // The actual parameters will be set elsewhere when a specific availability is clicked
+      const dummyDate = new Date();
+      const dummyBlock = {} as AvailabilityBlock;
+      onAvailabilityClick(dummyDate, dummyBlock);
+    }
+  };
+
   return (
     <div className="flex gap-4">
       <div className={cn("flex-1", showAvailability ? "w-3/4" : "w-full")}>
@@ -77,7 +89,7 @@ const CalendarContent: React.FC<CalendarContentProps> = ({
         <div className="w-1/4">
           <AvailabilityPanel 
             clinicianId={clinicianId} 
-            onAvailabilityUpdated={onAvailabilityClick} 
+            onAvailabilityUpdated={handleAvailabilityUpdated} 
             userTimeZone={userTimeZone} 
           />
         </div>
