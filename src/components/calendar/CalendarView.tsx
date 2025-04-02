@@ -7,6 +7,9 @@ import CalendarContent from './CalendarContent';
 import CalendarDialogs from './CalendarDialogs';
 import { useCalendarState } from './useCalendarState';
 import AvailabilityPanel from './AvailabilityPanel';
+import DayView from './day-view/DayView';
+import WeekView from './WeekView';
+import MonthView from './MonthView';
 
 interface CalendarViewProps {
   view: 'day' | 'week' | 'month';
@@ -64,56 +67,18 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         navigateToday={navigateToday}
       />
 
-      <div className="flex gap-4">
-        <div className={cn("flex-1", showAvailability ? "w-3/4" : "w-full")}>
-          {view === 'day' && (
-            <DayView 
-              currentDate={currentDate} 
-              clinicianId={clinicianId} 
-              refreshTrigger={availabilityRefreshTrigger} 
-              appointments={appointments.filter(app => app.date === format(currentDate, 'yyyy-MM-dd'))} 
-              getClientName={getClientName} 
-              onAppointmentClick={handleAppointmentClick} 
-              onAvailabilityClick={handleAvailabilityClick}
-              userTimeZone={userTimeZone} 
-            />
-          )}
-          {view === 'week' && (
-            <WeekView 
-              currentDate={currentDate} 
-              clinicianId={clinicianId} 
-              refreshTrigger={availabilityRefreshTrigger} 
-              appointments={appointments} 
-              getClientName={getClientName} 
-              onAppointmentClick={handleAppointmentClick} 
-              onAvailabilityClick={handleAvailabilityClick}
-              userTimeZone={userTimeZone} 
-            />
-          )}
-          {view === 'month' && (
-            <MonthView 
-              currentDate={currentDate} 
-              clinicianId={clinicianId} 
-              refreshTrigger={availabilityRefreshTrigger} 
-              appointments={appointments} 
-              getClientName={getClientName} 
-              onAppointmentClick={handleAppointmentClick} 
-              onAvailabilityClick={handleAvailabilityClick}
-              userTimeZone={userTimeZone} 
-            />
-          )}
-        </div>
-
-        {showAvailability && (
-          <div className="w-1/4">
-            <AvailabilityPanel 
-              clinicianId={clinicianId} 
-              onAvailabilityUpdated={handleAvailabilityUpdated} 
-              userTimeZone={userTimeZone} 
-            />
-          </div>
-        )}
-      </div>
+      <CalendarContent
+        view={view}
+        showAvailability={showAvailability}
+        currentDate={currentDate}
+        clinicianId={clinicianId}
+        refreshTrigger={availabilityRefreshTrigger}
+        appointments={appointments}
+        getClientName={getClientName}
+        onAppointmentClick={handleAppointmentClick}
+        onAvailabilityClick={handleAvailabilityClick}
+        userTimeZone={userTimeZone}
+      />
 
       <CalendarDialogs
         isDetailsDialogOpen={isDetailsDialogOpen}

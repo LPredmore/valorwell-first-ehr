@@ -1,9 +1,10 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import DayView from './DayView';
+import DayView from './day-view/DayView';
 import WeekView from './WeekView';
 import MonthView from './MonthView';
+import AvailabilityPanel from './AvailabilityPanel';
 import { Appointment, AvailabilityBlock } from './useCalendarState';
 
 interface CalendarContentProps {
