@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,8 +10,7 @@ import {
   formatTime12Hour, 
   formatTimeZoneDisplay,
   formatWithTimeZone,
-  formatTimeInUserTimeZone,
-  ensureIANATimeZone
+  formatTimeInUserTimeZone
 } from '@/utils/timeZoneUtils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -23,7 +21,6 @@ interface PastAppointment {
   type: string;
   therapist: string;
   rawDate?: string;
-  status?: string;
 }
 
 interface MyAppointmentsProps {
@@ -36,7 +33,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
   const [clinicianName, setClinicianName] = useState<string | null>(null);
   const [clientData, setClientData] = useState<any>(null);
   const { toast } = useToast();
-  const clientTimeZone = ensureIANATimeZone(clientData?.client_time_zone || getUserTimeZone());
+  const clientTimeZone = clientData?.client_time_zone || getUserTimeZone();
 
   useEffect(() => {
     const fetchClientData = async () => {
@@ -97,8 +94,6 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
           .select('*')
           .eq('client_id', clientData.id)
           .lt('date', todayStr)
-          .neq('status', 'scheduled')
-          .neq('status', 'cancelled')
           .order('date', { ascending: false })
           .order('start_time', { ascending: false });
 
@@ -123,19 +118,17 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
               let formattedTime = '';
               try {
                 if (appointment.start_time) {
-                  formattedTime = formatTimeInUserTimeZone(
+                  formattedTime = formatWithTimeZone(
+                    appointment.date,
                     appointment.start_time,
                     clientTimeZone,
-                    'h:mm a'
+                    false
                   );
                 } else {
                   formattedTime = 'Time unavailable';
                 }
               } catch (error) {
-                console.error('Error formatting time:', error, {
-                  appointment,
-                  timezone: clientTimeZone
-                });
+                console.error('Error formatting time:', error, appointment);
                 formattedTime = formatTime12Hour(appointment.start_time) || 'Time unavailable';
               }
               
@@ -146,8 +139,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
                 type: appointment.type || 'Appointment',
                 therapist: clinicianName || 'Your Therapist',
                 rawDate: appointment.date,
-                rawTime: appointment.start_time,
-                status: appointment.status
+                rawTime: appointment.start_time
               };
             } catch (error) {
               console.error('Error processing appointment:', error, appointment);
@@ -202,7 +194,6 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
                 <TableHead>Time <span className="text-xs text-gray-500">({timeZoneDisplay})</span></TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Therapist</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -213,7 +204,6 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
                   <TableCell>{appointment.time}</TableCell>
                   <TableCell>{appointment.type}</TableCell>
                   <TableCell>{appointment.therapist}</TableCell>
-                  <TableCell>{appointment.status}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="outline" size="sm">View Details</Button>
                   </TableCell>

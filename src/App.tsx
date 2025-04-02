@@ -69,9 +69,9 @@ const App: React.FC = () => {
                   </ProtectedRoute>
                 } />
                 
-                {/* Modified: Allow clinicians to view client details */}
+                {/* Modified: Allow clients to view their own profile */}
                 <Route path="/clients/:clientId" element={
-                  <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician', 'client']} blockNewClients={true}>
+                  <ProtectedRoute allowedRoles={['admin', 'moderator', 'client']} blockNewClients={true}>
                     <ClientDetails />
                   </ProtectedRoute>
                 } />
