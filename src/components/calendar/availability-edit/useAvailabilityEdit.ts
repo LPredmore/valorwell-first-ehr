@@ -24,28 +24,17 @@ export const useAvailabilityEdit = (
   // Initialize state when props change
   useEffect(() => {
     if (availabilityBlock && isOpen) {
-      // Safely format the times with null checks
-      // If start_time or end_time are undefined or null, use default values
-      if (availabilityBlock.start_time) {
-        const formattedStartTime = availabilityBlock.start_time.substring(0, 5);
-        setStartTime(formattedStartTime);
-      }
-      
-      if (availabilityBlock.end_time) {
-        const formattedEndTime = availabilityBlock.end_time.substring(0, 5);
-        setEndTime(formattedEndTime);
-      }
+      // Format the times from "HH:MM:SS" format to "HH:MM" format if needed
+      const formattedStartTime = availabilityBlock.start_time.substring(0, 5);
+      const formattedEndTime = availabilityBlock.end_time.substring(0, 5);
       
       console.log('Setting times from availability block:', {
-        original: { 
-          start: availabilityBlock.start_time, 
-          end: availabilityBlock.end_time 
-        },
-        formatted: { 
-          start: availabilityBlock.start_time ? availabilityBlock.start_time.substring(0, 5) : '09:00',
-          end: availabilityBlock.end_time ? availabilityBlock.end_time.substring(0, 5) : '17:00' 
-        }
+        original: { start: availabilityBlock.start_time, end: availabilityBlock.end_time },
+        formatted: { start: formattedStartTime, end: formattedEndTime }
       });
+      
+      setStartTime(formattedStartTime);
+      setEndTime(formattedEndTime);
     }
   }, [availabilityBlock, isOpen]);
 

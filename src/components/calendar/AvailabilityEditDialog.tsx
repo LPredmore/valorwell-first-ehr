@@ -38,8 +38,7 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
     onAvailabilityUpdated
   );
 
-  // Early return if critical data is missing
-  if (!isOpen || !availabilityBlock || !specificDate) {
+  if (!availabilityBlock || !specificDate) {
     return null;
   }
 

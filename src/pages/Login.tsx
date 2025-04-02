@@ -36,37 +36,29 @@ const Login = () => {
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    console.log("[Login] Login attempt started for email:", values.email);
     try {
       setIsLoading(true);
-      console.log("[Login] Calling supabase.auth.signInWithPassword");
       const { data, error } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password,
       });
 
-      if (error) {
-        console.error("[Login] Authentication error:", error.message);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log("[Login] Authentication successful, user:", data.user?.id);
       toast({
         title: "Login successful",
         description: "Welcome back!",
       });
       
-      console.log("[Login] Navigating to home page");
       navigate("/");
     } catch (error: any) {
-      console.error("[Login] Login error:", error);
+      console.error("Login error:", error);
       toast({
         title: "Login failed",
         description: error.message || "There was a problem signing in",
         variant: "destructive",
       });
     } finally {
-      console.log("[Login] Setting isLoading to false");
       setIsLoading(false);
     }
   };

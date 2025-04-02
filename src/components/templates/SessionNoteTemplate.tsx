@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { X, FileText } from 'lucide-react';
 import { ClientDetails, SessionNoteTemplateProps } from '@/types/client';
@@ -10,17 +10,12 @@ import { TreatmentObjectivesSection } from './sessionNote/TreatmentObjectivesSec
 import { SessionAssessmentSection } from './sessionNote/SessionAssessmentSection';
 import { Textarea } from "@/components/ui/textarea";
 
-// Add PDF-specific styles
-import './sessionNote/pdf-styles.css';
-
 const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   onClose,
   appointment,
   clinicianName = '',
   clientData = null
 }) => {
-  const contentRef = useRef<HTMLDivElement>(null);
-  
   const {
     formState,
     editModes,
@@ -33,8 +28,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     clientData,
     clinicianName,
     appointment,
-    onClose,
-    contentRef
+    onClose
   });
 
   // Check if problem and treatment goal narratives have values
@@ -54,33 +48,29 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         </Button>
       </div>
 
-      <div id="session-note-content" ref={contentRef} className="bg-white p-6 border rounded-md mt-4 pdf-container">
-        <div className="flex items-center gap-2 mb-6 pdf-header">
+      <div className="bg-white p-6 border rounded-md mt-4">
+        <div className="flex items-center gap-2 mb-6">
           <FileText className="h-5 w-5 text-gray-700" />
           <h3 className="text-lg font-medium">Therapy Session Note</h3>
         </div>
 
         {/* Client Information Section */}
-        <div className="pdf-section">
-          <ClientInfoSection 
-            formState={formState} 
-            handleChange={handleChange} 
-          />
-        </div>
+        <ClientInfoSection 
+          formState={formState} 
+          handleChange={handleChange} 
+        />
 
         {/* Mental Status Examination */}
-        <div className="pdf-section">
-          <MentalStatusSection 
-            formState={formState} 
-            editModes={editModes} 
-            handleChange={handleChange} 
-            toggleEditMode={toggleEditMode} 
-          />
-        </div>
+        <MentalStatusSection 
+          formState={formState} 
+          editModes={editModes} 
+          handleChange={handleChange} 
+          toggleEditMode={toggleEditMode} 
+        />
         
         {/* Problem Narrative and Treatment Goal - Only show if they have values */}
         {showProblemTreatmentSection && (
-          <div className="mb-6 mt-6 pdf-section">
+          <div className="mb-6 mt-6">
             <h4 className="text-md font-medium text-gray-800 mb-4">Problem & Treatment Goals</h4>
             
             {hasProblemNarrative && (
@@ -112,21 +102,17 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         )}
 
         {/* Treatment Objectives & Interventions */}
-        <div className="pdf-section">
-          <TreatmentObjectivesSection 
-            formState={formState} 
-            handleChange={handleChange} 
-          />
-        </div>
+        <TreatmentObjectivesSection 
+          formState={formState} 
+          handleChange={handleChange} 
+        />
 
         {/* Session Assessment Section - Now includes PHQ-9 assessment before Plan & Signature */}
-        <div className="pdf-section">
-          <SessionAssessmentSection 
-            formState={formState} 
-            handleChange={handleChange}
-            phq9Data={phq9Data}
-          />
-        </div>
+        <SessionAssessmentSection 
+          formState={formState} 
+          handleChange={handleChange}
+          phq9Data={phq9Data}
+        />
       </div>
 
       <div className="flex justify-end gap-2 mt-6">
