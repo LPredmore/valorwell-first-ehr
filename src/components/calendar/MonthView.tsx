@@ -34,7 +34,7 @@ interface MonthViewProps {
   onAppointmentClick?: (appointment: Appointment) => void;
   onAvailabilityClick?: (date: Date, availabilityBlock: AvailabilityBlock) => void;
   userTimeZone?: string;
-  weekViewMode?: boolean; // New prop to enable week view mode
+  weekViewMode?: boolean;
 }
 
 const MonthView: React.FC<MonthViewProps> = ({ 
@@ -46,7 +46,7 @@ const MonthView: React.FC<MonthViewProps> = ({
   onAppointmentClick,
   onAvailabilityClick,
   userTimeZone,
-  weekViewMode = false // Default to false to maintain current behavior
+  weekViewMode = false
 }) => {
   const {
     loading,
@@ -66,7 +66,7 @@ const MonthView: React.FC<MonthViewProps> = ({
   }
 
   return (
-    <Card className="p-4">
+    <Card className={`p-4 ${weekViewMode ? 'rounded-lg shadow-md' : ''}`}>
       <CalendarGrid
         days={days}
         monthStart={monthStart}

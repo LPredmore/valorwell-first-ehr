@@ -3,18 +3,18 @@ import React, { useState } from 'react';
 import Layout from '../components/layout/Layout';
 import CalendarView from '../components/calendar/CalendarView';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Calendar as CalendarIcon } from 'lucide-react';
+import { Loader2, Calendar as CalendarIcon, Plus } from 'lucide-react';
 import { addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { useCalendarState } from '../hooks/useCalendarState';
 import CalendarHeader from '../components/calendar/CalendarHeader';
 import CalendarViewControls from '../components/calendar/CalendarViewControls';
 import AppointmentDialog from '../components/calendar/AppointmentDialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Clock } from 'lucide-react';
 
 const CalendarPage = () => {
   const {
-    view,
-    setView,
     showAvailability,
     setShowAvailability,
     selectedClinicianId,
@@ -33,39 +33,27 @@ const CalendarPage = () => {
     isLoadingTimeZone,
   } = useCalendarState();
 
-  // New state for month view mode
-  const [monthViewMode, setMonthViewMode] = useState<'month' | 'week'>('month');
+  // Use only the month view mode state
+  const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week'>('month');
 
   const navigatePrevious = () => {
-    if (view === 'week') {
+    if (calendarViewMode === 'week') {
       setCurrentDate(subWeeks(currentDate, 1));
-    } else if (view === 'month') {
-      if (monthViewMode === 'week') {
-        setCurrentDate(subWeeks(currentDate, 1));
-      } else {
-        setCurrentDate(subMonths(currentDate, 1));
-      }
+    } else {
+      setCurrentDate(subMonths(currentDate, 1));
     }
   };
 
   const navigateNext = () => {
-    if (view === 'week') {
+    if (calendarViewMode === 'week') {
       setCurrentDate(addWeeks(currentDate, 1));
-    } else if (view === 'month') {
-      if (monthViewMode === 'week') {
-        setCurrentDate(addWeeks(currentDate, 1));
-      } else {
-        setCurrentDate(addMonths(currentDate, 1));
-      }
+    } else {
+      setCurrentDate(addMonths(currentDate, 1));
     }
   };
 
   const navigateToday = () => {
     setCurrentDate(new Date());
-  };
-
-  const handleViewChange = (newView: 'week' | 'month') => {
-    setView(newView);
   };
 
   const toggleAvailability = () => {
@@ -83,28 +71,31 @@ const CalendarPage = () => {
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-800">Calendar</h1>
             <div className="flex items-center gap-4">
-              <CalendarViewControls 
-                view={view}
-                showAvailability={showAvailability}
-                onViewChange={handleViewChange}
-                onToggleAvailability={toggleAvailability}
-                onNewAppointment={() => setIsDialogOpen(true)}
-              />
-              
-              {view === 'month' && (
-                <Tabs value={monthViewMode} onValueChange={(value) => setMonthViewMode(value as 'month' | 'week')}>
-                  <TabsList>
-                    <TabsTrigger value="month">
-                      <CalendarIcon className="h-4 w-4 mr-2" />
-                      Monthly
-                    </TabsTrigger>
-                    <TabsTrigger value="week">
-                      <CalendarIcon className="h-4 w-4 mr-2" />
-                      Weekly
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              )}
+              <Tabs value={calendarViewMode} onValueChange={(value) => setCalendarViewMode(value as 'month' | 'week')}>
+                <TabsList>
+                  <TabsTrigger value="month">
+                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    Monthly
+                  </TabsTrigger>
+                  <TabsTrigger value="week">
+                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    Weekly
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              <Button
+                variant={showAvailability ? "default" : "outline"}
+                onClick={toggleAvailability}
+              >
+                <Clock className="mr-2 h-4 w-4" />
+                Availability
+              </Button>
+
+              <Button onClick={() => setIsDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Appointment
+              </Button>
 
               <div className="hidden">
                 <Select
@@ -135,7 +126,7 @@ const CalendarPage = () => {
 
           <CalendarHeader
             currentDate={currentDate}
-            view={view === 'month' && monthViewMode === 'week' ? 'week' : view}
+            view={calendarViewMode}
             userTimeZone={userTimeZone}
             isLoadingTimeZone={isLoadingTimeZone}
             onNavigatePrevious={navigatePrevious}
@@ -144,12 +135,12 @@ const CalendarPage = () => {
           />
 
           <CalendarView
-            view={view}
+            view="month"
             showAvailability={showAvailability}
             clinicianId={selectedClinicianId}
             userTimeZone={userTimeZone}
             refreshTrigger={appointmentRefreshTrigger}
-            monthViewMode={monthViewMode}
+            monthViewMode={calendarViewMode}
           />
         </div>
       </div>

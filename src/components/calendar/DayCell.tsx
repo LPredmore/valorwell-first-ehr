@@ -58,19 +58,30 @@ const DayCell: React.FC<DayCellProps> = ({
     }
   };
 
+  const isToday = isSameDay(day, new Date());
+  const isCurrentMonth = isSameMonth(day, monthStart);
+  
   // For week view mode, show a larger cell with more appointment details
   if (weekViewMode) {
     return (
       <div
-        className={`p-3 min-h-[150px] border border-gray-100 ${isSameDay(day, new Date()) ? 'border-valorwell-500 border-2' : ''}`}
+        className={`
+          p-3 min-h-[180px] border rounded-md transition-all
+          ${isToday ? 'border-blue-500 border-2' : 'border-gray-200'} 
+          ${isCurrentMonth ? 'bg-white' : 'bg-gray-50'}
+          hover:border-blue-300 hover:shadow-sm
+        `}
       >
         <div className="flex justify-between items-start mb-2">
-          <span className={`font-medium ${isSameDay(day, new Date()) ? 'text-valorwell-500' : ''}`}>
+          <span className={`font-medium ${isToday ? 'text-blue-600' : ''}`}>
             {format(day, 'MMM d')}
           </span>
           {hasAvailability && (
             <div 
-              className={`${isModified ? 'bg-teal-100 text-teal-800' : 'bg-green-100 text-green-800'} text-xs px-2 py-1 rounded cursor-pointer hover:opacity-80 transition-colors`}
+              className={`
+                ${isModified ? 'bg-teal-100 text-teal-800' : 'bg-green-100 text-green-800'} 
+                text-xs px-2 py-1 rounded cursor-pointer hover:bg-opacity-80 transition-colors
+              `}
               onClick={handleAvailabilityClick}
             >
               {isModified ? 'Modified' : 'Available'}
@@ -82,11 +93,11 @@ const DayCell: React.FC<DayCellProps> = ({
         </div>
         
         {appointments.length > 0 ? (
-          <div className="mt-2 space-y-2">
+          <div className="mt-2 space-y-2 max-h-[140px] overflow-y-auto pr-1">
             {appointments.map(appointment => (
               <div 
                 key={appointment.id} 
-                className="bg-blue-100 text-blue-800 text-xs p-2 rounded cursor-pointer hover:bg-blue-200 transition-colors"
+                className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-2 rounded cursor-pointer hover:bg-blue-100 transition-colors"
                 onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
               >
                 <div className="font-semibold">
@@ -105,18 +116,26 @@ const DayCell: React.FC<DayCellProps> = ({
     );
   }
 
-  // Original month view cell
+  // Monthly view cell
   return (
     <div
-      className={`p-2 min-h-[100px] border border-gray-100 ${!isSameMonth(day, monthStart) ? 'bg-gray-50 text-gray-400' : ''} ${isSameDay(day, new Date()) ? 'border-valorwell-500 border-2' : ''}`}
+      className={`
+        p-2 min-h-[120px] border rounded-md transition-all
+        ${!isCurrentMonth ? 'bg-gray-50 text-gray-400' : 'bg-white'} 
+        ${isToday ? 'border-blue-500 border-2' : 'border-gray-200'}
+        hover:border-blue-300 hover:shadow-sm
+      `}
     >
       <div className="flex justify-between items-start">
-        <span className={`text-sm font-medium ${isSameDay(day, new Date()) ? 'text-valorwell-500' : ''}`}>
+        <span className={`text-sm font-medium ${isToday ? 'text-blue-600' : ''}`}>
           {format(day, 'd')}
         </span>
-        {hasAvailability && isSameMonth(day, monthStart) && (
+        {hasAvailability && isCurrentMonth && (
           <div 
-            className={`${isModified ? 'bg-teal-100 text-teal-800' : 'bg-green-100 text-green-800'} text-xs px-1 py-0.5 rounded cursor-pointer hover:opacity-80 transition-colors`}
+            className={`
+              ${isModified ? 'bg-teal-100 text-teal-800' : 'bg-green-100 text-green-800'} 
+              text-xs px-1 py-0.5 rounded cursor-pointer hover:opacity-80 transition-colors
+            `}
             onClick={handleAvailabilityClick}
           >
             {isModified ? 'Modified' : 'Available'}
@@ -127,12 +146,12 @@ const DayCell: React.FC<DayCellProps> = ({
         )}
       </div>
       
-      {appointments.length > 0 && isSameMonth(day, monthStart) && (
+      {appointments.length > 0 && isCurrentMonth && (
         <div className="mt-1 space-y-1">
           {appointments.slice(0, 3).map(appointment => (
             <div 
               key={appointment.id} 
-              className="bg-blue-100 text-blue-800 text-xs p-1 rounded truncate cursor-pointer hover:bg-blue-200 transition-colors"
+              className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-1 rounded truncate cursor-pointer hover:bg-blue-100 transition-colors"
               onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
             >
               {formatDateToTime12Hour(parseISO(`2000-01-01T${appointment.start_time}`))} - {getClientName(appointment.client_id)}
