@@ -1,12 +1,5 @@
-
 import React, { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BarChart2, ClipboardCheck, FileText, ClipboardList, Download, Calendar, Eye } from "lucide-react";
 import TreatmentPlanTemplate from "@/components/templates/TreatmentPlanTemplate";
@@ -19,11 +12,9 @@ import { fetchClinicalDocuments, getDocumentDownloadURL } from "@/integrations/s
 import { format } from "date-fns";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-
 interface DocumentationTabProps {
   clientData?: ClientDetails | null;
 }
-
 interface ClinicalDocument {
   id: string;
   document_title: string;
@@ -33,78 +24,68 @@ interface ClinicalDocument {
   created_at: string;
   created_by?: string;
 }
-
-const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
+const DocumentationTab: React.FC<DocumentationTabProps> = ({
+  clientData
+}) => {
   const [showTreatmentPlanTemplate, setShowTreatmentPlanTemplate] = useState(false);
   const [showSessionNoteTemplate, setShowSessionNoteTemplate] = useState(false);
   const [showPHQ9Template, setShowPHQ9Template] = useState(false);
   const [showPCL5Template, setShowPCL5Template] = useState(false);
   const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { clinicianData } = useClinicianData();
-  const { toast } = useToast();
+  const {
+    clinicianData
+  } = useClinicianData();
+  const {
+    toast
+  } = useToast();
 
   // Fetch documents when the component mounts or when the client changes
   useEffect(() => {
     if (clientData?.id) {
       setIsLoading(true);
-      fetchClinicalDocuments(clientData.id)
-        .then(docs => {
-          setDocuments(docs);
-          setIsLoading(false);
-        })
-        .catch(err => {
-          console.error('Error fetching documents:', err);
-          setIsLoading(false);
-          toast({
-            title: "Error",
-            description: "Failed to load client documents",
-            variant: "destructive"
-          });
+      fetchClinicalDocuments(clientData.id).then(docs => {
+        setDocuments(docs);
+        setIsLoading(false);
+      }).catch(err => {
+        console.error('Error fetching documents:', err);
+        setIsLoading(false);
+        toast({
+          title: "Error",
+          description: "Failed to load client documents",
+          variant: "destructive"
         });
+      });
     }
   }, [clientData?.id, toast]);
-
   const handleCloseTreatmentPlan = () => {
     setShowTreatmentPlanTemplate(false);
     // Refresh documents after closing the template
     if (clientData?.id) {
-      fetchClinicalDocuments(clientData.id)
-        .then(docs => setDocuments(docs))
-        .catch(err => console.error('Error refreshing documents:', err));
+      fetchClinicalDocuments(clientData.id).then(docs => setDocuments(docs)).catch(err => console.error('Error refreshing documents:', err));
     }
   };
-
   const handleCloseSessionNote = () => {
     setShowSessionNoteTemplate(false);
     // Refresh documents after closing the template
     if (clientData?.id) {
-      fetchClinicalDocuments(clientData.id)
-        .then(docs => setDocuments(docs))
-        .catch(err => console.error('Error refreshing documents:', err));
+      fetchClinicalDocuments(clientData.id).then(docs => setDocuments(docs)).catch(err => console.error('Error refreshing documents:', err));
     }
   };
-
   const handleClosePHQ9 = () => {
     setShowPHQ9Template(false);
     // Refresh documents after closing the template
     if (clientData?.id) {
-      fetchClinicalDocuments(clientData.id)
-        .then(docs => setDocuments(docs))
-        .catch(err => console.error('Error refreshing documents:', err));
+      fetchClinicalDocuments(clientData.id).then(docs => setDocuments(docs)).catch(err => console.error('Error refreshing documents:', err));
     }
   };
-  
   const handleClosePCL5 = () => {
     setShowPCL5Template(false);
     // Refresh documents after closing the template
     if (clientData?.id) {
-      fetchClinicalDocuments(clientData.id)
-        .then(docs => setDocuments(docs))
-        .catch(err => console.error('Error refreshing documents:', err));
+      fetchClinicalDocuments(clientData.id).then(docs => setDocuments(docs)).catch(err => console.error('Error refreshing documents:', err));
     }
   };
-
   const handleViewDocument = async (filePath: string) => {
     try {
       const url = await getDocumentDownloadURL(filePath);
@@ -126,78 +107,29 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
       });
     }
   };
-
-  return (
-    <div className="grid grid-cols-1 gap-6">
+  return <div className="grid grid-cols-1 gap-6">
       {/* Charting Card */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart2 className="h-5 w-5 text-valorwell-600" />
-            Charting
-          </CardTitle>
-          <CardDescription>View and manage patient charts and progress tracking</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="py-6">
-            <div className="flex gap-4 flex-wrap">
-              <Button onClick={() => setShowTreatmentPlanTemplate(true)}>
-                Create Treatment Plan
-              </Button>
-              <Button onClick={() => setShowSessionNoteTemplate(true)}>
-                Create Session Note
-              </Button>
-              <Button onClick={() => setShowPHQ9Template(true)}>
-                PHQ-9 Assessment
-              </Button>
-              <Button onClick={() => setShowPCL5Template(true)}>
-                PCL-5 Assessment
-              </Button>
-            </div>
-          </div>
-        </CardContent>
+        
+        
       </Card>
 
       {/* Conditionally render the templates right after the Charting card */}
-      {showTreatmentPlanTemplate && (
-        <div className="animate-fade-in">
-          <TreatmentPlanTemplate
-            onClose={handleCloseTreatmentPlan}
-            clinicianName={clinicianData?.clinician_professional_name || ''}
-            clientData={clientData}
-          />
-        </div>
-      )}
+      {showTreatmentPlanTemplate && <div className="animate-fade-in">
+          <TreatmentPlanTemplate onClose={handleCloseTreatmentPlan} clinicianName={clinicianData?.clinician_professional_name || ''} clientData={clientData} />
+        </div>}
 
-      {showSessionNoteTemplate && (
-        <div className="animate-fade-in">
-          <SessionNoteTemplate
-            onClose={handleCloseSessionNote}
-            clinicianName={clinicianData?.clinician_professional_name || ''}
-            clientData={clientData}
-          />
-        </div>
-      )}
+      {showSessionNoteTemplate && <div className="animate-fade-in">
+          <SessionNoteTemplate onClose={handleCloseSessionNote} clinicianName={clinicianData?.clinician_professional_name || ''} clientData={clientData} />
+        </div>}
 
-      {showPHQ9Template && (
-        <div className="animate-fade-in">
-          <PHQ9Template
-            onClose={handleClosePHQ9}
-            clinicianName={clinicianData?.clinician_professional_name || ''}
-            clientData={clientData}
-          />
-        </div>
-      )}
+      {showPHQ9Template && <div className="animate-fade-in">
+          <PHQ9Template onClose={handleClosePHQ9} clinicianName={clinicianData?.clinician_professional_name || ''} clientData={clientData} />
+        </div>}
       
-      {showPCL5Template && (
-        <div className="animate-fade-in">
-          <PCL5Template
-            onClose={handleClosePCL5}
-            clinicianName={clinicianData?.clinician_professional_name || ''}
-            clientData={clientData}
-          />
-        </div>
-      )}
+      {showPCL5Template && <div className="animate-fade-in">
+          <PCL5Template onClose={handleClosePCL5} clinicianName={clinicianData?.clinician_professional_name || ''} clientData={clientData} />
+        </div>}
 
       {/* Assessments Card */}
       <Card>
@@ -223,20 +155,15 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
           <CardDescription>View completed session notes and documentation</CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-8">
+          {isLoading ? <div className="flex justify-center py-8">
               <p>Loading documents...</p>
-            </div>
-          ) : documents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
+            </div> : documents.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-center">
               <FileText className="h-12 w-12 text-gray-300 mb-3" />
               <h3 className="text-lg font-medium">No documents found</h3>
               <p className="text-sm text-gray-500 mt-1">
                 Create a treatment plan or session note to view it here
               </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
+            </div> : <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -247,8 +174,7 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {documents.map((doc) => (
-                    <TableRow key={doc.id}>
+                  {documents.map(doc => <TableRow key={doc.id}>
                       <TableCell className="font-medium">{doc.document_title}</TableCell>
                       <TableCell>{doc.document_type}</TableCell>
                       <TableCell>
@@ -258,26 +184,17 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({ clientData }) => {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="ml-2"
-                          onClick={() => handleViewDocument(doc.file_path)}
-                        >
+                        <Button variant="outline" size="sm" className="ml-2" onClick={() => handleViewDocument(doc.file_path)}>
                           <Eye className="h-4 w-4 mr-1" />
                           View
                         </Button>
                       </TableCell>
-                    </TableRow>
-                  ))}
+                    </TableRow>)}
                 </TableBody>
               </Table>
-            </div>
-          )}
+            </div>}
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 };
-
 export default DocumentationTab;
