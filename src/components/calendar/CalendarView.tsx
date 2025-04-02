@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { Card } from '@/components/ui/card';
@@ -17,6 +16,7 @@ interface CalendarViewProps {
   userTimeZone?: string;
   refreshTrigger?: number;
   monthViewMode?: 'month' | 'week';
+  currentDate?: Date; // Add currentDate prop
 }
 
 interface Appointment {
@@ -42,9 +42,19 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   clinicianId,
   userTimeZone: propTimeZone,
   refreshTrigger = 0,
-  monthViewMode = 'month'
+  monthViewMode = 'month',
+  currentDate: propCurrentDate
 }) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  // Use provided currentDate or default to today
+  const [currentDate, setCurrentDate] = useState(propCurrentDate || new Date());
+  
+  // Update currentDate when propCurrentDate changes
+  useEffect(() => {
+    if (propCurrentDate) {
+      setCurrentDate(propCurrentDate);
+    }
+  }, [propCurrentDate]);
+
   const [availabilityRefreshTrigger, setAvailabilityRefreshTrigger] = useState(0);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clientsMap, setClientsMap] = useState<Record<string, any>>({});

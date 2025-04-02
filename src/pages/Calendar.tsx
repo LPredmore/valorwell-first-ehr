@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import CalendarView from '../components/calendar/CalendarView';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -141,6 +141,7 @@ const CalendarPage = () => {
             userTimeZone={userTimeZone}
             refreshTrigger={appointmentRefreshTrigger}
             monthViewMode={calendarViewMode}
+            currentDate={currentDate}
           />
         </div>
       </div>
