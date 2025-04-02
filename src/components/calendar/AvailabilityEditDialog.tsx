@@ -43,6 +43,10 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
     return null;
   }
 
+  const isExceptionText = availabilityBlock.isException 
+    ? "This is a modified availability for this specific date."
+    : "This will only modify your availability for this specific date. Your regular weekly schedule will remain unchanged.";
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -71,8 +75,7 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
             <div className="mt-2 p-3 bg-blue-50 text-sm rounded-md border border-blue-100">
               <div className="font-medium text-blue-700 mb-1">One-time Change</div>
               <p className="text-blue-600">
-                This will only modify your availability for {format(specificDate, 'MMMM d, yyyy')}. 
-                Your regular weekly schedule will remain unchanged.
+                {isExceptionText}
               </p>
             </div>
           </div>
