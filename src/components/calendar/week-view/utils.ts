@@ -2,36 +2,27 @@
 import { differenceInMinutes, addMinutes } from 'date-fns';
 import { TimeBlock, AppointmentBlock } from './useWeekViewData';
 
-export const isStartOfBlock = (
-  slotStartTime: Date,
-  currentBlock?: TimeBlock
-): boolean => {
-  if (!currentBlock) return false;
-  return differenceInMinutes(slotStartTime, currentBlock.start) < 30;
+// Helper function to convert hours and minutes to total minutes
+export const timeToMinutes = (hours: number, minutes: number): number => {
+  return hours * 60 + minutes;
 };
 
-export const isEndOfBlock = (
-  slotStartTime: Date,
-  slotEndTime: Date,
-  currentBlock?: TimeBlock
-): boolean => {
-  if (!currentBlock) return false;
-  return differenceInMinutes(currentBlock.end, slotEndTime) < 30;
-};
-
-export const isStartOfAppointment = (
-  slotStartTime: Date,
-  appointment?: AppointmentBlock
-): boolean => {
-  if (!appointment) return false;
-  
-  // Compare hours and minutes only (ignore date part)
-  const slotHours = slotStartTime.getHours();
-  const slotMinutes = slotStartTime.getMinutes();
-  const appointmentHours = appointment.start.getHours();
-  const appointmentMinutes = appointment.start.getMinutes();
-  
-  // Check if the slot start time is within 30 minutes of the appointment start time
-  return slotHours === appointmentHours && 
-         Math.abs(slotMinutes - appointmentMinutes) < 30;
+// Helper function to check for overlapping appointments
+export const getOverlappingAppointments = (
+  appointment: AppointmentBlock,
+  appointments: AppointmentBlock[]
+): AppointmentBlock[] => {
+  return appointments.filter(app => {
+    if (app.id === appointment.id) return false;
+    
+    const appStart = timeToMinutes(app.start.getHours(), app.start.getMinutes());
+    const appEnd = timeToMinutes(app.end.getHours(), app.end.getMinutes());
+    const currentStart = timeToMinutes(appointment.start.getHours(), appointment.start.getMinutes());
+    const currentEnd = timeToMinutes(appointment.end.getHours(), appointment.end.getMinutes());
+    
+    return (
+      (appStart <= currentStart && appEnd > currentStart) || // App starts before and ends after current start
+      (appStart >= currentStart && appStart < currentEnd) // App starts during current
+    );
+  });
 };

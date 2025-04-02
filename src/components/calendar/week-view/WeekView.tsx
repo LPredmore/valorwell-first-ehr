@@ -5,17 +5,18 @@ import {
   startOfWeek,
   endOfWeek,
   eachDayOfInterval,
-  addMinutes,
+  addHours,
   startOfDay,
-  setHours,
-  setMinutes
+  addMinutes,
+  isSameDay
 } from 'date-fns';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { useWeekViewData } from './useWeekViewData';
-import TimeSlot from './TimeSlot';
-import { isStartOfBlock, isEndOfBlock, isStartOfAppointment } from './utils';
 import { WeekViewProps } from './types';
+import AppointmentBlock from './AppointmentBlock';
+import AvailabilityBlock from './AvailabilityBlock';
+import TimeColumn from './TimeColumn';
 
 const WeekView: React.FC<WeekViewProps> = ({ 
   currentDate, 
@@ -27,69 +28,27 @@ const WeekView: React.FC<WeekViewProps> = ({
   onAvailabilityClick
 }) => {
   // Create array of days for the week and time slots for each day
-  const { days, timeSlots } = useMemo(() => {
+  const { days, hours } = useMemo(() => {
     const days = eachDayOfInterval({
       start: startOfWeek(currentDate, { weekStartsOn: 0 }),
       end: endOfWeek(currentDate, { weekStartsOn: 0 })
     });
 
-    const timeSlots = Array.from({ length: 21 }, (_, i) => {
-      const minutes = i * 30;
-      return addMinutes(setHours(startOfDay(new Date()), 8), minutes);
-    });
+    // Create 24 hours instead of just working hours
+    const hours = Array.from({ length: 24 }, (_, i) => i);
 
-    return { days, timeSlots };
+    return { days, hours };
   }, [currentDate]);
 
-  // Debug: Log the appointments prop
-  console.log("Week view received appointments:", appointments);
-
-  // Use the custom hook to get all the data and utility functions
+  // Use the custom hook to get all the data
   const {
     loading,
     timeBlocks,
-    exceptions,
-    availabilityBlocks,
-    appointmentBlocks,
-    getAvailabilityForBlock,
-    isTimeSlotAvailable,
-    getBlockForTimeSlot,
-    getAppointmentForTimeSlot
+    appointmentBlocks
   } = useWeekViewData(days, clinicianId, refreshTrigger, appointments, getClientName);
 
-  // Debug: Log the processed appointment blocks
-  console.log("Week view processed appointment blocks:", appointmentBlocks);
-
-  // Handle click on availability block
-  const handleAvailabilityBlockClick = (day: Date, block: any) => {
-    if (!onAvailabilityClick || !block.availabilityIds.length) return;
-    
-    const availabilityId = block.availabilityIds[0];
-    
-    if (block.isStandalone) {
-      const exception = exceptions.find(exc => exc.id === availabilityId);
-      if (exception) {
-        const availabilityBlock = {
-          id: exception.id,
-          day_of_week: format(day, 'EEEE'),
-          start_time: exception.start_time || '',
-          end_time: exception.end_time || '',
-          clinician_id: exception.clinician_id,
-          is_active: true,
-          isException: true,
-          isStandalone: true
-        };
-        onAvailabilityClick(day, availabilityBlock);
-      }
-      return;
-    }
-    
-    const availabilityBlock = getAvailabilityForBlock(availabilityId);
-    
-    if (availabilityBlock) {
-      onAvailabilityClick(day, availabilityBlock);
-    }
-  };
+  // Calculate the height of each hour cell
+  const hourHeight = 60; // pixels per hour
 
   if (loading) {
     return (
@@ -100,67 +59,74 @@ const WeekView: React.FC<WeekViewProps> = ({
   }
 
   return (
-    <Card className="p-4">
-      <div className="grid grid-cols-8 gap-1">
-        <div className="col-span-1"></div>
-        {days.map(day => (
-          <div
-            key={day.toString()}
-            className="col-span-1 p-2 text-center font-medium border-b-2 border-gray-200"
-          >
-            <div className="text-sm text-gray-400">{format(day, 'EEE')}</div>
-            <div className={`text-lg ${format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') ? 'bg-valorwell-500 text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto' : ''}`}>
-              {format(day, 'd')}
+    <Card className="p-4 overflow-hidden">
+      <div className="grid grid-cols-8 h-[1500px]">
+        {/* Time column */}
+        <div className="col-span-1 border-r border-gray-200 relative pr-2">
+          <div className="h-14 border-b border-gray-200"></div>
+          {hours.map((hour) => (
+            <div 
+              key={hour} 
+              className="relative"
+              style={{ height: `${hourHeight}px` }}
+            >
+              <span className="absolute -top-2.5 right-2 text-xs text-gray-500">
+                {format(addHours(startOfDay(new Date()), hour), 'h a')}
+              </span>
             </div>
+          ))}
+        </div>
+
+        {/* Days columns */}
+        {days.map((day, dayIndex) => (
+          <div key={day.toString()} className="col-span-1 relative">
+            {/* Day header */}
+            <div className="h-14 border-b border-gray-200 flex flex-col items-center justify-center">
+              <div className="text-sm text-gray-500">{format(day, 'EEE')}</div>
+              <div className={`text-lg ${format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') ? 
+                'bg-valorwell-500 text-white rounded-full w-8 h-8 flex items-center justify-center' : ''}`}>
+                {format(day, 'd')}
+              </div>
+            </div>
+
+            {/* Hour cells background */}
+            {hours.map((hour) => (
+              <div 
+                key={hour} 
+                className="w-full border-b border-gray-200" 
+                style={{ height: `${hourHeight}px` }}
+              >
+                {/* Half-hour divider */}
+                <div className="w-full h-1/2 border-b border-gray-100"></div>
+              </div>
+            ))}
+
+            {/* Appointment blocks - rendered on top using absolute positioning */}
+            {appointmentBlocks
+              .filter(appt => isSameDay(appt.day, day))
+              .map(appointment => (
+                <AppointmentBlock 
+                  key={appointment.id}
+                  appointment={appointment}
+                  hourHeight={hourHeight}
+                  onAppointmentClick={onAppointmentClick}
+                  originalAppointments={appointments}
+                />
+              ))}
+
+            {/* Availability blocks - rendered with a lower z-index than appointments */}
+            {timeBlocks
+              .filter(block => isSameDay(block.day, day))
+              .map((block, index) => (
+                <AvailabilityBlock
+                  key={`${block.availabilityIds.join('-')}-${index}`}
+                  block={block}
+                  day={day}
+                  hourHeight={hourHeight}
+                  onAvailabilityClick={onAvailabilityClick}
+                />
+              ))}
           </div>
-        ))}
-
-        {timeSlots.map((timeSlot) => (
-          <React.Fragment key={timeSlot.toString()}>
-            <div className="col-span-1 p-2 text-xs text-gray-500 text-right pr-4 border-t border-gray-100">
-              {format(timeSlot, 'h:mm a')}
-            </div>
-
-            {days.map(day => {
-              const isAvailable = isTimeSlotAvailable(day, timeSlot);
-              const currentBlock = getBlockForTimeSlot(day, timeSlot);
-              const appointment = getAppointmentForTimeSlot(day, timeSlot);
-
-              const slotStartTime = setMinutes(
-                setHours(startOfDay(day), timeSlot.getHours()),
-                timeSlot.getMinutes()
-              );
-              
-              const slotEndTime = addMinutes(slotStartTime, 30);
-
-              const blockStartCheck = isStartOfBlock(slotStartTime, currentBlock);
-              const blockEndCheck = isEndOfBlock(slotStartTime, slotEndTime, currentBlock);
-              const appointmentStartCheck = isStartOfAppointment(slotStartTime, appointment);
-
-              const cellKey = `${day.toString()}-${timeSlot.toString()}`;
-
-              return (
-                <div
-                  key={cellKey}
-                  className="col-span-1 min-h-[40px] border-t border-l border-gray-100 p-1 group hover:bg-gray-50"
-                >
-                  <TimeSlot
-                    day={day}
-                    timeSlot={timeSlot}
-                    isAvailable={isAvailable}
-                    currentBlock={currentBlock}
-                    appointment={appointment}
-                    isStartOfBlock={blockStartCheck}
-                    isEndOfBlock={blockEndCheck}
-                    isStartOfAppointment={appointmentStartCheck}
-                    handleAvailabilityBlockClick={handleAvailabilityBlockClick}
-                    onAppointmentClick={onAppointmentClick}
-                    originalAppointments={appointments}
-                  />
-                </div>
-              );
-            })}
-          </React.Fragment>
         ))}
       </div>
     </Card>

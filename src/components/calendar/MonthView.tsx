@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { useMonthViewData } from './useMonthViewData';
 import CalendarGrid from './CalendarGrid';
+import WeekView from './week-view';
 
 interface Appointment {
   id: string;
@@ -65,8 +66,22 @@ const MonthView: React.FC<MonthViewProps> = ({
     );
   }
 
+  if (weekViewMode) {
+    return (
+      <WeekView 
+        currentDate={currentDate}
+        clinicianId={clinicianId}
+        refreshTrigger={refreshTrigger}
+        appointments={appointments}
+        getClientName={getClientName}
+        onAppointmentClick={onAppointmentClick}
+        onAvailabilityClick={onAvailabilityClick}
+      />
+    );
+  }
+
   return (
-    <Card className={`p-4 ${weekViewMode ? 'rounded-lg shadow-md' : ''}`}>
+    <Card className="p-4 rounded-lg shadow-md">
       <CalendarGrid
         days={days}
         monthStart={monthStart}
