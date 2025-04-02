@@ -272,11 +272,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
                     <TableCell>{appointment.time}</TableCell>
                     <TableCell>{appointment.type}</TableCell>
                     <TableCell>{appointment.therapist}</TableCell>
-                    <TableCell className="text-right">
-                      {isAppointmentToday(appointment.rawDate) ? <Button variant="outline" size="sm" onClick={() => handleStartSession(appointment.id)} disabled={isLoadingVideoSession}>
-                          {isLoadingVideoSession ? "Loading..." : "Start Session"}
-                        </Button> : <span className="text-sm text-gray-500">Available on session day</span>}
-                    </TableCell>
+                    
                   </TableRow>)}
               </TableBody>
             </Table> : <div className="flex flex-col items-center justify-center py-6 text-center">
