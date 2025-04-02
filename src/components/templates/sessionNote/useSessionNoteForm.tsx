@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -296,6 +297,7 @@ export const useSessionNoteForm = ({
         client_nexttreatmentplanupdate: formState.nextTreatmentPlanUpdate,
       };
 
+      // Update client data
       const { error } = await supabase
         .from('clients')
         .update(updates)
@@ -303,6 +305,26 @@ export const useSessionNoteForm = ({
 
       if (error) {
         throw error;
+      }
+
+      // Update appointment status if appointment ID is available
+      if (appointment?.id) {
+        const { error: appointmentError } = await supabase
+          .from('appointments')
+          .update({ status: 'Documented' })
+          .eq('id', appointment.id);
+
+        if (appointmentError) {
+          console.error('Error updating appointment status:', appointmentError);
+          // We don't throw here to prevent blocking the whole save operation
+          toast({
+            title: "Warning",
+            description: "Session note saved, but couldn't update appointment status.",
+            variant: "default",
+          });
+        } else {
+          console.log(`Appointment ${appointment.id} marked as Documented`);
+        }
       }
 
       toast({
