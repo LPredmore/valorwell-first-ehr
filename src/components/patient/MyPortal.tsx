@@ -232,17 +232,25 @@ const MyPortal: React.FC<MyPortalProps> = ({
 
   const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);
 
+  const todayAppointments = upcomingAppointments.filter(appointment => 
+    isAppointmentToday(appointment.rawDate)
+  );
+  
+  const futureAppointments = upcomingAppointments.filter(appointment => 
+    !isAppointmentToday(appointment.rawDate)
+  );
+
   return <div className="grid grid-cols-1 gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
-            <CardTitle>Upcoming Appointments</CardTitle>
-            <CardDescription>Your scheduled sessions</CardDescription>
+            <CardTitle>Today's Appointments</CardTitle>
+            <CardDescription>Sessions scheduled for today</CardDescription>
           </div>
           <Calendar className="h-5 w-5 text-valorwell-600" />
         </CardHeader>
         <CardContent>
-          {upcomingAppointments.length > 0 ? <Table>
+          {todayAppointments.length > 0 ? <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
@@ -253,7 +261,47 @@ const MyPortal: React.FC<MyPortalProps> = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {upcomingAppointments.map(appointment => <TableRow key={appointment.id}>
+                {todayAppointments.map(appointment => <TableRow key={appointment.id}>
+                    <TableCell>{appointment.date}</TableCell>
+                    <TableCell>{appointment.time}</TableCell>
+                    <TableCell>{appointment.type}</TableCell>
+                    <TableCell>{appointment.therapist}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" onClick={() => handleStartSession(appointment.id)} disabled={isLoadingVideoSession}>
+                        {isLoadingVideoSession ? "Loading..." : "Start Session"}
+                      </Button>
+                    </TableCell>
+                  </TableRow>)}
+              </TableBody>
+            </Table> : <div className="flex flex-col items-center justify-center py-6 text-center">
+              <Calendar className="h-12 w-12 text-gray-300 mb-3" />
+              <h3 className="text-lg font-medium">No appointments today</h3>
+              <p className="text-sm text-gray-500 mt-1">Check your upcoming appointments below</p>
+            </div>}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div>
+            <CardTitle>Upcoming Appointments</CardTitle>
+            <CardDescription>Your scheduled sessions</CardDescription>
+          </div>
+          <Calendar className="h-5 w-5 text-valorwell-600" />
+        </CardHeader>
+        <CardContent>
+          {futureAppointments.length > 0 ? <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Time <span className="text-xs text-gray-500">({timeZoneDisplay})</span></TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Therapist</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {futureAppointments.map(appointment => <TableRow key={appointment.id}>
                     <TableCell>{appointment.date}</TableCell>
                     <TableCell>{appointment.time}</TableCell>
                     <TableCell>{appointment.type}</TableCell>
@@ -280,16 +328,16 @@ const MyPortal: React.FC<MyPortalProps> = ({
         </CardContent>
         <CardFooter className="flex justify-between">
           <Button variant="ghost" size="sm">View All Appointments</Button>
-          <Button variant="outline" size="sm" onClick={() => setIsBookingOpen(true)}>
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            Book New Appointment
-          </Button>
         </CardFooter>
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Your Therapist</CardTitle>
+          <Button variant="outline" size="sm" onClick={() => setIsBookingOpen(true)}>
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            Book New Appointment
+          </Button>
         </CardHeader>
         <CardContent>
           {clientData && clientData.client_assigned_therapist && clinicianData ? <div className="bg-gray-50 p-4 rounded-md mb-4">
