@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,25 +24,17 @@ export const useAvailabilityEdit = (
   // Initialize state when props change
   useEffect(() => {
     if (availabilityBlock && isOpen) {
-      // Only try to access start_time and end_time if they exist
-      if (availabilityBlock.start_time && availabilityBlock.end_time) {
-        // Format the times from "HH:MM:SS" format to "HH:MM" format if needed
-        const formattedStartTime = availabilityBlock.start_time.substring(0, 5);
-        const formattedEndTime = availabilityBlock.end_time.substring(0, 5);
-        
-        console.log('Setting times from availability block:', {
-          original: { start: availabilityBlock.start_time, end: availabilityBlock.end_time },
-          formatted: { start: formattedStartTime, end: formattedEndTime }
-        });
-        
-        setStartTime(formattedStartTime);
-        setEndTime(formattedEndTime);
-      } else {
-        console.log('Availability block has undefined time values:', availabilityBlock);
-        // Set default times if the values are undefined
-        setStartTime('09:00');
-        setEndTime('17:00');
-      }
+      // Format the times from "HH:MM:SS" format to "HH:MM" format if needed
+      const formattedStartTime = availabilityBlock.start_time.substring(0, 5);
+      const formattedEndTime = availabilityBlock.end_time.substring(0, 5);
+      
+      console.log('Setting times from availability block:', {
+        original: { start: availabilityBlock.start_time, end: availabilityBlock.end_time },
+        formatted: { start: formattedStartTime, end: formattedEndTime }
+      });
+      
+      setStartTime(formattedStartTime);
+      setEndTime(formattedEndTime);
     }
   }, [availabilityBlock, isOpen]);
 
