@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,8 +14,9 @@ import VideoChat from '@/components/video/VideoChat';
 import { 
   getUserTimeZone,
   formatTimeZoneDisplay,
-  formatTimeInUserTimeZone, // Fixed: replaced formatInUserTimeZone with formatTimeInUserTimeZone
-  formatTime12Hour
+  formatTimeInUserTimeZone,
+  formatTime12Hour,
+  ensureIANATimeZone
 } from '@/utils/timeZoneUtils';
 import PHQ9Template from '@/components/templates/PHQ9Template';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -55,7 +55,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const {
     toast
   } = useToast();
-  const clientTimeZone = clientData?.client_time_zone || getUserTimeZone();
+  const clientTimeZone = ensureIANATimeZone(clientData?.client_time_zone || getUserTimeZone());
 
   useEffect(() => {
     const fetchClinicianData = async () => {
@@ -114,13 +114,18 @@ const MyPortal: React.FC<MyPortalProps> = ({
               // Create the dateTimeString with proper error handling
               let formattedTime = '';
               try {
-                formattedTime = formatTimeInUserTimeZone( // Fixed: replaced formatInUserTimeZone with formatTimeInUserTimeZone
+                // Using the ensured IANA time zone format
+                formattedTime = formatTimeInUserTimeZone(
                   appointment.start_time,
-                  clientTimeZone,
+                  clientTimeZone, // This is now guaranteed to be in IANA format
                   'h:mm a'
                 );
+                console.log(`Formatted time for ${appointment.start_time}: ${formattedTime}`);
               } catch (error) {
-                console.error('Error formatting time:', error);
+                console.error('Error formatting time:', error, {
+                  time: appointment.start_time,
+                  timezone: clientTimeZone
+                });
                 formattedTime = formatTime12Hour(appointment.start_time) || 'Time unavailable';
               }
               
@@ -164,7 +169,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
     };
     
     fetchAppointments();
-  }, [clientData, clinicianName, refreshAppointments, clientTimeZone]);
+  }, [clientData, clinicianName, refreshAppointments, clientTimeZone, toast]);
 
   const isAppointmentToday = (rawDate: string | undefined | null): boolean => {
     if (!rawDate) return false;

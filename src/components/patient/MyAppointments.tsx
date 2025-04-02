@@ -10,7 +10,8 @@ import {
   formatTime12Hour, 
   formatTimeZoneDisplay,
   formatWithTimeZone,
-  formatTimeInUserTimeZone
+  formatTimeInUserTimeZone,
+  ensureIANATimeZone
 } from '@/utils/timeZoneUtils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -33,7 +34,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
   const [clinicianName, setClinicianName] = useState<string | null>(null);
   const [clientData, setClientData] = useState<any>(null);
   const { toast } = useToast();
-  const clientTimeZone = clientData?.client_time_zone || getUserTimeZone();
+  const clientTimeZone = ensureIANATimeZone(clientData?.client_time_zone || getUserTimeZone());
 
   useEffect(() => {
     const fetchClientData = async () => {
@@ -118,17 +119,19 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
               let formattedTime = '';
               try {
                 if (appointment.start_time) {
-                  formattedTime = formatWithTimeZone(
-                    appointment.date,
+                  formattedTime = formatTimeInUserTimeZone(
                     appointment.start_time,
                     clientTimeZone,
-                    false
+                    'h:mm a'
                   );
                 } else {
                   formattedTime = 'Time unavailable';
                 }
               } catch (error) {
-                console.error('Error formatting time:', error, appointment);
+                console.error('Error formatting time:', error, {
+                  appointment,
+                  timezone: clientTimeZone
+                });
                 formattedTime = formatTime12Hour(appointment.start_time) || 'Time unavailable';
               }
               
