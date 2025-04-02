@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilityBlock, AvailabilityException, TimeBlock, AppointmentBlock, AppointmentData } from './types';
-import { format, parse, startOfDay, addMinutes, isEqual, isBefore, isAfter } from 'date-fns';
+import { format, parse, startOfDay, addMinutes, isEqual, isBefore, isAfter, parseISO } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 
 // Helper to convert time string to Date object for a given date
@@ -75,6 +75,9 @@ export const useDayViewData = ({
 
         if (exceptionsError) throw exceptionsError;
 
+        console.log("[useDayViewData] Availability data:", availabilityData);
+        console.log("[useDayViewData] Exceptions data:", exceptionsData);
+        
         setAvailabilityBlocks(availabilityData || []);
         setExceptions(exceptionsData || []);
       } catch (err) {
@@ -160,13 +163,18 @@ export const useDayViewData = ({
   useEffect(() => {
     if (!appointments || !appointments.length) {
       setAppointmentBlocks([]);
+      console.log("[useDayViewData] No appointments to process");
       return;
     }
 
+    console.log("[useDayViewData] Processing appointments for date:", formattedDate);
+    
     // Filter appointments for the current date
     const todayAppointments = appointments.filter(
       apt => apt.date === formattedDate
     );
+
+    console.log("[useDayViewData] Filtered appointments for today:", todayAppointments);
 
     // Convert to appointment blocks
     const blocks = todayAppointments.map(apt => {
@@ -184,6 +192,7 @@ export const useDayViewData = ({
       };
     });
 
+    console.log("[useDayViewData] Created appointment blocks:", blocks);
     setAppointmentBlocks(blocks);
   }, [appointments, currentDate, formattedDate, getClientName]);
 
