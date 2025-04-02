@@ -77,9 +77,12 @@ export const useWeekViewData = (
   useEffect(() => {
     if (!appointments.length) {
       setAppointmentBlocks([]);
+      console.log("No appointments to process in week view");
       return;
     }
 
+    console.log("Processing appointments in week view:", appointments);
+    
     const blocks: AppointmentBlock[] = appointments.map(appointment => {
       const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
       const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
@@ -88,7 +91,7 @@ export const useWeekViewData = (
       const start = setMinutes(setHours(startOfDay(dateObj), startHour), startMinute);
       const end = setMinutes(setHours(startOfDay(dateObj), endHour), endMinute);
 
-      return {
+      const result = {
         id: appointment.id,
         day: dateObj,
         start,
@@ -97,8 +100,19 @@ export const useWeekViewData = (
         type: appointment.type,
         clientName: getClientName(appointment.client_id)
       };
+      
+      console.log(`Week view processed appointment ${appointment.id}:`, {
+        date: format(dateObj, 'yyyy-MM-dd'),
+        startTime: format(start, 'HH:mm'),
+        endTime: format(end, 'HH:mm'),
+        rawStart: appointment.start_time,
+        rawEnd: appointment.end_time
+      });
+      
+      return result;
     });
 
+    console.log("Week view appointment blocks created:", blocks);
     setAppointmentBlocks(blocks);
   }, [appointments, getClientName]);
 
@@ -340,16 +354,47 @@ export const useWeekViewData = (
     };
   
     const getAppointmentForTimeSlot = (day: Date, timeSlot: Date) => {
-      const slotTime = setMinutes(
-        setHours(startOfDay(day), timeSlot.getHours()),
-        timeSlot.getMinutes()
-      );
-  
-      return appointmentBlocks.find(block => 
-        isSameDay(block.day, day) &&
-        slotTime >= block.start && 
-        slotTime < block.end
-      );
+      // Log to debug appointment matching
+      console.log(`Checking appointments for ${format(day, 'yyyy-MM-dd')} at ${format(timeSlot, 'HH:mm')}`);
+      
+      // Get the time components only from the time slot
+      const slotHours = timeSlot.getHours();
+      const slotMinutes = timeSlot.getMinutes();
+      
+      // Find appointments on the same day where the time slot falls within the appointment time
+      const appointment = appointmentBlocks.find(block => {
+        // First check if we're on the same day
+        const sameDayCheck = isSameDay(block.day, day);
+        if (!sameDayCheck) return false;
+        
+        // Get the time components from the appointment
+        const apptStartHours = block.start.getHours();
+        const apptStartMinutes = block.start.getMinutes();
+        const apptEndHours = block.end.getHours();
+        const apptEndMinutes = block.end.getMinutes();
+        
+        // Convert to minutes for easier comparison
+        const slotTotalMinutes = slotHours * 60 + slotMinutes;
+        const apptStartTotalMinutes = apptStartHours * 60 + apptStartMinutes;
+        const apptEndTotalMinutes = apptEndHours * 60 + apptEndMinutes;
+        
+        // Check if the slot time falls within the appointment time
+        const isWithinAppointment = 
+          slotTotalMinutes >= apptStartTotalMinutes && 
+          slotTotalMinutes < apptEndTotalMinutes;
+          
+        if (isWithinAppointment) {
+          console.log(`Found appointment ${block.id} for ${format(day, 'yyyy-MM-dd')} at ${format(timeSlot, 'HH:mm')}:`, {
+            appointmentDay: format(block.day, 'yyyy-MM-dd'),
+            appointmentTime: `${format(block.start, 'HH:mm')} - ${format(block.end, 'HH:mm')}`,
+            slotTime: format(timeSlot, 'HH:mm')
+          });
+        }
+        
+        return isWithinAppointment;
+      });
+      
+      return appointment;
     };
 
     return {

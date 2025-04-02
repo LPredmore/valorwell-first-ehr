@@ -1,3 +1,4 @@
+
 import { format, addMinutes, startOfDay, setHours, setMinutes, differenceInMinutes, parseISO, isSameDay } from 'date-fns';
 import { 
   AvailabilityBlock, 
@@ -154,7 +155,7 @@ export const getAppointmentForTimeSlot = (
   timeSlot: Date, 
   appointmentBlocks: AppointmentBlock[]
 ): AppointmentBlock | undefined => {
-  // Enhanced debugging for time slot checking
+  // Debug logging
   console.log("[utils] Checking appointment for time slot:", format(timeSlot, 'HH:mm'));
   
   if (appointmentBlocks.length === 0) {
@@ -168,22 +169,34 @@ export const getAppointmentForTimeSlot = (
     end: format(block.end, 'HH:mm')
   })));
   
-  // Simplified and more robust time slot matching logic
+  // Get the time components only from the time slot
+  const slotHours = timeSlot.getHours();
+  const slotMinutes = timeSlot.getMinutes();
+  const slotTotalMinutes = slotHours * 60 + slotMinutes;
+  
+  // Find an appointment where the time slot falls within the appointment time
   const appointment = appointmentBlocks.find(block => {
-    // Convert everything to minutes since midnight for easier comparison
-    const timeSlotMinutes = timeSlot.getHours() * 60 + timeSlot.getMinutes();
-    const startMinutes = block.start.getHours() * 60 + block.start.getMinutes();
-    const endMinutes = block.end.getHours() * 60 + block.end.getMinutes();
+    // Get the time components from the appointment
+    const apptStartHours = block.start.getHours();
+    const apptStartMinutes = block.start.getMinutes();
+    const apptEndHours = block.end.getHours();
+    const apptEndMinutes = block.end.getMinutes();
     
-    // Check if time slot falls within appointment time
-    const result = timeSlotMinutes >= startMinutes && timeSlotMinutes < endMinutes;
+    // Convert to minutes for easier comparison
+    const apptStartTotalMinutes = apptStartHours * 60 + apptStartMinutes;
+    const apptEndTotalMinutes = apptEndHours * 60 + apptEndMinutes;
     
-    if (result) {
+    // Check if the slot time falls within the appointment time
+    const isWithinAppointment = 
+      slotTotalMinutes >= apptStartTotalMinutes && 
+      slotTotalMinutes < apptEndTotalMinutes;
+    
+    if (isWithinAppointment) {
       console.log(`[utils] Found appointment ${block.id} for time slot ${format(timeSlot, 'HH:mm')}`);
       console.log(`[utils] Appointment time: ${format(block.start, 'HH:mm')} - ${format(block.end, 'HH:mm')}`);
     }
     
-    return result;
+    return isWithinAppointment;
   });
   
   return appointment;
@@ -210,7 +223,13 @@ export const isStartOfAppointment = (
   appointment?: AppointmentBlock
 ): boolean => {
   if (!appointment) return false;
-  const timeSlotMinutes = timeSlot.getHours() * 60 + timeSlot.getMinutes();
-  const appointmentStartMinutes = appointment.start.getHours() * 60 + appointment.start.getMinutes();
-  return Math.abs(timeSlotMinutes - appointmentStartMinutes) < 30;
+  
+  // Compare hours and minutes only
+  const slotHours = timeSlot.getHours();
+  const slotMinutes = timeSlot.getMinutes();
+  const appointmentHours = appointment.start.getHours();
+  const appointmentMinutes = appointment.start.getMinutes();
+  
+  return slotHours === appointmentHours && 
+         Math.abs(slotMinutes - appointmentMinutes) < 30;
 };

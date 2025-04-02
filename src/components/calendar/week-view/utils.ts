@@ -24,5 +24,14 @@ export const isStartOfAppointment = (
   appointment?: AppointmentBlock
 ): boolean => {
   if (!appointment) return false;
-  return differenceInMinutes(slotStartTime, appointment.start) < 30;
+  
+  // Compare hours and minutes only (ignore date part)
+  const slotHours = slotStartTime.getHours();
+  const slotMinutes = slotStartTime.getMinutes();
+  const appointmentHours = appointment.start.getHours();
+  const appointmentMinutes = appointment.start.getMinutes();
+  
+  // Check if the slot start time is within 30 minutes of the appointment start time
+  return slotHours === appointmentHours && 
+         Math.abs(slotMinutes - appointmentMinutes) < 30;
 };

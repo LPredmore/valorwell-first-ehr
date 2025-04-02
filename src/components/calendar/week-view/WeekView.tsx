@@ -41,17 +41,24 @@ const WeekView: React.FC<WeekViewProps> = ({
     return { days, timeSlots };
   }, [currentDate]);
 
+  // Debug: Log the appointments prop
+  console.log("Week view received appointments:", appointments);
+
   // Use the custom hook to get all the data and utility functions
   const {
     loading,
     timeBlocks,
     exceptions,
     availabilityBlocks,
+    appointmentBlocks,
     getAvailabilityForBlock,
     isTimeSlotAvailable,
     getBlockForTimeSlot,
     getAppointmentForTimeSlot
   } = useWeekViewData(days, clinicianId, refreshTrigger, appointments, getClientName);
+
+  // Debug: Log the processed appointment blocks
+  console.log("Week view processed appointment blocks:", appointmentBlocks);
 
   // Handle click on availability block
   const handleAvailabilityBlockClick = (day: Date, block: any) => {
