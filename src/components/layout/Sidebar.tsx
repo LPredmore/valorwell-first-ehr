@@ -88,8 +88,7 @@ const Sidebar = () => {
               <span>Therapist Selection</span>
             </Link>
             
-            {/* Remove Patient Profile link for client role users */}
-            {userId && !isClient && (
+            {userId && (
               <Link 
                 to={`/clients/${userId}`} 
                 className={`sidebar-link ${isActive(`/clients/${userId}`) ? 'active' : ''}`}

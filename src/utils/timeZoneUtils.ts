@@ -1,4 +1,3 @@
-
 import { format, parse, parseISO } from 'date-fns';
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 
@@ -12,15 +11,7 @@ const TIME_ZONE_MAP: Record<string, string> = {
   'Pacific Time (PT)': 'America/Los_Angeles',
   'Alaska Time (AKT)': 'America/Anchorage',
   'Hawaii-Aleutian Time (HST)': 'Pacific/Honolulu',
-  'Atlantic Time (AST)': 'America/Puerto_Rico',
-  // Added support for Standard Time format used in dropdown
-  'Eastern Standard Time (EST)': 'America/New_York',
-  'Central Standard Time (CST)': 'America/Chicago',
-  'Mountain Standard Time (MST)': 'America/Denver',
-  'Pacific Standard Time (PST)': 'America/Los_Angeles',
-  'Alaska Standard Time (AKST)': 'America/Anchorage',
-  'Hawaii-Aleutian Standard Time (HST)': 'Pacific/Honolulu',
-  'Atlantic Standard Time (AST)': 'America/Puerto_Rico'
+  'Atlantic Time (AST)': 'America/Puerto_Rico'
 };
 
 /**
@@ -38,22 +29,11 @@ export const ensureIANATimeZone = (timeZone: string): string => {
     return TIME_ZONE_MAP[timeZone];
   }
   
-  // If we have a parenthetical format like "Something (XXX)", try to extract and match
-  if (timeZone && timeZone.includes('(') && timeZone.includes(')')) {
-    // Try to match by the full string first
-    for (const [key, value] of Object.entries(TIME_ZONE_MAP)) {
-      if (timeZone.includes(key)) {
-        return value;
-      }
-    }
-  }
-  
   // Fallback to browser's timezone
   try {
-    console.log(`Unable to map timezone "${timeZone}" to IANA format, using system default`);
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
   } catch (error) {
-    console.error('Error getting system timezone, using America/Chicago as fallback:', error);
+    console.error('Error getting system timezone, using America/New_York as fallback:', error);
     return 'America/Chicago'; // Safe fallback, changed to match our app default
   }
 };

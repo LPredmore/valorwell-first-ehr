@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -42,6 +43,7 @@ const MyClients = () => {
           return;
         }
         
+        // Get clinician details based on user email
         const { data, error } = await supabase
           .from('clinicians')
           .select('id')
