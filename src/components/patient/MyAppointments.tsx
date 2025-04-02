@@ -22,6 +22,7 @@ interface PastAppointment {
   type: string;
   therapist: string;
   rawDate?: string;
+  status?: string;
 }
 
 interface MyAppointmentsProps {
@@ -95,6 +96,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
           .select('*')
           .eq('client_id', clientData.id)
           .lt('date', todayStr)
+          .not('status', 'in', ['scheduled', 'cancelled'])
           .order('date', { ascending: false })
           .order('start_time', { ascending: false });
 
@@ -142,7 +144,8 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
                 type: appointment.type || 'Appointment',
                 therapist: clinicianName || 'Your Therapist',
                 rawDate: appointment.date,
-                rawTime: appointment.start_time
+                rawTime: appointment.start_time,
+                status: appointment.status
               };
             } catch (error) {
               console.error('Error processing appointment:', error, appointment);
@@ -197,6 +200,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
                 <TableHead>Time <span className="text-xs text-gray-500">({timeZoneDisplay})</span></TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Therapist</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -207,6 +211,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
                   <TableCell>{appointment.time}</TableCell>
                   <TableCell>{appointment.type}</TableCell>
                   <TableCell>{appointment.therapist}</TableCell>
+                  <TableCell>{appointment.status}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="outline" size="sm">View Details</Button>
                   </TableCell>
