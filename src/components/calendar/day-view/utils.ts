@@ -50,6 +50,7 @@ export const processAppointments = (
     };
   });
 
+  console.log("[utils] Processed appointment blocks:", blocks);
   return blocks;
 };
 
@@ -154,23 +155,42 @@ export const getAppointmentForTimeSlot = (
   timeSlot: Date, 
   appointmentBlocks: AppointmentBlock[]
 ): AppointmentBlock | undefined => {
-  // Debug the incoming data
+  // Enhanced debugging for time slot checking
+  console.log("[utils] Checking appointment for time slot:", format(timeSlot, 'HH:mm'));
+  
   if (appointmentBlocks.length > 0) {
-    console.log("[utils] Checking appointment for time slot:", format(timeSlot, 'HH:mm'));
     console.log("[utils] Available appointment blocks:", appointmentBlocks.map(block => ({
       id: block.id,
       start: format(block.start, 'HH:mm'),
       end: format(block.end, 'HH:mm')
     })));
+  } else {
+    console.log("[utils] No appointment blocks available");
+    return undefined;
   }
   
+  // Fix: Compare timeSlot with appointment block timing properly
   const appointment = appointmentBlocks.find(block => {
-    // Compare only the time part, as the date parts are already filtered at a higher level
-    const slotTime = timeSlot;
-    const result = slotTime >= block.start && slotTime < block.end;
+    // Get timeSlot hours and minutes for direct comparison
+    const slotHours = timeSlot.getHours();
+    const slotMinutes = timeSlot.getMinutes();
+    const slotTime = slotHours * 60 + slotMinutes; // Convert to minutes since midnight
+    
+    // Get appointment start/end hours and minutes
+    const startHours = block.start.getHours();
+    const startMinutes = block.start.getMinutes();
+    const startTime = startHours * 60 + startMinutes; // Convert to minutes
+    
+    const endHours = block.end.getHours();
+    const endMinutes = block.end.getMinutes();
+    const endTime = endHours * 60 + endMinutes; // Convert to minutes
+    
+    // Check if time slot falls within appointment time range
+    const result = slotTime >= startTime && slotTime < endTime;
     
     if (result) {
       console.log(`[utils] Found appointment ${block.id} for time slot ${format(timeSlot, 'HH:mm')}`);
+      console.log(`[utils] Appointment time: ${format(block.start, 'HH:mm')} - ${format(block.end, 'HH:mm')}`);
     }
     
     return result;
@@ -200,5 +220,7 @@ export const isStartOfAppointment = (
   appointment?: AppointmentBlock
 ): boolean => {
   if (!appointment) return false;
-  return differenceInMinutes(timeSlot, appointment.start) < 30;
+  const timeSlotMinutes = timeSlot.getHours() * 60 + timeSlot.getMinutes();
+  const appointmentStartMinutes = appointment.start.getHours() * 60 + appointment.start.getMinutes();
+  return Math.abs(timeSlotMinutes - appointmentStartMinutes) < 30;
 };

@@ -168,6 +168,7 @@ export const useDayViewData = ({
     }
 
     console.log("[useDayViewData] Processing appointments for date:", formattedDate);
+    console.log("[useDayViewData] All appointments:", appointments);
     
     // Filter appointments for the current date
     const todayAppointments = appointments.filter(
@@ -181,6 +182,10 @@ export const useDayViewData = ({
       // Convert time strings to Date objects
       const startDate = timeToDate(currentDate, apt.start_time);
       const endDate = timeToDate(currentDate, apt.end_time);
+
+      console.log(`[useDayViewData] Processing appointment: ${apt.id}`);
+      console.log(`[useDayViewData] Start time: ${apt.start_time}, End time: ${apt.end_time}`);
+      console.log(`[useDayViewData] Converted to: Start: ${format(startDate, 'HH:mm')}, End: ${format(endDate, 'HH:mm')}`);
 
       return {
         id: apt.id,
