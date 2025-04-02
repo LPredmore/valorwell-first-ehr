@@ -156,8 +156,8 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
         />
       </div>
 
-      {/* Private Note Field */}
-      <div className="mb-6">
+      {/* Private Note Field - Add private-note-container class for PDF exclusion */}
+      <div className="mb-6 private-note-container">
         <label className="block text-sm font-medium text-gray-700 mb-1">Private Note</label>
         <Textarea
           placeholder="Add a private note that only clinicians can see"

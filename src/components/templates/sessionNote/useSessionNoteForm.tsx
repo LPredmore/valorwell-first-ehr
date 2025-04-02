@@ -1,20 +1,24 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, RefObject } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClientDetails } from '@/types/client';
+import { generateAndSavePDF } from '@/utils/pdfUtils';
 
 interface UseSessionNoteFormProps {
   clientData: ClientDetails | null;
   clinicianName: string;
   appointment?: any;
   onClose: () => void;
+  contentRef?: RefObject<HTMLDivElement>;
 }
 
 export const useSessionNoteForm = ({
   clientData,
   clinicianName,
   appointment,
-  onClose
+  onClose,
+  contentRef
 }: UseSessionNoteFormProps) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -326,10 +330,48 @@ export const useSessionNoteForm = ({
         }
       }
 
-      toast({
-        title: "Success",
-        description: "Session note saved successfully.",
-      });
+      // Generate and save PDF
+      if (contentRef?.current && appointment?.date) {
+        const sessionDate = new Date(appointment.date).toISOString().split('T')[0];
+        const clientName = formState.patientName || 'Unknown Client';
+        const documentInfo = {
+          clientId: clientData.id,
+          documentType: 'session_note',
+          documentDate: sessionDate,
+          documentTitle: `Session Note - ${clientName} - ${sessionDate}`,
+          createdBy: clinicianName
+        };
+
+        try {
+          const pdfPath = await generateAndSavePDF('session-note-content', documentInfo);
+          if (pdfPath) {
+            console.log('PDF saved successfully:', pdfPath);
+            toast({
+              title: "Success",
+              description: "Session note saved and PDF generated successfully.",
+            });
+          } else {
+            console.error('Failed to generate PDF');
+            toast({
+              title: "Warning",
+              description: "Session note saved, but PDF generation failed.",
+              variant: "default",
+            });
+          }
+        } catch (pdfError) {
+          console.error('Error generating PDF:', pdfError);
+          toast({
+            title: "Warning",
+            description: "Session note saved, but PDF generation failed.",
+            variant: "default",
+          });
+        }
+      } else {
+        toast({
+          title: "Success",
+          description: "Session note saved successfully.",
+        });
+      }
 
       onClose();
     } catch (error) {

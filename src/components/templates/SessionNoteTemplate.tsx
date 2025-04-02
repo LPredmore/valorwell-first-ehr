@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { X, FileText } from 'lucide-react';
 import { ClientDetails, SessionNoteTemplateProps } from '@/types/client';
@@ -16,6 +16,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   clinicianName = '',
   clientData = null
 }) => {
+  const contentRef = useRef<HTMLDivElement>(null);
+  
   const {
     formState,
     editModes,
@@ -28,7 +30,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     clientData,
     clinicianName,
     appointment,
-    onClose
+    onClose,
+    contentRef
   });
 
   // Check if problem and treatment goal narratives have values
@@ -48,7 +51,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         </Button>
       </div>
 
-      <div className="bg-white p-6 border rounded-md mt-4">
+      <div id="session-note-content" ref={contentRef} className="bg-white p-6 border rounded-md mt-4">
         <div className="flex items-center gap-2 mb-6">
           <FileText className="h-5 w-5 text-gray-700" />
           <h3 className="text-lg font-medium">Therapy Session Note</h3>
