@@ -12,9 +12,11 @@ import { fetchClinicalDocuments, getDocumentDownloadURL } from "@/integrations/s
 import { format } from "date-fns";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+
 interface DocumentationTabProps {
   clientData?: ClientDetails | null;
 }
+
 interface ClinicalDocument {
   id: string;
   document_title: string;
@@ -24,6 +26,7 @@ interface ClinicalDocument {
   created_at: string;
   created_by?: string;
 }
+
 const DocumentationTab: React.FC<DocumentationTabProps> = ({
   clientData
 }) => {
@@ -33,6 +36,7 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
   const [showPCL5Template, setShowPCL5Template] = useState(false);
   const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
   const {
     clinicianData
   } = useClinicianData();
@@ -40,7 +44,6 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
     toast
   } = useToast();
 
-  // Fetch documents when the component mounts or when the client changes
   useEffect(() => {
     if (clientData?.id) {
       setIsLoading(true);
@@ -58,34 +61,35 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
       });
     }
   }, [clientData?.id, toast]);
+
   const handleCloseTreatmentPlan = () => {
     setShowTreatmentPlanTemplate(false);
-    // Refresh documents after closing the template
     if (clientData?.id) {
       fetchClinicalDocuments(clientData.id).then(docs => setDocuments(docs)).catch(err => console.error('Error refreshing documents:', err));
     }
   };
+
   const handleCloseSessionNote = () => {
     setShowSessionNoteTemplate(false);
-    // Refresh documents after closing the template
     if (clientData?.id) {
       fetchClinicalDocuments(clientData.id).then(docs => setDocuments(docs)).catch(err => console.error('Error refreshing documents:', err));
     }
   };
+
   const handleClosePHQ9 = () => {
     setShowPHQ9Template(false);
-    // Refresh documents after closing the template
     if (clientData?.id) {
       fetchClinicalDocuments(clientData.id).then(docs => setDocuments(docs)).catch(err => console.error('Error refreshing documents:', err));
     }
   };
+
   const handleClosePCL5 = () => {
     setShowPCL5Template(false);
-    // Refresh documents after closing the template
     if (clientData?.id) {
       fetchClinicalDocuments(clientData.id).then(docs => setDocuments(docs)).catch(err => console.error('Error refreshing documents:', err));
     }
   };
+
   const handleViewDocument = async (filePath: string) => {
     try {
       const url = await getDocumentDownloadURL(filePath);
@@ -107,14 +111,13 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
       });
     }
   };
+
   return <div className="grid grid-cols-1 gap-6">
-      {/* Charting Card */}
       <Card>
         
         
       </Card>
 
-      {/* Conditionally render the templates right after the Charting card */}
       {showTreatmentPlanTemplate && <div className="animate-fade-in">
           <TreatmentPlanTemplate onClose={handleCloseTreatmentPlan} clinicianName={clinicianData?.clinician_professional_name || ''} clientData={clientData} />
         </div>}
@@ -131,12 +134,11 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
           <PCL5Template onClose={handleClosePCL5} clinicianName={clinicianData?.clinician_professional_name || ''} clientData={clientData} />
         </div>}
 
-      {/* Assessments Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ClipboardCheck className="h-5 w-5 text-valorwell-600" />
-            Assessments
+            Assigned Forms
           </CardTitle>
           <CardDescription>View and complete patient assessments</CardDescription>
         </CardHeader>
@@ -145,7 +147,6 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* Completed Notes Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -197,4 +198,5 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
       </Card>
     </div>;
 };
+
 export default DocumentationTab;
