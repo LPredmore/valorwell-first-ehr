@@ -335,7 +335,7 @@ const ClientDetails = () => {
     );
   }
 
-  const isClinicianRole = userRole === "clinician";
+  const isRestrictedRole = userRole === "clinician" || userRole === "client";
 
   return (
     <Layout>
@@ -367,10 +367,10 @@ const ClientDetails = () => {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSaveChanges)}>
           <Tabs defaultValue="personal" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className={`grid ${isClinicianRole ? 'grid-cols-3' : 'grid-cols-4'} mb-4`}>
+            <TabsList className={`grid ${isRestrictedRole ? 'grid-cols-3' : 'grid-cols-4'} mb-4`}>
               <TabsTrigger value="personal">Personal Info</TabsTrigger>
               <TabsTrigger value="insurance">Insurance</TabsTrigger>
-              {!isClinicianRole && (
+              {!isRestrictedRole && (
                 <TabsTrigger value="treatment">Treatment</TabsTrigger>
               )}
               <TabsTrigger value="documentation">Documentation</TabsTrigger>
@@ -394,7 +394,7 @@ const ClientDetails = () => {
               />
             </TabsContent>
 
-            {!isClinicianRole && (
+            {!isRestrictedRole && (
               <TabsContent value="treatment">
                 <TreatmentTab 
                   isEditing={isEditing} 
