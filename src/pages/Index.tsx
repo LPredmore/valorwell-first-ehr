@@ -13,8 +13,8 @@ const Index = () => {
       console.log('User authenticated, redirecting based on role:', userRole);
       
       if (userRole === 'clinician') {
-        // Redirect clinicians to Calendar page
-        navigate('/calendar');
+        // Redirect clinicians to their dashboard instead of Calendar
+        navigate('/clinician-dashboard');
       } else if (userRole === 'client') {
         // Redirect clients to their dashboard
         navigate('/patient-dashboard');
