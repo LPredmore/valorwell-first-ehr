@@ -5,10 +5,13 @@ import { useUser } from '@/context/UserContext';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { userRole, isLoading } = useUser();
+  const { userRole, isLoading, session } = useUser();
 
   useEffect(() => {
-    if (!isLoading) {
+    // Only redirect if auth is not loading and we have a session
+    if (!isLoading && session) {
+      console.log('User authenticated, redirecting based on role:', userRole);
+      
       if (userRole === 'clinician') {
         // Redirect clinicians to Calendar page
         navigate('/calendar');
@@ -20,8 +23,18 @@ const Index = () => {
         navigate('/calendar');
       }
     }
-  }, [navigate, userRole, isLoading]);
+  }, [navigate, userRole, isLoading, session]);
 
+  // Show loading indicator while authentication is being checked
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-valorwell-600"></div>
+      </div>
+    );
+  }
+
+  // Return null if not loading and not authenticated (Layout will handle redirect to login)
   return null;
 };
 
