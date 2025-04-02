@@ -62,20 +62,7 @@ const WeekView: React.FC<WeekViewProps> = ({
     <Card className="p-4 overflow-hidden">
       <div className="grid grid-cols-8 h-[1500px]">
         {/* Time column */}
-        <div className="col-span-1 border-r border-gray-200 relative pr-2">
-          <div className="h-14 border-b border-gray-200"></div>
-          {hours.map((hour) => (
-            <div 
-              key={hour} 
-              className="relative"
-              style={{ height: `${hourHeight}px` }}
-            >
-              <span className="absolute -top-2.5 right-2 text-xs text-gray-500">
-                {format(addHours(startOfDay(new Date()), hour), 'h a')}
-              </span>
-            </div>
-          ))}
-        </div>
+        <TimeColumn hours={hours} hourHeight={hourHeight} />
 
         {/* Days columns */}
         {days.map((day, dayIndex) => (
@@ -123,7 +110,9 @@ const WeekView: React.FC<WeekViewProps> = ({
                   block={block}
                   day={day}
                   hourHeight={hourHeight}
-                  onAvailabilityClick={onAvailabilityClick}
+                  onAvailabilityClick={onAvailabilityClick ? 
+                    (day, block) => onAvailabilityClick(day, block) : 
+                    undefined}
                 />
               ))}
           </div>
