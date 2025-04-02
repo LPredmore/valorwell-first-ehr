@@ -14,6 +14,7 @@ import VideoChat from '@/components/video/VideoChat';
 import { getUserTimeZone, formatTimeZoneDisplay, formatTimeInUserTimeZone, formatTime12Hour, ensureIANATimeZone } from '@/utils/timeZoneUtils';
 import PHQ9Template from '@/components/templates/PHQ9Template';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
 interface Appointment {
   id: number;
   date: string;
@@ -22,12 +23,14 @@ interface Appointment {
   therapist: string;
   rawDate?: string;
 }
+
 interface MyPortalProps {
   upcomingAppointments: Appointment[];
   clientData: any | null;
   clinicianName: string | null;
   loading: boolean;
 }
+
 const MyPortal: React.FC<MyPortalProps> = ({
   upcomingAppointments: initialAppointments,
   clientData,
@@ -46,7 +49,9 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const {
     toast
   } = useToast();
+
   const clientTimeZone = ensureIANATimeZone(clientData?.client_time_zone || getUserTimeZone());
+
   useEffect(() => {
     const fetchClinicianData = async () => {
       if (!clientData?.client_assigned_therapist) return;
@@ -69,6 +74,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
     };
     fetchClinicianData();
   }, [clientData]);
+
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!clientData?.id) return;
@@ -95,12 +101,9 @@ const MyPortal: React.FC<MyPortalProps> = ({
             try {
               const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
 
-              // Create the dateTimeString with proper error handling
               let formattedTime = '';
               try {
-                // Using the ensured IANA time zone format
                 formattedTime = formatTimeInUserTimeZone(appointment.start_time, clientTimeZone,
-                // This is now guaranteed to be in IANA format
                 'h:mm a');
                 console.log(`Formatted time for ${appointment.start_time}: ${formattedTime}`);
               } catch (error) {
@@ -121,7 +124,6 @@ const MyPortal: React.FC<MyPortalProps> = ({
               };
             } catch (error) {
               console.error('Error processing appointment:', error, appointment);
-              // Return a fallback object to prevent breaking the UI
               return {
                 id: appointment.id,
                 date: 'Date processing error',
@@ -149,6 +151,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
     };
     fetchAppointments();
   }, [clientData, clinicianName, refreshAppointments, clientTimeZone, toast]);
+
   const isAppointmentToday = (rawDate: string | undefined | null): boolean => {
     if (!rawDate) return false;
     try {
@@ -158,6 +161,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
       return false;
     }
   };
+
   const handleBookingComplete = () => {
     setRefreshAppointments(prev => prev + 1);
     toast({
@@ -165,10 +169,12 @@ const MyPortal: React.FC<MyPortalProps> = ({
       description: "Your appointment has been scheduled successfully!"
     });
   };
+
   const handleStartSession = async (appointmentId: string | number) => {
     setPendingAppointmentId(appointmentId);
     setShowPHQ9(true);
   };
+
   const handlePHQ9Complete = async () => {
     setShowPHQ9(false);
     if (pendingAppointmentId) {
@@ -200,12 +206,15 @@ const MyPortal: React.FC<MyPortalProps> = ({
       }
     }
   };
+
   const handleCloseVideoSession = () => {
     setIsVideoSessionOpen(false);
   };
+
   const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);
   const todayAppointments = upcomingAppointments.filter(appointment => isAppointmentToday(appointment.rawDate));
   const futureAppointments = upcomingAppointments.filter(appointment => !isAppointmentToday(appointment.rawDate));
+
   return <div className="grid grid-cols-1 gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -243,6 +252,40 @@ const MyPortal: React.FC<MyPortalProps> = ({
               <Calendar className="h-12 w-12 text-gray-300 mb-3" />
               <h3 className="text-lg font-medium">No appointments today</h3>
               <p className="text-sm text-gray-500 mt-1">Check your upcoming appointments below</p>
+            </div>}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Your Therapist</CardTitle>
+          <Button variant="outline" size="sm" onClick={() => setIsBookingOpen(true)}>
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            Book New Appointment
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {clientData && clientData.client_assigned_therapist && clinicianData ? <div className="bg-gray-50 p-4 rounded-md mb-4">
+              <div className="flex flex-row gap-6 items-start">
+                <Avatar className="h-48 w-48 border-2 border-white shadow-md rounded-md flex-shrink-0">
+                  {clinicianData.clinician_image_url ? <AvatarImage src={clinicianData.clinician_image_url} alt={clinicianName || 'Therapist'} className="object-cover h-full w-full" /> : <AvatarFallback className="text-4xl font-medium bg-valorwell-100 text-valorwell-700 h-full w-full">
+                      {clinicianData.clinician_first_name?.[0] || ''}{clinicianData.clinician_last_name?.[0] || ''}
+                    </AvatarFallback>}
+                </Avatar>
+                
+                <div className="flex-1">
+                  {clinicianData.clinician_bio && <>
+                      <h4 className="font-medium text-lg mb-2">About {clinicianName}</h4>
+                      <p className="text-gray-700 text-sm whitespace-pre-line">{clinicianData.clinician_bio}</p>
+                    </>}
+                </div>
+              </div>
+            </div> : <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Calendar className="h-12 w-12 text-gray-300 mb-3" />
+              <h3 className="text-lg font-medium">No Assigned Therapist</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                You don't have an assigned therapist yet. Please contact the clinic for assistance.
+              </p>
             </div>}
         </CardContent>
       </Card>
@@ -289,40 +332,6 @@ const MyPortal: React.FC<MyPortalProps> = ({
         </CardFooter>
       </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Your Therapist</CardTitle>
-          <Button variant="outline" size="sm" onClick={() => setIsBookingOpen(true)}>
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            Book New Appointment
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {clientData && clientData.client_assigned_therapist && clinicianData ? <div className="bg-gray-50 p-4 rounded-md mb-4">
-              <div className="flex flex-row gap-6 items-start">
-                <Avatar className="h-48 w-48 border-2 border-white shadow-md rounded-md flex-shrink-0">
-                  {clinicianData.clinician_image_url ? <AvatarImage src={clinicianData.clinician_image_url} alt={clinicianName || 'Therapist'} className="object-cover h-full w-full" /> : <AvatarFallback className="text-4xl font-medium bg-valorwell-100 text-valorwell-700 h-full w-full">
-                      {clinicianData.clinician_first_name?.[0] || ''}{clinicianData.clinician_last_name?.[0] || ''}
-                    </AvatarFallback>}
-                </Avatar>
-                
-                <div className="flex-1">
-                  {clinicianData.clinician_bio && <>
-                      <h4 className="font-medium text-lg mb-2">About {clinicianName}</h4>
-                      <p className="text-gray-700 text-sm whitespace-pre-line">{clinicianData.clinician_bio}</p>
-                    </>}
-                </div>
-              </div>
-            </div> : <div className="flex flex-col items-center justify-center py-8 text-center">
-              <Calendar className="h-12 w-12 text-gray-300 mb-3" />
-              <h3 className="text-lg font-medium">No Assigned Therapist</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                You don't have an assigned therapist yet. Please contact the clinic for assistance.
-              </p>
-            </div>}
-        </CardContent>
-      </Card>
-
       <AppointmentBookingDialog open={isBookingOpen} onOpenChange={setIsBookingOpen} clinicianId={clientData?.client_assigned_therapist || null} clinicianName={clinicianName} clientId={clientData?.id || null} onAppointmentBooked={handleBookingComplete} />
 
       {showPHQ9 && <PHQ9Template onClose={() => setShowPHQ9(false)} clinicianName={clinicianName || "Your Therapist"} clientData={clientData} onComplete={handlePHQ9Complete} />}
@@ -330,4 +339,5 @@ const MyPortal: React.FC<MyPortalProps> = ({
       {videoRoomUrl && <VideoChat roomUrl={videoRoomUrl} isOpen={isVideoSessionOpen} onClose={handleCloseVideoSession} />}
     </div>;
 };
+
 export default MyPortal;
