@@ -41,7 +41,12 @@ const DayView: React.FC<DayViewProps> = ({
     getClientName
   });
 
+  // Generate time slots for the day (30-minute intervals)
   const timeSlots = generateTimeSlots(currentDate);
+
+  // Debug logging to help diagnose appointment display issues
+  console.log("[DayView] Current appointments:", appointments);
+  console.log("[DayView] Processed appointment blocks:", appointmentBlocks);
 
   const handleAvailabilityBlockClick = (block: any) => {
     if (!onAvailabilityClick || !block.availabilityIds.length) return;
