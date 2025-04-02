@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { timezoneOptions } from '@/utils/timezoneOptions';
+
 interface Clinician {
   id: string;
   clinician_first_name: string | null;
@@ -29,7 +30,9 @@ interface Clinician {
   clinician_licensed_states: string[] | null;
   clinician_image_url: string | null;
   clinician_timezone: string | null;
+  clinician_min_client_age: number | null;
 }
+
 const ClinicianDetails = () => {
   const {
     clinicianId
@@ -199,11 +202,13 @@ const ClinicianDetails = () => {
     code: "Wyoming",
     name: "Wyoming"
   }];
+
   useEffect(() => {
     if (clinicianId) {
       fetchClinicianData();
     }
   }, [clinicianId]);
+
   useEffect(() => {
     if (clinician?.clinician_licensed_states) {
       const fullStateNames = clinician.clinician_licensed_states.map(state => {
@@ -216,11 +221,13 @@ const ClinicianDetails = () => {
       setSelectedStates(fullStateNames);
     }
   }, [clinician]);
+
   useEffect(() => {
     if (clinician?.clinician_image_url) {
       setImagePreview(clinician.clinician_image_url);
     }
   }, [clinician]);
+
   useEffect(() => {
     if (profileImage) {
       const reader = new FileReader();
@@ -230,6 +237,7 @@ const ClinicianDetails = () => {
       reader.readAsDataURL(profileImage);
     }
   }, [profileImage]);
+
   const fetchClinicianData = async () => {
     setIsLoading(true);
     try {
@@ -267,6 +275,7 @@ const ClinicianDetails = () => {
       setIsLoading(false);
     }
   };
+
   const handleInputChange = (field: keyof Clinician, value: string) => {
     if (editedClinician) {
       console.log(`Updating ${field} to ${value}`);
@@ -276,6 +285,7 @@ const ClinicianDetails = () => {
       });
     }
   };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files && e.target.files[0];
     if (file) {
@@ -298,6 +308,7 @@ const ClinicianDetails = () => {
       setProfileImage(file);
     }
   };
+
   const uploadProfileImage = async (): Promise<string | null> => {
     if (!profileImage || !clinicianId) return null;
     setIsUploading(true);
@@ -335,6 +346,7 @@ const ClinicianDetails = () => {
       setIsUploading(false);
     }
   };
+
   const handleSave = async () => {
     try {
       if (!editedClinician) return;
@@ -354,7 +366,8 @@ const ClinicianDetails = () => {
         clinician_licensed_states: selectedStates,
         clinician_type: editedClinician.clinician_type,
         clinician_license_type: editedClinician.clinician_license_type,
-        clinician_image_url: imageUrl
+        clinician_image_url: imageUrl,
+        clinician_min_client_age: editedClinician.clinician_min_client_age
       };
       console.log("Saving clinician data:", updatedClinicianData);
       const {
@@ -385,6 +398,7 @@ const ClinicianDetails = () => {
       });
     }
   };
+
   const handleCancel = () => {
     setEditedClinician(clinician);
     if (clinician?.clinician_licensed_states) {
@@ -396,9 +410,11 @@ const ClinicianDetails = () => {
     setProfileImage(null);
     setImagePreview(clinician?.clinician_image_url || null);
   };
+
   const toggleState = (stateName: string) => {
     setSelectedStates(current => current.includes(stateName) ? current.filter(s => s !== stateName) : [...current, stateName]);
   };
+
   if (isLoading) {
     return <Layout>
         <div className="flex justify-center items-center h-full">
@@ -406,6 +422,7 @@ const ClinicianDetails = () => {
         </div>
       </Layout>;
   }
+
   if (!clinician) {
     return <Layout>
         <div className="flex justify-center items-center h-full">
@@ -413,6 +430,7 @@ const ClinicianDetails = () => {
         </div>
       </Layout>;
   }
+
   return <Layout>
       <div className="mb-6 flex justify-between items-center">
         <div>
@@ -590,6 +608,25 @@ const ClinicianDetails = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Minimum Client Age
+                </label>
+                {isEditing ? (
+                  <Input 
+                    type="number" 
+                    value={editedClinician?.clinician_min_client_age?.toString() || '18'} 
+                    onChange={e => handleInputChange('clinician_min_client_age', e.target.value)} 
+                    min="0"
+                    max="100"
+                    placeholder="Minimum client age"
+                  />
+                ) : (
+                  <p className="p-2 border rounded-md bg-gray-50">
+                    {clinician.clinician_min_client_age || '18'}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Licensed States
                 </label>
                 {isEditing ? <DropdownMenu>
@@ -611,8 +648,6 @@ const ClinicianDetails = () => {
           </CardContent>
         </Card>
 
-        
-
         {isEditing && <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={handleCancel}>
               Cancel
@@ -624,4 +659,5 @@ const ClinicianDetails = () => {
       </div>
     </Layout>;
 };
+
 export default ClinicianDetails;
