@@ -77,7 +77,7 @@ const CalendarContent: React.FC<CalendarContentProps> = ({
         <div className="w-1/4">
           <AvailabilityPanel 
             clinicianId={clinicianId} 
-            onAvailabilityUpdated={onAvailabilityClick} 
+            onAvailabilityUpdated={(date, block) => onAvailabilityClick(date, block)} 
             userTimeZone={userTimeZone} 
           />
         </div>
