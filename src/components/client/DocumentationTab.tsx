@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -114,8 +115,22 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
 
   return <div className="grid grid-cols-1 gap-6">
       <Card>
-        
-        
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-valorwell-600" />
+            Enter Documentation
+          </CardTitle>
+          <CardDescription>Create documentation for this client</CardDescription>
+        </CardHeader>
+        <CardContent className="flex space-x-4">
+          <Button 
+            onClick={() => setShowTreatmentPlanTemplate(true)}
+            className="flex items-center gap-2"
+          >
+            <FileText className="h-4 w-4" />
+            Treatment Plan
+          </Button>
+        </CardContent>
       </Card>
 
       {showTreatmentPlanTemplate && <div className="animate-fade-in">
