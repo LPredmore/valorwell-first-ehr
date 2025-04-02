@@ -155,6 +155,17 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
           onChange={(e) => handleChange('signature', e.target.value)}
         />
       </div>
+
+      {/* Private Note Field */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-1">Private Note</label>
+        <Textarea
+          placeholder="Add a private note that only clinicians can see"
+          className="min-h-[100px] resize-y"
+          value={formState.privateNote}
+          onChange={(e) => handleChange('privateNote', e.target.value)}
+        />
+      </div>
     </>
   );
 };

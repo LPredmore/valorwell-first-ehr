@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -66,7 +65,8 @@ export const useSessionNoteForm = ({
     treatmentGoalNarrative: '',
     sessionNarrative: '',
     nextTreatmentPlanUpdate: '',
-    signature: ''
+    signature: '',
+    privateNote: ''
   });
 
   const [editModes, setEditModes] = useState({
@@ -159,7 +159,8 @@ export const useSessionNoteForm = ({
         problemNarrative: clientData.client_problem || '',
         treatmentGoalNarrative: clientData.client_treatmentgoal || '',
         sessionNarrative: clientData.client_sessionnarrative || '',
-        nextTreatmentPlanUpdate: clientData.client_nexttreatmentplanupdate || ''
+        nextTreatmentPlanUpdate: clientData.client_nexttreatmentplanupdate || '',
+        privateNote: clientData.client_privatenote || ''
       }));
 
       setEditModes({
@@ -293,11 +294,11 @@ export const useSessionNoteForm = ({
         client_medications: formState.medications,
         client_personsinattendance: formState.personsInAttendance,
         client_diagnosis: client_diagnosis,
+        client_privatenote: formState.privateNote,
 
         client_nexttreatmentplanupdate: formState.nextTreatmentPlanUpdate,
       };
 
-      // Update client data
       const { error } = await supabase
         .from('clients')
         .update(updates)
@@ -307,7 +308,6 @@ export const useSessionNoteForm = ({
         throw error;
       }
 
-      // Update appointment status if appointment ID is available
       if (appointment?.id) {
         const { error: appointmentError } = await supabase
           .from('appointments')
@@ -316,7 +316,6 @@ export const useSessionNoteForm = ({
 
         if (appointmentError) {
           console.error('Error updating appointment status:', appointmentError);
-          // We don't throw here to prevent blocking the whole save operation
           toast({
             title: "Warning",
             description: "Session note saved, but couldn't update appointment status.",
