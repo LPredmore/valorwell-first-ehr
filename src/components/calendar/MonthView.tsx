@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -183,27 +182,13 @@ const MonthView: React.FC<MonthViewProps> = ({
         
         isModified = modifiedExceptions.length > 0;
         
-        // Generate display hours - specifically set to 6:00 AM to 10:00 PM time range
+        // Always display fixed hours range - 6:00 AM to 10:00 PM
         if (hasAvailability) {
-          // Set fixed range for display - 6:00 AM to 10:00 PM
-          const earliestHour = 6; // 6:00 AM
-          const latestHour = 22; // 10:00 PM
+          const startTime = "06:00";
+          const endTime = "22:00";
           
-          let firstAvailableSlot = regularAvailability[0].start_time;
-          let lastAvailableSlot = regularAvailability[0].end_time;
-          
-          // If there are exceptions, use their times when appropriate
-          if (isModified) {
-            const exceptionWithTimes = modifiedExceptions.find(e => e.start_time && e.end_time);
-            if (exceptionWithTimes && exceptionWithTimes.start_time && exceptionWithTimes.end_time) {
-              firstAvailableSlot = exceptionWithTimes.start_time;
-              lastAvailableSlot = exceptionWithTimes.end_time;
-            }
-          }
-          
-          // Format the time displays
-          const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${firstAvailableSlot}`));
-          const endHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${lastAvailableSlot}`));
+          const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${startTime}`));
+          const endHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${endTime}`));
           
           displayHours = `${startHourFormatted}-${endHourFormatted}`;
         }
