@@ -170,6 +170,11 @@ export const useDayViewData = ({
     console.log("[useDayViewData] Processing appointments for date:", formattedDate);
     console.log("[useDayViewData] All appointments:", appointments);
     
+    // Enhanced debugging for date matching
+    appointments.forEach(apt => {
+      console.log(`[useDayViewData] Appointment ${apt.id} date: ${apt.date}, formatted date: ${formattedDate}, match: ${apt.date === formattedDate}`);
+    });
+    
     // Filter appointments for the current date
     const todayAppointments = appointments.filter(
       apt => apt.date === formattedDate

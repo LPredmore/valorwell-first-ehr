@@ -168,24 +168,15 @@ export const getAppointmentForTimeSlot = (
     end: format(block.end, 'HH:mm')
   })));
   
-  // Fix: Compare timeSlot with appointment block timing properly
+  // Simplified and more robust time slot matching logic
   const appointment = appointmentBlocks.find(block => {
-    // Get timeSlot hours and minutes for direct comparison
-    const slotHours = timeSlot.getHours();
-    const slotMinutes = timeSlot.getMinutes();
-    const slotTime = slotHours * 60 + slotMinutes; // Convert to minutes since midnight
+    // Convert everything to minutes since midnight for easier comparison
+    const timeSlotMinutes = timeSlot.getHours() * 60 + timeSlot.getMinutes();
+    const startMinutes = block.start.getHours() * 60 + block.start.getMinutes();
+    const endMinutes = block.end.getHours() * 60 + block.end.getMinutes();
     
-    // Get appointment start/end hours and minutes
-    const startHours = block.start.getHours();
-    const startMinutes = block.start.getMinutes();
-    const startTime = startHours * 60 + startMinutes; // Convert to minutes
-    
-    const endHours = block.end.getHours();
-    const endMinutes = block.end.getMinutes();
-    const endTime = endHours * 60 + endMinutes; // Convert to minutes
-    
-    // Check if time slot falls within appointment time range
-    const result = slotTime >= startTime && slotTime < endTime;
+    // Check if time slot falls within appointment time
+    const result = timeSlotMinutes >= startMinutes && timeSlotMinutes < endMinutes;
     
     if (result) {
       console.log(`[utils] Found appointment ${block.id} for time slot ${format(timeSlot, 'HH:mm')}`);

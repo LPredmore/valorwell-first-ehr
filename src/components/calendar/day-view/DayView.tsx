@@ -46,10 +46,17 @@ const DayView: React.FC<DayViewProps> = ({
 
   // Enhanced debug logging to help diagnose appointment display issues
   console.log("[DayView] Current date:", format(currentDate, 'yyyy-MM-dd'));
-  console.log("[DayView] Current appointments:", appointments);
+  console.log("[DayView] Current appointments from props:", appointments);
   console.log("[DayView] Processed appointment blocks:", appointmentBlocks);
   console.log("[DayView] TimeBlocks:", timeBlocks);
   console.log("[DayView] Time slots generated:", timeSlots.length);
+
+  // Debug: Check which appointments should be displayed for current date
+  if (appointments.length > 0) {
+    const formattedDate = format(currentDate, 'yyyy-MM-dd');
+    console.log(`[DayView] Appointments for today (${formattedDate}):`, 
+      appointments.filter(apt => apt.date === formattedDate));
+  }
 
   const handleAvailabilityBlockClick = (block: any) => {
     if (!onAvailabilityClick || !block.availabilityIds.length) return;
