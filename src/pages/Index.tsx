@@ -14,8 +14,8 @@ const Index = () => {
       console.log("[Index] User context loaded, determining redirect");
       
       if (userRole === 'clinician') {
-        console.log("[Index] Redirecting clinician to Calendar page");
-        navigate('/calendar');
+        console.log("[Index] Redirecting clinician to Dashboard page");
+        navigate('/clinician-dashboard');
       } else if (userRole === 'client') {
         console.log("[Index] Redirecting client to Patient Dashboard");
         navigate('/patient-dashboard');
