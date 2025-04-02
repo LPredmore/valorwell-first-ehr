@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { format, isToday, isFuture, parseISO, isBefore } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
@@ -70,7 +69,6 @@ export const useAppointments = (userId: string | null) => {
     enabled: !!userId
   });
 
-  // Filter appointments based on date - using UTC date comparison
   const todayAppointments = appointments?.filter(appointment => {
     const appointmentDate = parseISO(appointment.date);
     return isToday(appointmentDate);
@@ -83,7 +81,9 @@ export const useAppointments = (userId: string | null) => {
 
   const pastAppointments = appointments?.filter(appointment => {
     const appointmentDate = parseISO(appointment.date);
-    return isBefore(appointmentDate, new Date()) && !isToday(appointmentDate);
+    return isBefore(appointmentDate, new Date()) && 
+           !isToday(appointmentDate) && 
+           appointment.status === "scheduled";
   }) || [];
 
   const startVideoSession = async (appointment: Appointment) => {
@@ -118,7 +118,6 @@ export const useAppointments = (userId: string | null) => {
     }
   };
 
-  // New function to fetch client data and open session template directly
   const openSessionTemplate = async (appointment: Appointment) => {
     if (!appointment || !appointment.client_id) {
       toast({
@@ -133,7 +132,6 @@ export const useAppointments = (userId: string | null) => {
       setIsLoadingClientData(true);
       setCurrentAppointment(appointment);
       
-      // Fetch full client data
       const { data, error } = await supabase
         .from('clients')
         .select('*')
@@ -144,7 +142,6 @@ export const useAppointments = (userId: string | null) => {
         throw error;
       }
       
-      // Set client data and show session template
       setClientData(data);
       setShowSessionTemplate(true);
     } catch (error) {
