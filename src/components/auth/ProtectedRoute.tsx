@@ -17,13 +17,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   blockNewClients = false
 }) => {
   const { userRole, clientStatus, isLoading } = useUser();
-  const { clinicianId } = useParams();
+  const { clinicianId, clientId } = useParams();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isCheckingUser, setIsCheckingUser] = useState(false);
   
   useEffect(() => {
     const getCurrentUserId = async () => {
-      if (clinicianId) {
+      if (clinicianId || clientId) {
         setIsCheckingUser(true);
         const { data } = await supabase.auth.getUser();
         if (data?.user) {
@@ -34,7 +34,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     };
     
     getCurrentUserId();
-  }, [clinicianId]);
+  }, [clinicianId, clientId]);
   
   if (isLoading || isCheckingUser) {
     return <div className="flex h-screen w-full items-center justify-center">
@@ -63,6 +63,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/profile-setup" replace />;
   }
   
+  // Allow access to the protected route
+  console.log("Access granted to protected route with role:", userRole);
   return <>{children}</>;
 };
 
