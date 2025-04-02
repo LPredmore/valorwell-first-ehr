@@ -1,38 +1,58 @@
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/context/UserContext';
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const [session, setSession] = useState(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { session, isLoading } = useUser();
 
   useEffect(() => {
-    // Only redirect if not loading and no session
-    if (!isLoading && !session) {
-      console.log('No authenticated session found, redirecting to login');
-      navigate('/login');
-    }
-  }, [navigate, session, isLoading]);
+    const checkSession = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error checking session:", error);
+          return;
+        }
+        
+        setSession(data.session);
+        
+        // Set up auth state listener
+        const { data: authListener } = supabase.auth.onAuthStateChange(
+          (event, newSession) => {
+            if (event === 'SIGNED_OUT') {
+              setSession(null);
+              navigate('/login');
+            } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+              setSession(newSession);
+            }
+          }
+        );
+        
+        // Cleanup subscription on unmount
+        return () => {
+          if (authListener && authListener.subscription) {
+            authListener.subscription.unsubscribe();
+          }
+        };
+      } catch (error) {
+        console.error("Exception in checkSession:", error);
+      }
+    };
+    
+    checkSession();
+  }, [navigate]);
 
-  // Show loading state while checking authentication
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-valorwell-600"></div>
-      </div>
-    );
-  }
-
-  // If not loading and we have a session, render the layout
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
