@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,12 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, startOfToday, isBefore, isToday } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import VideoChat from '@/components/video/VideoChat';
-import { 
-  getUserTimeZone,
-  formatTimeZoneDisplay,
-  formatTimeInUserTimeZone, // Fixed: replaced formatInUserTimeZone with formatTimeInUserTimeZone
-  formatTime12Hour
-} from '@/utils/timeZoneUtils';
+import { getUserTimeZone, formatTimeZoneDisplay, formatTimeInUserTimeZone, formatTime12Hour, ensureIANATimeZone } from '@/utils/timeZoneUtils';
 import PHQ9Template from '@/components/templates/PHQ9Template';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -55,7 +49,8 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const {
     toast
   } = useToast();
-  const clientTimeZone = clientData?.client_time_zone || getUserTimeZone();
+
+  const clientTimeZone = ensureIANATimeZone(clientData?.client_time_zone || getUserTimeZone());
 
   useEffect(() => {
     const fetchClinicianData = async () => {
@@ -86,44 +81,38 @@ const MyPortal: React.FC<MyPortalProps> = ({
       try {
         const today = startOfToday();
         const todayStr = format(today, 'yyyy-MM-dd');
-        
         console.log("Fetching appointments for client:", clientData.id);
         console.log("Using time zone:", clientTimeZone);
-        
-        const { data, error } = await supabase
-          .from('appointments')
-          .select('*')
-          .eq('client_id', clientData.id)
-          .eq('status', 'scheduled')
-          .gte('date', todayStr)
-          .order('date', { ascending: true })
-          .order('start_time', { ascending: true });
-
+        const {
+          data,
+          error
+        } = await supabase.from('appointments').select('*').eq('client_id', clientData.id).eq('status', 'scheduled').gte('date', todayStr).order('date', {
+          ascending: true
+        }).order('start_time', {
+          ascending: true
+        });
         if (error) {
           console.error('Error fetching appointments:', error);
           return;
         }
-
         console.log("Appointments data from Supabase:", data);
-
         if (data && data.length > 0) {
           const formattedAppointments = data.map(appointment => {
             try {
               const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
-              
-              // Create the dateTimeString with proper error handling
+
               let formattedTime = '';
               try {
-                formattedTime = formatTimeInUserTimeZone( // Fixed: replaced formatInUserTimeZone with formatTimeInUserTimeZone
-                  appointment.start_time,
-                  clientTimeZone,
-                  'h:mm a'
-                );
+                formattedTime = formatTimeInUserTimeZone(appointment.start_time, clientTimeZone,
+                'h:mm a');
+                console.log(`Formatted time for ${appointment.start_time}: ${formattedTime}`);
               } catch (error) {
-                console.error('Error formatting time:', error);
+                console.error('Error formatting time:', error, {
+                  time: appointment.start_time,
+                  timezone: clientTimeZone
+                });
                 formattedTime = formatTime12Hour(appointment.start_time) || 'Time unavailable';
               }
-              
               return {
                 id: appointment.id,
                 date: formattedDate,
@@ -135,7 +124,6 @@ const MyPortal: React.FC<MyPortalProps> = ({
               };
             } catch (error) {
               console.error('Error processing appointment:', error, appointment);
-              // Return a fallback object to prevent breaking the UI
               return {
                 id: appointment.id,
                 date: 'Date processing error',
@@ -146,7 +134,6 @@ const MyPortal: React.FC<MyPortalProps> = ({
               };
             }
           });
-          
           console.log("Formatted appointments:", formattedAppointments);
           setUpcomingAppointments(formattedAppointments);
         } else {
@@ -162,9 +149,8 @@ const MyPortal: React.FC<MyPortalProps> = ({
         });
       }
     };
-    
     fetchAppointments();
-  }, [clientData, clinicianName, refreshAppointments, clientTimeZone]);
+  }, [clientData, clinicianName, refreshAppointments, clientTimeZone, toast]);
 
   const isAppointmentToday = (rawDate: string | undefined | null): boolean => {
     if (!rawDate) return false;
@@ -226,18 +212,20 @@ const MyPortal: React.FC<MyPortalProps> = ({
   };
 
   const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);
+  const todayAppointments = upcomingAppointments.filter(appointment => isAppointmentToday(appointment.rawDate));
+  const futureAppointments = upcomingAppointments.filter(appointment => !isAppointmentToday(appointment.rawDate));
 
   return <div className="grid grid-cols-1 gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
-            <CardTitle>Upcoming Appointments</CardTitle>
-            <CardDescription>Your scheduled sessions</CardDescription>
+            <CardTitle>Today's Appointments</CardTitle>
+            <CardDescription>Sessions scheduled for today</CardDescription>
           </div>
-          <Calendar className="h-5 w-5 text-valorwell-600" />
+          
         </CardHeader>
         <CardContent>
-          {upcomingAppointments.length > 0 ? <Table>
+          {todayAppointments.length > 0 ? <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
@@ -248,43 +236,33 @@ const MyPortal: React.FC<MyPortalProps> = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {upcomingAppointments.map(appointment => <TableRow key={appointment.id}>
+                {todayAppointments.map(appointment => <TableRow key={appointment.id}>
                     <TableCell>{appointment.date}</TableCell>
                     <TableCell>{appointment.time}</TableCell>
                     <TableCell>{appointment.type}</TableCell>
                     <TableCell>{appointment.therapist}</TableCell>
                     <TableCell className="text-right">
-                      {isAppointmentToday(appointment.rawDate) ? (
-                        <Button variant="outline" size="sm" onClick={() => handleStartSession(appointment.id)} disabled={isLoadingVideoSession}>
-                          {isLoadingVideoSession ? "Loading..." : "Start Session"}
-                        </Button>
-                      ) : (
-                        <span className="text-sm text-gray-500">Available on session day</span>
-                      )}
+                      <Button variant="outline" size="sm" onClick={() => handleStartSession(appointment.id)} disabled={isLoadingVideoSession}>
+                        {isLoadingVideoSession ? "Loading..." : "Start Session"}
+                      </Button>
                     </TableCell>
                   </TableRow>)}
               </TableBody>
             </Table> : <div className="flex flex-col items-center justify-center py-6 text-center">
               <Calendar className="h-12 w-12 text-gray-300 mb-3" />
-              <h3 className="text-lg font-medium">No upcoming appointments</h3>
-              <p className="text-sm text-gray-500 mt-1">Schedule a session with your therapist</p>
-              <Button className="mt-4" onClick={() => setIsBookingOpen(true)}>
-                Book Appointment
-              </Button>
+              <h3 className="text-lg font-medium">No appointments today</h3>
+              <p className="text-sm text-gray-500 mt-1">Check your upcoming appointments below</p>
             </div>}
         </CardContent>
-        <CardFooter className="flex justify-between">
-          <Button variant="ghost" size="sm">View All Appointments</Button>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Your Therapist</CardTitle>
           <Button variant="outline" size="sm" onClick={() => setIsBookingOpen(true)}>
             <CalendarIcon className="mr-2 h-4 w-4" />
             Book New Appointment
           </Button>
-        </CardFooter>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Therapist</CardTitle>
         </CardHeader>
         <CardContent>
           {clientData && clientData.client_assigned_therapist && clinicianData ? <div className="bg-gray-50 p-4 rounded-md mb-4">
@@ -310,6 +288,48 @@ const MyPortal: React.FC<MyPortalProps> = ({
               </p>
             </div>}
         </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div>
+            <CardTitle>Upcoming Appointments</CardTitle>
+            <CardDescription>Your scheduled sessions</CardDescription>
+          </div>
+          
+        </CardHeader>
+        <CardContent>
+          {futureAppointments.length > 0 ? <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Time <span className="text-xs text-gray-500">({timeZoneDisplay})</span></TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Therapist</TableHead>
+                  
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {futureAppointments.map(appointment => <TableRow key={appointment.id}>
+                    <TableCell>{appointment.date}</TableCell>
+                    <TableCell>{appointment.time}</TableCell>
+                    <TableCell>{appointment.type}</TableCell>
+                    <TableCell>{appointment.therapist}</TableCell>
+                    
+                  </TableRow>)}
+              </TableBody>
+            </Table> : <div className="flex flex-col items-center justify-center py-6 text-center">
+              <Calendar className="h-12 w-12 text-gray-300 mb-3" />
+              <h3 className="text-lg font-medium">No upcoming appointments</h3>
+              <p className="text-sm text-gray-500 mt-1">Schedule a session with your therapist</p>
+              <Button className="mt-4" onClick={() => setIsBookingOpen(true)}>
+                Book Appointment
+              </Button>
+            </div>}
+        </CardContent>
+        <CardFooter className="flex justify-between">
+          
+        </CardFooter>
       </Card>
 
       <AppointmentBookingDialog open={isBookingOpen} onOpenChange={setIsBookingOpen} clinicianId={clientData?.client_assigned_therapist || null} clinicianName={clinicianName} clientId={clientData?.id || null} onAppointmentBooked={handleBookingComplete} />

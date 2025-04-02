@@ -21,6 +21,7 @@ import InsuranceTab from "@/components/client/InsuranceTab";
 import TreatmentTab from "@/components/client/TreatmentTab";
 import DocumentationTab from "@/components/client/DocumentationTab";
 import { ClientDetails as ClientDetailsType, Clinician } from "@/types/client";
+import { useUser } from "@/context/UserContext";
 
 const ClientDetails = () => {
   const { clientId } = useParams();
@@ -32,6 +33,7 @@ const ClientDetails = () => {
   const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("personal");
+  const { userRole } = useUser();
 
   useEffect(() => {
     const fetchClient = async () => {
@@ -333,6 +335,8 @@ const ClientDetails = () => {
     );
   }
 
+  const isRestrictedRole = userRole === "clinician" || userRole === "client";
+
   return (
     <Layout>
       <div className="mb-6 flex justify-between items-center">
@@ -363,10 +367,12 @@ const ClientDetails = () => {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSaveChanges)}>
           <Tabs defaultValue="personal" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-4 mb-4">
+            <TabsList className={`grid ${isRestrictedRole ? 'grid-cols-3' : 'grid-cols-4'} mb-4`}>
               <TabsTrigger value="personal">Personal Info</TabsTrigger>
               <TabsTrigger value="insurance">Insurance</TabsTrigger>
-              <TabsTrigger value="treatment">Treatment</TabsTrigger>
+              {!isRestrictedRole && (
+                <TabsTrigger value="treatment">Treatment</TabsTrigger>
+              )}
               <TabsTrigger value="documentation">Documentation</TabsTrigger>
             </TabsList>
 
@@ -375,6 +381,8 @@ const ClientDetails = () => {
                 isEditing={isEditing} 
                 form={form} 
                 clientData={clientData}
+                handleAddDiagnosis={handleAddDiagnosis}
+                handleRemoveDiagnosis={handleRemoveDiagnosis}
               />
             </TabsContent>
 
@@ -386,16 +394,16 @@ const ClientDetails = () => {
               />
             </TabsContent>
 
-            <TabsContent value="treatment">
-              <TreatmentTab 
-                isEditing={isEditing} 
-                form={form} 
-                clientData={clientData}
-                clinicians={clinicians}
-                handleAddDiagnosis={handleAddDiagnosis}
-                handleRemoveDiagnosis={handleRemoveDiagnosis}
-              />
-            </TabsContent>
+            {!isRestrictedRole && (
+              <TabsContent value="treatment">
+                <TreatmentTab 
+                  isEditing={isEditing} 
+                  form={form} 
+                  clientData={clientData}
+                  clinicians={clinicians}
+                />
+              </TabsContent>
+            )}
 
             <TabsContent value="documentation">
               <DocumentationTab clientData={clientData} />

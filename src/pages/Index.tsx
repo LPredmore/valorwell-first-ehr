@@ -8,21 +8,38 @@ const Index = () => {
   const { userRole, isLoading } = useUser();
 
   useEffect(() => {
+    console.log("[Index] Index page mounted, isLoading:", isLoading, "userRole:", userRole);
+    
     if (!isLoading) {
+      console.log("[Index] User context loaded, determining redirect");
+      
       if (userRole === 'clinician') {
-        // Redirect clinicians to Calendar page
-        navigate('/calendar');
+        console.log("[Index] Redirecting clinician to Dashboard page");
+        navigate('/clinician-dashboard');
       } else if (userRole === 'client') {
-        // Redirect clients to their dashboard
+        console.log("[Index] Redirecting client to Patient Dashboard");
         navigate('/patient-dashboard');
       } else {
-        // Redirect admins/moderators to Calendar page (default behavior)
+        console.log("[Index] Redirecting other role to Calendar page (default)");
         navigate('/calendar');
       }
+    } else {
+      console.log("[Index] Still loading user data, waiting before redirect");
     }
   }, [navigate, userRole, isLoading]);
 
-  return null;
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        {isLoading ? (
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+            <p className="text-gray-600">Loading user data...</p>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 };
 
 export default Index;
