@@ -183,9 +183,8 @@ const MonthView: React.FC<MonthViewProps> = ({
         
         isModified = modifiedExceptions.length > 0;
         
-        // Generate display hours - specifically set to 6:00 AM to 10:00 PM time range
+        // Generate display hours (6:00 AM to 10:00 PM time range)
         if (hasAvailability) {
-          // Set fixed range for display - 6:00 AM to 10:00 PM
           const earliestHour = 6; // 6:00 AM
           const latestHour = 22; // 10:00 PM
           
@@ -201,7 +200,6 @@ const MonthView: React.FC<MonthViewProps> = ({
             }
           }
           
-          // Format the time displays
           const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${firstAvailableSlot}`));
           const endHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${lastAvailableSlot}`));
           
