@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { useMonthViewData } from './useMonthViewData';
 import CalendarGrid from './CalendarGrid';
 import WeekView from './week-view';
+import { TimeBlock } from './week-view/useWeekViewData'; 
 
 interface Appointment {
   id: string;
@@ -33,7 +34,7 @@ interface MonthViewProps {
   appointments?: Appointment[];
   getClientName?: (clientId: string) => string;
   onAppointmentClick?: (appointment: Appointment) => void;
-  onAvailabilityClick?: (date: Date, availabilityBlock: AvailabilityBlock) => void;
+  onAvailabilityClick?: (date: Date, availabilityBlock: AvailabilityBlock | TimeBlock) => void;
   userTimeZone?: string;
   weekViewMode?: boolean;
 }
@@ -75,7 +76,8 @@ const MonthView: React.FC<MonthViewProps> = ({
         appointments={appointments}
         getClientName={getClientName}
         onAppointmentClick={onAppointmentClick}
-        onAvailabilityClick={onAvailabilityClick}
+        onAvailabilityClick={onAvailabilityClick as (day: Date, block: TimeBlock) => void}
+        userTimeZone={userTimeZone}
       />
     );
   }
