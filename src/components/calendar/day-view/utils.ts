@@ -1,4 +1,3 @@
-
 import { format, addMinutes, startOfDay, setHours, setMinutes, differenceInMinutes, parseISO, isSameDay } from 'date-fns';
 import { 
   AvailabilityBlock, 
@@ -158,16 +157,16 @@ export const getAppointmentForTimeSlot = (
   // Enhanced debugging for time slot checking
   console.log("[utils] Checking appointment for time slot:", format(timeSlot, 'HH:mm'));
   
-  if (appointmentBlocks.length > 0) {
-    console.log("[utils] Available appointment blocks:", appointmentBlocks.map(block => ({
-      id: block.id,
-      start: format(block.start, 'HH:mm'),
-      end: format(block.end, 'HH:mm')
-    })));
-  } else {
+  if (appointmentBlocks.length === 0) {
     console.log("[utils] No appointment blocks available");
     return undefined;
   }
+  
+  console.log("[utils] Available appointment blocks:", appointmentBlocks.map(block => ({
+    id: block.id,
+    start: format(block.start, 'HH:mm'),
+    end: format(block.end, 'HH:mm')
+  })));
   
   // Fix: Compare timeSlot with appointment block timing properly
   const appointment = appointmentBlocks.find(block => {
