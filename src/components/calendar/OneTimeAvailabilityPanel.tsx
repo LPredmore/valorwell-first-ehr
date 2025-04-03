@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Calendar, Clock, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { format, addDays, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { 
   Dialog, 
   DialogContent, 
@@ -14,15 +15,8 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-
-interface OneTimeAvailabilityBlock {
-  id: string;
-  specific_date: string;
-  start_time: string;
-  end_time: string;
-  clinician_id: string;
-  is_deleted: boolean;
-}
+import { OneTimeBlockType } from './availability-edit/types';
+import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
 interface OneTimeAvailabilityPanelProps {
   clinicianId: string | null;
@@ -33,10 +27,10 @@ interface OneTimeAvailabilityPanelProps {
 const OneTimeAvailabilityPanel: React.FC<OneTimeAvailabilityPanelProps> = ({
   clinicianId,
   onAvailabilityUpdated,
-  userTimeZone
+  userTimeZone = 'America/Chicago'
 }) => {
   const { toast } = useToast();
-  const [oneTimeBlocks, setOneTimeBlocks] = useState<OneTimeAvailabilityBlock[]>([]);
+  const [oneTimeBlocks, setOneTimeBlocks] = useState<OneTimeBlockType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddBlockDialogOpen, setIsAddBlockDialogOpen] = useState(false);
   
@@ -44,6 +38,9 @@ const OneTimeAvailabilityPanel: React.FC<OneTimeAvailabilityPanelProps> = ({
   const [selectedDate, setSelectedDate] = useState('');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('17:00');
+  
+  // Ensure we have a valid timezone
+  const safeTimeZone = ensureIANATimeZone(userTimeZone);
   
   useEffect(() => {
     if (clinicianId) {
@@ -68,6 +65,7 @@ const OneTimeAvailabilityPanel: React.FC<OneTimeAvailabilityPanelProps> = ({
         throw error;
       }
       
+      console.log('Fetched one-time blocks:', data);
       setOneTimeBlocks(data || []);
     } catch (error) {
       console.error('Error:', error);
@@ -160,15 +158,34 @@ const OneTimeAvailabilityPanel: React.FC<OneTimeAvailabilityPanelProps> = ({
     }
   };
   
-  // Function to format time for display
+  // Function to format time for display with timezone awareness
   const formatTime = (timeString: string) => {
     if (!timeString) return '';
-    const [hours, minutes] = timeString.split(':');
-    return format(new Date(0, 0, 0, parseInt(hours), parseInt(minutes)), 'h:mm a');
+    
+    try {
+      // Create a date object for today with the given time
+      const [hours, minutes] = timeString.split(':').map(Number);
+      const date = new Date();
+      date.setHours(hours, minutes, 0, 0);
+      
+      return formatInTimeZone(date, safeTimeZone, 'h:mm a');
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return timeString;
+    }
   };
 
+  // Format date with timezone consideration
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'MMM d, yyyy');
+    try {
+      // Parse the ISO date string
+      const date = parseISO(dateString);
+      // Format the date in the user's timezone
+      return formatInTimeZone(date, safeTimeZone, 'MMM d, yyyy');
+    } catch (error) {
+      console.error('Error formatting date:', error, dateString);
+      return dateString;
+    }
   };
 
   const handleAddBlock = () => {

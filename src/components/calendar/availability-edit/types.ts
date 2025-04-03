@@ -26,3 +26,12 @@ export interface TimeInputProps {
   onChange: (value: string) => void;
   timeOptions: TimeOption[];
 }
+
+export interface OneTimeBlockType {
+  id: string;
+  specific_date: string;
+  start_time: string;
+  end_time: string;
+  clinician_id: string;
+  is_deleted: boolean;
+}
