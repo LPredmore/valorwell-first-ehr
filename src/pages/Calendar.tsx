@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,6 +14,7 @@ import FullCalendarView from '@/components/calendar/FullCalendarView';
 import AvailabilitySettingsDialog from '@/components/calendar/AvailabilitySettingsDialog';
 import EnhancedAvailabilityPanel from '@/components/calendar/EnhancedAvailabilityPanel';
 import { useAppointments } from '@/hooks/useAppointments';
+import { ClientDetails } from '@/types/client';
 
 const CalendarPage = () => {
   const {
@@ -73,7 +75,7 @@ const CalendarPage = () => {
   };
 
   const getClientName = (clientId: string) => {
-    const client = clients?.find(c => c.id === clientId);
+    const client = clients?.find(c => c.id === clientId) as ClientDetails | undefined;
     return client ? `${client.client_first_name || ''} ${client.client_last_name || ''}`.trim() || 'Client' : 'Client';
   };
 
