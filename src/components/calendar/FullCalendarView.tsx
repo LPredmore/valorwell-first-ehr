@@ -179,7 +179,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         console.error('Error fetching availability:', availabilityError);
         setAvailabilityEvents([]);
       } else {
-        // Fetch all exceptions, including deleted ones
+        // Fetch all exceptions
         const { data: exceptionsData, error: exceptionsError } = await supabase
           .from('availability_exceptions')
           .select('*')
@@ -304,7 +304,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
       Object.keys(exceptionsForBlock).forEach(dateStr => {
         // Check if there's a deleted exception or an active exception
         const hasExceptionForDate = exceptionsForBlock[dateStr].some(exc => 
-          !exc.is_deleted || (exc.is_deleted && exc.start_time && exc.end_time)
+          true  // Every exception is added to the excludeDates list
         );
         
         if (hasExceptionForDate) {
@@ -444,21 +444,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
   
   // Process events to ensure recurring events are not shown on dates with exceptions
   const processEvents = (events: any[]) => {
-    // Create a lookup map of dates to exclude for each recurring event
-    const excludeMap = new Map<string, Set<string>>();
-    
-    // First pass: collect all exclude dates
-    events.forEach(event => {
-      if (event.extendedProps?.type === 'availability' && 
-          event.extendedProps?.excludeDates?.length) {
-        excludeMap.set(event.id, new Set(event.extendedProps.excludeDates));
-      }
-    });
-    
-    console.log('Exclude map for recurring events:', Object.fromEntries([...excludeMap.entries()]));
-    
-    // Filter events to prevent recurring events from showing on excluded dates
-    return events;
+    return events;  // Now we handle exclusion in eventContent rendering
   };
   
   const allEvents = processEvents([...events, ...availabilityEvents]);
@@ -483,7 +469,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
             const excludeDates = event.extendedProps.excludeDates || [];
             
             if (excludeDates.includes(eventDate)) {
-              return null;
+              return { html: '' };  // Return empty content to hide the event
             }
           }
           
