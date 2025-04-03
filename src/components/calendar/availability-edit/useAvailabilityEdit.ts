@@ -71,6 +71,33 @@ export const useAvailabilityEdit = (
     saveChanges('series');
   };
 
+  // Helper function to check if an exception already exists
+  const checkExistingException = async (specificDateStr: string, originalAvailabilityId: string | null = null) => {
+    if (!clinicianId) return null;
+    
+    try {
+      let query = supabase
+        .from('availability_exceptions')
+        .select('*')
+        .eq('clinician_id', clinicianId)
+        .eq('specific_date', specificDateStr);
+      
+      if (originalAvailabilityId) {
+        query = query.eq('original_availability_id', originalAvailabilityId);
+      } else {
+        query = query.is('original_availability_id', null);
+      }
+      
+      const { data, error } = await query.maybeSingle();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    } catch (error) {
+      console.error('Error checking for existing exception:', error);
+      return null;
+    }
+  };
+
   const saveChanges = async (mode: 'single' | 'series') => {
     if (!specificDate || !clinicianId) return;
     
@@ -80,7 +107,7 @@ export const useAvailabilityEdit = (
     try {
       if (mode === 'single') {
         if (isRecurring && !isException) {
-          // Create an exception to the recurring availability
+          // Create or update an exception to the recurring availability
           console.log('Creating exception for recurring availability:', {
             clinicianId,
             specificDate: specificDateStr,
@@ -89,20 +116,38 @@ export const useAvailabilityEdit = (
             endTime
           });
           
-          const { data, error } = await supabase
-            .from('availability_exceptions')
-            .insert({
-              clinician_id: clinicianId,
-              specific_date: specificDateStr,
-              original_availability_id: availabilityBlock.id,
-              start_time: `${startTime}:00`,
-              end_time: `${endTime}:00`,
-              is_deleted: false
-            });
-            
-          if (error) throw error;
-          console.log('Exception created successfully:', data);
-          toast.success("Availability updated for this occurrence only");
+          // Check if an exception already exists
+          const existingException = await checkExistingException(specificDateStr, availabilityBlock.id);
+          
+          if (existingException) {
+            // Update existing exception
+            const { error } = await supabase
+              .from('availability_exceptions')
+              .update({
+                start_time: `${startTime}:00`,
+                end_time: `${endTime}:00`,
+                is_deleted: false
+              })
+              .eq('id', existingException.id);
+              
+            if (error) throw error;
+            toast.success("Updated existing modified availability");
+          } else {
+            // Create new exception
+            const { error } = await supabase
+              .from('availability_exceptions')
+              .insert({
+                clinician_id: clinicianId,
+                specific_date: specificDateStr,
+                original_availability_id: availabilityBlock.id,
+                start_time: `${startTime}:00`,
+                end_time: `${endTime}:00`,
+                is_deleted: false
+              });
+              
+            if (error) throw error;
+            toast.success("Availability updated for this occurrence only");
+          }
         } else if (isException) {
           // Update an existing exception
           console.log('Updating existing exception:', {
@@ -111,7 +156,7 @@ export const useAvailabilityEdit = (
             endTime
           });
           
-          const { data, error } = await supabase
+          const { error } = await supabase
             .from('availability_exceptions')
             .update({
               start_time: `${startTime}:00`,
@@ -121,7 +166,6 @@ export const useAvailabilityEdit = (
             .eq('id', availabilityBlock.id);
             
           if (error) throw error;
-          console.log('Exception updated successfully:', data);
           toast.success("Modified availability updated");
         } else if (isStandalone) {
           // Update a standalone one-time availability
@@ -131,7 +175,7 @@ export const useAvailabilityEdit = (
             endTime
           });
           
-          const { data, error } = await supabase
+          const { error } = await supabase
             .from('availability_exceptions')
             .update({
               start_time: `${startTime}:00`,
@@ -141,7 +185,6 @@ export const useAvailabilityEdit = (
             .eq('id', availabilityBlock.id);
             
           if (error) throw error;
-          console.log('Standalone availability updated successfully:', data);
           toast.success("One-time availability updated");
         } else {
           // Create a new one-time availability
@@ -152,20 +195,38 @@ export const useAvailabilityEdit = (
             endTime
           });
           
-          const { data, error } = await supabase
-            .from('availability_exceptions')
-            .insert({
-              clinician_id: clinicianId,
-              specific_date: specificDateStr,
-              original_availability_id: null,
-              start_time: `${startTime}:00`,
-              end_time: `${endTime}:00`,
-              is_deleted: false
-            });
-            
-          if (error) throw error;
-          console.log('One-time availability created successfully:', data);
-          toast.success("New one-time availability created");
+          // Check if a standalone availability already exists
+          const existingAvailability = await checkExistingException(specificDateStr);
+          
+          if (existingAvailability) {
+            // Update existing standalone availability
+            const { error } = await supabase
+              .from('availability_exceptions')
+              .update({
+                start_time: `${startTime}:00`,
+                end_time: `${endTime}:00`,
+                is_deleted: false
+              })
+              .eq('id', existingAvailability.id);
+              
+            if (error) throw error;
+            toast.success("Existing one-time availability updated");
+          } else {
+            // Create new standalone availability
+            const { error } = await supabase
+              .from('availability_exceptions')
+              .insert({
+                clinician_id: clinicianId,
+                specific_date: specificDateStr,
+                original_availability_id: null,
+                start_time: `${startTime}:00`,
+                end_time: `${endTime}:00`,
+                is_deleted: false
+              });
+              
+            if (error) throw error;
+            toast.success("New one-time availability created");
+          }
         }
       } else if (mode === 'series' && isRecurring) {
         // Update the recurring series
@@ -175,7 +236,7 @@ export const useAvailabilityEdit = (
           endTime
         });
         
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('availability')
           .update({
             start_time: `${startTime}:00`,
@@ -184,7 +245,6 @@ export const useAvailabilityEdit = (
           .eq('id', availabilityBlock.id);
           
         if (error) throw error;
-        console.log('Recurring series updated successfully:', data);
         toast.success("All recurring availabilities updated");
       }
       
@@ -217,19 +277,37 @@ export const useAvailabilityEdit = (
           originalAvailabilityId: availabilityBlock.id
         });
         
-        const { data, error } = await supabase
-          .from('availability_exceptions')
-          .insert({
-            clinician_id: clinicianId,
-            specific_date: specificDateStr,
-            original_availability_id: availabilityBlock.id,
-            start_time: null,
-            end_time: null,
-            is_deleted: true
-          });
-          
-        if (error) throw error;
-        console.log('Deletion exception created successfully:', data);
+        // Check if an exception already exists
+        const existingException = await checkExistingException(specificDateStr, availabilityBlock.id);
+        
+        if (existingException) {
+          // Update existing exception to mark as deleted
+          const { error } = await supabase
+            .from('availability_exceptions')
+            .update({
+              start_time: null,
+              end_time: null,
+              is_deleted: true
+            })
+            .eq('id', existingException.id);
+            
+          if (error) throw error;
+        } else {
+          // Create new deletion exception
+          const { error } = await supabase
+            .from('availability_exceptions')
+            .insert({
+              clinician_id: clinicianId,
+              specific_date: specificDateStr,
+              original_availability_id: availabilityBlock.id,
+              start_time: null,
+              end_time: null,
+              is_deleted: true
+            });
+            
+          if (error) throw error;
+        }
+        
         toast.success("Availability cancelled for this occurrence only");
       } else if (isException || isStandalone) {
         // Delete the exception or standalone availability
@@ -237,13 +315,12 @@ export const useAvailabilityEdit = (
           id: availabilityBlock.id
         });
         
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('availability_exceptions')
           .update({ is_deleted: true })
           .eq('id', availabilityBlock.id);
           
         if (error) throw error;
-        console.log('Exception/standalone availability deleted successfully:', data);
         
         if (isException) {
           toast.success("Modified availability cancelled");
