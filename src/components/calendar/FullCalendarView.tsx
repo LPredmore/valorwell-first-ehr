@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -78,6 +79,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
   const [availabilityEvents, setAvailabilityEvents] = useState<any[]>([]);
   const [settings, setSettings] = useState<AvailabilitySettings | null>(null);
   const [timeOffBlocks, setTimeOffBlocks] = useState<TimeOffBlock[]>([]);
+  const [oneTimeAvailability, setOneTimeAvailability] = useState<any[]>([]);
 
   useEffect(() => {
     if (clinicianId) {
@@ -167,6 +169,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     }
     
     try {
+      // Fetch regular weekly availability
       const { data: availabilityData, error: availabilityError } = await supabase
         .from('availability')
         .select('*')
@@ -177,7 +180,21 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         console.error('Error fetching availability:', availabilityError);
         setAvailabilityEvents([]);
       } else {
-        const availEvents = createAvailabilityEvents(availabilityData || []);
+        // Fetch one-time availability exceptions
+        const { data: oneTimeData, error: oneTimeError } = await supabase
+          .from('availability_exceptions')
+          .select('*')
+          .eq('clinician_id', clinicianId)
+          .eq('is_deleted', false);
+          
+        if (oneTimeError) {
+          console.error('Error fetching one-time availability:', oneTimeError);
+          setOneTimeAvailability([]);
+        } else {
+          setOneTimeAvailability(oneTimeData || []);
+        }
+        
+        const availEvents = createAvailabilityEvents(availabilityData || [], oneTimeData || []);
         setAvailabilityEvents(availEvents);
       }
     } catch (error) {
@@ -188,7 +205,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     }
   };
   
-  const createAvailabilityEvents = (availabilityBlocks: AvailabilityBlock[]) => {
+  const createAvailabilityEvents = (availabilityBlocks: AvailabilityBlock[], oneTimeBlocks: any[]) => {
     if (!settings) return [];
     
     const dayOfWeekMap: {[key: string]: number} = {
@@ -203,6 +220,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     
     const availabilityEvents: any[] = [];
     
+    // Process weekly recurring availability
     availabilityBlocks.forEach(block => {
       const dowNumber = dayOfWeekMap[block.day_of_week];
       
@@ -239,6 +257,36 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
       });
     });
     
+    // Process one-time availability
+    oneTimeBlocks.forEach(block => {
+      const timeSlots = getTimeSlots(block.start_time, block.end_time, settings);
+      
+      timeSlots.forEach(slot => {
+        const event = {
+          id: `onetime-${block.id}-${slot.start}`,
+          title: 'One-Time Available',
+          start: `${block.specific_date}T${slot.start}`,
+          end: `${block.specific_date}T${slot.end}`,
+          extendedProps: {
+            type: 'one-time-availability',
+            availabilityData: {
+              ...block,
+              start_time: slot.start,
+              end_time: slot.end
+            }
+          },
+          backgroundColor: '#0ea5e9',
+          borderColor: '#0284c7',
+          textColor: '#ffffff',
+          display: 'block',
+          overlap: false
+        };
+        
+        availabilityEvents.push(event);
+      });
+    });
+    
+    // Add time off blocks
     timeOffBlocks.forEach(block => {
       const startDate = new Date(block.start_date);
       const endDate = new Date(block.end_date);
@@ -322,7 +370,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     
     if (eventType === 'appointment' && onAppointmentClick) {
       onAppointmentClick(info.event.extendedProps.appointmentData);
-    } else if (eventType === 'availability' && onAvailabilityClick) {
+    } else if ((eventType === 'availability' || eventType === 'one-time-availability') && onAvailabilityClick) {
       const date = info.event.start;
       
       if (!isDateInTimeOff(date)) {

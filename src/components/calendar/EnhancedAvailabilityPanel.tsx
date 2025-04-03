@@ -7,6 +7,7 @@ import { Plus, Clock, Calendar } from 'lucide-react';
 import TimeOffDialog from './TimeOffDialog';
 import TimeOffBlocksList from './TimeOffBlocksList';
 import AvailabilityPanel from './AvailabilityPanel';
+import OneTimeAvailabilityPanel from './OneTimeAvailabilityPanel';
 
 interface EnhancedAvailabilityPanelProps {
   clinicianId: string | null;
@@ -34,9 +35,9 @@ const EnhancedAvailabilityPanel: React.FC<EnhancedAvailabilityPanelProps> = ({
               <Clock className="h-4 w-4 mr-2" />
               Weekly Hours
             </TabsTrigger>
-            <TabsTrigger value="timeoff" className="flex-1">
+            <TabsTrigger value="onetime" className="flex-1">
               <Calendar className="h-4 w-4 mr-2" />
-              Time Off
+              One-Time Hours
             </TabsTrigger>
           </TabsList>
           
@@ -48,34 +49,15 @@ const EnhancedAvailabilityPanel: React.FC<EnhancedAvailabilityPanelProps> = ({
             />
           </TabsContent>
           
-          <TabsContent value="timeoff" className="mt-0">
-            <div className="space-y-4">
-              <div className="flex justify-end">
-                <Button 
-                  onClick={() => setIsTimeOffDialogOpen(true)}
-                  size="sm"
-                  className="flex items-center"
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Time Off
-                </Button>
-              </div>
-              
-              <TimeOffBlocksList 
-                clinicianId={clinicianId} 
-                onTimeOffUpdated={onAvailabilityUpdated} 
-              />
-            </div>
+          <TabsContent value="onetime" className="mt-0">
+            <OneTimeAvailabilityPanel
+              clinicianId={clinicianId}
+              onAvailabilityUpdated={onAvailabilityUpdated}
+              userTimeZone={userTimeZone}
+            />
           </TabsContent>
         </Tabs>
       </CardContent>
-
-      <TimeOffDialog 
-        isOpen={isTimeOffDialogOpen} 
-        onClose={() => setIsTimeOffDialogOpen(false)} 
-        clinicianId={clinicianId}
-        onTimeOffUpdated={onAvailabilityUpdated}
-      />
     </Card>
   );
 };
