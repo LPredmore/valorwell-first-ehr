@@ -271,7 +271,7 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
           Cancel
         </Button>
         <Button onClick={handleSubmit} disabled={isSaving}>
-          {isSaving ? "Saving..." : "Save Assessment"}
+          {isSaving ? "Saving..." : "Start Session"}
         </Button>
       </div>
     </Form>
