@@ -1,6 +1,6 @@
 
-import { format, parseISO, startOfDay, setHours, setMinutes } from 'date-fns';
-import { TimeBlock, AppointmentBlockType } from './types/availability-types';
+import { differenceInMinutes, addMinutes } from 'date-fns';
+import { TimeBlock, AppointmentBlock } from './useWeekViewData';
 
 // Helper function to convert hours and minutes to total minutes
 export const timeToMinutes = (hours: number, minutes: number): number => {
@@ -9,9 +9,9 @@ export const timeToMinutes = (hours: number, minutes: number): number => {
 
 // Helper function to check for overlapping appointments
 export const getOverlappingAppointments = (
-  appointment: AppointmentBlockType,
-  appointments: AppointmentBlockType[]
-): AppointmentBlockType[] => {
+  appointment: AppointmentBlock,
+  appointments: AppointmentBlock[]
+): AppointmentBlock[] => {
   return appointments.filter(app => {
     if (app.id === appointment.id) return false;
     

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { format } from 'date-fns';
-import { TimeBlock } from './types/availability-types';
+import { TimeBlock } from './useWeekViewData';
 import { Clock, Edit } from 'lucide-react';
 
 interface AvailabilityBlockProps {
