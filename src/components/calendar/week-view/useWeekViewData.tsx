@@ -48,6 +48,9 @@ interface TimeBlock {
   availabilityIds: string[];
   isException?: boolean;
   isStandalone?: boolean;
+  // Add these properties to fix the TypeScript errors
+  id: string;
+  originalAvailabilityId?: string | null;
 }
 
 interface AppointmentBlock {
@@ -285,7 +288,8 @@ export const useWeekViewData = (
           start,
           end,
           isException: block.isException,
-          isStandalone: block.isStandalone
+          isStandalone: block.isStandalone,
+          originalAvailabilityId: block.isException && !block.isStandalone ? block.id : null
         };
       });
 
@@ -307,6 +311,10 @@ export const useWeekViewData = (
           if (block.isStandalone) {
             lastBlock.isStandalone = true;
           }
+          // Make sure to preserve the original ID
+          if (!lastBlock.originalAvailabilityId && block.originalAvailabilityId) {
+            lastBlock.originalAvailabilityId = block.originalAvailabilityId;
+          }
         } else {
           mergedBlocks.push({
             day: block.day,
@@ -314,7 +322,9 @@ export const useWeekViewData = (
             end: block.end,
             availabilityIds: [block.id],
             isException: block.isException,
-            isStandalone: block.isStandalone
+            isStandalone: block.isStandalone,
+            id: block.id,
+            originalAvailabilityId: block.originalAvailabilityId
           });
         }
       });
