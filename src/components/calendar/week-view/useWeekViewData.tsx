@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -73,7 +72,6 @@ export const useWeekViewData = (
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
 
-  // Process appointments into blocks
   useEffect(() => {
     if (!appointments.length) {
       setAppointmentBlocks([]);
@@ -116,7 +114,6 @@ export const useWeekViewData = (
     setAppointmentBlocks(blocks);
   }, [appointments, getClientName]);
 
-  // Fetch availability and exceptions
   useEffect(() => {
     const fetchAvailability = async () => {
       setLoading(true);
@@ -226,7 +223,6 @@ export const useWeekViewData = (
     fetchAvailability();
   }, [clinicianId, refreshTrigger, days]);
 
-  // Process availability data with exceptions
   const processAvailabilityWithExceptions = (blocks: AvailabilityBlock[], exceptionsData: AvailabilityException[]) => {
     const allTimeBlocks: TimeBlock[] = [];
 
@@ -238,17 +234,21 @@ export const useWeekViewData = (
       const dayBlocks = blocks
         .filter(block => block.day_of_week === dayOfWeek)
         .filter(block => {
-          const exception = exceptionsForDay.find(e => e.original_availability_id === block.id);
-          return !exception || !exception.is_deleted;
+          const deletionException = exceptionsForDay.find(
+            e => e.original_availability_id === block.id && e.is_deleted
+          );
+          return !deletionException;
         })
         .map(block => {
-          const exception = exceptionsForDay.find(e => e.original_availability_id === block.id);
+          const modificationException = exceptionsForDay.find(
+            e => e.original_availability_id === block.id && !e.is_deleted && e.start_time && e.end_time
+          );
           
-          if (exception && exception.start_time && exception.end_time) {
+          if (modificationException) {
             return {
               ...block,
-              start_time: exception.start_time,
-              end_time: exception.end_time,
+              start_time: modificationException.start_time,
+              end_time: modificationException.end_time,
               isException: true
             };
           }
@@ -285,47 +285,19 @@ export const useWeekViewData = (
           start,
           end,
           isException: block.isException,
-          isStandalone: block.isStandalone
+          isStandalone: block.isStandalone,
+          availabilityIds: [block.id]
         };
       });
 
       parsedBlocks.sort((a, b) => a.start.getTime() - b.start.getTime());
 
-      const mergedBlocks: TimeBlock[] = [];
-
-      parsedBlocks.forEach(block => {
-        const lastBlock = mergedBlocks[mergedBlocks.length - 1];
-
-        if (lastBlock && block.start <= lastBlock.end) {
-          if (block.end > lastBlock.end) {
-            lastBlock.end = block.end;
-          }
-          lastBlock.availabilityIds.push(block.id);
-          if (block.isException) {
-            lastBlock.isException = true;
-          }
-          if (block.isStandalone) {
-            lastBlock.isStandalone = true;
-          }
-        } else {
-          mergedBlocks.push({
-            day: block.day,
-            start: block.start,
-            end: block.end,
-            availabilityIds: [block.id],
-            isException: block.isException,
-            isStandalone: block.isStandalone
-          });
-        }
-      });
-
-      allTimeBlocks.push(...mergedBlocks);
+      allTimeBlocks.push(...parsedBlocks);
     });
 
     setTimeBlocks(allTimeBlocks);
   };
 
-  // Utility functions for time slot checking
   const timeSlotUtils = useMemo(() => {
     const isTimeSlotAvailable = (day: Date, timeSlot: Date) => {
       const slotTime = setMinutes(
@@ -354,31 +326,24 @@ export const useWeekViewData = (
     };
   
     const getAppointmentForTimeSlot = (day: Date, timeSlot: Date) => {
-      // Log to debug appointment matching
       console.log(`Checking appointments for ${format(day, 'yyyy-MM-dd')} at ${format(timeSlot, 'HH:mm')}`);
       
-      // Get the time components only from the time slot
       const slotHours = timeSlot.getHours();
       const slotMinutes = timeSlot.getMinutes();
       
-      // Find appointments on the same day where the time slot falls within the appointment time
       const appointment = appointmentBlocks.find(block => {
-        // First check if we're on the same day
         const sameDayCheck = isSameDay(block.day, day);
         if (!sameDayCheck) return false;
         
-        // Get the time components from the appointment
         const apptStartHours = block.start.getHours();
         const apptStartMinutes = block.start.getMinutes();
         const apptEndHours = block.end.getHours();
         const apptEndMinutes = block.end.getMinutes();
         
-        // Convert to minutes for easier comparison
         const slotTotalMinutes = slotHours * 60 + slotMinutes;
         const apptStartTotalMinutes = apptStartHours * 60 + apptStartMinutes;
         const apptEndTotalMinutes = apptEndHours * 60 + apptEndMinutes;
         
-        // Check if the slot time falls within the appointment time
         const isWithinAppointment = 
           slotTotalMinutes >= apptStartTotalMinutes && 
           slotTotalMinutes < apptEndTotalMinutes;
@@ -404,7 +369,6 @@ export const useWeekViewData = (
     };
   }, [timeBlocks, appointmentBlocks]);
 
-  // Helper to get availability block by ID
   const getAvailabilityForBlock = (blockId: string) => {
     return availabilityBlocks.find(block => block.id === blockId);
   };

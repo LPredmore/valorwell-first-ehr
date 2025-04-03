@@ -30,11 +30,32 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
     }
   };
 
-  const blockColor = block.isException ? 'teal' : 'green';
+  // Determine block color based on its type (regular, exception, or standalone)
+  let bgColor = 'bg-green-50';
+  let borderColor = 'border-green-400';
+  let textColor = 'text-green-800';
+  let badgeColor = '';
+  let badgeText = '';
+
+  if (block.isException) {
+    // Modified recurring availability
+    bgColor = 'bg-blue-50';
+    borderColor = 'border-blue-400';
+    textColor = 'text-blue-800';
+    badgeColor = 'bg-blue-100 text-blue-800';
+    badgeText = 'Modified';
+  } else if (block.isStandalone) {
+    // One-time availability
+    bgColor = 'bg-blue-50';
+    borderColor = 'border-blue-400';
+    textColor = 'text-blue-800';
+    badgeColor = 'bg-blue-100 text-blue-800';
+    badgeText = 'One-time';
+  }
 
   return (
     <div 
-      className={`absolute left-0.5 right-0.5 z-5 rounded-md border border-${blockColor}-400 bg-${blockColor}-50 p-1 overflow-hidden cursor-pointer hover:opacity-90 transition-colors`}
+      className={`absolute left-0.5 right-0.5 z-5 rounded-md border ${borderColor} ${bgColor} p-1 overflow-hidden cursor-pointer hover:opacity-90 transition-colors`}
       style={{ 
         top: `${top}px`, 
         height: `${height}px`,
@@ -42,11 +63,11 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
       }}
       onClick={handleClick}
     >
-      <div className="flex flex-col h-full text-xs">
+      <div className={`flex flex-col h-full text-xs ${textColor}`}>
         <div className="font-medium truncate flex items-center">
           Available
-          {block.isException && (
-            <span className="ml-1 text-[10px] px-1 py-0.5 bg-teal-100 text-teal-800 rounded-full">Modified</span>
+          {(block.isException || block.isStandalone) && (
+            <span className={`ml-1 text-[10px] px-1 py-0.5 rounded-full ${badgeColor}`}>{badgeText}</span>
           )}
         </div>
         {height >= 40 && (

@@ -28,7 +28,10 @@ setIsDeleteDialogOpen,
 timeOptions,
 handleSaveClick,
 handleDeleteClick,
-confirmDelete
+confirmDelete,
+isRecurring,
+isException,
+isStandalone
 } = useAvailabilityEdit(
 isOpen,
 onClose,
@@ -41,6 +44,12 @@ onAvailabilityUpdated
 if (!availabilityBlock || !specificDate) {
 return null;
 }
+
+const availabilityType = isStandalone 
+  ? "one-time" 
+  : isException 
+    ? "modified recurring" 
+    : "recurring";
 
 return (
 <>
@@ -71,7 +80,7 @@ timeOptions={timeOptions}
 <div className="font-medium text-blue-700 mb-1">One-time Change</div>
 <p className="text-blue-600">
 This will only modify your availability for {format(specificDate, 'MMMM d, yyyy')}.
-Your regular weekly schedule will remain unchanged.
+{isRecurring && !isException && " Your regular weekly schedule will remain unchanged."}
 </p>
 </div>
 </div>
@@ -99,6 +108,7 @@ setIsOpen={setIsDeleteDialogOpen}
 specificDate={specificDate}
 confirmDelete={confirmDelete}
 isLoading={isLoading}
+isRecurring={isRecurring}
 />
 </>
 );

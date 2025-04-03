@@ -10,7 +10,8 @@ const DeleteConfirmationDialog: React.FC<DeleteDialogProps> = ({
   setIsOpen,
   specificDate,
   confirmDelete,
-  isLoading
+  isLoading,
+  isRecurring
 }) => {
   if (!specificDate) return null;
 
@@ -21,7 +22,7 @@ const DeleteConfirmationDialog: React.FC<DeleteDialogProps> = ({
           <AlertDialogTitle>Cancel Availability</AlertDialogTitle>
           <AlertDialogDescription>
             Are you sure you want to cancel your availability for {format(specificDate, 'EEEE, MMMM d, yyyy')}?
-            This will not affect your regular weekly schedule.
+            {isRecurring && " This will not affect your regular weekly schedule."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

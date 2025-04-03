@@ -220,6 +220,15 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     
     const availabilityEvents: any[] = [];
     
+    // Group one-time blocks by date
+    const oneTimeByDate = oneTimeBlocks.reduce((acc, block) => {
+      if (!acc[block.specific_date]) {
+        acc[block.specific_date] = [];
+      }
+      acc[block.specific_date].push(block);
+      return acc;
+    }, {} as Record<string, any[]>);
+    
     // Process weekly recurring availability
     availabilityBlocks.forEach(block => {
       const dowNumber = dayOfWeekMap[block.day_of_week];
@@ -227,52 +236,47 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
       const startTime = block.start_time;
       const endTime = block.end_time;
       
-      const timeSlots = getTimeSlots(startTime, endTime, settings);
+      // Create a single event for the entire time block instead of breaking it into slots
+      const event = {
+        id: `weekly-${block.id}`,
+        title: 'Available',
+        daysOfWeek: [dowNumber],
+        startTime: startTime,
+        endTime: endTime,
+        startRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
+        endRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0),
+        extendedProps: {
+          type: 'availability',
+          availabilityData: {
+            ...block,
+            isRecurring: true
+          }
+        },
+        backgroundColor: '#10b981',
+        borderColor: '#059669',
+        textColor: '#ffffff',
+        display: 'block',
+        overlap: false
+      };
       
-      timeSlots.forEach(slot => {
-        const event = {
-          id: `${block.id}-${slot.start}`,
-          title: 'Available',
-          daysOfWeek: [dowNumber],
-          startTime: slot.start,
-          endTime: slot.end,
-          startRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
-          endRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0),
-          extendedProps: {
-            type: 'availability',
-            availabilityData: {
-              ...block,
-              start_time: slot.start,
-              end_time: slot.end
-            }
-          },
-          backgroundColor: '#10b981',
-          borderColor: '#059669',
-          textColor: '#ffffff',
-          display: 'block',
-          overlap: false
-        };
-        
-        availabilityEvents.push(event);
-      });
+      availabilityEvents.push(event);
     });
     
-    // Process one-time availability
+    // Process one-time availability exceptions (modifications to weekly)
     oneTimeBlocks.forEach(block => {
-      const timeSlots = getTimeSlots(block.start_time, block.end_time, settings);
-      
-      timeSlots.forEach(slot => {
+      if (block.start_time && block.end_time) {
+        // This is a modified time slot
         const event = {
-          id: `onetime-${block.id}-${slot.start}`,
-          title: 'One-Time Available',
-          start: `${block.specific_date}T${slot.start}`,
-          end: `${block.specific_date}T${slot.end}`,
+          id: `onetime-${block.id}`,
+          title: block.original_availability_id ? 'Modified Available' : 'One-Time Available',
+          start: `${block.specific_date}T${block.start_time}`,
+          end: `${block.specific_date}T${block.end_time}`,
           extendedProps: {
             type: 'one-time-availability',
             availabilityData: {
               ...block,
-              start_time: slot.start,
-              end_time: slot.end
+              isException: !!block.original_availability_id,
+              isStandalone: !block.original_availability_id
             }
           },
           backgroundColor: '#0ea5e9',
@@ -283,7 +287,10 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         };
         
         availabilityEvents.push(event);
-      });
+      } else if (block.is_deleted && block.original_availability_id) {
+        // This is a deleted weekly availability - handle by not showing
+        // Original recurring event will be hidden for this date
+      }
     });
     
     // Add time off blocks
