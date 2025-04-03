@@ -26,19 +26,24 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
 
   const handleClick = () => {
     if (onAvailabilityClick) {
-      console.log('Availability block clicked:', {
+      // Create full block data with properly formatted time strings
+      const formattedBlock = {
+        ...block,
+        id: block.id,
+        start_time: format(block.start, 'HH:mm'),
+        end_time: format(block.end, 'HH:mm'),
+        isException: block.isException,
+        isStandalone: block.isStandalone,
+        originalAvailabilityId: block.originalAvailabilityId,
+        availabilityIds: block.availabilityIds
+      };
+      
+      console.log('Availability block clicked with formatted times:', {
         day: format(day, 'yyyy-MM-dd'),
-        block: {
-          id: block.id,
-          start: format(block.start, 'HH:mm'),
-          end: format(block.end, 'HH:mm'),
-          isException: block.isException,
-          isStandalone: block.isStandalone,
-          originalAvailabilityId: block.originalAvailabilityId,
-          availabilityIds: block.availabilityIds
-        }
+        block: formattedBlock
       });
-      onAvailabilityClick(day, block);
+      
+      onAvailabilityClick(day, formattedBlock);
     }
   };
 

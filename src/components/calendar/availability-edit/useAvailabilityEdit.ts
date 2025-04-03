@@ -35,26 +35,40 @@ useEffect(() => {
       isStandalone: availabilityBlock.isStandalone,
       originalAvailabilityId: availabilityBlock.originalAvailabilityId,
       specificDate: specificDate ? format(specificDate, 'yyyy-MM-dd') : 'null',
-      clinicianId
+      clinicianId,
+      block_start_time: availabilityBlock.start_time,
+      block_end_time: availabilityBlock.end_time,
     });
 
-    // Format the times from "HH:MM:SS" format to "HH:MM" format if needed
-    // Add null/undefined checks to prevent errors
-    const formattedStartTime = availabilityBlock.start_time 
-      ? (typeof availabilityBlock.start_time === 'string' && availabilityBlock.start_time.length >= 5
-          ? availabilityBlock.start_time.substring(0, 5) 
-          : '09:00')
-      : '09:00';
+    // Safely extract time values with proper validation
+    let formattedStartTime = '09:00';
+    let formattedEndTime = '17:00';
     
-    const formattedEndTime = availabilityBlock.end_time 
-      ? (typeof availabilityBlock.end_time === 'string' && availabilityBlock.end_time.length >= 5
-          ? availabilityBlock.end_time.substring(0, 5) 
-          : '17:00')
-      : '17:00';
+    if (availabilityBlock.start_time) {
+      // Handle both Date objects and strings
+      if (typeof availabilityBlock.start_time === 'string') {
+        // Extract HH:MM from any string format (HH:MM or HH:MM:SS)
+        formattedStartTime = availabilityBlock.start_time.split(':').slice(0, 2).join(':');
+      }
+    }
+    
+    if (availabilityBlock.end_time) {
+      // Handle both Date objects and strings
+      if (typeof availabilityBlock.end_time === 'string') {
+        // Extract HH:MM from any string format (HH:MM or HH:MM:SS)
+        formattedEndTime = availabilityBlock.end_time.split(':').slice(0, 2).join(':');
+      }
+    }
 
     console.log('Setting times from availability block:', {
-      original: { start: availabilityBlock.start_time, end: availabilityBlock.end_time },
-      formatted: { start: formattedStartTime, end: formattedEndTime }
+      original: { 
+        start: availabilityBlock.start_time, 
+        end: availabilityBlock.end_time 
+      },
+      formatted: { 
+        start: formattedStartTime, 
+        end: formattedEndTime 
+      }
     });
 
     setStartTime(formattedStartTime);
