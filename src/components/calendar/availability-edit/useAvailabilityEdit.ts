@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,299 +6,302 @@ import { AvailabilityBlock } from './types';
 import { generateTimeOptions } from './utils';
 
 export const useAvailabilityEdit = (
-  isOpen: boolean,
-  onClose: () => void,
-  availabilityBlock: AvailabilityBlock | null,
-  specificDate: Date | null,
-  clinicianId: string | null,
-  onAvailabilityUpdated: () => void
+isOpen: boolean,
+onClose: () => void,
+availabilityBlock: AvailabilityBlock | null,
+specificDate: Date | null,
+clinicianId: string | null,
+onAvailabilityUpdated: () => void
 ) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('17:00');
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const { toast } = useToast();
-  const timeOptions = generateTimeOptions();
+const [isLoading, setIsLoading] = useState(false);
+const [startTime, setStartTime] = useState('09:00');
+const [endTime, setEndTime] = useState('17:00');
+const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+const { toast } = useToast();
+const timeOptions = generateTimeOptions();
 
-  // Initialize state when props change
-  useEffect(() => {
-    if (availabilityBlock && isOpen) {
-      // Format the times from "HH:MM:SS" format to "HH:MM" format if needed
-      // Add null/undefined checks to prevent errors
-      const formattedStartTime = availabilityBlock.start_time ? availabilityBlock.start_time.substring(0, 5) : '09:00';
-      const formattedEndTime = availabilityBlock.end_time ? availabilityBlock.end_time.substring(0, 5) : '17:00';
+// Initialize state when props change
+useEffect(() => {
+if (availabilityBlock && isOpen) {
+// Format the times from "HH:MM:SS" format to "HH:MM" format if needed
+// Add null/undefined checks to prevent errors
+const formattedStartTime = availabilityBlock.start_time ? availabilityBlock.start_time.substring(0, 5) : '09:00';
+const formattedEndTime = availabilityBlock.end_time ? availabilityBlock.end_time.substring(0, 5) : '17:00';
 
-      console.log('Setting times from availability block:', {
-        original: { start: availabilityBlock.start_time, end: availabilityBlock.end_time },
-        formatted: { start: formattedStartTime, end: formattedEndTime }
-      });
+console.log('Setting times from availability block:', {
+original: { start: availabilityBlock.start_time, end: availabilityBlock.end_time },
+formatted: { start: formattedStartTime, end: formattedEndTime }
+});
 
-      setStartTime(formattedStartTime);
-      setEndTime(formattedEndTime);
-    }
-  }, [availabilityBlock, isOpen]);
+setStartTime(formattedStartTime);
+setEndTime(formattedEndTime);
+}
+}, [availabilityBlock, isOpen]);
 
-  const handleSaveClick = async () => {
-    if (!clinicianId || !specificDate || !availabilityBlock) {
-      toast({
-        title: "Missing Information",
-        description: "Unable to save availability exception. Missing required data.",
-        variant: "destructive"
-      });
-      return;
-    }
+const handleSaveClick = async () => {
+if (!clinicianId || !specificDate || !availabilityBlock) {
+toast({
+title: "Missing Information",
+description: "Unable to save availability exception. Missing required data.",
+variant: "destructive"
+});
+return;
+}
 
-    setIsLoading(true);
+setIsLoading(true);
 
-    try {
-      const formattedDate = format(specificDate, 'yyyy-MM-dd');
+try {
+const formattedDate = format(specificDate, 'yyyy-MM-dd');
 
-      console.log('Saving availability exception:', {
-        clinicianId,
-        specificDate: formattedDate,
-        originalAvailabilityId: availabilityBlock.id,
-        startTime,
-        endTime,
-        isException: availabilityBlock.isException
-      });
+console.log('Saving availability exception:', {
+clinicianId,
+specificDate: formattedDate,
+originalAvailabilityId: availabilityBlock.id,
+startTime,
+endTime,
+isException: availabilityBlock.isException
+});
 
-      // For recurring availability (not an exception), we need to:
-      // 1. Check if an exception already exists
-      // 2. If it exists, update it; if not, create a new one
-      if (!availabilityBlock.isException) {
-        // Check if an exception already exists for this date and availability block
-        const { data: existingException, error: checkError } = await supabase
-          .from('availability_exceptions')
-          .select('id, is_deleted')
-          .eq('clinician_id', clinicianId)
-          .eq('specific_date', formattedDate)
-          .eq('original_availability_id', availabilityBlock.id)
-          .maybeSingle();
+let existingException = null;
+let checkError = null;
 
-        if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is 'not found' error
-          throw checkError;
-        }
+// If it's not already an exception, check if an exception exists
+if (!availabilityBlock.isException) {
+const result = await supabase
+.from('availability_exceptions')
+.select('id')
+.eq('clinician_id', clinicianId)
+.eq('specific_date', formattedDate)
+.eq('original_availability_id', availabilityBlock.id)
+.maybeSingle();
 
-        if (existingException) {
-          // Update existing exception
-          console.log('Updating existing exception:', existingException.id);
-          const { error: updateError } = await supabase
-            .from('availability_exceptions')
-            .update({
-              start_time: startTime,
-              end_time: endTime,
-              is_deleted: false,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existingException.id);
+existingException = result.data;
+checkError = result.error;
 
-          if (updateError) {
-            throw updateError;
-          }
-        } else {
-          // Create new exception
-          console.log('Creating new exception for recurring availability');
-          const { error: insertError } = await supabase
-            .from('availability_exceptions')
-            .insert({
-              clinician_id: clinicianId,
-              specific_date: formattedDate,
-              original_availability_id: availabilityBlock.id,
-              start_time: startTime,
-              end_time: endTime,
-              is_deleted: false
-            });
+console.log('Existing exception check result:', { existingException, error: checkError });
+} else {
+// For existing exceptions, just look for it by ID
+const result = await supabase
+.from('availability_exceptions')
+.select('id')
+.eq('id', availabilityBlock.id)
+.maybeSingle();
 
-          if (insertError) {
-            throw insertError;
-          }
-        }
-      } else {
-        // This is already a one-time availability or an exception
-        console.log('Updating one-time availability exception');
-        
-        // If this is modifying an exception, update it
-        if (availabilityBlock.id !== 'new') {
-          const { error: updateError } = await supabase
-            .from('availability_exceptions')
-            .update({
-              start_time: startTime,
-              end_time: endTime,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', availabilityBlock.id);
+existingException = result.data;
+checkError = result.error;
 
-          if (updateError) {
-            throw updateError;
-          }
-        } else {
-          // This is a new one-time availability (no original_availability_id)
-          console.log('Creating brand new one-time availability');
-          const { error: insertError } = await supabase
-            .from('availability_exceptions')
-            .insert({
-              clinician_id: clinicianId,
-              specific_date: formattedDate,
-              start_time: startTime,
-              end_time: endTime,
-              is_deleted: false
-            });
+console.log('Existing exception (by ID) check result:', { existingException, error: checkError });
+}
 
-          if (insertError) {
-            throw insertError;
-          }
-        }
-      }
+if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is 'not found' error
+throw checkError;
+}
 
-      // Wait a brief moment to ensure the database transaction completes
-      await new Promise(resolve => setTimeout(resolve, 300));
+let updateResult;
 
-      // Only show success toast if no errors
-      toast({
-        title: "Success",
-        description: `Availability for ${format(specificDate, 'PPP')} has been updated.`,
-      });
+if (existingException) {
+// Update existing exception
+console.log('Updating existing exception:', existingException.id);
+updateResult = await supabase
+.from('availability_exceptions')
+.update({
+start_time: startTime,
+end_time: endTime,
+is_deleted: false,
+updated_at: new Date().toISOString()
+})
+.eq('id', existingException.id);
 
-      // Explicitly call onAvailabilityUpdated to refresh the calendar view
-      onAvailabilityUpdated();
-      onClose();
-    } catch (error) {
-      console.error('Error updating availability exception:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update availability. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+if (updateResult.error) {
+console.error('Error updating exception:', updateResult.error);
+throw updateResult.error;
+}
+} else {
+// Create new exception
+console.log('Creating new exception');
+const insertData: any = {
+clinician_id: clinicianId,
+specific_date: formattedDate,
+start_time: startTime,
+end_time: endTime,
+is_deleted: false
+};
 
-  const handleDeleteClick = () => {
-    setIsDeleteDialogOpen(true);
-  };
+// Only add original_availability_id if this is modifying a regular availability
+if (!availabilityBlock.isException) {
+insertData.original_availability_id = availabilityBlock.id;
+}
 
-  const confirmDelete = async () => {
-    if (!clinicianId || !specificDate || !availabilityBlock) {
-      toast({
-        title: "Missing Information",
-        description: "Unable to delete availability. Missing required data.",
-        variant: "destructive"
-      });
-      return;
-    }
+updateResult = await supabase
+.from('availability_exceptions')
+.insert(insertData);
 
-    setIsLoading(true);
+if (updateResult.error) {
+console.error('Error inserting exception:', updateResult.error);
+throw updateResult.error;
+}
+}
 
-    try {
-      const formattedDate = format(specificDate, 'yyyy-MM-dd');
+// Wait a brief moment to ensure the database transaction completes
+await new Promise(resolve => setTimeout(resolve, 300));
 
-      console.log('Cancelling availability:', {
-        clinicianId,
-        specificDate: formattedDate,
-        originalAvailabilityId: availabilityBlock.id,
-        isException: availabilityBlock.isException
-      });
+// Only show success toast if no errors
+toast({
+title: "Success",
+description: `Availability for ${format(specificDate, 'PPP')} has been updated.`,
+});
 
-      if (!availabilityBlock.isException) {
-        // This is a recurring availability, so we need to create a "deletion" exception
-        const { data: existingException, error: checkError } = await supabase
-          .from('availability_exceptions')
-          .select('id')
-          .eq('clinician_id', clinicianId)
-          .eq('specific_date', formattedDate)
-          .eq('original_availability_id', availabilityBlock.id)
-          .maybeSingle();
+// Explicitly call onAvailabilityUpdated to refresh the calendar view
+onAvailabilityUpdated();
+onClose();
+} catch (error) {
+console.error('Error updating availability exception:', error);
+toast({
+title: "Error",
+description: "Failed to update availability. Please try again.",
+variant: "destructive"
+});
+} finally {
+setIsLoading(false);
+}
+};
 
-        if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is 'not found' error
-          throw checkError;
-        }
+const handleDeleteClick = () => {
+setIsDeleteDialogOpen(true);
+};
 
-        if (existingException) {
-          // Update existing exception to mark as deleted
-          console.log('Updating existing exception to deleted:', existingException.id);
-          const { error: updateError } = await supabase
-            .from('availability_exceptions')
-            .update({
-              is_deleted: true,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existingException.id);
+const confirmDelete = async () => {
+if (!clinicianId || !specificDate || !availabilityBlock) {
+toast({
+title: "Missing Information",
+description: "Unable to delete availability. Missing required data.",
+variant: "destructive"
+});
+return;
+}
 
-          if (updateError) {
-            throw updateError;
-          }
-        } else {
-          // Create new exception marked as deleted
-          console.log('Creating new exception for cancellation');
-          const { error: insertError } = await supabase
-            .from('availability_exceptions')
-            .insert({
-              clinician_id: clinicianId,
-              specific_date: formattedDate,
-              original_availability_id: availabilityBlock.id,
-              is_deleted: true
-            });
+setIsLoading(true);
 
-          if (insertError) {
-            throw insertError;
-          }
-        }
-      } else {
-        // This is a one-time availability, so we can either delete it or mark it as deleted
-        console.log('Deleting one-time availability exception');
-        
-        // If this is an existing exception, mark it as deleted
-        if (availabilityBlock.id !== 'new') {
-          const { error: updateError } = await supabase
-            .from('availability_exceptions')
-            .update({
-              is_deleted: true,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', availabilityBlock.id);
+try {
+const formattedDate = format(specificDate, 'yyyy-MM-dd');
 
-          if (updateError) {
-            throw updateError;
-          }
-        }
-      }
+console.log('Cancelling availability:', {
+clinicianId,
+specificDate: formattedDate,
+originalAvailabilityId: availabilityBlock.id,
+isException: availabilityBlock.isException
+});
 
-      // Wait a brief moment to ensure the database transaction completes
-      await new Promise(resolve => setTimeout(resolve, 300));
+let existingException = null;
+let checkError = null;
 
-      toast({
-        title: "Success",
-        description: `Availability for ${format(specificDate, 'PPP')} has been cancelled.`,
-      });
+// If it's not already an exception, check if an exception exists for the original availability
+if (!availabilityBlock.isException) {
+const result = await supabase
+.from('availability_exceptions')
+.select('id, original_availability_id')
+.eq('clinician_id', clinicianId)
+.eq('specific_date', formattedDate)
+.eq('original_availability_id', availabilityBlock.id)
+.maybeSingle();
 
-      // Explicitly refresh the parent component
-      setIsDeleteDialogOpen(false);
-      onAvailabilityUpdated();
-      onClose();
-    } catch (error) {
-      console.error('Error cancelling availability:', error);
-      toast({
-        title: "Error",
-        description: "Failed to cancel availability. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+existingException = result.data;
+checkError = result.error;
+} else {
+// For existing exceptions, look it up by ID
+const result = await supabase
+.from('availability_exceptions')
+.select('id, original_availability_id')
+.eq('id', availabilityBlock.id)
+.maybeSingle();
 
-  return {
-    isLoading,
-    startTime,
-    setStartTime,
-    endTime,
-    setEndTime,
-    isDeleteDialogOpen,
-    setIsDeleteDialogOpen,
-    timeOptions,
-    handleSaveClick,
-    handleDeleteClick,
-    confirmDelete
-  };
+existingException = result.data;
+checkError = result.error;
+}
+
+console.log('Existing exception check for delete:', { existingException, error: checkError });
+
+if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is 'not found' error
+throw checkError;
+}
+
+let updateResult;
+
+if (existingException) {
+// Update existing exception to mark as deleted
+console.log('Updating existing exception to deleted:', existingException.id);
+updateResult = await supabase
+.from('availability_exceptions')
+.update({
+is_deleted: true,
+updated_at: new Date().toISOString()
+})
+.eq('id', existingException.id);
+
+if (updateResult.error) {
+console.error('Error updating exception to deleted:', updateResult.error);
+throw updateResult.error;
+}
+} else {
+// Create new exception marked as deleted
+const insertData: any = {
+clinician_id: clinicianId,
+specific_date: formattedDate,
+is_deleted: true
+};
+
+// Only add original_availability_id if it references a valid entry in the availability table
+// If it's an exception, don't include the original_availability_id field
+if (!availabilityBlock.isException) {
+insertData.original_availability_id = availabilityBlock.id;
+}
+
+console.log('Creating new deleted exception with data:', insertData);
+updateResult = await supabase
+.from('availability_exceptions')
+.insert(insertData);
+
+if (updateResult.error) {
+console.error('Error inserting deleted exception:', updateResult.error);
+throw updateResult.error;
+}
+}
+
+// Wait a brief moment to ensure the database transaction completes
+await new Promise(resolve => setTimeout(resolve, 300));
+
+toast({
+title: "Success",
+description: `Availability for ${format(specificDate, 'PPP')} has been cancelled.`,
+});
+
+// Explicitly refresh the parent component
+setIsDeleteDialogOpen(false);
+onAvailabilityUpdated();
+onClose();
+} catch (error) {
+console.error('Error cancelling availability:', error);
+toast({
+title: "Error",
+description: "Failed to cancel availability. Please try again.",
+variant: "destructive"
+});
+} finally {
+setIsLoading(false);
+}
+};
+
+return {
+isLoading,
+startTime,
+setStartTime,
+endTime,
+setEndTime,
+isDeleteDialogOpen,
+setIsDeleteDialogOpen,
+timeOptions,
+handleSaveClick,
+handleDeleteClick,
+confirmDelete
+};
 };
