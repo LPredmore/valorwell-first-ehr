@@ -1,6 +1,11 @@
 
 import { format } from 'date-fns';
 
+export interface TimeOption {
+  value: string;
+  label: string;
+}
+
 // Generate time options for the select dropdown
 export const generateTimeOptions = () => {
   const options = [];

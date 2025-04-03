@@ -6,7 +6,8 @@ import FullCalendarView from './FullCalendarView';
 import WeekView from './week-view';
 import { TimeBlock } from './week-view/useWeekViewData'; 
 
-interface Appointment {
+// Define a local Appointment interface that's compatible with both sources
+interface AppointmentBase {
   id: string;
   client_id: string;
   date: string;
@@ -14,6 +15,7 @@ interface Appointment {
   end_time: string;
   type: string;
   status: string;
+  video_room_url?: string | null;
 }
 
 interface AvailabilityBlock {
@@ -30,9 +32,9 @@ interface MonthViewProps {
   currentDate: Date;
   clinicianId: string | null;
   refreshTrigger?: number;
-  appointments?: Appointment[];
+  appointments?: AppointmentBase[];
   getClientName?: (clientId: string) => string;
-  onAppointmentClick?: (appointment: Appointment) => void;
+  onAppointmentClick?: (appointment: AppointmentBase) => void;
   onAvailabilityClick?: (date: Date, availabilityBlock: AvailabilityBlock | TimeBlock) => void;
   userTimeZone?: string;
   weekViewMode?: boolean;
@@ -58,7 +60,7 @@ const MonthView: React.FC<MonthViewProps> = ({
         appointments={appointments}
         getClientName={getClientName}
         onAppointmentClick={onAppointmentClick}
-        onAvailabilityClick={onAvailabilityClick as (day: Date, block: TimeBlock) => void}
+        onAvailabilityClick={onAvailabilityClick as any}  // Use type assertion to resolve incompatible callback
         userTimeZone={userTimeZone}
       />
     );
@@ -69,7 +71,7 @@ const MonthView: React.FC<MonthViewProps> = ({
       currentDate={currentDate}
       clinicianId={clinicianId}
       refreshTrigger={refreshTrigger}
-      appointments={appointments}
+      appointments={appointments as any}  // Use type assertion to resolve incompatible appointments
       getClientName={getClientName}
       onAppointmentClick={onAppointmentClick}
       onAvailabilityClick={onAvailabilityClick}
