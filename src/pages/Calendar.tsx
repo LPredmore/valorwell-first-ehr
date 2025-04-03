@@ -32,8 +32,8 @@ const CalendarPage = () => {
     isLoadingTimeZone,
   } = useCalendarState();
 
-  // Use only the month view mode state
-  const [calendarViewMode, setCalendarViewMode] = useState<'dayGridMonth' | 'timeGridWeek'>('dayGridMonth');
+  // Changed default from 'dayGridMonth' to 'timeGridWeek'
+  const [calendarViewMode, setCalendarViewMode] = useState<'dayGridMonth' | 'timeGridWeek'>('timeGridWeek');
 
   const navigatePrevious = () => {
     if (calendarViewMode === 'timeGridWeek') {
