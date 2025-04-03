@@ -7,7 +7,6 @@ import { Loader2 } from 'lucide-react';
 import { AvailabilityEditDialogProps } from './availability-edit/types';
 import TimeInput from './availability-edit/TimeInput';
 import DeleteConfirmationDialog from './DeleteConfirmationDialog';
-import EditChoiceDialog from './EditChoiceDialog';
 import { useAvailabilityEdit } from './availability-edit/useAvailabilityEdit';
 
 const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
@@ -19,35 +18,31 @@ clinicianId,
 onAvailabilityUpdated
 }) => {
 const {
-  isLoading,
-  startTime,
-  setStartTime,
-  endTime,
-  setEndTime,
-  isDeleteDialogOpen,
-  setIsDeleteDialogOpen,
-  timeOptions,
-  handleSaveClick,
-  handleDeleteClick,
-  confirmDelete,
-  isRecurring,
-  isException,
-  isStandalone,
-  isEditChoiceDialogOpen,
-  setIsEditChoiceDialogOpen,
-  handleEditChoice,
-  editMode
+isLoading,
+startTime,
+setStartTime,
+endTime,
+setEndTime,
+isDeleteDialogOpen,
+setIsDeleteDialogOpen,
+timeOptions,
+handleSaveClick,
+handleDeleteClick,
+confirmDelete,
+isRecurring,
+isException,
+isStandalone
 } = useAvailabilityEdit(
-  isOpen,
-  onClose,
-  availabilityBlock,
-  specificDate,
-  clinicianId,
-  onAvailabilityUpdated
+isOpen,
+onClose,
+availabilityBlock,
+specificDate,
+clinicianId,
+onAvailabilityUpdated
 );
 
 if (!availabilityBlock || !specificDate) {
-  return null;
+return null;
 }
 
 const availabilityType = isStandalone 
@@ -55,24 +50,6 @@ const availabilityType = isStandalone
   : isException 
     ? "modified recurring" 
     : "recurring";
-
-const getEditDescription = () => {
-  if (isStandalone || isException) {
-    return "This will modify your availability for " + format(specificDate, 'MMMM d, yyyy') + ".";
-  }
-  
-  if (isRecurring && !isException) {
-    if (editMode === 'single') {
-      return "This will only modify your availability for " + format(specificDate, 'MMMM d, yyyy') + ". Your regular weekly schedule will remain unchanged.";
-    } else if (editMode === 'all') {
-      return "This will update this time slot for all future weeks.";
-    } else {
-      return "Please select whether to edit just this occurrence or the entire series.";
-    }
-  }
-  
-  return "This will modify your availability for " + format(specificDate, 'MMMM d, yyyy') + ".";
-};
 
 return (
 <>
@@ -100,11 +77,10 @@ timeOptions={timeOptions}
 />
 
 <div className="mt-2 p-3 bg-blue-50 text-sm rounded-md border border-blue-100">
-<div className="font-medium text-blue-700 mb-1">
-  {isRecurring && !isException && !editMode ? "Choose Edit Type" : "One-time Change"}
-</div>
+<div className="font-medium text-blue-700 mb-1">One-time Change</div>
 <p className="text-blue-600">
-  {getEditDescription()}
+This will only modify your availability for {format(specificDate, 'MMMM d, yyyy')}.
+{isRecurring && !isException && " Your regular weekly schedule will remain unchanged."}
 </p>
 </div>
 </div>
@@ -133,15 +109,6 @@ specificDate={specificDate}
 confirmDelete={confirmDelete}
 isLoading={isLoading}
 isRecurring={isRecurring}
-/>
-
-<EditChoiceDialog
-isOpen={isEditChoiceDialogOpen}
-onClose={() => setIsEditChoiceDialogOpen(false)}
-onEditSingle={() => handleEditChoice('single')}
-onEditAll={() => handleEditChoice('all')}
-date={specificDate}
-isRecurring={isRecurring && !isException}
 />
 </>
 );

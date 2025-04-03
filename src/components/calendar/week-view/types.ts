@@ -14,17 +14,6 @@ export interface WeekViewProps {
     start_time: string;
     end_time: string;
     isException?: boolean;
-    isStandalone?: boolean;
   }) => void;
   userTimeZone?: string;
-}
-
-// Export this additional interface to ensure compatibility
-export interface AvailabilityBlockForEdit {
-  id: string;
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
-  isException?: boolean;
-  isStandalone?: boolean;
 }
