@@ -75,8 +75,7 @@ const CalendarPage = () => {
 
   const getClientName = (clientId: string) => {
     const client = clients?.find(c => c.id === clientId);
-    // Fix property access by checking if client exists and has the required properties
-    return client ? `${client.client_first_name || ''} ${client.client_last_name || ''}` : 'Client';
+    return client ? `${client.client_first_name} ${client.client_last_name}` : 'Client';
   };
 
   return (
