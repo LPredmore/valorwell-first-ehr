@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { generateTimeOptions, TimeOption } from './utils';
+import { toast } from 'sonner';
 
 export const useAvailabilityEdit = (
   isOpen: boolean,
@@ -101,6 +102,7 @@ export const useAvailabilityEdit = (
             
           if (error) throw error;
           console.log('Exception created successfully:', data);
+          toast.success("Availability updated for this occurrence only");
         } else if (isException) {
           // Update an existing exception
           console.log('Updating existing exception:', {
@@ -120,6 +122,7 @@ export const useAvailabilityEdit = (
             
           if (error) throw error;
           console.log('Exception updated successfully:', data);
+          toast.success("Modified availability updated");
         } else if (isStandalone) {
           // Update a standalone one-time availability
           console.log('Updating standalone availability:', {
@@ -139,6 +142,7 @@ export const useAvailabilityEdit = (
             
           if (error) throw error;
           console.log('Standalone availability updated successfully:', data);
+          toast.success("One-time availability updated");
         } else {
           // Create a new one-time availability
           console.log('Creating new one-time availability:', {
@@ -161,6 +165,7 @@ export const useAvailabilityEdit = (
             
           if (error) throw error;
           console.log('One-time availability created successfully:', data);
+          toast.success("New one-time availability created");
         }
       } else if (mode === 'series' && isRecurring) {
         // Update the recurring series
@@ -180,12 +185,14 @@ export const useAvailabilityEdit = (
           
         if (error) throw error;
         console.log('Recurring series updated successfully:', data);
+        toast.success("All recurring availabilities updated");
       }
       
       onAvailabilityUpdated();
       onClose();
     } catch (error) {
       console.error('Error saving availability:', error);
+      toast.error("Failed to update availability");
     } finally {
       setIsLoading(false);
     }
@@ -223,6 +230,7 @@ export const useAvailabilityEdit = (
           
         if (error) throw error;
         console.log('Deletion exception created successfully:', data);
+        toast.success("Availability cancelled for this occurrence only");
       } else if (isException || isStandalone) {
         // Delete the exception or standalone availability
         console.log('Deleting exception or standalone availability:', {
@@ -236,6 +244,12 @@ export const useAvailabilityEdit = (
           
         if (error) throw error;
         console.log('Exception/standalone availability deleted successfully:', data);
+        
+        if (isException) {
+          toast.success("Modified availability cancelled");
+        } else {
+          toast.success("One-time availability cancelled");
+        }
       }
       
       onAvailabilityUpdated();
@@ -243,6 +257,7 @@ export const useAvailabilityEdit = (
       onClose();
     } catch (error) {
       console.error('Error deleting availability:', error);
+      toast.error("Failed to cancel availability");
     } finally {
       setIsLoading(false);
     }

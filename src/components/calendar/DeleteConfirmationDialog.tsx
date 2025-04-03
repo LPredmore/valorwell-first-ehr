@@ -31,12 +31,12 @@ const DeleteConfirmationDialog: React.FC<DeleteDialogProps> = ({
           <AlertDialogTitle>Cancel Availability</AlertDialogTitle>
           <AlertDialogDescription>
             Are you sure you want to cancel your availability for {formattedDate}?
-            {isRecurring && " This will not affect your regular weekly schedule."}
+            {isRecurring && " This will only affect this single occurrence and not your recurring weekly schedule."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={confirmDelete} disabled={isLoading}>
+          <AlertDialogCancel>No, Keep Availability</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmDelete} disabled={isLoading} className="bg-red-600 hover:bg-red-700">
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             {isLoading ? "Processing..." : "Yes, Cancel Availability"}
           </AlertDialogAction>

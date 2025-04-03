@@ -48,10 +48,10 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
     badgeText = 'Modified';
   } else if (block.isStandalone) {
     // One-time availability
-    bgColor = 'bg-blue-50';
-    borderColor = 'border-blue-400';
-    textColor = 'text-blue-800';
-    badgeColor = 'bg-blue-100 text-blue-800';
+    bgColor = 'bg-indigo-50';
+    borderColor = 'border-indigo-400';
+    textColor = 'text-indigo-800';
+    badgeColor = 'bg-indigo-100 text-indigo-800';
     badgeText = 'One-time';
   }
 
