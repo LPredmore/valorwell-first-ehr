@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { generateTimeOptions, TimeOption } from './utils';
+import { toast } from '@/hooks/use-toast';
 
 export const useAvailabilityEdit = (
   isOpen: boolean,
@@ -20,6 +21,7 @@ export const useAvailabilityEdit = (
   const [isRecurring, setIsRecurring] = useState(false);
   const [isException, setIsException] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [editOption, setEditOption] = useState<'single' | 'series'>('single');
 
   useEffect(() => {
     if (isOpen && availabilityBlock && specificDate) {
@@ -47,13 +49,21 @@ export const useAvailabilityEdit = (
   }, [isOpen, availabilityBlock, specificDate]);
 
   const handleSaveClick = async () => {
-    if (!specificDate || !clinicianId) return;
+    if (!specificDate || !clinicianId) {
+      toast({
+        title: "Error",
+        description: "Missing required information",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsLoading(true);
     const specificDateStr = format(specificDate, 'yyyy-MM-dd');
     
     try {
-      if (isRecurring && !isException) {
+      // Handling based on availability type and edit option
+      if (isRecurring && !isException && editOption === 'single') {
         // Create an exception to the recurring availability
         const { data, error } = await supabase
           .from('availability_exceptions')
@@ -67,6 +77,36 @@ export const useAvailabilityEdit = (
           });
           
         if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "Availability updated for this date only"
+        });
+      } else if (isRecurring && !isException && editOption === 'series') {
+        // Update the recurring availability pattern
+        const { data, error } = await supabase
+          .from('availability')
+          .update({
+            start_time: `${startTime}:00`,
+            end_time: `${endTime}:00`
+          })
+          .eq('id', availabilityBlock.id);
+          
+        if (error) throw error;
+        
+        // Clean up any future exceptions that might conflict
+        const { error: cleanupError } = await supabase
+          .from('availability_exceptions')
+          .delete()
+          .eq('original_availability_id', availabilityBlock.id)
+          .gte('specific_date', specificDateStr);
+        
+        if (cleanupError) console.error("Error cleaning up exceptions:", cleanupError);
+        
+        toast({
+          title: "Success",
+          description: "Recurring availability pattern updated"
+        });
       } else if (isException) {
         // Update an existing exception
         const { data, error } = await supabase
@@ -79,6 +119,11 @@ export const useAvailabilityEdit = (
           .eq('id', availabilityBlock.id);
           
         if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "Availability exception updated"
+        });
       } else if (isStandalone) {
         // Update a standalone one-time availability
         const { data, error } = await supabase
@@ -91,6 +136,11 @@ export const useAvailabilityEdit = (
           .eq('id', availabilityBlock.id);
           
         if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "One-time availability updated"
+        });
       } else {
         // Create a new one-time availability
         const { data, error } = await supabase
@@ -105,12 +155,22 @@ export const useAvailabilityEdit = (
           });
           
         if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "New one-time availability created"
+        });
       }
       
       onAvailabilityUpdated();
       onClose();
     } catch (error) {
       console.error('Error saving availability:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update availability",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +187,7 @@ export const useAvailabilityEdit = (
     const specificDateStr = format(specificDate, 'yyyy-MM-dd');
     
     try {
-      if (isRecurring && !isException) {
+      if (isRecurring && !isException && editOption === 'single') {
         // Create a deletion exception for the recurring availability
         const { data, error } = await supabase
           .from('availability_exceptions')
@@ -141,6 +201,24 @@ export const useAvailabilityEdit = (
           });
           
         if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "Availability canceled for this date only"
+        });
+      } else if (isRecurring && !isException && editOption === 'series') {
+        // Delete the entire recurring availability pattern
+        const { data, error } = await supabase
+          .from('availability')
+          .update({ is_active: false })
+          .eq('id', availabilityBlock.id);
+          
+        if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "Recurring availability pattern has been canceled"
+        });
       } else if (isException || isStandalone) {
         // Delete the exception or standalone availability
         const { data, error } = await supabase
@@ -149,6 +227,11 @@ export const useAvailabilityEdit = (
           .eq('id', availabilityBlock.id);
           
         if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "Availability has been canceled"
+        });
       }
       
       onAvailabilityUpdated();
@@ -156,6 +239,11 @@ export const useAvailabilityEdit = (
       onClose();
     } catch (error) {
       console.error('Error deleting availability:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel availability",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -175,6 +263,8 @@ export const useAvailabilityEdit = (
     confirmDelete,
     isRecurring,
     isException,
-    isStandalone
+    isStandalone,
+    editOption,
+    setEditOption
   };
 };

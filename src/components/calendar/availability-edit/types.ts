@@ -13,7 +13,7 @@ export interface AvailabilityEditDialogProps {
 export interface DeleteDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  specificDate: Date;
+  specificDate: Date | null;
   confirmDelete: () => void;
   isLoading: boolean;
   isRecurring?: boolean;
@@ -36,4 +36,5 @@ export interface OneTimeBlockType {
   is_deleted: boolean;
   isException?: boolean;
   isStandalone?: boolean;
+  original_availability_id?: string | null;
 }
