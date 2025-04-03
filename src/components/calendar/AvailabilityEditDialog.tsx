@@ -10,98 +10,123 @@ import DeleteConfirmationDialog from './availability-edit/DeleteConfirmationDial
 import { useAvailabilityEdit } from './availability-edit/useAvailabilityEdit';
 
 const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
-isOpen,
-onClose,
-availabilityBlock,
-specificDate,
-clinicianId,
-onAvailabilityUpdated
+  isOpen,
+  onClose,
+  availabilityBlock,
+  specificDate,
+  clinicianId,
+  onAvailabilityUpdated
 }) => {
-const {
-isLoading,
-startTime,
-setStartTime,
-endTime,
-setEndTime,
-isDeleteDialogOpen,
-setIsDeleteDialogOpen,
-timeOptions,
-handleSaveClick,
-handleDeleteClick,
-confirmDelete
-} = useAvailabilityEdit(
-isOpen,
-onClose,
-availabilityBlock,
-specificDate,
-clinicianId,
-onAvailabilityUpdated
-);
+  const {
+    isLoading,
+    startTime,
+    setStartTime,
+    endTime,
+    setEndTime,
+    isDeleteDialogOpen,
+    setIsDeleteDialogOpen,
+    timeOptions,
+    handleSaveClick,
+    handleDeleteClick,
+    confirmDelete
+  } = useAvailabilityEdit(
+    isOpen,
+    onClose,
+    availabilityBlock,
+    specificDate,
+    clinicianId,
+    onAvailabilityUpdated
+  );
 
-if (!availabilityBlock || !specificDate) {
-return null;
-}
+  if (!availabilityBlock || !specificDate) {
+    return null;
+  }
 
-return (
-<>
-<Dialog open={isOpen} onOpenChange={onClose}>
-<DialogContent className="sm:max-w-[500px]">
-<DialogHeader>
-<DialogTitle>Edit Availability for {format(specificDate, 'EEEE, MMMM d, yyyy')}</DialogTitle>
-</DialogHeader>
+  const isRecurring = !availabilityBlock.isException && availabilityBlock.id !== 'new';
+  const isOneTime = availabilityBlock.isException || availabilityBlock.id === 'new';
+  const dialogTitle = isRecurring ? "Edit Recurring Availability" : "Edit Availability";
 
-<div className="grid gap-4 py-4">
-<TimeInput
-id="startTime"
-label="Start Time"
-value={startTime}
-onChange={setStartTime}
-timeOptions={timeOptions}
-/>
+  return (
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{dialogTitle} for {format(specificDate, 'EEEE, MMMM d, yyyy')}</DialogTitle>
+          </DialogHeader>
 
-<TimeInput
-id="endTime"
-label="End Time"
-value={endTime}
-onChange={setEndTime}
-timeOptions={timeOptions}
-/>
+          <div className="grid gap-4 py-4">
+            <TimeInput
+              id="startTime"
+              label="Start Time"
+              value={startTime}
+              onChange={setStartTime}
+              timeOptions={timeOptions}
+            />
 
-<div className="mt-2 p-3 bg-blue-50 text-sm rounded-md border border-blue-100">
-<div className="font-medium text-blue-700 mb-1">One-time Change</div>
-<p className="text-blue-600">
-This will only modify your availability for {format(specificDate, 'MMMM d, yyyy')}.
-Your regular weekly schedule will remain unchanged.
-</p>
-</div>
-</div>
+            <TimeInput
+              id="endTime"
+              label="End Time"
+              value={endTime}
+              onChange={setEndTime}
+              timeOptions={timeOptions}
+            />
 
-<DialogFooter className="flex justify-between">
-<Button variant="destructive" onClick={handleDeleteClick} disabled={isLoading}>
-Cancel Availability
-</Button>
-<div className="flex gap-2">
-<Button variant="outline" onClick={onClose} disabled={isLoading}>
-Close
-</Button>
-<Button type="button" onClick={handleSaveClick} disabled={isLoading}>
-{isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-{isLoading ? "Saving..." : "Save Changes"}
-</Button>
-</div>
-</DialogFooter>
-</DialogContent>
-</Dialog>
+            {isRecurring && (
+              <div className="mt-2 p-3 bg-blue-50 text-sm rounded-md border border-blue-100">
+                <div className="font-medium text-blue-700 mb-1">One-time Change</div>
+                <p className="text-blue-600">
+                  This will only modify your availability for {format(specificDate, 'MMMM d, yyyy')}.
+                  Your regular weekly schedule will remain unchanged.
+                </p>
+              </div>
+            )}
+            
+            {isOneTime && availabilityBlock.isException && (
+              <div className="mt-2 p-3 bg-teal-50 text-sm rounded-md border border-teal-100">
+                <div className="font-medium text-teal-700 mb-1">Modified Availability</div>
+                <p className="text-teal-600">
+                  This is a one-time availability block for {format(specificDate, 'MMMM d, yyyy')}.
+                </p>
+              </div>
+            )}
+            
+            {availabilityBlock.id === 'new' && (
+              <div className="mt-2 p-3 bg-green-50 text-sm rounded-md border border-green-100">
+                <div className="font-medium text-green-700 mb-1">New One-time Availability</div>
+                <p className="text-green-600">
+                  This will create a new one-time availability block for {format(specificDate, 'MMMM d, yyyy')}.
+                </p>
+              </div>
+            )}
+          </div>
 
-<DeleteConfirmationDialog
-isOpen={isDeleteDialogOpen}
-setIsOpen={setIsDeleteDialogOpen}
-specificDate={specificDate}
-confirmDelete={confirmDelete}
-isLoading={isLoading}
-/>
-</>
-);
+          <DialogFooter className="flex justify-between">
+            <Button variant="destructive" onClick={handleDeleteClick} disabled={isLoading}>
+              {isRecurring ? "Cancel This Occurrence" : "Delete Availability"}
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onClose} disabled={isLoading}>
+                Close
+              </Button>
+              <Button type="button" onClick={handleSaveClick} disabled={isLoading}>
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {isLoading ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <DeleteConfirmationDialog
+        isOpen={isDeleteDialogOpen}
+        setIsOpen={setIsDeleteDialogOpen}
+        specificDate={specificDate}
+        confirmDelete={confirmDelete}
+        isLoading={isLoading}
+        isRecurring={isRecurring}
+      />
+    </>
+  );
 };
 
 export default AvailabilityEditDialog;
