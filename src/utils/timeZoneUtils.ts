@@ -1,5 +1,6 @@
+
 import { format, parse, parseISO } from 'date-fns';
-import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { formatInTimeZone as formatDateInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 /**
  * Map of common timezone display names to IANA format
@@ -97,7 +98,7 @@ export const convertDateToTimeZone = (date: Date, timeZone: string): Date => {
 /**
  * Format a date in a specific timezone
  */
-export const formatInTimeZone = (date: Date, timeZone: string, formatString: string): string => {
+export const formatDateTimeInTimeZone = (date: Date, timeZone: string, formatString: string): string => {
   const zonedDate = toZonedTime(date, timeZone);
   return format(zonedDate, formatString);
 };
@@ -131,7 +132,7 @@ export const formatTimeInUserTimeZone = (
     const date = new Date();
     date.setHours(hours, minutes, 0, 0);
     
-    return formatInTimeZone(date, ianaTimeZone, formatStr);
+    return formatDateInTimeZone(date, ianaTimeZone, formatStr);
   } catch (error) {
     console.error('Error formatting time in user timezone:', error, { timeStr, userTimeZone, formatStr });
     return timeStr ? formatTime12Hour(timeStr) : '';
@@ -213,7 +214,7 @@ export const formatWithTimeZone = (
     );
     
     // Format the time using date-fns-tz
-    const formattedTime = formatInTimeZone(dateTime, ianaTimeZone, 'h:mm a');
+    const formattedTime = formatDateInTimeZone(dateTime, ianaTimeZone, 'h:mm a');
     
     if (!includeTimeZone) {
       return formattedTime;
