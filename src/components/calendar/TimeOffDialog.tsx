@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
@@ -9,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { DateRange } from 'react-day-picker';
 
 interface TimeOffDialogProps {
   isOpen: boolean;
@@ -23,10 +23,7 @@ const TimeOffDialog: React.FC<TimeOffDialogProps> = ({
   clinicianId,
   onTimeOffUpdated
 }) => {
-  const [date, setDate] = useState<{
-    from: Date | undefined;
-    to: Date | undefined;
-  }>({
+  const [date, setDate] = useState<DateRange>({
     from: undefined,
     to: undefined,
   });

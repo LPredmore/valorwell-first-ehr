@@ -5,8 +5,10 @@ import { Loader2 } from 'lucide-react';
 import FullCalendarView from './FullCalendarView';
 import WeekView from './week-view';
 import { TimeBlock } from './week-view/useWeekViewData'; 
+import { Appointment as HookAppointment } from '@/hooks/useAppointments';
 
-interface Appointment {
+// Create an interface that extends the imported Appointment type to ensure compatibility
+interface Appointment extends Partial<HookAppointment> {
   id: string;
   client_id: string;
   date: string;
@@ -49,16 +51,30 @@ const MonthView: React.FC<MonthViewProps> = ({
   userTimeZone,
   weekViewMode = false
 }) => {
+  // Add video_room_url property to appointments if it doesn't exist
+  const enhancedAppointments = appointments.map(appointment => ({
+    ...appointment,
+    video_room_url: appointment.video_room_url || null
+  })) as HookAppointment[];
+
+  // Create adapter function for the onAvailabilityClick callback
+  const handleAvailabilityClick = onAvailabilityClick 
+    ? (date: Date, block: any) => {
+        // Make sure we're passing a compatible block structure
+        onAvailabilityClick(date, block);
+      }
+    : undefined;
+
   if (weekViewMode) {
     return (
       <WeekView 
         currentDate={currentDate}
         clinicianId={clinicianId}
         refreshTrigger={refreshTrigger}
-        appointments={appointments}
+        appointments={enhancedAppointments}
         getClientName={getClientName}
         onAppointmentClick={onAppointmentClick}
-        onAvailabilityClick={onAvailabilityClick as (day: Date, block: TimeBlock) => void}
+        onAvailabilityClick={handleAvailabilityClick}
         userTimeZone={userTimeZone}
       />
     );
@@ -69,10 +85,10 @@ const MonthView: React.FC<MonthViewProps> = ({
       currentDate={currentDate}
       clinicianId={clinicianId}
       refreshTrigger={refreshTrigger}
-      appointments={appointments}
+      appointments={enhancedAppointments}
       getClientName={getClientName}
       onAppointmentClick={onAppointmentClick}
-      onAvailabilityClick={onAvailabilityClick}
+      onAvailabilityClick={handleAvailabilityClick}
       userTimeZone={userTimeZone}
       view="dayGridMonth"
       showAvailability={true}
