@@ -8,6 +8,7 @@ import { AvailabilityEditDialogProps } from './availability-edit/types';
 import TimeInput from './availability-edit/TimeInput';
 import DeleteConfirmationDialog from './DeleteConfirmationDialog';
 import { useAvailabilityEdit } from './availability-edit/useAvailabilityEdit';
+import EditChoiceDialog from './availability-edit/EditChoiceDialog';
 
 const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
 isOpen,
@@ -31,7 +32,11 @@ handleDeleteClick,
 confirmDelete,
 isRecurring,
 isException,
-isStandalone
+isStandalone,
+isEditChoiceDialogOpen,
+setIsEditChoiceDialogOpen,
+handleEditSingle,
+handleEditSeries
 } = useAvailabilityEdit(
 isOpen,
 onClose,
@@ -109,6 +114,15 @@ specificDate={specificDate}
 confirmDelete={confirmDelete}
 isLoading={isLoading}
 isRecurring={isRecurring}
+/>
+
+<EditChoiceDialog
+isOpen={isEditChoiceDialogOpen}
+onClose={() => setIsEditChoiceDialogOpen(false)}
+specificDate={specificDate}
+onEditSingle={handleEditSingle}
+onEditSeries={handleEditSeries}
+isLoading={isLoading}
 />
 </>
 );

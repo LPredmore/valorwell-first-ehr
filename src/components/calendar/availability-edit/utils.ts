@@ -18,3 +18,6 @@ export const generateTimeOptions = () => {
 export const formatDisplayTime = (time: string) => {
   return format(new Date(`2023-01-01T${time}`), 'h:mm a');
 };
+
+// Export TimeOption type
+export type TimeOption = string;

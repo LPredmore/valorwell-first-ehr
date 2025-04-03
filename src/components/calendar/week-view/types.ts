@@ -17,3 +17,14 @@ export interface WeekViewProps {
   }) => void;
   userTimeZone?: string;
 }
+
+// Add a new interface for editing availability blocks
+export interface AvailabilityBlockForEdit {
+  id: string;
+  day_of_week?: string;
+  start_time: string;
+  end_time: string;
+  isException?: boolean;
+  isStandalone?: boolean;
+  original_availability_id?: string | null;
+}

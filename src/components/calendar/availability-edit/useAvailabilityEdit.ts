@@ -20,6 +20,8 @@ export const useAvailabilityEdit = (
   const [isRecurring, setIsRecurring] = useState(false);
   const [isException, setIsException] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [isEditChoiceDialogOpen, setIsEditChoiceDialogOpen] = useState(false);
+  const [editMode, setEditMode] = useState<'single' | 'series'>('single');
 
   useEffect(() => {
     if (isOpen && availabilityBlock && specificDate) {
@@ -46,63 +48,96 @@ export const useAvailabilityEdit = (
     }
   }, [isOpen, availabilityBlock, specificDate]);
 
-  const handleSaveClick = async () => {
+  const handleSaveClick = () => {
+    if (isRecurring && !isException) {
+      setIsEditChoiceDialogOpen(true);
+    } else {
+      saveChanges('single');
+    }
+  };
+
+  const handleEditSingle = () => {
+    setEditMode('single');
+    setIsEditChoiceDialogOpen(false);
+    saveChanges('single');
+  };
+
+  const handleEditSeries = () => {
+    setEditMode('series');
+    setIsEditChoiceDialogOpen(false);
+    saveChanges('series');
+  };
+
+  const saveChanges = async (mode: 'single' | 'series') => {
     if (!specificDate || !clinicianId) return;
     
     setIsLoading(true);
     const specificDateStr = format(specificDate, 'yyyy-MM-dd');
     
     try {
-      if (isRecurring && !isException) {
-        // Create an exception to the recurring availability
+      if (mode === 'single') {
+        if (isRecurring && !isException) {
+          // Create an exception to the recurring availability
+          const { data, error } = await supabase
+            .from('availability_exceptions')
+            .insert({
+              clinician_id: clinicianId,
+              specific_date: specificDateStr,
+              original_availability_id: availabilityBlock.id,
+              start_time: `${startTime}:00`,
+              end_time: `${endTime}:00`,
+              is_deleted: false
+            });
+            
+          if (error) throw error;
+        } else if (isException) {
+          // Update an existing exception
+          const { data, error } = await supabase
+            .from('availability_exceptions')
+            .update({
+              start_time: `${startTime}:00`,
+              end_time: `${endTime}:00`,
+              is_deleted: false
+            })
+            .eq('id', availabilityBlock.id);
+            
+          if (error) throw error;
+        } else if (isStandalone) {
+          // Update a standalone one-time availability
+          const { data, error } = await supabase
+            .from('availability_exceptions')
+            .update({
+              start_time: `${startTime}:00`,
+              end_time: `${endTime}:00`,
+              is_deleted: false
+            })
+            .eq('id', availabilityBlock.id);
+            
+          if (error) throw error;
+        } else {
+          // Create a new one-time availability
+          const { data, error } = await supabase
+            .from('availability_exceptions')
+            .insert({
+              clinician_id: clinicianId,
+              specific_date: specificDateStr,
+              original_availability_id: null,
+              start_time: `${startTime}:00`,
+              end_time: `${endTime}:00`,
+              is_deleted: false
+            });
+            
+          if (error) throw error;
+        }
+      } else if (mode === 'series' && isRecurring) {
+        // Update the recurring series
         const { data, error } = await supabase
-          .from('availability_exceptions')
-          .insert({
-            clinician_id: clinicianId,
-            specific_date: specificDateStr,
-            original_availability_id: availabilityBlock.id,
-            start_time: `${startTime}:00`,
-            end_time: `${endTime}:00`,
-            is_deleted: false
-          });
-          
-        if (error) throw error;
-      } else if (isException) {
-        // Update an existing exception
-        const { data, error } = await supabase
-          .from('availability_exceptions')
+          .from('availability')
           .update({
             start_time: `${startTime}:00`,
-            end_time: `${endTime}:00`,
-            is_deleted: false
+            end_time: `${endTime}:00`
           })
           .eq('id', availabilityBlock.id);
-          
-        if (error) throw error;
-      } else if (isStandalone) {
-        // Update a standalone one-time availability
-        const { data, error } = await supabase
-          .from('availability_exceptions')
-          .update({
-            start_time: `${startTime}:00`,
-            end_time: `${endTime}:00`,
-            is_deleted: false
-          })
-          .eq('id', availabilityBlock.id);
-          
-        if (error) throw error;
-      } else {
-        // Create a new one-time availability
-        const { data, error } = await supabase
-          .from('availability_exceptions')
-          .insert({
-            clinician_id: clinicianId,
-            specific_date: specificDateStr,
-            original_availability_id: null,
-            start_time: `${startTime}:00`,
-            end_time: `${endTime}:00`,
-            is_deleted: false
-          });
           
         if (error) throw error;
       }
@@ -175,6 +210,10 @@ export const useAvailabilityEdit = (
     confirmDelete,
     isRecurring,
     isException,
-    isStandalone
+    isStandalone,
+    isEditChoiceDialogOpen,
+    setIsEditChoiceDialogOpen,
+    handleEditSingle,
+    handleEditSeries
   };
 };

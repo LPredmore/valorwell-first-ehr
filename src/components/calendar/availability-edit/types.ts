@@ -37,3 +37,12 @@ export interface OneTimeBlockType {
   isException?: boolean;
   isStandalone?: boolean;
 }
+
+export interface EditChoiceDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  specificDate: Date;
+  onEditSingle: () => void;
+  onEditSeries: () => void;
+  isLoading: boolean;
+}
