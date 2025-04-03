@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { generateTimeOptions, TimeOption } from './utils';
+import { toast } from '@/hooks/use-toast';
 
 export const useAvailabilityEdit = (
   isOpen: boolean,
@@ -20,6 +21,8 @@ export const useAvailabilityEdit = (
   const [isRecurring, setIsRecurring] = useState(false);
   const [isException, setIsException] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [isEditChoiceDialogOpen, setIsEditChoiceDialogOpen] = useState(false);
+  const [editMode, setEditMode] = useState<'single' | 'all' | null>(null);
 
   useEffect(() => {
     if (isOpen && availabilityBlock && specificDate) {
@@ -27,6 +30,9 @@ export const useAvailabilityEdit = (
       setIsRecurring(!availabilityBlock.isStandalone);
       setIsException(!!availabilityBlock.isException);
       setIsStandalone(!!availabilityBlock.isStandalone);
+      
+      // Reset edit mode
+      setEditMode(null);
       
       // Set initial times from the block
       if (availabilityBlock.start_time) {
@@ -43,8 +49,19 @@ export const useAvailabilityEdit = (
       
       // Generate time options in 15-minute increments
       setTimeOptions(generateTimeOptions());
+      
+      // If it's a recurring availability (not an exception or standalone), 
+      // show the edit choice dialog first
+      if (isRecurring && !isException && !isStandalone) {
+        setIsEditChoiceDialogOpen(true);
+      }
     }
   }, [isOpen, availabilityBlock, specificDate]);
+
+  const handleEditChoice = (choice: 'single' | 'all') => {
+    setEditMode(choice);
+    setIsEditChoiceDialogOpen(false);
+  };
 
   const handleSaveClick = async () => {
     if (!specificDate || !clinicianId) return;
@@ -53,7 +70,16 @@ export const useAvailabilityEdit = (
     const specificDateStr = format(specificDate, 'yyyy-MM-dd');
     
     try {
-      if (isRecurring && !isException) {
+      // If no edit mode selected yet and it's recurring, show the choice dialog
+      if (!editMode && isRecurring && !isException && !isStandalone) {
+        setIsEditChoiceDialogOpen(true);
+        setIsLoading(false);
+        return;
+      }
+      
+      // If editing a single occurrence of a recurring availability
+      if ((editMode === 'single' || (!editMode && (isException || isStandalone))) && 
+          isRecurring && !isException) {
         // Create an exception to the recurring availability
         const { data, error } = await supabase
           .from('availability_exceptions')
@@ -67,7 +93,32 @@ export const useAvailabilityEdit = (
           });
           
         if (error) throw error;
-      } else if (isException) {
+        
+        toast({
+          title: "Availability Updated",
+          description: `Single occurrence for ${format(specificDate, 'MMM d, yyyy')} has been updated.`
+        });
+      } 
+      // If editing all occurrences of a recurring availability
+      else if (editMode === 'all' && isRecurring && !isException) {
+        // Update the main recurring availability
+        const { data, error } = await supabase
+          .from('availability')
+          .update({
+            start_time: `${startTime}:00`,
+            end_time: `${endTime}:00`,
+          })
+          .eq('id', availabilityBlock.id);
+          
+        if (error) throw error;
+        
+        toast({
+          title: "Availability Updated",
+          description: "All occurrences of this recurring availability have been updated."
+        });
+      } 
+      // If editing an existing exception
+      else if (isException) {
         // Update an existing exception
         const { data, error } = await supabase
           .from('availability_exceptions')
@@ -79,7 +130,14 @@ export const useAvailabilityEdit = (
           .eq('id', availabilityBlock.id);
           
         if (error) throw error;
-      } else if (isStandalone) {
+        
+        toast({
+          title: "Availability Updated",
+          description: `Exception for ${format(specificDate, 'MMM d, yyyy')} has been updated.`
+        });
+      } 
+      // If editing a standalone one-time availability
+      else if (isStandalone) {
         // Update a standalone one-time availability
         const { data, error } = await supabase
           .from('availability_exceptions')
@@ -91,7 +149,14 @@ export const useAvailabilityEdit = (
           .eq('id', availabilityBlock.id);
           
         if (error) throw error;
-      } else {
+        
+        toast({
+          title: "Availability Updated",
+          description: `One-time availability for ${format(specificDate, 'MMM d, yyyy')} has been updated.`
+        });
+      } 
+      // If creating a new one-time availability
+      else {
         // Create a new one-time availability
         const { data, error } = await supabase
           .from('availability_exceptions')
@@ -105,12 +170,22 @@ export const useAvailabilityEdit = (
           });
           
         if (error) throw error;
+        
+        toast({
+          title: "Availability Created",
+          description: `New availability for ${format(specificDate, 'MMM d, yyyy')} has been created.`
+        });
       }
       
       onAvailabilityUpdated();
       onClose();
     } catch (error) {
       console.error('Error saving availability:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update availability. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +202,9 @@ export const useAvailabilityEdit = (
     const specificDateStr = format(specificDate, 'yyyy-MM-dd');
     
     try {
-      if (isRecurring && !isException) {
+      // If deleting a single occurrence of a recurring availability
+      if ((editMode === 'single' || (!editMode && (isException || isStandalone))) && 
+          isRecurring && !isException) {
         // Create a deletion exception for the recurring availability
         const { data, error } = await supabase
           .from('availability_exceptions')
@@ -141,7 +218,29 @@ export const useAvailabilityEdit = (
           });
           
         if (error) throw error;
-      } else if (isException || isStandalone) {
+        
+        toast({
+          title: "Availability Cancelled",
+          description: `Availability for ${format(specificDate, 'MMM d, yyyy')} has been cancelled.`
+        });
+      } 
+      // If deleting all occurrences of a recurring availability
+      else if (editMode === 'all' && isRecurring && !isException) {
+        // Delete the recurring availability pattern
+        const { data, error } = await supabase
+          .from('availability')
+          .update({ is_active: false })
+          .eq('id', availabilityBlock.id);
+          
+        if (error) throw error;
+        
+        toast({
+          title: "Recurring Availability Cancelled",
+          description: "All occurrences of this recurring availability have been cancelled."
+        });
+      } 
+      // If deleting an exception or standalone availability
+      else if (isException || isStandalone) {
         // Delete the exception or standalone availability
         const { data, error } = await supabase
           .from('availability_exceptions')
@@ -149,6 +248,11 @@ export const useAvailabilityEdit = (
           .eq('id', availabilityBlock.id);
           
         if (error) throw error;
+        
+        toast({
+          title: "Availability Cancelled",
+          description: `Availability for ${format(specificDate, 'MMM d, yyyy')} has been cancelled.`
+        });
       }
       
       onAvailabilityUpdated();
@@ -156,6 +260,11 @@ export const useAvailabilityEdit = (
       onClose();
     } catch (error) {
       console.error('Error deleting availability:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel availability. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -175,6 +284,10 @@ export const useAvailabilityEdit = (
     confirmDelete,
     isRecurring,
     isException,
-    isStandalone
+    isStandalone,
+    isEditChoiceDialogOpen,
+    setIsEditChoiceDialogOpen,
+    handleEditChoice,
+    editMode
   };
 };
