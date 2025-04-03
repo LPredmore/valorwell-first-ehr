@@ -2,6 +2,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { TimeBlock } from './useWeekViewData';
+import { Clock, Edit } from 'lucide-react';
 
 interface AvailabilityBlockProps {
   block: TimeBlock;
@@ -55,7 +56,7 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
 
   return (
     <div 
-      className={`absolute left-0.5 right-0.5 z-5 rounded-md border ${borderColor} ${bgColor} p-1 overflow-hidden cursor-pointer hover:opacity-90 transition-colors`}
+      className={`absolute left-0.5 right-0.5 z-5 rounded-md border ${borderColor} ${bgColor} p-1 overflow-hidden cursor-pointer hover:opacity-90 transition-colors hover:shadow-md group`}
       style={{ 
         top: `${top}px`, 
         height: `${height}px`,
@@ -64,14 +65,18 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
       onClick={handleClick}
     >
       <div className={`flex flex-col h-full text-xs ${textColor}`}>
-        <div className="font-medium truncate flex items-center">
-          Available
-          {(block.isException || block.isStandalone) && (
-            <span className={`ml-1 text-[10px] px-1 py-0.5 rounded-full ${badgeColor}`}>{badgeText}</span>
-          )}
+        <div className="font-medium truncate flex items-center justify-between">
+          <span>Available</span>
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+            <Edit className="h-3 w-3" />
+          </div>
         </div>
+        {(block.isException || block.isStandalone) && (
+          <span className={`text-[10px] px-1 py-0.5 rounded-full ${badgeColor}`}>{badgeText}</span>
+        )}
         {height >= 40 && (
-          <div className="text-[10px] text-gray-500 mt-0.5">
+          <div className="text-[10px] text-gray-500 mt-0.5 flex items-center">
+            <Clock className="h-3 w-3 mr-1" />
             {format(block.start, 'h:mm a')} - {format(block.end, 'h:mm a')}
           </div>
         )}

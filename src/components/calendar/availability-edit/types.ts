@@ -34,4 +34,6 @@ export interface OneTimeBlockType {
   end_time: string;
   clinician_id: string;
   is_deleted: boolean;
+  isException?: boolean;
+  isStandalone?: boolean;
 }

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { AvailabilityEditDialogProps } from './availability-edit/types';
 import TimeInput from './availability-edit/TimeInput';
-import DeleteConfirmationDialog from './availability-edit/DeleteConfirmationDialog';
+import DeleteConfirmationDialog from './DeleteConfirmationDialog';
 import { useAvailabilityEdit } from './availability-edit/useAvailabilityEdit';
 
 const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
