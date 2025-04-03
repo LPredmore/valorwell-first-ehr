@@ -14,24 +14,6 @@ export interface WeekViewProps {
     start_time: string;
     end_time: string;
     isException?: boolean;
-    isStandalone?: boolean;
-    day?: Date;
-    start?: Date;
-    end?: Date;
-    availabilityIds?: string[];
   }) => void;
   userTimeZone?: string;
-}
-
-export interface TimeBlock {
-  day: Date;
-  start: Date;
-  end: Date;
-  availabilityIds: string[];
-  isException?: boolean;
-  isStandalone?: boolean;
-  id?: string;
-  day_of_week?: string;
-  start_time?: string;
-  end_time?: string;
 }

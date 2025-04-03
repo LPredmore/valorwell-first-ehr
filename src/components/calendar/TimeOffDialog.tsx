@@ -1,17 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import React, { useState } from 'react';
+import { format } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar } from '@/components/ui/calendar';
-import { format, addDays, isAfter, isBefore, startOfDay } from 'date-fns';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-import { CalendarIcon, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { DateRange } from 'react-day-picker';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface TimeOffDialogProps {
   isOpen: boolean;
@@ -20,163 +17,116 @@ interface TimeOffDialogProps {
   onTimeOffUpdated: () => void;
 }
 
-const TimeOffDialog: React.FC<TimeOffDialogProps> = ({
-  isOpen,
-  onClose,
+const TimeOffDialog: React.FC<TimeOffDialogProps> = ({ 
+  isOpen, 
+  onClose, 
   clinicianId,
   onTimeOffUpdated
 }) => {
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
-    from: new Date(),
-    to: addDays(new Date(), 1)
+  const [date, setDate] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({
+    from: undefined,
+    to: undefined,
   });
+  
   const [note, setNote] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  // Reset form when dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      setDateRange({
-        from: new Date(),
-        to: addDays(new Date(), 1)
-      });
-      setNote('');
-    }
-  }, [isOpen]);
-
+  const { toast } = useToast();
+  
   const handleSave = async () => {
-    if (!clinicianId) {
+    if (!clinicianId || !date.from || !date.to) {
       toast({
-        title: "Error",
-        description: "Clinician ID is required",
+        title: "Missing Information",
+        description: "Please select both start and end dates.",
         variant: "destructive"
       });
       return;
     }
-
-    if (!dateRange.from || !dateRange.to) {
-      toast({
-        title: "Error",
-        description: "Please select a date range",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Ensure to date is not before from date
-    if (isBefore(dateRange.to, dateRange.from)) {
-      toast({
-        title: "Error",
-        description: "End date cannot be before start date",
-        variant: "destructive"
-      });
-      return;
-    }
-
+    
     setIsLoading(true);
+    
     try {
       const { data, error } = await supabase
         .from('time_off_blocks')
         .insert({
           clinician_id: clinicianId,
-          start_date: format(dateRange.from, 'yyyy-MM-dd'),
-          end_date: format(dateRange.to, 'yyyy-MM-dd'),
-          note: note.trim() || null
+          start_date: format(date.from, 'yyyy-MM-dd'),
+          end_date: format(date.to, 'yyyy-MM-dd'),
+          note: note.trim() || 'Time Off',
+          is_active: true
         });
-
+        
       if (error) throw error;
-
+      
       toast({
         title: "Success",
-        description: "Time off block has been added",
+        description: "Time off block has been added to your calendar."
       });
-
+      
       onTimeOffUpdated();
-      onClose();
+      handleClose();
     } catch (error) {
       console.error('Error saving time off block:', error);
       toast({
         title: "Error",
-        description: "Failed to save time off block",
+        description: "Failed to save time off block. Please try again.",
         variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
   };
-
-  // Handle date range selection
-  const handleDateRangeChange = (range: DateRange | undefined) => {
-    if (range?.from) {
-      setDateRange({
-        from: range.from,
-        to: range.to || range.from
-      });
-    }
+  
+  const handleClose = () => {
+    setDate({ from: undefined, to: undefined });
+    setNote('');
+    onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add Time Off</DialogTitle>
+          <DialogDescription>
+            Block a range of days as unavailable on your calendar.
+          </DialogDescription>
         </DialogHeader>
-
+        
         <div className="grid gap-4 py-4">
-          <div className="space-y-2">
-            <Label>Date Range</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "justify-start text-left font-normal",
-                      !dateRange.from && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange.from ? format(dateRange.from, 'PPP') : <span>From date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="range"
-                    selected={dateRange}
-                    onSelect={handleDateRangeChange}
-                    initialFocus
-                    defaultMonth={dateRange.from}
-                  />
-                </PopoverContent>
-              </Popover>
-
-              <div className="flex items-center">
-                <span className="mx-2">to</span>
-                <div className="w-full">
-                  {dateRange.to ? format(dateRange.to, 'PPP') : <span className="text-muted-foreground">End date</span>}
-                </div>
-              </div>
+          <div>
+            <Label htmlFor="dates">Select Dates</Label>
+            <div className="mt-2 border rounded-md p-2">
+              <Calendar
+                initialFocus
+                mode="range"
+                selected={date}
+                onSelect={setDate}
+                numberOfMonths={2}
+                disabled={(date) => date < new Date()}
+                className="mx-auto"
+              />
             </div>
           </div>
-
-          <div className="space-y-2">
+          
+          <div className="grid gap-2">
             <Label htmlFor="note">Note (optional)</Label>
-            <Textarea 
+            <Textarea
               id="note"
+              placeholder="Vacation, Conference, etc."
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Add a note about this time off"
-              className="resize-none"
+              maxLength={100}
             />
           </div>
         </div>
-
+        
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={handleSave} disabled={isLoading}>
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+          <Button variant="outline" onClick={handleClose}>Cancel</Button>
+          <Button onClick={handleSave} disabled={isLoading || !date.from || !date.to}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isLoading ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>
