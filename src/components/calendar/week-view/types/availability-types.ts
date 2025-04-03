@@ -45,7 +45,8 @@ export interface TimeBlock {
   originalAvailabilityId?: string | null;
 }
 
-export interface AppointmentBlock {
+// Renamed from AppointmentBlock to AppointmentBlockType for consistency with exports
+export interface AppointmentBlockType {
   id: string;
   day: Date;
   start: Date;
@@ -58,13 +59,13 @@ export interface AppointmentBlock {
 export interface TimeSlotUtils {
   isTimeSlotAvailable: (day: Date, timeSlot: Date) => boolean;
   getBlockForTimeSlot: (day: Date, timeSlot: Date) => TimeBlock | undefined;
-  getAppointmentForTimeSlot: (day: Date, timeSlot: Date) => AppointmentBlock | undefined;
+  getAppointmentForTimeSlot: (day: Date, timeSlot: Date) => AppointmentBlockType | undefined;
 }
 
 export interface WeekViewDataResult extends TimeSlotUtils {
   loading: boolean;
   timeBlocks: TimeBlock[];
-  appointmentBlocks: AppointmentBlock[];
+  appointmentBlocks: AppointmentBlockType[];
   exceptions: AvailabilityException[];
   availabilityBlocks: AvailabilityBlock[];
   getAvailabilityForBlock: (blockId: string) => AvailabilityBlock | undefined;

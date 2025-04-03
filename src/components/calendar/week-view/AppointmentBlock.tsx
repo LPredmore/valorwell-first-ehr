@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { format } from 'date-fns';
 import { AppointmentBlockType, Appointment } from './types/availability-types';
@@ -17,6 +16,7 @@ const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
   originalAppointments
 }) => {
   // Calculate position and height based on start and end time
+  
   const startHour = appointment.start.getHours() + (appointment.start.getMinutes() / 60);
   const endHour = appointment.end.getHours() + (appointment.end.getMinutes() / 60);
   const duration = endHour - startHour;
@@ -36,6 +36,7 @@ const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
   };
 
   return (
+    
     <div 
       className="absolute left-0.5 right-0.5 z-10 rounded-md border border-blue-400 bg-blue-50 p-1 overflow-hidden cursor-pointer hover:bg-blue-100 transition-colors shadow-sm"
       style={{ 

@@ -1,13 +1,13 @@
 
 import { useState, useEffect } from 'react';
 import { format, parseISO, setHours, setMinutes, startOfDay } from 'date-fns';
-import { AppointmentBlock, Appointment } from '../types/availability-types';
+import { AppointmentBlockType, Appointment } from '../types/availability-types';
 
 export const useAppointmentProcessing = (
   appointments: Appointment[] = [],
   getClientName: (clientId: string) => string = () => 'Client'
 ) => {
-  const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
+  const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlockType[]>([]);
 
   useEffect(() => {
     if (!appointments.length) {
@@ -18,7 +18,7 @@ export const useAppointmentProcessing = (
 
     console.log("Processing appointments in week view:", appointments);
     
-    const blocks: AppointmentBlock[] = appointments.map(appointment => {
+    const blocks: AppointmentBlockType[] = appointments.map(appointment => {
       const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
       const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
 
