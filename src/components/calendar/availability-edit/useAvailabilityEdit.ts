@@ -55,6 +55,7 @@ export const useAvailabilityEdit = (
     try {
       if (isRecurring && !isException) {
         // Create an exception to the recurring availability
+        // This is when a user edits a single occurrence of a recurring availability
         const { data, error } = await supabase
           .from('availability_exceptions')
           .insert({
@@ -129,6 +130,7 @@ export const useAvailabilityEdit = (
     try {
       if (isRecurring && !isException) {
         // Create a deletion exception for the recurring availability
+        // This is when a user deletes a single occurrence from a recurring series
         const { data, error } = await supabase
           .from('availability_exceptions')
           .insert({

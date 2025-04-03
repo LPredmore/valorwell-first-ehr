@@ -17,6 +17,7 @@ interface Appointment {
   end_time: string;
   type: string;
   status: string;
+  video_room_url?: string;
 }
 
 interface AvailabilityBlock {
@@ -41,12 +42,16 @@ interface AvailabilityException {
 }
 
 interface TimeBlock {
+  id: string;
   day: Date;
   start: Date;
   end: Date;
   availabilityIds: string[];
   isException?: boolean;
   isStandalone?: boolean;
+  day_of_week?: string;
+  start_time?: string;
+  end_time?: string;
 }
 
 interface AppointmentBlock {
@@ -247,9 +252,11 @@ export const useWeekViewData = (
           if (modificationException) {
             return {
               ...block,
+              id: modificationException.id,
               start_time: modificationException.start_time,
               end_time: modificationException.end_time,
-              isException: true
+              isException: true,
+              originalId: block.id
             };
           }
           
@@ -286,7 +293,11 @@ export const useWeekViewData = (
           end,
           isException: block.isException,
           isStandalone: block.isStandalone,
-          availabilityIds: [block.id]
+          availabilityIds: [block.id],
+          day_of_week: block.day_of_week,
+          start_time: block.start_time,
+          end_time: block.end_time,
+          originalId: (block as any).originalId
         };
       });
 

@@ -1,11 +1,9 @@
 
 import React from 'react';
 import { format } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { Loader2 } from 'lucide-react';
 import { DeleteDialogProps } from './availability-edit/types';
-import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
 const DeleteConfirmationDialog: React.FC<DeleteDialogProps> = ({
   isOpen,
@@ -15,30 +13,39 @@ const DeleteConfirmationDialog: React.FC<DeleteDialogProps> = ({
   isLoading,
   isRecurring
 }) => {
-  if (!specificDate) return null;
-
-  // Format the date properly for display
-  const formattedDate = formatInTimeZone(
-    specificDate,
-    ensureIANATimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone),
-    'EEEE, MMMM d, yyyy'
-  );
-
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Cancel Availability</AlertDialogTitle>
+          <AlertDialogTitle>Delete Availability</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to cancel your availability for {formattedDate}?
-            {isRecurring && " This will not affect your regular weekly schedule."}
+            {isRecurring ? (
+              <>
+                <p className="mb-2">
+                  You are about to cancel your availability for <strong>{format(specificDate, 'EEEE, MMMM d, yyyy')}</strong>.
+                </p>
+                <p className="p-2 bg-amber-50 text-amber-800 rounded border border-amber-200 mb-2">
+                  This will only remove your availability for this specific date. Your recurring weekly schedule will remain unchanged.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mb-2">
+                  You are about to delete your availability for <strong>{format(specificDate, 'EEEE, MMMM d, yyyy')}</strong>.
+                </p>
+                <p className="p-2 bg-amber-50 text-amber-800 rounded border border-amber-200 mb-2">
+                  This will permanently remove this availability block.
+                </p>
+              </>
+            )}
+            <p>Are you sure you want to continue?</p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={confirmDelete} disabled={isLoading}>
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            {isLoading ? "Processing..." : "Yes, Cancel Availability"}
+          <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmDelete} disabled={isLoading} className="bg-red-600 hover:bg-red-700">
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2 inline" /> : null}
+            {isLoading ? "Deleting..." : "Delete Availability"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
