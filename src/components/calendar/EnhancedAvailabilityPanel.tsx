@@ -1,12 +1,10 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Plus, Clock, Calendar } from 'lucide-react';
-import TimeOffDialog from './TimeOffDialog';
-import TimeOffBlocksList from './TimeOffBlocksList';
-import AvailabilityPanel from './AvailabilityPanel';
+import { Card } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Calendar, Clock, Clock8 } from 'lucide-react';
+import WeeklyAvailabilityPanel from './WeeklyAvailabilityPanel';
+import TimeOffPanel from './TimeOffPanel';
 import OneTimeAvailabilityPanel from './OneTimeAvailabilityPanel';
 
 interface EnhancedAvailabilityPanelProps {
@@ -20,44 +18,51 @@ const EnhancedAvailabilityPanel: React.FC<EnhancedAvailabilityPanelProps> = ({
   onAvailabilityUpdated,
   userTimeZone
 }) => {
-  const [isTimeOffDialogOpen, setIsTimeOffDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('weekly');
+  const [tab, setTab] = useState('weekly');
 
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-medium">Availability Management</CardTitle>
-      </CardHeader>
-      <CardContent className="px-3 pb-3">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full mb-4">
-            <TabsTrigger value="weekly" className="flex-1">
-              <Clock className="h-4 w-4 mr-2" />
-              Weekly Hours
-            </TabsTrigger>
-            <TabsTrigger value="onetime" className="flex-1">
-              <Calendar className="h-4 w-4 mr-2" />
-              One-Time Hours
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="weekly" className="mt-0">
-            <AvailabilityPanel 
-              clinicianId={clinicianId} 
-              onAvailabilityUpdated={onAvailabilityUpdated} 
-              userTimeZone={userTimeZone}
-            />
-          </TabsContent>
-          
-          <TabsContent value="onetime" className="mt-0">
-            <OneTimeAvailabilityPanel
-              clinicianId={clinicianId}
-              onAvailabilityUpdated={onAvailabilityUpdated}
-              userTimeZone={userTimeZone}
-            />
-          </TabsContent>
-        </Tabs>
-      </CardContent>
+    <Card className="p-4 h-full">
+      <h3 className="text-lg font-medium mb-4">Availability Settings</h3>
+      
+      <Tabs value={tab} onValueChange={setTab} className="w-full">
+        <TabsList className="w-full grid grid-cols-3">
+          <TabsTrigger value="weekly" className="flex items-center">
+            <Calendar className="h-4 w-4 mr-2" />
+            Weekly Hours
+          </TabsTrigger>
+          <TabsTrigger value="one-time" className="flex items-center">
+            <Clock className="h-4 w-4 mr-2" />
+            One-Time Hours
+          </TabsTrigger>
+          <TabsTrigger value="time-off" className="flex items-center">
+            <Clock8 className="h-4 w-4 mr-2" />
+            Time Off
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="weekly" className="pt-4">
+          <WeeklyAvailabilityPanel 
+            clinicianId={clinicianId}
+            onAvailabilityUpdated={onAvailabilityUpdated}
+            userTimeZone={userTimeZone}
+          />
+        </TabsContent>
+        
+        <TabsContent value="one-time" className="pt-4">
+          <OneTimeAvailabilityPanel
+            clinicianId={clinicianId}
+            onAvailabilityUpdated={onAvailabilityUpdated}
+            userTimeZone={userTimeZone}
+          />
+        </TabsContent>
+        
+        <TabsContent value="time-off" className="pt-4">
+          <TimeOffPanel 
+            clinicianId={clinicianId}
+            onAvailabilityUpdated={onAvailabilityUpdated}
+          />
+        </TabsContent>
+      </Tabs>
     </Card>
   );
 };

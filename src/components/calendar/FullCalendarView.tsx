@@ -220,70 +220,72 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     
     const availabilityEvents: any[] = [];
     
-    // Process weekly recurring availability
+    // Process weekly recurring availability - Display as CONTINUOUS blocks
     availabilityBlocks.forEach(block => {
       const dowNumber = dayOfWeekMap[block.day_of_week];
       
-      const startTime = block.start_time;
-      const endTime = block.end_time;
+      // Get specific dates that should be excluded due to exceptions
+      const excludeDates = oneTimeBlocks
+        .filter(exception => 
+          exception.original_availability_id === block.id && 
+          exception.is_deleted)
+        .map(exception => exception.specific_date);
       
-      const timeSlots = getTimeSlots(startTime, endTime, settings);
+      // Create single continuous events per day instead of breaking into time slots
+      const event = {
+        id: `avail-${block.id}`,
+        title: 'Available',
+        daysOfWeek: [dowNumber],
+        startTime: block.start_time,
+        endTime: block.end_time,
+        startRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
+        endRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0),
+        extendedProps: {
+          type: 'availability',
+          availabilityData: block
+        },
+        backgroundColor: '#10b981',
+        borderColor: '#059669',
+        textColor: '#ffffff',
+        display: 'block',
+        excludeDates: excludeDates
+      };
       
-      timeSlots.forEach(slot => {
-        const event = {
-          id: `${block.id}-${slot.start}`,
-          title: 'Available',
-          daysOfWeek: [dowNumber],
-          startTime: slot.start,
-          endTime: slot.end,
-          startRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
-          endRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0),
-          extendedProps: {
-            type: 'availability',
-            availabilityData: {
-              ...block,
-              start_time: slot.start,
-              end_time: slot.end
-            }
-          },
-          backgroundColor: '#10b981',
-          borderColor: '#059669',
-          textColor: '#ffffff',
-          display: 'block',
-          overlap: false
-        };
-        
-        availabilityEvents.push(event);
-      });
+      availabilityEvents.push(event);
     });
     
-    // Process one-time availability
+    // Process one-time availability - Also display as CONTINUOUS blocks
     oneTimeBlocks.forEach(block => {
-      const timeSlots = getTimeSlots(block.start_time, block.end_time, settings);
+      // Skip deleted blocks or blocks without specific time
+      if (block.is_deleted || !block.start_time || !block.end_time) return;
       
-      timeSlots.forEach(slot => {
-        const event = {
-          id: `onetime-${block.id}-${slot.start}`,
-          title: 'One-Time Available',
-          start: `${block.specific_date}T${slot.start}`,
-          end: `${block.specific_date}T${slot.end}`,
-          extendedProps: {
-            type: 'one-time-availability',
-            availabilityData: {
-              ...block,
-              start_time: slot.start,
-              end_time: slot.end
-            }
-          },
-          backgroundColor: '#0ea5e9',
-          borderColor: '#0284c7',
-          textColor: '#ffffff',
-          display: 'block',
-          overlap: false
-        };
-        
-        availabilityEvents.push(event);
-      });
+      // Check if this is a modification of an existing block or a standalone event
+      const isModification = block.original_availability_id !== null;
+      
+      // Create a single continuous event for this one-time availability
+      const event = {
+        id: `onetime-${block.id}`,
+        title: isModification ? 'Modified Available' : 'One-Time Available',
+        start: `${block.specific_date}T${block.start_time}`,
+        end: `${block.specific_date}T${block.end_time}`,
+        extendedProps: {
+          type: 'one-time-availability',
+          availabilityData: {
+            id: block.id,
+            day_of_week: new Date(block.specific_date).toLocaleDateString('en-US', { weekday: 'long' }),
+            start_time: block.start_time,
+            end_time: block.end_time,
+            isException: true,
+            originalAvailabilityId: block.original_availability_id
+          }
+        },
+        backgroundColor: '#0ea5e9',
+        borderColor: '#0284c7',
+        textColor: '#ffffff',
+        display: 'block'
+      };
+      
+      availabilityEvents.push(event);
     });
     
     // Add time off blocks
@@ -307,52 +309,6 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     });
     
     return availabilityEvents;
-  };
-  
-  const getTimeSlots = (startTime: string, endTime: string, settings: AvailabilitySettings) => {
-    const [startHour, startMinute] = startTime.split(':').map(Number);
-    const [endHour, endMinute] = endTime.split(':').map(Number);
-    
-    let intervalMinutes: number;
-    
-    switch (settings.time_granularity) {
-      case 'hour':
-        intervalMinutes = 60;
-        break;
-      case 'half_hour':
-        intervalMinutes = 30;
-        break;
-      case 'quarter_hour':
-        intervalMinutes = 15;
-        break;
-      case 'custom':
-        intervalMinutes = settings.custom_minutes || 60;
-        break;
-      default:
-        intervalMinutes = 60;
-    }
-    
-    const startTotalMinutes = startHour * 60 + startMinute;
-    const endTotalMinutes = endHour * 60 + endMinute;
-    
-    const slots = [];
-    
-    for (let minutes = startTotalMinutes; minutes < endTotalMinutes; minutes += intervalMinutes) {
-      if (minutes + intervalMinutes <= endTotalMinutes) {
-        const slotStartHour = Math.floor(minutes / 60);
-        const slotStartMinute = minutes % 60;
-        
-        const slotEndHour = Math.floor((minutes + intervalMinutes) / 60);
-        const slotEndMinute = (minutes + intervalMinutes) % 60;
-        
-        const start = `${slotStartHour.toString().padStart(2, '0')}:${slotStartMinute.toString().padStart(2, '0')}:00`;
-        const end = `${slotEndHour.toString().padStart(2, '0')}:${slotEndMinute.toString().padStart(2, '0')}:00`;
-        
-        slots.push({ start, end });
-      }
-    }
-    
-    return slots;
   };
   
   const isDateInTimeOff = (date: Date) => {
@@ -424,6 +380,23 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         slotMaxTime="22:00:00"
         allDaySlot={false}
         expandRows={true}
+        eventContent={(eventInfo) => {
+          const eventTitle = eventInfo.event.title;
+          const eventType = eventInfo.event.extendedProps?.type;
+          
+          if (eventType === 'availability' || eventType === 'one-time-availability') {
+            return (
+              <div className="h-full p-1 overflow-hidden">
+                <div className="font-medium text-xs">{eventTitle}</div>
+                {eventInfo.timeText && (
+                  <div className="text-xs mt-1">{eventInfo.timeText}</div>
+                )}
+              </div>
+            );
+          }
+          
+          return null; // Default rendering for other event types
+        }}
       />
     </div>
   );

@@ -14,6 +14,7 @@ import FullCalendarView from '@/components/calendar/FullCalendarView';
 import AvailabilitySettingsDialog from '@/components/calendar/AvailabilitySettingsDialog';
 import EnhancedAvailabilityPanel from '@/components/calendar/EnhancedAvailabilityPanel';
 import { useAppointments } from '@/hooks/useAppointments';
+import AvailabilityEditDialog from '@/components/calendar/AvailabilityEditDialog';
 
 const CalendarPage = () => {
   const {
@@ -40,6 +41,9 @@ const CalendarPage = () => {
   const [calendarViewMode, setCalendarViewMode] = useState<'dayGridMonth' | 'timeGridWeek'>('timeGridWeek');
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [showAvailabilityPanel, setShowAvailabilityPanel] = useState(false);
+  const [selectedAvailabilityBlock, setSelectedAvailabilityBlock] = useState<any>(null);
+  const [selectedAvailabilityDate, setSelectedAvailabilityDate] = useState<Date | null>(null);
+  const [isAvailabilityEditDialogOpen, setIsAvailabilityEditDialogOpen] = useState(false);
 
   const navigatePrevious = () => {
     if (calendarViewMode === 'timeGridWeek') {
@@ -76,6 +80,16 @@ const CalendarPage = () => {
   const getClientName = (clientId: string) => {
     const client = clients?.find(c => c.id === clientId);
     return client ? `${client.client_first_name} ${client.client_last_name}` : 'Client';
+  };
+
+  const handleAvailabilityClick = (date: Date, availabilityBlock: any) => {
+    setSelectedAvailabilityBlock(availabilityBlock);
+    setSelectedAvailabilityDate(date);
+    setIsAvailabilityEditDialogOpen(true);
+  };
+
+  const handleAvailabilityUpdated = () => {
+    setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
   return (
@@ -164,13 +178,14 @@ const CalendarPage = () => {
               className={showAvailabilityPanel ? "w-3/4" : "w-full"}
               appointments={appointments}
               getClientName={getClientName}
+              onAvailabilityClick={handleAvailabilityClick}
             />
 
             {showAvailabilityPanel && (
               <div className="w-1/4 pl-4">
                 <EnhancedAvailabilityPanel
                   clinicianId={selectedClinicianId}
-                  onAvailabilityUpdated={() => setAppointmentRefreshTrigger(prev => prev + 1)}
+                  onAvailabilityUpdated={handleAvailabilityUpdated}
                   userTimeZone={userTimeZone}
                 />
               </div>
@@ -193,6 +208,15 @@ const CalendarPage = () => {
         onClose={() => setIsSettingsDialogOpen(false)}
         clinicianId={selectedClinicianId}
         onSettingsUpdated={handleSettingsUpdated}
+      />
+
+      <AvailabilityEditDialog
+        isOpen={isAvailabilityEditDialogOpen}
+        onClose={() => setIsAvailabilityEditDialogOpen(false)}
+        availabilityBlock={selectedAvailabilityBlock}
+        specificDate={selectedAvailabilityDate}
+        clinicianId={selectedClinicianId}
+        onAvailabilityUpdated={handleAvailabilityUpdated}
       />
     </Layout>
   );
