@@ -24,14 +24,33 @@ export const useDeleteAvailability = (
   onClose: () => void
 ) => {
   const handleDeleteClick = () => {
+    console.log('Delete clicked for availability:', {
+      isRecurring,
+      isException,
+      isStandalone,
+      availabilityBlock
+    });
     setIsDeleteDialogOpen(true);
   };
 
   const confirmDelete = async (deleteMode: 'single' | 'series' = 'single') => {
-    if (!specificDate || !clinicianId) return;
+    if (!specificDate || !clinicianId) {
+      console.error('Missing required data for deletion:', { specificDate, clinicianId });
+      return;
+    }
     
     setIsLoading(true);
     const specificDateStr = format(specificDate, 'yyyy-MM-dd');
+    
+    console.log('Confirming deletion:', {
+      deleteMode,
+      specificDateStr,
+      clinicianId,
+      isRecurring,
+      isException,
+      isStandalone,
+      availabilityBlockId: availabilityBlock?.id
+    });
     
     try {
       if (deleteMode === 'single') {
@@ -72,7 +91,9 @@ export const useDeleteAvailability = (
         } else if (isException || isStandalone) {
           // Delete the exception or standalone availability
           console.log('Deleting exception or standalone availability:', {
-            id: availabilityBlock.id
+            id: availabilityBlock.id,
+            isException,
+            isStandalone
           });
           
           await updateException(availabilityBlock.id, '', '', true);

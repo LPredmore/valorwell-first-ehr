@@ -29,6 +29,12 @@ export const useSaveAvailability = (
   const [editMode, setEditMode] = useState<'single' | 'series'>('single');
 
   const handleSaveClick = () => {
+    console.log('Save clicked for availability:', {
+      isRecurring,
+      isException,
+      availabilityBlock
+    });
+    
     if (isRecurring && !isException) {
       setIsEditChoiceDialogOpen(true);
     } else {
@@ -37,22 +43,39 @@ export const useSaveAvailability = (
   };
 
   const handleEditSingle = () => {
+    console.log('Edit single occurrence selected');
     setEditMode('single');
     setIsEditChoiceDialogOpen(false);
     saveChanges('single');
   };
 
   const handleEditSeries = () => {
+    console.log('Edit entire series selected');
     setEditMode('series');
     setIsEditChoiceDialogOpen(false);
     saveChanges('series');
   };
 
   const saveChanges = async (mode: 'single' | 'series') => {
-    if (!specificDate || !clinicianId) return;
+    if (!specificDate || !clinicianId) {
+      console.error('Missing required data:', { specificDate, clinicianId });
+      return;
+    }
     
     setIsLoading(true);
     const specificDateStr = format(specificDate, 'yyyy-MM-dd');
+    
+    console.log('Saving availability changes:', {
+      mode,
+      specificDateStr,
+      clinicianId,
+      startTime,
+      endTime,
+      isRecurring,
+      isException,
+      isStandalone,
+      availabilityBlockId: availabilityBlock?.id
+    });
     
     try {
       if (mode === 'single') {
@@ -74,12 +97,25 @@ export const useSaveAvailability = (
           );
           
           if (exists && existingException) {
-            console.log('Updating existing exception:', existingException);
-            // Update existing exception
-            await updateException(existingException.id, startTime, endTime);
-            toast.success("Updated existing modified availability");
+            console.log('Found existing exception:', existingException);
+            
+            // Important: If the existing exception was a deletion (is_deleted: true),
+            // we need to convert it to a modification by updating it with new times
+            // and setting is_deleted to false
+            await updateException(
+              existingException.id, 
+              startTime, 
+              endTime, 
+              false // explicitly set is_deleted to false
+            );
+            
+            toast.success(
+              existingException.is_deleted 
+                ? "Converted canceled availability to modified availability"
+                : "Updated modified availability"
+            );
           } else {
-            console.log('Creating new exception');
+            console.log('No existing exception found, creating new one');
             // Create new exception
             await createException(
               clinicianId,
@@ -96,10 +132,11 @@ export const useSaveAvailability = (
           console.log('Updating existing exception:', {
             id: availabilityBlock.id,
             startTime,
-            endTime
+            endTime,
+            originalAvailabilityId: availabilityBlock.originalAvailabilityId
           });
           
-          await updateException(availabilityBlock.id, startTime, endTime);
+          await updateException(availabilityBlock.id, startTime, endTime, false);
           toast.success("Modified availability updated");
         } else if (isStandalone) {
           // Update a standalone one-time availability
@@ -109,7 +146,7 @@ export const useSaveAvailability = (
             endTime
           });
           
-          await updateException(availabilityBlock.id, startTime, endTime);
+          await updateException(availabilityBlock.id, startTime, endTime, false);
           toast.success("One-time availability updated");
         } else {
           // Create a new one-time availability
@@ -128,10 +165,12 @@ export const useSaveAvailability = (
           
           if (exists && existingAvailability) {
             // Update existing standalone availability
-            await updateException(existingAvailability.id, startTime, endTime);
+            console.log('Updating existing one-time availability:', existingAvailability);
+            await updateException(existingAvailability.id, startTime, endTime, false);
             toast.success("Existing one-time availability updated");
           } else {
             // Create new standalone availability
+            console.log('Creating completely new one-time availability');
             await createException(
               clinicianId,
               specificDateStr,

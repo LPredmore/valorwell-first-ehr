@@ -15,6 +15,7 @@ import EnhancedAvailabilityPanel from '@/components/calendar/EnhancedAvailabilit
 import { useAppointments } from '@/hooks/useAppointments';
 import { ClientDetails } from '@/types/client';
 import AvailabilityEditDialog from '@/components/calendar/AvailabilityEditDialog';
+import AvailabilityDebugger from '@/components/calendar/AvailabilityDebugger';
 
 const CalendarPage = () => {
   const {
@@ -222,6 +223,8 @@ const CalendarPage = () => {
         clinicianId={selectedClinicianId}
         onAvailabilityUpdated={handleAvailabilityUpdated}
       />
+
+      <AvailabilityDebugger />
     </Layout>
   );
 };

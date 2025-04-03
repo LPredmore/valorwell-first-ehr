@@ -19,6 +19,12 @@ export const checkExistingException = async (
   if (!clinicianId) return { exists: false, data: null };
   
   try {
+    console.log('Checking for existing exception:', {
+      specificDate: specificDateStr,
+      clinicianId,
+      originalAvailabilityId
+    });
+    
     let query = supabase
       .from('availability_exceptions')
       .select('*')
@@ -34,6 +40,8 @@ export const checkExistingException = async (
     const { data, error } = await query.maybeSingle();
     
     if (error && error.code !== 'PGRST116') throw error;
+    
+    console.log('Exception check result:', { exists: !!data, data });
     return { exists: !!data, data };
   } catch (error) {
     console.error('Error checking for existing exception:', error);
@@ -51,16 +59,31 @@ export const updateException = async (
   isDeleted: boolean = false
 ) => {
   try {
+    console.log('Updating exception:', {
+      exceptionId,
+      startTime,
+      endTime,
+      isDeleted
+    });
+    
+    // If we're adding times to what was previously a deleted exception,
+    // make sure to set is_deleted to false
+    const updateData = {
+      start_time: isDeleted ? null : `${startTime}:00`,
+      end_time: isDeleted ? null : `${endTime}:00`,
+      is_deleted: isDeleted
+    };
+    
+    console.log('Exception update data:', updateData);
+    
     const { error } = await supabase
       .from('availability_exceptions')
-      .update({
-        start_time: isDeleted ? null : `${startTime}:00`,
-        end_time: isDeleted ? null : `${endTime}:00`,
-        is_deleted: isDeleted
-      })
+      .update(updateData)
       .eq('id', exceptionId);
       
     if (error) throw error;
+    
+    console.log('Exception updated successfully');
     return true;
   } catch (error) {
     console.error('Error updating exception:', error);
@@ -80,6 +103,15 @@ export const createException = async (
   isDeleted: boolean = false
 ) => {
   try {
+    console.log('Creating new exception:', {
+      clinicianId,
+      specificDateStr,
+      originalAvailabilityId,
+      startTime,
+      endTime,
+      isDeleted
+    });
+    
     const { error } = await supabase
       .from('availability_exceptions')
       .insert({
@@ -92,6 +124,8 @@ export const createException = async (
       });
       
     if (error) throw error;
+    
+    console.log('Exception created successfully');
     return true;
   } catch (error) {
     console.error('Error creating exception:', error);
@@ -108,6 +142,12 @@ export const updateRecurringSeries = async (
   endTime: string
 ) => {
   try {
+    console.log('Updating recurring series:', {
+      availabilityId,
+      startTime,
+      endTime
+    });
+    
     const { error } = await supabase
       .from('availability')
       .update({
@@ -117,6 +157,8 @@ export const updateRecurringSeries = async (
       .eq('id', availabilityId);
       
     if (error) throw error;
+    
+    console.log('Recurring series updated successfully');
     return true;
   } catch (error) {
     console.error('Error updating recurring series:', error);
@@ -129,12 +171,16 @@ export const updateRecurringSeries = async (
  */
 export const deactivateRecurringSeries = async (availabilityId: string) => {
   try {
+    console.log('Deactivating recurring series:', availabilityId);
+    
     const { error } = await supabase
       .from('availability')
       .update({ is_active: false })
       .eq('id', availabilityId);
       
     if (error) throw error;
+    
+    console.log('Recurring series deactivated successfully');
     return true;
   } catch (error) {
     console.error('Error deactivating recurring series:', error);

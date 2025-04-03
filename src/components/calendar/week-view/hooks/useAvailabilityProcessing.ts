@@ -15,6 +15,11 @@ export const useAvailabilityProcessing = (
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
 
   useEffect(() => {
+    console.log('Processing availability with exceptions:', {
+      availabilityBlocks,
+      exceptions,
+      days
+    });
     processAvailabilityWithExceptions(availabilityBlocks, exceptions);
   }, [availabilityBlocks, exceptions, days]);
 
@@ -33,10 +38,15 @@ export const useAvailabilityProcessing = (
       return acc;
     }, {} as Record<string, AvailabilityException[]>);
 
+    console.log('Exceptions grouped by date:', exceptionsByDate);
+
     days.forEach(day => {
       const dayOfWeek = format(day, 'EEEE');
       const dateStr = format(day, 'yyyy-MM-dd');
       const exceptionsForDay = exceptionsByDate[dateStr] || [];
+      
+      console.log(`Processing day ${dateStr} (${dayOfWeek}):`);
+      console.log(`Exceptions for this day:`, exceptionsForDay);
       
       // Create a map to track which recurring blocks should be excluded
       // Key: availability_id, Value: boolean (true = exclude)
@@ -46,6 +56,7 @@ export const useAvailabilityProcessing = (
       exceptionsForDay.forEach(exception => {
         if (exception.original_availability_id) {
           // If this is an exception to a recurring availability, mark the original for exclusion
+          console.log(`Marking recurring block ${exception.original_availability_id} as excluded due to exception:`, exception);
           excludedRecurringIds.set(exception.original_availability_id, true);
         }
       });
@@ -57,7 +68,10 @@ export const useAvailabilityProcessing = (
         .filter(block => block.day_of_week === dayOfWeek)
         .filter(block => !excludedRecurringIds.has(block.id));
 
+      console.log(`Recurring blocks for ${dayOfWeek} after filtering:`, dayBlocks);
+
       // Get exception blocks for this specific date (both modified recurring and standalone)
+      // Only include exceptions that are NOT deleted (is_deleted: false)
       const exceptionBlocks = exceptionsForDay
         .filter(exception => !exception.is_deleted && exception.start_time && exception.end_time)
         .map(exception => ({
