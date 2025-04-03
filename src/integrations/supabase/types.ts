@@ -150,38 +150,29 @@ export type Database = {
       }
       availability_settings: {
         Row: {
-          buffer_minutes: number | null
           clinician_id: string
           created_at: string
-          custom_minutes: number | null
           id: string
           max_days_ahead: number
           min_days_ahead: number
-          show_availability_to_clients: boolean | null
           time_granularity: string
           updated_at: string
         }
         Insert: {
-          buffer_minutes?: number | null
           clinician_id: string
           created_at?: string
-          custom_minutes?: number | null
           id?: string
-          max_days_ahead?: number
-          min_days_ahead?: number
-          show_availability_to_clients?: boolean | null
+          max_days_ahead: number
+          min_days_ahead: number
           time_granularity?: string
           updated_at?: string
         }
         Update: {
-          buffer_minutes?: number | null
           clinician_id?: string
           created_at?: string
-          custom_minutes?: number | null
           id?: string
           max_days_ahead?: number
           min_days_ahead?: number
-          show_availability_to_clients?: boolean | null
           time_granularity?: string
           updated_at?: string
         }
@@ -989,39 +980,6 @@ export type Database = {
           license_type?: string
           profile_id?: string | null
           updated_at?: string | null
-        }
-        Relationships: []
-      }
-      time_off_blocks: {
-        Row: {
-          clinician_id: string
-          created_at: string
-          end_date: string
-          id: string
-          is_active: boolean | null
-          note: string | null
-          start_date: string
-          updated_at: string
-        }
-        Insert: {
-          clinician_id: string
-          created_at?: string
-          end_date: string
-          id?: string
-          is_active?: boolean | null
-          note?: string | null
-          start_date: string
-          updated_at?: string
-        }
-        Update: {
-          clinician_id?: string
-          created_at?: string
-          end_date?: string
-          id?: string
-          is_active?: boolean | null
-          note?: string | null
-          start_date?: string
-          updated_at?: string
         }
         Relationships: []
       }

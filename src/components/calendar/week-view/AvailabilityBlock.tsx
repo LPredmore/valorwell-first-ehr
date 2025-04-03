@@ -10,75 +10,50 @@ interface AvailabilityBlockProps {
   onAvailabilityClick?: (day: Date, block: TimeBlock) => void;
 }
 
-const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({ 
-  block, 
-  day, 
+const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
+  block,
+  day,
   hourHeight,
-  onAvailabilityClick 
+  onAvailabilityClick
 }) => {
-  // Calculate position and height for the availability block
-  const topPosition = (block.start.getHours() + block.start.getMinutes() / 60) * hourHeight;
-  const blockHeight = (block.end.getHours() + block.end.getMinutes() / 60 - block.start.getHours() - block.start.getMinutes() / 60) * hourHeight;
+  // Calculate position and height based on start and end time
+  const startHour = block.start.getHours() + (block.start.getMinutes() / 60);
+  const endHour = block.end.getHours() + (block.end.getMinutes() / 60);
+  const duration = endHour - startHour;
   
-  // Debug logging for this specific block to help diagnose issues
-  React.useEffect(() => {
-    console.log(`Rendering availability block:`, {
-      day: format(day, 'yyyy-MM-dd'),
-      start: format(block.start, 'HH:mm'),
-      end: format(block.end, 'HH:mm'),
-      ids: block.availabilityIds,
-      isException: block.isException,
-      isStandalone: block.isStandalone
-    });
-  }, [block, day]);
-
-  // Determine styling based on block type
-  let blockColor = 'bg-green-100 border-green-300';
-  let textColor = 'text-green-800';
-  
-  if (block.isException) {
-    if (block.isStandalone) {
-      // Standalone (one-time) availability
-      blockColor = 'bg-purple-100 border-purple-300';
-      textColor = 'text-purple-800';
-    } else {
-      // Modified availability
-      blockColor = 'bg-blue-100 border-blue-300';
-      textColor = 'text-blue-800';
-    }
-  }
+  const top = startHour * hourHeight + 56; // 56px is the header height
+  const height = duration * hourHeight;
 
   const handleClick = () => {
     if (onAvailabilityClick) {
-      console.log('Availability block clicked:', {
-        day: format(day, 'yyyy-MM-dd'),
-        blockStart: format(block.start, 'HH:mm'),
-        blockEnd: format(block.end, 'HH:mm'),
-        blockIds: block.availabilityIds,
-        isException: block.isException,
-        isStandalone: block.isStandalone
-      });
       onAvailabilityClick(day, block);
     }
   };
 
+  const blockColor = block.isException ? 'teal' : 'green';
+
   return (
-    <div
-      className={`absolute border rounded-md px-2 py-1 cursor-pointer z-10 ${blockColor} ${textColor}`}
-      style={{
-        top: `${topPosition + 56}px`, // 56px is the header height
-        height: `${blockHeight}px`,
-        left: '4px',
-        right: '4px',
+    <div 
+      className={`absolute left-0.5 right-0.5 z-5 rounded-md border border-${blockColor}-400 bg-${blockColor}-50 p-1 overflow-hidden cursor-pointer hover:opacity-90 transition-colors`}
+      style={{ 
+        top: `${top}px`, 
+        height: `${height}px`,
+        maxHeight: `${Math.max(height, 24)}px` // Ensure minimum height for very short blocks
       }}
       onClick={handleClick}
     >
-      <div className="text-xs font-medium">
-        {format(block.start, 'h:mm a')} - {format(block.end, 'h:mm a')}
-      </div>
-      <div className="text-xs whitespace-nowrap overflow-hidden text-ellipsis">
-        {block.isException ? 'Modified' : 'Regular'} 
-        {block.isStandalone ? ' (One-time)' : ''}
+      <div className="flex flex-col h-full text-xs">
+        <div className="font-medium truncate flex items-center">
+          Available
+          {block.isException && (
+            <span className="ml-1 text-[10px] px-1 py-0.5 bg-teal-100 text-teal-800 rounded-full">Modified</span>
+          )}
+        </div>
+        {height >= 40 && (
+          <div className="text-[10px] text-gray-500 mt-0.5">
+            {format(block.start, 'h:mm a')} - {format(block.end, 'h:mm a')}
+          </div>
+        )}
       </div>
     </div>
   );
