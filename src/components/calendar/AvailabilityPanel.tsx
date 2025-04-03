@@ -50,8 +50,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
   const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [timeGranularity, setTimeGranularity] = useState<'hour' | 'half-hour'>('hour');
-  const [minDaysAhead, setMinDaysAhead] = useState<number>(1);
-  const [maxDaysAhead, setMaxDaysAhead] = useState<number>(90);
+  const [minDaysAhead, setMinDaysAhead] = useState<number>(2);
+  const [maxDaysAhead, setMaxDaysAhead] = useState<number>(60);
   const { toast } = useToast();
 
   const [weekSchedule, setWeekSchedule] = useState<DaySchedule[]>([
@@ -128,11 +128,14 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
               if (settingsData) {
                 console.log('Retrieved settings:', settingsData);
                 setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
-                setMinDaysAhead(Number(settingsData.min_days_ahead) || 1);
-                setMaxDaysAhead(Number(settingsData.max_days_ahead) || 90);
+                
+                setMinDaysAhead(Number(settingsData.min_days_ahead) || 2);
+                setMaxDaysAhead(Number(settingsData.max_days_ahead) || 60);
               }
             } catch (settingsError) {
               console.error('Error fetching availability settings:', settingsError);
+              setMinDaysAhead(2);
+              setMaxDaysAhead(60);
             }
 
             newSchedule.forEach(day => {
@@ -546,7 +549,10 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       console.log('Min days ahead:', minDaysAhead);
       console.log('Max days ahead:', maxDaysAhead);
 
-      const safeMaxDaysAhead = Math.max(minDaysAhead + 30, maxDaysAhead);
+      const minRequiredMax = minDaysAhead + 30;
+      const safeMaxDaysAhead = Math.max(minRequiredMax, maxDaysAhead);
+      
+      console.log('Calculated safe max days ahead:', safeMaxDaysAhead);
       
       const { error: settingsError } = await supabase
         .from('availability_settings')
@@ -803,7 +809,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                       <SelectValue placeholder="Select days in advance" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: 15 }, (_, i) => i + 1).map((day) => (
+                      {Array.from({ length: 15 }, (_, i) => i).map((day) => (
                         <SelectItem key={`days-ahead-${day}`} value={day.toString()}>
                           {day} {day === 1 ? 'day' : 'days'} in advance
                         </SelectItem>

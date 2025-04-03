@@ -39,9 +39,9 @@ serve(async (req) => {
     
     if (error) {
       console.error('Error fetching availability settings:', error)
-      // Return default settings if not found
+      // Return default settings if not found - updated defaults
       return new Response(
-        JSON.stringify({ time_granularity: 'hour' }),
+        JSON.stringify({ time_granularity: 'hour', min_days_ahead: 2, max_days_ahead: 60 }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

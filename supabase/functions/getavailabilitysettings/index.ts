@@ -42,16 +42,17 @@ serve(async (req) => {
     if (error) {
       console.error('Error fetching availability settings:', error)
       console.error(`Clinician ID used in query: ${clinicianId}`)
-      // Return default settings if not found
+      // Return default settings if not found - updated defaults
       return new Response(
-        JSON.stringify({ time_granularity: 'hour', min_days_ahead: 1 }),
+        JSON.stringify({ time_granularity: 'hour', min_days_ahead: 2, max_days_ahead: 60 }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
     
     // Ensure min_days_ahead is a number
     if (data) {
-      data.min_days_ahead = Number(data.min_days_ahead) || 1;
+      data.min_days_ahead = Number(data.min_days_ahead) || 2; // Default to 2 if falsy
+      data.max_days_ahead = Number(data.max_days_ahead) || 60; // Default to 60 if falsy
       console.log(`Successfully retrieved settings: ${JSON.stringify(data, null, 2)}`)
     }
     
