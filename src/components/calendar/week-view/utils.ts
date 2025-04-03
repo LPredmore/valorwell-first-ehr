@@ -1,5 +1,6 @@
+
 import { format, parseISO, isValid } from 'date-fns';
-import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { TimeBlock, AppointmentBlock } from './types/availability-types';
 
 // Helper function to convert hours and minutes to total minutes

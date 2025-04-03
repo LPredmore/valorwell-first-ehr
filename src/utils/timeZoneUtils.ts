@@ -1,6 +1,5 @@
-
 import { format, parse, parseISO } from 'date-fns';
-import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
+import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 /**
  * Map of common timezone display names to IANA format
@@ -85,6 +84,30 @@ export const convertToUserTimeZone = (
     // Return original date as fallback
     return typeof date === 'string' ? parseISO(date) : date;
   }
+};
+
+/**
+ * Converts a date from one timezone to another
+ */
+export const convertDateToTimeZone = (date: Date, timeZone: string): Date => {
+  // Use toZonedTime (formerly utcToZonedTime) from date-fns-tz
+  return toZonedTime(date, timeZone);
+};
+
+/**
+ * Format a date in a specific timezone
+ */
+export const formatInTimeZone = (date: Date, timeZone: string, formatString: string): string => {
+  const zonedDate = toZonedTime(date, timeZone);
+  return format(zonedDate, formatString);
+};
+
+/**
+ * Convert a zoned date back to UTC
+ */
+export const convertToUTC = (date: Date, sourceTimeZone: string): Date => {
+  // Use fromZonedTime (formerly zonedTimeToUtc) from date-fns-tz
+  return fromZonedTime(date, sourceTimeZone);
 };
 
 /**
