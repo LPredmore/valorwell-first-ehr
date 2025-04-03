@@ -5,10 +5,10 @@ export default WeekView;
 export { useWeekViewData } from './hooks/useWeekViewData';
 export type { 
   Appointment,
-  AvailabilityBlock as AvailabilityBlockType,
+  AvailabilityBlock,
   AvailabilityException,
   TimeBlock,
-  AppointmentBlock as AppointmentBlockType
+  AppointmentBlock
 } from './types/availability-types';
 
 export { default as AppointmentBlock } from './AppointmentBlock';
