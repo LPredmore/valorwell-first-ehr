@@ -54,6 +54,10 @@ interface FullCalendarViewProps {
   view?: 'timeGridWeek' | 'dayGridMonth';
   showAvailability?: boolean;
   className?: string;
+  appointments?: Appointment[];
+  getClientName?: (clientId: string) => string;
+  onAppointmentClick?: (appointment: Appointment) => void;
+  onAvailabilityClick?: (date: Date, availabilityBlock: AvailabilityBlock) => void;
 }
 
 const FullCalendarView: React.FC<FullCalendarViewProps> = ({
@@ -63,7 +67,11 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
   userTimeZone,
   view = 'timeGridWeek',
   showAvailability = true,
-  className = ''
+  className = '',
+  appointments = [],
+  getClientName = () => 'Client',
+  onAppointmentClick,
+  onAvailabilityClick
 }) => {
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<any[]>([]);

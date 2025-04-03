@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,6 +13,7 @@ import { Clock } from 'lucide-react';
 import FullCalendarView from '@/components/calendar/FullCalendarView';
 import AvailabilitySettingsDialog from '@/components/calendar/AvailabilitySettingsDialog';
 import EnhancedAvailabilityPanel from '@/components/calendar/EnhancedAvailabilityPanel';
+import { useAppointments } from '@/hooks/useAppointments';
 
 const CalendarPage = () => {
   const {
@@ -32,6 +34,8 @@ const CalendarPage = () => {
     userTimeZone,
     isLoadingTimeZone,
   } = useCalendarState();
+
+  const { appointments, isLoading: appointmentsLoading } = useAppointments(selectedClinicianId || null);
 
   const [calendarViewMode, setCalendarViewMode] = useState<'dayGridMonth' | 'timeGridWeek'>('timeGridWeek');
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
@@ -67,6 +71,11 @@ const CalendarPage = () => {
 
   const handleSettingsUpdated = () => {
     setAppointmentRefreshTrigger(prev => prev + 1);
+  };
+
+  const getClientName = (clientId: string) => {
+    const client = clients?.find(c => c.id === clientId);
+    return client ? `${client.client_first_name} ${client.client_last_name}` : 'Client';
   };
 
   return (
@@ -153,6 +162,8 @@ const CalendarPage = () => {
               view={calendarViewMode}
               showAvailability={true}
               className={showAvailabilityPanel ? "w-3/4" : "w-full"}
+              appointments={appointments}
+              getClientName={getClientName}
             />
 
             {showAvailabilityPanel && (
