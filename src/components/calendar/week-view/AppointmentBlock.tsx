@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { format } from 'date-fns';
-import { AppointmentBlock as AppointmentBlockType, Appointment } from './types/availability-types';
+import { AppointmentBlockType, Appointment } from './types/availability-types';
 
 interface AppointmentBlockProps {
   appointment: AppointmentBlockType;
