@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
@@ -86,7 +87,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
       try {
         const { data, error } = await supabase
           .from('clients')
-          .select('id, client_first_name, client_last_name, client_preferred_name, client_time_zone')
+          .select('*')  // Select all columns to satisfy the ClientDetails type
           .eq('client_assigned_therapist', selectedClinicianId)
           .order('client_last_name');
           
