@@ -98,6 +98,7 @@ export const useSaveAvailability = (
           
           if (exists && existingException) {
             console.log('Found existing exception:', existingException);
+            console.log('Exception is_deleted status:', existingException.is_deleted);
             
             // Important: If the existing exception was a deletion (is_deleted: true),
             // we need to convert it to a modification by updating it with new times

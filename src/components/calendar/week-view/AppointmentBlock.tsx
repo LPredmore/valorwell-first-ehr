@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { format } from 'date-fns';
-import { AppointmentBlock as AppointmentBlockType, Appointment } from './useWeekViewData';
+import { AppointmentBlock as AppointmentBlockType, Appointment } from '../week-view/types/availability-types';
 
 interface AppointmentBlockProps {
   appointment: AppointmentBlockType;

@@ -224,7 +224,10 @@ const CalendarPage = () => {
         onAvailabilityUpdated={handleAvailabilityUpdated}
       />
 
-      <AvailabilityDebugger />
+      <AvailabilityDebugger
+        clinicianId={selectedClinicianId}
+        specificDate={selectedAvailabilityDate}
+      />
     </Layout>
   );
 };

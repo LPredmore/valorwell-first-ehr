@@ -73,7 +73,7 @@ export const useDeleteAvailability = (
           if (exists && existingException) {
             console.log('Updating existing exception to mark as deleted:', existingException);
             // Update existing exception to mark as deleted
-            await updateException(existingException.id, '', '', true);
+            await updateException(existingException.id, null, null, true);
             toast.success("Availability cancelled for this occurrence only");
           } else {
             console.log('Creating new deletion exception');
@@ -96,7 +96,7 @@ export const useDeleteAvailability = (
             isStandalone
           });
           
-          await updateException(availabilityBlock.id, '', '', true);
+          await updateException(availabilityBlock.id, null, null, true);
           
           if (isException) {
             toast.success("Modified availability cancelled");

@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import FullCalendarView from './FullCalendarView';
 import WeekView from './week-view';
-import { TimeBlock } from './week-view/useWeekViewData'; 
+import { TimeBlock } from './week-view/types/availability-types'; 
 import { Appointment as HookAppointment } from '@/hooks/useAppointments';
 
 // Create an interface that extends the imported Appointment type to ensure compatibility

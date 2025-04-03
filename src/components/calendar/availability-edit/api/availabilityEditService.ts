@@ -54,8 +54,8 @@ export const checkExistingException = async (
  */
 export const updateException = async (
   exceptionId: string,
-  startTime: string,
-  endTime: string,
+  startTime: string | null,
+  endTime: string | null,
   isDeleted: boolean = false
 ) => {
   try {
@@ -66,13 +66,18 @@ export const updateException = async (
       isDeleted
     });
     
-    // If we're adding times to what was previously a deleted exception,
-    // make sure to set is_deleted to false
-    const updateData = {
-      start_time: isDeleted ? null : `${startTime}:00`,
-      end_time: isDeleted ? null : `${endTime}:00`,
-      is_deleted: isDeleted
-    };
+    // Construct the update data based on whether it's a deletion or modification
+    let updateData: any = { is_deleted: isDeleted };
+    
+    if (isDeleted) {
+      // When marking as deleted, set times to null
+      updateData.start_time = null;
+      updateData.end_time = null;
+    } else {
+      // When modifying, set the times and ensure is_deleted is false
+      updateData.start_time = startTime ? `${startTime}:00` : null;
+      updateData.end_time = endTime ? `${endTime}:00` : null;
+    }
     
     console.log('Exception update data:', updateData);
     
