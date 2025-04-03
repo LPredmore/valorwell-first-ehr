@@ -53,6 +53,7 @@ const DayCell: React.FC<DayCellProps> = ({
   const { hasAvailability, isModified, displayHours } = availabilityInfo;
   
   const handleAvailabilityClick = () => {
+    console.log('DayCell availability clicked, forwarding to handler');
     if (onAvailabilityClick && firstAvailability) {
       onAvailabilityClick(day, firstAvailability);
     }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,6 +14,7 @@ import AvailabilitySettingsDialog from '@/components/calendar/AvailabilitySettin
 import EnhancedAvailabilityPanel from '@/components/calendar/EnhancedAvailabilityPanel';
 import { useAppointments } from '@/hooks/useAppointments';
 import { ClientDetails } from '@/types/client';
+import AvailabilityEditDialog from '@/components/calendar/AvailabilityEditDialog';
 
 const CalendarPage = () => {
   const {
@@ -41,6 +41,9 @@ const CalendarPage = () => {
   const [calendarViewMode, setCalendarViewMode] = useState<'dayGridMonth' | 'timeGridWeek'>('timeGridWeek');
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [showAvailabilityPanel, setShowAvailabilityPanel] = useState(false);
+  const [selectedAvailability, setSelectedAvailability] = useState<any | null>(null);
+  const [selectedAvailabilityDate, setSelectedAvailabilityDate] = useState<Date | null>(null);
+  const [isAvailabilityDialogOpen, setIsAvailabilityDialogOpen] = useState(false);
 
   const navigatePrevious = () => {
     if (calendarViewMode === 'timeGridWeek') {
@@ -77,6 +80,17 @@ const CalendarPage = () => {
   const getClientName = (clientId: string) => {
     const client = clients?.find(c => c.id === clientId) as ClientDetails | undefined;
     return client ? `${client.client_first_name || ''} ${client.client_last_name || ''}`.trim() || 'Client' : 'Client';
+  };
+
+  const handleAvailabilityClick = (date: Date, availabilityBlock: any) => {
+    console.log('Availability clicked:', date, availabilityBlock);
+    setSelectedAvailability(availabilityBlock);
+    setSelectedAvailabilityDate(date);
+    setIsAvailabilityDialogOpen(true);
+  };
+
+  const handleAvailabilityUpdated = () => {
+    setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
   return (
@@ -165,6 +179,10 @@ const CalendarPage = () => {
               className={showAvailabilityPanel ? "w-3/4" : "w-full"}
               appointments={appointments}
               getClientName={getClientName}
+              onAppointmentClick={(appointment) => {
+                console.log('Appointment clicked:', appointment);
+              }}
+              onAvailabilityClick={handleAvailabilityClick}
             />
 
             {showAvailabilityPanel && (
@@ -194,6 +212,15 @@ const CalendarPage = () => {
         onClose={() => setIsSettingsDialogOpen(false)}
         clinicianId={selectedClinicianId}
         onSettingsUpdated={handleSettingsUpdated}
+      />
+      
+      <AvailabilityEditDialog
+        isOpen={isAvailabilityDialogOpen}
+        onClose={() => setIsAvailabilityDialogOpen(false)}
+        availabilityBlock={selectedAvailability}
+        specificDate={selectedAvailabilityDate}
+        clinicianId={selectedClinicianId}
+        onAvailabilityUpdated={handleAvailabilityUpdated}
       />
     </Layout>
   );

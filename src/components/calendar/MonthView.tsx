@@ -60,7 +60,7 @@ const MonthView: React.FC<MonthViewProps> = ({
   // Create adapter function for the onAvailabilityClick callback
   const handleAvailabilityClick = onAvailabilityClick 
     ? (date: Date, block: any) => {
-        // Make sure we're passing a compatible block structure
+        console.log('MonthView passing availability click:', date, block);
         onAvailabilityClick(date, block);
       }
     : undefined;

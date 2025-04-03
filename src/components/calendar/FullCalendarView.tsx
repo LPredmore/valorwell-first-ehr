@@ -379,9 +379,11 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
       onAppointmentClick(info.event.extendedProps.appointmentData);
     } else if ((eventType === 'availability' || eventType === 'one-time-availability') && onAvailabilityClick) {
       const date = info.event.start;
+      const availabilityData = info.event.extendedProps.availabilityData;
       
-      if (!isDateInTimeOff(date)) {
-        onAvailabilityClick(date, info.event.extendedProps.availabilityData);
+      if (!isDateInTimeOff(date) && availabilityData) {
+        console.log('Availability clicked:', availabilityData);
+        onAvailabilityClick(date, availabilityData);
       }
     }
   };
@@ -392,13 +394,15 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
       const dayOfWeek = format(date, 'EEEE');
       
       if (!isDateInTimeOff(date)) {
-        const tempBlock: AvailabilityBlock = {
+        const tempBlock = {
           id: 'new',
           day_of_week: dayOfWeek,
           start_time: '09:00:00',
-          end_time: '17:00:00'
+          end_time: '17:00:00',
+          isStandalone: true // Mark this as a one-time availability
         };
         
+        console.log('Date clicked, creating availability:', tempBlock);
         onAvailabilityClick(date, tempBlock);
       }
     }
