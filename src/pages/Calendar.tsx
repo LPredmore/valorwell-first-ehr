@@ -78,6 +78,11 @@ const CalendarPage = () => {
     return client ? `${client.client_first_name} ${client.client_last_name}` : 'Client';
   };
 
+  const handleAvailabilityClick = (date: Date, availabilityBlock: any) => {
+    // This is a trigger for refreshing
+    setAppointmentRefreshTrigger(prev => prev + 1);
+  };
+
   return (
     <Layout>
       <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
@@ -164,6 +169,7 @@ const CalendarPage = () => {
               className={showAvailabilityPanel ? "w-3/4" : "w-full"}
               appointments={appointments}
               getClientName={getClientName}
+              onAvailabilityClick={handleAvailabilityClick}
             />
 
             {showAvailabilityPanel && (

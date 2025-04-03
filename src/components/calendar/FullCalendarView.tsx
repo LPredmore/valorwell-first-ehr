@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -9,6 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, isWithinInterval } from 'date-fns';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
+import AvailabilityEditDialog from './AvailabilityEditDialog';
 
 interface Appointment {
   id: string;
@@ -80,6 +80,9 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
   const [settings, setSettings] = useState<AvailabilitySettings | null>(null);
   const [timeOffBlocks, setTimeOffBlocks] = useState<TimeOffBlock[]>([]);
   const [oneTimeAvailability, setOneTimeAvailability] = useState<any[]>([]);
+  const [selectedAvailability, setSelectedAvailability] = useState<AvailabilityBlock | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isAvailabilityEditOpen, setIsAvailabilityEditOpen] = useState(false);
 
   useEffect(() => {
     if (clinicianId) {
@@ -220,70 +223,54 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     
     const availabilityEvents: any[] = [];
     
-    // Process weekly recurring availability
+    // Process weekly recurring availability - Now as continuous blocks
     availabilityBlocks.forEach(block => {
       const dowNumber = dayOfWeekMap[block.day_of_week];
       
-      const startTime = block.start_time;
-      const endTime = block.end_time;
+      const event = {
+        id: `avail-${block.id}`,
+        title: 'Available',
+        daysOfWeek: [dowNumber],
+        startTime: block.start_time,
+        endTime: block.end_time,
+        startRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
+        endRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0),
+        extendedProps: {
+          type: 'availability',
+          availabilityData: block
+        },
+        backgroundColor: '#10b981',
+        borderColor: '#059669',
+        textColor: '#ffffff',
+        display: 'block',
+        overlap: false
+      };
       
-      const timeSlots = getTimeSlots(startTime, endTime, settings);
-      
-      timeSlots.forEach(slot => {
-        const event = {
-          id: `${block.id}-${slot.start}`,
-          title: 'Available',
-          daysOfWeek: [dowNumber],
-          startTime: slot.start,
-          endTime: slot.end,
-          startRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
-          endRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0),
-          extendedProps: {
-            type: 'availability',
-            availabilityData: {
-              ...block,
-              start_time: slot.start,
-              end_time: slot.end
-            }
-          },
-          backgroundColor: '#10b981',
-          borderColor: '#059669',
-          textColor: '#ffffff',
-          display: 'block',
-          overlap: false
-        };
-        
-        availabilityEvents.push(event);
-      });
+      availabilityEvents.push(event);
     });
     
-    // Process one-time availability
+    // Process one-time availability - Now as continuous blocks
     oneTimeBlocks.forEach(block => {
-      const timeSlots = getTimeSlots(block.start_time, block.end_time, settings);
+      const event = {
+        id: `onetime-${block.id}`,
+        title: 'One-Time Available',
+        start: `${block.specific_date}T${block.start_time}`,
+        end: `${block.specific_date}T${block.end_time}`,
+        extendedProps: {
+          type: 'one-time-availability',
+          availabilityData: {
+            ...block,
+            isException: true
+          }
+        },
+        backgroundColor: '#0ea5e9',
+        borderColor: '#0284c7',
+        textColor: '#ffffff',
+        display: 'block',
+        overlap: false
+      };
       
-      timeSlots.forEach(slot => {
-        const event = {
-          id: `onetime-${block.id}-${slot.start}`,
-          title: 'One-Time Available',
-          start: `${block.specific_date}T${slot.start}`,
-          end: `${block.specific_date}T${slot.end}`,
-          extendedProps: {
-            type: 'one-time-availability',
-            availabilityData: {
-              ...block,
-              start_time: slot.start,
-              end_time: slot.end
-            }
-          },
-          backgroundColor: '#0ea5e9',
-          borderColor: '#0284c7',
-          textColor: '#ffffff',
-          display: 'block',
-          overlap: false
-        };
-        
-        availabilityEvents.push(event);
-      });
+      availabilityEvents.push(event);
     });
     
     // Add time off blocks
@@ -309,52 +296,6 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     return availabilityEvents;
   };
   
-  const getTimeSlots = (startTime: string, endTime: string, settings: AvailabilitySettings) => {
-    const [startHour, startMinute] = startTime.split(':').map(Number);
-    const [endHour, endMinute] = endTime.split(':').map(Number);
-    
-    let intervalMinutes: number;
-    
-    switch (settings.time_granularity) {
-      case 'hour':
-        intervalMinutes = 60;
-        break;
-      case 'half_hour':
-        intervalMinutes = 30;
-        break;
-      case 'quarter_hour':
-        intervalMinutes = 15;
-        break;
-      case 'custom':
-        intervalMinutes = settings.custom_minutes || 60;
-        break;
-      default:
-        intervalMinutes = 60;
-    }
-    
-    const startTotalMinutes = startHour * 60 + startMinute;
-    const endTotalMinutes = endHour * 60 + endMinute;
-    
-    const slots = [];
-    
-    for (let minutes = startTotalMinutes; minutes < endTotalMinutes; minutes += intervalMinutes) {
-      if (minutes + intervalMinutes <= endTotalMinutes) {
-        const slotStartHour = Math.floor(minutes / 60);
-        const slotStartMinute = minutes % 60;
-        
-        const slotEndHour = Math.floor((minutes + intervalMinutes) / 60);
-        const slotEndMinute = (minutes + intervalMinutes) % 60;
-        
-        const start = `${slotStartHour.toString().padStart(2, '0')}:${slotStartMinute.toString().padStart(2, '0')}:00`;
-        const end = `${slotEndHour.toString().padStart(2, '0')}:${slotEndMinute.toString().padStart(2, '0')}:00`;
-        
-        slots.push({ start, end });
-      }
-    }
-    
-    return slots;
-  };
-  
   const isDateInTimeOff = (date: Date) => {
     return timeOffBlocks.some(block => {
       const startDate = new Date(block.start_date);
@@ -370,30 +311,46 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     
     if (eventType === 'appointment' && onAppointmentClick) {
       onAppointmentClick(info.event.extendedProps.appointmentData);
-    } else if ((eventType === 'availability' || eventType === 'one-time-availability') && onAvailabilityClick) {
+    } else if ((eventType === 'availability' || eventType === 'one-time-availability') && !isDateInTimeOff(info.event.start)) {
+      // Open availability edit dialog
       const date = info.event.start;
+      const availabilityData = info.event.extendedProps.availabilityData;
       
-      if (!isDateInTimeOff(date)) {
-        onAvailabilityClick(date, info.event.extendedProps.availabilityData);
-      }
+      setSelectedAvailability(availabilityData);
+      setSelectedDate(date);
+      setIsAvailabilityEditOpen(true);
     }
   };
   
   const handleDateClick = (info: any) => {
-    if (onAvailabilityClick) {
+    if (!isDateInTimeOff(info.date)) {
       const date = new Date(info.date);
       const dayOfWeek = format(date, 'EEEE');
       
-      if (!isDateInTimeOff(date)) {
-        const tempBlock: AvailabilityBlock = {
-          id: 'new',
-          day_of_week: dayOfWeek,
-          start_time: '09:00:00',
-          end_time: '17:00:00'
-        };
-        
-        onAvailabilityClick(date, tempBlock);
-      }
+      const tempBlock: AvailabilityBlock = {
+        id: 'new',
+        day_of_week: dayOfWeek,
+        start_time: '09:00:00',
+        end_time: '17:00:00'
+      };
+      
+      setSelectedAvailability(tempBlock);
+      setSelectedDate(date);
+      setIsAvailabilityEditOpen(true);
+    }
+  };
+
+  const handleAvailabilityUpdated = () => {
+    fetchAvailability();
+    if (onAvailabilityClick) {
+      // Notify parent component that availability has been updated
+      // This is a dummy call to trigger refreshes in parent components
+      onAvailabilityClick(new Date(), { 
+        id: 'refresh-trigger', 
+        day_of_week: '', 
+        start_time: '', 
+        end_time: '' 
+      });
     }
   };
   
@@ -425,6 +382,17 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         allDaySlot={false}
         expandRows={true}
       />
+
+      {selectedAvailability && selectedDate && (
+        <AvailabilityEditDialog
+          isOpen={isAvailabilityEditOpen}
+          onClose={() => setIsAvailabilityEditOpen(false)}
+          availabilityBlock={selectedAvailability}
+          specificDate={selectedDate}
+          clinicianId={clinicianId}
+          onAvailabilityUpdated={handleAvailabilityUpdated}
+        />
+      )}
     </div>
   );
 };
