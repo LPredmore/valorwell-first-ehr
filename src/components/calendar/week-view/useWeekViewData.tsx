@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -41,12 +42,14 @@ interface AvailabilityException {
 }
 
 interface TimeBlock {
+  id: string;
   day: Date;
   start: Date;
   end: Date;
   availabilityIds: string[];
   isException?: boolean;
   isStandalone?: boolean;
+  originalAvailabilityId?: string | null;
 }
 
 interface AppointmentBlock {
@@ -118,6 +121,8 @@ export const useWeekViewData = (
     const fetchAvailability = async () => {
       setLoading(true);
       try {
+        console.log('Fetching availability data for days:', days.map(day => format(day, 'yyyy-MM-dd')));
+        
         let query = supabase
           .from('availability')
           .select('*')
@@ -138,76 +143,32 @@ export const useWeekViewData = (
           console.log('WeekView availability data:', availabilityData);
           setAvailabilityBlocks(availabilityData || []);
           
-          if (clinicianId && availabilityData && availabilityData.length > 0) {
+          // Fetch exceptions for the week range
+          if (clinicianId && days.length > 0) {
             const startDateStr = format(days[0], 'yyyy-MM-dd');
             const endDateStr = format(days[days.length - 1], 'yyyy-MM-dd');
-            const availabilityIds = availabilityData.map(block => block.id);
             
-            if (availabilityIds.length > 0) {
-              const { data: exceptionsData, error: exceptionsError } = await supabase
-                .from('availability_exceptions')
-                .select('*')
-                .eq('clinician_id', clinicianId)
-                .gte('specific_date', startDateStr)
-                .lte('specific_date', endDateStr)
-                .or(`original_availability_id.in.(${availabilityIds.join(',')}),original_availability_id.is.null`);
-                
-              if (exceptionsError) {
-                console.error('Error fetching exceptions:', exceptionsError);
-                setExceptions([]);
-                processAvailabilityWithExceptions(availabilityData || [], []);
-              } else {
-                console.log('WeekView exceptions data:', exceptionsData);
-                setExceptions(exceptionsData || []);
-                processAvailabilityWithExceptions(availabilityData || [], exceptionsData || []);
-              }
-            } else {
-              const { data: exceptionsData, error: exceptionsError } = await supabase
-                .from('availability_exceptions')
-                .select('*')
-                .eq('clinician_id', clinicianId)
-                .eq('is_deleted', false)
-                .is('original_availability_id', null)
-                .gte('specific_date', startDateStr)
-                .lte('specific_date', endDateStr);
-                
-              if (exceptionsError) {
-                console.error('Error fetching standalone exceptions:', exceptionsError);
-                setExceptions([]);
-                processAvailabilityWithExceptions(availabilityData || [], []);
-              } else {
-                console.log('WeekView standalone exceptions data:', exceptionsData);
-                setExceptions(exceptionsData || []);
-                processAvailabilityWithExceptions(availabilityData || [], exceptionsData || []);
-              }
-            }
-          } else {
-            if (clinicianId) {
-              const startDateStr = format(days[0], 'yyyy-MM-dd');
-              const endDateStr = format(days[days.length - 1], 'yyyy-MM-dd');
+            console.log('Fetching exceptions for date range:', startDateStr, 'to', endDateStr);
+            
+            const { data: exceptionsData, error: exceptionsError } = await supabase
+              .from('availability_exceptions')
+              .select('*')
+              .eq('clinician_id', clinicianId)
+              .gte('specific_date', startDateStr)
+              .lte('specific_date', endDateStr);
               
-              const { data: exceptionsData, error: exceptionsError } = await supabase
-                .from('availability_exceptions')
-                .select('*')
-                .eq('clinician_id', clinicianId)
-                .eq('is_deleted', false)
-                .is('original_availability_id', null)
-                .gte('specific_date', startDateStr)
-                .lte('specific_date', endDateStr);
-                
-              if (exceptionsError) {
-                console.error('Error fetching standalone exceptions:', exceptionsError);
-                setExceptions([]);
-                processAvailabilityWithExceptions([], []);
-              } else {
-                console.log('WeekView standalone exceptions data:', exceptionsData);
-                setExceptions(exceptionsData || []);
-                processAvailabilityWithExceptions([], exceptionsData || []);
-              }
-            } else {
+            if (exceptionsError) {
+              console.error('Error fetching exceptions:', exceptionsError);
               setExceptions([]);
               processAvailabilityWithExceptions(availabilityData || [], []);
+            } else {
+              console.log('WeekView exceptions data:', exceptionsData);
+              setExceptions(exceptionsData || []);
+              processAvailabilityWithExceptions(availabilityData || [], exceptionsData || []);
             }
+          } else {
+            setExceptions([]);
+            processAvailabilityWithExceptions(availabilityData || [], []);
           }
         }
       } catch (error) {
@@ -231,33 +192,42 @@ export const useWeekViewData = (
       const dateStr = format(day, 'yyyy-MM-dd');
       const exceptionsForDay = exceptionsData.filter(exc => exc.specific_date === dateStr);
       
+      // Get recurring availability blocks for this day of week
       const dayBlocks = blocks
         .filter(block => block.day_of_week === dayOfWeek)
         .filter(block => {
+          // Filter out any blocks that have a deletion exception for this date
           const deletionException = exceptionsForDay.find(
             e => e.original_availability_id === block.id && e.is_deleted
           );
           return !deletionException;
         })
         .map(block => {
+          // Check if there's a modification exception for this block on this date
           const modificationException = exceptionsForDay.find(
             e => e.original_availability_id === block.id && !e.is_deleted && e.start_time && e.end_time
           );
           
           if (modificationException) {
+            console.log(`Found modification exception for block ${block.id} on ${dateStr}:`, modificationException);
             return {
               ...block,
+              id: modificationException.id, // Use the exception ID instead
               start_time: modificationException.start_time,
               end_time: modificationException.end_time,
-              isException: true
+              isException: true,
+              originalAvailabilityId: block.id
             };
           }
           
           return block;
         });
 
+      // Get one-time availability blocks for this specific date
       const standaloneExceptions = exceptionsForDay
         .filter(exception => exception.original_availability_id === null && !exception.is_deleted && exception.start_time && exception.end_time);
+      
+      console.log(`Standalone exceptions for ${dateStr}:`, standaloneExceptions);
       
       const standaloneBlocks = standaloneExceptions.map(exception => ({
         id: exception.id,
@@ -266,15 +236,17 @@ export const useWeekViewData = (
         end_time: exception.end_time,
         clinician_id: exception.clinician_id,
         is_active: true,
-        isException: true,
-        isStandalone: true
+        isException: false,
+        isStandalone: true,
+        originalAvailabilityId: null
       }));
       
       const allDayBlocks = [...dayBlocks, ...standaloneBlocks];
+      console.log(`Combined blocks for ${dateStr}:`, allDayBlocks);
 
       const parsedBlocks = allDayBlocks.map(block => {
-        const [startHour, startMinute] = block.start_time.split(':').map(Number);
-        const [endHour, endMinute] = block.end_time.split(':').map(Number);
+        const [startHour, startMinute] = (block.start_time as string).split(':').map(Number);
+        const [endHour, endMinute] = (block.end_time as string).split(':').map(Number);
 
         const start = setMinutes(setHours(startOfDay(day), startHour), startMinute);
         const end = setMinutes(setHours(startOfDay(day), endHour), endMinute);
@@ -284,8 +256,9 @@ export const useWeekViewData = (
           day,
           start,
           end,
-          isException: block.isException,
-          isStandalone: block.isStandalone,
+          isException: !!block.isException,
+          isStandalone: !!block.isStandalone,
+          originalAvailabilityId: (block as any).originalAvailabilityId,
           availabilityIds: [block.id]
         };
       });
@@ -295,6 +268,7 @@ export const useWeekViewData = (
       allTimeBlocks.push(...parsedBlocks);
     });
 
+    console.log('Processed time blocks:', allTimeBlocks);
     setTimeBlocks(allTimeBlocks);
   };
 

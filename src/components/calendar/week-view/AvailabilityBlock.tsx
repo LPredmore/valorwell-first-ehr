@@ -26,7 +26,7 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
   const height = duration * hourHeight;
 
   const handleClick = () => {
-    console.log('AvailabilityBlock clicked, forwarding to handler');
+    console.log('AvailabilityBlock clicked, forwarding to handler with block:', block);
     if (onAvailabilityClick) {
       onAvailabilityClick(day, block);
     }

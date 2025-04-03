@@ -25,6 +25,8 @@ export const useAvailabilityEdit = (
 
   useEffect(() => {
     if (isOpen && availabilityBlock && specificDate) {
+      console.log('Editing availability block:', availabilityBlock);
+      
       // Determine the type of availability block
       setIsRecurring(!availabilityBlock.isStandalone);
       setIsException(!!availabilityBlock.isException);
@@ -78,6 +80,14 @@ export const useAvailabilityEdit = (
       if (mode === 'single') {
         if (isRecurring && !isException) {
           // Create an exception to the recurring availability
+          console.log('Creating exception for recurring availability:', {
+            clinicianId,
+            specificDate: specificDateStr,
+            originalAvailabilityId: availabilityBlock.id,
+            startTime,
+            endTime
+          });
+          
           const { data, error } = await supabase
             .from('availability_exceptions')
             .insert({
@@ -90,8 +100,15 @@ export const useAvailabilityEdit = (
             });
             
           if (error) throw error;
+          console.log('Exception created successfully:', data);
         } else if (isException) {
           // Update an existing exception
+          console.log('Updating existing exception:', {
+            id: availabilityBlock.id,
+            startTime,
+            endTime
+          });
+          
           const { data, error } = await supabase
             .from('availability_exceptions')
             .update({
@@ -102,8 +119,15 @@ export const useAvailabilityEdit = (
             .eq('id', availabilityBlock.id);
             
           if (error) throw error;
+          console.log('Exception updated successfully:', data);
         } else if (isStandalone) {
           // Update a standalone one-time availability
+          console.log('Updating standalone availability:', {
+            id: availabilityBlock.id,
+            startTime,
+            endTime
+          });
+          
           const { data, error } = await supabase
             .from('availability_exceptions')
             .update({
@@ -114,8 +138,16 @@ export const useAvailabilityEdit = (
             .eq('id', availabilityBlock.id);
             
           if (error) throw error;
+          console.log('Standalone availability updated successfully:', data);
         } else {
           // Create a new one-time availability
+          console.log('Creating new one-time availability:', {
+            clinicianId,
+            specificDate: specificDateStr,
+            startTime,
+            endTime
+          });
+          
           const { data, error } = await supabase
             .from('availability_exceptions')
             .insert({
@@ -128,9 +160,16 @@ export const useAvailabilityEdit = (
             });
             
           if (error) throw error;
+          console.log('One-time availability created successfully:', data);
         }
       } else if (mode === 'series' && isRecurring) {
         // Update the recurring series
+        console.log('Updating recurring series:', {
+          id: availabilityBlock.id,
+          startTime,
+          endTime
+        });
+        
         const { data, error } = await supabase
           .from('availability')
           .update({
@@ -140,6 +179,7 @@ export const useAvailabilityEdit = (
           .eq('id', availabilityBlock.id);
           
         if (error) throw error;
+        console.log('Recurring series updated successfully:', data);
       }
       
       onAvailabilityUpdated();
@@ -164,6 +204,12 @@ export const useAvailabilityEdit = (
     try {
       if (isRecurring && !isException) {
         // Create a deletion exception for the recurring availability
+        console.log('Creating deletion exception for recurring availability:', {
+          clinicianId,
+          specificDate: specificDateStr,
+          originalAvailabilityId: availabilityBlock.id
+        });
+        
         const { data, error } = await supabase
           .from('availability_exceptions')
           .insert({
@@ -176,14 +222,20 @@ export const useAvailabilityEdit = (
           });
           
         if (error) throw error;
+        console.log('Deletion exception created successfully:', data);
       } else if (isException || isStandalone) {
         // Delete the exception or standalone availability
+        console.log('Deleting exception or standalone availability:', {
+          id: availabilityBlock.id
+        });
+        
         const { data, error } = await supabase
           .from('availability_exceptions')
           .update({ is_deleted: true })
           .eq('id', availabilityBlock.id);
           
         if (error) throw error;
+        console.log('Exception/standalone availability deleted successfully:', data);
       }
       
       onAvailabilityUpdated();

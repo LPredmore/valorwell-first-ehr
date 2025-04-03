@@ -26,6 +26,8 @@ interface AvailabilityBlock {
   clinician_id?: string;
   is_active?: boolean;
   isException?: boolean;
+  isStandalone?: boolean;
+  originalAvailabilityId?: string | null;
 }
 
 interface MonthViewProps {
