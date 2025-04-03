@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -169,7 +168,6 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     }
     
     try {
-      // Fetch regular weekly availability
       const { data: availabilityData, error: availabilityError } = await supabase
         .from('availability')
         .select('*')
@@ -180,7 +178,6 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         console.error('Error fetching availability:', availabilityError);
         setAvailabilityEvents([]);
       } else {
-        // Fetch one-time availability exceptions
         const { data: oneTimeData, error: oneTimeError } = await supabase
           .from('availability_exceptions')
           .select('*')
@@ -191,11 +188,24 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
           console.error('Error fetching one-time availability:', oneTimeError);
           setOneTimeAvailability([]);
         } else {
+          console.log('Fetched one-time availability exceptions:', oneTimeData || []);
           setOneTimeAvailability(oneTimeData || []);
         }
         
-        const availEvents = createAvailabilityEvents(availabilityData || [], oneTimeData || []);
-        setAvailabilityEvents(availEvents);
+        const { data: deletedExceptions, error: deletedError } = await supabase
+          .from('availability_exceptions')
+          .select('*')
+          .eq('clinician_id', clinicianId)
+          .eq('is_deleted', true);
+          
+        if (deletedError) {
+          console.error('Error fetching deleted exceptions:', deletedError);
+        } else {
+          console.log('Fetched deleted availability exceptions:', deletedExceptions || []);
+          const allExceptions = [...(oneTimeData || []), ...(deletedExceptions || [])];
+          const availEvents = createAvailabilityEvents(availabilityData || [], allExceptions);
+          setAvailabilityEvents(availEvents);
+        }
       }
     } catch (error) {
       console.error('Error:', error);
@@ -220,23 +230,66 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     
     const availabilityEvents: any[] = [];
     
-    // Group one-time blocks by date
-    const oneTimeByDate = oneTimeBlocks.reduce((acc, block) => {
-      if (!acc[block.specific_date]) {
-        acc[block.specific_date] = [];
-      }
-      acc[block.specific_date].push(block);
-      return acc;
-    }, {} as Record<string, any[]>);
+    const exceptionsMap: Record<string, Record<string, any[]>> = {};
     
-    // Process weekly recurring availability
+    oneTimeBlocks.forEach(block => {
+      const date = block.specific_date;
+      const originalId = block.original_availability_id;
+      
+      if (!originalId) return;
+      
+      if (!exceptionsMap[originalId]) {
+        exceptionsMap[originalId] = {};
+      }
+      
+      if (!exceptionsMap[originalId][date]) {
+        exceptionsMap[originalId][date] = [];
+      }
+      
+      exceptionsMap[originalId][date].push(block);
+    });
+    
+    console.log('Exceptions map created:', exceptionsMap);
+    
+    oneTimeBlocks.forEach(block => {
+      if (!block.is_deleted && block.start_time && block.end_time && !block.original_availability_id) {
+        const event = {
+          id: `onetime-${block.id}`,
+          title: 'One-Time Available',
+          start: `${block.specific_date}T${block.start_time}`,
+          end: `${block.specific_date}T${block.end_time}`,
+          extendedProps: {
+            type: 'one-time-availability',
+            availabilityData: {
+              ...block,
+              isStandalone: true
+            }
+          },
+          backgroundColor: '#0ea5e9',
+          borderColor: '#0284c7',
+          textColor: '#ffffff',
+          display: 'block',
+          overlap: false
+        };
+        
+        availabilityEvents.push(event);
+      }
+    });
+    
     availabilityBlocks.forEach(block => {
       const dowNumber = dayOfWeekMap[block.day_of_week];
-      
       const startTime = block.start_time;
       const endTime = block.end_time;
       
-      // Create a single event for the entire time block instead of breaking it into slots
+      const exceptionsForBlock = exceptionsMap[block.id] || {};
+      const excludeDates: string[] = [];
+      
+      Object.keys(exceptionsForBlock).forEach(dateStr => {
+        excludeDates.push(dateStr);
+      });
+      
+      console.log(`For availability ${block.id}, excluding dates:`, excludeDates);
+      
       const event = {
         id: `weekly-${block.id}`,
         title: 'Available',
@@ -250,7 +303,8 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
           availabilityData: {
             ...block,
             isRecurring: true
-          }
+          },
+          excludeDates: excludeDates
         },
         backgroundColor: '#10b981',
         borderColor: '#059669',
@@ -260,40 +314,35 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
       };
       
       availabilityEvents.push(event);
+      
+      Object.entries(exceptionsForBlock).forEach(([dateStr, exceptions]) => {
+        exceptions.forEach(exception => {
+          if (!exception.is_deleted && exception.start_time && exception.end_time) {
+            const exceptionEvent = {
+              id: `exception-${exception.id}`,
+              title: 'Modified Available',
+              start: `${dateStr}T${exception.start_time}`,
+              end: `${dateStr}T${exception.end_time}`,
+              extendedProps: {
+                type: 'one-time-availability',
+                availabilityData: {
+                  ...exception,
+                  isException: true
+                }
+              },
+              backgroundColor: '#0ea5e9',
+              borderColor: '#0284c7',
+              textColor: '#ffffff',
+              display: 'block',
+              overlap: false
+            };
+            
+            availabilityEvents.push(exceptionEvent);
+          }
+        });
+      });
     });
     
-    // Process one-time availability exceptions (modifications to weekly)
-    oneTimeBlocks.forEach(block => {
-      if (block.start_time && block.end_time) {
-        // This is a modified time slot
-        const event = {
-          id: `onetime-${block.id}`,
-          title: block.original_availability_id ? 'Modified Available' : 'One-Time Available',
-          start: `${block.specific_date}T${block.start_time}`,
-          end: `${block.specific_date}T${block.end_time}`,
-          extendedProps: {
-            type: 'one-time-availability',
-            availabilityData: {
-              ...block,
-              isException: !!block.original_availability_id,
-              isStandalone: !block.original_availability_id
-            }
-          },
-          backgroundColor: '#0ea5e9',
-          borderColor: '#0284c7',
-          textColor: '#ffffff',
-          display: 'block',
-          overlap: false
-        };
-        
-        availabilityEvents.push(event);
-      } else if (block.is_deleted && block.original_availability_id) {
-        // This is a deleted weekly availability - handle by not showing
-        // Original recurring event will be hidden for this date
-      }
-    });
-    
-    // Add time off blocks
     timeOffBlocks.forEach(block => {
       const startDate = new Date(block.start_date);
       const endDate = new Date(block.end_date);
@@ -314,6 +363,24 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     });
     
     return availabilityEvents;
+  };
+  
+  const filterEvents = (events: any[]) => {
+    const filteredEvents = events.filter(event => {
+      if (event.extendedProps?.type !== 'availability' || 
+          !event.extendedProps?.excludeDates?.length) {
+        return true;
+      }
+      
+      const excludeDates = event.extendedProps.excludeDates || [];
+      
+      return (info: any) => {
+        const eventDate = format(info.date, 'yyyy-MM-dd');
+        return !excludeDates.includes(eventDate);
+      };
+    });
+    
+    return filteredEvents;
   };
   
   const getTimeSlots = (startTime: string, endTime: string, settings: AvailabilitySettings) => {
@@ -399,7 +466,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
           day_of_week: dayOfWeek,
           start_time: '09:00:00',
           end_time: '17:00:00',
-          isStandalone: true // Mark this as a one-time availability
+          isStandalone: true
         };
         
         console.log('Date clicked, creating availability:', tempBlock);
@@ -416,7 +483,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     );
   }
   
-  const allEvents = [...events, ...availabilityEvents];
+  const allEvents = filterEvents([...events, ...availabilityEvents]);
   
   return (
     <div className={className}>
@@ -426,6 +493,23 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         initialDate={currentDate}
         headerToolbar={false}
         events={allEvents}
+        eventDisplay="block"
+        eventContent={(info) => {
+          const event = info.event;
+          
+          if (event.extendedProps?.type === 'availability' && 
+              event.extendedProps?.excludeDates?.length) {
+            
+            const eventDate = format(info.event.start!, 'yyyy-MM-dd');
+            const excludeDates = event.extendedProps.excludeDates || [];
+            
+            if (excludeDates.includes(eventDate)) {
+              return null;
+            }
+          }
+          
+          return { html: `<div class="fc-event-main-inner">${info.event.title}</div>` };
+        }}
         eventClick={handleEventClick}
         dateClick={handleDateClick}
         height="auto"
