@@ -5,17 +5,7 @@ import { Loader2 } from 'lucide-react';
 import FullCalendarView from './FullCalendarView';
 import WeekView from './week-view';
 import { TimeBlock } from './week-view/useWeekViewData'; 
-
-interface Appointment {
-  id: string;
-  client_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  type: string;
-  status: string;
-  video_room_url?: string;
-}
+import { Appointment } from '@/hooks/useAppointments';
 
 interface AvailabilityBlock {
   id: string;
@@ -59,7 +49,7 @@ const MonthView: React.FC<MonthViewProps> = ({
         appointments={appointments}
         getClientName={getClientName}
         onAppointmentClick={onAppointmentClick}
-        onAvailabilityClick={onAvailabilityClick as (day: Date, block: TimeBlock) => void}
+        onAvailabilityClick={onAvailabilityClick}
         userTimeZone={userTimeZone}
       />
     );
