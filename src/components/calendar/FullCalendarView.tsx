@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -51,26 +50,20 @@ interface FullCalendarViewProps {
   currentDate: Date;
   clinicianId: string | null;
   refreshTrigger?: number;
-  appointments?: Appointment[];
-  getClientName?: (clientId: string) => string;
-  onAppointmentClick?: (appointment: Appointment) => void;
-  onAvailabilityClick?: (date: Date, availabilityBlock: AvailabilityBlock) => void;
   userTimeZone?: string;
-  view?: 'dayGridMonth' | 'timeGridWeek';
+  view?: 'timeGridWeek' | 'dayGridMonth';
   showAvailability?: boolean;
+  className?: string;
 }
 
 const FullCalendarView: React.FC<FullCalendarViewProps> = ({
   currentDate,
   clinicianId,
   refreshTrigger = 0,
-  appointments = [],
-  getClientName = () => 'Client',
-  onAppointmentClick,
-  onAvailabilityClick,
-  userTimeZone = getUserTimeZone(),
-  view = 'dayGridMonth',
-  showAvailability = true
+  userTimeZone,
+  view = 'timeGridWeek',
+  showAvailability = true,
+  className = ''
 }) => {
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<any[]>([]);
@@ -78,7 +71,6 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
   const [settings, setSettings] = useState<AvailabilitySettings | null>(null);
   const [timeOffBlocks, setTimeOffBlocks] = useState<TimeOffBlock[]>([]);
 
-  // Fetch availability settings and time off blocks
   useEffect(() => {
     if (clinicianId) {
       fetchAvailabilitySettings();
@@ -126,7 +118,6 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     }
   };
 
-  // Fetch appointments and convert them to FullCalendar events
   useEffect(() => {
     const appointmentEvents = appointments.map(appointment => {
       const dateStr = appointment.date;
@@ -145,7 +136,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
           type: 'appointment',
           appointmentData: appointment
         },
-        backgroundColor: '#3b82f6', // Blue color for appointments
+        backgroundColor: '#3b82f6',
         borderColor: '#2563eb',
         textColor: '#ffffff'
       };
@@ -153,7 +144,6 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     
     setEvents(appointmentEvents);
     
-    // We'll call fetchAvailability here if needed
     if (showAvailability) {
       fetchAvailability();
     } else {
@@ -161,7 +151,6 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     }
   }, [appointments, refreshTrigger, clinicianId, getClientName, showAvailability, timeOffBlocks]);
   
-  // Fetch availability blocks and convert them to FullCalendar events
   const fetchAvailability = async () => {
     if (!clinicianId) {
       setAvailabilityEvents([]);
@@ -180,7 +169,6 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         console.error('Error fetching availability:', availabilityError);
         setAvailabilityEvents([]);
       } else {
-        // Convert availability to recurring events, respecting time off blocks
         const availEvents = createAvailabilityEvents(availabilityData || []);
         setAvailabilityEvents(availEvents);
       }
@@ -192,11 +180,9 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     }
   };
   
-  // Convert availability blocks to FullCalendar events with recurrence, respecting time off blocks
   const createAvailabilityEvents = (availabilityBlocks: AvailabilityBlock[]) => {
     if (!settings) return [];
     
-    // Map day of week from string to number (0 = Sunday, 1 = Monday, etc.)
     const dayOfWeekMap: {[key: string]: number} = {
       'Sunday': 0,
       'Monday': 1,
@@ -210,17 +196,13 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     const availabilityEvents: any[] = [];
     
     availabilityBlocks.forEach(block => {
-      // Get the day of week as a number
       const dowNumber = dayOfWeekMap[block.day_of_week];
       
-      // Get start and end times
       const startTime = block.start_time;
       const endTime = block.end_time;
       
-      // Calculate time slots based on settings
       const timeSlots = getTimeSlots(startTime, endTime, settings);
       
-      // Create events for each time slot
       timeSlots.forEach(slot => {
         const event = {
           id: `${block.id}-${slot.start}`,
@@ -238,11 +220,10 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
               end_time: slot.end
             }
           },
-          backgroundColor: '#10b981', // Green color for availability
+          backgroundColor: '#10b981',
           borderColor: '#059669',
           textColor: '#ffffff',
           display: 'block',
-          // Add a custom render function that checks if this date is in a time-off block
           overlap: false
         };
         
@@ -250,11 +231,9 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
       });
     });
     
-    // Add time-off blocks as events with higher priority
     timeOffBlocks.forEach(block => {
       const startDate = new Date(block.start_date);
       const endDate = new Date(block.end_date);
-      // Add 1 day to end date to make it inclusive
       endDate.setDate(endDate.getDate() + 1);
       
       availabilityEvents.push({
@@ -263,11 +242,10 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         start: block.start_date,
         end: block.end_date,
         allDay: true,
-        backgroundColor: '#f97316', // Orange color for time off
+        backgroundColor: '#f97316',
         borderColor: '#ea580c',
         textColor: '#ffffff',
         display: 'background',
-        // Set higher priority than availability
         classNames: ['time-off-block']
       });
     });
@@ -275,7 +253,6 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     return availabilityEvents;
   };
   
-  // Calculate time slots based on settings
   const getTimeSlots = (startTime: string, endTime: string, settings: AvailabilitySettings) => {
     const [startHour, startMinute] = startTime.split(':').map(Number);
     const [endHour, endMinute] = endTime.split(':').map(Number);
@@ -322,18 +299,16 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     return slots;
   };
   
-  // Check if a date is within any time off block
   const isDateInTimeOff = (date: Date) => {
     return timeOffBlocks.some(block => {
       const startDate = new Date(block.start_date);
       const endDate = new Date(block.end_date);
-      endDate.setDate(endDate.getDate() + 1); // Make end date inclusive
+      endDate.setDate(endDate.getDate() + 1);
       
       return isWithinInterval(date, { start: startDate, end: endDate });
     });
   };
   
-  // Handle event click
   const handleEventClick = (info: any) => {
     const eventType = info.event.extendedProps.type;
     
@@ -342,21 +317,17 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     } else if (eventType === 'availability' && onAvailabilityClick) {
       const date = info.event.start;
       
-      // Don't allow clicking on availability if the date is in a time-off block
       if (!isDateInTimeOff(date)) {
         onAvailabilityClick(date, info.event.extendedProps.availabilityData);
       }
     }
   };
   
-  // Handle date click for potentially adding new availability
   const handleDateClick = (info: any) => {
     if (onAvailabilityClick) {
-      // Create a temporary availability block for the clicked date
       const date = new Date(info.date);
       const dayOfWeek = format(date, 'EEEE');
       
-      // Don't allow creating availability if the date is in a time-off block
       if (!isDateInTimeOff(date)) {
         const tempBlock: AvailabilityBlock = {
           id: 'new',
@@ -378,16 +349,15 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     );
   }
   
-  // Combine appointment and availability events
   const allEvents = [...events, ...availabilityEvents];
   
   return (
-    <Card className="p-4 rounded-lg shadow-md">
+    <div className={className}>
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView={view}
         initialDate={currentDate}
-        headerToolbar={false} // We'll use our own custom header
+        headerToolbar={false}
         events={allEvents}
         eventClick={handleEventClick}
         dateClick={handleDateClick}
@@ -399,7 +369,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         allDaySlot={false}
         expandRows={true}
       />
-    </Card>
+    </div>
   );
 };
 

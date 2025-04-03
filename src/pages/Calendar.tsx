@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Clock } from 'lucide-react';
 import FullCalendarView from '@/components/calendar/FullCalendarView';
 import AvailabilitySettingsDialog from '@/components/calendar/AvailabilitySettingsDialog';
+import EnhancedAvailabilityPanel from '@/components/calendar/EnhancedAvailabilityPanel';
 
 const CalendarPage = () => {
   const {
@@ -34,6 +35,7 @@ const CalendarPage = () => {
 
   const [calendarViewMode, setCalendarViewMode] = useState<'dayGridMonth' | 'timeGridWeek'>('timeGridWeek');
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
+  const [showAvailabilityPanel, setShowAvailabilityPanel] = useState(false);
 
   const navigatePrevious = () => {
     if (calendarViewMode === 'timeGridWeek') {
@@ -88,8 +90,8 @@ const CalendarPage = () => {
               </Tabs>
 
               <Button
-                variant={showAvailability ? "default" : "outline"}
-                onClick={toggleAvailability}
+                variant={showAvailabilityPanel ? "default" : "outline"}
+                onClick={() => setShowAvailabilityPanel(!showAvailabilityPanel)}
               >
                 <Clock className="mr-2 h-4 w-4" />
                 Availability
@@ -142,14 +144,27 @@ const CalendarPage = () => {
             onNavigateToday={navigateToday}
           />
 
-          <FullCalendarView
-            currentDate={currentDate}
-            clinicianId={selectedClinicianId}
-            userTimeZone={userTimeZone}
-            refreshTrigger={appointmentRefreshTrigger}
-            view={calendarViewMode}
-            showAvailability={showAvailability}
-          />
+          <div className="flex">
+            <FullCalendarView
+              currentDate={currentDate}
+              clinicianId={selectedClinicianId}
+              userTimeZone={userTimeZone}
+              refreshTrigger={appointmentRefreshTrigger}
+              view={calendarViewMode}
+              showAvailability={true}
+              className={showAvailabilityPanel ? "w-3/4" : "w-full"}
+            />
+
+            {showAvailabilityPanel && (
+              <div className="w-1/4 pl-4">
+                <EnhancedAvailabilityPanel
+                  clinicianId={selectedClinicianId}
+                  onAvailabilityUpdated={() => setAppointmentRefreshTrigger(prev => prev + 1)}
+                  userTimeZone={userTimeZone}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
