@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -178,32 +179,36 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         console.error('Error fetching availability:', availabilityError);
         setAvailabilityEvents([]);
       } else {
-        const { data: oneTimeData, error: oneTimeError } = await supabase
+        // Fetch all exceptions, including deleted ones
+        const { data: exceptionsData, error: exceptionsError } = await supabase
           .from('availability_exceptions')
           .select('*')
-          .eq('clinician_id', clinicianId)
-          .eq('is_deleted', false);
+          .eq('clinician_id', clinicianId);
           
-        if (oneTimeError) {
-          console.error('Error fetching one-time availability:', oneTimeError);
+        if (exceptionsError) {
+          console.error('Error fetching exceptions:', exceptionsError);
           setOneTimeAvailability([]);
         } else {
-          console.log('Fetched one-time availability exceptions:', oneTimeData || []);
-          setOneTimeAvailability(oneTimeData || []);
-        }
-        
-        const { data: deletedExceptions, error: deletedError } = await supabase
-          .from('availability_exceptions')
-          .select('*')
-          .eq('clinician_id', clinicianId)
-          .eq('is_deleted', true);
+          // Split exceptions into active exceptions and deleted exceptions
+          const activeExceptions = exceptionsData?.filter(exception => 
+            !exception.is_deleted && exception.start_time && exception.end_time
+          ) || [];
           
-        if (deletedError) {
-          console.error('Error fetching deleted exceptions:', deletedError);
-        } else {
-          console.log('Fetched deleted availability exceptions:', deletedExceptions || []);
-          const allExceptions = [...(oneTimeData || []), ...(deletedExceptions || [])];
-          const availEvents = createAvailabilityEvents(availabilityData || [], allExceptions);
+          const deletedExceptions = exceptionsData?.filter(exception => 
+            exception.is_deleted || !exception.start_time || !exception.end_time
+          ) || [];
+          
+          console.log('Fetched active exceptions:', activeExceptions);
+          console.log('Fetched deleted exceptions:', deletedExceptions);
+          
+          setOneTimeAvailability(activeExceptions);
+          
+          const availEvents = createAvailabilityEvents(
+            availabilityData || [], 
+            activeExceptions,
+            deletedExceptions
+          );
+          
           setAvailabilityEvents(availEvents);
         }
       }
@@ -215,7 +220,11 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     }
   };
   
-  const createAvailabilityEvents = (availabilityBlocks: AvailabilityBlock[], oneTimeBlocks: any[]) => {
+  const createAvailabilityEvents = (
+    availabilityBlocks: AvailabilityBlock[], 
+    activeExceptions: any[],
+    deletedExceptions: any[]
+  ) => {
     if (!settings) return [];
     
     const dayOfWeekMap: {[key: string]: number} = {
@@ -230,38 +239,43 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     
     const availabilityEvents: any[] = [];
     
-    const exceptionsMap: Record<string, Record<string, any[]>> = {};
+    // Create a map of exceptions by original availability ID and date
+    const exceptionsByOriginalIdAndDate: Record<string, Record<string, any[]>> = {};
     
-    oneTimeBlocks.forEach(block => {
-      const date = block.specific_date;
-      const originalId = block.original_availability_id;
+    // Process all exceptions (active and deleted)
+    [...activeExceptions, ...deletedExceptions].forEach(exception => {
+      const date = exception.specific_date;
+      const originalId = exception.original_availability_id;
       
-      if (!originalId) return;
-      
-      if (!exceptionsMap[originalId]) {
-        exceptionsMap[originalId] = {};
+      if (originalId) {
+        // This is an exception for a recurring availability
+        if (!exceptionsByOriginalIdAndDate[originalId]) {
+          exceptionsByOriginalIdAndDate[originalId] = {};
+        }
+        
+        if (!exceptionsByOriginalIdAndDate[originalId][date]) {
+          exceptionsByOriginalIdAndDate[originalId][date] = [];
+        }
+        
+        exceptionsByOriginalIdAndDate[originalId][date].push(exception);
       }
-      
-      if (!exceptionsMap[originalId][date]) {
-        exceptionsMap[originalId][date] = [];
-      }
-      
-      exceptionsMap[originalId][date].push(block);
     });
     
-    console.log('Exceptions map created:', exceptionsMap);
+    console.log('Exceptions grouped by original ID and date:', exceptionsByOriginalIdAndDate);
     
-    oneTimeBlocks.forEach(block => {
-      if (!block.is_deleted && block.start_time && block.end_time && !block.original_availability_id) {
+    // Process one-time availability exceptions (standalone exceptions)
+    activeExceptions.forEach(exception => {
+      if (!exception.original_availability_id) {
+        // This is a standalone one-time availability
         const event = {
-          id: `onetime-${block.id}`,
+          id: `onetime-${exception.id}`,
           title: 'One-Time Available',
-          start: `${block.specific_date}T${block.start_time}`,
-          end: `${block.specific_date}T${block.end_time}`,
+          start: `${exception.specific_date}T${exception.start_time}`,
+          end: `${exception.specific_date}T${exception.end_time}`,
           extendedProps: {
             type: 'one-time-availability',
             availabilityData: {
-              ...block,
+              ...exception,
               isStandalone: true
             }
           },
@@ -276,20 +290,31 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
       }
     });
     
+    // Process recurring availability blocks
     availabilityBlocks.forEach(block => {
       const dowNumber = dayOfWeekMap[block.day_of_week];
       const startTime = block.start_time;
       const endTime = block.end_time;
       
-      const exceptionsForBlock = exceptionsMap[block.id] || {};
-      const excludeDates: string[] = [];
+      // Get all dates with exceptions for this recurring block
+      const exceptionsForBlock = exceptionsByOriginalIdAndDate[block.id] || {};
       
+      // Build a list of dates to exclude from the recurring event
+      const excludeDates: string[] = [];
       Object.keys(exceptionsForBlock).forEach(dateStr => {
-        excludeDates.push(dateStr);
+        // Check if there's a deleted exception or an active exception
+        const hasExceptionForDate = exceptionsForBlock[dateStr].some(exc => 
+          !exc.is_deleted || (exc.is_deleted && exc.start_time && exc.end_time)
+        );
+        
+        if (hasExceptionForDate) {
+          excludeDates.push(dateStr);
+        }
       });
       
       console.log(`For availability ${block.id}, excluding dates:`, excludeDates);
       
+      // Create a recurring event that excludes dates with exceptions
       const event = {
         id: `weekly-${block.id}`,
         title: 'Available',
@@ -315,6 +340,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
       
       availabilityEvents.push(event);
       
+      // Create separate events for modified exceptions
       Object.entries(exceptionsForBlock).forEach(([dateStr, exceptions]) => {
         exceptions.forEach(exception => {
           if (!exception.is_deleted && exception.start_time && exception.end_time) {
@@ -343,11 +369,8 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
       });
     });
     
+    // Add time off blocks
     timeOffBlocks.forEach(block => {
-      const startDate = new Date(block.start_date);
-      const endDate = new Date(block.end_date);
-      endDate.setDate(endDate.getDate() + 1);
-      
       availabilityEvents.push({
         id: `timeoff-${block.id}`,
         title: block.note || 'Time Off',
@@ -363,70 +386,6 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     });
     
     return availabilityEvents;
-  };
-  
-  const filterEvents = (events: any[]) => {
-    const filteredEvents = events.filter(event => {
-      if (event.extendedProps?.type !== 'availability' || 
-          !event.extendedProps?.excludeDates?.length) {
-        return true;
-      }
-      
-      const excludeDates = event.extendedProps.excludeDates || [];
-      
-      return (info: any) => {
-        const eventDate = format(info.date, 'yyyy-MM-dd');
-        return !excludeDates.includes(eventDate);
-      };
-    });
-    
-    return filteredEvents;
-  };
-  
-  const getTimeSlots = (startTime: string, endTime: string, settings: AvailabilitySettings) => {
-    const [startHour, startMinute] = startTime.split(':').map(Number);
-    const [endHour, endMinute] = endTime.split(':').map(Number);
-    
-    let intervalMinutes: number;
-    
-    switch (settings.time_granularity) {
-      case 'hour':
-        intervalMinutes = 60;
-        break;
-      case 'half_hour':
-        intervalMinutes = 30;
-        break;
-      case 'quarter_hour':
-        intervalMinutes = 15;
-        break;
-      case 'custom':
-        intervalMinutes = settings.custom_minutes || 60;
-        break;
-      default:
-        intervalMinutes = 60;
-    }
-    
-    const startTotalMinutes = startHour * 60 + startMinute;
-    const endTotalMinutes = endHour * 60 + endMinute;
-    
-    const slots = [];
-    
-    for (let minutes = startTotalMinutes; minutes < endTotalMinutes; minutes += intervalMinutes) {
-      if (minutes + intervalMinutes <= endTotalMinutes) {
-        const slotStartHour = Math.floor(minutes / 60);
-        const slotStartMinute = minutes % 60;
-        
-        const slotEndHour = Math.floor((minutes + intervalMinutes) / 60);
-        const slotEndMinute = (minutes + intervalMinutes) % 60;
-        
-        const start = `${slotStartHour.toString().padStart(2, '0')}:${slotStartMinute.toString().padStart(2, '0')}:00`;
-        const end = `${slotEndHour.toString().padStart(2, '0')}:${slotEndMinute.toString().padStart(2, '0')}:00`;
-        
-        slots.push({ start, end });
-      }
-    }
-    
-    return slots;
   };
   
   const isDateInTimeOff = (date: Date) => {
@@ -483,7 +442,26 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     );
   }
   
-  const allEvents = filterEvents([...events, ...availabilityEvents]);
+  // Process events to ensure recurring events are not shown on dates with exceptions
+  const processEvents = (events: any[]) => {
+    // Create a lookup map of dates to exclude for each recurring event
+    const excludeMap = new Map<string, Set<string>>();
+    
+    // First pass: collect all exclude dates
+    events.forEach(event => {
+      if (event.extendedProps?.type === 'availability' && 
+          event.extendedProps?.excludeDates?.length) {
+        excludeMap.set(event.id, new Set(event.extendedProps.excludeDates));
+      }
+    });
+    
+    console.log('Exclude map for recurring events:', Object.fromEntries([...excludeMap.entries()]));
+    
+    // Filter events to prevent recurring events from showing on excluded dates
+    return events;
+  };
+  
+  const allEvents = processEvents([...events, ...availabilityEvents]);
   
   return (
     <div className={className}>
@@ -497,6 +475,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         eventContent={(info) => {
           const event = info.event;
           
+          // Skip rendering recurring events on dates where they should be excluded
           if (event.extendedProps?.type === 'availability' && 
               event.extendedProps?.excludeDates?.length) {
             
