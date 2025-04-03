@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -74,7 +75,7 @@ const CalendarPage = () => {
 
   const getClientName = (clientId: string) => {
     const client = clients?.find(c => c.id === clientId);
-    return client ? `${client?.client_first_name || 'Unknown'} ${client?.client_last_name || ''}`.trim() : 'Client';
+    return client ? `${client.client_first_name} ${client.client_last_name}` : 'Client';
   };
 
   return (

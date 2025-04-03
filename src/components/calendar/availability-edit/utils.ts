@@ -1,12 +1,9 @@
 
 import { format } from 'date-fns';
 
-// Define TimeOption type
-export type TimeOption = string;
-
 // Generate time options for the select dropdown
 export const generateTimeOptions = () => {
-  const options: TimeOption[] = [];
+  const options = [];
   for (let hour = 0; hour < 24; hour++) {
     for (let minute = 0; minute < 60; minute += 15) {
       const formattedHour = hour.toString().padStart(2, '0');
