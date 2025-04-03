@@ -14,11 +14,6 @@ export interface WeekViewProps {
     start_time: string;
     end_time: string;
     isException?: boolean;
-    day?: Date;
-    start?: Date;
-    end?: Date;
-    availabilityIds?: string[];
-    isStandalone?: boolean;
   }) => void;
   userTimeZone?: string;
 }

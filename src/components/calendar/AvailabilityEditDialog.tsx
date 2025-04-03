@@ -45,24 +45,11 @@ if (!availabilityBlock || !specificDate) {
 return null;
 }
 
-// Determine the availability type and message
-let availabilityType = "one-time";
-let messageTitle = "One-time Change";
-let messageContent = `This will only modify your availability for ${format(specificDate, 'MMMM d, yyyy')}.`;
-
-if (isRecurring && !isException) {
-  availabilityType = "recurring";
-  messageTitle = "One-time Change";
-  messageContent = `This will create a special exception just for ${format(specificDate, 'MMMM d, yyyy')}. Your regular weekly schedule will remain unchanged.`;
-} else if (isException) {
-  availabilityType = "modified recurring";
-  messageTitle = "Edit Exception";
-  messageContent = `You are editing an exception to your regular schedule for ${format(specificDate, 'MMMM d, yyyy')}.`;
-} else if (isStandalone) {
-  availabilityType = "one-time";
-  messageTitle = "Edit One-time Availability";
-  messageContent = `You are editing a one-time availability slot for ${format(specificDate, 'MMMM d, yyyy')}.`;
-}
+const availabilityType = isStandalone 
+  ? "one-time" 
+  : isException 
+    ? "modified recurring" 
+    : "recurring";
 
 return (
 <>
@@ -90,9 +77,10 @@ timeOptions={timeOptions}
 />
 
 <div className="mt-2 p-3 bg-blue-50 text-sm rounded-md border border-blue-100">
-<div className="font-medium text-blue-700 mb-1">{messageTitle}</div>
+<div className="font-medium text-blue-700 mb-1">One-time Change</div>
 <p className="text-blue-600">
-{messageContent}
+This will only modify your availability for {format(specificDate, 'MMMM d, yyyy')}.
+{isRecurring && !isException && " Your regular weekly schedule will remain unchanged."}
 </p>
 </div>
 </div>
