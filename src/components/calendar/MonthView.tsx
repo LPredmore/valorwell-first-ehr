@@ -14,6 +14,7 @@ interface Appointment {
   end_time: string;
   type: string;
   status: string;
+  video_room_url?: string;
 }
 
 interface AvailabilityBlock {

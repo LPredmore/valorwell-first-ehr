@@ -1,5 +1,5 @@
 
-import { TimeOption } from './utils';
+import { TimeBlock } from '../week-view/useWeekViewData';
 
 export interface AvailabilityEditDialogProps {
   isOpen: boolean;
@@ -10,30 +10,11 @@ export interface AvailabilityEditDialogProps {
   onAvailabilityUpdated: () => void;
 }
 
-export interface DeleteDialogProps {
+export interface DeleteConfirmationDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   specificDate: Date;
   confirmDelete: () => void;
   isLoading: boolean;
-  isRecurring?: boolean;
-}
-
-export interface TimeInputProps {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  timeOptions: TimeOption[];
-}
-
-export interface OneTimeBlockType {
-  id: string;
-  specific_date: string;
-  start_time: string;
-  end_time: string;
-  clinician_id: string;
-  is_deleted: boolean;
-  isException?: boolean;
-  isStandalone?: boolean;
+  isRecurring: boolean;
 }
