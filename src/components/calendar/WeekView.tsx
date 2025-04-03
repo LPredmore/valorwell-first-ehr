@@ -1,5 +1,5 @@
 
-// This file is being replaced by the modular version in the week-view folder
+// This file is being replaced by the FullCalendar implementation
 // It's kept here temporarily as a reference and will be deleted when the new version
 // is confirmed to be working correctly.
 

@@ -2,8 +2,7 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import { useMonthViewData } from './useMonthViewData';
-import CalendarGrid from './CalendarGrid';
+import FullCalendarView from './FullCalendarView';
 import WeekView from './week-view';
 import { TimeBlock } from './week-view/useWeekViewData'; 
 
@@ -50,23 +49,6 @@ const MonthView: React.FC<MonthViewProps> = ({
   userTimeZone,
   weekViewMode = false
 }) => {
-  const {
-    loading,
-    monthStart,
-    days,
-    dayAvailabilityMap,
-    dayAppointmentsMap,
-    availabilityByDay
-  } = useMonthViewData(currentDate, clinicianId, refreshTrigger, appointments, weekViewMode);
-
-  if (loading) {
-    return (
-      <Card className="p-4 flex justify-center items-center h-[300px]">
-        <Loader2 className="h-6 w-6 animate-spin text-valorwell-500" />
-      </Card>
-    );
-  }
-
   if (weekViewMode) {
     return (
       <WeekView 
@@ -83,19 +65,18 @@ const MonthView: React.FC<MonthViewProps> = ({
   }
 
   return (
-    <Card className="p-4 rounded-lg shadow-md">
-      <CalendarGrid
-        days={days}
-        monthStart={monthStart}
-        dayAvailabilityMap={dayAvailabilityMap}
-        dayAppointmentsMap={dayAppointmentsMap}
-        availabilityByDay={availabilityByDay}
-        getClientName={getClientName}
-        onAppointmentClick={onAppointmentClick}
-        onAvailabilityClick={onAvailabilityClick}
-        weekViewMode={weekViewMode}
-      />
-    </Card>
+    <FullCalendarView
+      currentDate={currentDate}
+      clinicianId={clinicianId}
+      refreshTrigger={refreshTrigger}
+      appointments={appointments}
+      getClientName={getClientName}
+      onAppointmentClick={onAppointmentClick}
+      onAvailabilityClick={onAvailabilityClick}
+      userTimeZone={userTimeZone}
+      view="dayGridMonth"
+      showAvailability={true}
+    />
   );
 };
 

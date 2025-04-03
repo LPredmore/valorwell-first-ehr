@@ -1,17 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
-import CalendarView from '../components/calendar/CalendarView';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Calendar as CalendarIcon, Plus } from 'lucide-react';
 import { addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { useCalendarState } from '../hooks/useCalendarState';
 import CalendarHeader from '../components/calendar/CalendarHeader';
-import CalendarViewControls from '../components/calendar/CalendarViewControls';
 import AppointmentDialog from '../components/calendar/AppointmentDialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Clock } from 'lucide-react';
+import FullCalendarView from '@/components/calendar/FullCalendarView';
 
 const CalendarPage = () => {
   const {
@@ -34,10 +33,10 @@ const CalendarPage = () => {
   } = useCalendarState();
 
   // Use only the month view mode state
-  const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week'>('month');
+  const [calendarViewMode, setCalendarViewMode] = useState<'dayGridMonth' | 'timeGridWeek'>('dayGridMonth');
 
   const navigatePrevious = () => {
-    if (calendarViewMode === 'week') {
+    if (calendarViewMode === 'timeGridWeek') {
       setCurrentDate(subWeeks(currentDate, 1));
     } else {
       setCurrentDate(subMonths(currentDate, 1));
@@ -45,7 +44,7 @@ const CalendarPage = () => {
   };
 
   const navigateNext = () => {
-    if (calendarViewMode === 'week') {
+    if (calendarViewMode === 'timeGridWeek') {
       setCurrentDate(addWeeks(currentDate, 1));
     } else {
       setCurrentDate(addMonths(currentDate, 1));
@@ -71,13 +70,13 @@ const CalendarPage = () => {
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-800">Calendar</h1>
             <div className="flex items-center gap-4">
-              <Tabs value={calendarViewMode} onValueChange={(value) => setCalendarViewMode(value as 'month' | 'week')}>
+              <Tabs value={calendarViewMode} onValueChange={(value) => setCalendarViewMode(value as 'dayGridMonth' | 'timeGridWeek')}>
                 <TabsList>
-                  <TabsTrigger value="month">
+                  <TabsTrigger value="dayGridMonth">
                     <CalendarIcon className="h-4 w-4 mr-2" />
                     Monthly
                   </TabsTrigger>
-                  <TabsTrigger value="week">
+                  <TabsTrigger value="timeGridWeek">
                     <CalendarIcon className="h-4 w-4 mr-2" />
                     Weekly
                   </TabsTrigger>
@@ -126,7 +125,7 @@ const CalendarPage = () => {
 
           <CalendarHeader
             currentDate={currentDate}
-            view={calendarViewMode}
+            view={calendarViewMode === "timeGridWeek" ? "week" : "month"}
             userTimeZone={userTimeZone}
             isLoadingTimeZone={isLoadingTimeZone}
             onNavigatePrevious={navigatePrevious}
@@ -134,14 +133,13 @@ const CalendarPage = () => {
             onNavigateToday={navigateToday}
           />
 
-          <CalendarView
-            view="month"
-            showAvailability={showAvailability}
+          <FullCalendarView
+            currentDate={currentDate}
             clinicianId={selectedClinicianId}
             userTimeZone={userTimeZone}
             refreshTrigger={appointmentRefreshTrigger}
-            monthViewMode={calendarViewMode}
-            currentDate={currentDate}
+            view={calendarViewMode}
+            showAvailability={showAvailability}
           />
         </div>
       </div>
