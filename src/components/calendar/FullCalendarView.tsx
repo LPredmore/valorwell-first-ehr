@@ -169,6 +169,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     }
     
     try {
+      // Fetch recurring weekly availability
       const { data: availabilityData, error: availabilityError } = await supabase
         .from('availability')
         .select('*')
@@ -189,27 +190,8 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
           console.error('Error fetching exceptions:', exceptionsError);
           setOneTimeAvailability([]);
         } else {
-          // Split exceptions into active exceptions and deleted exceptions
-          const activeExceptions = exceptionsData?.filter(exception => 
-            !exception.is_deleted && exception.start_time && exception.end_time
-          ) || [];
-          
-          const deletedExceptions = exceptionsData?.filter(exception => 
-            exception.is_deleted || !exception.start_time || !exception.end_time
-          ) || [];
-          
-          console.log('Fetched active exceptions:', activeExceptions);
-          console.log('Fetched deleted exceptions:', deletedExceptions);
-          
-          setOneTimeAvailability(activeExceptions);
-          
-          const availEvents = createAvailabilityEvents(
-            availabilityData || [], 
-            activeExceptions,
-            deletedExceptions
-          );
-          
-          setAvailabilityEvents(availEvents);
+          // Process availability data with exceptions
+          processAvailabilityWithExceptions(availabilityData || [], exceptionsData || []);
         }
       }
     } catch (error) {
@@ -220,107 +202,77 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     }
   };
   
-  const createAvailabilityEvents = (
+  const processAvailabilityWithExceptions = (
     availabilityBlocks: AvailabilityBlock[], 
-    activeExceptions: any[],
-    deletedExceptions: any[]
+    exceptionsData: any[]
   ) => {
-    if (!settings) return [];
+    // Create a map of dates to their exceptions for faster lookup
+    const exceptionsByDate = new Map<string, any[]>();
+    // Create a map of dates that have exceptions for recurring blocks
+    const dateHasException = new Map<string, Set<string>>();
     
-    const dayOfWeekMap: {[key: string]: number} = {
-      'Sunday': 0,
-      'Monday': 1,
-      'Tuesday': 2,
-      'Wednesday': 3,
-      'Thursday': 4,
-      'Friday': 5,
-      'Saturday': 6
-    };
-    
-    const availabilityEvents: any[] = [];
-    
-    // Create a map of exceptions by original availability ID and date
-    const exceptionsByOriginalIdAndDate: Record<string, Record<string, any[]>> = {};
-    
-    // Process all exceptions (active and deleted)
-    [...activeExceptions, ...deletedExceptions].forEach(exception => {
+    // First, organize exceptions by date
+    exceptionsData.forEach(exception => {
       const date = exception.specific_date;
-      const originalId = exception.original_availability_id;
       
-      if (originalId) {
-        // This is an exception for a recurring availability
-        if (!exceptionsByOriginalIdAndDate[originalId]) {
-          exceptionsByOriginalIdAndDate[originalId] = {};
+      // Add to date exceptions map
+      if (!exceptionsByDate.has(date)) {
+        exceptionsByDate.set(date, []);
+      }
+      exceptionsByDate.get(date)!.push(exception);
+      
+      // Track which recurring blocks have exceptions on specific dates
+      if (exception.original_availability_id) {
+        if (!dateHasException.has(date)) {
+          dateHasException.set(date, new Set());
         }
-        
-        if (!exceptionsByOriginalIdAndDate[originalId][date]) {
-          exceptionsByOriginalIdAndDate[originalId][date] = [];
-        }
-        
-        exceptionsByOriginalIdAndDate[originalId][date].push(exception);
+        dateHasException.get(date)!.add(exception.original_availability_id);
       }
     });
     
-    console.log('Exceptions grouped by original ID and date:', exceptionsByOriginalIdAndDate);
-    
-    // Process one-time availability exceptions (standalone exceptions)
-    activeExceptions.forEach(exception => {
-      if (!exception.original_availability_id) {
-        // This is a standalone one-time availability
-        const event = {
-          id: `onetime-${exception.id}`,
-          title: 'One-Time Available',
-          start: `${exception.specific_date}T${exception.start_time}`,
-          end: `${exception.specific_date}T${exception.end_time}`,
-          extendedProps: {
-            type: 'one-time-availability',
-            availabilityData: {
-              ...exception,
-              isStandalone: true
-            }
-          },
-          backgroundColor: '#0ea5e9',
-          borderColor: '#0284c7',
-          textColor: '#ffffff',
-          display: 'block',
-          overlap: false
-        };
-        
-        availabilityEvents.push(event);
-      }
-    });
+    const allEvents: any[] = [];
     
     // Process recurring availability blocks
+    const dayOfWeekMap: {[key: string]: number} = {
+      'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6
+    };
+    
+    // 1. Add time off blocks
+    timeOffBlocks.forEach(block => {
+      allEvents.push({
+        id: `timeoff-${block.id}`,
+        title: block.note || 'Time Off',
+        start: block.start_date,
+        end: block.end_date,
+        allDay: true,
+        backgroundColor: '#f97316',
+        borderColor: '#ea580c',
+        textColor: '#ffffff',
+        display: 'background',
+        classNames: ['time-off-block']
+      });
+    });
+    
+    // 2. Add recurring availability blocks
     availabilityBlocks.forEach(block => {
       const dowNumber = dayOfWeekMap[block.day_of_week];
-      const startTime = block.start_time;
-      const endTime = block.end_time;
       
-      // Get all dates with exceptions for this recurring block
-      const exceptionsForBlock = exceptionsByOriginalIdAndDate[block.id] || {};
-      
-      // Build a list of dates to exclude from the recurring event
+      // Build a list of dates to exclude from the recurring event (dates with exceptions)
       const excludeDates: string[] = [];
-      Object.keys(exceptionsForBlock).forEach(dateStr => {
-        // Check if there's a deleted exception or an active exception
-        const hasExceptionForDate = exceptionsForBlock[dateStr].some(exc => 
-          true  // Every exception is added to the excludeDates list
-        );
-        
-        if (hasExceptionForDate) {
-          excludeDates.push(dateStr);
+      
+      // Collect all dates where this recurring block has an exception
+      dateHasException.forEach((blockIds, date) => {
+        if (blockIds.has(block.id)) {
+          excludeDates.push(date);
         }
       });
       
-      console.log(`For availability ${block.id}, excluding dates:`, excludeDates);
-      
-      // Create a recurring event that excludes dates with exceptions
-      const event = {
+      allEvents.push({
         id: `weekly-${block.id}`,
         title: 'Available',
         daysOfWeek: [dowNumber],
-        startTime: startTime,
-        endTime: endTime,
+        startTime: block.start_time,
+        endTime: block.end_time,
         startRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
         endRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0),
         extendedProps: {
@@ -336,56 +288,49 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         textColor: '#ffffff',
         display: 'block',
         overlap: false
-      };
+      });
+    });
+    
+    // 3. Add exception events (both modified and standalone)
+    exceptionsData.forEach(exception => {
+      // Skip deleted exceptions that don't have alternative times
+      if (exception.is_deleted && (!exception.start_time || !exception.end_time)) {
+        return;
+      }
       
-      availabilityEvents.push(event);
-      
-      // Create separate events for modified exceptions
-      Object.entries(exceptionsForBlock).forEach(([dateStr, exceptions]) => {
-        exceptions.forEach(exception => {
-          if (!exception.is_deleted && exception.start_time && exception.end_time) {
-            const exceptionEvent = {
-              id: `exception-${exception.id}`,
-              title: 'Modified Available',
-              start: `${dateStr}T${exception.start_time}`,
-              end: `${dateStr}T${exception.end_time}`,
-              extendedProps: {
-                type: 'one-time-availability',
-                availabilityData: {
-                  ...exception,
-                  isException: true
-                }
-              },
-              backgroundColor: '#0ea5e9',
-              borderColor: '#0284c7',
-              textColor: '#ffffff',
-              display: 'block',
-              overlap: false
-            };
-            
-            availabilityEvents.push(exceptionEvent);
-          }
+      // For non-deleted exceptions or exceptions with replacement times, create an event
+      if (!exception.is_deleted && exception.start_time && exception.end_time) {
+        const isModifiedException = !!exception.original_availability_id;
+        
+        allEvents.push({
+          id: `exception-${exception.id}`,
+          title: isModifiedException ? 'Modified Available' : 'One-Time Available',
+          start: `${exception.specific_date}T${exception.start_time}`,
+          end: `${exception.specific_date}T${exception.end_time}`,
+          extendedProps: {
+            type: 'one-time-availability',
+            availabilityData: {
+              id: exception.id,
+              day_of_week: new Date(exception.specific_date).toLocaleString('en-US', { weekday: 'long' }),
+              start_time: exception.start_time,
+              end_time: exception.end_time,
+              clinician_id: exception.clinician_id,
+              is_active: true,
+              isException: isModifiedException,
+              isStandalone: !isModifiedException,
+              originalAvailabilityId: exception.original_availability_id
+            }
+          },
+          backgroundColor: '#0ea5e9',
+          borderColor: '#0284c7',
+          textColor: '#ffffff',
+          display: 'block',
+          overlap: false
         });
-      });
+      }
     });
     
-    // Add time off blocks
-    timeOffBlocks.forEach(block => {
-      availabilityEvents.push({
-        id: `timeoff-${block.id}`,
-        title: block.note || 'Time Off',
-        start: block.start_date,
-        end: block.end_date,
-        allDay: true,
-        backgroundColor: '#f97316',
-        borderColor: '#ea580c',
-        textColor: '#ffffff',
-        display: 'background',
-        classNames: ['time-off-block']
-      });
-    });
-    
-    return availabilityEvents;
+    setAvailabilityEvents(allEvents);
   };
   
   const isDateInTimeOff = (date: Date) => {
@@ -442,12 +387,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     );
   }
   
-  // Process events to ensure recurring events are not shown on dates with exceptions
-  const processEvents = (events: any[]) => {
-    return events;  // Now we handle exclusion in eventContent rendering
-  };
-  
-  const allEvents = processEvents([...events, ...availabilityEvents]);
+  const allEvents = [...events, ...availabilityEvents];
   
   return (
     <div className={className}>
@@ -458,22 +398,22 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         headerToolbar={false}
         events={allEvents}
         eventDisplay="block"
-        eventContent={(info) => {
-          const event = info.event;
+        eventContent={(arg) => {
+          const event = arg.event;
           
-          // Skip rendering recurring events on dates where they should be excluded
+          // Handle hiding recurring events on dates with exceptions
           if (event.extendedProps?.type === 'availability' && 
               event.extendedProps?.excludeDates?.length) {
             
-            const eventDate = format(info.event.start!, 'yyyy-MM-dd');
+            const eventDate = format(event.start!, 'yyyy-MM-dd');
             const excludeDates = event.extendedProps.excludeDates || [];
             
             if (excludeDates.includes(eventDate)) {
-              return { html: '' };  // Return empty content to hide the event
+              return { html: '' }; // Hide this event
             }
           }
           
-          return { html: `<div class="fc-event-main-inner">${info.event.title}</div>` };
+          return { html: `<div class="fc-event-main-inner">${event.title}</div>` };
         }}
         eventClick={handleEventClick}
         dateClick={handleDateClick}
