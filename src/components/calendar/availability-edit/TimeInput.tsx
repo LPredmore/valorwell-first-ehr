@@ -1,31 +1,22 @@
 
 import React from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TimeInputProps } from './types';
 import { formatDisplayTime } from './utils';
-
-interface TimeInputProps {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  timeOptions: string[];
-}
 
 const TimeInput: React.FC<TimeInputProps> = ({ id, label, value, onChange, timeOptions }) => {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="grid gap-2">
       <Label htmlFor={id}>{label}</Label>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger id={id}>
-          <SelectValue placeholder="Select time">
-            {value ? formatDisplayTime(value) : 'Select time'}
-          </SelectValue>
+          <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
         </SelectTrigger>
         <SelectContent>
-          {timeOptions.map((option) => (
-            <SelectItem key={option} value={option}>
-              {formatDisplayTime(option)}
+          {timeOptions.map((time) => (
+            <SelectItem key={`${id}-${time}`} value={time}>
+              {formatDisplayTime(time)}
             </SelectItem>
           ))}
         </SelectContent>

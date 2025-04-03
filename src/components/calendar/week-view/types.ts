@@ -1,6 +1,5 @@
 
 import { Appointment } from '@/hooks/useAppointments';
-import { TimeBlock } from './useWeekViewData';
 
 export interface WeekViewProps {
   currentDate: Date;
@@ -9,6 +8,12 @@ export interface WeekViewProps {
   appointments?: Appointment[];
   getClientName?: (clientId: string) => string;
   onAppointmentClick?: (appointment: Appointment) => void;
-  onAvailabilityClick?: (date: Date, availabilityBlock: TimeBlock) => void;
+  onAvailabilityClick?: (date: Date, availabilityBlock: {
+    id: string;
+    day_of_week: string;
+    start_time: string;
+    end_time: string;
+    isException?: boolean;
+  }) => void;
   userTimeZone?: string;
 }

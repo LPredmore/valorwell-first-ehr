@@ -1,38 +1,39 @@
 
-import { TimeBlock } from '../week-view/useWeekViewData';
+import { TimeOption } from './utils';
 
 export interface AvailabilityEditDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  availabilityBlock: TimeBlock | any;
+  availabilityBlock: any;
   specificDate: Date | null;
   clinicianId: string | null;
   onAvailabilityUpdated: () => void;
 }
 
-export interface DeleteConfirmationDialogProps {
+export interface DeleteDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   specificDate: Date;
   confirmDelete: () => void;
   isLoading: boolean;
-  isRecurring: boolean;
+  isRecurring?: boolean;
 }
 
-// Add the missing types that were referenced in the errors
-export type OneTimeBlockType = {
+export interface TimeInputProps {
   id: string;
-  day_of_week: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  timeOptions: TimeOption[];
+}
+
+export interface OneTimeBlockType {
+  id: string;
+  specific_date: string;
   start_time: string;
   end_time: string;
+  clinician_id: string;
+  is_deleted: boolean;
   isException?: boolean;
-};
-
-export type DeleteDialogProps = {
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-  specificDate: Date;
-  confirmDelete: () => void;
-  isLoading: boolean;
-  isRecurring: boolean;
-};
+  isStandalone?: boolean;
+}
