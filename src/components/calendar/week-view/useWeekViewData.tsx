@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -192,56 +191,48 @@ export const useWeekViewData = (
       const dateStr = format(day, 'yyyy-MM-dd');
       const exceptionsForDay = exceptionsData.filter(exc => exc.specific_date === dateStr);
       
-      // Get recurring availability blocks for this day of week
+      // Track which recurring blocks should be excluded due to exceptions
+      const excludedRecurringIds = new Set<string>();
+      
+      // First, process exceptions to identify which recurring blocks should be excluded
+      exceptionsForDay.forEach(exception => {
+        if (exception.original_availability_id) {
+          // If this is an exception to a recurring availability, mark the original for exclusion
+          excludedRecurringIds.add(exception.original_availability_id);
+        }
+      });
+      
+      console.log(`Excluded recurring IDs for ${dateStr}:`, Array.from(excludedRecurringIds));
+      
+      // Get recurring availability blocks for this day of week, EXCLUDING those with exceptions
       const dayBlocks = blocks
         .filter(block => block.day_of_week === dayOfWeek)
         .filter(block => {
-          // Filter out any blocks that have a deletion exception for this date
-          const deletionException = exceptionsForDay.find(
-            e => e.original_availability_id === block.id && e.is_deleted
-          );
-          return !deletionException;
-        })
-        .map(block => {
-          // Check if there's a modification exception for this block on this date
-          const modificationException = exceptionsForDay.find(
-            e => e.original_availability_id === block.id && !e.is_deleted && e.start_time && e.end_time
-          );
-          
-          if (modificationException) {
-            console.log(`Found modification exception for block ${block.id} on ${dateStr}:`, modificationException);
-            return {
-              ...block,
-              id: modificationException.id, // Use the exception ID instead
-              start_time: modificationException.start_time,
-              end_time: modificationException.end_time,
-              isException: true,
-              originalAvailabilityId: block.id
-            };
-          }
-          
-          return block;
+          // Filter out any blocks that:
+          // 1. Have a deletion exception for this date
+          // 2. Have a modification exception for this date
+          const shouldExclude = excludedRecurringIds.has(block.id);
+          return !shouldExclude;
         });
 
-      // Get one-time availability blocks for this specific date
-      const standaloneExceptions = exceptionsForDay
-        .filter(exception => exception.original_availability_id === null && !exception.is_deleted && exception.start_time && exception.end_time);
+      // Get one-time availability blocks and modification exceptions for this specific date
+      const exceptionBlocks = exceptionsForDay
+        .filter(exception => !exception.is_deleted && exception.start_time && exception.end_time)
+        .map(exception => ({
+          id: exception.id,
+          day_of_week: dayOfWeek,
+          start_time: exception.start_time,
+          end_time: exception.end_time,
+          clinician_id: exception.clinician_id,
+          is_active: true,
+          isException: !!exception.original_availability_id,
+          isStandalone: !exception.original_availability_id,
+          originalAvailabilityId: exception.original_availability_id
+        }));
       
-      console.log(`Standalone exceptions for ${dateStr}:`, standaloneExceptions);
+      console.log(`Exception blocks for ${dateStr}:`, exceptionBlocks);
       
-      const standaloneBlocks = standaloneExceptions.map(exception => ({
-        id: exception.id,
-        day_of_week: dayOfWeek,
-        start_time: exception.start_time,
-        end_time: exception.end_time,
-        clinician_id: exception.clinician_id,
-        is_active: true,
-        isException: false,
-        isStandalone: true,
-        originalAvailabilityId: null
-      }));
-      
-      const allDayBlocks = [...dayBlocks, ...standaloneBlocks];
+      const allDayBlocks = [...dayBlocks, ...exceptionBlocks];
       console.log(`Combined blocks for ${dateStr}:`, allDayBlocks);
 
       const parsedBlocks = allDayBlocks.map(block => {
