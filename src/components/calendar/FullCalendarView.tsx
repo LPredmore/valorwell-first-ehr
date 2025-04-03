@@ -7,7 +7,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isWithinInterval } from 'date-fns';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
 
 interface Appointment {
@@ -28,6 +28,14 @@ interface AvailabilityBlock {
   clinician_id?: string;
   is_active?: boolean;
   isException?: boolean;
+}
+
+interface TimeOffBlock {
+  id: string;
+  start_date: string;
+  end_date: string;
+  note?: string;
+  is_active?: boolean;
 }
 
 interface AvailabilitySettings {
@@ -68,11 +76,13 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
   const [events, setEvents] = useState<any[]>([]);
   const [availabilityEvents, setAvailabilityEvents] = useState<any[]>([]);
   const [settings, setSettings] = useState<AvailabilitySettings | null>(null);
+  const [timeOffBlocks, setTimeOffBlocks] = useState<TimeOffBlock[]>([]);
 
-  // Fetch availability settings
+  // Fetch availability settings and time off blocks
   useEffect(() => {
     if (clinicianId) {
       fetchAvailabilitySettings();
+      fetchTimeOffBlocks();
     }
   }, [clinicianId, refreshTrigger]);
 
@@ -90,6 +100,26 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         console.error('Error fetching availability settings:', error);
       } else {
         setSettings(data);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  const fetchTimeOffBlocks = async () => {
+    if (!clinicianId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('time_off_blocks')
+        .select('*')
+        .eq('clinician_id', clinicianId)
+        .eq('is_active', true);
+        
+      if (error) {
+        console.error('Error fetching time off blocks:', error);
+      } else {
+        setTimeOffBlocks(data || []);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -129,7 +159,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     } else {
       setLoading(false);
     }
-  }, [appointments, refreshTrigger, clinicianId, getClientName, showAvailability]);
+  }, [appointments, refreshTrigger, clinicianId, getClientName, showAvailability, timeOffBlocks]);
   
   // Fetch availability blocks and convert them to FullCalendar events
   const fetchAvailability = async () => {
@@ -150,7 +180,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         console.error('Error fetching availability:', availabilityError);
         setAvailabilityEvents([]);
       } else {
-        // Convert availability to recurring events, respecting the settings
+        // Convert availability to recurring events, respecting time off blocks
         const availEvents = createAvailabilityEvents(availabilityData || []);
         setAvailabilityEvents(availEvents);
       }
@@ -162,7 +192,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     }
   };
   
-  // Convert availability blocks to FullCalendar events with recurrence, respecting granularity settings
+  // Convert availability blocks to FullCalendar events with recurrence, respecting time off blocks
   const createAvailabilityEvents = (availabilityBlocks: AvailabilityBlock[]) => {
     if (!settings) return [];
     
@@ -192,7 +222,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
       
       // Create events for each time slot
       timeSlots.forEach(slot => {
-        availabilityEvents.push({
+        const event = {
           id: `${block.id}-${slot.start}`,
           title: 'Available',
           daysOfWeek: [dowNumber],
@@ -211,8 +241,34 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
           backgroundColor: '#10b981', // Green color for availability
           borderColor: '#059669',
           textColor: '#ffffff',
-          display: 'block'
-        });
+          display: 'block',
+          // Add a custom render function that checks if this date is in a time-off block
+          overlap: false
+        };
+        
+        availabilityEvents.push(event);
+      });
+    });
+    
+    // Add time-off blocks as events with higher priority
+    timeOffBlocks.forEach(block => {
+      const startDate = new Date(block.start_date);
+      const endDate = new Date(block.end_date);
+      // Add 1 day to end date to make it inclusive
+      endDate.setDate(endDate.getDate() + 1);
+      
+      availabilityEvents.push({
+        id: `timeoff-${block.id}`,
+        title: block.note || 'Time Off',
+        start: block.start_date,
+        end: block.end_date,
+        allDay: true,
+        backgroundColor: '#f97316', // Orange color for time off
+        borderColor: '#ea580c',
+        textColor: '#ffffff',
+        display: 'background',
+        // Set higher priority than availability
+        classNames: ['time-off-block']
       });
     });
     
@@ -266,6 +322,17 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     return slots;
   };
   
+  // Check if a date is within any time off block
+  const isDateInTimeOff = (date: Date) => {
+    return timeOffBlocks.some(block => {
+      const startDate = new Date(block.start_date);
+      const endDate = new Date(block.end_date);
+      endDate.setDate(endDate.getDate() + 1); // Make end date inclusive
+      
+      return isWithinInterval(date, { start: startDate, end: endDate });
+    });
+  };
+  
   // Handle event click
   const handleEventClick = (info: any) => {
     const eventType = info.event.extendedProps.type;
@@ -274,7 +341,11 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
       onAppointmentClick(info.event.extendedProps.appointmentData);
     } else if (eventType === 'availability' && onAvailabilityClick) {
       const date = info.event.start;
-      onAvailabilityClick(date, info.event.extendedProps.availabilityData);
+      
+      // Don't allow clicking on availability if the date is in a time-off block
+      if (!isDateInTimeOff(date)) {
+        onAvailabilityClick(date, info.event.extendedProps.availabilityData);
+      }
     }
   };
   
@@ -285,14 +356,17 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
       const date = new Date(info.date);
       const dayOfWeek = format(date, 'EEEE');
       
-      const tempBlock: AvailabilityBlock = {
-        id: 'new',
-        day_of_week: dayOfWeek,
-        start_time: '09:00:00',
-        end_time: '17:00:00'
-      };
-      
-      onAvailabilityClick(date, tempBlock);
+      // Don't allow creating availability if the date is in a time-off block
+      if (!isDateInTimeOff(date)) {
+        const tempBlock: AvailabilityBlock = {
+          id: 'new',
+          day_of_week: dayOfWeek,
+          start_time: '09:00:00',
+          end_time: '17:00:00'
+        };
+        
+        onAvailabilityClick(date, tempBlock);
+      }
     }
   };
   

@@ -106,7 +106,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({
     if (!clinicianId) return;
     
     try {
-      // This is a placeholder - you would need to create this table in Supabase
       const { data, error } = await supabase
         .from('time_off_blocks')
         .select('*')
@@ -115,11 +114,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({
         .order('start_date', { ascending: true });
         
       if (error) {
-        // If the table doesn't exist yet, we'll just show an empty list
-        if (error.code === '42P01') { // relation does not exist
-          setTimeOffBlocks([]);
-          return;
-        }
         console.error('Error fetching time off blocks:', error);
         throw error;
       }
@@ -127,8 +121,11 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({
       setTimeOffBlocks(data || []);
     } catch (error) {
       console.error('Error:', error);
-      // We don't show an error toast here as the table might not exist yet
-      setTimeOffBlocks([]);
+      toast({
+        title: 'Error',
+        description: 'Failed to load time off blocks',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -256,22 +253,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({
     }
     
     try {
-      // Check if the time_off_blocks table exists
-      const { error: checkError } = await supabase
-        .from('time_off_blocks')
-        .select('id')
-        .limit(1);
-      
-      // If the table doesn't exist, we'll inform the user
-      if (checkError && checkError.code === '42P01') {
-        toast({
-          title: 'Setup Required',
-          description: 'Time off functionality requires additional setup. Please contact support.',
-          variant: 'destructive'
-        });
-        return;
-      }
-      
       const { data, error } = await supabase
         .from('time_off_blocks')
         .insert({

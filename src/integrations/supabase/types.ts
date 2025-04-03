@@ -992,6 +992,39 @@ export type Database = {
         }
         Relationships: []
       }
+      time_off_blocks: {
+        Row: {
+          clinician_id: string
+          created_at: string
+          end_date: string
+          id: string
+          is_active: boolean | null
+          note: string | null
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          clinician_id: string
+          created_at?: string
+          end_date: string
+          id?: string
+          is_active?: boolean | null
+          note?: string | null
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          clinician_id?: string
+          created_at?: string
+          end_date?: string
+          id?: string
+          is_active?: boolean | null
+          note?: string | null
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
