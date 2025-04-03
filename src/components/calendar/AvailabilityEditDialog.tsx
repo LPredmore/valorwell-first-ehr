@@ -82,11 +82,19 @@ timeOptions={timeOptions}
 />
 
 <div className="mt-2 p-3 bg-blue-50 text-sm rounded-md border border-blue-100">
-<div className="font-medium text-blue-700 mb-1">One-time Change</div>
+<div className="font-medium text-blue-700 mb-1">Availability Type: {availabilityType}</div>
 <p className="text-blue-600">
-This will only modify your availability for {format(specificDate, 'MMMM d, yyyy')}.
-{isRecurring && !isException && " Your regular weekly schedule will remain unchanged."}
+{isStandalone 
+  ? "This is a one-time availability for this specific date only." 
+  : isException 
+    ? "This is a modified occurrence of a recurring availability." 
+    : "This is part of your recurring weekly schedule."}
 </p>
+{isRecurring && !isException && (
+  <p className="text-blue-600 mt-1">
+    When you save, you'll be asked if you want to modify just this occurrence or the entire series.
+  </p>
+)}
 </div>
 </div>
 
