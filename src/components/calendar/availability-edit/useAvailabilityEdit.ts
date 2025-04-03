@@ -54,19 +54,33 @@ export const useAvailabilityEdit = (
     
     try {
       if (isRecurring && !isException) {
-        // Create an exception to the recurring availability
-        const { data, error } = await supabase
+        // Google Calendar approach: First create an exception to "delete" the recurring instance
+        const { data: deletionException, error: deletionError } = await supabase
           .from('availability_exceptions')
           .insert({
             clinician_id: clinicianId,
             specific_date: specificDateStr,
             original_availability_id: availabilityBlock.id,
+            start_time: null,
+            end_time: null,
+            is_deleted: true
+          });
+          
+        if (deletionError) throw deletionError;
+        
+        // Then create a standalone one-time availability in its place
+        const { data: standaloneBlock, error: standaloneError } = await supabase
+          .from('availability_exceptions')
+          .insert({
+            clinician_id: clinicianId,
+            specific_date: specificDateStr,
+            original_availability_id: null, // Standalone
             start_time: `${startTime}:00`,
             end_time: `${endTime}:00`,
             is_deleted: false
           });
           
-        if (error) throw error;
+        if (standaloneError) throw standaloneError;
       } else if (isException) {
         // Update an existing exception
         const { data, error } = await supabase
@@ -128,7 +142,8 @@ export const useAvailabilityEdit = (
     
     try {
       if (isRecurring && !isException) {
-        // Create a deletion exception for the recurring availability
+        // For recurring availability, simply create a deletion exception
+        // This will hide this occurrence without affecting the recurring pattern
         const { data, error } = await supabase
           .from('availability_exceptions')
           .insert({
@@ -142,7 +157,7 @@ export const useAvailabilityEdit = (
           
         if (error) throw error;
       } else if (isException || isStandalone) {
-        // Delete the exception or standalone availability
+        // For exceptions or standalone blocks, mark them as deleted
         const { data, error } = await supabase
           .from('availability_exceptions')
           .update({ is_deleted: true })
