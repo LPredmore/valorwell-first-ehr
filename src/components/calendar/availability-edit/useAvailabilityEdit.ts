@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { generateTimeOptions, TimeOption } from './utils';
+import { toast } from '@/hooks/use-toast';
 
 export const useAvailabilityEdit = (
   isOpen: boolean,
@@ -20,6 +21,8 @@ export const useAvailabilityEdit = (
   const [isRecurring, setIsRecurring] = useState(false);
   const [isException, setIsException] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [editOption, setEditOption] = useState<'single' | 'series'>('single');
+  const [isEditOptionDialogOpen, setIsEditOptionDialogOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen && availabilityBlock && specificDate) {
@@ -46,15 +49,15 @@ export const useAvailabilityEdit = (
     }
   }, [isOpen, availabilityBlock, specificDate]);
 
-  const handleSaveClick = async () => {
+  const saveAvailability = async (mode: 'single' | 'series') => {
     if (!specificDate || !clinicianId) return;
     
     setIsLoading(true);
     const specificDateStr = format(specificDate, 'yyyy-MM-dd');
     
     try {
-      if (isRecurring && !isException) {
-        // Create an exception to the recurring availability
+      if (isRecurring && !isException && mode === 'single') {
+        // Create an exception to the recurring availability for this one occurrence
         const { data, error } = await supabase
           .from('availability_exceptions')
           .insert({
@@ -67,6 +70,27 @@ export const useAvailabilityEdit = (
           });
           
         if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "This occurrence has been updated.",
+        });
+      } else if (isRecurring && !isException && mode === 'series') {
+        // Update the recurring pattern for this and all future occurrences
+        const { data, error } = await supabase
+          .from('availability')
+          .update({
+            start_time: `${startTime}:00`,
+            end_time: `${endTime}:00`
+          })
+          .eq('id', availabilityBlock.id);
+          
+        if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "All occurrences have been updated.",
+        });
       } else if (isException) {
         // Update an existing exception
         const { data, error } = await supabase
@@ -79,6 +103,11 @@ export const useAvailabilityEdit = (
           .eq('id', availabilityBlock.id);
           
         if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "The availability has been updated.",
+        });
       } else if (isStandalone) {
         // Update a standalone one-time availability
         const { data, error } = await supabase
@@ -91,6 +120,11 @@ export const useAvailabilityEdit = (
           .eq('id', availabilityBlock.id);
           
         if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "The availability has been updated.",
+        });
       } else {
         // Create a new one-time availability
         const { data, error } = await supabase
@@ -105,15 +139,30 @@ export const useAvailabilityEdit = (
           });
           
         if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "New availability has been created.",
+        });
       }
       
       onAvailabilityUpdated();
+      setIsEditOptionDialogOpen(false);
       onClose();
     } catch (error) {
       console.error('Error saving availability:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update availability.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSaveClick = () => {
+    saveAvailability('single');
   };
 
   const handleDeleteClick = () => {
@@ -151,11 +200,21 @@ export const useAvailabilityEdit = (
         if (error) throw error;
       }
       
+      toast({
+        title: "Success",
+        description: "Availability has been cancelled.",
+      });
+      
       onAvailabilityUpdated();
       setIsDeleteDialogOpen(false);
       onClose();
     } catch (error) {
       console.error('Error deleting availability:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel availability.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -175,6 +234,11 @@ export const useAvailabilityEdit = (
     confirmDelete,
     isRecurring,
     isException,
-    isStandalone
+    isStandalone,
+    editOption,
+    setEditOption,
+    isEditOptionDialogOpen,
+    setIsEditOptionDialogOpen,
+    saveAvailability
   };
 };
