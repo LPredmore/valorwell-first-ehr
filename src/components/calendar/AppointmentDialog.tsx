@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { format, addWeeks, addMonths, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -15,12 +16,16 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
-import { ClientDetails } from '@/types/client';
+
+interface Client {
+  id: string;
+  displayName: string;
+}
 
 interface AppointmentDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  clients: ClientDetails[];
+  clients: Client[];
   loadingClients: boolean;
   selectedClinicianId: string | null;
   onAppointmentCreated: () => void;
@@ -174,14 +179,6 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
     }
   };
 
-  const getClientDisplayName = (client: ClientDetails) => {
-    const preferredName = client.client_preferred_name;
-    const firstName = client.client_first_name;
-    const lastName = client.client_last_name;
-    const displayName = preferredName || firstName || '';
-    return `${displayName} ${lastName || ''}`.trim() || 'Unnamed Client';
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
@@ -207,7 +204,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
                 ) : clients.length > 0 ? (
                   clients.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
-                      {getClientDisplayName(client)}
+                      {client.displayName}
                     </SelectItem>
                   ))
                 ) : (

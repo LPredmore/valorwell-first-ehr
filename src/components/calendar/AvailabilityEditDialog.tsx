@@ -6,9 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { AvailabilityEditDialogProps } from './availability-edit/types';
 import TimeInput from './availability-edit/TimeInput';
-import DeleteConfirmationDialog from './DeleteConfirmationDialog';
+import DeleteConfirmationDialog from './availability-edit/DeleteConfirmationDialog';
 import { useAvailabilityEdit } from './availability-edit/useAvailabilityEdit';
-import EditChoiceDialog from './availability-edit/EditChoiceDialog';
 
 const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
 isOpen,
@@ -29,14 +28,7 @@ setIsDeleteDialogOpen,
 timeOptions,
 handleSaveClick,
 handleDeleteClick,
-confirmDelete,
-isRecurring,
-isException,
-isStandalone,
-isEditChoiceDialogOpen,
-setIsEditChoiceDialogOpen,
-handleEditSingle,
-handleEditSeries
+confirmDelete
 } = useAvailabilityEdit(
 isOpen,
 onClose,
@@ -49,12 +41,6 @@ onAvailabilityUpdated
 if (!availabilityBlock || !specificDate) {
 return null;
 }
-
-const availabilityType = isStandalone 
-  ? "one-time" 
-  : isException 
-    ? "modified recurring" 
-    : "recurring";
 
 return (
 <>
@@ -82,19 +68,11 @@ timeOptions={timeOptions}
 />
 
 <div className="mt-2 p-3 bg-blue-50 text-sm rounded-md border border-blue-100">
-<div className="font-medium text-blue-700 mb-1">Availability Type: {availabilityType}</div>
+<div className="font-medium text-blue-700 mb-1">One-time Change</div>
 <p className="text-blue-600">
-{isStandalone 
-  ? "This is a one-time availability for this specific date only." 
-  : isException 
-    ? "This is a modified occurrence of a recurring availability." 
-    : "This is part of your recurring weekly schedule."}
+This will only modify your availability for {format(specificDate, 'MMMM d, yyyy')}.
+Your regular weekly schedule will remain unchanged.
 </p>
-{isRecurring && !isException && (
-  <p className="text-blue-600 mt-1">
-    When you save, you'll be asked if you want to modify just this occurrence or the entire series.
-  </p>
-)}
 </div>
 </div>
 
@@ -120,16 +98,6 @@ isOpen={isDeleteDialogOpen}
 setIsOpen={setIsDeleteDialogOpen}
 specificDate={specificDate}
 confirmDelete={confirmDelete}
-isLoading={isLoading}
-isRecurring={isRecurring}
-/>
-
-<EditChoiceDialog
-isOpen={isEditChoiceDialogOpen}
-onClose={() => setIsEditChoiceDialogOpen(false)}
-specificDate={specificDate}
-onEditSingle={handleEditSingle}
-onEditSeries={handleEditSeries}
 isLoading={isLoading}
 />
 </>

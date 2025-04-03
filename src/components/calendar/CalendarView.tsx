@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { Card } from '@/components/ui/card';
 import MonthView from './MonthView';
-import EnhancedAvailabilityPanel from './EnhancedAvailabilityPanel';
+import AvailabilityPanel from './AvailabilityPanel';
 import AppointmentDetailsDialog from './AppointmentDetailsDialog';
 import AvailabilityEditDialog from './AvailabilityEditDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,8 +45,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   monthViewMode = 'month',
   currentDate: propCurrentDate
 }) => {
+  // Use provided currentDate or default to today
   const [currentDate, setCurrentDate] = useState(propCurrentDate || new Date());
   
+  // Update currentDate when propCurrentDate changes
   useEffect(() => {
     if (propCurrentDate) {
       setCurrentDate(propCurrentDate);
@@ -206,7 +208,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
       {showAvailability && (
         <div className="w-1/4">
-          <EnhancedAvailabilityPanel 
+          <AvailabilityPanel 
             clinicianId={clinicianId} 
             onAvailabilityUpdated={handleAvailabilityUpdated} 
             userTimeZone={userTimeZone} 

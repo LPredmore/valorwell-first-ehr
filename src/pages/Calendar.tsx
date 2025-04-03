@@ -1,21 +1,17 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
+import CalendarView from '../components/calendar/CalendarView';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Calendar as CalendarIcon, Plus, Settings } from 'lucide-react';
+import { Loader2, Calendar as CalendarIcon, Plus } from 'lucide-react';
 import { addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { useCalendarState } from '../hooks/useCalendarState';
 import CalendarHeader from '../components/calendar/CalendarHeader';
+import CalendarViewControls from '../components/calendar/CalendarViewControls';
 import AppointmentDialog from '../components/calendar/AppointmentDialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Clock } from 'lucide-react';
-import FullCalendarView from '@/components/calendar/FullCalendarView';
-import AvailabilitySettingsDialog from '@/components/calendar/AvailabilitySettingsDialog';
-import EnhancedAvailabilityPanel from '@/components/calendar/EnhancedAvailabilityPanel';
-import { useAppointments } from '@/hooks/useAppointments';
-import { ClientDetails } from '@/types/client';
-import AvailabilityEditDialog from '@/components/calendar/AvailabilityEditDialog';
-import AvailabilityDebugger from '@/components/calendar/AvailabilityDebugger';
 
 const CalendarPage = () => {
   const {
@@ -37,17 +33,11 @@ const CalendarPage = () => {
     isLoadingTimeZone,
   } = useCalendarState();
 
-  const { appointments, isLoading: appointmentsLoading } = useAppointments(selectedClinicianId || null);
-
-  const [calendarViewMode, setCalendarViewMode] = useState<'dayGridMonth' | 'timeGridWeek'>('timeGridWeek');
-  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
-  const [showAvailabilityPanel, setShowAvailabilityPanel] = useState(false);
-  const [selectedAvailability, setSelectedAvailability] = useState<any | null>(null);
-  const [selectedAvailabilityDate, setSelectedAvailabilityDate] = useState<Date | null>(null);
-  const [isAvailabilityDialogOpen, setIsAvailabilityDialogOpen] = useState(false);
+  // Use only the month view mode state
+  const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week'>('month');
 
   const navigatePrevious = () => {
-    if (calendarViewMode === 'timeGridWeek') {
+    if (calendarViewMode === 'week') {
       setCurrentDate(subWeeks(currentDate, 1));
     } else {
       setCurrentDate(subMonths(currentDate, 1));
@@ -55,7 +45,7 @@ const CalendarPage = () => {
   };
 
   const navigateNext = () => {
-    if (calendarViewMode === 'timeGridWeek') {
+    if (calendarViewMode === 'week') {
       setCurrentDate(addWeeks(currentDate, 1));
     } else {
       setCurrentDate(addMonths(currentDate, 1));
@@ -74,26 +64,6 @@ const CalendarPage = () => {
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
-  const handleSettingsUpdated = () => {
-    setAppointmentRefreshTrigger(prev => prev + 1);
-  };
-
-  const getClientName = (clientId: string) => {
-    const client = clients?.find(c => c.id === clientId) as ClientDetails | undefined;
-    return client ? `${client.client_first_name || ''} ${client.client_last_name || ''}`.trim() || 'Client' : 'Client';
-  };
-
-  const handleAvailabilityClick = (date: Date, availabilityBlock: any) => {
-    console.log('Availability clicked:', date, availabilityBlock);
-    setSelectedAvailability(availabilityBlock);
-    setSelectedAvailabilityDate(date);
-    setIsAvailabilityDialogOpen(true);
-  };
-
-  const handleAvailabilityUpdated = () => {
-    setAppointmentRefreshTrigger(prev => prev + 1);
-  };
-
   return (
     <Layout>
       <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
@@ -101,13 +71,13 @@ const CalendarPage = () => {
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-800">Calendar</h1>
             <div className="flex items-center gap-4">
-              <Tabs value={calendarViewMode} onValueChange={(value) => setCalendarViewMode(value as 'dayGridMonth' | 'timeGridWeek')}>
+              <Tabs value={calendarViewMode} onValueChange={(value) => setCalendarViewMode(value as 'month' | 'week')}>
                 <TabsList>
-                  <TabsTrigger value="dayGridMonth">
+                  <TabsTrigger value="month">
                     <CalendarIcon className="h-4 w-4 mr-2" />
                     Monthly
                   </TabsTrigger>
-                  <TabsTrigger value="timeGridWeek">
+                  <TabsTrigger value="week">
                     <CalendarIcon className="h-4 w-4 mr-2" />
                     Weekly
                   </TabsTrigger>
@@ -115,8 +85,8 @@ const CalendarPage = () => {
               </Tabs>
 
               <Button
-                variant={showAvailabilityPanel ? "default" : "outline"}
-                onClick={() => setShowAvailabilityPanel(!showAvailabilityPanel)}
+                variant={showAvailability ? "default" : "outline"}
+                onClick={toggleAvailability}
               >
                 <Clock className="mr-2 h-4 w-4" />
                 Availability
@@ -125,11 +95,6 @@ const CalendarPage = () => {
               <Button onClick={() => setIsDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 New Appointment
-              </Button>
-
-              <Button variant="outline" onClick={() => setIsSettingsDialogOpen(true)}>
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
               </Button>
 
               <div className="hidden">
@@ -161,7 +126,7 @@ const CalendarPage = () => {
 
           <CalendarHeader
             currentDate={currentDate}
-            view={calendarViewMode === "timeGridWeek" ? "week" : "month"}
+            view={calendarViewMode}
             userTimeZone={userTimeZone}
             isLoadingTimeZone={isLoadingTimeZone}
             onNavigatePrevious={navigatePrevious}
@@ -169,33 +134,15 @@ const CalendarPage = () => {
             onNavigateToday={navigateToday}
           />
 
-          <div className="flex">
-            <FullCalendarView
-              currentDate={currentDate}
-              clinicianId={selectedClinicianId}
-              userTimeZone={userTimeZone}
-              refreshTrigger={appointmentRefreshTrigger}
-              view={calendarViewMode}
-              showAvailability={true}
-              className={showAvailabilityPanel ? "w-3/4" : "w-full"}
-              appointments={appointments}
-              getClientName={getClientName}
-              onAppointmentClick={(appointment) => {
-                console.log('Appointment clicked:', appointment);
-              }}
-              onAvailabilityClick={handleAvailabilityClick}
-            />
-
-            {showAvailabilityPanel && (
-              <div className="w-1/4 pl-4">
-                <EnhancedAvailabilityPanel
-                  clinicianId={selectedClinicianId}
-                  onAvailabilityUpdated={() => setAppointmentRefreshTrigger(prev => prev + 1)}
-                  userTimeZone={userTimeZone}
-                />
-              </div>
-            )}
-          </div>
+          <CalendarView
+            view="month"
+            showAvailability={showAvailability}
+            clinicianId={selectedClinicianId}
+            userTimeZone={userTimeZone}
+            refreshTrigger={appointmentRefreshTrigger}
+            monthViewMode={calendarViewMode}
+            currentDate={currentDate}
+          />
         </div>
       </div>
 
@@ -206,27 +153,6 @@ const CalendarPage = () => {
         loadingClients={loadingClients}
         selectedClinicianId={selectedClinicianId}
         onAppointmentCreated={handleAppointmentCreated}
-      />
-
-      <AvailabilitySettingsDialog
-        isOpen={isSettingsDialogOpen}
-        onClose={() => setIsSettingsDialogOpen(false)}
-        clinicianId={selectedClinicianId}
-        onSettingsUpdated={handleSettingsUpdated}
-      />
-      
-      <AvailabilityEditDialog
-        isOpen={isAvailabilityDialogOpen}
-        onClose={() => setIsAvailabilityDialogOpen(false)}
-        availabilityBlock={selectedAvailability}
-        specificDate={selectedAvailabilityDate}
-        clinicianId={selectedClinicianId}
-        onAvailabilityUpdated={handleAvailabilityUpdated}
-      />
-
-      <AvailabilityDebugger
-        clinicianId={selectedClinicianId}
-        specificDate={selectedAvailabilityDate}
       />
     </Layout>
   );

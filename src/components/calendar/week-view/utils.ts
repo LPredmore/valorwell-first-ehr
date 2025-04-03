@@ -1,7 +1,6 @@
 
-import { format, parseISO, isValid } from 'date-fns';
-import { fromZonedTime, toZonedTime } from 'date-fns-tz';
-import { TimeBlock, AppointmentBlock } from './types/availability-types';
+import { differenceInMinutes, addMinutes } from 'date-fns';
+import { TimeBlock, AppointmentBlock } from './useWeekViewData';
 
 // Helper function to convert hours and minutes to total minutes
 export const timeToMinutes = (hours: number, minutes: number): number => {

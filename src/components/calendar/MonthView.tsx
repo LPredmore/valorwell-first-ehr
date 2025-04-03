@@ -2,13 +2,12 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import FullCalendarView from './FullCalendarView';
+import { useMonthViewData } from './useMonthViewData';
+import CalendarGrid from './CalendarGrid';
 import WeekView from './week-view';
-import { TimeBlock } from './week-view/types/availability-types'; 
-import { Appointment as HookAppointment } from '@/hooks/useAppointments';
+import { TimeBlock } from './week-view/useWeekViewData'; 
 
-// Create an interface that extends the imported Appointment type to ensure compatibility
-interface Appointment extends Partial<HookAppointment> {
+interface Appointment {
   id: string;
   client_id: string;
   date: string;
@@ -26,8 +25,6 @@ interface AvailabilityBlock {
   clinician_id?: string;
   is_active?: boolean;
   isException?: boolean;
-  isStandalone?: boolean;
-  originalAvailabilityId?: string | null;
 }
 
 interface MonthViewProps {
@@ -53,19 +50,22 @@ const MonthView: React.FC<MonthViewProps> = ({
   userTimeZone,
   weekViewMode = false
 }) => {
-  // Add video_room_url property to appointments if it doesn't exist
-  const enhancedAppointments = appointments.map(appointment => ({
-    ...appointment,
-    video_room_url: appointment.video_room_url || null
-  })) as HookAppointment[];
+  const {
+    loading,
+    monthStart,
+    days,
+    dayAvailabilityMap,
+    dayAppointmentsMap,
+    availabilityByDay
+  } = useMonthViewData(currentDate, clinicianId, refreshTrigger, appointments, weekViewMode);
 
-  // Create adapter function for the onAvailabilityClick callback
-  const handleAvailabilityClick = onAvailabilityClick 
-    ? (date: Date, block: any) => {
-        console.log('MonthView passing availability click:', date, block);
-        onAvailabilityClick(date, block);
-      }
-    : undefined;
+  if (loading) {
+    return (
+      <Card className="p-4 flex justify-center items-center h-[300px]">
+        <Loader2 className="h-6 w-6 animate-spin text-valorwell-500" />
+      </Card>
+    );
+  }
 
   if (weekViewMode) {
     return (
@@ -73,28 +73,29 @@ const MonthView: React.FC<MonthViewProps> = ({
         currentDate={currentDate}
         clinicianId={clinicianId}
         refreshTrigger={refreshTrigger}
-        appointments={enhancedAppointments}
+        appointments={appointments}
         getClientName={getClientName}
         onAppointmentClick={onAppointmentClick}
-        onAvailabilityClick={handleAvailabilityClick}
+        onAvailabilityClick={onAvailabilityClick as (day: Date, block: TimeBlock) => void}
         userTimeZone={userTimeZone}
       />
     );
   }
 
   return (
-    <FullCalendarView
-      currentDate={currentDate}
-      clinicianId={clinicianId}
-      refreshTrigger={refreshTrigger}
-      appointments={enhancedAppointments}
-      getClientName={getClientName}
-      onAppointmentClick={onAppointmentClick}
-      onAvailabilityClick={handleAvailabilityClick}
-      userTimeZone={userTimeZone}
-      view="dayGridMonth"
-      showAvailability={true}
-    />
+    <Card className="p-4 rounded-lg shadow-md">
+      <CalendarGrid
+        days={days}
+        monthStart={monthStart}
+        dayAvailabilityMap={dayAvailabilityMap}
+        dayAppointmentsMap={dayAppointmentsMap}
+        availabilityByDay={availabilityByDay}
+        getClientName={getClientName}
+        onAppointmentClick={onAppointmentClick}
+        onAvailabilityClick={onAvailabilityClick}
+        weekViewMode={weekViewMode}
+      />
+    </Card>
   );
 };
 

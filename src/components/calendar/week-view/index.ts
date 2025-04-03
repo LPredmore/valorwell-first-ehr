@@ -2,14 +2,14 @@
 import WeekView from './WeekView';
 
 export default WeekView;
-export { useWeekViewData } from './hooks/useWeekViewData';
+export { useWeekViewData } from './useWeekViewData';
 export type { 
   Appointment,
   AvailabilityBlock as AvailabilityBlockType,
   AvailabilityException,
   TimeBlock,
   AppointmentBlock as AppointmentBlockType
-} from './types/availability-types';
+} from './useWeekViewData';
 
 export { default as AppointmentBlock } from './AppointmentBlock';
 export { default as AvailabilityBlock } from './AvailabilityBlock';

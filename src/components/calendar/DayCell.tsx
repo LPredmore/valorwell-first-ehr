@@ -21,8 +21,6 @@ interface AvailabilityBlock {
   clinician_id?: string;
   is_active?: boolean;
   isException?: boolean;
-  isStandalone?: boolean;
-  originalAvailabilityId?: string | null;
 }
 
 interface DayCellProps {
@@ -55,12 +53,7 @@ const DayCell: React.FC<DayCellProps> = ({
   const { hasAvailability, isModified, displayHours } = availabilityInfo;
   
   const handleAvailabilityClick = () => {
-    console.log('DayCell availability clicked, forwarding to handler');
     if (onAvailabilityClick && firstAvailability) {
-      console.log('Availability click data:', {
-        day,
-        availability: firstAvailability
-      });
       onAvailabilityClick(day, firstAvailability);
     }
   };

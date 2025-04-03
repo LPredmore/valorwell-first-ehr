@@ -1,5 +1,5 @@
 
-import { Appointment } from '@/hooks/useAppointments';
+import { TimeBlock } from './useWeekViewData';
 
 export interface WeekViewProps {
   currentDate: Date;
@@ -8,23 +8,27 @@ export interface WeekViewProps {
   appointments?: Appointment[];
   getClientName?: (clientId: string) => string;
   onAppointmentClick?: (appointment: Appointment) => void;
-  onAvailabilityClick?: (date: Date, availabilityBlock: {
-    id: string;
-    day_of_week: string;
-    start_time: string;
-    end_time: string;
-    isException?: boolean;
-  }) => void;
+  onAvailabilityClick?: (day: Date, block: TimeBlock) => void;
   userTimeZone?: string;
 }
 
-// Add a new interface for editing availability blocks
-export interface AvailabilityBlockForEdit {
+export interface Appointment {
   id: string;
-  day_of_week?: string;
+  client_id: string;
+  date: string; 
   start_time: string;
   end_time: string;
+  type: string;
+  status: string;
+}
+
+export interface AvailabilityBlock {
+  id: string;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  clinician_id?: string;
+  is_active?: boolean;
   isException?: boolean;
   isStandalone?: boolean;
-  original_availability_id?: string | null;
 }

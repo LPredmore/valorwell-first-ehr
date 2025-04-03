@@ -1,9 +1,12 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
-import { ClientDetails } from '@/types/client';
+
+interface Client {
+  id: string;
+  displayName: string;
+}
 
 export const useCalendarState = (initialClinicianId: string | null = null) => {
   const [showAvailability, setShowAvailability] = useState(false);
@@ -11,7 +14,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   const [clinicians, setClinicians] = useState<Array<{ id: string; clinician_professional_name: string }>>([]);
   const [loadingClinicians, setLoadingClinicians] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [clients, setClients] = useState<ClientDetails[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -87,14 +90,18 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
       try {
         const { data, error } = await supabase
           .from('clients')
-          .select('*')  // Select all columns to satisfy the ClientDetails type
+          .select('id, client_preferred_name, client_last_name')
           .eq('client_assigned_therapist', selectedClinicianId)
           .order('client_last_name');
           
         if (error) {
           console.error('Error fetching clients:', error);
         } else {
-          setClients(data || []);
+          const formattedClients = data.map(client => ({
+            id: client.id,
+            displayName: `${client.client_preferred_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
+          }));
+          setClients(formattedClients);
         }
       } catch (error) {
         console.error('Error:', error);

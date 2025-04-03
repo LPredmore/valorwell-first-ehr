@@ -1,10 +1,20 @@
 
-import { TimeOption } from './utils';
+import { Dispatch, SetStateAction } from 'react';
+
+export interface AvailabilityBlock {
+  id: string;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  clinician_id?: string;
+  is_active?: boolean;
+  isException?: boolean;
+}
 
 export interface AvailabilityEditDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  availabilityBlock: any;
+  availabilityBlock: AvailabilityBlock | null;
   specificDate: Date | null;
   clinicianId: string | null;
   onAvailabilityUpdated: () => void;
@@ -12,11 +22,10 @@ export interface AvailabilityEditDialogProps {
 
 export interface DeleteDialogProps {
   isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-  specificDate: Date;
-  confirmDelete: () => void;
+  setIsOpen: Dispatch<SetStateAction<boolean>>;
+  specificDate: Date | null;
+  confirmDelete: () => Promise<void>;
   isLoading: boolean;
-  isRecurring?: boolean;
 }
 
 export interface TimeInputProps {
@@ -24,25 +33,5 @@ export interface TimeInputProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  timeOptions: TimeOption[];
-}
-
-export interface OneTimeBlockType {
-  id: string;
-  specific_date: string;
-  start_time: string;
-  end_time: string;
-  clinician_id: string;
-  is_deleted: boolean;
-  isException?: boolean;
-  isStandalone?: boolean;
-}
-
-export interface EditChoiceDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  specificDate: Date;
-  onEditSingle: () => void;
-  onEditSeries: () => void;
-  isLoading: boolean;
+  timeOptions: string[];
 }
