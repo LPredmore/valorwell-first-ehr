@@ -1,16 +1,19 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import { formatDate, format } from 'date-fns';
 import { Card } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { format, parseISO, isWithinInterval } from 'date-fns';
-import { getUserTimeZone } from '@/utils/timeZoneUtils';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Appointment as HookAppointment } from '@/hooks/useAppointments';
+import { TimeBlock, AppointmentBlockType, AvailabilityBlock as AvailabilityBlockType } from './week-view/types/availability-types';
+import { AvailabilityBlockComponent } from './week-view';
+import AppointmentBlock from './week-view/AppointmentBlock';
 
-interface Appointment {
+// Create an interface that extends the imported Appointment type to ensure compatibility
+interface Appointment extends Partial<HookAppointment> {
   id: string;
   client_id: string;
   date: string;
@@ -18,6 +21,7 @@ interface Appointment {
   end_time: string;
   type: string;
   status: string;
+  video_room_url?: string | null;
 }
 
 interface AvailabilityBlock {
@@ -28,413 +32,169 @@ interface AvailabilityBlock {
   clinician_id?: string;
   is_active?: boolean;
   isException?: boolean;
-}
-
-interface TimeOffBlock {
-  id: string;
-  start_date: string;
-  end_date: string;
-  note?: string;
-  is_active?: boolean;
-}
-
-interface AvailabilitySettings {
-  time_granularity: string;
-  custom_minutes?: number;
-  min_days_ahead: number;
-  max_days_ahead: number;
-  buffer_minutes: number;
-  show_availability_to_clients: boolean;
+  isStandalone?: boolean;
+  originalAvailabilityId?: string | null;
 }
 
 interface FullCalendarViewProps {
   currentDate: Date;
   clinicianId: string | null;
   refreshTrigger?: number;
-  userTimeZone?: string;
-  view?: 'timeGridWeek' | 'dayGridMonth';
-  showAvailability?: boolean;
-  className?: string;
   appointments?: Appointment[];
   getClientName?: (clientId: string) => string;
   onAppointmentClick?: (appointment: Appointment) => void;
-  onAvailabilityClick?: (date: Date, availabilityBlock: AvailabilityBlock) => void;
+  onAvailabilityClick?: (date: Date, availabilityBlock: AvailabilityBlock | TimeBlock) => void;
+  userTimeZone?: string;
+  view?: 'dayGridMonth' | 'timeGridWeek';
+  showAvailability?: boolean;
+  className?: string;
 }
 
 const FullCalendarView: React.FC<FullCalendarViewProps> = ({
   currentDate,
   clinicianId,
   refreshTrigger = 0,
-  userTimeZone,
-  view = 'timeGridWeek',
-  showAvailability = true,
-  className = '',
   appointments = [],
   getClientName = () => 'Client',
   onAppointmentClick,
-  onAvailabilityClick
+  onAvailabilityClick,
+  userTimeZone,
+  view = 'dayGridMonth',
+  showAvailability = true,
+  className = ''
 }) => {
-  const [loading, setLoading] = useState(true);
-  const [events, setEvents] = useState<any[]>([]);
-  const [availabilityEvents, setAvailabilityEvents] = useState<any[]>([]);
-  const [settings, setSettings] = useState<AvailabilitySettings | null>(null);
-  const [timeOffBlocks, setTimeOffBlocks] = useState<TimeOffBlock[]>([]);
-  const [oneTimeAvailability, setOneTimeAvailability] = useState<any[]>([]);
+  const calendarRef = useRef<FullCalendar>(null);
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
 
   useEffect(() => {
-    if (clinicianId) {
-      fetchAvailabilitySettings();
-      fetchTimeOffBlocks();
+    if (calendarRef.current) {
+      const calendarApi = calendarRef.current.getApi();
+      calendarApi.gotoDate(currentDate);
     }
-  }, [clinicianId, refreshTrigger]);
-
-  const fetchAvailabilitySettings = async () => {
-    if (!clinicianId) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('availability_settings')
-        .select('*')
-        .eq('clinician_id', clinicianId)
-        .single();
-        
-      if (error) {
-        console.error('Error fetching availability settings:', error);
-      } else {
-        setSettings(data);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
-
-  const fetchTimeOffBlocks = async () => {
-    if (!clinicianId) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('time_off_blocks')
-        .select('*')
-        .eq('clinician_id', clinicianId)
-        .eq('is_active', true);
-        
-      if (error) {
-        console.error('Error fetching time off blocks:', error);
-      } else {
-        setTimeOffBlocks(data || []);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
+  }, [currentDate]);
 
   useEffect(() => {
-    const appointmentEvents = appointments.map(appointment => {
-      const dateStr = appointment.date;
-      const startTimeStr = appointment.start_time;
-      const endTimeStr = appointment.end_time;
-      
-      const startDateTime = `${dateStr}T${startTimeStr}`;
-      const endDateTime = `${dateStr}T${endTimeStr}`;
-      
-      return {
-        id: appointment.id,
-        title: getClientName(appointment.client_id),
-        start: startDateTime,
-        end: endDateTime,
-        extendedProps: {
-          type: 'appointment',
-          appointmentData: appointment
-        },
-        backgroundColor: '#3b82f6',
-        borderColor: '#2563eb',
-        textColor: '#ffffff'
-      };
-    });
-    
-    setEvents(appointmentEvents);
-    
-    if (showAvailability) {
-      fetchAvailability();
-    } else {
-      setLoading(false);
-    }
-  }, [appointments, refreshTrigger, clinicianId, getClientName, showAvailability, timeOffBlocks]);
-  
-  const fetchAvailability = async () => {
-    if (!clinicianId) {
-      setAvailabilityEvents([]);
-      setLoading(false);
-      return;
-    }
-    
-    try {
-      // Fetch regular weekly availability
-      const { data: availabilityData, error: availabilityError } = await supabase
-        .from('availability')
-        .select('*')
-        .eq('is_active', true)
-        .eq('clinician_id', clinicianId);
-        
-      if (availabilityError) {
-        console.error('Error fetching availability:', availabilityError);
-        setAvailabilityEvents([]);
-      } else {
-        // Fetch one-time availability exceptions
-        const { data: oneTimeData, error: oneTimeError } = await supabase
-          .from('availability_exceptions')
-          .select('*')
-          .eq('clinician_id', clinicianId)
-          .eq('is_deleted', false);
-          
-        if (oneTimeError) {
-          console.error('Error fetching one-time availability:', oneTimeError);
-          setOneTimeAvailability([]);
-        } else {
-          setOneTimeAvailability(oneTimeData || []);
-        }
-        
-        const availEvents = createAvailabilityEvents(availabilityData || [], oneTimeData || []);
-        setAvailabilityEvents(availEvents);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      setAvailabilityEvents([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const createAvailabilityEvents = (availabilityBlocks: AvailabilityBlock[], oneTimeBlocks: any[]) => {
-    if (!settings) return [];
-    
-    const dayOfWeekMap: {[key: string]: number} = {
-      'Sunday': 0,
-      'Monday': 1,
-      'Tuesday': 2,
-      'Wednesday': 3,
-      'Thursday': 4,
-      'Friday': 5,
-      'Saturday': 6
-    };
-    
-    const availabilityEvents: any[] = [];
-    
-    // Group one-time blocks by date
-    const oneTimeByDate = oneTimeBlocks.reduce((acc, block) => {
-      if (!acc[block.specific_date]) {
-        acc[block.specific_date] = [];
-      }
-      acc[block.specific_date].push(block);
-      return acc;
-    }, {} as Record<string, any[]>);
-    
-    // Process weekly recurring availability
-    availabilityBlocks.forEach(block => {
-      const dowNumber = dayOfWeekMap[block.day_of_week];
-      
-      const startTime = block.start_time;
-      const endTime = block.end_time;
-      
-      // Create a single event for the entire time block instead of breaking it into slots
-      const event = {
-        id: `weekly-${block.id}`,
-        title: 'Available',
-        daysOfWeek: [dowNumber],
-        startTime: startTime,
-        endTime: endTime,
-        startRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
-        endRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0),
-        extendedProps: {
-          type: 'availability',
-          availabilityData: {
-            ...block,
-            isRecurring: true
-          }
-        },
-        backgroundColor: '#10b981',
-        borderColor: '#059669',
-        textColor: '#ffffff',
-        display: 'block',
-        overlap: false
-      };
-      
-      availabilityEvents.push(event);
-    });
-    
-    // Process one-time availability exceptions (modifications to weekly)
-    oneTimeBlocks.forEach(block => {
-      if (block.start_time && block.end_time) {
-        // This is a modified time slot
-        const event = {
-          id: `onetime-${block.id}`,
-          title: block.original_availability_id ? 'Modified Available' : 'One-Time Available',
-          start: `${block.specific_date}T${block.start_time}`,
-          end: `${block.specific_date}T${block.end_time}`,
+    const fetchEvents = async () => {
+      if (!clinicianId) return;
+
+      const events = [];
+
+      // Process appointments
+      appointments.forEach(appointment => {
+        events.push({
+          id: appointment.id,
+          title: getClientName(appointment.client_id),
+          start: `${appointment.date}T${appointment.start_time}`,
+          end: `${appointment.date}T${appointment.end_time}`,
           extendedProps: {
-            type: 'one-time-availability',
-            availabilityData: {
-              ...block,
-              isException: !!block.original_availability_id,
-              isStandalone: !block.original_availability_id
-            }
+            type: 'appointment',
+            appointment
           },
-          backgroundColor: '#0ea5e9',
-          borderColor: '#0284c7',
-          textColor: '#ffffff',
-          display: 'block',
-          overlap: false
-        };
-        
-        availabilityEvents.push(event);
-      } else if (block.is_deleted && block.original_availability_id) {
-        // This is a deleted weekly availability - handle by not showing
-        // Original recurring event will be hidden for this date
-      }
-    });
-    
-    // Add time off blocks
-    timeOffBlocks.forEach(block => {
-      const startDate = new Date(block.start_date);
-      const endDate = new Date(block.end_date);
-      endDate.setDate(endDate.getDate() + 1);
-      
-      availabilityEvents.push({
-        id: `timeoff-${block.id}`,
-        title: block.note || 'Time Off',
-        start: block.start_date,
-        end: block.end_date,
-        allDay: true,
-        backgroundColor: '#f97316',
-        borderColor: '#ea580c',
-        textColor: '#ffffff',
-        display: 'background',
-        classNames: ['time-off-block']
+          color: 'rgb(147, 197, 253)',
+          textColor: 'rgb(30, 58, 138)'
+        });
       });
-    });
-    
-    return availabilityEvents;
-  };
-  
-  const getTimeSlots = (startTime: string, endTime: string, settings: AvailabilitySettings) => {
-    const [startHour, startMinute] = startTime.split(':').map(Number);
-    const [endHour, endMinute] = endTime.split(':').map(Number);
-    
-    let intervalMinutes: number;
-    
-    switch (settings.time_granularity) {
-      case 'hour':
-        intervalMinutes = 60;
-        break;
-      case 'half_hour':
-        intervalMinutes = 30;
-        break;
-      case 'quarter_hour':
-        intervalMinutes = 15;
-        break;
-      case 'custom':
-        intervalMinutes = settings.custom_minutes || 60;
-        break;
-      default:
-        intervalMinutes = 60;
-    }
-    
-    const startTotalMinutes = startHour * 60 + startMinute;
-    const endTotalMinutes = endHour * 60 + endMinute;
-    
-    const slots = [];
-    
-    for (let minutes = startTotalMinutes; minutes < endTotalMinutes; minutes += intervalMinutes) {
-      if (minutes + intervalMinutes <= endTotalMinutes) {
-        const slotStartHour = Math.floor(minutes / 60);
-        const slotStartMinute = minutes % 60;
-        
-        const slotEndHour = Math.floor((minutes + intervalMinutes) / 60);
-        const slotEndMinute = (minutes + intervalMinutes) % 60;
-        
-        const start = `${slotStartHour.toString().padStart(2, '0')}:${slotStartMinute.toString().padStart(2, '0')}:00`;
-        const end = `${slotEndHour.toString().padStart(2, '0')}:${slotEndMinute.toString().padStart(2, '0')}:00`;
-        
-        slots.push({ start, end });
+
+      // Fetch and process availability blocks
+      if (showAvailability) {
+        try {
+          const { data: availabilityData, error: availabilityError } = await supabase
+            .from('availability')
+            .select('*')
+            .eq('clinician_id', clinicianId)
+            .eq('is_active', true);
+
+          if (availabilityError) {
+            console.error("Error fetching availability:", availabilityError);
+          } else if (availabilityData) {
+            availabilityData.forEach(availability => {
+              const daysOfWeek = JSON.parse(availability.day_of_week);
+
+              daysOfWeek.forEach((dayOfWeek: number) => {
+                // Convert dayOfWeek to a string representation (e.g., '1' for Monday)
+                const dayOfWeekStr = String(dayOfWeek);
+
+                events.push({
+                  id: availability.id,
+                  title: 'Available',
+                  daysOfWeek: [dayOfWeekStr],
+                  startTime: availability.start_time,
+                  endTime: availability.end_time,
+                  display: 'background',
+                  color: 'green',
+                  extendedProps: {
+                    type: 'availability',
+                    availabilityBlock: availability
+                  }
+                });
+              });
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching availability:", error);
+        }
       }
+
+      setCalendarEvents(events);
+    };
+
+    fetchEvents();
+  }, [clinicianId, refreshTrigger, getClientName, showAvailability, appointments]);
+
+  const handleEventClick = (clickInfo: any) => {
+    const eventType = clickInfo.event.extendedProps.type;
+
+    if (eventType === 'appointment') {
+      const appointment = clickInfo.event.extendedProps.appointment;
+      onAppointmentClick?.(appointment);
+    } else if (eventType === 'availability') {
+      const availabilityBlock = clickInfo.event.extendedProps.availabilityBlock;
+      const eventStart = clickInfo.event.start;
+      onAvailabilityClick?.(eventStart, availabilityBlock);
     }
+  };
+
+  const renderEventContent = (eventInfo: any) => {
+    const { event } = eventInfo;
+    const eventType = event.extendedProps.type;
     
-    return slots;
-  };
-  
-  const isDateInTimeOff = (date: Date) => {
-    return timeOffBlocks.some(block => {
-      const startDate = new Date(block.start_date);
-      const endDate = new Date(block.end_date);
-      endDate.setDate(endDate.getDate() + 1);
-      
-      return isWithinInterval(date, { start: startDate, end: endDate });
-    });
-  };
-  
-  const handleEventClick = (info: any) => {
-    const eventType = info.event.extendedProps.type;
-    
-    if (eventType === 'appointment' && onAppointmentClick) {
-      onAppointmentClick(info.event.extendedProps.appointmentData);
-    } else if ((eventType === 'availability' || eventType === 'one-time-availability') && onAvailabilityClick) {
-      const date = info.event.start;
-      const availabilityData = info.event.extendedProps.availabilityData;
-      
-      if (!isDateInTimeOff(date) && availabilityData) {
-        console.log('Availability clicked:', availabilityData);
-        onAvailabilityClick(date, availabilityData);
-      }
+    if (eventType === 'availability') {
+      const blockData = event.extendedProps.availabilityBlock;
+      return (
+        <AvailabilityBlockComponent
+          block={blockData}
+          day={new Date(event.start)}
+          hourHeight={25}
+          onAvailabilityClick={onAvailabilityClick}
+        />
+      );
+    } else if (eventType === 'appointment') {
+      const appointment = event.extendedProps.appointment;
+      return (
+        <div className="fc-event-main">
+          {getClientName(appointment.client_id)}
+        </div>
+      );
     }
+    return null;
   };
-  
-  const handleDateClick = (info: any) => {
-    if (onAvailabilityClick) {
-      const date = new Date(info.date);
-      const dayOfWeek = format(date, 'EEEE');
-      
-      if (!isDateInTimeOff(date)) {
-        const tempBlock = {
-          id: 'new',
-          day_of_week: dayOfWeek,
-          start_time: '09:00:00',
-          end_time: '17:00:00',
-          isStandalone: true // Mark this as a one-time availability
-        };
-        
-        console.log('Date clicked, creating availability:', tempBlock);
-        onAvailabilityClick(date, tempBlock);
-      }
-    }
-  };
-  
-  if (loading) {
-    return (
-      <Card className="p-4 flex justify-center items-center h-[300px]">
-        <Loader2 className="h-6 w-6 animate-spin text-valorwell-500" />
-      </Card>
-    );
-  }
-  
-  const allEvents = [...events, ...availabilityEvents];
-  
+
   return (
     <div className={className}>
       <FullCalendar
+        ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView={view}
-        initialDate={currentDate}
         headerToolbar={false}
-        events={allEvents}
-        eventClick={handleEventClick}
-        dateClick={handleDateClick}
-        height="auto"
-        timeZone={userTimeZone}
-        nowIndicator={view === 'timeGridWeek'}
-        slotMinTime="06:00:00"
-        slotMaxTime="22:00:00"
+        nowIndicator={true}
         allDaySlot={false}
-        expandRows={true}
+        slotMinTime="08:00:00"
+        slotMaxTime="20:00:00"
+        eventContent={renderEventContent}
+        eventClick={handleEventClick}
+        events={calendarEvents}
+        timeZone={userTimeZone}
+        height="75vh"
       />
     </div>
   );
