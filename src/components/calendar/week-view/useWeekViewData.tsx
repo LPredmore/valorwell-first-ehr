@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -29,6 +28,7 @@ interface AvailabilityBlock {
   is_active?: boolean;
   isException?: boolean;
   isStandalone?: boolean;
+  originalAvailabilityId?: string | null;
 }
 
 interface AvailabilityException {
@@ -238,43 +238,83 @@ export const useWeekViewData = (
       const dateStr = format(day, 'yyyy-MM-dd');
       const exceptionsForDay = exceptionsData.filter(exc => exc.specific_date === dateStr);
       
+      // First identify which regular blocks are deleted
+      const deletedAvailabilityIds = new Set(
+        exceptionsForDay
+          .filter(exc => exc.is_deleted && exc.original_availability_id)
+          .map(exc => exc.original_availability_id)
+      );
+      
+      // Regular availability blocks that haven't been deleted
       const dayBlocks = blocks
         .filter(block => block.day_of_week === dayOfWeek)
-        .filter(block => {
-          const exception = exceptionsForDay.find(e => e.original_availability_id === block.id);
-          return !exception || !exception.is_deleted;
-        })
+        .filter(block => !deletedAvailabilityIds.has(block.id))
         .map(block => {
-          const exception = exceptionsForDay.find(e => e.original_availability_id === block.id);
+          // Find if this block has a time-modification exception
+          const exception = exceptionsForDay.find(e => 
+            e.original_availability_id === block.id && !e.is_deleted
+          );
           
+          // If there's a time-modification exception, apply it
           if (exception && exception.start_time && exception.end_time) {
+            console.log(`Found time modification for block ${block.id}:`, {
+              exceptionId: exception.id,
+              originalStartTime: block.start_time,
+              originalEndTime: block.end_time,
+              newStartTime: exception.start_time,
+              newEndTime: exception.end_time
+            });
+            
             return {
               ...block,
               start_time: exception.start_time,
               end_time: exception.end_time,
-              isException: true
+              isException: true,
+              // Store the original availability ID for accurate database operations
+              originalAvailabilityId: block.id
             };
           }
           
           return block;
         });
 
+      // Get standalone exceptions (original_availability_id is null and not deleted)
       const standaloneExceptions = exceptionsForDay
-        .filter(exception => exception.original_availability_id === null && !exception.is_deleted && exception.start_time && exception.end_time);
+        .filter(exception => 
+          exception.original_availability_id === null && 
+          !exception.is_deleted && 
+          exception.start_time && 
+          exception.end_time
+        );
       
+      console.log(`Found ${standaloneExceptions.length} standalone exceptions for ${dateStr}`);
+      
+      // Convert standalone exceptions to blocks
       const standaloneBlocks = standaloneExceptions.map(exception => ({
         id: exception.id,
         day_of_week: dayOfWeek,
-        start_time: exception.start_time,
-        end_time: exception.end_time,
+        start_time: exception.start_time || '09:00',
+        end_time: exception.end_time || '17:00',
         clinician_id: exception.clinician_id,
         is_active: true,
         isException: true,
-        isStandalone: true
+        isStandalone: true,
+        originalAvailabilityId: null
       }));
       
+      // Combine regular blocks and standalone blocks
       const allDayBlocks = [...dayBlocks, ...standaloneBlocks];
+      
+      console.log(`Processing ${allDayBlocks.length} total blocks for ${dateStr}:`, 
+        allDayBlocks.map(b => ({
+          id: b.id, 
+          isException: b.isException, 
+          isStandalone: b.isStandalone,
+          originalAvailabilityId: b.originalAvailabilityId
+        }))
+      );
 
+      // Convert to TimeBlock objects
       const parsedBlocks = allDayBlocks.map(block => {
         const [startHour, startMinute] = block.start_time.split(':').map(Number);
         const [endHour, endMinute] = block.end_time.split(':').map(Number);
@@ -287,35 +327,46 @@ export const useWeekViewData = (
           day,
           start,
           end,
+          availabilityIds: [block.id],
           isException: block.isException,
           isStandalone: block.isStandalone,
-          originalAvailabilityId: block.isException && !block.isStandalone ? block.id : null
+          originalAvailabilityId: block.originalAvailabilityId
         };
       });
 
+      // Sort blocks by start time
       parsedBlocks.sort((a, b) => a.start.getTime() - b.start.getTime());
 
+      // Merge adjacent blocks for display
       const mergedBlocks: TimeBlock[] = [];
 
       parsedBlocks.forEach(block => {
         const lastBlock = mergedBlocks[mergedBlocks.length - 1];
 
         if (lastBlock && block.start <= lastBlock.end) {
+          // Extend the last block if needed
           if (block.end > lastBlock.end) {
             lastBlock.end = block.end;
           }
+          
+          // Add this block's ID to the merged block
           lastBlock.availabilityIds.push(block.id);
+          
+          // Keep track of block properties
           if (block.isException) {
             lastBlock.isException = true;
           }
+          
           if (block.isStandalone) {
             lastBlock.isStandalone = true;
           }
-          // Make sure to preserve the original ID
+          
+          // Preserve the original ID for database operations
           if (!lastBlock.originalAvailabilityId && block.originalAvailabilityId) {
             lastBlock.originalAvailabilityId = block.originalAvailabilityId;
           }
         } else {
+          // Create a new block if not adjacent
           mergedBlocks.push({
             day: block.day,
             start: block.start,
@@ -329,9 +380,23 @@ export const useWeekViewData = (
         }
       });
 
+      // Add the merged blocks for this day to the overall collection
       allTimeBlocks.push(...mergedBlocks);
     });
 
+    console.log('Final timeBlocks after merging:', 
+      allTimeBlocks.map(b => ({
+        day: format(b.day, 'yyyy-MM-dd'),
+        start: format(b.start, 'HH:mm'),
+        end: format(b.end, 'HH:mm'),
+        id: b.id,
+        isException: b.isException,
+        isStandalone: b.isStandalone,
+        originalAvailabilityId: b.originalAvailabilityId,
+        availabilityIds: b.availabilityIds
+      }))
+    );
+    
     setTimeBlocks(allTimeBlocks);
   };
 
@@ -364,31 +429,24 @@ export const useWeekViewData = (
     };
   
     const getAppointmentForTimeSlot = (day: Date, timeSlot: Date) => {
-      // Log to debug appointment matching
       console.log(`Checking appointments for ${format(day, 'yyyy-MM-dd')} at ${format(timeSlot, 'HH:mm')}`);
       
-      // Get the time components only from the time slot
       const slotHours = timeSlot.getHours();
       const slotMinutes = timeSlot.getMinutes();
       
-      // Find appointments on the same day where the time slot falls within the appointment time
       const appointment = appointmentBlocks.find(block => {
-        // First check if we're on the same day
         const sameDayCheck = isSameDay(block.day, day);
         if (!sameDayCheck) return false;
         
-        // Get the time components from the appointment
         const apptStartHours = block.start.getHours();
         const apptStartMinutes = block.start.getMinutes();
         const apptEndHours = block.end.getHours();
         const apptEndMinutes = block.end.getMinutes();
         
-        // Convert to minutes for easier comparison
         const slotTotalMinutes = slotHours * 60 + slotMinutes;
         const apptStartTotalMinutes = apptStartHours * 60 + apptStartMinutes;
         const apptEndTotalMinutes = apptEndHours * 60 + apptEndMinutes;
         
-        // Check if the slot time falls within the appointment time
         const isWithinAppointment = 
           slotTotalMinutes >= apptStartTotalMinutes && 
           slotTotalMinutes < apptEndTotalMinutes;

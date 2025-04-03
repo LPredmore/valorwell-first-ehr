@@ -33,14 +33,24 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
           start: format(block.start, 'HH:mm'),
           end: format(block.end, 'HH:mm'),
           isException: block.isException,
-          originalAvailabilityId: block.originalAvailabilityId
+          isStandalone: block.isStandalone,
+          originalAvailabilityId: block.originalAvailabilityId,
+          availabilityIds: block.availabilityIds
         }
       });
       onAvailabilityClick(day, block);
     }
   };
 
-  const blockColor = block.isException ? 'teal' : 'green';
+  // Choose block color based on type
+  let blockColor;
+  if (block.isStandalone) {
+    blockColor = 'purple'; // Standalone exceptions are purple
+  } else if (block.isException) {
+    blockColor = 'teal';   // Modified regular availability is teal
+  } else {
+    blockColor = 'green';  // Regular weekly availability is green
+  }
 
   // Log rendering for debugging
   React.useEffect(() => {
@@ -50,9 +60,11 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
       start: format(block.start, 'HH:mm'),
       end: format(block.end, 'HH:mm'),
       isException: block.isException,
+      isStandalone: block.isStandalone,
+      originalAvailabilityId: block.originalAvailabilityId,
       position: { top, height },
     });
-  }, [block.id, day, block.start, block.end, block.isException, top, height]);
+  }, [block.id, day, block.start, block.end, block.isException, block.isStandalone, block.originalAvailabilityId, top, height]);
 
   return (
     <div 
@@ -67,7 +79,10 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
       <div className="flex flex-col h-full text-xs">
         <div className="font-medium truncate flex items-center">
           Available
-          {block.isException && (
+          {block.isException && block.isStandalone && (
+            <span className="ml-1 text-[10px] px-1 py-0.5 bg-purple-100 text-purple-800 rounded-full">One-time</span>
+          )}
+          {block.isException && !block.isStandalone && (
             <span className="ml-1 text-[10px] px-1 py-0.5 bg-teal-100 text-teal-800 rounded-full">Modified</span>
           )}
         </div>

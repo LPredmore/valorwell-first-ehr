@@ -32,6 +32,8 @@ useEffect(() => {
     console.log('Initializing availability edit with data:', {
       availabilityBlockId: availabilityBlock.id,
       isException: availabilityBlock.isException,
+      isStandalone: availabilityBlock.isStandalone,
+      originalAvailabilityId: availabilityBlock.originalAvailabilityId,
       specificDate: specificDate ? format(specificDate, 'yyyy-MM-dd') : 'null',
       clinicianId
     });
@@ -66,6 +68,53 @@ useEffect(() => {
     });
   }
 }, [availabilityBlock, isOpen, toast]);
+
+// Helper function to find existing exception - centralizes the logic
+const findExistingException = async (blockId: string, isException: boolean, isStandalone: boolean, formattedDate: string) => {
+  try {
+    console.log('Finding existing exception with params:', {
+      blockId,
+      isException,
+      isStandalone,
+      formattedDate,
+      clinicianId
+    });
+    
+    if (!clinicianId) {
+      console.error('Cannot find exception: Missing clinician ID');
+      return { data: null, error: new Error('Missing clinician ID') };
+    }
+    
+    // For standalone exceptions or existing exceptions - find directly by ID
+    if (isException) {
+      console.log('Looking up existing exception by ID:', blockId);
+      const result = await supabase
+        .from('availability_exceptions')
+        .select('id, original_availability_id, is_deleted')
+        .eq('id', blockId)
+        .maybeSingle();
+        
+      console.log('Exception lookup by ID result:', result);
+      return result;
+    }
+    
+    // For regular availability slots - find by original_availability_id
+    console.log('Looking up exception by original_availability_id:', blockId);
+    const result = await supabase
+      .from('availability_exceptions')
+      .select('id, original_availability_id, is_deleted')
+      .eq('clinician_id', clinicianId)
+      .eq('specific_date', formattedDate)
+      .eq('original_availability_id', blockId)
+      .maybeSingle();
+      
+    console.log('Exception lookup by original_availability_id result:', result);
+    return result;
+  } catch (error) {
+    console.error('Error finding existing exception:', error);
+    return { data: null, error };
+  }
+};
 
 const handleSaveClick = async () => {
   // Validate all required inputs
@@ -114,54 +163,29 @@ const handleSaveClick = async () => {
 
   try {
     const formattedDate = format(specificDate, 'yyyy-MM-dd');
+    const isException = !!availabilityBlock.isException;
+    const isStandalone = !!availabilityBlock.isStandalone;
+    // For regular availability, use the block ID
+    // For exceptions, check if we have originalAvailabilityId, otherwise use block ID
+    const referenceId = isException && availabilityBlock.originalAvailabilityId ? 
+                         availabilityBlock.originalAvailabilityId : 
+                         availabilityBlock.id;
 
     console.log('Saving availability exception:', {
       clinicianId,
       specificDate: formattedDate,
-      availabilityBlockId: availabilityBlock.id,
-      isException: !!availabilityBlock.isException,
+      blockId: availabilityBlock.id,
+      referenceId,
+      isException,
+      isStandalone,
+      originalAvailabilityId: availabilityBlock.originalAvailabilityId,
       startTime,
       endTime
     });
 
-    let existingException = null;
-    let checkError = null;
-
-    // If it's not already an exception, check if an exception exists
-    if (!availabilityBlock.isException) {
-      console.log('Checking for existing exception for regular availability');
-      const result = await supabase
-        .from('availability_exceptions')
-        .select('id')
-        .eq('clinician_id', clinicianId)
-        .eq('specific_date', formattedDate)
-        .eq('original_availability_id', availabilityBlock.id)
-        .maybeSingle();
-
-      existingException = result.data;
-      checkError = result.error;
-
-      console.log('Existing exception check result:', { 
-        existingException, 
-        error: checkError ? { code: checkError.code, message: checkError.message } : null
-      });
-    } else {
-      // For existing exceptions, just look for it by ID
-      console.log('Checking for existing exception by ID:', availabilityBlock.id);
-      const result = await supabase
-        .from('availability_exceptions')
-        .select('id')
-        .eq('id', availabilityBlock.id)
-        .maybeSingle();
-
-      existingException = result.data;
-      checkError = result.error;
-
-      console.log('Existing exception (by ID) check result:', { 
-        existingException, 
-        error: checkError ? { code: checkError.code, message: checkError.message } : null
-      });
-    }
+    // Use our helper function to find existing exception
+    const { data: existingException, error: checkError } = 
+      await findExistingException(referenceId, isException, isStandalone, formattedDate);
 
     if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is 'not found' error
       console.error('Error checking for existing exception:', checkError);
@@ -200,10 +224,22 @@ const handleSaveClick = async () => {
         is_deleted: false
       };
 
-      // Only add original_availability_id if this is modifying a regular availability
-      if (!availabilityBlock.isException) {
+      // Handle different exception types
+      if (isException && isStandalone) {
+        // For standalone exceptions, don't set original_availability_id
+        console.log('This is a standalone exception, not setting original_availability_id');
+      } else if (isException) {
+        // For existing exceptions, use the originalAvailabilityId if available
+        if (availabilityBlock.originalAvailabilityId) {
+          insertData.original_availability_id = availabilityBlock.originalAvailabilityId;
+          console.log('Setting original_availability_id for exception:', 
+            availabilityBlock.originalAvailabilityId);
+        }
+      } else {
+        // For regular availability
         insertData.original_availability_id = availabilityBlock.id;
-        console.log('Adding original_availability_id reference:', availabilityBlock.id);
+        console.log('Adding original_availability_id reference for regular availability:', 
+          availabilityBlock.id);
       }
 
       console.log('Inserting new exception with data:', insertData);
@@ -270,6 +306,8 @@ const handleDeleteClick = () => {
   console.log('Opening delete confirmation dialog for:', {
     availabilityBlockId: availabilityBlock.id,
     isException: !!availabilityBlock.isException,
+    isStandalone: !!availabilityBlock.isStandalone,
+    originalAvailabilityId: availabilityBlock.originalAvailabilityId,
     specificDate: specificDate ? format(specificDate, 'yyyy-MM-dd') : 'null'
   });
   
@@ -312,47 +350,25 @@ const confirmDelete = async () => {
 
   try {
     const formattedDate = format(specificDate, 'yyyy-MM-dd');
+    const isException = !!availabilityBlock.isException;
+    const isStandalone = !!availabilityBlock.isStandalone;
+    const referenceId = isException && availabilityBlock.originalAvailabilityId ? 
+                         availabilityBlock.originalAvailabilityId : 
+                         availabilityBlock.id;
 
     console.log('Cancelling availability:', {
       clinicianId,
       specificDate: formattedDate,
-      availabilityBlockId: availabilityBlock.id,
-      isException: !!availabilityBlock.isException
+      blockId: availabilityBlock.id,
+      referenceId,
+      isException,
+      isStandalone,
+      originalAvailabilityId: availabilityBlock.originalAvailabilityId
     });
 
-    let existingException = null;
-    let checkError = null;
-
-    // If it's not already an exception, check if an exception exists for the original availability
-    if (!availabilityBlock.isException) {
-      console.log('Checking for existing exception for deletion');
-      const result = await supabase
-        .from('availability_exceptions')
-        .select('id, original_availability_id')
-        .eq('clinician_id', clinicianId)
-        .eq('specific_date', formattedDate)
-        .eq('original_availability_id', availabilityBlock.id)
-        .maybeSingle();
-
-      existingException = result.data;
-      checkError = result.error;
-    } else {
-      // For existing exceptions, look it up by ID
-      console.log('Checking for existing exception by ID for deletion:', availabilityBlock.id);
-      const result = await supabase
-        .from('availability_exceptions')
-        .select('id, original_availability_id')
-        .eq('id', availabilityBlock.id)
-        .maybeSingle();
-
-      existingException = result.data;
-      checkError = result.error;
-    }
-
-    console.log('Existing exception check for delete:', { 
-      existingException, 
-      error: checkError ? { code: checkError.code, message: checkError.message } : null
-    });
+    // Use our helper function to find existing exception
+    const { data: existingException, error: checkError } = 
+      await findExistingException(referenceId, isException, isStandalone, formattedDate);
 
     if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is 'not found' error
       console.error('Error checking for existing exception for deletion:', checkError);
@@ -386,10 +402,21 @@ const confirmDelete = async () => {
         is_deleted: true
       };
 
-      // Only add original_availability_id if it references a valid entry in the availability table
-      // If it's an exception, don't include the original_availability_id field
-      if (!availabilityBlock.isException) {
+      // Handle different exception types
+      if (isException && isStandalone) {
+        // For standalone exceptions, don't set original_availability_id
+        console.log('This is a standalone exception, not setting original_availability_id for deletion');
+      } else if (isException) {
+        // For existing exceptions, use the originalAvailabilityId if available
+        if (availabilityBlock.originalAvailabilityId) {
+          insertData.original_availability_id = availabilityBlock.originalAvailabilityId;
+          console.log('Setting original_availability_id for exception deletion:', 
+            availabilityBlock.originalAvailabilityId);
+        }
+      } else {
+        // For regular availability
         insertData.original_availability_id = availabilityBlock.id;
+        console.log('Adding original_availability_id reference for deletion:', availabilityBlock.id);
       }
 
       console.log('Creating new deleted exception with data:', insertData);

@@ -48,7 +48,8 @@ React.useEffect(() => {
         start_time: availabilityBlock.start_time,
         end_time: availabilityBlock.end_time,
         isException: availabilityBlock.isException,
-        isStandalone: availabilityBlock.isStandalone
+        isStandalone: availabilityBlock.isStandalone,
+        originalAvailabilityId: availabilityBlock.originalAvailabilityId
       } : null,
       specificDate: specificDate ? format(specificDate, 'yyyy-MM-dd') : null,
       clinicianId
@@ -64,6 +65,17 @@ if (!availabilityBlock || !specificDate) {
   });
   return null;
 }
+
+// Determine what type of availability we're editing for the UI messaging
+const getAvailabilityTypeMessage = () => {
+  if (availabilityBlock.isStandalone) {
+    return "This is a one-time availability slot specifically for this date.";
+  } else if (availabilityBlock.isException) {
+    return "This is a modification to your regular weekly schedule for this date only.";
+  } else {
+    return "This will only modify your availability for this date. Your regular weekly schedule will remain unchanged.";
+  }
+};
 
 return (
 <>
@@ -102,15 +114,18 @@ timeOptions={timeOptions}
 <div className="mt-2 p-3 bg-blue-50 text-sm rounded-md border border-blue-100">
 <div className="font-medium text-blue-700 mb-1">One-time Change</div>
 <p className="text-blue-600">
-This will only modify your availability for {format(specificDate, 'MMMM d, yyyy')}.
-Your regular weekly schedule will remain unchanged.
+{getAvailabilityTypeMessage()}
 </p>
 </div>
 </div>
 
 <DialogFooter className="flex justify-between">
-<Button variant="destructive" onClick={handleDeleteClick} disabled={isLoading}>
-Cancel Availability
+<Button 
+  variant="destructive" 
+  onClick={handleDeleteClick} 
+  disabled={isLoading}
+>
+  {availabilityBlock.isStandalone ? "Delete Availability" : "Cancel Availability"}
 </Button>
 <div className="flex gap-2">
 <Button variant="outline" onClick={onClose} disabled={isLoading}>
