@@ -9,6 +9,7 @@ export interface AvailabilityBlock {
   clinician_id?: string;
   is_active?: boolean;
   isException?: boolean;
+  isStandalone?: boolean;
 }
 
 export interface AvailabilityEditDialogProps {

@@ -38,13 +38,39 @@ clinicianId,
 onAvailabilityUpdated
 );
 
+// Add logging for component render
+React.useEffect(() => {
+  if (isOpen) {
+    console.log('AvailabilityEditDialog opened with props:', {
+      availabilityBlock: availabilityBlock ? {
+        id: availabilityBlock.id,
+        day_of_week: availabilityBlock.day_of_week,
+        start_time: availabilityBlock.start_time,
+        end_time: availabilityBlock.end_time,
+        isException: availabilityBlock.isException,
+        isStandalone: availabilityBlock.isStandalone
+      } : null,
+      specificDate: specificDate ? format(specificDate, 'yyyy-MM-dd') : null,
+      clinicianId
+    });
+  }
+}, [isOpen, availabilityBlock, specificDate, clinicianId]);
+
+// Safety check for necessary data
 if (!availabilityBlock || !specificDate) {
-return null;
+  console.error('AvailabilityEditDialog: Missing required data', { 
+    hasAvailabilityBlock: !!availabilityBlock,
+    hasSpecificDate: !!specificDate
+  });
+  return null;
 }
 
 return (
 <>
-<Dialog open={isOpen} onOpenChange={onClose}>
+<Dialog open={isOpen} onOpenChange={(open) => {
+  console.log('Dialog onOpenChange:', open);
+  if (!open) onClose();
+}}>
 <DialogContent className="sm:max-w-[500px]">
 <DialogHeader>
 <DialogTitle>Edit Availability for {format(specificDate, 'EEEE, MMMM d, yyyy')}</DialogTitle>
@@ -55,7 +81,10 @@ return (
 id="startTime"
 label="Start Time"
 value={startTime}
-onChange={setStartTime}
+onChange={(value) => {
+  console.log('Start time changed:', value);
+  setStartTime(value);
+}}
 timeOptions={timeOptions}
 />
 
@@ -63,7 +92,10 @@ timeOptions={timeOptions}
 id="endTime"
 label="End Time"
 value={endTime}
-onChange={setEndTime}
+onChange={(value) => {
+  console.log('End time changed:', value);
+  setEndTime(value);
+}}
 timeOptions={timeOptions}
 />
 

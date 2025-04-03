@@ -26,11 +26,33 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
 
   const handleClick = () => {
     if (onAvailabilityClick) {
+      console.log('Availability block clicked:', {
+        day: format(day, 'yyyy-MM-dd'),
+        block: {
+          id: block.id,
+          start: format(block.start, 'HH:mm'),
+          end: format(block.end, 'HH:mm'),
+          isException: block.isException,
+          originalAvailabilityId: block.originalAvailabilityId
+        }
+      });
       onAvailabilityClick(day, block);
     }
   };
 
   const blockColor = block.isException ? 'teal' : 'green';
+
+  // Log rendering for debugging
+  React.useEffect(() => {
+    console.debug('Rendering availability block:', {
+      id: block.id,
+      day: format(day, 'yyyy-MM-dd'),
+      start: format(block.start, 'HH:mm'),
+      end: format(block.end, 'HH:mm'),
+      isException: block.isException,
+      position: { top, height },
+    });
+  }, [block.id, day, block.start, block.end, block.isException, top, height]);
 
   return (
     <div 
