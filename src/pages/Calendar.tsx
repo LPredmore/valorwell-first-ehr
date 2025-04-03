@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Calendar as CalendarIcon, Plus } from 'lucide-react';
+import { Loader2, Calendar as CalendarIcon, Plus, Settings } from 'lucide-react';
 import { addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { useCalendarState } from '../hooks/useCalendarState';
 import CalendarHeader from '../components/calendar/CalendarHeader';
@@ -11,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Clock } from 'lucide-react';
 import FullCalendarView from '@/components/calendar/FullCalendarView';
+import AvailabilitySettingsDialog from '@/components/calendar/AvailabilitySettingsDialog';
 
 const CalendarPage = () => {
   const {
@@ -32,8 +32,8 @@ const CalendarPage = () => {
     isLoadingTimeZone,
   } = useCalendarState();
 
-  // Changed default from 'dayGridMonth' to 'timeGridWeek'
   const [calendarViewMode, setCalendarViewMode] = useState<'dayGridMonth' | 'timeGridWeek'>('timeGridWeek');
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
 
   const navigatePrevious = () => {
     if (calendarViewMode === 'timeGridWeek') {
@@ -60,6 +60,10 @@ const CalendarPage = () => {
   };
 
   const handleAppointmentCreated = () => {
+    setAppointmentRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleSettingsUpdated = () => {
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
@@ -94,6 +98,11 @@ const CalendarPage = () => {
               <Button onClick={() => setIsDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 New Appointment
+              </Button>
+
+              <Button variant="outline" onClick={() => setIsSettingsDialogOpen(true)}>
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
               </Button>
 
               <div className="hidden">
@@ -151,6 +160,13 @@ const CalendarPage = () => {
         loadingClients={loadingClients}
         selectedClinicianId={selectedClinicianId}
         onAppointmentCreated={handleAppointmentCreated}
+      />
+
+      <AvailabilitySettingsDialog
+        isOpen={isSettingsDialogOpen}
+        onClose={() => setIsSettingsDialogOpen(false)}
+        clinicianId={selectedClinicianId}
+        onSettingsUpdated={handleSettingsUpdated}
       />
     </Layout>
   );

@@ -150,29 +150,38 @@ export type Database = {
       }
       availability_settings: {
         Row: {
+          buffer_minutes: number | null
           clinician_id: string
           created_at: string
+          custom_minutes: number | null
           id: string
           max_days_ahead: number
           min_days_ahead: number
+          show_availability_to_clients: boolean | null
           time_granularity: string
           updated_at: string
         }
         Insert: {
+          buffer_minutes?: number | null
           clinician_id: string
           created_at?: string
+          custom_minutes?: number | null
           id?: string
-          max_days_ahead: number
-          min_days_ahead: number
+          max_days_ahead?: number
+          min_days_ahead?: number
+          show_availability_to_clients?: boolean | null
           time_granularity?: string
           updated_at?: string
         }
         Update: {
+          buffer_minutes?: number | null
           clinician_id?: string
           created_at?: string
+          custom_minutes?: number | null
           id?: string
           max_days_ahead?: number
           min_days_ahead?: number
+          show_availability_to_clients?: boolean | null
           time_granularity?: string
           updated_at?: string
         }

@@ -30,6 +30,15 @@ interface AvailabilityBlock {
   isException?: boolean;
 }
 
+interface AvailabilitySettings {
+  time_granularity: string;
+  custom_minutes?: number;
+  min_days_ahead: number;
+  max_days_ahead: number;
+  buffer_minutes: number;
+  show_availability_to_clients: boolean;
+}
+
 interface FullCalendarViewProps {
   currentDate: Date;
   clinicianId: string | null;
@@ -58,6 +67,34 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<any[]>([]);
   const [availabilityEvents, setAvailabilityEvents] = useState<any[]>([]);
+  const [settings, setSettings] = useState<AvailabilitySettings | null>(null);
+
+  // Fetch availability settings
+  useEffect(() => {
+    if (clinicianId) {
+      fetchAvailabilitySettings();
+    }
+  }, [clinicianId, refreshTrigger]);
+
+  const fetchAvailabilitySettings = async () => {
+    if (!clinicianId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('availability_settings')
+        .select('*')
+        .eq('clinician_id', clinicianId)
+        .single();
+        
+      if (error) {
+        console.error('Error fetching availability settings:', error);
+      } else {
+        setSettings(data);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
 
   // Fetch appointments and convert them to FullCalendar events
   useEffect(() => {
@@ -113,7 +150,7 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
         console.error('Error fetching availability:', availabilityError);
         setAvailabilityEvents([]);
       } else {
-        // Convert availability to recurring events
+        // Convert availability to recurring events, respecting the settings
         const availEvents = createAvailabilityEvents(availabilityData || []);
         setAvailabilityEvents(availEvents);
       }
@@ -125,8 +162,10 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
     }
   };
   
-  // Convert availability blocks to FullCalendar events with recurrence
+  // Convert availability blocks to FullCalendar events with recurrence, respecting granularity settings
   const createAvailabilityEvents = (availabilityBlocks: AvailabilityBlock[]) => {
+    if (!settings) return [];
+    
     // Map day of week from string to number (0 = Sunday, 1 = Monday, etc.)
     const dayOfWeekMap: {[key: string]: number} = {
       'Sunday': 0,
@@ -138,28 +177,93 @@ const FullCalendarView: React.FC<FullCalendarViewProps> = ({
       'Saturday': 6
     };
     
-    return availabilityBlocks.map(block => {
+    const availabilityEvents: any[] = [];
+    
+    availabilityBlocks.forEach(block => {
       // Get the day of week as a number
       const dowNumber = dayOfWeekMap[block.day_of_week];
       
-      return {
-        id: block.id,
-        title: 'Available',
-        daysOfWeek: [dowNumber],
-        startTime: block.start_time,
-        endTime: block.end_time,
-        startRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
-        endRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0),
-        extendedProps: {
-          type: 'availability',
-          availabilityData: block
-        },
-        backgroundColor: '#10b981', // Green color for availability
-        borderColor: '#059669',
-        textColor: '#ffffff',
-        display: 'block'
-      };
+      // Get start and end times
+      const startTime = block.start_time;
+      const endTime = block.end_time;
+      
+      // Calculate time slots based on settings
+      const timeSlots = getTimeSlots(startTime, endTime, settings);
+      
+      // Create events for each time slot
+      timeSlots.forEach(slot => {
+        availabilityEvents.push({
+          id: `${block.id}-${slot.start}`,
+          title: 'Available',
+          daysOfWeek: [dowNumber],
+          startTime: slot.start,
+          endTime: slot.end,
+          startRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
+          endRecur: new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0),
+          extendedProps: {
+            type: 'availability',
+            availabilityData: {
+              ...block,
+              start_time: slot.start,
+              end_time: slot.end
+            }
+          },
+          backgroundColor: '#10b981', // Green color for availability
+          borderColor: '#059669',
+          textColor: '#ffffff',
+          display: 'block'
+        });
+      });
     });
+    
+    return availabilityEvents;
+  };
+  
+  // Calculate time slots based on settings
+  const getTimeSlots = (startTime: string, endTime: string, settings: AvailabilitySettings) => {
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const [endHour, endMinute] = endTime.split(':').map(Number);
+    
+    let intervalMinutes: number;
+    
+    switch (settings.time_granularity) {
+      case 'hour':
+        intervalMinutes = 60;
+        break;
+      case 'half_hour':
+        intervalMinutes = 30;
+        break;
+      case 'quarter_hour':
+        intervalMinutes = 15;
+        break;
+      case 'custom':
+        intervalMinutes = settings.custom_minutes || 60;
+        break;
+      default:
+        intervalMinutes = 60;
+    }
+    
+    const startTotalMinutes = startHour * 60 + startMinute;
+    const endTotalMinutes = endHour * 60 + endMinute;
+    
+    const slots = [];
+    
+    for (let minutes = startTotalMinutes; minutes < endTotalMinutes; minutes += intervalMinutes) {
+      if (minutes + intervalMinutes <= endTotalMinutes) {
+        const slotStartHour = Math.floor(minutes / 60);
+        const slotStartMinute = minutes % 60;
+        
+        const slotEndHour = Math.floor((minutes + intervalMinutes) / 60);
+        const slotEndMinute = (minutes + intervalMinutes) % 60;
+        
+        const start = `${slotStartHour.toString().padStart(2, '0')}:${slotStartMinute.toString().padStart(2, '0')}:00`;
+        const end = `${slotEndHour.toString().padStart(2, '0')}:${slotEndMinute.toString().padStart(2, '0')}:00`;
+        
+        slots.push({ start, end });
+      }
+    }
+    
+    return slots;
   };
   
   // Handle event click
