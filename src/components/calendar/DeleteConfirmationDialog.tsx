@@ -1,48 +1,88 @@
 
 import React from 'react';
 import { format } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import { DeleteDialogProps } from './availability-edit/types';
-import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
-const DeleteConfirmationDialog: React.FC<DeleteDialogProps> = ({
+interface DeleteConfirmationDialogProps {
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
+  specificDate: Date | null;
+  confirmDelete: (mode: 'single' | 'series') => void;
+  isLoading: boolean;
+  isRecurring?: boolean;
+}
+
+const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   isOpen,
   setIsOpen,
   specificDate,
   confirmDelete,
   isLoading,
-  isRecurring
+  isRecurring = false
 }) => {
   if (!specificDate) return null;
 
-  // Format the date properly for display
-  const formattedDate = formatInTimeZone(
-    specificDate,
-    ensureIANATimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone),
-    'EEEE, MMMM d, yyyy'
-  );
+  const formattedDate = format(specificDate, 'EEEE, MMMM d, yyyy');
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Cancel Availability</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to cancel your availability for {formattedDate}?
-            {isRecurring && " This will only affect this single occurrence and not your recurring weekly schedule."}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>No, Keep Availability</AlertDialogCancel>
-          <AlertDialogAction onClick={confirmDelete} disabled={isLoading} className="bg-red-600 hover:bg-red-700">
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            {isLoading ? "Processing..." : "Yes, Cancel Availability"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Cancel Availability</DialogTitle>
+        </DialogHeader>
+
+        <div className="py-4">
+          <p className="text-sm text-gray-600 mb-4">
+            Are you sure you want to cancel availability for {formattedDate}?
+          </p>
+
+          {isRecurring && (
+            <div className="bg-blue-50 p-3 rounded-md border border-blue-100 mb-4">
+              <p className="text-sm text-blue-700">
+                This is part of a recurring availability pattern.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>
+            Cancel
+          </Button>
+          {isRecurring ? (
+            <>
+              <Button 
+                variant="destructive" 
+                onClick={() => confirmDelete('single')} 
+                disabled={isLoading}
+              >
+                {isLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                This Occurrence Only
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => confirmDelete('series')} 
+                disabled={isLoading}
+              >
+                {isLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Entire Series
+              </Button>
+            </>
+          ) : (
+            <Button 
+              variant="destructive" 
+              onClick={() => confirmDelete('single')} 
+              disabled={isLoading}
+            >
+              {isLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Confirm
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
