@@ -1213,8 +1213,11 @@ export type Database = {
       }
       treatment_plans: {
         Row: {
+          client_dob: string | null
           client_id: string
+          client_name: string | null
           clinician_id: string
+          clinician_name: string | null
           created_at: string
           diagnosis: string[] | null
           id: string
@@ -1238,8 +1241,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          client_dob?: string | null
           client_id: string
+          client_name?: string | null
           clinician_id: string
+          clinician_name?: string | null
           created_at?: string
           diagnosis?: string[] | null
           id?: string
@@ -1263,8 +1269,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          client_dob?: string | null
           client_id?: string
+          client_name?: string | null
           clinician_id?: string
+          clinician_name?: string | null
           created_at?: string
           diagnosis?: string[] | null
           id?: string

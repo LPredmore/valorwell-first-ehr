@@ -12,7 +12,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClientDetails } from "@/types/client";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/toast";
 import { supabase, formatDateForDB, getCurrentUser } from "@/integrations/supabase/client";
 import { DiagnosisSelector } from "@/components/DiagnosisSelector";
 import { generateAndSavePDF } from "@/utils/pdfUtils";
@@ -157,8 +157,10 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         return;
       }
 
+      const formattedStartDate = formatDateForDB(formState.startDate);
+
       // Map form data back to database schema
-      const updates = {
+      const clientUpdates = {
         client_planlength: formState.planLength,
         client_treatmentfrequency: formState.treatmentFrequency,
         client_diagnosis: formState.diagnosisCodes,
@@ -174,27 +176,26 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         client_intervention5: formState.intervention5,
         client_intervention6: formState.intervention6,
         client_nexttreatmentplanupdate: formState.nextUpdate,
-        client_privatenote: formState.privateNote
+        client_privatenote: formState.privateNote,
+        client_treatmentplan_startdate: formattedStartDate
       };
 
-      console.log('Saving treatment plan with updates:', updates);
+      console.log('Saving treatment plan with updates:', clientUpdates);
       console.log('For client with ID:', clientData.id);
 
       // Update client in database
-      const { error, data } = await supabase
+      const { error: clientError } = await supabase
         .from('clients')
-        .update(updates)
-        .eq('id', clientData.id)
-        .select();
+        .update(clientUpdates)
+        .eq('id', clientData.id);
 
-      if (error) {
-        console.error('Error from Supabase:', error);
-        throw error;
+      if (clientError) {
+        console.error('Error updating client:', clientError);
+        throw clientError;
       }
 
-      console.log('Treatment plan saved successfully:', data);
-
       // Generate and save PDF
+      let pdfPath = '';
       if (treatmentPlanRef.current) {
         const currentUser = await getCurrentUser();
         const documentInfo = {
@@ -205,13 +206,50 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
           createdBy: currentUser?.id
         };
 
-        const pdfPath = await generateAndSavePDF('treatment-plan-content', documentInfo);
+        pdfPath = await generateAndSavePDF('treatment-plan-content', documentInfo) || '';
         
         if (pdfPath) {
           console.log('PDF saved successfully at path:', pdfPath);
         } else {
           console.error('Failed to generate or save PDF');
         }
+      }
+
+      // Create new entry in treatment_plans table
+      const treatmentPlanData = {
+        client_id: clientData.id,
+        clinician_id: clientData.client_assigned_therapist || '',
+        client_name: formState.clientName,
+        client_dob: formState.clientDob,
+        clinician_name: formState.clinicianName,
+        start_date: formattedStartDate,
+        plan_length: formState.planLength,
+        treatment_frequency: formState.treatmentFrequency,
+        diagnosis: formState.diagnosisCodes,
+        problem_narrative: formState.problemNarrative,
+        treatment_goal_narrative: formState.treatmentGoalNarrative,
+        primary_objective: formState.primaryObjective,
+        secondary_objective: formState.secondaryObjective,
+        tertiary_objective: formState.tertiaryObjective,
+        intervention1: formState.intervention1,
+        intervention2: formState.intervention2,
+        intervention3: formState.intervention3,
+        intervention4: formState.intervention4,
+        intervention5: formState.intervention5,
+        intervention6: formState.intervention6,
+        next_update: formState.nextUpdate,
+        private_note: formState.privateNote,
+        pdf_path: pdfPath
+      };
+
+      // Insert into treatment_plans table
+      const { error: treatmentPlanError } = await supabase
+        .from('treatment_plans')
+        .insert(treatmentPlanData);
+
+      if (treatmentPlanError) {
+        console.error('Error creating treatment plan record:', treatmentPlanError);
+        throw treatmentPlanError;
       }
 
       toast({
