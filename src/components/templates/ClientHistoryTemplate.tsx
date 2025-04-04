@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -45,7 +44,6 @@ interface PastSpouse {
   relationship: string;
 }
 
-// Symptom categories from the image
 interface SymptomCategories {
   mood: string[];
   physical: string[];
@@ -79,10 +77,10 @@ const ClientHistoryTemplate: React.FC = () => {
   const [sameHousehold, setSameHousehold] = useState(false);
   const [isMarried, setIsMarried] = useState(false);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
-  
+  const [selectedChildhoodExperiences, setSelectedChildhoodExperiences] = useState<string[]>([]);
+
   const form = useForm();
 
-  // Define the symptom categories and options based on the image
   const symptoms: SymptomCategories = {
     mood: [
       "Depressed Mood", 
@@ -182,6 +180,30 @@ const ClientHistoryTemplate: React.FC = () => {
     "Other"
   ];
 
+  const childhoodExperiences = [
+    "Happy Childhood",
+    "Neglected",
+    "Family Moved Frequently",
+    "Physically Abused",
+    "Sexually Abused",
+    "Few Friends",
+    "Over/Underweight",
+    "Popular",
+    "Parents Divorced",
+    "Family Fights",
+    "Poor Grades",
+    "Conflict with Teachers",
+    "Drug or Alcohol Abuse",
+    "Good Grades",
+    "Sexual Problems",
+    "Depressed",
+    "Spoiled",
+    "Anxious",
+    "Not Allowed to Grow Up",
+    "Attention Problems",
+    "Anger Problems"
+  ];
+
   const handleAddFamily = () => {
     setFamily([
       ...family,
@@ -222,6 +244,14 @@ const ClientHistoryTemplate: React.FC = () => {
       setSelectedSymptoms([...selectedSymptoms, symptom]);
     } else {
       setSelectedSymptoms(selectedSymptoms.filter(s => s !== symptom));
+    }
+  };
+
+  const handleChildhoodExperienceChange = (experience: string, isChecked: boolean) => {
+    if (isChecked) {
+      setSelectedChildhoodExperiences([...selectedChildhoodExperiences, experience]);
+    } else {
+      setSelectedChildhoodExperiences(selectedChildhoodExperiences.filter(exp => exp !== experience));
     }
   };
 
@@ -545,17 +575,30 @@ const ClientHistoryTemplate: React.FC = () => {
             </div>
             
             <div>
-              <Label className="mb-2 block">Childhood Experience</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                {/* Placeholder checkboxes - will be populated with actual items later */}
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="childhood1" />
-                  <Label htmlFor="childhood1">Placeholder experience</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="childhood2" />
-                  <Label htmlFor="childhood2">Placeholder experience</Label>
-                </div>
+              <Label className="mb-2 block">Childhood Experience (Check all that Apply)</Label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                {childhoodExperiences.map((experience) => (
+                  <div key={experience} className="flex items-center space-x-2">
+                    <Checkbox 
+                      id={`childhood-${experience}`} 
+                      onCheckedChange={(checked) => 
+                        handleChildhoodExperienceChange(experience, checked === true)
+                      }
+                    />
+                    <Label htmlFor={`childhood-${experience}`}>{experience}</Label>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-4">
+                <Label htmlFor="childhoodElaboration">
+                  If you checked any of the boxes above, please feel free to elaborate on them here, and discuss any other childhood experiences that would help your therapist better help you.
+                </Label>
+                <Textarea 
+                  id="childhoodElaboration" 
+                  className="mt-2 min-h-[120px]" 
+                  placeholder="Please elaborate on your childhood experiences..."
+                />
               </div>
             </div>
           </CardContent>
