@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart2, ClipboardCheck, FileText, ClipboardList, Download, Calendar, Eye, PenLine } from "lucide-react";
+import { BarChart2, ClipboardCheck, FileText, ClipboardList, Download, Calendar, Eye, PenLine, FileX, FilePlus2 } from "lucide-react";
 import TreatmentPlanTemplate from "@/components/templates/TreatmentPlanTemplate";
 import SessionNoteTemplate from "@/components/templates/SessionNoteTemplate";
 import PHQ9Template from "@/components/templates/PHQ9Template";
@@ -38,6 +38,8 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
   const [showPCL5Template, setShowPCL5Template] = useState(false);
   const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [assignedDocuments, setAssignedDocuments] = useState<any[]>([]);
+  const [isLoadingAssignedDocs, setIsLoadingAssignedDocs] = useState(false);
 
   const {
     clinicianData
@@ -62,6 +64,14 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
           variant: "destructive"
         });
       });
+      
+      // In the future, we'll add actual fetching of assigned documents here
+      setIsLoadingAssignedDocs(true);
+      // Mock data for assigned documents - this will be replaced with actual API call
+      setTimeout(() => {
+        setAssignedDocuments([]);
+        setIsLoadingAssignedDocs(false);
+      }, 500);
     }
   }, [clientData?.id, toast]);
 
@@ -140,6 +150,75 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
           </CardContent>
         </Card>
       )}
+
+      {/* New section: Assigned Documents */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FilePlus2 className="h-5 w-5 text-valorwell-600" />
+            Assigned Documents
+          </CardTitle>
+          <CardDescription>Forms and documents that need your attention</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingAssignedDocs ? (
+            <div className="flex justify-center py-8">
+              <p>Loading assigned documents...</p>
+            </div>
+          ) : assignedDocuments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <FileX className="h-12 w-12 text-gray-300 mb-3" />
+              <h3 className="text-lg font-medium">No documents assigned</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                There are currently no forms or documents assigned to this client
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Form Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Required</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {assignedDocuments.map((doc) => (
+                    <TableRow key={doc.id}>
+                      <TableCell className="font-medium">{doc.title}</TableCell>
+                      <TableCell>{doc.type}</TableCell>
+                      <TableCell>{doc.required ? "Yes" : "No"}</TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium 
+                          ${doc.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                          doc.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : 
+                          'bg-blue-100 text-blue-800'}`}>
+                          {doc.status === 'completed' ? 'Completed' : 
+                           doc.status === 'in_progress' ? 'In Progress' : 'Not Started'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {doc.status === 'completed' ? (
+                          <Button variant="outline" size="sm" onClick={() => handleViewDocument(doc.filePath)}>
+                            <Eye className="h-4 w-4 mr-1" /> View
+                          </Button>
+                        ) : (
+                          <Button variant="default" size="sm">
+                            Fill Out
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
