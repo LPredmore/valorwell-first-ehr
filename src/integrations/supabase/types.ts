@@ -911,6 +911,180 @@ export type Database = {
         }
         Relationships: []
       }
+      session_notes: {
+        Row: {
+          affect: string | null
+          appearance: string | null
+          appointment_id: string | null
+          attitude: string | null
+          behavior: string | null
+          client_dob: string | null
+          client_id: string
+          client_name: string | null
+          clinician_id: string
+          created_at: string
+          current_symptoms: string | null
+          diagnosis: string[] | null
+          functioning: string | null
+          homicidal_ideation: string | null
+          id: string
+          insight_judgement: string | null
+          intervention1: string | null
+          intervention2: string | null
+          intervention3: string | null
+          intervention4: string | null
+          intervention5: string | null
+          intervention6: string | null
+          medications: string | null
+          memory_concentration: string | null
+          mood: string | null
+          next_treatment_plan_update: string | null
+          orientation: string | null
+          pdf_path: string | null
+          perception: string | null
+          persons_in_attendance: string | null
+          phq9_data: Json | null
+          phq9_score: number | null
+          plan_type: string | null
+          primary_objective: string | null
+          private_note: string | null
+          problem_narrative: string | null
+          prognosis: string | null
+          progress: string | null
+          secondary_objective: string | null
+          session_date: string
+          session_narrative: string | null
+          session_type: string | null
+          speech: string | null
+          substance_abuse_risk: string | null
+          suicidal_ideation: string | null
+          tertiary_objective: string | null
+          thought_process: string | null
+          treatment_frequency: string | null
+          treatment_goal_narrative: string | null
+          updated_at: string
+        }
+        Insert: {
+          affect?: string | null
+          appearance?: string | null
+          appointment_id?: string | null
+          attitude?: string | null
+          behavior?: string | null
+          client_dob?: string | null
+          client_id: string
+          client_name?: string | null
+          clinician_id: string
+          created_at?: string
+          current_symptoms?: string | null
+          diagnosis?: string[] | null
+          functioning?: string | null
+          homicidal_ideation?: string | null
+          id?: string
+          insight_judgement?: string | null
+          intervention1?: string | null
+          intervention2?: string | null
+          intervention3?: string | null
+          intervention4?: string | null
+          intervention5?: string | null
+          intervention6?: string | null
+          medications?: string | null
+          memory_concentration?: string | null
+          mood?: string | null
+          next_treatment_plan_update?: string | null
+          orientation?: string | null
+          pdf_path?: string | null
+          perception?: string | null
+          persons_in_attendance?: string | null
+          phq9_data?: Json | null
+          phq9_score?: number | null
+          plan_type?: string | null
+          primary_objective?: string | null
+          private_note?: string | null
+          problem_narrative?: string | null
+          prognosis?: string | null
+          progress?: string | null
+          secondary_objective?: string | null
+          session_date: string
+          session_narrative?: string | null
+          session_type?: string | null
+          speech?: string | null
+          substance_abuse_risk?: string | null
+          suicidal_ideation?: string | null
+          tertiary_objective?: string | null
+          thought_process?: string | null
+          treatment_frequency?: string | null
+          treatment_goal_narrative?: string | null
+          updated_at?: string
+        }
+        Update: {
+          affect?: string | null
+          appearance?: string | null
+          appointment_id?: string | null
+          attitude?: string | null
+          behavior?: string | null
+          client_dob?: string | null
+          client_id?: string
+          client_name?: string | null
+          clinician_id?: string
+          created_at?: string
+          current_symptoms?: string | null
+          diagnosis?: string[] | null
+          functioning?: string | null
+          homicidal_ideation?: string | null
+          id?: string
+          insight_judgement?: string | null
+          intervention1?: string | null
+          intervention2?: string | null
+          intervention3?: string | null
+          intervention4?: string | null
+          intervention5?: string | null
+          intervention6?: string | null
+          medications?: string | null
+          memory_concentration?: string | null
+          mood?: string | null
+          next_treatment_plan_update?: string | null
+          orientation?: string | null
+          pdf_path?: string | null
+          perception?: string | null
+          persons_in_attendance?: string | null
+          phq9_data?: Json | null
+          phq9_score?: number | null
+          plan_type?: string | null
+          primary_objective?: string | null
+          private_note?: string | null
+          problem_narrative?: string | null
+          prognosis?: string | null
+          progress?: string | null
+          secondary_objective?: string | null
+          session_date?: string
+          session_narrative?: string | null
+          session_type?: string | null
+          speech?: string | null
+          substance_abuse_risk?: string | null
+          suicidal_ideation?: string | null
+          tertiary_objective?: string | null
+          thought_process?: string | null
+          treatment_frequency?: string | null
+          treatment_goal_narrative?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_notes_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_notes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       session_notes_history: {
         Row: {
           appointment_id: string | null
@@ -1024,6 +1198,92 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      treatment_plans: {
+        Row: {
+          client_id: string
+          clinician_id: string
+          created_at: string
+          diagnosis: string[] | null
+          id: string
+          intervention1: string
+          intervention2: string
+          intervention3: string | null
+          intervention4: string | null
+          intervention5: string | null
+          intervention6: string | null
+          next_update: string
+          pdf_path: string | null
+          plan_length: string
+          primary_objective: string
+          private_note: string | null
+          problem_narrative: string | null
+          secondary_objective: string | null
+          start_date: string
+          tertiary_objective: string | null
+          treatment_frequency: string
+          treatment_goal_narrative: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          clinician_id: string
+          created_at?: string
+          diagnosis?: string[] | null
+          id?: string
+          intervention1: string
+          intervention2: string
+          intervention3?: string | null
+          intervention4?: string | null
+          intervention5?: string | null
+          intervention6?: string | null
+          next_update: string
+          pdf_path?: string | null
+          plan_length: string
+          primary_objective: string
+          private_note?: string | null
+          problem_narrative?: string | null
+          secondary_objective?: string | null
+          start_date: string
+          tertiary_objective?: string | null
+          treatment_frequency: string
+          treatment_goal_narrative?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          clinician_id?: string
+          created_at?: string
+          diagnosis?: string[] | null
+          id?: string
+          intervention1?: string
+          intervention2?: string
+          intervention3?: string | null
+          intervention4?: string | null
+          intervention5?: string | null
+          intervention6?: string | null
+          next_update?: string
+          pdf_path?: string | null
+          plan_length?: string
+          primary_objective?: string
+          private_note?: string | null
+          problem_narrative?: string | null
+          secondary_objective?: string | null
+          start_date?: string
+          tertiary_objective?: string | null
+          treatment_frequency?: string
+          treatment_goal_narrative?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_plans_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
