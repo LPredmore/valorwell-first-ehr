@@ -1,4 +1,3 @@
-
 import { useState, useEffect, RefObject } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -71,19 +70,6 @@ export const useSessionNoteForm = ({
     nextTreatmentPlanUpdate: '',
     signature: '',
     privateNote: ''
-  });
-
-  const [editModes, setEditModes] = useState({
-    appearance: false,
-    attitude: false,
-    behavior: false,
-    speech: false,
-    affect: false,
-    thoughtProcess: false,
-    perception: false,
-    orientation: false,
-    memoryConcentration: false,
-    insightJudgement: false
   });
 
   useEffect(() => {
@@ -166,19 +152,6 @@ export const useSessionNoteForm = ({
         nextTreatmentPlanUpdate: clientData.client_nexttreatmentplanupdate || '',
         privateNote: clientData.client_privatenote || ''
       }));
-
-      setEditModes({
-        appearance: clientData.client_appearance && !['Normal Appearance & Grooming'].includes(clientData.client_appearance),
-        attitude: clientData.client_attitude && !['Calm & Cooperative'].includes(clientData.client_attitude),
-        behavior: clientData.client_behavior && !['No unusual behavior or psychomotor changes'].includes(clientData.client_behavior),
-        speech: clientData.client_speech && !['Normal rate/tone/volume w/out pressure'].includes(clientData.client_speech),
-        affect: clientData.client_affect && !['Normal range/congruent'].includes(clientData.client_affect),
-        thoughtProcess: clientData.client_thoughtprocess && !['Goal Oriented/Directed'].includes(clientData.client_thoughtprocess),
-        perception: clientData.client_perception && !['No Hallucinations or Delusions'].includes(clientData.client_perception),
-        orientation: clientData.client_orientation && !['Oriented x3'].includes(clientData.client_orientation),
-        memoryConcentration: clientData.client_memoryconcentration && !['Short & Long Term Intact'].includes(clientData.client_memoryconcentration),
-        insightJudgement: clientData.client_insightjudgement && !['Good'].includes(clientData.client_insightjudgement)
-      });
     }
   }, [clientData, clinicianName]);
 
@@ -232,16 +205,6 @@ export const useSessionNoteForm = ({
         ...formState,
         [field]: value
       });
-    }
-  };
-
-  const toggleEditMode = (field: string, value: string) => {
-    if (value === 'Other') {
-      setEditModes({ ...editModes, [field]: true });
-      handleChange(field, '');
-    } else {
-      setEditModes({ ...editModes, [field]: false });
-      handleChange(field, value);
     }
   };
 
@@ -518,11 +481,9 @@ export const useSessionNoteForm = ({
 
   return {
     formState,
-    editModes,
     isSubmitting,
     phq9Data,
     handleChange,
-    toggleEditMode,
     handleSave
   };
 };

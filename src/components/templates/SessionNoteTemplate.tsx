@@ -23,11 +23,9 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   
   const {
     formState,
-    editModes,
     isSubmitting,
     phq9Data,
     handleChange,
-    toggleEditMode,
     handleSave
   } = useSessionNoteForm({
     clientData,
@@ -72,9 +70,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <div className="pdf-section">
           <MentalStatusSection 
             formState={formState} 
-            editModes={editModes} 
             handleChange={handleChange} 
-            toggleEditMode={toggleEditMode} 
           />
         </div>
         
