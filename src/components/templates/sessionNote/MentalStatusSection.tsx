@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Input } from "@/components/ui/input";
 import {
@@ -11,15 +10,15 @@ import {
 
 interface MentalStatusSectionProps {
   formState: any;
-  editModes: any;
   handleChange: (field: string, value: string) => void;
-  toggleEditMode: (field: string, value: string) => void;
+  editModes?: any;
+  toggleEditMode?: (field: string, value: string) => void;
 }
 
 export const MentalStatusSection: React.FC<MentalStatusSectionProps> = ({
   formState,
-  editModes,
   handleChange,
+  editModes,
   toggleEditMode
 }) => {
   return (
