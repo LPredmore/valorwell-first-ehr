@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -28,6 +27,7 @@ import PatientDocuments from "./pages/PatientDocuments";
 import ProfileSetup from "./pages/ProfileSetup";
 import TherapistSelection from "./pages/TherapistSelection";
 import ClinicianDashboard from "./pages/ClinicianDashboard";
+import ClientHistoryForm from "./pages/ClientHistoryForm";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -76,6 +76,16 @@ const App: React.FC = () => {
                   </ProtectedRoute>
                 } />
                 
+                {/* Modified route: Clinicians can view their own profile */}
+                <Route path="/clinicians/:clinicianId" element={
+                  <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
+                    <ClinicianDetails />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Add this route to your existing routes (location may vary based on your router setup) */}
+                <Route path="/client-history-form" element={<ClientHistoryForm />} />
+                
                 {/* Protected routes - clinician, admin, moderator */}
                 <Route path="/clinician-dashboard" element={
                   <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
@@ -95,14 +105,6 @@ const App: React.FC = () => {
                   </ProtectedRoute>
                 } />
                 
-                {/* Modified route: Clinicians can view their own profile */}
-                <Route path="/clinicians/:clinicianId" element={
-                  <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
-                    <ClinicianDetails />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Protected routes - admin and moderator only */}
                 <Route path="/clients" element={
                   <ProtectedRoute allowedRoles={['admin', 'moderator']}>
                     <Clients />

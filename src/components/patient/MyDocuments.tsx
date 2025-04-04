@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { fetchClinicalDocuments, getDocumentDownloadURL } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/context/UserContext';
+import { useNavigate } from 'react-router-dom';
 
 interface Document {
   id: string;
@@ -18,13 +19,24 @@ interface Document {
   created_at: string;
 }
 
+interface AssignedDocument {
+  id: string;
+  title: string;
+  type: string;
+  required: boolean;
+  status: 'not_started' | 'in_progress' | 'completed';
+  filePath?: string;
+  route?: string;
+}
+
 const MyDocuments = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [assignedDocuments, setAssignedDocuments] = useState<any[]>([]);
+  const [assignedDocuments, setAssignedDocuments] = useState<AssignedDocument[]>([]);
   const [isLoadingAssignedDocs, setIsLoadingAssignedDocs] = useState(false);
   const { toast } = useToast();
   const { userId } = useUser();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadDocuments = async () => {
@@ -47,9 +59,25 @@ const MyDocuments = () => {
       
       // Load assigned documents that need to be filled out
       setIsLoadingAssignedDocs(true);
-      // Mock data for now - this will be replaced with actual API call in the future
+      // For demo purposes - in a real app, this would be an API call
       setTimeout(() => {
-        setAssignedDocuments([]);
+        setAssignedDocuments([
+          {
+            id: '1',
+            title: 'Client History Form',
+            type: 'Intake',
+            required: true,
+            status: 'not_started',
+            route: '/client-history-form'
+          },
+          {
+            id: '2',
+            title: 'Informed Consent',
+            type: 'Legal',
+            required: true,
+            status: 'not_started'
+          },
+        ]);
         setIsLoadingAssignedDocs(false);
       }, 500);
     };
@@ -75,6 +103,17 @@ const MyDocuments = () => {
         title: "Error",
         description: "Failed to open document",
         variant: "destructive"
+      });
+    }
+  };
+
+  const handleFillOutForm = (doc: AssignedDocument) => {
+    if (doc.route) {
+      navigate(doc.route);
+    } else {
+      toast({
+        title: "Coming Soon",
+        description: "This form will be available soon.",
       });
     }
   };
@@ -132,11 +171,11 @@ const MyDocuments = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         {doc.status === 'completed' ? (
-                          <Button variant="outline" size="sm" onClick={() => handleViewDocument(doc.filePath)}>
+                          <Button variant="outline" size="sm" onClick={() => doc.filePath && handleViewDocument(doc.filePath)}>
                             <Eye className="h-4 w-4 mr-1" /> View
                           </Button>
                         ) : (
-                          <Button variant="default" size="sm">
+                          <Button variant="default" size="sm" onClick={() => handleFillOutForm(doc)}>
                             Fill Out
                           </Button>
                         )}
