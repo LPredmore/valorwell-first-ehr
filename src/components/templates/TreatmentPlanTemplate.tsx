@@ -12,7 +12,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClientDetails } from "@/types/client";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/hooks/use-toast";
 import { supabase, formatDateForDB, getCurrentUser } from "@/integrations/supabase/client";
 import { DiagnosisSelector } from "@/components/DiagnosisSelector";
 import { generateAndSavePDF } from "@/utils/pdfUtils";
