@@ -45,6 +45,15 @@ interface PastSpouse {
   relationship: string;
 }
 
+// Symptom categories from the image
+interface SymptomCategories {
+  mood: string[];
+  physical: string[];
+  behavioral: string[];
+  cognitive: string[];
+  lifeStressors: string[];
+}
+
 const ClientHistoryTemplate: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -69,8 +78,79 @@ const ClientHistoryTemplate: React.FC = () => {
   const [showMedications, setShowMedications] = useState(false);
   const [sameHousehold, setSameHousehold] = useState(false);
   const [isMarried, setIsMarried] = useState(false);
+  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   
   const form = useForm();
+
+  // Define the symptom categories and options based on the image
+  const symptoms: SymptomCategories = {
+    mood: [
+      "Depressed Mood", 
+      "Anxiety/Worry", 
+      "Fear", 
+      "Hopelessness", 
+      "Mood Swings", 
+      "Irritability", 
+      "Shyness", 
+      "Tearful/Crying Spells", 
+      "Low Self-Esteem", 
+      "Low Motivation", 
+      "Feelings of Guilt", 
+      "Feeling Lonely", 
+      "Feeling Unfairly Treated", 
+      "Feeling Misunderstood", 
+      "Feeling Inferior", 
+      "Disappointed", 
+      "Perfectionism"
+    ],
+    physical: [
+      "Increased Appetite", 
+      "Decreased Appetite", 
+      "Changes in Weight", 
+      "Difficulty Sleeping", 
+      "Excessive Sleeping", 
+      "Low Energy", 
+      "Frequent Pain", 
+      "Nausea", 
+      "Sexual Problems", 
+      "Eating Disorder", 
+      "Alcohol Dependency", 
+      "Recreational Drug Use", 
+      "Physical Illness"
+    ],
+    behavioral: [
+      "Angry Outbursts", 
+      "Isolation from Others", 
+      "Social Withdrawal", 
+      "Impulsive Behavior", 
+      "Relationship Difficulties", 
+      "Feeling Abandoned", 
+      "Boredom", 
+      "Unusual/Increased Sensitivity", 
+      "Suspicion", 
+      "Thoughts of Harming Yourself", 
+      "Thoughts of Harming Others"
+    ],
+    cognitive: [
+      "Trouble Concentrating", 
+      "Concentration Problems", 
+      "Difficulty Making Decisions", 
+      "Memory Problems", 
+      "Feeling Confused", 
+      "Unusual Thoughts", 
+      "Irrational Thoughts", 
+      "Hearing Strange Voices"
+    ],
+    lifeStressors: [
+      "Legal Difficulties", 
+      "Work/School Problems", 
+      "Money Problems", 
+      "Mourning", 
+      "Boredom", 
+      "Religious Concerns", 
+      "Specific Fear"
+    ]
+  };
 
   const educationOptions = [
     "Less than High School",
@@ -135,6 +215,14 @@ const ClientHistoryTemplate: React.FC = () => {
       ...pastSpouses,
       { id: Date.now().toString(), name: '', personality: '', relationship: '' }
     ]);
+  };
+
+  const handleSymptomChange = (symptom: string, isChecked: boolean) => {
+    if (isChecked) {
+      setSelectedSymptoms([...selectedSymptoms, symptom]);
+    } else {
+      setSelectedSymptoms(selectedSymptoms.filter(s => s !== symptom));
+    }
   };
 
   const handleSubmit = () => {
@@ -241,15 +329,94 @@ const ClientHistoryTemplate: React.FC = () => {
             
             <div>
               <Label className="mb-2 block">Please check any of the following you have experienced in the past six months</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                {/* Placeholder checkboxes - will be populated with actual items later */}
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="symptom1" />
-                  <Label htmlFor="symptom1">Placeholder symptom</Label>
+              
+              {/* Mood/Emotions Section */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium mb-2">Mood/Emotions</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {symptoms.mood.map((symptom) => (
+                    <div key={symptom} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`mood-${symptom}`} 
+                        onCheckedChange={(checked) => 
+                          handleSymptomChange(symptom, checked === true)
+                        }
+                      />
+                      <Label htmlFor={`mood-${symptom}`}>{symptom}</Label>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="symptom2" />
-                  <Label htmlFor="symptom2">Placeholder symptom</Label>
+              </div>
+              
+              {/* Physical Section */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium mb-2">Physical</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {symptoms.physical.map((symptom) => (
+                    <div key={symptom} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`physical-${symptom}`} 
+                        onCheckedChange={(checked) => 
+                          handleSymptomChange(symptom, checked === true)
+                        }
+                      />
+                      <Label htmlFor={`physical-${symptom}`}>{symptom}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Behavioral/Social Section */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium mb-2">Behavioral/Social</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {symptoms.behavioral.map((symptom) => (
+                    <div key={symptom} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`behavioral-${symptom}`} 
+                        onCheckedChange={(checked) => 
+                          handleSymptomChange(symptom, checked === true)
+                        }
+                      />
+                      <Label htmlFor={`behavioral-${symptom}`}>{symptom}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Cognitive Section */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium mb-2">Cognitive</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {symptoms.cognitive.map((symptom) => (
+                    <div key={symptom} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`cognitive-${symptom}`} 
+                        onCheckedChange={(checked) => 
+                          handleSymptomChange(symptom, checked === true)
+                        }
+                      />
+                      <Label htmlFor={`cognitive-${symptom}`}>{symptom}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Life Stressors Section */}
+              <div>
+                <h4 className="text-md font-medium mb-2">Life Stressors</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {symptoms.lifeStressors.map((symptom) => (
+                    <div key={symptom} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`stressor-${symptom}`} 
+                        onCheckedChange={(checked) => 
+                          handleSymptomChange(symptom, checked === true)
+                        }
+                      />
+                      <Label htmlFor={`stressor-${symptom}`}>{symptom}</Label>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
