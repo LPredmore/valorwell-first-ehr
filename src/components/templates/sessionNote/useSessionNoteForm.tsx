@@ -1,3 +1,4 @@
+
 import { useState, useEffect, RefObject } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -257,11 +258,14 @@ export const useSessionNoteForm = ({
     setIsSubmitting(true);
 
     try {
+      // Format diagnosis from string to array if needed
       let client_diagnosis: string[] = [];
       if (typeof formState.diagnosis === 'string' && formState.diagnosis.trim()) {
         client_diagnosis = formState.diagnosis.split(',').map(d => d.trim()).filter(Boolean);
       }
 
+      // Step 1: Update client data in clients table
+      console.log("Updating client data...");
       const clientUpdates = {
         client_appearance: formState.appearance,
         client_attitude: formState.attitude,
@@ -277,7 +281,6 @@ export const useSessionNoteForm = ({
         client_substanceabuserisk: formState.substanceAbuseRisk,
         client_suicidalideation: formState.suicidalIdeation,
         client_homicidalideation: formState.homicidalIdeation,
-
         client_primaryobjective: formState.primaryObjective,
         client_secondaryobjective: formState.secondaryObjective,
         client_tertiaryobjective: formState.tertiaryObjective,
@@ -287,7 +290,6 @@ export const useSessionNoteForm = ({
         client_intervention4: formState.intervention4,
         client_intervention5: formState.intervention5,
         client_intervention6: formState.intervention6,
-
         client_functioning: formState.functioning,
         client_prognosis: formState.prognosis,
         client_progress: formState.progress,
@@ -298,7 +300,6 @@ export const useSessionNoteForm = ({
         client_personsinattendance: formState.personsInAttendance,
         client_diagnosis: client_diagnosis,
         client_privatenote: formState.privateNote,
-
         client_nexttreatmentplanupdate: formState.nextTreatmentPlanUpdate,
       };
 
@@ -310,7 +311,10 @@ export const useSessionNoteForm = ({
       if (error) {
         throw error;
       }
+      
+      console.log("Client data updated successfully");
 
+      // Step 2: Handle session_notes table update or creation
       let pdfPath = null;
       let sessionDate = null;
       
@@ -320,6 +324,8 @@ export const useSessionNoteForm = ({
         sessionDate = new Date().toISOString().split('T')[0];
       }
       
+      // Check if a session note already exists for this appointment
+      console.log("Checking for existing session note...");
       const { data: existingNote, error: fetchError } = await supabase
         .from('session_notes')
         .select('id')
@@ -331,6 +337,7 @@ export const useSessionNoteForm = ({
         console.error('Error checking for existing session note:', fetchError);
       }
       
+      // Prepare data for session_notes table
       const sessionNoteData = {
         client_id: clientData.id,
         clinician_id: appointment?.clinician_id || null,
@@ -382,8 +389,11 @@ export const useSessionNoteForm = ({
         phq9_score: phq9Data?.total_score || null
       };
 
+      // Step 3: Update or insert session note
       let sessionNoteId;
+      console.log("Saving session note data...");
       if (existingNote?.id) {
+        console.log("Updating existing session note:", existingNote.id);
         const { error: updateError } = await supabase
           .from('session_notes')
           .update(sessionNoteData)
@@ -398,8 +408,10 @@ export const useSessionNoteForm = ({
           });
         } else {
           sessionNoteId = existingNote.id;
+          console.log("Session note updated successfully");
         }
       } else {
+        console.log("Creating new session note");
         const { data: newNote, error: insertError } = await supabase
           .from('session_notes')
           .insert(sessionNoteData)
@@ -415,10 +427,13 @@ export const useSessionNoteForm = ({
           });
         } else if (newNote) {
           sessionNoteId = newNote.id;
+          console.log("Session note created successfully with ID:", sessionNoteId);
         }
       }
 
+      // Step 4: Update appointment status to Documented
       if (appointment?.id) {
+        console.log("Updating appointment status to Documented");
         const { error: appointmentError } = await supabase
           .from('appointments')
           .update({ status: 'Documented' })
@@ -436,7 +451,9 @@ export const useSessionNoteForm = ({
         }
       }
 
+      // Step 5: Generate and save PDF
       if (contentRef?.current && sessionDate) {
+        console.log("Generating PDF...");
         const clientName = formState.patientName || 'Unknown Client';
         const documentInfo = {
           clientId: clientData.id,
@@ -450,6 +467,7 @@ export const useSessionNoteForm = ({
           pdfPath = await generateAndSavePDF('session-note-content', documentInfo);
           
           if (pdfPath && sessionNoteId) {
+            console.log("Updating session note with PDF path:", pdfPath);
             await supabase
               .from('session_notes')
               .update({ pdf_path: pdfPath })
