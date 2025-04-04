@@ -78,6 +78,7 @@ const ClientHistoryTemplate: React.FC = () => {
   const [isMarried, setIsMarried] = useState(false);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [selectedChildhoodExperiences, setSelectedChildhoodExperiences] = useState<string[]>([]);
+  const [selectedMedicalConditions, setSelectedMedicalConditions] = useState<string[]>([]);
 
   const form = useForm();
 
@@ -204,6 +205,41 @@ const ClientHistoryTemplate: React.FC = () => {
     "Anger Problems"
   ];
 
+  const medicalConditions = [
+    "Recent Surgery",
+    "Thyroid Issues",
+    "Chronic Pain",
+    "Hormone Problems",
+    "Head Injury",
+    "Treatment for Drug/Alcohol Abuse",
+    "Headaches",
+    "Infertility",
+    "Seizures",
+    "Neurological Problems",
+    "Miscarriage",
+    "High blood pressure",
+    "Gastritis or esophagitis",
+    "Angina or chest pain",
+    "Irritable bowel",
+    "Heart attack",
+    "Bone or joint problems",
+    "Kidney-related issues",
+    "Chronic fatigue",
+    "Heart Conditions",
+    "Diabetes",
+    "Cancer",
+    "Dizziness",
+    "Faintness",
+    "Urinary Tract Problems",
+    "Fibromyalgia",
+    "Numbness & Tingling",
+    "Shortness of Breath/Asthma",
+    "Hepatitis",
+    "Arthritis",
+    "HIV/AIDS",
+    "Other"
+  ];
+
   const handleAddFamily = () => {
     setFamily([
       ...family,
@@ -252,6 +288,14 @@ const ClientHistoryTemplate: React.FC = () => {
       setSelectedChildhoodExperiences([...selectedChildhoodExperiences, experience]);
     } else {
       setSelectedChildhoodExperiences(selectedChildhoodExperiences.filter(exp => exp !== experience));
+    }
+  };
+
+  const handleMedicalConditionChange = (condition: string, isChecked: boolean) => {
+    if (isChecked) {
+      setSelectedMedicalConditions([...selectedMedicalConditions, condition]);
+    } else {
+      setSelectedMedicalConditions(selectedMedicalConditions.filter(c => c !== condition));
     }
   };
 
@@ -890,16 +934,18 @@ const ClientHistoryTemplate: React.FC = () => {
             
             <div>
               <Label className="mb-2 block">Please Check any of the following that apply</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                {/* Placeholder checkboxes - will be populated with actual items later */}
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="health1" />
-                  <Label htmlFor="health1">Placeholder condition</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="health2" />
-                  <Label htmlFor="health2">Placeholder condition</Label>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                {medicalConditions.map((condition) => (
+                  <div key={condition} className="flex items-center space-x-2">
+                    <Checkbox 
+                      id={`medical-${condition}`} 
+                      onCheckedChange={(checked) => 
+                        handleMedicalConditionChange(condition, checked === true)
+                      }
+                    />
+                    <Label htmlFor={`medical-${condition}`}>{condition}</Label>
+                  </div>
+                ))}
               </div>
             </div>
             
