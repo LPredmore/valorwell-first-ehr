@@ -1,4 +1,3 @@
-
 import { useState, useEffect, RefObject } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -263,7 +262,7 @@ export const useSessionNoteForm = ({
         client_diagnosis = formState.diagnosis.split(',').map(d => d.trim()).filter(Boolean);
       }
 
-      const updates = {
+      const clientUpdates = {
         client_appearance: formState.appearance,
         client_attitude: formState.attitude,
         client_behavior: formState.behavior,
@@ -305,11 +304,118 @@ export const useSessionNoteForm = ({
 
       const { error } = await supabase
         .from('clients')
-        .update(updates)
+        .update(clientUpdates)
         .eq('id', clientData.id);
 
       if (error) {
         throw error;
+      }
+
+      let pdfPath = null;
+      let sessionDate = null;
+      
+      if (appointment?.date) {
+        sessionDate = new Date(appointment.date).toISOString().split('T')[0];
+      } else {
+        sessionDate = new Date().toISOString().split('T')[0];
+      }
+      
+      const { data: existingNote, error: fetchError } = await supabase
+        .from('session_notes')
+        .select('id')
+        .eq('client_id', clientData.id)
+        .eq('appointment_id', appointment?.id || null)
+        .maybeSingle();
+        
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error checking for existing session note:', fetchError);
+      }
+      
+      const sessionNoteData = {
+        client_id: clientData.id,
+        clinician_id: appointment?.clinician_id || null,
+        appointment_id: appointment?.id || null,
+        session_date: sessionDate,
+        patient_name: formState.patientName,
+        patient_dob: formState.patientDOB,
+        clinician_name: formState.clinicianName,
+        diagnosis: client_diagnosis,
+        plan_type: formState.planType,
+        treatment_frequency: formState.treatmentFrequency,
+        medications: formState.medications,
+        session_type: formState.sessionType,
+        persons_in_attendance: formState.personsInAttendance,
+        appearance: formState.appearance,
+        attitude: formState.attitude,
+        behavior: formState.behavior,
+        speech: formState.speech,
+        affect: formState.affect,
+        thought_process: formState.thoughtProcess,
+        perception: formState.perception,
+        orientation: formState.orientation,
+        memory_concentration: formState.memoryConcentration,
+        insight_judgement: formState.insightJudgement,
+        mood: formState.mood,
+        substance_abuse_risk: formState.substanceAbuseRisk,
+        suicidal_ideation: formState.suicidalIdeation,
+        homicidal_ideation: formState.homicidalIdeation,
+        primary_objective: formState.primaryObjective,
+        intervention1: formState.intervention1,
+        intervention2: formState.intervention2,
+        secondary_objective: formState.secondaryObjective,
+        intervention3: formState.intervention3,
+        intervention4: formState.intervention4,
+        tertiary_objective: formState.tertiaryObjective,
+        intervention5: formState.intervention5,
+        intervention6: formState.intervention6,
+        current_symptoms: formState.currentSymptoms,
+        functioning: formState.functioning,
+        prognosis: formState.prognosis,
+        progress: formState.progress,
+        problem_narrative: formState.problemNarrative,
+        treatment_goal_narrative: formState.treatmentGoalNarrative,
+        session_narrative: formState.sessionNarrative,
+        next_treatment_plan_update: formState.nextTreatmentPlanUpdate,
+        signature: formState.signature,
+        private_note: formState.privateNote,
+        phq9_data: phq9Data,
+        phq9_score: phq9Data?.total_score || null
+      };
+
+      let sessionNoteId;
+      if (existingNote?.id) {
+        const { error: updateError } = await supabase
+          .from('session_notes')
+          .update(sessionNoteData)
+          .eq('id', existingNote.id);
+          
+        if (updateError) {
+          console.error('Error updating session note:', updateError);
+          toast({
+            title: "Warning",
+            description: "Updated client data but failed to update session note.",
+            variant: "default",
+          });
+        } else {
+          sessionNoteId = existingNote.id;
+        }
+      } else {
+        const { data: newNote, error: insertError } = await supabase
+          .from('session_notes')
+          .insert(sessionNoteData)
+          .select('id')
+          .single();
+          
+        if (insertError) {
+          console.error('Error creating session note:', insertError);
+          toast({
+            title: "Warning",
+            description: "Updated client data but failed to create session note record.",
+            variant: "default",
+          });
+        } else if (newNote) {
+          sessionNoteId = newNote.id;
+        }
       }
 
       if (appointment?.id) {
@@ -330,9 +436,7 @@ export const useSessionNoteForm = ({
         }
       }
 
-      // Generate and save PDF
-      if (contentRef?.current && appointment?.date) {
-        const sessionDate = new Date(appointment.date).toISOString().split('T')[0];
+      if (contentRef?.current && sessionDate) {
         const clientName = formState.patientName || 'Unknown Client';
         const documentInfo = {
           clientId: clientData.id,
@@ -343,7 +447,15 @@ export const useSessionNoteForm = ({
         };
 
         try {
-          const pdfPath = await generateAndSavePDF('session-note-content', documentInfo);
+          pdfPath = await generateAndSavePDF('session-note-content', documentInfo);
+          
+          if (pdfPath && sessionNoteId) {
+            await supabase
+              .from('session_notes')
+              .update({ pdf_path: pdfPath })
+              .eq('id', sessionNoteId);
+          }
+          
           if (pdfPath) {
             console.log('PDF saved successfully:', pdfPath);
             toast({

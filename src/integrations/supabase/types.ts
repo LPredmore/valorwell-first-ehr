@@ -922,6 +922,7 @@ export type Database = {
           client_id: string
           client_name: string | null
           clinician_id: string
+          clinician_name: string | null
           created_at: string
           current_symptoms: string | null
           diagnosis: string[] | null
@@ -940,6 +941,8 @@ export type Database = {
           mood: string | null
           next_treatment_plan_update: string | null
           orientation: string | null
+          patient_dob: string | null
+          patient_name: string | null
           pdf_path: string | null
           perception: string | null
           persons_in_attendance: string | null
@@ -955,6 +958,7 @@ export type Database = {
           session_date: string
           session_narrative: string | null
           session_type: string | null
+          signature: string | null
           speech: string | null
           substance_abuse_risk: string | null
           suicidal_ideation: string | null
@@ -974,6 +978,7 @@ export type Database = {
           client_id: string
           client_name?: string | null
           clinician_id: string
+          clinician_name?: string | null
           created_at?: string
           current_symptoms?: string | null
           diagnosis?: string[] | null
@@ -992,6 +997,8 @@ export type Database = {
           mood?: string | null
           next_treatment_plan_update?: string | null
           orientation?: string | null
+          patient_dob?: string | null
+          patient_name?: string | null
           pdf_path?: string | null
           perception?: string | null
           persons_in_attendance?: string | null
@@ -1007,6 +1014,7 @@ export type Database = {
           session_date: string
           session_narrative?: string | null
           session_type?: string | null
+          signature?: string | null
           speech?: string | null
           substance_abuse_risk?: string | null
           suicidal_ideation?: string | null
@@ -1026,6 +1034,7 @@ export type Database = {
           client_id?: string
           client_name?: string | null
           clinician_id?: string
+          clinician_name?: string | null
           created_at?: string
           current_symptoms?: string | null
           diagnosis?: string[] | null
@@ -1044,6 +1053,8 @@ export type Database = {
           mood?: string | null
           next_treatment_plan_update?: string | null
           orientation?: string | null
+          patient_dob?: string | null
+          patient_name?: string | null
           pdf_path?: string | null
           perception?: string | null
           persons_in_attendance?: string | null
@@ -1059,6 +1070,7 @@ export type Database = {
           session_date?: string
           session_narrative?: string | null
           session_type?: string | null
+          signature?: string | null
           speech?: string | null
           substance_abuse_risk?: string | null
           suicidal_ideation?: string | null
