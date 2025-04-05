@@ -1,6 +1,6 @@
 
 import { format, parse, parseISO } from 'date-fns';
-import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
+import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 /**
  * Map of common timezone display names to IANA format
@@ -57,6 +57,110 @@ export const ensureIANATimeZone = (timeZone: string): string => {
     return 'America/Chicago'; // Safe fallback, changed to match our app default
   }
 };
+
+/**
+ * NEW: Convert a local date and time to UTC
+ * Use this to convert user's local time to UTC for storage in database
+ * 
+ * @param date Date string or Date object in local timezone
+ * @param time Time string in 24-hour format (HH:MM or HH:MM:SS)
+ * @param timezone Source timezone (IANA format or display name)
+ * @returns ISO formatted UTC datetime string
+ */
+export const toUTC = (
+  date: string | Date,
+  time: string,
+  timezone: string
+): string => {
+  try {
+    const ianaTimeZone = ensureIANATimeZone(timezone);
+    
+    // Parse the date
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    
+    // Parse the time
+    const [hours, minutes, seconds = '00'] = time.split(':');
+    
+    // Create a full datetime by combining the date and time in the source timezone
+    const year = dateObj.getFullYear();
+    const month = dateObj.getMonth();
+    const day = dateObj.getDate();
+    
+    // Create the datetime in the local timezone
+    const localDateTime = new Date(
+      year, 
+      month,
+      day,
+      parseInt(hours),
+      parseInt(minutes),
+      parseInt(seconds)
+    );
+    
+    // Convert from local timezone to UTC
+    const utcTime = fromZonedTime(localDateTime, ianaTimeZone);
+    
+    // Return as ISO string for storage
+    return utcTime.toISOString();
+  } catch (error) {
+    console.error('Error converting to UTC:', error, { date, time, timezone });
+    // Return a fallback value
+    return new Date().toISOString();
+  }
+};
+
+/**
+ * NEW: Convert UTC datetime to local time in specified timezone
+ * Use this to convert stored UTC time to user's local time
+ * 
+ * @param utcDatetime UTC datetime string or Date object
+ * @param timezone Target timezone (IANA format or display name)
+ * @returns Date object in the target timezone
+ */
+export const fromUTC = (
+  utcDatetime: string | Date,
+  timezone: string
+): Date => {
+  try {
+    const ianaTimeZone = ensureIANATimeZone(timezone);
+    
+    // Parse the UTC datetime
+    const utcDate = typeof utcDatetime === 'string' ? new Date(utcDatetime) : utcDatetime;
+    
+    // Convert to target timezone
+    return toZonedTime(utcDate, ianaTimeZone);
+  } catch (error) {
+    console.error('Error converting from UTC:', error, { utcDatetime, timezone });
+    // Return current time as fallback
+    return new Date();
+  }
+};
+
+/**
+ * NEW: Format a UTC time for display to the user in their timezone
+ * 
+ * @param utcDatetime UTC datetime string or Date object
+ * @param timezone User's timezone (IANA format or display name)
+ * @param formatStr Optional format string (defaults to 'h:mm a')
+ * @returns Formatted time string in user's timezone
+ */
+export const formatUTCTimeForUser = (
+  utcDatetime: string | Date,
+  timezone: string,
+  formatStr: string = 'h:mm a'
+): string => {
+  try {
+    const localTime = fromUTC(utcDatetime, timezone);
+    const ianaTimeZone = ensureIANATimeZone(timezone);
+    
+    return formatInTimeZone(localTime, ianaTimeZone, formatStr);
+  } catch (error) {
+    console.error('Error formatting UTC time for user:', error, { utcDatetime, timezone });
+    // Return a fallback formatted string
+    return format(new Date(), formatStr);
+  }
+};
+
+// === Existing functions below this line ===
 
 /**
  * Converts a UTC date/time to the user's timezone
