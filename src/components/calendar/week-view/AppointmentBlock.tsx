@@ -2,7 +2,6 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { AppointmentBlock as AppointmentBlockType, Appointment } from './useWeekViewData';
-import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
 
 interface AppointmentBlockProps {
   appointment: AppointmentBlockType;
@@ -36,10 +35,6 @@ const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
     }
   };
 
-  // Format the appointment times using formatDateToTime12Hour for consistent display
-  const startTimeFormatted = formatDateToTime12Hour(appointment.start);
-  const endTimeFormatted = formatDateToTime12Hour(appointment.end);
-
   return (
     <div 
       className="absolute left-0.5 right-0.5 z-10 rounded-md border border-blue-400 bg-blue-50 p-1 overflow-hidden cursor-pointer hover:bg-blue-100 transition-colors shadow-sm"
@@ -54,7 +49,7 @@ const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
         <div className="font-medium truncate">{appointment.clientName}</div>
         {height >= 40 && (
           <div className="text-[10px] text-gray-500 mt-0.5">
-            {startTimeFormatted} - {endTimeFormatted}
+            {format(appointment.start, 'h:mm a')} - {format(appointment.end, 'h:mm a')}
           </div>
         )}
       </div>

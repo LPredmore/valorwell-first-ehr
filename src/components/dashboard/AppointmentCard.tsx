@@ -4,11 +4,7 @@ import { format, parseISO } from 'date-fns';
 import { Calendar, Clock, UserCircle, Video, FileText, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  formatTime12Hour, 
-  formatTimeInUserTimeZone, 
-  formatUTCTimeForUser 
-} from '@/utils/timeZoneUtils';
+import { formatTime12Hour, formatTimeInUserTimeZone } from '@/utils/timeZoneUtils';
 
 export interface AppointmentCardProps {
   appointment: {
@@ -45,7 +41,6 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   // Format time for display in user's time zone
   const formatTimeDisplay = (timeString: string) => {
     try {
-      // Use formatTimeInUserTimeZone which properly handles timezone conversion
       return formatTimeInUserTimeZone(timeString, userTimeZone, 'h:mm a');
     } catch (error) {
       console.error('Error formatting time with time zone:', error);
