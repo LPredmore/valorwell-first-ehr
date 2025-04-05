@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { formatTime12Hour, toUTC, fromUTC, ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import { 
+  formatTime12Hour, 
+  toUTC, 
+  fromUTC, 
+  ensureIANATimeZone,
+  formatInTimeZone,
+  formatUTCTimeForUser
+} from '@/utils/timeZoneUtils';
 
 interface EditAppointmentDialogProps {
   isOpen: boolean;
@@ -50,6 +56,9 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
   };
 
   const timeOptions = generateTimeOptions();
+  
+  // Get the clinician's timezone (In a production app, this would be fetched from user settings)
+  const clinicianTimeZone = ensureIANATimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
   useEffect(() => {
     if (appointment) {
@@ -91,9 +100,9 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       const formattedDate = format(selectedDate, 'yyyy-MM-dd');
       const endTime = calculateEndTime(startTime);
 
-      // Get the clinician's timezone (fallback to system timezone if not available)
-      // In a complete implementation, you would fetch this from the clinician's profile
-      const clinicianTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      // Store the time in database format (will be treated as UTC for consistency)
+      // Note: In a future migration we might store actual UTC timestamps, but for now
+      // we are keeping the existing database schema with separate date and time fields
 
       if (mode === 'single') {
         const updateData: any = {
@@ -148,6 +157,17 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Format the time for display in the time selection dropdown
+  const formatTimeForDisplay = (timeStr: string): string => {
+    try {
+      // Format the time in the clinician's time zone for display
+      return formatTime12Hour(timeStr);
+    } catch (error) {
+      console.error('Error formatting time for display:', error);
+      return timeStr; // fallback
     }
   };
 
@@ -207,7 +227,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
                 <SelectContent>
                   {timeOptions.map((time) => (
                     <SelectItem key={time} value={time}>
-                      {formatTime12Hour(time)}
+                      {formatTimeForDisplay(time)}
                     </SelectItem>
                   ))}
                 </SelectContent>
