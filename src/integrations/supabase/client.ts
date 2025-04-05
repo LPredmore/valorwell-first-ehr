@@ -148,6 +148,7 @@ export interface PHQ9Assessment {
   question_9: number;
   total_score: number;
   additional_notes?: string;
+  appointment_id?: string; // Added appointment_id field
 }
 
 // New function to save PHQ-9 assessment
@@ -180,6 +181,23 @@ export const fetchPHQ9Assessments = async (clientId: string) => {
   } catch (error) {
     console.error('Error fetching PHQ9 assessments:', error);
     return [];
+  }
+};
+
+// New function to check if a PHQ-9 assessment exists for a specific appointment
+export const checkPHQ9ForAppointment = async (appointmentId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('phq9_assessments')
+      .select('*')
+      .eq('appointment_id', appointmentId)
+      .maybeSingle();
+      
+    if (error) throw error;
+    return { exists: !!data, data };
+  } catch (error) {
+    console.error('Error checking PHQ9 for appointment:', error);
+    return { exists: false, error };
   }
 };
 

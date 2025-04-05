@@ -6,7 +6,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import WeekView from '@/components/calendar/WeekView';
 import AppointmentBookingDialog from './AppointmentBookingDialog';
-import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
+import { supabase, getOrCreateVideoRoom, checkPHQ9ForAppointment } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, startOfToday, isBefore, isToday } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
@@ -172,7 +172,20 @@ const MyPortal: React.FC<MyPortalProps> = ({
 
   const handleStartSession = async (appointmentId: string | number) => {
     setPendingAppointmentId(appointmentId);
-    setShowPHQ9(true);
+    
+    try {
+      const { exists: phq9Exists } = await checkPHQ9ForAppointment(appointmentId.toString());
+      
+      if (phq9Exists) {
+        console.log('PHQ-9 assessment already exists for appointment:', appointmentId);
+        handlePHQ9Complete();
+      } else {
+        setShowPHQ9(true);
+      }
+    } catch (error) {
+      console.error('Error checking for existing PHQ-9 assessment:', error);
+      setShowPHQ9(true);
+    }
   };
 
   const handlePHQ9Complete = async () => {
@@ -334,7 +347,13 @@ const MyPortal: React.FC<MyPortalProps> = ({
 
       <AppointmentBookingDialog open={isBookingOpen} onOpenChange={setIsBookingOpen} clinicianId={clientData?.client_assigned_therapist || null} clinicianName={clinicianName} clientId={clientData?.id || null} onAppointmentBooked={handleBookingComplete} />
 
-      {showPHQ9 && <PHQ9Template onClose={() => setShowPHQ9(false)} clinicianName={clinicianName || "Your Therapist"} clientData={clientData} onComplete={handlePHQ9Complete} />}
+      {showPHQ9 && <PHQ9Template 
+        onClose={() => setShowPHQ9(false)} 
+        clinicianName={clinicianName || "Your Therapist"} 
+        clientData={clientData}
+        appointmentId={pendingAppointmentId}
+        onComplete={handlePHQ9Complete} 
+      />}
 
       {videoRoomUrl && <VideoChat roomUrl={videoRoomUrl} isOpen={isVideoSessionOpen} onClose={handleCloseVideoSession} />}
     </div>;

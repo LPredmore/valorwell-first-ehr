@@ -25,6 +25,7 @@ interface PHQ9TemplateProps {
   clinicianName: string;
   clientData?: ClientDetails | null;
   onComplete?: () => void; // Callback for when assessment is completed
+  appointmentId?: string | number | null; // Added appointmentId prop
 }
 
 // PHQ-9 questions
@@ -48,7 +49,7 @@ const answerOptions = [
   { value: 3, label: "Nearly every day" }
 ];
 
-const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, clientData, onComplete }) => {
+const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, clientData, onComplete, appointmentId }) => {
   const { toast } = useToast();
   const [scores, setScores] = useState<number[]>(new Array(9).fill(0));
   const [additionalNotes, setAdditionalNotes] = useState("");
@@ -101,7 +102,8 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
           question_8: scores[7],
           question_9: scores[8],
           total_score: totalScore,
-          additional_notes: additionalNotes
+          additional_notes: additionalNotes,
+          appointment_id: appointmentId ? appointmentId.toString() : undefined // Add appointment ID if available
         };
         
         // Save the assessment to the database
