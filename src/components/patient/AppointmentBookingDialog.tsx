@@ -1,10 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, parse, addDays, isSameDay, isAfter, differenceInCalendarDays } from 'date-fns';
 import { Calendar as CalendarIcon, Clock, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { formatTimeInUserTimeZone, getUserTimeZone } from '@/utils/timeZoneUtils';
+import { 
+  formatTimeInUserTimeZone, 
+  getUserTimeZone, 
+  toUTC, 
+  fromUTC,
+  formatUTCTimeForUser 
+} from '@/utils/timeZoneUtils';
 
 import { 
   Dialog, 
@@ -229,7 +234,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
       return;
     }
 
-    // Add validation to ensure the selected date meets the minimum days ahead requirement
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const daysFromToday = differenceInCalendarDays(selectedDate, today);

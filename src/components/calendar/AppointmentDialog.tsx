@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
+import { toUTC, ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
 interface Client {
   id: string;
@@ -97,6 +98,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
     }
 
     try {
+      // Parse time components
       const startTimeParts = startTime.split(':').map(Number);
       const startDateTime = new Date();
       startDateTime.setHours(startTimeParts[0], startTimeParts[1], 0, 0);
@@ -106,21 +108,31 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
       
       const endTime = `${endDateTime.getHours().toString().padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}`;
 
+      // Get the clinician's timezone (fallback to system timezone if not available)
+      // In a complete implementation, you would fetch this from the clinician's profile
+      const clinicianTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
       if (isRecurring) {
         const recurringGroupId = uuidv4(); // Generate a unique ID to link recurring appointments
         const recurringDates = generateRecurringDates(selectedDate, recurrenceType);
         
-        const appointmentsToInsert = recurringDates.map(date => ({
-          client_id: selectedClientId,
-          clinician_id: selectedClinicianId,
-          date: format(date, 'yyyy-MM-dd'),
-          start_time: startTime,
-          end_time: endTime,
-          type: "Therapy Session",
-          status: 'scheduled',
-          appointment_recurring: recurrenceType,
-          recurring_group_id: recurringGroupId
-        }));
+        const appointmentsToInsert = recurringDates.map(date => {
+          // Convert local date and time to UTC for each recurring appointment
+          // But we only need to store the date and time parts separately
+          const formattedDate = format(date, 'yyyy-MM-dd');
+          
+          return {
+            client_id: selectedClientId,
+            clinician_id: selectedClinicianId,
+            date: formattedDate,
+            start_time: startTime,
+            end_time: endTime,
+            type: "Therapy Session",
+            status: 'scheduled',
+            appointment_recurring: recurrenceType,
+            recurring_group_id: recurringGroupId
+          };
+        });
 
         const { data, error } = await supabase
           .from('appointments')

@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { formatTime12Hour } from '@/utils/timeZoneUtils';
+import { formatTime12Hour, toUTC, fromUTC, ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
 interface EditAppointmentDialogProps {
   isOpen: boolean;
@@ -90,6 +90,10 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
     try {
       const formattedDate = format(selectedDate, 'yyyy-MM-dd');
       const endTime = calculateEndTime(startTime);
+
+      // Get the clinician's timezone (fallback to system timezone if not available)
+      // In a complete implementation, you would fetch this from the clinician's profile
+      const clinicianTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
       if (mode === 'single') {
         const updateData: any = {
