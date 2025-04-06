@@ -4,15 +4,21 @@ import { Template, Font } from '@pdfme/common';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Standard fonts available in PDFme
+ * Load fonts for PDFme
+ * 
+ * @returns A promise that resolves to the fonts object
  */
-const fonts: Record<string, Font> = {
-  Roboto: {
-    data: fetch('https://pdf-templates.s3.amazonaws.com/Roboto-Regular.ttf').then(res => 
-      res.arrayBuffer()
-    ),
-    fallback: true,
-  },
+const loadFonts = async (): Promise<Record<string, Font>> => {
+  // Fetch the Roboto font asynchronously
+  const robotoFontResponse = await fetch('https://pdf-templates.s3.amazonaws.com/Roboto-Regular.ttf');
+  const robotoFontData = await robotoFontResponse.arrayBuffer();
+  
+  return {
+    Roboto: {
+      data: robotoFontData,
+      fallback: true,
+    },
+  };
 };
 
 interface PDFDocumentInfo {
@@ -40,6 +46,9 @@ export const generateAndSavePDFFromTemplate = async (
     const formattedDate = typeof documentInfo.documentDate === 'string' 
       ? documentInfo.documentDate 
       : documentInfo.documentDate.toISOString().split('T')[0];
+    
+    // Load fonts before PDF generation
+    const fonts = await loadFonts();
     
     // Generate the PDF using PDFme
     const pdf = await generate({
