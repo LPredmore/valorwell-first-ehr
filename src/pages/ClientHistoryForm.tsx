@@ -1,16 +1,18 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useUser } from '@/context/UserContext';
 import { useToast } from '@/hooks/use-toast';
 import ClientHistoryTemplate from '@/components/templates/ClientHistoryTemplate';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { generateAndSavePDF } from '@/utils/pdfUtils';
 
 const ClientHistoryForm: React.FC = () => {
   const { userId } = useUser();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const formRef = useRef<HTMLDivElement>(null);
   
   const handleSubmit = async (formData: any) => {
     if (!userId) {
@@ -63,8 +65,7 @@ const ClientHistoryForm: React.FC = () => {
           is_married: formData.isMarried || false,
           has_past_spouses: formData.hasPastSpouses || false,
           has_received_mental_health_treatment: formData.hasReceivedTreatment || false,
-          takes_medications: formData.takesMedications || false,
-          pdf_path: formData.pdfPath || null
+          takes_medications: formData.takesMedications || false
         })
         .select('id')
         .single();
@@ -186,25 +187,69 @@ const ClientHistoryForm: React.FC = () => {
         }
       }
       
-      // Success! Update client status if needed
-      const { error: clientStatusError } = await supabase
-        .from('clients')
-        .update({ client_status: 'Active' })
-        .eq('id', userId);
+      // Step 8: Generate PDF and save it
+      // We need to give the DOM a moment to reflect any state changes
+      setTimeout(async () => {
+        try {
+          if (formRef.current) {
+            const docDate = new Date();
+            const pdfPath = await generateAndSavePDF('client-history-form', {
+              clientId: userId,
+              documentType: 'client_history',
+              documentDate: docDate,
+              documentTitle: 'Client History Form',
+              createdBy: userId
+            });
+            
+            if (pdfPath) {
+              // Update the client_history record with the PDF path
+              const { error: pdfUpdateError } = await supabase
+                .from('client_history')
+                .update({ pdf_path: pdfPath })
+                .eq('id', historyId);
+                
+              if (pdfUpdateError) {
+                console.error("Error updating history with PDF path:", pdfUpdateError);
+              }
+              
+              // Update the document assignment status
+              const { error: assignmentError } = await supabase
+                .from('document_assignments')
+                .update({
+                  status: 'completed',
+                  pdf_url: pdfPath,
+                  completed_at: new Date().toISOString()
+                })
+                .eq('document_id', '1')
+                .eq('client_id', userId);
+                
+              if (assignmentError) {
+                console.error("Error updating document assignment:", assignmentError);
+              }
+            }
+          }
+        } catch (pdfError) {
+          console.error("Error generating PDF:", pdfError);
+        }
         
-      if (clientStatusError) {
-        console.error("Error updating client status:", clientStatusError);
-      }
-      
-      toast({
-        title: "Success!",
-        description: "Your client history form has been submitted successfully.",
-      });
-      
-      // Redirect to patient dashboard
-      setTimeout(() => {
+        // Success! Update client status if needed
+        const { error: clientStatusError } = await supabase
+          .from('clients')
+          .update({ client_status: 'Active' })
+          .eq('id', userId);
+          
+        if (clientStatusError) {
+          console.error("Error updating client status:", clientStatusError);
+        }
+        
+        toast({
+          title: "Success!",
+          description: "Your client history form has been submitted successfully.",
+        });
+        
+        // Redirect to patient dashboard
         navigate("/patient-dashboard");
-      }, 1500);
+      }, 500);
       
     } catch (error) {
       console.error("Error submitting client history form:", error);
@@ -213,16 +258,17 @@ const ClientHistoryForm: React.FC = () => {
         description: "There was a problem submitting your form. Please try again.",
         variant: "destructive"
       });
-    } finally {
       setIsSubmitting(false);
     }
   };
   
   return (
-    <ClientHistoryTemplate 
-      onSubmit={handleSubmit}
-      isSubmitting={isSubmitting}
-    />
+    <div ref={formRef} id="client-history-form">
+      <ClientHistoryTemplate 
+        onSubmit={handleSubmit}
+        isSubmitting={isSubmitting}
+      />
+    </div>
   );
 };
 

@@ -101,34 +101,46 @@ export const getOrCreateVideoRoom = async (appointmentId: string) => {
   }
 };
 
-// New function to fetch clinical documents for a client
+// Function to fetch clinical documents for a client
 export const fetchClinicalDocuments = async (clientId: string) => {
   try {
+    console.log('Fetching clinical documents for client:', clientId);
     const { data, error } = await supabase
       .from('clinical_documents')
       .select('*')
       .eq('client_id', clientId)
       .order('document_date', { ascending: false });
       
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching clinical documents:', error);
+      throw error;
+    }
+    
+    console.log('Retrieved clinical documents:', data?.length || 0);
     return data || [];
   } catch (error) {
-    console.error('Error fetching clinical documents:', error);
+    console.error('Error in fetchClinicalDocuments:', error);
     return [];
   }
 };
 
-// New function to get document download URL
+// Function to get document download URL
 export const getDocumentDownloadURL = async (filePath: string) => {
   try {
+    console.log('Getting download URL for document:', filePath);
     const { data, error } = await supabase.storage
       .from('clinical_documents')
       .createSignedUrl(filePath, 60); // 60 seconds expiration
       
-    if (error) throw error;
+    if (error) {
+      console.error('Error creating signed URL:', error);
+      throw error;
+    }
+    
+    console.log('Generated signed URL');
     return data.signedUrl;
   } catch (error) {
-    console.error('Error getting document download URL:', error);
+    console.error('Error in getDocumentDownloadURL:', error);
     return null;
   }
 };

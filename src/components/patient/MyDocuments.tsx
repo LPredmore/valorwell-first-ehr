@@ -57,10 +57,62 @@ const MyDocuments = () => {
         setIsLoading(false);
       }
       
-      // Load assigned documents that need to be filled out
+      // Load assigned documents status from document_assignments table
       setIsLoadingAssignedDocs(true);
-      // For demo purposes - in a real app, this would be an API call
-      setTimeout(() => {
+      try {
+        // Check if the client already has completed the Client History Form
+        const { data: assignments, error: assignmentsError } = await supabase
+          .from('document_assignments')
+          .select('*')
+          .eq('client_id', userId);
+          
+        if (assignmentsError) throw assignmentsError;
+        
+        const { data: clientHistory, error: historyError } = await supabase
+          .from('client_history')
+          .select('pdf_path')
+          .eq('client_id', userId)
+          .maybeSingle();
+          
+        if (historyError) throw historyError;
+        
+        // Prepare assigned documents data
+        const assignedDocs: AssignedDocument[] = [
+          {
+            id: '1',
+            title: 'Client History Form',
+            type: 'Intake',
+            required: true,
+            status: clientHistory?.pdf_path ? 'completed' : 'not_started',
+            filePath: clientHistory?.pdf_path || undefined,
+            route: clientHistory?.pdf_path ? undefined : '/client-history-form'
+          },
+          {
+            id: '2',
+            title: 'Informed Consent',
+            type: 'Legal',
+            required: true,
+            status: 'not_started'
+          },
+        ];
+        
+        // If we have document assignments, update the status based on those
+        if (assignments && assignments.length > 0) {
+          assignments.forEach(assignment => {
+            const docIndex = assignedDocs.findIndex(doc => doc.id === assignment.document_id);
+            if (docIndex >= 0) {
+              assignedDocs[docIndex].status = assignment.status as 'not_started' | 'in_progress' | 'completed';
+              if (assignment.pdf_url) {
+                assignedDocs[docIndex].filePath = assignment.pdf_url;
+              }
+            }
+          });
+        }
+        
+        setAssignedDocuments(assignedDocs);
+      } catch (error) {
+        console.error('Error fetching document assignments:', error);
+        // Fall back to default assignments
         setAssignedDocuments([
           {
             id: '1',
@@ -78,8 +130,9 @@ const MyDocuments = () => {
             status: 'not_started'
           },
         ]);
+      } finally {
         setIsLoadingAssignedDocs(false);
-      }, 500);
+      }
     };
 
     loadDocuments();
