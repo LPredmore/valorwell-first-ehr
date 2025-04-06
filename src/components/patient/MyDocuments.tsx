@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Calendar, Eye, FileText, FileX, FilePlus2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { fetchClinicalDocuments, getDocumentDownloadURL } from '@/integrations/supabase/client';
+import { fetchClinicalDocuments, getDocumentDownloadURL, supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/context/UserContext';
 import { useNavigate } from 'react-router-dom';
@@ -57,10 +56,8 @@ const MyDocuments = () => {
         setIsLoading(false);
       }
       
-      // Load assigned documents status from document_assignments table
       setIsLoadingAssignedDocs(true);
       try {
-        // Check if the client already has completed the Client History Form
         const { data: assignments, error: assignmentsError } = await supabase
           .from('document_assignments')
           .select('*')
@@ -76,7 +73,6 @@ const MyDocuments = () => {
           
         if (historyError) throw historyError;
         
-        // Prepare assigned documents data
         const assignedDocs: AssignedDocument[] = [
           {
             id: '1',
@@ -96,7 +92,6 @@ const MyDocuments = () => {
           },
         ];
         
-        // If we have document assignments, update the status based on those
         if (assignments && assignments.length > 0) {
           assignments.forEach(assignment => {
             const docIndex = assignedDocs.findIndex(doc => doc.id === assignment.document_id);
@@ -112,7 +107,6 @@ const MyDocuments = () => {
         setAssignedDocuments(assignedDocs);
       } catch (error) {
         console.error('Error fetching document assignments:', error);
-        // Fall back to default assignments
         setAssignedDocuments([
           {
             id: '1',
@@ -173,7 +167,6 @@ const MyDocuments = () => {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      {/* Assigned Documents Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -242,7 +235,6 @@ const MyDocuments = () => {
         </CardContent>
       </Card>
 
-      {/* Completed Documents Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
