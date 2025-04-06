@@ -1,4 +1,3 @@
-
 import { Document, Page, Text, View, StyleSheet, Font, pdf } from '@react-pdf/renderer';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -87,7 +86,12 @@ Font.register({
 });
 
 // Splits text into chunks to avoid overflow
-const SplitText = ({ text = "", style = {} }) => {
+interface SplitTextProps {
+  text?: string;
+  style?: any;
+}
+
+const SplitText: React.FC<SplitTextProps> = ({ text = "", style = {} }) => {
   // If the text is empty or just whitespace, don't render anything
   if (!text || text.trim() === '') {
     return null;
@@ -101,15 +105,25 @@ const SplitText = ({ text = "", style = {} }) => {
 };
 
 // Generic label-value pair component
-const LabeledField = ({ label, value }) => (
+interface LabeledFieldProps {
+  label: string;
+  value: string | number | null | undefined;
+}
+
+const LabeledField: React.FC<LabeledFieldProps> = ({ label, value }) => (
   <View style={styles.contentRow}>
     <Text style={styles.label}>{label}:</Text>
-    <SplitText text={value} style={styles.value} />
+    <SplitText text={value?.toString()} style={styles.value} />
   </View>
 );
 
 // Create Session Note PDF
-const SessionNotePdfDocument = ({ formData, phq9Data = null }) => (
+interface SessionNotePdfDocumentProps {
+  formData: any;
+  phq9Data?: any;
+}
+
+const SessionNotePdfDocument: React.FC<SessionNotePdfDocumentProps> = ({ formData, phq9Data = null }) => (
   <Document>
     <Page size="A4" style={styles.page}>
       <Text style={styles.header}>Therapy Session Note</Text>
