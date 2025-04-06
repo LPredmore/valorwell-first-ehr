@@ -3,7 +3,11 @@ import { useState, useEffect, RefObject } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClientDetails } from '@/types/client';
-import { generateAndSavePDF } from '@/utils/pdfUtils';
+import { 
+  generateAndSavePDFFromTemplate, 
+  mapSessionNoteToTemplateData, 
+  sessionNoteTemplate 
+} from '@/utils/pdfmeUtils';
 
 interface UseSessionNoteFormProps {
   clientData: ClientDetails | null;
@@ -322,7 +326,7 @@ export const useSessionNoteForm = ({
       // Prepare data for session_notes table
       const sessionNoteData = {
         client_id: clientData.id,
-        clinician_id: clinician_id, // Using the fixed clinician_id
+        clinician_id: clinician_id,
         appointment_id: appointment?.id || null,
         session_date: sessionDate,
         patient_name: formState.patientName,
@@ -442,20 +446,28 @@ export const useSessionNoteForm = ({
         }
       }
 
-      // Step 5: Generate and save PDF
-      if (contentRef?.current && sessionDate) {
-        console.log("Generating PDF...");
+      // Step 5: Generate and save PDF using PDFme
+      if (sessionDate) {
+        console.log("Generating PDF with PDFme...");
         const clientName = formState.patientName || 'Unknown Client';
         const documentInfo = {
           clientId: clientData.id,
           documentType: 'session_note',
           documentDate: sessionDate,
           documentTitle: `Session Note - ${clientName} - ${sessionDate}`,
-          createdBy: clinician_id // Using the clinician ID here too
+          createdBy: clinician_id
         };
 
         try {
-          pdfPath = await generateAndSavePDF('session-note-content', documentInfo);
+          // Map form data to template data format
+          const templateData = mapSessionNoteToTemplateData(formState);
+          
+          // Use the PDFme generator
+          pdfPath = await generateAndSavePDFFromTemplate(
+            sessionNoteTemplate, 
+            templateData,
+            documentInfo
+          );
           
           if (pdfPath && sessionNoteId) {
             console.log("Updating session note with PDF path:", pdfPath);
