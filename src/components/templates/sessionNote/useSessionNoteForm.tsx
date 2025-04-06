@@ -1,3 +1,4 @@
+
 import { useState, useEffect, RefObject } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -300,10 +301,28 @@ export const useSessionNoteForm = ({
         console.error('Error checking for existing session note:', fetchError);
       }
       
+      // Get clinician ID - this is the critical fix
+      // If appointment has clinician_id, use that, otherwise try to use client's assigned therapist
+      const clinician_id = appointment?.clinician_id || 
+                          clientData.client_assigned_therapist || 
+                          (await supabase.auth.getUser()).data.user?.id;
+
+      // Ensure we have a clinician_id before proceeding
+      if (!clinician_id) {
+        console.error('No clinician_id available for session note');
+        toast({
+          title: "Error",
+          description: "Could not determine clinician ID. Session note not saved.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
       // Prepare data for session_notes table
       const sessionNoteData = {
         client_id: clientData.id,
-        clinician_id: appointment?.clinician_id || null,
+        clinician_id: clinician_id, // Using the fixed clinician_id
         appointment_id: appointment?.id || null,
         session_date: sessionDate,
         patient_name: formState.patientName,
@@ -355,43 +374,52 @@ export const useSessionNoteForm = ({
       // Step 3: Update or insert session note
       let sessionNoteId;
       console.log("Saving session note data...");
-      if (existingNote?.id) {
-        console.log("Updating existing session note:", existingNote.id);
-        const { error: updateError } = await supabase
-          .from('session_notes')
-          .update(sessionNoteData)
-          .eq('id', existingNote.id);
-          
-        if (updateError) {
-          console.error('Error updating session note:', updateError);
-          toast({
-            title: "Warning",
-            description: "Updated client data but failed to update session note.",
-            variant: "default",
-          });
+      try {
+        if (existingNote?.id) {
+          console.log("Updating existing session note:", existingNote.id);
+          const { error: updateError } = await supabase
+            .from('session_notes')
+            .update(sessionNoteData)
+            .eq('id', existingNote.id);
+            
+          if (updateError) {
+            console.error('Error updating session note:', updateError);
+            toast({
+              title: "Warning",
+              description: "Updated client data but failed to update session note.",
+              variant: "default",
+            });
+          } else {
+            sessionNoteId = existingNote.id;
+            console.log("Session note updated successfully");
+          }
         } else {
-          sessionNoteId = existingNote.id;
-          console.log("Session note updated successfully");
+          console.log("Creating new session note");
+          const { data: newNote, error: insertError } = await supabase
+            .from('session_notes')
+            .insert(sessionNoteData)
+            .select('id')
+            .single();
+            
+          if (insertError) {
+            console.error('Error creating session note:', insertError);
+            toast({
+              title: "Warning",
+              description: "Updated client data but failed to create session note record.",
+              variant: "default",
+            });
+          } else if (newNote) {
+            sessionNoteId = newNote.id;
+            console.log("Session note created successfully with ID:", sessionNoteId);
+          }
         }
-      } else {
-        console.log("Creating new session note");
-        const { data: newNote, error: insertError } = await supabase
-          .from('session_notes')
-          .insert(sessionNoteData)
-          .select('id')
-          .single();
-          
-        if (insertError) {
-          console.error('Error creating session note:', insertError);
-          toast({
-            title: "Warning",
-            description: "Updated client data but failed to create session note record.",
-            variant: "default",
-          });
-        } else if (newNote) {
-          sessionNoteId = newNote.id;
-          console.log("Session note created successfully with ID:", sessionNoteId);
-        }
+      } catch (error) {
+        console.error('Error saving session note:', error);
+        toast({
+          title: "Warning",
+          description: "Error when saving session note data",
+          variant: "default",
+        });
       }
 
       // Step 4: Update appointment status to Documented
@@ -423,7 +451,7 @@ export const useSessionNoteForm = ({
           documentType: 'session_note',
           documentDate: sessionDate,
           documentTitle: `Session Note - ${clientName} - ${sessionDate}`,
-          createdBy: clinicianName
+          createdBy: clinician_id // Using the clinician ID here too
         };
 
         try {
