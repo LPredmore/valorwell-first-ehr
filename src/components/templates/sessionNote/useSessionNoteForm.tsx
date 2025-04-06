@@ -1,9 +1,8 @@
-
 import { useState, useEffect, RefObject } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClientDetails } from '@/types/client';
-import { generateAndSavePDF } from '@/utils/pdfUtils';
+import { generateAndSavePDF } from '@/utils/reactPdfUtils';
 
 interface UseSessionNoteFormProps {
   clientData: ClientDetails | null;
@@ -301,8 +300,7 @@ export const useSessionNoteForm = ({
         console.error('Error checking for existing session note:', fetchError);
       }
       
-      // Get clinician ID - this is the critical fix
-      // If appointment has clinician_id, use that, otherwise try to use client's assigned therapist
+      // Get clinician ID
       const clinician_id = appointment?.clinician_id || 
                           clientData.client_assigned_therapist || 
                           (await supabase.auth.getUser()).data.user?.id;
@@ -322,7 +320,7 @@ export const useSessionNoteForm = ({
       // Prepare data for session_notes table
       const sessionNoteData = {
         client_id: clientData.id,
-        clinician_id: clinician_id, // Using the fixed clinician_id
+        clinician_id: clinician_id,
         appointment_id: appointment?.id || null,
         session_date: sessionDate,
         patient_name: formState.patientName,
@@ -442,8 +440,8 @@ export const useSessionNoteForm = ({
         }
       }
 
-      // Step 5: Generate and save PDF
-      if (contentRef?.current && sessionDate) {
+      // Step 5: Generate and save PDF using React-PDF
+      if (sessionDate) {
         console.log("Generating PDF...");
         const clientName = formState.patientName || 'Unknown Client';
         const documentInfo = {
@@ -451,11 +449,12 @@ export const useSessionNoteForm = ({
           documentType: 'session_note',
           documentDate: sessionDate,
           documentTitle: `Session Note - ${clientName} - ${sessionDate}`,
-          createdBy: clinician_id // Using the clinician ID here too
+          createdBy: clinician_id
         };
 
         try {
-          pdfPath = await generateAndSavePDF('session-note-content', documentInfo);
+          // Pass the form data and document info to the new PDF generator
+          pdfPath = await generateAndSavePDF({ ...formState, phq9Data }, documentInfo);
           
           if (pdfPath && sessionNoteId) {
             console.log("Updating session note with PDF path:", pdfPath);
