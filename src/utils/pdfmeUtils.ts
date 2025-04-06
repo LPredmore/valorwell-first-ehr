@@ -120,7 +120,7 @@ export const loadTemplate = async (templateKey: string): Promise<Template | null
 
 // Sample template for session notes - this would ideally be stored in Supabase and loaded dynamically
 export const sessionNoteTemplate: Template = {
-  basePdf: '',  // Base64 encoded PDF or URL to a blank PDF template
+  basePdf: '', // Base64 encoded PDF or URL to a blank PDF template
   schemas: [
     {
       clientName: { type: 'text', position: { x: 60, y: 50, width: 200, height: 15 } },
