@@ -12,6 +12,53 @@ interface DocumentInfo {
 }
 
 /**
+ * Pre-processes the DOM element for PDF generation by optimizing text and layout
+ */
+const prepareElementForPDF = (element: HTMLElement): HTMLElement => {
+  // Create a deep clone to avoid modifying the original DOM
+  const clone = element.cloneNode(true) as HTMLElement;
+  
+  // Add PDF generation class to control styling
+  clone.classList.add('generating-pdf');
+  
+  // Process all textareas to ensure proper text rendering
+  const textareas = clone.querySelectorAll('textarea');
+  textareas.forEach(textarea => {
+    // Create a div with the same content to better handle text overflow
+    const div = document.createElement('div');
+    div.innerHTML = textarea.value || '';
+    div.className = textarea.className;
+    div.style.whiteSpace = 'pre-wrap';
+    div.style.wordBreak = 'break-word';
+    textarea.parentNode?.replaceChild(div, textarea);
+  });
+  
+  // Process inputs to properly show their values
+  const inputs = clone.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"]');
+  inputs.forEach(input => {
+    const inputElement = input as HTMLInputElement;
+    inputElement.setAttribute('value', inputElement.value);
+  });
+  
+  // Hide any elements marked as private
+  const privateElements = clone.querySelectorAll('.private-note-container');
+  privateElements.forEach(el => {
+    el.setAttribute('style', 'display: none !important');
+  });
+  
+  // Add explicit page break indicators for large sections
+  const sections = clone.querySelectorAll('section, .section');
+  sections.forEach((section, index) => {
+    if (index > 0) {
+      // Don't add page break to first section
+      section.classList.add('pdf-section');
+    }
+  });
+  
+  return clone;
+};
+
+/**
  * Generates PDF from an HTML element and saves it to Supabase storage
  */
 export const generateAndSavePDF = async (
@@ -24,101 +71,109 @@ export const generateAndSavePDF = async (
       ? documentInfo.documentDate 
       : documentInfo.documentDate.toISOString().split('T')[0];
     
-    // Step 1: Generate PDF from HTML element
+    // Step 1: Get and prepare the HTML element
     const element = document.getElementById(elementId);
     if (!element) {
       console.error('Element not found:', elementId);
       return null;
     }
     
-    // Add a class to control styling for PDF generation
-    element.classList.add('generating-pdf');
+    // Create an optimized clone for PDF generation to avoid modifying the visible DOM
+    const preparedElement = prepareElementForPDF(element);
     
-    // Get the computed style to determine the appropriate scaling
-    const computedStyle = window.getComputedStyle(element);
+    // Temporarily add to document for rendering
+    document.body.appendChild(preparedElement);
+    
+    // Position off-screen
+    preparedElement.style.position = 'absolute';
+    preparedElement.style.left = '-9999px';
+    preparedElement.style.top = '-9999px';
+    
+    // Get computed style to determine dimensions
+    const computedStyle = window.getComputedStyle(preparedElement);
     const width = parseFloat(computedStyle.width);
     
-    // Define PDF dimensions and scaling
+    // Define PDF dimensions (A4)
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
     const margin = 10; // margin in mm
     const contentWidth = pdfWidth - (margin * 2);
     
-    // Calculate the total height and determine how many pages we need
-    const contentHeightEstimate = element.scrollHeight;
-    const scale = contentWidth / width;
-    const totalHeightMM = (contentHeightEstimate * scale * 0.264583); // Convert pixels to mm
-    const totalPages = Math.ceil(totalHeightMM / (pdfHeight - (margin * 2)));
+    // Improved scaling calculation
+    const scale = 2; // Higher scale for better quality
+    const pixelsPerMm = 3.78; // Approximate conversion factor
     
-    // Create a clone of the element to avoid modifying the original
-    const clone = element.cloneNode(true) as HTMLElement;
-    document.body.appendChild(clone);
-    clone.style.width = width + 'px';
-    clone.style.position = 'absolute';
-    clone.style.top = '-9999px';
-    clone.style.left = '-9999px';
-    
-    // Hide elements with the 'private-note-container' class for PDF generation
-    const privateNotes = clone.querySelectorAll('.private-note-container');
-    privateNotes.forEach(note => {
-      (note as HTMLElement).style.display = 'none';
+    console.log('Generating PDF with dimensions:', { 
+      pdfWidth, pdfHeight, contentWidth, elementWidth: width 
     });
     
-    // Generate PDF with multiple pages if needed
+    // Generate PDF using improved page segmentation
+    let verticalOffset = margin;
     let currentPage = 0;
-    let pdfBlob;
     
-    if (totalPages <= 1) {
-      // For single page documents, use the standard approach
-      const canvas = await html2canvas(clone, {
-        scale: 2, // Higher scale for better quality
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-      });
-      
-      const imgData = canvas.toDataURL('image/png');
-      const imgWidth = pdfWidth - (margin * 2);
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
-      pdfBlob = pdf.output('blob');
-    } else {
-      // For multi-page documents, slice the content into pages
-      const heightPerPage = Math.floor(contentHeightEstimate / totalPages);
-      
-      for (let page = 0; page < totalPages; page++) {
-        if (page > 0) {
-          pdf.addPage();
-        }
-        
-        // Set the window height to capture just this page's content
-        clone.style.height = heightPerPage + 'px';
-        clone.style.overflow = 'hidden';
-        clone.scrollTop = page * heightPerPage;
-        
-        const canvas = await html2canvas(clone, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff',
-          windowHeight: heightPerPage
-        });
-        
-        const imgData = canvas.toDataURL('image/png');
-        const imgWidth = pdfWidth - (margin * 2);
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
+    // Capture the whole content at once with high resolution
+    const canvas = await html2canvas(preparedElement, {
+      scale: scale,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      allowTaint: true,
+    });
+    
+    // Calculate how many pages we need based on content height
+    const contentHeightMm = canvas.height / (scale * pixelsPerMm);
+    const contentHeightPerPage = pdfHeight - (margin * 2);
+    const totalPages = Math.ceil(contentHeightMm / contentHeightPerPage);
+    
+    console.log('PDF content analysis:', { 
+      contentHeightMm, contentHeightPerPage, totalPages, canvasHeight: canvas.height 
+    });
+    
+    // Add content to PDF, page by page
+    for (let page = 0; page < totalPages; page++) {
+      if (page > 0) {
+        pdf.addPage();
       }
       
-      pdfBlob = pdf.output('blob');
+      // Calculate which portion of the canvas to use for this page
+      const sourceY = page * contentHeightPerPage * scale * pixelsPerMm;
+      const sourceHeight = Math.min(
+        contentHeightPerPage * scale * pixelsPerMm,
+        canvas.height - sourceY
+      );
+      
+      // Only proceed if we have content for this page
+      if (sourceHeight <= 0) continue;
+      
+      // Create a temporary canvas for this page segment
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = sourceHeight;
+      const ctx = pageCanvas.getContext('2d');
+      
+      if (ctx) {
+        // Draw the appropriate portion of the main canvas
+        ctx.drawImage(
+          canvas, 
+          0, sourceY, canvas.width, sourceHeight,
+          0, 0, pageCanvas.width, pageCanvas.height
+        );
+        
+        // Add this page segment to the PDF
+        const imgData = pageCanvas.toDataURL('image/png');
+        const imgWidth = pdfWidth - (margin * 2);
+        const imgHeight = (pageCanvas.height * imgWidth) / pageCanvas.width;
+        
+        pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
+      }
     }
     
-    // Clean up the clone
-    document.body.removeChild(clone);
+    // Clean up the temporary element
+    document.body.removeChild(preparedElement);
     
-    // Remove PDF generation class from original element
-    element.classList.remove('generating-pdf');
+    // Get the PDF as a blob
+    const pdfBlob = pdf.output('blob');
     
     // Step 2: Upload PDF to Supabase storage
     const filePath = `${documentInfo.clientId}/${documentInfo.documentType}/${formattedDate}.pdf`;
