@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -15,7 +14,7 @@ import { ClientDetails } from "@/types/client";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, formatDateForDB, getCurrentUser } from "@/integrations/supabase/client";
 import { DiagnosisSelector } from "@/components/DiagnosisSelector";
-import { generateAndSavePDF } from "@/utils/pdfUtils";
+import { generateAndSavePDF } from "@/utils/reactPdfUtils";
 
 interface TreatmentPlanTemplateProps {
   onClose: () => void;
@@ -33,7 +32,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
   clientData = null
 }) => {
   const { toast } = useToast();
-  const treatmentPlanRef = useRef<HTMLDivElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showSecondaryObjective, setShowSecondaryObjective] = useState(false);
   const [showTertiaryObjective, setShowTertiaryObjective] = useState(false);
@@ -194,25 +192,26 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         throw clientError;
       }
 
-      // Generate and save PDF
-      let pdfPath = '';
-      if (treatmentPlanRef.current) {
-        const currentUser = await getCurrentUser();
-        const documentInfo = {
-          clientId: clientData.id,
-          documentType: 'Treatment Plan',
-          documentDate: formState.startDate || new Date(),
-          documentTitle: `Treatment Plan - ${format(formState.startDate || new Date(), 'yyyy-MM-dd')}`,
-          createdBy: currentUser?.id
-        };
-
-        pdfPath = await generateAndSavePDF('treatment-plan-content', documentInfo) || '';
-        
-        if (pdfPath) {
-          console.log('PDF saved successfully at path:', pdfPath);
-        } else {
-          console.error('Failed to generate or save PDF');
-        }
+      // Generate and save PDF using React-PDF
+      const currentUser = await getCurrentUser();
+      const documentInfo = {
+        clientId: clientData.id,
+        documentType: 'treatment_plan',
+        documentDate: formState.startDate || new Date(),
+        documentTitle: `Treatment Plan - ${format(formState.startDate || new Date(), 'yyyy-MM-dd')}`,
+        createdBy: currentUser?.id
+      };
+      
+      const pdfResult = await generateAndSavePDF(formState, documentInfo);
+      
+      if (!pdfResult || !pdfResult.success) {
+        console.error('Failed to generate or save PDF');
+        toast({
+          title: "Warning",
+          description: "Treatment plan saved but PDF generation failed.",
+          variant: "default",
+        });
+        // Continue with saving the treatment plan record even if PDF fails
       }
 
       // Create new entry in treatment_plans table
@@ -239,7 +238,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         intervention6: formState.intervention6,
         next_update: formState.nextUpdate,
         private_note: formState.privateNote,
-        pdf_path: pdfPath
+        pdf_path: pdfResult?.filePath || ''
       };
 
       // Insert into treatment_plans table
@@ -249,13 +248,17 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
 
       if (treatmentPlanError) {
         console.error('Error creating treatment plan record:', treatmentPlanError);
-        throw treatmentPlanError;
+        toast({
+          title: "Warning",
+          description: "Treatment plan saved but record creation failed.",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Treatment plan saved successfully"
+        });
       }
-
-      toast({
-        title: "Success",
-        description: "Treatment plan saved successfully"
-      });
 
       onClose();
     } catch (err) {
@@ -282,7 +285,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         <div className="space-y-6">
           <div 
             id="treatment-plan-content"
-            ref={treatmentPlanRef}
             className="border rounded-md p-4 bg-white"
           >
             <h2 className="text-xl font-semibold text-valorwell-800 mb-4">Therapy Treatment Plan</h2>

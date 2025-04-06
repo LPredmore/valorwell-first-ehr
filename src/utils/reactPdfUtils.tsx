@@ -1,3 +1,4 @@
+
 import { Document, Page, Text, View, StyleSheet, Font, pdf } from '@react-pdf/renderer';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "@/components/ui/use-toast";
@@ -70,6 +71,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     width: '50%',
   },
+  diagnosisList: {
+    marginTop: 5,
+    marginBottom: 5,
+    fontSize: 10,
+  }
 });
 
 // Register default fonts if needed
@@ -252,6 +258,89 @@ const SessionNotePdfDocument: React.FC<SessionNotePdfDocumentProps> = ({ formDat
   </Document>
 );
 
+// New component for Treatment Plan PDF
+interface TreatmentPlanPdfDocumentProps {
+  formData: any;
+}
+
+const TreatmentPlanPdfDocument: React.FC<TreatmentPlanPdfDocumentProps> = ({ formData }) => (
+  <Document>
+    <Page size="A4" style={styles.page}>
+      <Text style={styles.header}>Therapy Treatment Plan</Text>
+      
+      {/* Client Information Section */}
+      <View style={styles.clientInfo}>
+        <LabeledField label="Client Name" value={formData.clientName} />
+        <LabeledField label="Client DOB" value={formData.clientDob} />
+        <LabeledField label="Treatment Plan Start Date" value={formData.startDate ? formData.startDate.toLocaleDateString() : ''} />
+        <LabeledField label="Clinician Name" value={formData.clinicianName} />
+        <LabeledField label="Plan Length" value={formData.planLength} />
+        <LabeledField label="Treatment Frequency" value={formData.treatmentFrequency} />
+      </View>
+      
+      {/* Diagnosis Section */}
+      <View style={styles.sectionMargin}>
+        <Text style={styles.subheader}>Diagnosis</Text>
+        {Array.isArray(formData.diagnosisCodes) && formData.diagnosisCodes.length > 0 ? (
+          formData.diagnosisCodes.map((code: string, index: number) => (
+            <Text key={index} style={styles.diagnosisList}>• {code}</Text>
+          ))
+        ) : (
+          <Text style={styles.text}>No diagnosis codes provided</Text>
+        )}
+      </View>
+      
+      {/* Problem & Treatment Goals */}
+      <View style={styles.sectionMargin}>
+        <Text style={styles.subheader}>Problem & Treatment Goals</Text>
+        <View style={styles.section}>
+          <Text style={styles.label}>Problem Narrative:</Text>
+          <SplitText text={formData.problemNarrative} style={styles.narrative} />
+        </View>
+        <View style={styles.section}>
+          <Text style={styles.label}>Treatment Goal Narrative:</Text>
+          <SplitText text={formData.treatmentGoalNarrative} style={styles.narrative} />
+        </View>
+      </View>
+      
+      {/* Treatment Objectives */}
+      <View style={styles.sectionMargin}>
+        <Text style={styles.subheader}>Treatment Objectives & Interventions</Text>
+        <View style={styles.section}>
+          <Text style={styles.label}>Primary Objective:</Text>
+          <SplitText text={formData.primaryObjective} style={styles.narrative} />
+          <LabeledField label="Intervention 1" value={formData.intervention1} />
+          <LabeledField label="Intervention 2" value={formData.intervention2} />
+        </View>
+        
+        {formData.secondaryObjective && (
+          <View style={styles.section}>
+            <Text style={styles.label}>Secondary Objective:</Text>
+            <SplitText text={formData.secondaryObjective} style={styles.narrative} />
+            <LabeledField label="Intervention 3" value={formData.intervention3} />
+            <LabeledField label="Intervention 4" value={formData.intervention4} />
+          </View>
+        )}
+        
+        {formData.tertiaryObjective && (
+          <View style={styles.section}>
+            <Text style={styles.label}>Tertiary Objective:</Text>
+            <SplitText text={formData.tertiaryObjective} style={styles.narrative} />
+            <LabeledField label="Intervention 5" value={formData.intervention5} />
+            <LabeledField label="Intervention 6" value={formData.intervention6} />
+          </View>
+        )}
+      </View>
+      
+      {/* Plan and Review */}
+      <View style={styles.sectionMargin}>
+        <Text style={styles.subheader}>Plan & Review</Text>
+        <LabeledField label="Next Treatment Plan Update" value={formData.nextUpdate} />
+      </View>
+    </Page>
+  </Document>
+);
+
 // Enhanced error handling for storage operations
 const handleStorageOperation = async (operation: () => Promise<any>, errorMessage: string) => {
   try {
@@ -296,7 +385,9 @@ export const generateAndSavePDF = async (
         case 'session_note':
           pdfDocument = <SessionNotePdfDocument formData={documentData} phq9Data={documentData.phq9Data} />;
           break;
-        // Add other document types as needed
+        case 'treatment_plan':
+          pdfDocument = <TreatmentPlanPdfDocument formData={documentData} />;
+          break;
         default:
           throw new Error(`Unsupported document type: ${documentInfo.documentType}`);
       }
