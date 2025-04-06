@@ -13,6 +13,11 @@ import { useForm } from 'react-hook-form';
 import { FileText, X, ChevronLeft, Save, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+interface ClientHistoryTemplateProps {
+  onSubmit: (formData: any) => void;
+  isSubmitting: boolean;
+}
+
 interface FamilyMember {
   id: string;
   relationshipType: string;
@@ -52,7 +57,7 @@ interface SymptomCategories {
   lifeStressors: string[];
 }
 
-const ClientHistoryTemplate: React.FC = () => {
+const ClientHistoryTemplate: React.FC<ClientHistoryTemplateProps> = ({ onSubmit, isSubmitting }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [family, setFamily] = useState<FamilyMember[]>([
@@ -299,12 +304,79 @@ const ClientHistoryTemplate: React.FC = () => {
     }
   };
 
-  const handleSubmit = () => {
-    toast({
-      title: "Form Submitted",
-      description: "Your client history has been saved successfully.",
-    });
-    navigate('/patient-dashboard');
+  const handleFormSubmit = () => {
+    const formData = {
+      emergencyContact: {
+        name: (document.getElementById('emergencyName') as HTMLInputElement)?.value,
+        relationship: (document.getElementById('emergencyRelationship') as HTMLInputElement)?.value,
+        phone: (document.getElementById('emergencyPhone') as HTMLInputElement)?.value,
+      },
+      currentIssues: (document.getElementById('currentIssues') as HTMLTextAreaElement)?.value,
+      progressionOfIssues: (document.getElementById('progressionOfIssues') as HTMLTextAreaElement)?.value,
+      symptoms: selectedSymptoms,
+      hospitalizedPsychiatric: (document.getElementById('hospitalized-yes') as HTMLInputElement)?.checked,
+      attemptedSuicide: (document.getElementById('suicide-yes') as HTMLInputElement)?.checked,
+      psychHold: (document.getElementById('psychhold-yes') as HTMLInputElement)?.checked,
+      lifeChanges: (document.getElementById('lifeChanges') as HTMLTextAreaElement)?.value,
+      additionalInfo: (document.getElementById('additionalInfo') as HTMLTextAreaElement)?.value,
+      counselingGoals: (document.getElementById('counselingGoals') as HTMLTextAreaElement)?.value,
+      childhoodExperiences: selectedChildhoodExperiences,
+      childhoodElaboration: (document.getElementById('childhoodElaboration') as HTMLTextAreaElement)?.value,
+      isFamilySameAsHousehold: sameHousehold,
+      occupationDetails: (document.getElementById('occupation') as HTMLTextAreaElement)?.value,
+      educationLevel: (document.querySelector('#education .select-value') as HTMLElement)?.innerText,
+      isMarried: isMarried,
+      currentSpouse: isMarried ? {
+        name: (document.getElementById('spouseName') as HTMLInputElement)?.value,
+        personality: (document.getElementById('spousePersonality') as HTMLInputElement)?.value,
+        relationship: (document.getElementById('spouseRelationship') as HTMLInputElement)?.value,
+      } : null,
+      hasPastSpouses: showPastSpouses,
+      pastSpouses: showPastSpouses ? pastSpouses.map((spouse, index) => ({
+        name: (document.getElementById(`pastSpouseName-${index}`) as HTMLInputElement)?.value,
+        personality: (document.getElementById(`pastSpousePersonality-${index}`) as HTMLInputElement)?.value,
+        relationship: (document.getElementById(`pastSpouseRelationship-${index}`) as HTMLInputElement)?.value,
+      })) : [],
+      relationshipProblems: (document.getElementById('relationshipProblems') as HTMLTextAreaElement)?.value,
+      hasReceivedTreatment: showTreatments,
+      pastTreatments: showTreatments ? treatments.map((treatment, index) => ({
+        year: (document.getElementById(`treatmentYear-${index}`) as HTMLInputElement)?.value,
+        reason: (document.getElementById(`treatmentReason-${index}`) as HTMLInputElement)?.value,
+        length: (document.getElementById(`treatmentLength-${index}`) as HTMLInputElement)?.value,
+        provider: (document.getElementById(`treatmentProvider-${index}`) as HTMLInputElement)?.value,
+      })) : [],
+      medicalConditions: selectedMedicalConditions,
+      chronicHealthProblems: (document.getElementById('chronicHealth') as HTMLTextAreaElement)?.value,
+      sleepHours: (document.getElementById('sleepHours') as HTMLInputElement)?.value,
+      alcoholUse: (document.getElementById('alcoholUse') as HTMLInputElement)?.value,
+      tobaccoUse: (document.getElementById('tobaccoUse') as HTMLInputElement)?.value,
+      drugUse: (document.getElementById('drugUse') as HTMLTextAreaElement)?.value,
+      takesMedications: showMedications,
+      medications: showMedications ? medications.map((medication, index) => ({
+        name: (document.getElementById(`medicationName-${index}`) as HTMLInputElement)?.value,
+        purpose: (document.getElementById(`medicationPurpose-${index}`) as HTMLInputElement)?.value,
+        duration: (document.getElementById(`medicationDuration-${index}`) as HTMLInputElement)?.value,
+      })) : [],
+      personalStrengths: (document.getElementById('strengths') as HTMLTextAreaElement)?.value,
+      hobbies: (document.getElementById('hobbies') as HTMLTextAreaElement)?.value,
+      additionalInfo2: (document.getElementById('additionalInfo2') as HTMLTextAreaElement)?.value,
+      signature: (document.getElementById('signature') as HTMLInputElement)?.value,
+      familyMembers: family.map((member, index) => ({
+        relationshipType: document.querySelector(`#familyType-${index} .select-value`)?.textContent,
+        name: (document.getElementById(`familyName-${index}`) as HTMLInputElement)?.value,
+        personality: (document.getElementById(`familyPersonality-${index}`) as HTMLInputElement)?.value,
+        relationshipGrowing: (document.getElementById(`familyRelationshipGrowing-${index}`) as HTMLInputElement)?.value,
+        relationshipNow: (document.getElementById(`familyRelationshipNow-${index}`) as HTMLInputElement)?.value,
+      })),
+      householdMembers: !sameHousehold ? currentHousehold.map((member, index) => ({
+        relationshipType: document.querySelector(`#householdType-${index} .select-value`)?.textContent,
+        name: (document.getElementById(`householdName-${index}`) as HTMLInputElement)?.value,
+        personality: (document.getElementById(`householdPersonality-${index}`) as HTMLInputElement)?.value,
+        relationshipNow: (document.getElementById(`householdRelationship-${index}`) as HTMLInputElement)?.value,
+      })) : [],
+    };
+    
+    onSubmit(formData);
   };
 
   const handleCancel = () => {
@@ -323,7 +395,7 @@ const ClientHistoryTemplate: React.FC = () => {
         <h1 className="text-2xl font-bold">Client History Form</h1>
       </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-8 mb-8">
+      <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit(); }} className="space-y-8 mb-8">
         {/* SECTION: Client Information */}
         <Card>
           <CardHeader>
@@ -1060,9 +1132,18 @@ const ClientHistoryTemplate: React.FC = () => {
           <Button type="button" variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
-          <Button type="submit">
-            <Save className="h-4 w-4 mr-1" />
-            Submit Form
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <span className="animate-spin mr-2">⏳</span>
+                Submitting...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-1" />
+                Submit Form
+              </>
+            )}
           </Button>
         </div>
       </form>
