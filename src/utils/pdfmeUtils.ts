@@ -13,11 +13,12 @@ const loadFonts = async (): Promise<Record<string, Font>> => {
   const robotoFontResponse = await fetch('https://pdf-templates.s3.amazonaws.com/Roboto-Regular.ttf');
   const robotoFontData = await robotoFontResponse.arrayBuffer();
   
+  // PDFme Font type requires an object with data property
   return {
     Roboto: {
       data: robotoFontData,
-      fallback: true,
-    },
+      fallback: true
+    }
   };
 };
 
@@ -54,7 +55,7 @@ export const generateAndSavePDFFromTemplate = async (
     const pdf = await generate({
       template,
       inputs,
-      options: { font: fonts },
+      options: { font: fonts }
     });
     
     // Convert to Blob for storage
