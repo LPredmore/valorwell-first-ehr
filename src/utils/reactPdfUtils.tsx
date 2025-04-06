@@ -1,3 +1,4 @@
+
 import { Document, Page, Text, View, StyleSheet, Font, pdf } from '@react-pdf/renderer';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -80,9 +81,16 @@ Font.register({
       src: 'https://cdn.jsdelivr.net/npm/@react-pdf/font/lib/assets/Helvetica-Bold.ttf', 
       fontWeight: 'bold',
       fontStyle: 'normal',
-      fontFamily: 'Helvetica-Bold',
+      // Remove the fontFamily property as it's not allowed in FontSource
     }
   ]
+});
+
+// Register the bold font separately
+Font.register({
+  family: 'Helvetica-Bold',
+  src: 'https://cdn.jsdelivr.net/npm/@react-pdf/font/lib/assets/Helvetica-Bold.ttf',
+  fontWeight: 'bold'
 });
 
 // Splits text into chunks to avoid overflow
