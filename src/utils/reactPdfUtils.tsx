@@ -287,10 +287,10 @@ export const generateAndSavePDF = async (
     // Generate PDF as binary data
     const pdfBlob = await pdf(pdfDocument).toBlob();
     
-    // Upload PDF to Supabase storage
+    // Upload PDF to Supabase storage - Update the bucket name to match exactly what's in Supabase
     const filePath = `${documentInfo.clientId}/${documentInfo.documentType}/${formattedDate}.pdf`;
     const { error: uploadError } = await supabase.storage
-      .from('clinical_documents')
+      .from('Clinical Documents')  // Updated to match the bucket name in Supabase
       .upload(filePath, pdfBlob, {
         contentType: 'application/pdf',
         upsert: true
@@ -301,9 +301,9 @@ export const generateAndSavePDF = async (
       return null;
     }
     
-    // Get the public URL
+    // Get the public URL - Update the bucket name here too
     const { data: urlData } = supabase.storage
-      .from('clinical_documents')
+      .from('Clinical Documents')  // Updated to match the bucket name in Supabase
       .getPublicUrl(filePath);
     
     // Save document metadata to clinical_documents table
