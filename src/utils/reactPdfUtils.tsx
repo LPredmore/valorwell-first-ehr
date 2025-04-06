@@ -1,6 +1,6 @@
-
 import { Document, Page, Text, View, StyleSheet, Font, pdf } from '@react-pdf/renderer';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from "@/components/ui/use-toast";
 
 // Define document styles
 const styles = StyleSheet.create({
@@ -252,7 +252,22 @@ const SessionNotePdfDocument: React.FC<SessionNotePdfDocumentProps> = ({ formDat
   </Document>
 );
 
-// Generic PDF generator function
+// Enhanced error handling for storage operations
+const handleStorageOperation = async (operation: () => Promise<any>, errorMessage: string) => {
+  try {
+    return await operation();
+  } catch (error) {
+    console.error(`${errorMessage}:`, error);
+    toast({
+      title: "Storage Error",
+      description: errorMessage,
+      variant: "destructive",
+    });
+    throw error;
+  }
+};
+
+// Generic PDF generator function with improved error handling
 export const generateAndSavePDF = async (
   documentData: any,
   documentInfo: {
@@ -263,70 +278,136 @@ export const generateAndSavePDF = async (
     createdBy?: string;
   }
 ) => {
-  try {
-    // Format date for file naming
-    const formattedDate = typeof documentInfo.documentDate === 'string' 
-      ? documentInfo.documentDate 
-      : documentInfo.documentDate.toISOString().split('T')[0];
+  // Format date for file naming
+  const formattedDate = typeof documentInfo.documentDate === 'string' 
+    ? documentInfo.documentDate 
+    : documentInfo.documentDate.toISOString().split('T')[0];
 
-    console.log('Generating PDF for:', documentInfo.documentTitle);
-    
-    // Determine which PDF document to render based on documentType
+  console.log('Generating PDF for:', documentInfo.documentTitle);
+  
+  try {
+    // Step 1: Generate PDF - Enhanced error handling
     let pdfDocument;
+    let pdfBlob;
     
-    switch (documentInfo.documentType) {
-      case 'session_note':
-        pdfDocument = <SessionNotePdfDocument formData={documentData} phq9Data={documentData.phq9Data} />;
-        break;
-      // Add other document types as needed
-      default:
-        console.error('Unsupported document type:', documentInfo.documentType);
-        return null;
+    try {
+      // Determine which PDF document to render based on documentType
+      switch (documentInfo.documentType) {
+        case 'session_note':
+          pdfDocument = <SessionNotePdfDocument formData={documentData} phq9Data={documentData.phq9Data} />;
+          break;
+        // Add other document types as needed
+        default:
+          throw new Error(`Unsupported document type: ${documentInfo.documentType}`);
+      }
+      
+      // Generate PDF as binary data
+      pdfBlob = await pdf(pdfDocument).toBlob();
+    } catch (pdfError) {
+      console.error('Error generating PDF:', pdfError);
+      toast({
+        title: "PDF Generation Failed",
+        description: "Could not generate the PDF document. Please try again.",
+        variant: "destructive",
+      });
+      return { success: false, error: pdfError, step: 'pdf_generation' };
     }
     
-    // Generate PDF as binary data
-    const pdfBlob = await pdf(pdfDocument).toBlob();
+    // Step 2: Upload PDF to storage - With retry logic
+    const filePath = `${documentInfo.clientId}/${documentInfo.documentType}/${formattedDate}-${Date.now()}.pdf`;
+    let uploadAttempts = 0;
+    let uploadError = null;
     
-    // Upload PDF to Supabase storage - Update the bucket name to match exactly what's in Supabase
-    const filePath = `${documentInfo.clientId}/${documentInfo.documentType}/${formattedDate}.pdf`;
-    const { error: uploadError } = await supabase.storage
-      .from('Clinical Documents')  // Updated to match the bucket name in Supabase
-      .upload(filePath, pdfBlob, {
-        contentType: 'application/pdf',
-        upsert: true
-      });
-      
+    while (uploadAttempts < 3) {
+      try {
+        const { error } = await supabase.storage
+          .from('Clinical Documents')
+          .upload(filePath, pdfBlob, {
+            contentType: 'application/pdf',
+            upsert: true
+          });
+          
+        if (!error) {
+          uploadError = null;
+          break;
+        }
+        
+        uploadError = error;
+        uploadAttempts++;
+        console.log(`Upload attempt ${uploadAttempts} failed, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+      } catch (error) {
+        uploadError = error;
+        uploadAttempts++;
+        console.error('Upload attempt failed with exception:', error);
+      }
+    }
+    
     if (uploadError) {
-      console.error('Error uploading PDF:', uploadError);
-      return null;
-    }
-    
-    // Get the public URL - Update the bucket name here too
-    const { data: urlData } = supabase.storage
-      .from('Clinical Documents')  // Updated to match the bucket name in Supabase
-      .getPublicUrl(filePath);
-    
-    // Save document metadata to clinical_documents table
-    const { error: dbError } = await supabase
-      .from('clinical_documents')
-      .insert({
-        client_id: documentInfo.clientId,
-        document_type: documentInfo.documentType,
-        document_date: formattedDate,
-        document_title: documentInfo.documentTitle,
-        file_path: filePath,
-        created_by: documentInfo.createdBy
+      console.error('All upload attempts failed:', uploadError);
+      toast({
+        title: "Upload Failed",
+        description: "Could not upload the document. Please try again later.",
+        variant: "destructive",
       });
-      
-    if (dbError) {
-      console.error('Error saving document metadata:', dbError);
-      return null;
+      return { success: false, error: uploadError, step: 'storage_upload' };
     }
     
-    console.log('PDF generated successfully:', filePath);
-    return filePath;
+    // Step 3: Get the public URL
+    let urlData;
+    try {
+      const response = supabase.storage
+        .from('Clinical Documents')
+        .getPublicUrl(filePath);
+      
+      urlData = response.data;
+    } catch (urlError) {
+      console.error('Error getting public URL:', urlError);
+      // Continue with the process even if getting URL fails
+    }
+    
+    // Step 4: Save document metadata to clinical_documents table with error handling
+    try {
+      const { error: dbError } = await supabase
+        .from('clinical_documents')
+        .insert({
+          client_id: documentInfo.clientId,
+          document_type: documentInfo.documentType,
+          document_date: formattedDate,
+          document_title: documentInfo.documentTitle,
+          file_path: filePath,
+          created_by: documentInfo.createdBy
+        });
+        
+      if (dbError) {
+        console.error('Error saving document metadata:', dbError);
+        toast({
+          title: "Warning",
+          description: "Document was uploaded but metadata could not be saved.",
+          variant: "default",
+        });
+        return { success: true, filePath, warning: 'metadata_not_saved' };
+      }
+    } catch (dbException) {
+      console.error('Exception saving document metadata:', dbException);
+      toast({
+        title: "Warning",
+        description: "Document was uploaded but metadata could not be saved.",
+        variant: "default",
+      });
+      return { success: true, filePath, warning: 'metadata_not_saved', error: dbException };
+    }
+    
+    console.log('PDF generated and stored successfully:', filePath);
+    return { success: true, filePath };
   } catch (error) {
-    console.error('Error generating PDF:', error);
-    return null;
+    // Catch-all for any unhandled errors
+    console.error('Unexpected error in generateAndSavePDF:', error);
+    toast({
+      title: "Error",
+      description: "An unexpected error occurred. Please try again later.",
+      variant: "destructive",
+    });
+    return { success: false, error };
   }
 };
