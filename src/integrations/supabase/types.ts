@@ -187,6 +187,359 @@ export type Database = {
         }
         Relationships: []
       }
+      client_history: {
+        Row: {
+          additional_info: string | null
+          additional_info2: string | null
+          alcohol_use: string | null
+          attempted_suicide: boolean | null
+          childhood_elaboration: string | null
+          chronic_health_problems: string | null
+          client_id: string
+          counseling_goals: string | null
+          created_at: string
+          current_issues: string | null
+          drug_use: string | null
+          education_level: string | null
+          emergency_name: string | null
+          emergency_phone: string | null
+          emergency_relationship: string | null
+          has_past_spouses: boolean | null
+          has_received_mental_health_treatment: boolean | null
+          hobbies: string | null
+          hospitalized_psychiatric: boolean | null
+          id: string
+          is_family_same_as_household: boolean | null
+          is_married: boolean | null
+          life_changes: string | null
+          occupation_details: string | null
+          pdf_path: string | null
+          personal_strengths: string | null
+          progression_of_issues: string | null
+          psych_hold: boolean | null
+          relationship_problems: string | null
+          selected_childhood_experiences: Json | null
+          selected_medical_conditions: Json | null
+          selected_symptoms: Json | null
+          signature: string | null
+          sleep_hours: string | null
+          submission_date: string | null
+          takes_medications: boolean | null
+          tobacco_use: string | null
+          updated_at: string
+        }
+        Insert: {
+          additional_info?: string | null
+          additional_info2?: string | null
+          alcohol_use?: string | null
+          attempted_suicide?: boolean | null
+          childhood_elaboration?: string | null
+          chronic_health_problems?: string | null
+          client_id: string
+          counseling_goals?: string | null
+          created_at?: string
+          current_issues?: string | null
+          drug_use?: string | null
+          education_level?: string | null
+          emergency_name?: string | null
+          emergency_phone?: string | null
+          emergency_relationship?: string | null
+          has_past_spouses?: boolean | null
+          has_received_mental_health_treatment?: boolean | null
+          hobbies?: string | null
+          hospitalized_psychiatric?: boolean | null
+          id?: string
+          is_family_same_as_household?: boolean | null
+          is_married?: boolean | null
+          life_changes?: string | null
+          occupation_details?: string | null
+          pdf_path?: string | null
+          personal_strengths?: string | null
+          progression_of_issues?: string | null
+          psych_hold?: boolean | null
+          relationship_problems?: string | null
+          selected_childhood_experiences?: Json | null
+          selected_medical_conditions?: Json | null
+          selected_symptoms?: Json | null
+          signature?: string | null
+          sleep_hours?: string | null
+          submission_date?: string | null
+          takes_medications?: boolean | null
+          tobacco_use?: string | null
+          updated_at?: string
+        }
+        Update: {
+          additional_info?: string | null
+          additional_info2?: string | null
+          alcohol_use?: string | null
+          attempted_suicide?: boolean | null
+          childhood_elaboration?: string | null
+          chronic_health_problems?: string | null
+          client_id?: string
+          counseling_goals?: string | null
+          created_at?: string
+          current_issues?: string | null
+          drug_use?: string | null
+          education_level?: string | null
+          emergency_name?: string | null
+          emergency_phone?: string | null
+          emergency_relationship?: string | null
+          has_past_spouses?: boolean | null
+          has_received_mental_health_treatment?: boolean | null
+          hobbies?: string | null
+          hospitalized_psychiatric?: boolean | null
+          id?: string
+          is_family_same_as_household?: boolean | null
+          is_married?: boolean | null
+          life_changes?: string | null
+          occupation_details?: string | null
+          pdf_path?: string | null
+          personal_strengths?: string | null
+          progression_of_issues?: string | null
+          psych_hold?: boolean | null
+          relationship_problems?: string | null
+          selected_childhood_experiences?: Json | null
+          selected_medical_conditions?: Json | null
+          selected_symptoms?: Json | null
+          signature?: string | null
+          sleep_hours?: string | null
+          submission_date?: string | null
+          takes_medications?: boolean | null
+          tobacco_use?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_history_family: {
+        Row: {
+          created_at: string
+          history_id: string
+          id: string
+          name: string | null
+          personality: string | null
+          relationship_growing: string | null
+          relationship_now: string | null
+          relationship_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          history_id: string
+          id?: string
+          name?: string | null
+          personality?: string | null
+          relationship_growing?: string | null
+          relationship_now?: string | null
+          relationship_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          history_id?: string
+          id?: string
+          name?: string | null
+          personality?: string | null
+          relationship_growing?: string | null
+          relationship_now?: string | null
+          relationship_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_history_family_history_id_fkey"
+            columns: ["history_id"]
+            isOneToOne: false
+            referencedRelation: "client_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_history_household: {
+        Row: {
+          created_at: string
+          history_id: string
+          id: string
+          name: string | null
+          personality: string | null
+          relationship_now: string | null
+          relationship_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          history_id: string
+          id?: string
+          name?: string | null
+          personality?: string | null
+          relationship_now?: string | null
+          relationship_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          history_id?: string
+          id?: string
+          name?: string | null
+          personality?: string | null
+          relationship_now?: string | null
+          relationship_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_history_household_history_id_fkey"
+            columns: ["history_id"]
+            isOneToOne: false
+            referencedRelation: "client_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_history_medications: {
+        Row: {
+          created_at: string
+          duration: string | null
+          history_id: string
+          id: string
+          name: string | null
+          purpose: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration?: string | null
+          history_id: string
+          id?: string
+          name?: string | null
+          purpose?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration?: string | null
+          history_id?: string
+          id?: string
+          name?: string | null
+          purpose?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_history_medications_history_id_fkey"
+            columns: ["history_id"]
+            isOneToOne: false
+            referencedRelation: "client_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_history_spouse: {
+        Row: {
+          created_at: string
+          history_id: string
+          id: string
+          name: string | null
+          personality: string | null
+          relationship: string | null
+        }
+        Insert: {
+          created_at?: string
+          history_id: string
+          id?: string
+          name?: string | null
+          personality?: string | null
+          relationship?: string | null
+        }
+        Update: {
+          created_at?: string
+          history_id?: string
+          id?: string
+          name?: string | null
+          personality?: string | null
+          relationship?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_history_spouse_history_id_fkey"
+            columns: ["history_id"]
+            isOneToOne: false
+            referencedRelation: "client_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_history_spouses: {
+        Row: {
+          created_at: string
+          history_id: string
+          id: string
+          name: string | null
+          personality: string | null
+          relationship: string | null
+        }
+        Insert: {
+          created_at?: string
+          history_id: string
+          id?: string
+          name?: string | null
+          personality?: string | null
+          relationship?: string | null
+        }
+        Update: {
+          created_at?: string
+          history_id?: string
+          id?: string
+          name?: string | null
+          personality?: string | null
+          relationship?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_history_spouses_history_id_fkey"
+            columns: ["history_id"]
+            isOneToOne: false
+            referencedRelation: "client_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_history_treatments: {
+        Row: {
+          created_at: string
+          history_id: string
+          id: string
+          length: string | null
+          provider: string | null
+          reason: string | null
+          year: string | null
+        }
+        Insert: {
+          created_at?: string
+          history_id: string
+          id?: string
+          length?: string | null
+          provider?: string | null
+          reason?: string | null
+          year?: string | null
+        }
+        Update: {
+          created_at?: string
+          history_id?: string
+          id?: string
+          length?: string | null
+          provider?: string | null
+          reason?: string | null
+          year?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_history_treatments_history_id_fkey"
+            columns: ["history_id"]
+            isOneToOne: false
+            referencedRelation: "client_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           client_affect: string | null
