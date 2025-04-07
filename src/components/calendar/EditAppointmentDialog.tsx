@@ -88,12 +88,15 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       setSelectedDate(appointment.date ? new Date(appointment.date) : new Date());
       
       try {
-        console.log('Displaying in timezone', clinicianTimeZone, ':', {
+        const validatedTimeZone = ensureIANATimeZone(clinicianTimeZone);
+        console.log('Displaying in timezone', validatedTimeZone, ':', {
           originalTime: appointment.start_time,
-          timeZone: clinicianTimeZone
+          date: appointment.date
         });
         
         setStartTime(appointment.start_time || '09:00');
+        
+        console.log('Time set for display:', appointment.start_time);
       } catch (error) {
         console.error('Error processing appointment time for display:', error);
         setStartTime(appointment.start_time || '09:00');
@@ -149,11 +152,20 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
         clinicianTimeZone: validatedClinicianTimeZone
       });
 
+      const dbStartTime = startTime;
+      const dbEndTime = endTime;
+
+      console.log('Time values to store in database:', {
+        date: formattedDate,
+        startTime: dbStartTime,
+        endTime: dbEndTime
+      });
+
       if (mode === 'single') {
         const updateData: any = {
           date: formattedDate,
-          start_time: startTime,
-          end_time: endTime,
+          start_time: dbStartTime,
+          end_time: dbEndTime,
         };
 
         if (isRecurring) {
@@ -176,8 +188,8 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
         const { error } = await supabase
           .from('appointments')
           .update({
-            start_time: startTime,
-            end_time: endTime,
+            start_time: dbStartTime,
+            end_time: dbEndTime,
           })
           .eq('recurring_group_id', appointment.recurring_group_id)
           .gte('date', appointment.date);
