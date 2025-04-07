@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -12,16 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { 
-  formatTime12Hour, 
-  toUTC, 
-  fromUTC,
-  formatUTCTimeForUser,
-  formatTimeZoneDisplay,
-  ensureIANATimeZone 
-} from '@/utils/timeZoneUtils';
-import { getClinicianTimeZone } from '@/hooks/useClinicianData';
-import { useUser } from '@/context/UserContext';
+import { formatTime12Hour, toUTC, fromUTC, ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
 interface EditAppointmentDialogProps {
   isOpen: boolean;
@@ -44,30 +36,6 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
   const [isRecurring, setIsRecurring] = useState(false);
   const [editOption, setEditOption] = useState<'single' | 'series'>('single');
   const [isEditOptionDialogOpen, setIsEditOptionDialogOpen] = useState(false);
-  const [clinicianTimeZone, setClinicianTimeZone] = useState('America/Chicago'); // Default timezone
-  const { userId } = useUser();
-
-  useEffect(() => {
-    const fetchClinicianTimeZone = async () => {
-      try {
-        if (appointment && appointment.clinician_id) {
-          const timezone = await getClinicianTimeZone(appointment.clinician_id);
-          const validatedTimezone = ensureIANATimeZone(timezone);
-          console.log('Fetched clinician timezone:', validatedTimezone);
-          setClinicianTimeZone(validatedTimezone);
-        } else if (userId) {
-          const timezone = await getClinicianTimeZone(userId);
-          const validatedTimezone = ensureIANATimeZone(timezone);
-          console.log('Using current user timezone:', validatedTimezone);
-          setClinicianTimeZone(validatedTimezone);
-        }
-      } catch (error) {
-        console.error('Error fetching clinician timezone:', error);
-      }
-    };
-
-    fetchClinicianTimeZone();
-  }, [appointment, userId]);
 
   const generateTimeOptions = () => {
     const options = [];
@@ -86,38 +54,18 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
   useEffect(() => {
     if (appointment) {
       setSelectedDate(appointment.date ? new Date(appointment.date) : new Date());
-      
-      try {
-        const validatedTimeZone = ensureIANATimeZone(clinicianTimeZone);
-        console.log('Displaying in timezone', validatedTimeZone, ':', {
-          originalTime: appointment.start_time,
-          date: appointment.date
-        });
-        
-        setStartTime(appointment.start_time || '09:00');
-        
-        console.log('Time set for display:', appointment.start_time);
-      } catch (error) {
-        console.error('Error processing appointment time for display:', error);
-        setStartTime(appointment.start_time || '09:00');
-      }
-      
+      setStartTime(appointment.start_time || '09:00');
       setIsRecurring(!!appointment.recurring_group_id);
     }
-  }, [appointment, clinicianTimeZone]);
+  }, [appointment]);
 
   const calculateEndTime = (startTimeStr: string): string => {
-    try {
-      const [hours, minutes] = startTimeStr.split(':').map(Number);
-      const date = new Date();
-      date.setHours(hours, minutes, 0, 0);
-      date.setMinutes(date.getMinutes() + 60); // 60 minute appointments
+    const [hours, minutes] = startTimeStr.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    date.setMinutes(date.getMinutes() + 60); // 60 minute appointments
 
-      return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-    } catch (error) {
-      console.error('Error calculating end time:', error);
-      return startTimeStr;
-    }
+    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
 
   const handleSaveClick = () => {
@@ -143,29 +91,15 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       const formattedDate = format(selectedDate, 'yyyy-MM-dd');
       const endTime = calculateEndTime(startTime);
 
-      const validatedClinicianTimeZone = ensureIANATimeZone(clinicianTimeZone);
-      
-      console.log('Converting from clinician timezone to UTC for storage:', {
-        originalDate: formattedDate,
-        originalStartTime: startTime,
-        originalEndTime: endTime,
-        clinicianTimeZone: validatedClinicianTimeZone
-      });
-
-      const dbStartTime = startTime;
-      const dbEndTime = endTime;
-
-      console.log('Time values to store in database:', {
-        date: formattedDate,
-        startTime: dbStartTime,
-        endTime: dbEndTime
-      });
+      // Get the clinician's timezone (fallback to system timezone if not available)
+      // In a complete implementation, you would fetch this from the clinician's profile
+      const clinicianTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
       if (mode === 'single') {
         const updateData: any = {
           date: formattedDate,
-          start_time: dbStartTime,
-          end_time: dbEndTime,
+          start_time: startTime,
+          end_time: endTime,
         };
 
         if (isRecurring) {
@@ -188,8 +122,8 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
         const { error } = await supabase
           .from('appointments')
           .update({
-            start_time: dbStartTime,
-            end_time: dbEndTime,
+            start_time: startTime,
+            end_time: endTime,
           })
           .eq('recurring_group_id', appointment.recurring_group_id)
           .gte('date', appointment.date);
@@ -214,17 +148,6 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const formatTimeWithTimezone = (time: string) => {
-    try {
-      const formattedTime = formatTime12Hour(time);
-      const timezoneName = formatTimeZoneDisplay(clinicianTimeZone);
-      return `${formattedTime} (${timezoneName})`;
-    } catch (error) {
-      console.error('Error formatting time with timezone:', error);
-      return formatTime12Hour(time);
     }
   };
 
@@ -284,14 +207,11 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
                 <SelectContent>
                   {timeOptions.map((time) => (
                     <SelectItem key={time} value={time}>
-                      {formatTimeWithTimezone(time)}
+                      {formatTime12Hour(time)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <div className="text-xs text-gray-500 mt-1">
-                Times displayed in {formatTimeZoneDisplay(clinicianTimeZone)} timezone
-              </div>
             </div>
 
             {isRecurring && (
