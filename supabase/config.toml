@@ -6,3 +6,5 @@ verify_jwt = true
 verify_jwt = true
 [functions.getavailabilitysettings]
 verify_jwt = true
+[functions.create-clinician]
+verify_jwt = true

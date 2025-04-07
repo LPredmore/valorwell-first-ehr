@@ -55,43 +55,21 @@ export function AddClinicianDialog({
     setIsLoading(true);
 
     try {
-      // Create user in auth and profiles table
-      const userData = {
-        first_name: firstName,
-        last_name: lastName,
-        role: 'clinician',
-      };
-      
-      const { data, error } = await supabase.auth.admin.createUser({
-        email,
-        password: Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8),
-        email_confirm: true,
-        user_metadata: userData
+      // Call the Edge Function instead of directly using admin APIs
+      const { data, error } = await supabase.functions.invoke('create-clinician', {
+        body: {
+          firstName,
+          lastName,
+          email
+        }
       });
 
       if (error) {
-        throw error;
+        throw new Error(error.message);
       }
 
-      if (!data.user) {
-        throw new Error('Failed to create user');
-      }
-
-      // Create clinician entry
-      const { error: clinicianError } = await supabase
-        .from('clinicians')
-        .insert([
-          {
-            id: data.user.id,
-            clinician_first_name: firstName,
-            clinician_last_name: lastName,
-            clinician_email: email,
-            clinician_status: 'New'
-          }
-        ]);
-
-      if (clinicianError) {
-        throw clinicianError;
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to add clinician');
       }
 
       toast({
