@@ -13,7 +13,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { formatTime12Hour, toUTC, fromUTC, ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import { 
+  formatTime12Hour, 
+  toUTC, 
+  fromUTC, 
+  ensureIANATimeZone, 
+  formatTimeZoneDisplay,
+  formatUTCTimeForUser
+} from '@/utils/timeZoneUtils';
+import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 
 interface EditAppointmentDialogProps {
   isOpen: boolean;
@@ -36,6 +44,31 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
   const [isRecurring, setIsRecurring] = useState(false);
   const [editOption, setEditOption] = useState<'single' | 'series'>('single');
   const [isEditOptionDialogOpen, setIsEditOptionDialogOpen] = useState(false);
+  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago'); // Default timezone
+  const [timeZoneDisplay, setTimeZoneDisplay] = useState<string>('Central Time');
+
+  // Fetch clinician's timezone when appointment changes
+  useEffect(() => {
+    const fetchClinicianTimeZone = async () => {
+      if (appointment?.clinician_id) {
+        try {
+          const timezone = await getClinicianTimeZone(appointment.clinician_id);
+          const validTimeZone = ensureIANATimeZone(timezone);
+          console.log('Fetched clinician timezone:', validTimeZone);
+          setClinicianTimeZone(validTimeZone);
+          setTimeZoneDisplay(formatTimeZoneDisplay(validTimeZone));
+        } catch (error) {
+          console.error('Error fetching clinician timezone:', error);
+          // Fallback to browser's timezone
+          const systemTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          setClinicianTimeZone(systemTimeZone);
+          setTimeZoneDisplay(formatTimeZoneDisplay(systemTimeZone));
+        }
+      }
+    };
+
+    fetchClinicianTimeZone();
+  }, [appointment?.clinician_id]);
 
   const generateTimeOptions = () => {
     const options = [];
@@ -54,10 +87,32 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
   useEffect(() => {
     if (appointment) {
       setSelectedDate(appointment.date ? new Date(appointment.date) : new Date());
-      setStartTime(appointment.start_time || '09:00');
+      
+      // Converting UTC time from database to clinician timezone for display
+      try {
+        if (appointment.start_time) {
+          // Create a datetime string by combining the date and time
+          const dateTimeStr = `${appointment.date}T${appointment.start_time}:00Z`;
+          console.log('Displaying in timezone:', { 
+            timeZone: clinicianTimeZone, 
+            originalTime: appointment.start_time
+          });
+          
+          const displayTime = formatUTCTimeForUser(dateTimeStr, clinicianTimeZone, 'HH:mm');
+          console.log('Converted display time:', displayTime);
+          setStartTime(displayTime);
+        } else {
+          setStartTime('09:00');
+        }
+      } catch (error) {
+        console.error('Error converting appointment time for display:', error);
+        // Fallback to raw time from database
+        setStartTime(appointment.start_time || '09:00');
+      }
+      
       setIsRecurring(!!appointment.recurring_group_id);
     }
-  }, [appointment]);
+  }, [appointment, clinicianTimeZone]);
 
   const calculateEndTime = (startTimeStr: string): string => {
     const [hours, minutes] = startTimeStr.split(':').map(Number);
@@ -89,17 +144,44 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
     setIsLoading(true);
     try {
       const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-      const endTime = calculateEndTime(startTime);
-
+      
       // Get the clinician's timezone (fallback to system timezone if not available)
-      // In a complete implementation, you would fetch this from the clinician's profile
-      const clinicianTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const validTimeZone = ensureIANATimeZone(clinicianTimeZone);
+      
+      // Converting local time (clinicianTimeZone) to UTC for database storage
+      console.log('Converting from', validTimeZone, 'to UTC:', { 
+        originalDate: formattedDate, 
+        originalTime: startTime 
+      });
+      
+      let utcStartTime;
+      try {
+        // We don't actually convert to a full UTC timestamp here,
+        // we just need to adjust the time portion to be correct in UTC
+        // when it's the given local time in the clinician's timezone
+        utcStartTime = startTime; // Default fallback
+        
+        // Create a full ISO datetime string for the conversion
+        const localDateTimeStr = `${formattedDate}T${startTime}`;
+        const utcDateTime = toUTC(formattedDate, startTime, validTimeZone);
+        
+        // Extract just the time part (HH:MM) from the UTC timestamp
+        utcStartTime = utcDateTime.split('T')[1].substring(0, 5);
+        
+        console.log('Converted to UTC time:', utcStartTime);
+      } catch (error) {
+        console.error('Error converting to UTC:', error);
+        // Fallback to original time if conversion fails
+        utcStartTime = startTime;
+      }
+      
+      const utcEndTime = calculateEndTime(utcStartTime);
 
       if (mode === 'single') {
         const updateData: any = {
           date: formattedDate,
-          start_time: startTime,
-          end_time: endTime,
+          start_time: utcStartTime,
+          end_time: utcEndTime,
         };
 
         if (isRecurring) {
@@ -122,8 +204,8 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
         const { error } = await supabase
           .from('appointments')
           .update({
-            start_time: startTime,
-            end_time: endTime,
+            start_time: utcStartTime,
+            end_time: utcEndTime,
           })
           .eq('recurring_group_id', appointment.recurring_group_id)
           .gte('date', appointment.date);
@@ -148,6 +230,19 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Format time display with timezone
+  const formatTimeWithTimezone = (time: string): string => {
+    try {
+      // Format the time to 12-hour format
+      const formatted = formatTime12Hour(time);
+      // Add timezone display
+      return `${formatted} (${timeZoneDisplay})`;
+    } catch (error) {
+      console.error('Error formatting time with timezone:', error);
+      return formatTime12Hour(time);
     }
   };
 
@@ -199,7 +294,9 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="time">Start Time</Label>
+              <Label htmlFor="time">
+                Start Time <span className="text-sm text-muted-foreground">({timeZoneDisplay})</span>
+              </Label>
               <Select value={startTime} onValueChange={setStartTime}>
                 <SelectTrigger id="time">
                   <SelectValue placeholder="Select start time" />
@@ -207,7 +304,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
                 <SelectContent>
                   {timeOptions.map((time) => (
                     <SelectItem key={time} value={time}>
-                      {formatTime12Hour(time)}
+                      {formatTimeWithTimezone(time)}
                     </SelectItem>
                   ))}
                 </SelectContent>
