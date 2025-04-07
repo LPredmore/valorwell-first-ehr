@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, startOfToday } from 'date-fns';
 import { getUserTimeZone, formatTime12Hour, formatTimeZoneDisplay, formatWithTimeZone, formatTimeInUserTimeZone, ensureIANATimeZone } from '@/utils/timeZoneUtils';
 import { useToast } from '@/hooks/use-toast';
+
 interface PastAppointment {
   id: string | number;
   date: string;
@@ -16,9 +17,11 @@ interface PastAppointment {
   rawDate?: string;
   status?: string;
 }
+
 interface MyAppointmentsProps {
   pastAppointments?: PastAppointment[];
 }
+
 const MyAppointments: React.FC<MyAppointmentsProps> = ({
   pastAppointments: initialPastAppointments
 }) => {
@@ -29,7 +32,9 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
   const {
     toast
   } = useToast();
+
   const clientTimeZone = ensureIANATimeZone(clientData?.client_time_zone || getUserTimeZone());
+
   useEffect(() => {
     const fetchClientData = async () => {
       try {
@@ -69,6 +74,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
     };
     fetchClientData();
   }, []);
+
   useEffect(() => {
     const fetchPastAppointments = async () => {
       if (!clientData?.id) return;
@@ -84,6 +90,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
         }).order('start_time', {
           ascending: false
         });
+        
         if (error) {
           console.error('Error fetching past appointments:', error);
           toast({
@@ -93,13 +100,16 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
           });
           return;
         }
+        
         if (data && data.length > 0) {
           console.log("Past appointments data:", data);
           console.log("Using client time zone:", clientTimeZone);
+          
           const formattedAppointments = data.map(appointment => {
             try {
               const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
               let formattedTime = '';
+              
               try {
                 if (appointment.start_time) {
                   formattedTime = formatTimeInUserTimeZone(appointment.start_time, clientTimeZone, 'h:mm a');
@@ -113,6 +123,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
                 });
                 formattedTime = formatTime12Hour(appointment.start_time) || 'Time unavailable';
               }
+              
               return {
                 id: appointment.id,
                 date: formattedDate,
@@ -135,6 +146,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
               };
             }
           });
+          
           console.log("Formatted past appointments:", formattedAppointments);
           setPastAppointments(formattedAppointments);
         } else {
@@ -152,9 +164,12 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
         setLoading(false);
       }
     };
+    
     fetchPastAppointments();
   }, [clientData, clinicianName, clientTimeZone, toast]);
+
   const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);
+
   return <Card>
       <CardHeader>
         <CardTitle>Past Appointments</CardTitle>
@@ -168,8 +183,6 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
                 <TableHead>Time <span className="text-xs text-gray-500">({timeZoneDisplay})</span></TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Therapist</TableHead>
-                
-                
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -178,8 +191,6 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
                   <TableCell>{appointment.time}</TableCell>
                   <TableCell>{appointment.type}</TableCell>
                   <TableCell>{appointment.therapist}</TableCell>
-                  
-                  
                 </TableRow>)}
             </TableBody>
           </Table> : <div className="flex flex-col items-center justify-center py-6 text-center">
@@ -190,4 +201,5 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
       </CardContent>
     </Card>;
 };
+
 export default MyAppointments;

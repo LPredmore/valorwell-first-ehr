@@ -243,7 +243,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
 
   return <div className="grid grid-cols-1 gap-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Today's Appointments</CardTitle>
             <CardDescription>Sessions scheduled for today</CardDescription>
@@ -358,7 +358,15 @@ const MyPortal: React.FC<MyPortalProps> = ({
         </CardFooter>
       </Card>
 
-      <AppointmentBookingDialog open={isBookingOpen} onOpenChange={setIsBookingOpen} clinicianId={clientData?.client_assigned_therapist || null} clinicianName={clinicianName} clientId={clientData?.id || null} onAppointmentBooked={handleBookingComplete} />
+      <AppointmentBookingDialog 
+        open={isBookingOpen} 
+        onOpenChange={setIsBookingOpen} 
+        clinicianId={clientData?.client_assigned_therapist || null} 
+        clinicianName={clinicianName} 
+        clientId={clientData?.id || null} 
+        onAppointmentBooked={handleBookingComplete} 
+        userTimeZone={clientTimeZone} 
+      />
 
       {showPHQ9 && <PHQ9Template 
         onClose={() => setShowPHQ9(false)} 

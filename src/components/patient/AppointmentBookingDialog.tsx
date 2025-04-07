@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, parse, addDays, isSameDay, isAfter, differenceInCalendarDays } from 'date-fns';
 import { Calendar as CalendarIcon, Clock, Check } from 'lucide-react';
@@ -8,7 +9,8 @@ import {
   getUserTimeZone, 
   toUTC, 
   fromUTC,
-  formatUTCTimeForUser 
+  formatUTCTimeForUser,
+  ensureIANATimeZone
 } from '@/utils/timeZoneUtils';
 
 import { 
@@ -72,11 +74,44 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [bookingInProgress, setBookingInProgress] = useState<boolean>(false);
   const [minDaysAhead, setMinDaysAhead] = useState<number>(1);
+  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>("America/Chicago");
   const { toast } = useToast();
-  const userTimeZone = propTimeZone || getUserTimeZone();
+  
+  // Ensure we use the client's timezone
+  const clientTimeZone = ensureIANATimeZone(propTimeZone || getUserTimeZone());
+
+  // Debug logging for timezone issues
+  useEffect(() => {
+    if (open) {
+      console.log("AppointmentBookingDialog opened with client timezone:", clientTimeZone);
+    }
+  }, [open, clientTimeZone]);
 
   useEffect(() => {
     if (!open || !clinicianId) return;
+    
+    // Fetch the clinician's timezone for proper time conversion
+    const fetchClinicianData = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('clinicians')
+          .select('clinician_timezone')
+          .eq('id', clinicianId)
+          .single();
+          
+        if (error) {
+          console.error('Error fetching clinician timezone:', error);
+        } else if (data?.clinician_timezone) {
+          const timezone = ensureIANATimeZone(data.clinician_timezone);
+          console.log('Fetched clinician timezone:', timezone);
+          setClinicianTimeZone(timezone);
+        }
+      } catch (error) {
+        console.error('Error in fetchClinicianData:', error);
+      }
+    };
+    
+    fetchClinicianData();
     
     const fetchSettings = async () => {
       try {
@@ -155,16 +190,21 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     const slots: TimeSlot[] = [];
     
     availabilityForDay.forEach(block => {
-      const startTime = parse(block.start_time, 'HH:mm:ss', new Date());
-      const endTime = parse(block.end_time, 'HH:mm:ss', new Date());
+      console.log(`Processing availability block: ${block.start_time} - ${block.end_time} (clinician timezone: ${clinicianTimeZone})`);
       
-      let currentTime = startTime;
-      while (currentTime < endTime) {
+      // Parse the times in the clinician's timezone
+      const startTimeDate = parse(block.start_time, 'HH:mm:ss', new Date());
+      const endTimeDate = parse(block.end_time, 'HH:mm:ss', new Date());
+      
+      let currentTime = startTimeDate;
+      while (currentTime < endTimeDate) {
         const timeString = format(currentTime, 'HH:mm');
         slots.push({
           time: timeString,
           available: true
         });
+        
+        // Add 30 minutes to current time for the next slot
         currentTime = addDays(currentTime, 0);
         currentTime.setMinutes(currentTime.getMinutes() + 30);
       }
@@ -198,13 +238,15 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
         if (error) {
           console.error('Error fetching appointments:', error);
         } else if (data && data.length > 0) {
+          console.log('Found existing appointments:', data);
+          
           const updatedSlots = slots.map(slot => {
-            const slotTime = parse(slot.time, 'HH:mm', new Date());
-            const slotTimeStr = format(slotTime, 'HH:mm:ss');
+            const slotTimeStr = `${slot.time}:00`;
             
-            const isBooked = data.some(appointment => 
-              appointment.start_time === slotTimeStr
-            );
+            // Check if this time slot matches any existing appointments
+            const isBooked = data.some(appointment => {
+              return appointment.start_time === slotTimeStr;
+            });
             
             return {
               ...slot,
@@ -222,7 +264,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     };
     
     checkExistingAppointments();
-  }, [selectedDate, availabilityBlocks, clinicianId, minDaysAhead]);
+  }, [selectedDate, availabilityBlocks, clinicianId, minDaysAhead, clinicianTimeZone]);
 
   const handleBookAppointment = async () => {
     if (!selectedDate || !selectedTime || !clinicianId || !clientId) {
@@ -256,6 +298,8 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
       const endTime = format(endTimeObj, 'HH:mm');
       
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      
+      console.log(`Booking appointment: ${dateStr} at ${startTime} (stored in DB format, client timezone: ${clientTimeZone})`);
       
       const { data, error } = await supabase
         .from('appointments')
@@ -349,8 +393,16 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     return unavailable || pastDate || tooSoon;
   };
 
+  // Format time for display in the client's timezone
   const formatTimeDisplay = (timeString: string) => {
-    return formatTimeInUserTimeZone(timeString, userTimeZone);
+    try {
+      // This correctly formats the time from clinician timezone to client timezone
+      const formattedTime = formatTimeInUserTimeZone(timeString, clientTimeZone, 'h:mm a');
+      return formattedTime;
+    } catch (error) {
+      console.error('Error formatting time for display:', error, { timeString, clientTimeZone });
+      return timeString;
+    }
   };
 
   return (
@@ -409,7 +461,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
                 <div>
                   <h3 className="text-sm font-medium mb-2">Available Time Slots</h3>
                   <div className="text-xs text-gray-600 mb-2">
-                    All times shown in your local time zone ({userTimeZone})
+                    All times shown in your local time zone ({clientTimeZone})
                   </div>
                   {timeSlots.length > 0 ? (
                     <div className="space-y-2 max-h-[300px] overflow-y-auto p-2">
@@ -502,7 +554,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Time Zone:</span>
-                    <span className="font-medium">{userTimeZone}</span>
+                    <span className="font-medium">{clientTimeZone}</span>
                   </div>
                 </div>
               </div>
