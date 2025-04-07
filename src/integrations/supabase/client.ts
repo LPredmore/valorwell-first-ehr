@@ -160,19 +160,24 @@ export interface PHQ9Assessment {
   question_9: number;
   total_score: number;
   additional_notes?: string;
-  appointment_id?: string; // Added appointment_id field
+  appointment_id?: string | null;
+  phq9_narrative?: string;
 }
 
 // New function to save PHQ-9 assessment
 export const savePHQ9Assessment = async (assessment: PHQ9Assessment) => {
   try {
+    console.log('Saving PHQ9 assessment data:', assessment);
     const { data, error } = await supabase
       .from('phq9_assessments')
       .insert([assessment])
       .select();
       
-    if (error) throw error;
-    return { success: true, data };
+    if (error) {
+      console.error('Error saving PHQ9 assessment:', error);
+      throw error;
+    }
+    return { success: true, data: data?.[0] || null };
   } catch (error) {
     console.error('Error saving PHQ9 assessment:', error);
     return { success: false, error };
@@ -199,13 +204,18 @@ export const fetchPHQ9Assessments = async (clientId: string) => {
 // New function to check if a PHQ-9 assessment exists for a specific appointment
 export const checkPHQ9ForAppointment = async (appointmentId: string) => {
   try {
+    console.log('Checking for PHQ9 assessment for appointment:', appointmentId);
     const { data, error } = await supabase
       .from('phq9_assessments')
       .select('*')
       .eq('appointment_id', appointmentId)
       .maybeSingle();
       
-    if (error) throw error;
+    if (error) {
+      console.error('Error checking PHQ9 for appointment:', error);
+      throw error;
+    }
+    console.log('PHQ9 assessment check result:', data ? 'Found' : 'Not found');
     return { exists: !!data, data };
   } catch (error) {
     console.error('Error checking PHQ9 for appointment:', error);

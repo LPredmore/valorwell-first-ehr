@@ -174,16 +174,28 @@ const MyPortal: React.FC<MyPortalProps> = ({
     setPendingAppointmentId(appointmentId);
     
     try {
-      const { exists: phq9Exists } = await checkPHQ9ForAppointment(appointmentId.toString());
+      console.log(`Checking for existing PHQ-9 assessment for appointment: ${appointmentId}`);
+      const { exists: phq9Exists, error } = await checkPHQ9ForAppointment(appointmentId.toString());
+      
+      if (error) {
+        console.error('Error checking for PHQ-9 assessment:', error);
+        toast({
+          title: "Note",
+          description: "We'll start with a quick PHQ-9 assessment before your session."
+        });
+        setShowPHQ9(true);
+        return;
+      }
       
       if (phq9Exists) {
         console.log('PHQ-9 assessment already exists for appointment:', appointmentId);
         handlePHQ9Complete();
       } else {
+        console.log('No PHQ-9 assessment found, showing assessment form');
         setShowPHQ9(true);
       }
     } catch (error) {
-      console.error('Error checking for existing PHQ-9 assessment:', error);
+      console.error('Error in handleStartSession:', error);
       setShowPHQ9(true);
     }
   };
@@ -210,7 +222,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
         console.error('Error starting video session:', error);
         toast({
           title: "Error",
-          description: error?.message || "Failed to start the video session. Please try again.",
+          description: "We couldn't start the video session. Please try again or contact support.",
           variant: "destructive"
         });
       } finally {
@@ -222,6 +234,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
 
   const handleCloseVideoSession = () => {
     setIsVideoSessionOpen(false);
+    setVideoRoomUrl(null);
   };
 
   const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);

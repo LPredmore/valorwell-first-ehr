@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import {
   Dialog,
@@ -103,7 +104,7 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
           question_9: scores[8],
           total_score: totalScore,
           additional_notes: additionalNotes,
-          appointment_id: appointmentId ? appointmentId.toString() : undefined // Add appointment ID if available
+          appointment_id: appointmentId ? appointmentId.toString() : null // Use null instead of undefined for DB compatibility
         };
         
         // Save the assessment to the database
@@ -119,9 +120,35 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
           // Still continue with the flow even if saving fails
         } else {
           console.log('PHQ-9 assessment saved successfully:', result.data);
+          
+          // Create a narrative from the assessment for session notes
+          const severity = getSeverity(totalScore);
+          const phq9_narrative = `Patient completed PHQ-9 assessment with a total score of ${totalScore} (${severity} depression severity). ${additionalNotes ? `Additional notes: ${additionalNotes}` : ''}`;
+          
+          // Update the assessment with the narrative
+          if (result.data && result.data.id) {
+            try {
+              const { error: updateError } = await supabase
+                .from('phq9_assessments')
+                .update({ phq9_narrative })
+                .eq('id', result.data.id);
+                
+              if (updateError) {
+                console.error('Error updating PHQ-9 narrative:', updateError);
+              }
+            } catch (narrativeError) {
+              console.error('Error saving PHQ-9 narrative:', narrativeError);
+            }
+          }
         }
       } else {
         console.warn('Cannot save PHQ-9 assessment: Missing client data or ID');
+        toast({
+          title: "Warning",
+          description: "Could not save assessment: missing client information.",
+          variant: "destructive"
+        });
+        // Still continue with the flow
       }
       
       // Keep existing notification code
