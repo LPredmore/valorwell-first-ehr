@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import Layout from '../components/layout/Layout';
 import PracticeTab from '@/components/settings/PracticeTab';
@@ -7,7 +8,6 @@ import BillingTab from '@/components/settings/BillingTab';
 import TemplatesTab from '@/components/settings/TemplatesTab';
 import SecurityTab from '@/components/settings/SecurityTab';
 import LicensesTab from '@/components/settings/LicensesTab';
-import { AddUserDialog } from '@/components/AddUserDialog';
 
 const SettingsTabs = {
   PRACTICE: 'practice',
@@ -21,7 +21,6 @@ const SettingsTabs = {
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState(SettingsTabs.PRACTICE);
-  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   
   return (
     <Layout>
@@ -79,15 +78,6 @@ const Settings = () => {
         {activeTab === SettingsTabs.SECURITY && <SecurityTab />}
         {activeTab === SettingsTabs.LICENSES && <LicensesTab />}
       </div>
-      
-      <AddUserDialog 
-        open={isAddUserDialogOpen} 
-        onOpenChange={setIsAddUserDialogOpen}
-        onUserAdded={() => {
-          // This is a callback that will be passed to the UsersTab
-          // We will handle this in the UsersTab component
-        }}
-      />
     </Layout>
   );
 };
