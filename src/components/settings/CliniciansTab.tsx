@@ -5,6 +5,7 @@ import { Plus, Mail, Phone } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AddClinicianDialog } from './AddClinicianDialog';
+import { UpdatePasswordsDialog } from './UpdatePasswordsDialog';
 import {
   Table,
   TableBody,
@@ -120,13 +121,16 @@ const CliniciansTab = () => {
     <div className="p-6 animate-fade-in">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold">Clinician Management</h2>
-        <button 
-          className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800"
-          onClick={() => setIsAddClinicianDialogOpen(true)}
-        >
-          <Plus size={16} />
-          <span>Add Clinician</span>
-        </button>
+        <div className="flex gap-2">
+          <UpdatePasswordsDialog />
+          <button 
+            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800"
+            onClick={() => setIsAddClinicianDialogOpen(true)}
+          >
+            <Plus size={16} />
+            <span>Add Clinician</span>
+          </button>
+        </div>
       </div>
       
       <div className="rounded-md border">
