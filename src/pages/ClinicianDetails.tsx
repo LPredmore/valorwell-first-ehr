@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
-import { supabase, updateClinicianLicenseTypes } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Save, X, Upload, Camera, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -350,32 +350,6 @@ const ClinicianDetails = () => {
   const handleSave = async () => {
     try {
       if (!editedClinician) return;
-      
-      // If trying to set a license type, ensure the database constraint is updated first
-      if (editedClinician.clinician_license_type && 
-          editedClinician.clinician_license_type !== clinician?.clinician_license_type) {
-        console.log(`Updating clinician_license_type to ${editedClinician.clinician_license_type}`);
-        // Check if we need to update the constraint
-        toast({
-          title: "Updating license types...",
-          description: "Preparing database for new license type."
-        });
-        
-        const { success, error: constraintError } = await updateClinicianLicenseTypes();
-        if (!success) {
-          console.error("Failed to update license types constraint:", constraintError);
-          toast({
-            title: "Error",
-            description: "Failed to update license types. Please try again.",
-            variant: "destructive"
-          });
-          return;
-        }
-        
-        // Add a small delay to ensure the database constraint is fully updated
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-      
       let imageUrl = editedClinician.clinician_image_url;
       if (profileImage) {
         console.log("Uploading profile image...");
@@ -387,7 +361,6 @@ const ClinicianDetails = () => {
           console.error("Failed to upload profile image");
         }
       }
-      
       const updatedClinicianData = {
         ...editedClinician,
         clinician_licensed_states: selectedStates,
@@ -396,31 +369,25 @@ const ClinicianDetails = () => {
         clinician_image_url: imageUrl,
         clinician_min_client_age: editedClinician.clinician_min_client_age
       };
-      
       console.log("Saving clinician data:", updatedClinicianData);
       const {
         error
       } = await supabase.from('clinicians').update(updatedClinicianData).eq('id', clinicianId);
-      
       if (error) {
         console.error("Error updating clinician:", error);
         throw error;
       }
-      
       setClinician({
         ...editedClinician,
         clinician_licensed_states: selectedStates,
         clinician_image_url: imageUrl
       });
-      
       setIsEditing(false);
       setProfileImage(null);
-      
       toast({
         title: "Success",
         description: "Clinician details updated successfully."
       });
-      
       fetchClinicianData();
     } catch (error) {
       console.error('Error updating clinician:', error);

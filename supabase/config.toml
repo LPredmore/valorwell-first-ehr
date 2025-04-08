@@ -8,6 +8,3 @@ verify_jwt = true
 verify_jwt = true
 [functions.create-clinician]
 verify_jwt = true
-[functions.update-clinician-license-types]
-verify_jwt = true
-
