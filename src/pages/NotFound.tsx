@@ -2,7 +2,7 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Info } from "lucide-react";
 
 const NotFound = () => {
   const location = useLocation();
@@ -28,26 +28,51 @@ const NotFound = () => {
     location.search.includes("type=recovery") ||
     location.hash.includes("access_token") ||
     location.search.includes("access_token");
+    
+  // Additional check for incorrect domain in reset links
+  const hasTokenButWrongPath = 
+    (location.hash.includes("access_token") || location.search.includes("access_token")) && 
+    !location.pathname.includes("reset-password");
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center max-w-md p-6">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+      <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-md">
         <h1 className="text-6xl font-bold text-gray-800 mb-4">404</h1>
         <p className="text-xl text-gray-600 mb-6">Oops! Page not found</p>
         
         {isPossibleResetLink && (
           <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-md text-left">
-            <h2 className="text-lg font-medium text-amber-800 mb-2">Broken Password Reset Link?</h2>
+            <h2 className="flex items-center text-lg font-medium text-amber-800 mb-2">
+              <Info size={20} className="mr-2" /> Password Reset Issue
+            </h2>
+            
             <p className="text-sm text-amber-700 mb-3">
-              It looks like you might be trying to reset your password. The link might be using an incorrect domain.
+              It looks like you might be trying to reset your password. There might be a configuration issue:
             </p>
+            
+            {hasTokenButWrongPath && (
+              <p className="text-sm font-semibold text-amber-800 mb-3">
+                This URL contains a reset token but is missing the correct path. Try changing the URL to:
+                <br />
+                <code className="block bg-amber-100 p-2 my-2 rounded overflow-auto text-xs">
+                  {`${window.location.origin}/reset-password${window.location.search}${window.location.hash}`}
+                </code>
+              </p>
+            )}
+            
             <p className="text-sm text-amber-700 mb-3">
-              If you're accessing this site through a custom domain (like ehr.valorwell.org), 
-              please make sure you're using the latest password reset link.
+              <strong>For administrators:</strong> Ensure that:
             </p>
-            <p className="text-sm text-amber-700">
-              Please try to reset your password again from the login page or contact support for assistance.
-            </p>
+            <ul className="list-disc list-inside text-sm text-amber-700 mb-3 pl-2">
+              <li>Supabase Site URL is set to <code>https://ehr.valorwell.org</code> (with HTTPS)</li>
+              <li>The redirect URL in Supabase includes <code>https://ehr.valorwell.org/reset-password</code></li>
+              <li>The app's code is using the correct URL format for password reset links</li>
+            </ul>
+            
+            <div className="mt-4 p-2 bg-amber-100 rounded text-sm">
+              <p className="font-semibold">Current URL details:</p>
+              <p className="text-xs overflow-auto">{window.location.href}</p>
+            </div>
           </div>
         )}
         
@@ -63,6 +88,18 @@ const NotFound = () => {
               Go to Login
             </Link>
           </Button>
+          
+          {hasTokenButWrongPath && (
+            <Button 
+              variant="secondary"
+              onClick={() => {
+                window.location.href = `${window.location.origin}/reset-password${window.location.search}${window.location.hash}`;
+              }}
+              className="flex items-center justify-center"
+            >
+              Try to Fix Reset URL
+            </Button>
+          )}
         </div>
       </div>
     </div>

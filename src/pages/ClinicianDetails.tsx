@@ -430,6 +430,10 @@ const ClinicianDetails = () => {
     try {
       let siteUrl = window.location.origin;
       
+      if (siteUrl.includes('ehr.valorwell.org') && siteUrl.startsWith('http:')) {
+        siteUrl = siteUrl.replace('http:', 'https:');
+      }
+      
       console.log("Current site URL for password reset:", siteUrl);
       
       const { error } = await supabase.auth.resetPasswordForEmail(
