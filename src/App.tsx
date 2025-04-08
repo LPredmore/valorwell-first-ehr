@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -20,6 +21,8 @@ import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import ClinicianDetails from "./pages/ClinicianDetails";
 import MyClients from "./pages/MyClients";
 import PatientDashboard from "./pages/PatientDashboard";
@@ -46,6 +49,8 @@ const App: React.FC = () => {
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 
                 {/* Client accessible routes */}
                 <Route path="/profile-setup" element={<ProfileSetup />} />
