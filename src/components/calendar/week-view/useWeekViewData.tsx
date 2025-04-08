@@ -17,6 +17,7 @@ interface Appointment {
   end_time: string;
   type: string;
   status: string;
+  clinician_id: string;
 }
 
 interface AvailabilityBlock {
@@ -84,9 +85,13 @@ export const useWeekViewData = (
       return;
     }
 
+    console.log(`Week view processing appointments for clinician: ${clinicianId}`);
     console.log("Processing appointments in week view:", appointments);
     
-    const blocks: AppointmentBlock[] = appointments.map(appointment => {
+    const filteredAppointments = appointments.filter(app => String(app.clinician_id) === String(clinicianId));
+    console.log(`After filtering by clinician ID, ${filteredAppointments.length} appointments remain`);
+    
+    const blocks: AppointmentBlock[] = filteredAppointments.map(appointment => {
       const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
       const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
 
@@ -117,7 +122,7 @@ export const useWeekViewData = (
 
     console.log("Week view appointment blocks created:", blocks);
     setAppointmentBlocks(blocks);
-  }, [appointments, getClientName]);
+  }, [appointments, getClientName, clinicianId]);
 
   // Fetch availability and exceptions
   useEffect(() => {

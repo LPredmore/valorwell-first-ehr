@@ -19,6 +19,7 @@ interface Appointment {
   end_time: string;
   type: string;
   status: string;
+  clinician_id: string;
 }
 
 interface AvailabilityBlock {
@@ -138,6 +139,25 @@ export const useMonthViewData = (
     fetchAvailabilityAndExceptions();
   }, [clinicianId, refreshTrigger, startDate, endDate]);
 
+  const dayAppointmentsMap = useMemo(() => {
+    const result = new Map<string, Appointment[]>();
+    
+    console.log(`MonthView building dayAppointmentsMap for clinician: ${clinicianId}`);
+    console.log(`Appointments provided to monthView:`, appointments);
+    
+    // Verify we're only processing appointments for the current clinician
+    const filteredAppointments = appointments.filter(app => String(app.clinician_id) === String(clinicianId));
+    console.log(`After filtering by clinician ID, ${filteredAppointments.length} appointments remain`);
+    
+    days.forEach(day => {
+      const dayStr = format(day, 'yyyy-MM-dd');
+      const dayAppointments = filteredAppointments.filter(appointment => appointment.date === dayStr);
+      result.set(dayStr, dayAppointments);
+    });
+    
+    return result;
+  }, [days, appointments, clinicianId]);
+
   const dayAvailabilityMap = useMemo(() => {
     const result = new Map<string, { 
       hasAvailability: boolean, 
@@ -214,18 +234,6 @@ export const useMonthViewData = (
     
     return result;
   }, [days, availabilityData]);
-
-  const dayAppointmentsMap = useMemo(() => {
-    const result = new Map<string, Appointment[]>();
-    
-    days.forEach(day => {
-      const dayStr = format(day, 'yyyy-MM-dd');
-      const dayAppointments = appointments.filter(appointment => appointment.date === dayStr);
-      result.set(dayStr, dayAppointments);
-    });
-    
-    return result;
-  }, [days, appointments]);
 
   return {
     loading,
