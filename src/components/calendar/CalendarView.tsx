@@ -27,6 +27,7 @@ interface Appointment {
   end_time: string;
   type: string;
   status: string;
+  clinician_id: string;
 }
 
 interface AvailabilityBlock {
@@ -93,6 +94,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!clinicianId) return;
+      
       try {
         let startDate, endDate;
         
@@ -121,12 +123,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         if (error) {
           console.error('Error fetching appointments:', error);
         } else {
-          console.log(`Fetched ${data?.length || 0} appointments:`, data);
+          console.log(`Fetched ${data?.length || 0} appointments with clinician_id=${clinicianId}:`, data);
           
-          setAppointments(data || []);
+          // Ensure we only set appointments that actually belong to this clinician
+          const validAppointments = data?.filter(app => app.clinician_id === clinicianId) || [];
+          console.log(`After additional filtering: ${validAppointments.length} appointments match clinician_id=${clinicianId}`);
           
-          if (data && data.length > 0) {
-            const clientIds = [...new Set(data.map(app => app.client_id))];
+          setAppointments(validAppointments);
+          
+          if (validAppointments.length > 0) {
+            const clientIds = [...new Set(validAppointments.map(app => app.client_id))];
             
             const { data: clientsData, error: clientsError } = await supabase
               .from('clients')
