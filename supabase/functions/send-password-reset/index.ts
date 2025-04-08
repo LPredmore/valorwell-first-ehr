@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { Resend } from "https://esm.sh/resend@1.0.0";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 // Set up CORS headers for browser requests
 const corsHeaders = {
@@ -63,7 +63,7 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Resend
+    // Initialize Resend with the updated import
     const resend = new Resend(Deno.env.get("RESEND_API_KEY") ?? "");
 
     // Generate a secure password reset token using Supabase's built-in functionality
@@ -82,7 +82,7 @@ serve(async (req) => {
 
     const resetLink = data.properties.action_link;
 
-    // Send the reset email
+    // Send the reset email with the updated Resend version
     const emailResponse = await resend.emails.send({
       from: "noreply@valorwell.org", // Update with your verified domain
       to: email,
