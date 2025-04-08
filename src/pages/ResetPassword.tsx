@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,23 +11,36 @@ import { KeyRound, ArrowLeft } from "lucide-react";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isValidLink, setIsValidLink] = useState(false);
 
   useEffect(() => {
     // Check if this is a password reset request
     const hash = window.location.hash;
-    if (!hash || !hash.includes("type=recovery")) {
+    const query = new URLSearchParams(location.search);
+    
+    // Look for either hash-based or query-based recovery tokens
+    const isRecovery = 
+      (hash && hash.includes("type=recovery")) || 
+      (query.get("type") === "recovery");
+
+    if (!isRecovery) {
+      console.error("Invalid reset link detected:", { hash, query: location.search });
       toast({
         title: "Invalid reset link",
         description: "This doesn't appear to be a valid password reset link.",
         variant: "destructive",
       });
+      setIsValidLink(false);
+    } else {
+      setIsValidLink(true);
     }
-  }, [toast]);
+  }, [toast, location.search]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,60 +97,80 @@ const ResetPassword = () => {
           <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
           <CardDescription>Create a new password for your account</CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
+        {isValidLink ? (
+          <form onSubmit={handleSubmit}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="password">New Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your new password"
+                  required
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm your new password"
+                  required
+                  autoComplete="new-password"
+                />
+              </div>
+              {error && <p className="text-sm text-red-500">{error}</p>}
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-4">
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={loading}
+              >
+                {loading ? (
+                  <span className="flex items-center">
+                    <span className="animate-spin mr-2">⟳</span> Resetting...
+                  </span>
+                ) : (
+                  <span className="flex items-center">
+                    <KeyRound className="mr-2" size={16} /> Reset Password
+                  </span>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => navigate("/login")}
+              >
+                <ArrowLeft className="mr-2" size={16} /> Back to Login
+              </Button>
+            </CardFooter>
+          </form>
+        ) : (
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="password">New Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your new password"
-                required
-                autoComplete="new-password"
-              />
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
+              <h2 className="text-lg font-medium text-amber-800 mb-2">Invalid Password Reset Link</h2>
+              <p className="text-sm text-amber-700">
+                The password reset link appears to be invalid or has expired. 
+                Please request a new password reset link from the login page.
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm your new password"
-                required
-                autoComplete="new-password"
-              />
-            </div>
-            {error && <p className="text-sm text-red-500">{error}</p>}
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loading}
-            >
-              {loading ? (
-                <span className="flex items-center">
-                  <span className="animate-spin mr-2">⟳</span> Resetting...
-                </span>
-              ) : (
-                <span className="flex items-center">
-                  <KeyRound className="mr-2" size={16} /> Reset Password
-                </span>
-              )}
-            </Button>
             <Button
               type="button"
-              variant="outline"
-              className="w-full"
+              variant="default"
+              className="w-full mt-4"
               onClick={() => navigate("/login")}
             >
-              <ArrowLeft className="mr-2" size={16} /> Back to Login
+              <ArrowLeft className="mr-2" size={16} /> Go to Login
             </Button>
-          </CardFooter>
-        </form>
+          </CardContent>
+        )}
       </Card>
     </div>
   );

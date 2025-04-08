@@ -428,7 +428,6 @@ const ClinicianDetails = () => {
 
     setIsResettingPassword(true);
     try {
-      // Get the full origin including protocol
       const origin = window.location.origin;
       
       const { error } = await supabase.auth.resetPasswordForEmail(

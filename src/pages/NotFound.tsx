@@ -10,14 +10,16 @@ const NotFound = () => {
   useEffect(() => {
     console.error(
       "404 Error: User attempted to access non-existent route:",
-      location.pathname
+      location.pathname,
+      { search: location.search, hash: location.hash }
     );
-  }, [location.pathname]);
+  }, [location.pathname, location.search, location.hash]);
 
   // Determine if this might be a broken password reset link
   const isPossibleResetLink = location.pathname.includes("verify") || 
                               location.pathname.includes("reset") ||
-                              location.hash.includes("type=recovery");
+                              location.hash.includes("type=recovery") ||
+                              location.search.includes("type=recovery");
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -32,7 +34,7 @@ const NotFound = () => {
               It looks like you might be trying to reset your password. The link might be expired or invalid.
             </p>
             <p className="text-sm text-amber-700">
-              Please try to reset your password again or contact support for assistance.
+              Please try to reset your password again from the login page or contact support for assistance.
             </p>
           </div>
         )}
