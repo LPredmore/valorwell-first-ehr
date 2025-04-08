@@ -57,7 +57,7 @@ export const UpdatePasswordsDialog = () => {
       
       toast({
         title: 'Success',
-        description: data.message || 'Passwords updated successfully',
+        description: data.message || 'Passwords updated successfully to "VWTempPass1234"',
       });
     } catch (error) {
       console.error('Unexpected error:', error);
@@ -75,21 +75,21 @@ export const UpdatePasswordsDialog = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">Update Missing Passwords</Button>
+        <Button variant="outline">Reset All User Passwords</Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Update Missing Passwords</DialogTitle>
+          <DialogTitle>Reset All User Passwords</DialogTitle>
           <DialogDescription>
-            This will generate new temporary passwords for all profiles that don't have one.
+            This will reset ALL user passwords to "VWTempPass1234"
           </DialogDescription>
         </DialogHeader>
         
         {!isUpdating && !results && (
           <div className="py-4">
             <p className="text-sm text-gray-500">
-              Are you sure you want to continue? This will reset passwords for all users
-              without a temporary password.
+              Are you sure you want to continue? This will reset ALL user passwords
+              to "VWTempPass1234".
             </p>
           </div>
         )}
@@ -162,7 +162,7 @@ export const UpdatePasswordsDialog = () => {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Updating...
                 </>
-              ) : 'Update Passwords'}
+              ) : 'Reset All Passwords'}
             </Button>
           )}
         </DialogFooter>

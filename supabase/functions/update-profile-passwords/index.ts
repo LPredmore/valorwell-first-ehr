@@ -30,13 +30,12 @@ serve(async (req) => {
       }
     );
 
-    console.log("Finding profiles without temp_password...");
+    console.log("Getting all profiles to update passwords...");
     
-    // Get all profiles without a temp_password
+    // Get all profiles (changed from only getting profiles without temp_password)
     const { data: profiles, error: profilesError } = await supabaseClient
       .from("profiles")
-      .select("id, email")
-      .is("temp_password", null);
+      .select("id, email");
       
     if (profilesError) {
       console.error("Error fetching profiles:", profilesError);
@@ -49,14 +48,14 @@ serve(async (req) => {
       );
     }
     
-    console.log(`Found ${profiles?.length || 0} profiles without temp_password`);
+    console.log(`Found ${profiles?.length || 0} profiles to update passwords`);
     
     // If no profiles need updating, return early
     if (!profiles || profiles.length === 0) {
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: "No profiles need password updates", 
+          message: "No profiles found to update passwords", 
           updatedProfiles: 0 
         }),
         {
@@ -70,13 +69,12 @@ serve(async (req) => {
     const results = [];
     let successCount = 0;
     
+    // Fixed password for all users
+    const tempPassword = "VWTempPass1234";
+    
     for (const profile of profiles) {
       try {
         console.log(`Processing profile with id: ${profile.id}, email: ${profile.email}`);
-        
-        // Generate a random password
-        const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
-        console.log(`Generated new temporary password`);
         
         // Update the auth user's password
         const { error: updateAuthError } = await supabaseClient.auth.admin.updateUserById(
@@ -138,7 +136,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: `Updated ${successCount} out of ${profiles.length} profiles`,
+        message: `Updated ${successCount} out of ${profiles.length} profiles to password "VWTempPass1234"`,
         results
       }),
       {
