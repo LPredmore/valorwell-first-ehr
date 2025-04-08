@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -17,6 +17,7 @@ import {
   FormMessage 
 } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useUser } from "@/context/UserContext";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -26,6 +27,15 @@ const formSchema = z.object({
 const Login = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const { userRole, isLoading: userContextLoading } = useUser();
+  
+  // Check if user is already logged in
+  useEffect(() => {
+    if (userRole && !userContextLoading) {
+      console.log("[Login] User already authenticated, redirecting to home");
+      navigate("/");
+    }
+  }, [userRole, userContextLoading, navigate]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -56,8 +66,9 @@ const Login = () => {
         description: "Welcome back!",
       });
       
-      console.log("[Login] Navigating to home page");
-      navigate("/");
+      // Let the UserContext handle the navigation through its useEffect
+      console.log("[Login] Authentication complete - letting UserContext redirect");
+      // We don't navigate here anymore, letting the Index page handle it
     } catch (error: any) {
       console.error("[Login] Login error:", error);
       toast({
@@ -71,6 +82,19 @@ const Login = () => {
     }
   };
 
+  // If user context is still loading, show loading state
+  if (userContextLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+          <p className="text-gray-600">Checking authentication status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is not logged in (userRole is null), show login form
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <Card className="w-full max-w-md">
