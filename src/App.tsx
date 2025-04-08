@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -28,6 +29,7 @@ import ProfileSetup from "./pages/ProfileSetup";
 import TherapistSelection from "./pages/TherapistSelection";
 import ClinicianDashboard from "./pages/ClinicianDashboard";
 import ClientHistoryForm from "./pages/ClientHistoryForm";
+import ResetPassword from "./pages/ResetPassword";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -46,6 +48,7 @@ const App: React.FC = () => {
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 
                 {/* Client accessible routes */}
                 <Route path="/profile-setup" element={<ProfileSetup />} />
