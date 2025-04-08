@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { Card } from '@/components/ui/card';
@@ -28,7 +27,6 @@ interface Appointment {
   end_time: string;
   type: string;
   status: string;
-  clinician_id: string;
 }
 
 interface AvailabilityBlock {
@@ -95,7 +93,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!clinicianId) return;
-      
       try {
         let startDate, endDate;
         
@@ -111,15 +108,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           endDate = format(end, 'yyyy-MM-dd');
         }
         
-        // Critical fix: Ensure consistent string treatment of clinician ID
-        const clinicianIdStr = String(clinicianId).trim();
-        
-        console.log(`Fetching appointments from ${startDate} to ${endDate} for clinician ${clinicianIdStr}`);
+        console.log(`Fetching appointments from ${startDate} to ${endDate} for clinician ${clinicianId}`);
         
         const { data, error } = await supabase
           .from('appointments')
-          .select(`*`)
-          .eq('clinician_id', clinicianIdStr)
+          .select('*')
+          .eq('clinician_id', clinicianId)
           .gte('date', startDate)
           .lte('date', endDate)
           .eq('status', 'scheduled');
@@ -127,13 +121,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         if (error) {
           console.error('Error fetching appointments:', error);
         } else {
-          console.log(`Fetched ${data?.length || 0} appointments with clinician_id=${clinicianIdStr}:`, data);
+          console.log(`Fetched ${data?.length || 0} appointments:`, data);
+          setAppointments(data || []);
           
-          const validAppointments = data || [];
-          setAppointments(validAppointments);
-          
-          if (validAppointments.length > 0) {
-            const clientIds = [...new Set(validAppointments.map(app => app.client_id))];
+          if (data && data.length > 0) {
+            const clientIds = [...new Set(data.map(app => app.client_id))];
             
             const { data: clientsData, error: clientsError } = await supabase
               .from('clients')

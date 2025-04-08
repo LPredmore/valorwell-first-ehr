@@ -15,7 +15,6 @@ interface Appointment {
   end_time: string;
   type: string;
   status: string;
-  clinician_id: string; // Added this field to match useMonthViewData.tsx
 }
 
 interface AvailabilityBlock {

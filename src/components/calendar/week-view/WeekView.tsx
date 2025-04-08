@@ -18,9 +18,6 @@ import AppointmentBlock from './AppointmentBlock';
 import AvailabilityBlock from './AvailabilityBlock';
 import TimeColumn from './TimeColumn';
 
-// Import the Appointment type from useWeekViewData to ensure compatibility
-import { Appointment as WeekViewAppointment } from './useWeekViewData';
-
 const WeekView: React.FC<WeekViewProps> = ({ 
   currentDate, 
   clinicianId, 
@@ -43,15 +40,12 @@ const WeekView: React.FC<WeekViewProps> = ({
     return { days, hours };
   }, [currentDate]);
 
-  // Cast appointments to WeekViewAppointment[] to ensure type compatibility
-  const typedAppointments = appointments as WeekViewAppointment[];
-
   // Use the custom hook to get all the data
   const {
     loading,
     timeBlocks,
     appointmentBlocks
-  } = useWeekViewData(days, clinicianId, refreshTrigger, typedAppointments, getClientName);
+  } = useWeekViewData(days, clinicianId, refreshTrigger, appointments, getClientName);
 
   // Calculate the height of each hour cell
   const hourHeight = 60; // pixels per hour
@@ -103,7 +97,7 @@ const WeekView: React.FC<WeekViewProps> = ({
                   appointment={appointment}
                   hourHeight={hourHeight}
                   onAppointmentClick={onAppointmentClick}
-                  originalAppointments={typedAppointments}
+                  originalAppointments={appointments}
                 />
               ))}
 

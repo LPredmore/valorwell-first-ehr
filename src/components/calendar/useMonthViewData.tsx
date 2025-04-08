@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -20,7 +19,6 @@ interface Appointment {
   end_time: string;
   type: string;
   status: string;
-  clinician_id: string;
 }
 
 interface AvailabilityBlock {
@@ -88,8 +86,7 @@ export const useMonthViewData = (
           .eq('is_active', true);
 
         if (clinicianId) {
-          const clinicianIdStr = String(clinicianId).trim();
-          query = query.eq('clinician_id', clinicianIdStr);
+          query = query.eq('clinician_id', clinicianId);
         }
 
         const { data, error } = await query;
@@ -107,12 +104,10 @@ export const useMonthViewData = (
             const availabilityIds = data.map((block: AvailabilityBlock) => block.id);
             
             if (availabilityIds.length > 0) {
-              const clinicianIdStr = String(clinicianId).trim();
-              
               const { data: exceptionsData, error: exceptionsError } = await supabase
                 .from('availability_exceptions')
                 .select('*')
-                .eq('clinician_id', clinicianIdStr)
+                .eq('clinician_id', clinicianId)
                 .gte('specific_date', startDateStr)
                 .lte('specific_date', endDateStr)
                 .in('original_availability_id', availabilityIds);
@@ -142,28 +137,6 @@ export const useMonthViewData = (
 
     fetchAvailabilityAndExceptions();
   }, [clinicianId, refreshTrigger, startDate, endDate]);
-
-  const dayAppointmentsMap = useMemo(() => {
-    const result = new Map<string, Appointment[]>();
-    
-    console.log(`MonthView building dayAppointmentsMap for clinician: ${clinicianId}`);
-    console.log(`Appointments provided to monthView:`, appointments);
-    
-    // Critical fix: Always filter appointments by clinician ID even if they were supposed to be pre-filtered
-    const filteredAppointments = clinicianId 
-      ? appointments.filter(app => String(app.clinician_id).trim() === String(clinicianId).trim())
-      : appointments;
-    
-    console.log(`After filtering: ${filteredAppointments.length} appointments remain`);
-    
-    days.forEach(day => {
-      const dayStr = format(day, 'yyyy-MM-dd');
-      const dayAppointments = filteredAppointments.filter(appointment => appointment.date === dayStr);
-      result.set(dayStr, dayAppointments);
-    });
-    
-    return result;
-  }, [days, appointments, clinicianId]);
 
   const dayAvailabilityMap = useMemo(() => {
     const result = new Map<string, { 
@@ -205,6 +178,7 @@ export const useMonthViewData = (
         
         isModified = modifiedExceptions.length > 0;
         
+        // Always display fixed hours range - 6:00 AM to 10:00 PM
         if (hasAvailability) {
           const startTime = "06:00";
           const endTime = "22:00";
@@ -240,6 +214,18 @@ export const useMonthViewData = (
     
     return result;
   }, [days, availabilityData]);
+
+  const dayAppointmentsMap = useMemo(() => {
+    const result = new Map<string, Appointment[]>();
+    
+    days.forEach(day => {
+      const dayStr = format(day, 'yyyy-MM-dd');
+      const dayAppointments = appointments.filter(appointment => appointment.date === dayStr);
+      result.set(dayStr, dayAppointments);
+    });
+    
+    return result;
+  }, [days, appointments]);
 
   return {
     loading,

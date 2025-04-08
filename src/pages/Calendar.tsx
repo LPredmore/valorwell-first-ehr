@@ -64,16 +64,6 @@ const CalendarPage = () => {
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
-  // For debugging - shows the exact clinician ID being used
-  useEffect(() => {
-    if (selectedClinicianId) {
-      console.log("Calendar selected clinician ID:", selectedClinicianId);
-      console.log("Calendar selected clinician ID type:", typeof selectedClinicianId);
-      console.log("Calendar selected clinician ID as string:", String(selectedClinicianId).trim());
-    }
-    console.log("Calendar view mode:", calendarViewMode);
-  }, [selectedClinicianId, calendarViewMode]);
-
   return (
     <Layout>
       <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
@@ -107,12 +97,12 @@ const CalendarPage = () => {
                 New Appointment
               </Button>
 
-              <div className="hidden md:flex">
+              <div className="hidden">
                 <Select
                   value={selectedClinicianId || undefined}
                   onValueChange={(value) => setSelectedClinicianId(value)}
                 >
-                  <SelectTrigger className="min-w-[200px]">
+                  <SelectTrigger>
                     <SelectValue placeholder="Select a clinician" />
                   </SelectTrigger>
                   <SelectContent>
