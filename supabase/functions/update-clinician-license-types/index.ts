@@ -14,6 +14,8 @@ serve(async (req) => {
   }
   
   try {
+    console.log("Edge function started: update-clinician-license-types");
+    
     // Create a Supabase client with the service role key
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -27,6 +29,7 @@ serve(async (req) => {
     );
     
     // Execute SQL to drop the existing check constraint
+    console.log("Dropping existing constraint...");
     const { error: dropError } = await supabaseClient.rpc("exec_sql", {
       sql: "ALTER TABLE clinicians DROP CONSTRAINT IF EXISTS clinicians_license_type_check"
     });
@@ -43,6 +46,7 @@ serve(async (req) => {
     const licenseTypes = ["LPC", "LMHC", "LCPC", "LPC-MH", "LPCC", "LCSW", "LMFT", "PsyD"];
     const licenseTypesList = licenseTypes.map(type => `'${type}'`).join(", ");
     
+    console.log(`Adding new constraint with types: ${licenseTypesList}`);
     const { error: addError } = await supabaseClient.rpc("exec_sql", {
       sql: `ALTER TABLE clinicians ADD CONSTRAINT clinicians_license_type_check CHECK (clinician_license_type IN (${licenseTypesList}))`
     });
@@ -55,9 +59,11 @@ serve(async (req) => {
       });
     }
     
+    console.log("Constraint updated successfully");
     return new Response(JSON.stringify({ 
       success: true, 
-      message: "Clinician license types constraint updated successfully" 
+      message: "Clinician license types constraint updated successfully",
+      licenseTypes
     }), { 
       headers: { ...corsHeaders, "Content-Type": "application/json" } 
     });

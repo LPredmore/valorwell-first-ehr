@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -357,8 +356,14 @@ const ClinicianDetails = () => {
           editedClinician.clinician_license_type !== clinician?.clinician_license_type) {
         console.log(`Updating clinician_license_type to ${editedClinician.clinician_license_type}`);
         // Check if we need to update the constraint
-        const { success } = await updateClinicianLicenseTypes();
+        toast({
+          title: "Updating license types...",
+          description: "Preparing database for new license type."
+        });
+        
+        const { success, error: constraintError } = await updateClinicianLicenseTypes();
         if (!success) {
+          console.error("Failed to update license types constraint:", constraintError);
           toast({
             title: "Error",
             description: "Failed to update license types. Please try again.",
@@ -366,6 +371,9 @@ const ClinicianDetails = () => {
           });
           return;
         }
+        
+        // Add a small delay to ensure the database constraint is fully updated
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
       let imageUrl = editedClinician.clinician_image_url;
