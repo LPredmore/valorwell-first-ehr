@@ -8,10 +8,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+
 interface Client {
   client_state: string | null;
   client_age: number | null;
 }
+
 interface Therapist {
   id: string;
   clinician_first_name: string | null;
@@ -25,10 +27,9 @@ interface Therapist {
   clinician_profile_image: string | null;
   clinician_image_url: string | null; // Added this field to match the database
 }
+
 const TherapistSelection = () => {
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [loadingClient, setLoadingClient] = useState(true);
@@ -38,6 +39,8 @@ const TherapistSelection = () => {
   const [allTherapists, setAllTherapists] = useState<Therapist[]>([]);
   const [selectingTherapist, setSelectingTherapist] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [noMatchingTherapists, setNoMatchingTherapists] = useState(false);
+
   useEffect(() => {
     const fetchClientData = async () => {
       try {
@@ -91,26 +94,30 @@ const TherapistSelection = () => {
     };
     fetchClientData();
   }, [navigate, toast]);
+
   useEffect(() => {
     const fetchTherapists = async () => {
       try {
         setLoading(true);
-        const {
-          data,
-          error
-        } = await supabase.from('clinicians').select('*').eq('clinician_status', 'Active');
+        const { data, error } = await supabase.from('clinicians').select('*').eq('clinician_status', 'Active');
+        
         if (error) {
           throw error;
         }
+        
         console.log("Total active therapists:", data?.length || 0);
         console.log("Sample therapist data:", data?.[0]);
+        
         setAllTherapists(data || []);
+        
         if (filteringEnabled && clientData && data) {
           console.log("Client state:", clientData.client_state);
           console.log("Client age:", clientData.client_age);
+          
           const filteredTherapists = data.filter(therapist => {
             let matchesState = true;
             let matchesAge = true;
+            
             if (clientData.client_state && therapist.clinician_licensed_states && therapist.clinician_licensed_states.length > 0) {
               const clientStateNormalized = clientData.client_state.toLowerCase().trim();
               console.log(`Therapist: ${therapist.clinician_first_name}, Licensed states:`, therapist.clinician_licensed_states);
@@ -121,28 +128,29 @@ const TherapistSelection = () => {
               });
               matchesState = matchingState;
             }
+            
             if (clientData.client_age !== null && therapist.clinician_min_client_age !== null) {
               matchesAge = therapist.clinician_min_client_age <= clientData.client_age;
             } else {
               matchesAge = true;
             }
+            
             return matchesState && matchesAge;
           });
+          
           console.log("Filtered therapists count:", filteredTherapists.length);
+          
           if (filteredTherapists.length === 0 && data.length > 0) {
-            console.log("No matching therapists found, showing all therapists");
-            setTherapists(data);
-            toast({
-              title: "No exact matches found",
-              description: "Showing all available therapists instead",
-              variant: "default"
-            });
-            setFilteringEnabled(false);
+            console.log("No matching therapists found, showing no-match message");
+            setTherapists([]);
+            setNoMatchingTherapists(true);
           } else {
             setTherapists(filteredTherapists);
+            setNoMatchingTherapists(false);
           }
         } else {
           setTherapists(data || []);
+          setNoMatchingTherapists(false);
         }
       } catch (error) {
         console.error('Error fetching therapists:', error);
@@ -155,8 +163,10 @@ const TherapistSelection = () => {
         setLoading(false);
       }
     };
+    
     fetchTherapists();
   }, [toast, clientData, filteringEnabled]);
+
   const handleSelectTherapist = async (therapist: Therapist) => {
     if (!userId) {
       toast({
@@ -199,6 +209,7 @@ const TherapistSelection = () => {
       setSelectingTherapist(false);
     }
   };
+
   return <Layout>
       <div className="container max-w-6xl mx-auto py-6">
         <Card className="shadow-md">
@@ -230,10 +241,44 @@ const TherapistSelection = () => {
                     </Alert>
                   </div>}
 
-                {therapists.length === 0 ? <div className="text-center py-8">
-                    <p>
-                      {filteringEnabled && clientData?.client_state ? `No therapists are currently available in ${clientData.client_state} for your age group.` : "No therapists are currently available. Please check back later."}
+                {noMatchingTherapists ? (
+                  <div className="text-center py-12 px-4">
+                    <div className="mb-6">
+                      <svg 
+                        className="mx-auto h-20 w-20 text-valorwell-300" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24" 
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={1.5} 
+                          d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 14a2 2 0 100-4 2 2 0 000 4z" 
+                        />
+                        <circle cx="12" cy="12" r="10" strokeWidth="1.5" />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                      We're Sorry!
+                    </h3>
+                    <p className="text-gray-600 mb-6 max-w-lg mx-auto">
+                      We don't currently have therapists available that match your location and needs. 
+                      We're actively working to expand our network of qualified therapists.
                     </p>
+                    <p className="text-gray-600 mb-6 max-w-lg mx-auto">
+                      We'll notify you as soon as a therapist becomes available for you.
+                    </p>
+                    <Button 
+                      className="bg-valorwell-600 hover:bg-valorwell-700" 
+                      onClick={() => navigate('/patient-dashboard')}
+                    >
+                      Return to Dashboard
+                    </Button>
+                  </div>
+                ) : therapists.length === 0 ? <div className="text-center py-8">
+                    <p>No therapists are currently available. Please check back later.</p>
                     <div className="mt-4 space-x-2">
                       <Button className="bg-valorwell-600 hover:bg-valorwell-700" onClick={() => window.location.reload()}>
                         Refresh
@@ -267,11 +312,11 @@ const TherapistSelection = () => {
                                 </p>
                                 
                                 {clientData?.client_state && therapist.clinician_licensed_states?.some(state => {
-                          if (!state || !clientData.client_state) return false;
-                          const stateNorm = state.toLowerCase().trim();
-                          const clientStateNorm = clientData.client_state.toLowerCase().trim();
-                          return stateNorm.includes(clientStateNorm) || clientStateNorm.includes(stateNorm);
-                        }) && <div className="mt-4 text-valorwell-700">
+                                  if (!state || !clientData.client_state) return false;
+                                  const stateNorm = state.toLowerCase().trim();
+                                  const clientStateNorm = clientData.client_state.toLowerCase().trim();
+                                  return stateNorm.includes(clientStateNorm) || clientStateNorm.includes(stateNorm);
+                                }) && <div className="mt-4 text-valorwell-700">
                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-valorwell-100">
                                       Licensed in your state ({clientData.client_state})
                                     </span>
@@ -288,4 +333,5 @@ const TherapistSelection = () => {
       </div>
     </Layout>;
 };
+
 export default TherapistSelection;
