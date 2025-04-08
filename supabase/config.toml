@@ -1,13 +1,5 @@
 
 project_id = "gqlkritspnhjxfejvgfg"
-[functions.create-daily-room]
-verify_jwt = true
-[functions."get-availability-settings"]
-verify_jwt = true
-[functions.getavailabilitysettings]
-verify_jwt = true
-[functions.create-clinician]
-verify_jwt = true
-[functions.update-profile-passwords]
-verify_jwt = true
 
+[functions."reset-password"]
+verify_jwt = false
