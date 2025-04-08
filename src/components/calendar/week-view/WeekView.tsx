@@ -34,8 +34,8 @@ const WeekView: React.FC<WeekViewProps> = ({
       end: endOfWeek(currentDate, { weekStartsOn: 0 })
     });
 
-    // Create 24 hours instead of just working hours
-    const hours = Array.from({ length: 24 }, (_, i) => i);
+    // Create hours starting from 6am, going to 12am the next day (18 hours total)
+    const hours = Array.from({ length: 18 }, (_, i) => i + 6);
 
     return { days, hours };
   }, [currentDate]);
@@ -60,7 +60,7 @@ const WeekView: React.FC<WeekViewProps> = ({
 
   return (
     <Card className="p-4 overflow-hidden">
-      <div className="grid grid-cols-8 h-[1500px]">
+      <div className="grid grid-cols-8 h-[1080px]">
         {/* Time column */}
         <TimeColumn hours={hours} hourHeight={hourHeight} />
 
