@@ -438,3 +438,22 @@ export const updatePracticeInfo = async (updates: Partial<PracticeInfo>) => {
     return { success: false, error };
   }
 };
+
+// Function to update clinician license types in the database
+export const updateClinicianLicenseTypes = async () => {
+  try {
+    console.log('Updating clinician license types constraint');
+    const { data, error } = await supabase.functions.invoke('update-clinician-license-types');
+    
+    if (error) {
+      console.error('Error updating clinician license types:', error);
+      throw error;
+    }
+    
+    console.log('Clinician license types updated successfully:', data);
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error updating clinician license types:', error);
+    return { success: false, error };
+  }
+};
