@@ -20,6 +20,7 @@ export interface Appointment {
   end_time: string;
   type: string;
   status: string;
+  clinician_id: string; // Added this field to match useWeekViewData.tsx
 }
 
 export interface AvailabilityBlock {
