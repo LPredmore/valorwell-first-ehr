@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -75,6 +76,7 @@ export const useWeekViewData = (
   const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   // Process appointments into blocks
   useEffect(() => {
@@ -123,33 +125,52 @@ export const useWeekViewData = (
   useEffect(() => {
     const fetchAvailability = async () => {
       setLoading(true);
+      setError(null);
+      
       try {
-        let query = supabase
+        // Verify we have a clinician ID before proceeding
+        if (!clinicianId) {
+          console.log("[WeekView] No clinicianId provided, skipping availability fetch");
+          setAvailabilityBlocks([]);
+          setExceptions([]);
+          processAvailabilityWithExceptions([], []);
+          setLoading(false);
+          return;
+        }
+        
+        console.log(`[WeekView] Fetching availability for clinician: ${clinicianId}`);
+        
+        // Get current auth user for verification
+        const { data: authData } = await supabase.auth.getUser();
+        console.log(`[WeekView] Current user: ${authData?.user?.id || 'No user'}`);
+        
+        // Query availability with proper filtering
+        const { data: availabilityData, error } = await supabase
           .from('availability')
           .select('*')
-          .eq('is_active', true);
-
-        if (clinicianId) {
-          query = query.eq('clinician_id', clinicianId);
-        }
-
-        const { data: availabilityData, error } = await query;
+          .eq('is_active', true)
+          .eq('clinician_id', clinicianId);
 
         if (error) {
-          console.error('Error fetching availability:', error);
+          console.error('[WeekView] Error fetching availability:', error);
+          setError(`Error fetching availability: ${error.message}`);
           setAvailabilityBlocks([]);
           setExceptions([]);
           processAvailabilityWithExceptions([], []);
         } else {
-          console.log('WeekView availability data:', availabilityData);
+          console.log(`[WeekView] Retrieved ${availabilityData?.length || 0} availability records for clinician ${clinicianId}:`, availabilityData);
           setAvailabilityBlocks(availabilityData || []);
           
-          if (clinicianId && availabilityData && availabilityData.length > 0) {
-            const startDateStr = format(days[0], 'yyyy-MM-dd');
-            const endDateStr = format(days[days.length - 1], 'yyyy-MM-dd');
+          const startDateStr = format(days[0], 'yyyy-MM-dd');
+          const endDateStr = format(days[days.length - 1], 'yyyy-MM-dd');
+          
+          // Fetch exceptions for this clinician
+          if (availabilityData && availabilityData.length > 0) {
             const availabilityIds = availabilityData.map(block => block.id);
             
             if (availabilityIds.length > 0) {
+              console.log(`[WeekView] Fetching exceptions for clinician: ${clinicianId}, dates: ${startDateStr} to ${endDateStr}`);
+              
               const { data: exceptionsData, error: exceptionsError } = await supabase
                 .from('availability_exceptions')
                 .select('*')
@@ -159,70 +180,62 @@ export const useWeekViewData = (
                 .or(`original_availability_id.in.(${availabilityIds.join(',')}),original_availability_id.is.null`);
                 
               if (exceptionsError) {
-                console.error('Error fetching exceptions:', exceptionsError);
+                console.error('[WeekView] Error fetching exceptions:', exceptionsError);
+                setError(`Error fetching exceptions: ${exceptionsError.message}`);
                 setExceptions([]);
                 processAvailabilityWithExceptions(availabilityData || [], []);
               } else {
-                console.log('WeekView exceptions data:', exceptionsData);
+                console.log(`[WeekView] Retrieved ${exceptionsData?.length || 0} exceptions:`, exceptionsData);
                 setExceptions(exceptionsData || []);
                 processAvailabilityWithExceptions(availabilityData || [], exceptionsData || []);
               }
             } else {
-              const { data: exceptionsData, error: exceptionsError } = await supabase
-                .from('availability_exceptions')
-                .select('*')
-                .eq('clinician_id', clinicianId)
-                .eq('is_deleted', false)
-                .is('original_availability_id', null)
-                .gte('specific_date', startDateStr)
-                .lte('specific_date', endDateStr);
-                
-              if (exceptionsError) {
-                console.error('Error fetching standalone exceptions:', exceptionsError);
-                setExceptions([]);
-                processAvailabilityWithExceptions(availabilityData || [], []);
-              } else {
-                console.log('WeekView standalone exceptions data:', exceptionsData);
-                setExceptions(exceptionsData || []);
-                processAvailabilityWithExceptions(availabilityData || [], exceptionsData || []);
-              }
+              fetchStandaloneExceptions(startDateStr, endDateStr, clinicianId, availabilityData);
             }
           } else {
-            if (clinicianId) {
-              const startDateStr = format(days[0], 'yyyy-MM-dd');
-              const endDateStr = format(days[days.length - 1], 'yyyy-MM-dd');
-              
-              const { data: exceptionsData, error: exceptionsError } = await supabase
-                .from('availability_exceptions')
-                .select('*')
-                .eq('clinician_id', clinicianId)
-                .eq('is_deleted', false)
-                .is('original_availability_id', null)
-                .gte('specific_date', startDateStr)
-                .lte('specific_date', endDateStr);
-                
-              if (exceptionsError) {
-                console.error('Error fetching standalone exceptions:', exceptionsError);
-                setExceptions([]);
-                processAvailabilityWithExceptions([], []);
-              } else {
-                console.log('WeekView standalone exceptions data:', exceptionsData);
-                setExceptions(exceptionsData || []);
-                processAvailabilityWithExceptions([], exceptionsData || []);
-              }
-            } else {
-              setExceptions([]);
-              processAvailabilityWithExceptions(availabilityData || [], []);
-            }
+            fetchStandaloneExceptions(startDateStr, endDateStr, clinicianId, []);
           }
         }
       } catch (error) {
-        console.error('Error:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('[WeekView] Exception in availability fetching:', error);
+        setError(`Unexpected error: ${errorMessage}`);
         setAvailabilityBlocks([]);
         setExceptions([]);
         processAvailabilityWithExceptions([], []);
       } finally {
         setLoading(false);
+      }
+    };
+
+    const fetchStandaloneExceptions = async (startDateStr: string, endDateStr: string, clinicianId: string, availabilityData: AvailabilityBlock[]) => {
+      try {
+        console.log(`[WeekView] Fetching standalone exceptions for clinician: ${clinicianId}`);
+        
+        const { data: exceptionsData, error: exceptionsError } = await supabase
+          .from('availability_exceptions')
+          .select('*')
+          .eq('clinician_id', clinicianId)
+          .eq('is_deleted', false)
+          .is('original_availability_id', null)
+          .gte('specific_date', startDateStr)
+          .lte('specific_date', endDateStr);
+          
+        if (exceptionsError) {
+          console.error('[WeekView] Error fetching standalone exceptions:', exceptionsError);
+          setError(`Error fetching standalone exceptions: ${exceptionsError.message}`);
+          setExceptions([]);
+          processAvailabilityWithExceptions(availabilityData || [], []);
+        } else {
+          console.log(`[WeekView] Retrieved ${exceptionsData?.length || 0} standalone exceptions:`, exceptionsData);
+          setExceptions(exceptionsData || []);
+          processAvailabilityWithExceptions(availabilityData || [], exceptionsData || []);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('[WeekView] Exception in standalone exceptions fetching:', error);
+        setError(`Unexpected error: ${errorMessage}`);
+        processAvailabilityWithExceptions(availabilityData || [], []);
       }
     };
 
@@ -262,7 +275,8 @@ export const useWeekViewData = (
               originalStartTime: block.start_time,
               originalEndTime: block.end_time,
               newStartTime: exception.start_time,
-              newEndTime: exception.end_time
+              newEndTime: exception.end_time,
+              clinicianId: block.clinician_id
             });
             
             return {
@@ -310,7 +324,8 @@ export const useWeekViewData = (
           id: b.id, 
           isException: b.isException, 
           isStandalone: b.isStandalone,
-          originalAvailabilityId: b.originalAvailabilityId
+          originalAvailabilityId: b.originalAvailabilityId,
+          clinicianId: b.clinician_id
         }))
       );
 
@@ -479,6 +494,7 @@ export const useWeekViewData = (
 
   return {
     loading,
+    error,
     timeBlocks,
     appointmentBlocks,
     exceptions,

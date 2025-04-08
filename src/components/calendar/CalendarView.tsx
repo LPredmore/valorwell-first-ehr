@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { Card } from '@/components/ui/card';
@@ -8,6 +9,7 @@ import AvailabilityEditDialog from './AvailabilityEditDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
+import { useToast } from '@/hooks/use-toast';
 
 interface CalendarViewProps {
   view: 'week' | 'month';  // Keeping for backward compatibility
@@ -47,14 +49,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 }) => {
   // Use provided currentDate or default to today
   const [currentDate, setCurrentDate] = useState(propCurrentDate || new Date());
-  
-  // Update currentDate when propCurrentDate changes
-  useEffect(() => {
-    if (propCurrentDate) {
-      setCurrentDate(propCurrentDate);
-    }
-  }, [propCurrentDate]);
-
   const [availabilityRefreshTrigger, setAvailabilityRefreshTrigger] = useState(0);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clientsMap, setClientsMap] = useState<Record<string, any>>({});
@@ -68,7 +62,17 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   const [isAvailabilityDialogOpen, setIsAvailabilityDialogOpen] = useState(false);
   const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago');
   const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  
+  // Update currentDate when propCurrentDate changes
+  useEffect(() => {
+    if (propCurrentDate) {
+      setCurrentDate(propCurrentDate);
+    }
+  }, [propCurrentDate]);
 
+  // Add logging for initialization
   useEffect(() => {
     console.log('[CalendarView] Component initialized with:', {
       clinicianId,
@@ -79,6 +83,33 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     });
   }, []);
 
+  // Verify current logged in user and permissions
+  useEffect(() => {
+    const checkUserPermissions = async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        console.log('[CalendarView] Current authenticated user:', data?.user ? {
+          id: data.user.id,
+          email: data.user.email,
+        } : 'No user');
+        
+        if (!data?.user) {
+          setError('You must be logged in to view the calendar');
+          toast({
+            title: 'Authentication Error',
+            description: 'You must be logged in to view the calendar',
+            variant: 'destructive'
+          });
+        }
+      } catch (error) {
+        console.error('[CalendarView] Error checking user permissions:', error);
+      }
+    };
+    
+    checkUserPermissions();
+  }, []);
+
+  // Fetch clinician's timezone
   useEffect(() => {
     const fetchClinicianTimeZone = async () => {
       if (clinicianId) {
@@ -89,6 +120,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           setClinicianTimeZone(timeZone);
         } catch (error) {
           console.error("[CalendarView] Error fetching clinician timezone:", error);
+          // Fallback to system timezone
+          setClinicianTimeZone(getUserTimeZone());
         } finally {
           setIsLoadingTimeZone(false);
         }
@@ -100,14 +133,18 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
   const userTimeZone = propTimeZone || (isLoadingTimeZone ? getUserTimeZone() : clinicianTimeZone);
 
+  // Fetch appointments with enhanced logging
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!clinicianId) {
         console.log("[CalendarView] No clinicianId provided, skipping appointments fetch");
+        setAppointments([]);
         return;
       }
       
       try {
+        setError(null);
+        
         let startDate, endDate;
         
         if (monthViewMode === 'week') {
@@ -143,6 +180,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           
         if (error) {
           console.error('[CalendarView] Error fetching appointments:', error);
+          setError(`Error fetching appointments: ${error.message}`);
+          toast({
+            title: 'Error',
+            description: `Failed to load appointments: ${error.message}`,
+            variant: 'destructive'
+          });
         } else {
           console.log(`[CalendarView] Fetched ${data?.length || 0} appointments:`, data);
           
@@ -162,6 +205,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               
             if (clientsError) {
               console.error('[CalendarView] Error fetching clients:', clientsError);
+              setError(`Error fetching client data: ${clientsError.message}`);
             } else if (clientsData) {
               const clientsMapData: Record<string, any> = {};
               clientsData.forEach(client => {
@@ -173,19 +217,22 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           }
         }
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         console.error('[CalendarView] Exception in appointment fetching:', error);
+        setError(`Unexpected error: ${errorMessage}`);
+        toast({
+          title: 'Error',
+          description: 'An unexpected error occurred while loading appointments',
+          variant: 'destructive'
+        });
       }
     };
     
     fetchAppointments();
   }, [clinicianId, currentDate, monthViewMode, availabilityRefreshTrigger, appointmentRefreshTrigger, refreshTrigger]);
 
-  useEffect(() => {
-    console.log(`[CalendarView] Appointments list updated. Count: ${appointments.length}`);
-  }, [appointments]);
-
   const handleAvailabilityUpdated = () => {
-    console.log("Availability updated - refreshing calendar view");
+    console.log("[CalendarView] Availability updated - refreshing calendar view");
     setAvailabilityRefreshTrigger(prev => prev + 1);
   };
 
@@ -222,6 +269,18 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     setSelectedAvailabilityDate(date);
     setIsAvailabilityDialogOpen(true);
   };
+  
+  // Display error if needed
+  if (error && !clinicianId) {
+    return (
+      <Card className="p-6">
+        <div className="text-center text-red-500">
+          <p className="mb-2 font-medium">Error: {error}</p>
+          <p>Please make sure you are logged in and have proper permissions.</p>
+        </div>
+      </Card>
+    );
+  }
   
   return (
     <div className="flex gap-4">

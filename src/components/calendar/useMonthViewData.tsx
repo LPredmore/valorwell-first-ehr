@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -49,6 +50,7 @@ export const useMonthViewData = (
   weekViewMode: boolean = false
 ) => {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [availabilityData, setAvailabilityData] = useState<AvailabilityBlock[]>([]);
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
 
@@ -79,31 +81,49 @@ export const useMonthViewData = (
   useEffect(() => {
     const fetchAvailabilityAndExceptions = async () => {
       setLoading(true);
+      setError(null);
+      
       try {
-        let query = supabase
+        // Verify if we have a clinician ID
+        if (!clinicianId) {
+          console.log('[MonthView] No clinicianId provided, skipping availability fetch');
+          setAvailabilityData([]);
+          setExceptions([]);
+          setLoading(false);
+          return;
+        }
+        
+        console.log(`[MonthView] Fetching availability for clinician: ${clinicianId}`);
+        
+        // Get current authenticated user
+        const { data: authData } = await supabase.auth.getUser();
+        console.log(`[MonthView] Current user: ${authData?.user?.id || 'No user'}`);
+        
+        // Query availability with proper filtering
+        const { data, error } = await supabase
           .from('availability')
           .select('*')
-          .eq('is_active', true);
-
-        if (clinicianId) {
-          query = query.eq('clinician_id', clinicianId);
-        }
-
-        const { data, error } = await query;
+          .eq('is_active', true)
+          .eq('clinician_id', clinicianId);
 
         if (error) {
-          console.error('Error fetching availability:', error);
+          console.error('[MonthView] Error fetching availability:', error);
+          setError(`Error fetching availability: ${error.message}`);
           setAvailabilityData([]);
+          setExceptions([]);
         } else {
-          console.log('MonthView fetched availability data:', data);
+          console.log(`[MonthView] Retrieved ${data?.length || 0} availability records for clinician ${clinicianId}:`, data);
           setAvailabilityData(data || []);
           
-          if (clinicianId && data && data.length > 0) {
+          if (data && data.length > 0) {
+            // Fetch exceptions
             const startDateStr = format(startDate, 'yyyy-MM-dd');
             const endDateStr = format(endDate, 'yyyy-MM-dd');
             const availabilityIds = data.map((block: AvailabilityBlock) => block.id);
             
             if (availabilityIds.length > 0) {
+              console.log(`[MonthView] Fetching exceptions for clinician: ${clinicianId}, dates: ${startDateStr} to ${endDateStr}`);
+              
               const { data: exceptionsData, error: exceptionsError } = await supabase
                 .from('availability_exceptions')
                 .select('*')
@@ -113,21 +133,26 @@ export const useMonthViewData = (
                 .in('original_availability_id', availabilityIds);
                 
               if (exceptionsError) {
-                console.error('Error fetching exceptions:', exceptionsError);
+                console.error('[MonthView] Error fetching exceptions:', exceptionsError);
+                setError(`Error fetching exceptions: ${exceptionsError.message}`);
                 setExceptions([]);
               } else {
-                console.log('MonthView exceptions data:', exceptionsData);
+                console.log(`[MonthView] Retrieved ${exceptionsData?.length || 0} exceptions:`, exceptionsData);
                 setExceptions(exceptionsData || []);
               }
             } else {
+              console.log('[MonthView] No availability IDs to fetch exceptions for');
               setExceptions([]);
             }
           } else {
+            console.log('[MonthView] No availability data to fetch exceptions for');
             setExceptions([]);
           }
         }
       } catch (error) {
-        console.error('Error:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('[MonthView] Exception in availability fetching:', error);
+        setError(`Unexpected error: ${errorMessage}`);
         setAvailabilityData([]);
         setExceptions([]);
       } finally {
@@ -229,6 +254,7 @@ export const useMonthViewData = (
 
   return {
     loading,
+    error,
     monthStart,
     monthEnd,
     days,

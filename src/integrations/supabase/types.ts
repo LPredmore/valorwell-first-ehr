@@ -70,8 +70,7 @@ export type Database = {
       }
       availability: {
         Row: {
-          clinician_id: string | null
-          clinician_idnumber: string | null
+          clinician_id: string
           created_at: string
           day_of_week: string
           end_time: string
@@ -81,8 +80,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          clinician_id?: string | null
-          clinician_idnumber?: string | null
+          clinician_id: string
           created_at?: string
           day_of_week: string
           end_time: string
@@ -92,8 +90,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          clinician_id?: string | null
-          clinician_idnumber?: string | null
+          clinician_id?: string
           created_at?: string
           day_of_week?: string
           end_time?: string

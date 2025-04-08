@@ -76,10 +76,12 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         const { data: sessionData } = await supabase.auth.getSession();
 
         if (!sessionData?.session?.user) {
-          console.log('User not logged in');
+          console.log('[AvailabilityPanel] User not logged in');
           setLoading(false);
           return;
         }
+
+        console.log('[AvailabilityPanel] Current user:', sessionData.session.user.id);
 
         const { data: profileData } = await supabase
           .from('profiles')
@@ -88,7 +90,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           .single();
 
         if (!profileData) {
-          console.log('Profile not found');
+          console.log('[AvailabilityPanel] Profile not found');
           setLoading(false);
           return;
         }
@@ -97,18 +99,27 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         let clinicianToQuery = clinicianIdToUse;
 
         if (!clinicianIdToUse) {
-          const { data: clinicianData } = await supabase
+          console.log('[AvailabilityPanel] No clinician ID provided, looking up by email:', profileData.email);
+          
+          const { data: clinicianData, error: clinicianError } = await supabase
             .from('clinicians')
             .select('id')
             .eq('clinician_email', profileData.email)
             .single();
-
-          if (clinicianData) {
+          
+          if (clinicianError) {
+            console.error('[AvailabilityPanel] Error finding clinician by email:', clinicianError);
+          } else if (clinicianData) {
+            console.log('[AvailabilityPanel] Found clinician by email:', clinicianData.id);
             clinicianToQuery = clinicianData.id;
+          } else {
+            console.log('[AvailabilityPanel] No clinician found for this email');
           }
         }
 
         if (clinicianToQuery) {
+          console.log(`[AvailabilityPanel] Fetching availability for clinician: ${clinicianToQuery}`);
+          
           const { data: availabilityData, error } = await supabase
             .from('availability')
             .select('*')
@@ -116,8 +127,15 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
             .eq('is_active', true);
 
           if (error) {
-            console.error('Error fetching availability:', error);
+            console.error('[AvailabilityPanel] Error fetching availability:', error);
+            toast({
+              title: "Error fetching availability",
+              description: error.message,
+              variant: "destructive"
+            });
           } else if (availabilityData && availabilityData.length > 0) {
+            console.log(`[AvailabilityPanel] Retrieved ${availabilityData.length} availability records:`, availabilityData);
+            
             const newSchedule = [...weekSchedule];
 
             try {
@@ -126,14 +144,14 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
               });
 
               if (settingsData) {
-                console.log('Retrieved settings:', settingsData);
+                console.log('[AvailabilityPanel] Retrieved settings:', settingsData);
                 setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
                 
                 setMinDaysAhead(Number(settingsData.min_days_ahead) || 2);
                 setMaxDaysAhead(Number(settingsData.max_days_ahead) || 60);
               }
             } catch (settingsError) {
-              console.error('Error fetching availability settings:', settingsError);
+              console.error('[AvailabilityPanel] Error fetching availability settings:', settingsError);
               setMinDaysAhead(2);
               setMaxDaysAhead(60);
             }
@@ -163,12 +181,14 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
 
                   newSchedule[dayIndex].isOpen = true;
                 } else {
-                  console.log(`Skipping duplicate slot: ${slotKey}`);
+                  console.log(`[AvailabilityPanel] Skipping duplicate slot: ${slotKey}`);
                 }
               }
             });
 
             setWeekSchedule(newSchedule);
+          } else {
+            console.log('[AvailabilityPanel] No availability data found');
           }
 
           const { data: singleAvailabilityData, error: singleAvailabilityError } = await supabase
@@ -179,9 +199,9 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
             .is('original_availability_id', null);
 
           if (singleAvailabilityError) {
-            console.error('Error fetching single availability:', singleAvailabilityError);
+            console.error('[AvailabilityPanel] Error fetching single availability:', singleAvailabilityError);
           } else if (singleAvailabilityData && singleAvailabilityData.length > 0) {
-            console.log('Fetched single availability data:', singleAvailabilityData);
+            console.log('[AvailabilityPanel] Fetched single availability data:', singleAvailabilityData);
             
             const byDate: {[date: string]: TimeSlot[]} = {};
             
@@ -207,10 +227,19 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
             } else {
               setSingleDateTimeSlots([]);
             }
+          } else {
+            console.log('[AvailabilityPanel] No single date availability data found');
           }
+        } else {
+          console.log('[AvailabilityPanel] No clinician ID to query');
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('[AvailabilityPanel] Error:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load availability data",
+          variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }
@@ -327,7 +356,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
     }
 
     setIsSaving(true);
-    console.log('Saving single date availability...');
+    console.log('[AvailabilityPanel] Saving single date availability...');
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -341,6 +370,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         setIsSaving(false);
         return;
       }
+
+      console.log('[AvailabilityPanel] Current user:', sessionData.session.user.id);
 
       let clinicianIdToUse = clinicianId;
 
@@ -361,13 +392,14 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           return;
         }
 
-        const { data: clinicianData } = await supabase
+        const { data: clinicianData, error: clinicianError } = await supabase
           .from('clinicians')
           .select('id')
           .eq('clinician_email', profileData.email)
           .single();
 
-        if (!clinicianData) {
+        if (clinicianError) {
+          console.error('[AvailabilityPanel] Error finding clinician by email:', clinicianError);
           toast({
             title: "Clinician Error",
             description: "Could not find your clinician record",
@@ -375,9 +407,19 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           });
           setIsSaving(false);
           return;
+        } else if (clinicianData) {
+          console.log('[AvailabilityPanel] Found clinician by email:', clinicianData.id);
+          clinicianIdToUse = clinicianData.id;
+        } else {
+          console.log('[AvailabilityPanel] No clinician found for this email');
+          toast({
+            title: "Error",
+            description: "Could not find your clinician record",
+            variant: "destructive"
+          });
+          setIsSaving(false);
+          return;
         }
-
-        clinicianIdToUse = clinicianData.id;
       }
 
       if (!clinicianIdToUse) {
@@ -390,6 +432,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         return;
       }
 
+      console.log(`[AvailabilityPanel] Using clinician ID for saving: ${clinicianIdToUse}`);
+
       const formattedDate = format(selectedDate, 'yyyy-MM-dd');
       
       const { data: existingData, error: fetchError } = await supabase
@@ -400,7 +444,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         .is('original_availability_id', null);
         
       if (fetchError) {
-        console.error('Error fetching existing single availability:', fetchError);
+        console.error('[AvailabilityPanel] Error fetching existing single availability:', fetchError);
         toast({
           title: "Error",
           description: "Could not check for existing availability",
@@ -411,6 +455,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       }
       
       if (existingData && existingData.length > 0) {
+        console.log(`[AvailabilityPanel] Found ${existingData.length} existing records to delete`);
+        
         const existingIds = existingData.map(item => item.id);
         const { error: deleteError } = await supabase
           .from('availability_exceptions')
@@ -418,7 +464,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           .in('id', existingIds);
           
         if (deleteError) {
-          console.error('Error deleting existing single availability:', deleteError);
+          console.error('[AvailabilityPanel] Error deleting existing single availability:', deleteError);
           toast({
             title: "Error",
             description: "Could not update existing availability",
@@ -438,12 +484,15 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         is_deleted: false
       }));
       
-      const { error: insertError } = await supabase
+      console.log(`[AvailabilityPanel] Inserting ${recordsToInsert.length} availability exceptions`);
+      
+      const { data: insertData, error: insertError } = await supabase
         .from('availability_exceptions')
-        .insert(recordsToInsert);
+        .insert(recordsToInsert)
+        .select();
         
       if (insertError) {
-        console.error('Error saving single availability:', insertError);
+        console.error('[AvailabilityPanel] Error saving single availability:', insertError);
         toast({
           title: "Error",
           description: "Could not save single date availability",
@@ -452,6 +501,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         setIsSaving(false);
         return;
       }
+      
+      console.log('[AvailabilityPanel] Successfully saved data:', insertData);
       
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
       setExistingSingleAvailability(prev => ({
@@ -468,7 +519,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         onAvailabilityUpdated();
       }
     } catch (error) {
-      console.error('Error saving single date availability:', error);
+      console.error('[AvailabilityPanel] Error saving single date availability:', error);
       toast({
         title: "Error",
         description: "An unexpected error occurred",
@@ -481,7 +532,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
 
   const saveAvailability = async () => {
     setIsSaving(true);
-    console.log('Saving availability...');
+    console.log('[AvailabilityPanel] Saving availability...');
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -495,6 +546,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         setIsSaving(false);
         return;
       }
+
+      console.log('[AvailabilityPanel] Current user:', sessionData.session.user.id);
 
       let clinicianIdToUse = clinicianId;
 
@@ -515,13 +568,14 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           return;
         }
 
-        const { data: clinicianData } = await supabase
+        const { data: clinicianData, error: clinicianError } = await supabase
           .from('clinicians')
           .select('id')
           .eq('clinician_email', profileData.email)
           .single();
 
-        if (!clinicianData) {
+        if (clinicianError) {
+          console.error('[AvailabilityPanel] Error finding clinician by email:', clinicianError);
           toast({
             title: "Clinician Error",
             description: "Could not find your clinician record",
@@ -529,9 +583,19 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           });
           setIsSaving(false);
           return;
+        } else if (clinicianData) {
+          console.log('[AvailabilityPanel] Found clinician by email:', clinicianData.id);
+          clinicianIdToUse = clinicianData.id;
+        } else {
+          console.log('[AvailabilityPanel] No clinician found for this email');
+          toast({
+            title: "Error",
+            description: "Could not find your clinician record",
+            variant: "destructive"
+          });
+          setIsSaving(false);
+          return;
         }
-
-        clinicianIdToUse = clinicianData.id;
       }
 
       if (!clinicianIdToUse) {
@@ -544,15 +608,15 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         return;
       }
 
-      console.log('Saving settings for clinician:', clinicianIdToUse);
-      console.log('Time granularity:', timeGranularity);
-      console.log('Min days ahead:', minDaysAhead);
-      console.log('Max days ahead:', maxDaysAhead);
+      console.log(`[AvailabilityPanel] Using clinician ID for saving settings: ${clinicianIdToUse}`);
+      console.log('[AvailabilityPanel] Time granularity:', timeGranularity);
+      console.log('[AvailabilityPanel] Min days ahead:', minDaysAhead);
+      console.log('[AvailabilityPanel] Max days ahead:', maxDaysAhead);
 
       const minRequiredMax = minDaysAhead + 30;
       const safeMaxDaysAhead = Math.max(minRequiredMax, maxDaysAhead);
       
-      console.log('Calculated safe max days ahead:', safeMaxDaysAhead);
+      console.log('[AvailabilityPanel] Calculated safe max days ahead:', safeMaxDaysAhead);
       
       const { error: settingsError } = await supabase
         .from('availability_settings')
@@ -566,7 +630,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         });
 
       if (settingsError) {
-        console.error('Error saving availability settings:', settingsError);
+        console.error('[AvailabilityPanel] Error saving availability settings:', settingsError);
         toast({
           title: "Error Saving Settings",
           description: settingsError.message,
@@ -583,7 +647,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         .eq('is_active', true);
 
       if (fetchError) {
-        console.error('Error fetching existing availability:', fetchError);
+        console.error('[AvailabilityPanel] Error fetching existing availability:', fetchError);
         toast({
           title: "Error Fetching Existing Availability",
           description: fetchError.message,
@@ -599,7 +663,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         .eq('clinician_id', clinicianIdToUse);
 
       if (exceptionsError) {
-        console.error('Error fetching exceptions:', exceptionsError);
+        console.error('[AvailabilityPanel] Error fetching exceptions:', exceptionsError);
         toast({
           title: "Error Fetching Exceptions",
           description: exceptionsError.message,
@@ -655,14 +719,14 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       });
 
       if (availabilityIdsToDelete.length > 0) {
-        console.log('Deleting availability IDs:', availabilityIdsToDelete);
+        console.log('[AvailabilityPanel] Deleting availability IDs:', availabilityIdsToDelete);
         const { error: deleteError } = await supabase
           .from('availability')
           .delete()
           .in('id', availabilityIdsToDelete);
 
         if (deleteError) {
-          console.error('Error deleting availability:', deleteError);
+          console.error('[AvailabilityPanel] Error deleting availability:', deleteError);
           toast({
             title: "Error Deleting Availability",
             description: deleteError.message,
@@ -674,13 +738,13 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       }
 
       if (availabilityToInsert.length > 0) {
-        console.log('Inserting new availability:', availabilityToInsert);
+        console.log('[AvailabilityPanel] Inserting new availability:', availabilityToInsert);
         const { error: insertError } = await supabase
           .from('availability')
           .insert(availabilityToInsert);
 
         if (insertError) {
-          console.error('Error saving availability:', insertError);
+          console.error('[AvailabilityPanel] Error saving availability:', insertError);
           toast({
             title: "Error Saving Availability",
             description: insertError.message,
@@ -700,7 +764,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         onAvailabilityUpdated();
       }
     } catch (error) {
-      console.error('Error saving availability:', error);
+      console.error('[AvailabilityPanel] Error saving availability:', error);
       toast({
         title: "Error",
         description: "An unexpected error occurred while saving your availability",

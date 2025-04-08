@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import CalendarView from '../components/calendar/CalendarView';
@@ -12,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const CalendarPage = () => {
   const {
@@ -35,18 +37,64 @@ const CalendarPage = () => {
 
   // Use only the month view mode state
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week'>('month');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const { toast } = useToast();
 
   // Add logging for current user
   useEffect(() => {
-    const logCurrentUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      console.log('[Calendar] Current authenticated user:', data?.user ? {
-        id: data.user.id,
-        email: data.user.email,
-      } : 'No user');
+    const fetchCurrentUser = async () => {
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        
+        if (error) {
+          console.error('[Calendar] Error getting current user:', error);
+          toast({
+            title: "Authentication Error",
+            description: "Unable to verify your login status. Please try logging in again.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        if (data?.user) {
+          console.log('[Calendar] Current authenticated user:', {
+            id: data.user.id,
+            email: data.user.email,
+          });
+          
+          setCurrentUserId(data.user.id);
+          setUserEmail(data.user.email);
+          
+          // If we have a user email but no selectedClinicianId, try to find the clinician
+          if (data.user.email && !selectedClinicianId) {
+            const { data: clinicianData, error: clinicianError } = await supabase
+              .from('clinicians')
+              .select('id')
+              .eq('clinician_email', data.user.email)
+              .single();
+              
+            if (clinicianError && clinicianError.code !== 'PGRST116') {
+              console.error('[Calendar] Error finding clinician by email:', clinicianError);
+            } else if (clinicianData) {
+              console.log('[Calendar] Found clinician by email:', clinicianData.id);
+              setSelectedClinicianId(clinicianData.id);
+            } else {
+              console.log('[Calendar] No clinician found for email:', data.user.email);
+              // Potential UI feedback could go here
+            }
+          }
+        } else {
+          console.log('[Calendar] No authenticated user found');
+          setCurrentUserId(null);
+          setUserEmail(null);
+        }
+      } catch (error) {
+        console.error('[Calendar] Exception in user verification:', error);
+      }
     };
     
-    logCurrentUser();
+    fetchCurrentUser();
   }, []);
 
   // Log key state changes
@@ -131,30 +179,35 @@ const CalendarPage = () => {
                 New Appointment
               </Button>
 
-              <div className="hidden">
-                <Select
-                  value={selectedClinicianId || undefined}
-                  onValueChange={(value) => setSelectedClinicianId(value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a clinician" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {loadingClinicians ? (
-                      <div className="flex items-center justify-center p-2">
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Loading...
-                      </div>
-                    ) : (
-                      clinicians.map((clinician) => (
-                        <SelectItem key={clinician.id} value={clinician.id}>
-                          {clinician.clinician_professional_name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
+              {clinicians.length > 1 && (
+                <div className="min-w-[200px]">
+                  <Select
+                    value={selectedClinicianId || undefined}
+                    onValueChange={(value) => {
+                      console.log(`[Calendar] Selected clinician changed to: ${value}`);
+                      setSelectedClinicianId(value);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a clinician" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loadingClinicians ? (
+                        <div className="flex items-center justify-center p-2">
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Loading...
+                        </div>
+                      ) : (
+                        clinicians.map((clinician) => (
+                          <SelectItem key={clinician.id} value={clinician.id}>
+                            {clinician.clinician_professional_name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
 
