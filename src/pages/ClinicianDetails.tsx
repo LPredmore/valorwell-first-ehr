@@ -49,7 +49,7 @@ const ClinicianDetails = () => {
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const licenseTypes = ["LPC", "LCSW", "LMHT", "LMFT", "Psychologist", "SLP"];
+  const licenseTypes = ["LPC", "LMHC", "LCPC", "LPC-MH", "LPCC", "LCSW", "LMFT", "PsyD"];
   const clinicianTypeOptions = ["Mental Health", "Speech Therapy"];
   const states = [{
     code: "Alabama",
