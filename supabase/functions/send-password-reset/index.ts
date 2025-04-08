@@ -33,6 +33,8 @@ serve(async (req) => {
 
     // Parse request body
     const { email, resetUrl } = await req.json();
+    console.log("Password reset request for email:", email);
+    console.log("Reset URL:", resetUrl);
 
     // Validate input
     if (!email) {
@@ -54,6 +56,7 @@ serve(async (req) => {
 
     if (userExistsError || !userExists) {
       // Don't reveal if the user exists or not for security reasons
+      console.log("User not found or error checking user:", email);
       return new Response(
         JSON.stringify({ success: true, message: "If your email is registered, you will receive a password reset link" }),
         {
@@ -71,67 +74,76 @@ serve(async (req) => {
       throw new Error("RESEND_API_KEY environment variable is not configured");
     }
     console.log("API Key length:", resendApiKey.length);  // Log the length of the key to verify it exists
-    const resend = new Resend(resendApiKey);
-
-    // Generate a secure password reset token using Supabase's built-in functionality
-    console.log("Generating reset link for:", email);
-    const { data, error } = await supabaseClient.auth.admin.generateLink({
-      type: 'recovery',
-      email,
-      options: {
-        redirectTo: resetUrl,
-      }
-    });
-
-    if (error) {
-      console.error("Error generating reset link:", error);
-      throw error;
-    }
-
-    const resetLink = data.properties.action_link;
-    console.log("Reset link generated successfully");
-
-    // Send the reset email with Resend v2
-    console.log("Sending password reset email to:", email);
+    
     try {
-      const emailResponse = await resend.emails.send({
-        from: "ValorWell EHR <noreply@valorwell.org>", // Updated format with name
-        to: email,
-        subject: "Reset Your Password - ValorWell EHR",
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #333; text-align: center;">Password Reset Request</h2>
-            <p>Hello,</p>
-            <p>We received a request to reset your password for your ValorWell EHR account. To reset your password, please click the link below:</p>
-            <p style="text-align: center;">
-              <a href="${resetLink}" style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">Reset Password</a>
-            </p>
-            <p>If you did not request a password reset, please ignore this email or contact support if you have concerns.</p>
-            <p>This link will expire in 24 hours.</p>
-            <p>Best regards,<br>The ValorWell Team</p>
-          </div>
-        `,
+      const resend = new Resend(resendApiKey);
+      
+      // Generate a secure password reset token using Supabase's built-in functionality
+      console.log("Generating reset link for:", email);
+      const { data, error } = await supabaseClient.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: {
+          redirectTo: resetUrl,
+        }
       });
 
-      console.log("Password reset email sent, response:", emailResponse);
-    } catch (emailError) {
-      console.error("Error sending email with Resend:", emailError);
-      throw emailError;
-    }
-
-    // Return success response
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "If your email is registered, you will receive a password reset link"
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      if (error) {
+        console.error("Error generating reset link:", error);
+        throw error;
       }
-    );
+
+      const resetLink = data.properties.action_link;
+      console.log("Reset link generated successfully:", resetLink.substring(0, 40) + "...");
+
+      // Send the reset email with Resend v2
+      console.log("Sending password reset email to:", email);
+      try {
+        const emailResponse = await resend.emails.send({
+          from: "ValorWell EHR <noreply@valorwell.org>",
+          to: email,
+          subject: "Reset Your Password - ValorWell EHR",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #333; text-align: center;">Password Reset Request</h2>
+              <p>Hello,</p>
+              <p>We received a request to reset your password for your ValorWell EHR account. To reset your password, please click the link below:</p>
+              <p style="text-align: center;">
+                <a href="${resetLink}" style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">Reset Password</a>
+              </p>
+              <p>If you did not request a password reset, please ignore this email or contact support if you have concerns.</p>
+              <p>This link will expire in 24 hours.</p>
+              <p>Best regards,<br>The ValorWell Team</p>
+            </div>
+          `,
+        });
+
+        console.log("Password reset email sent, response:", JSON.stringify(emailResponse));
+      } catch (emailError) {
+        console.error("Error sending email with Resend:", emailError);
+        console.error("Error details:", JSON.stringify(emailError));
+        throw emailError;
+      }
+
+      // Return success response
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "If your email is registered, you will receive a password reset link"
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    } catch (resendError) {
+      console.error("Resend initialization or sending error:", resendError);
+      console.error("Error details:", JSON.stringify(resendError));
+      throw resendError;
+    }
   } catch (err) {
     console.error("Unexpected error:", err);
+    console.error("Error details:", JSON.stringify(err));
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       {
