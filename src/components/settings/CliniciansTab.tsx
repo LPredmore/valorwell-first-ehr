@@ -1,10 +1,10 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Mail, Phone } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AddClinicianDialog } from './AddClinicianDialog';
-import RecoverClinicianPasswords from './RecoverClinicianPasswords';
 import {
   Table,
   TableBody,
@@ -127,11 +127,6 @@ const CliniciansTab = () => {
           <Plus size={16} />
           <span>Add Clinician</span>
         </button>
-      </div>
-      
-      {/* Add password recovery component */}
-      <div className="mb-6">
-        <RecoverClinicianPasswords />
       </div>
       
       <div className="rounded-md border">
