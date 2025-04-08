@@ -63,10 +63,17 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Resend with the updated import
-    const resend = new Resend(Deno.env.get("RESEND_API_KEY") ?? "");
+    // Initialize Resend with API key
+    console.log("Initializing Resend with API key");
+    const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
+    if (!resendApiKey) {
+      console.error("RESEND_API_KEY is not set");
+      throw new Error("RESEND_API_KEY environment variable is not configured");
+    }
+    const resend = new Resend(resendApiKey);
 
     // Generate a secure password reset token using Supabase's built-in functionality
+    console.log("Generating reset link for:", email);
     const { data, error } = await supabaseClient.auth.admin.generateLink({
       type: 'recovery',
       email,
@@ -81,28 +88,35 @@ serve(async (req) => {
     }
 
     const resetLink = data.properties.action_link;
+    console.log("Reset link generated successfully");
 
-    // Send the reset email with the updated Resend version
-    const emailResponse = await resend.emails.send({
-      from: "noreply@valorwell.org", // Update with your verified domain
-      to: email,
-      subject: "Reset Your Password - ValorWell EHR",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #333; text-align: center;">Password Reset Request</h2>
-          <p>Hello,</p>
-          <p>We received a request to reset your password for your ValorWell EHR account. To reset your password, please click the link below:</p>
-          <p style="text-align: center;">
-            <a href="${resetLink}" style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">Reset Password</a>
-          </p>
-          <p>If you did not request a password reset, please ignore this email or contact support if you have concerns.</p>
-          <p>This link will expire in 24 hours.</p>
-          <p>Best regards,<br>The ValorWell Team</p>
-        </div>
-      `,
-    });
+    // Send the reset email with Resend v2
+    console.log("Sending password reset email to:", email);
+    try {
+      const emailResponse = await resend.emails.send({
+        from: "ValorWell EHR <noreply@valorwell.org>", // Updated format with name
+        to: email,
+        subject: "Reset Your Password - ValorWell EHR",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333; text-align: center;">Password Reset Request</h2>
+            <p>Hello,</p>
+            <p>We received a request to reset your password for your ValorWell EHR account. To reset your password, please click the link below:</p>
+            <p style="text-align: center;">
+              <a href="${resetLink}" style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">Reset Password</a>
+            </p>
+            <p>If you did not request a password reset, please ignore this email or contact support if you have concerns.</p>
+            <p>This link will expire in 24 hours.</p>
+            <p>Best regards,<br>The ValorWell Team</p>
+          </div>
+        `,
+      });
 
-    console.log("Password reset email sent:", emailResponse);
+      console.log("Password reset email sent, response:", emailResponse);
+    } catch (emailError) {
+      console.error("Error sending email with Resend:", emailError);
+      throw emailError;
+    }
 
     // Return success response
     return new Response(
