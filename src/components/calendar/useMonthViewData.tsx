@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -148,6 +149,7 @@ export const useMonthViewData = (
     console.log(`MonthView building dayAppointmentsMap for clinician: ${clinicianId}`);
     console.log(`Appointments provided to monthView:`, appointments);
     
+    // Critical fix: Always filter appointments by clinician ID even if they were supposed to be pre-filtered
     const filteredAppointments = clinicianId 
       ? appointments.filter(app => String(app.clinician_id).trim() === String(clinicianId).trim())
       : appointments;

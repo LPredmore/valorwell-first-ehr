@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { Card } from '@/components/ui/card';
@@ -110,6 +111,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           endDate = format(end, 'yyyy-MM-dd');
         }
         
+        // Critical fix: Ensure consistent string treatment of clinician ID
         const clinicianIdStr = String(clinicianId).trim();
         
         console.log(`Fetching appointments from ${startDate} to ${endDate} for clinician ${clinicianIdStr}`);

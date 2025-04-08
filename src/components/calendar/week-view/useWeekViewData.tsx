@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -85,11 +86,11 @@ export const useWeekViewData = (
       return;
     }
 
-    // Convert clinicianId to string consistently for comparisons
+    // Critical fix: Always filter appointments by clinician ID to ensure consistency
     const clinicianIdStr = clinicianId ? String(clinicianId).trim() : null;
     console.log(`Week view processing appointments for clinician: ${clinicianIdStr}`);
     
-    // Double-check filtering here in case upstream filtering failed
+    // Double-check filtering here to ensure we only show appointments for the selected clinician
     const filteredAppointments = clinicianIdStr 
       ? appointments.filter(app => String(app.clinician_id).trim() === clinicianIdStr)
       : appointments;
