@@ -1,190 +1,105 @@
 
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { Session, User } from '@supabase/supabase-js';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-interface UserContextType {
-  user: User | null;
+type UserContextType = {
   userRole: string | null;
-  userId: string | null;
   clientStatus: string | null;
   isLoading: boolean;
-  refreshUser: (() => Promise<void>) | null;
-}
+  userId: string | null;
+};
 
-const UserContext = createContext<UserContextType>({
-  user: null,
-  userRole: null,
-  userId: null,
+const UserContext = createContext<UserContextType>({ 
+  userRole: null, 
   clientStatus: null,
   isLoading: true,
-  refreshUser: null,
+  userId: null
 });
 
-interface UserProviderProps {
-  children: React.ReactNode;
-}
-
-export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
   const [clientStatus, setClientStatus] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [showPasswordChange, setShowPasswordChange] = useState(false);
-
-  const fetchUserRole = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error("Error fetching user role:", error);
-        setUserRole(null);
-      } else {
-        setUserRole(data?.role || null);
-      }
-    } catch (error) {
-      console.error("Error fetching user role:", error);
-      setUserRole(null);
-    }
-  };
-
-  const fetchClientStatus = async (userId: string) => {
-    try {
-      // Only fetch client status if the user is a client
-      if (userRole === 'client') {
-        const { data, error } = await supabase
-          .from('clients')
-          .select('client_status')
-          .eq('id', userId)
-          .single();
-
-        if (error) {
-          console.error("Error fetching client status:", error);
-          setClientStatus(null);
-        } else {
-          setClientStatus(data?.client_status || 'New');
-        }
-      } else {
-        setClientStatus(null);
-      }
-    } catch (error) {
-      console.error("Error fetching client status:", error);
-      setClientStatus(null);
-    }
-  };
-
-  const checkTempPassword = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("temp_password")
-        .eq("id", userId)
-        .single();
-        
-      if (error) {
-        console.error("[UserContext] Error checking temp password:", error);
-        return;
-      }
-      
-      if (data?.temp_password) {
-        console.log("[UserContext] User has temporary password, showing change dialog");
-        setShowPasswordChange(true);
-      }
-    } catch (err) {
-      console.error("[UserContext] Error in checkTempPassword:", err);
-    }
-  };
-
-  const refreshUser = async () => {
-    try {
-      const { data, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      
-      if (data?.session?.user) {
-        setUser(data.session.user);
-        setUserId(data.session.user.id);
-        await fetchUserRole(data.session.user.id);
-        await fetchClientStatus(data.session.user.id);
-      }
-    } catch (err) {
-      console.error("[UserContext] Error in refreshUser:", err);
-    }
-  };
+  const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchInitialSession = async () => {
+    console.log("[UserContext] Initializing user context");
+    
+    const fetchUserData = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
-        if (error) throw error;
+        console.log("[UserContext] Fetching user data");
+        const { data: { user } } = await supabase.auth.getUser();
+        console.log("[UserContext] Auth user data:", user ? "User found" : "No user found");
         
-        if (data?.session?.user) {
-          setUser(data.session.user);
-          setUserId(data.session.user.id);
-          await fetchUserRole(data.session.user.id);
+        if (user) {
+          console.log("[UserContext] Setting userId:", user.id);
+          setUserId(user.id);
           
-          if (userRole === 'client') {
-            await fetchClientStatus(data.session.user.id);
+          console.log("[UserContext] Fetching profile data for user:", user.id);
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+            
+          if (error) {
+            console.error("[UserContext] Error fetching profile:", error.message);
+            throw error;
           }
           
-          await checkTempPassword(data.session.user.id);
+          const role = data?.role || null;
+          console.log("[UserContext] User role from profile:", role);
+          setUserRole(role);
+          
+          // If user is a client, fetch client status from clients table
+          if (role === 'client') {
+            console.log("[UserContext] User is a client, fetching client status");
+            const { data: clientData, error: clientError } = await supabase
+              .from('clients')
+              .select('client_status')
+              .eq('id', user.id)
+              .single();
+              
+            if (clientError) {
+              console.error("[UserContext] Error fetching client status:", clientError.message);
+            }
+            
+            if (!clientError && clientData) {
+              console.log("[UserContext] Client status:", clientData.client_status);
+              setClientStatus(clientData.client_status);
+            }
+          }
+        } else {
+          console.log("[UserContext] No authenticated user found");
         }
-      } catch (err) {
-        console.error("[UserContext] Error in fetchInitialSession:", err);
+      } catch (error) {
+        console.error("[UserContext] Error in fetchUserData:", error);
       } finally {
+        console.log("[UserContext] Setting isLoading to false");
         setIsLoading(false);
       }
     };
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("[UserContext] Auth state changed:", event);
-        
-        setUser(session?.user ?? null);
-        setUserId(session?.user?.id ?? null);
-        
-        if (session?.user) {
-          await fetchUserRole(session.user.id);
-          
-          if (userRole === 'client') {
-            await fetchClientStatus(session.user.id);
-          }
-          
-          if (event === "SIGNED_IN") {
-            await checkTempPassword(session.user.id);
-          }
-        } else {
-          setUserRole(null);
-          setClientStatus(null);
-        }
-      }
-    );
-    
-    fetchInitialSession();
-    
+
+    // First set up the auth state listener
+    console.log("[UserContext] Setting up auth state listener");
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[UserContext] Auth state changed:", event, session ? "Session exists" : "No session");
+      fetchUserData();
+    });
+
+    // Then check for existing session
+    console.log("[UserContext] Checking for existing session");
+    fetchUserData();
+
     return () => {
-      console.info("[UserContext] Cleaning up auth subscription");
+      console.log("[UserContext] Cleaning up auth subscription");
       subscription.unsubscribe();
     };
-  }, [userRole]);
-  
-  const ChangePasswordDialog = React.lazy(() => import('../components/auth/ChangePasswordDialog'));
-  
+  }, []);
+
   return (
-    <UserContext.Provider value={{ user, userRole, userId, clientStatus, isLoading, refreshUser }}>
+    <UserContext.Provider value={{ userRole, clientStatus, isLoading, userId }}>
       {children}
-      {showPasswordChange && (
-        <React.Suspense fallback={<div>Loading...</div>}>
-          <ChangePasswordDialog 
-            isOpen={showPasswordChange} 
-            onClose={() => setShowPasswordChange(false)} 
-          />
-        </React.Suspense>
-      )}
     </UserContext.Provider>
   );
 };

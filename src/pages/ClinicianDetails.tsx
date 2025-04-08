@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Save, X, Upload, Camera, User, KeyRound } from 'lucide-react';
+import { Pencil, Save, X, Upload, Camera, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -49,7 +49,6 @@ const ClinicianDetails = () => {
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const licenseTypes = ["LPC", "LMHC", "LCPC", "LPC-MH", "LPCC", "LCSW", "LMFT", "PsyD"];
   const clinicianTypeOptions = ["Mental Health", "Speech Therapy"];
   const states = [{
@@ -416,51 +415,6 @@ const ClinicianDetails = () => {
     setSelectedStates(current => current.includes(stateName) ? current.filter(s => s !== stateName) : [...current, stateName]);
   };
 
-  const handleResetPassword = async () => {
-    if (!clinician?.clinician_email) {
-      toast({
-        title: "Error",
-        description: "No email address found for this clinician.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsResettingPassword(true);
-    try {
-      let siteUrl = window.location.origin;
-      
-      if (siteUrl.includes('ehr.valorwell.org') && siteUrl.startsWith('http:')) {
-        siteUrl = siteUrl.replace('http:', 'https:');
-      }
-      
-      console.log("Current site URL for password reset:", siteUrl);
-      
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        clinician.clinician_email,
-        { redirectTo: `${siteUrl}/reset-password` }
-      );
-      
-      if (error) {
-        throw error;
-      }
-      
-      toast({
-        title: "Password reset email sent",
-        description: `An email with reset instructions has been sent to ${clinician.clinician_email}`,
-      });
-    } catch (error) {
-      console.error('Error sending password reset:', error);
-      toast({
-        title: "Error",
-        description: `Failed to send password reset email: ${error.message || "Unknown error"}`,
-        variant: "destructive"
-      });
-    } finally {
-      setIsResettingPassword(false);
-    }
-  };
-
   if (isLoading) {
     return <Layout>
         <div className="flex justify-center items-center h-full">
@@ -689,37 +643,6 @@ const ClinicianDetails = () => {
                   </DropdownMenu> : <p className="p-2 border rounded-md bg-gray-50">
                     {clinician.clinician_licensed_states && clinician.clinician_licensed_states.length > 0 ? clinician.clinician_licensed_states.join(', ') : '—'}
                   </p>}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Security</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col space-y-4">
-              <p className="text-sm text-gray-500">
-                Reset the password for this clinician's account. An email with reset instructions will be sent to {clinician?.clinician_email}.
-              </p>
-              <div>
-                <Button 
-                  onClick={handleResetPassword} 
-                  disabled={isResettingPassword || !clinician?.clinician_email}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  {isResettingPassword ? (
-                    <>
-                      <span className="animate-spin">⟳</span> Sending...
-                    </>
-                  ) : (
-                    <>
-                      <KeyRound size={16} /> Reset Password
-                    </>
-                  )}
-                </Button>
               </div>
             </div>
           </CardContent>

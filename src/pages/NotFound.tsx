@@ -1,8 +1,5 @@
-
-import { useLocation, Link } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Info, ExternalLink } from "lucide-react";
 
 const NotFound = () => {
   const location = useLocation();
@@ -10,54 +7,18 @@ const NotFound = () => {
   useEffect(() => {
     console.error(
       "404 Error: User attempted to access non-existent route:",
-      location.pathname,
-      { 
-        url: window.location.href,
-        origin: window.location.origin,
-        search: location.search, 
-        hash: location.hash 
-      }
+      location.pathname
     );
-  }, [location.pathname, location.search, location.hash]);
+  }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-md">
-        <h1 className="text-6xl font-bold text-gray-800 mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-6">Oops! Page not found</p>
-        
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-md">
-          <div className="flex items-center justify-center mb-2">
-            <Info className="h-5 w-5 text-blue-600 mr-2" />
-            <span className="font-medium text-blue-600">Access Information</span>
-          </div>
-          <p className="text-sm text-gray-600 mb-2">
-            If you're trying to access ValorWell EHR, please use:
-          </p>
-          <a 
-            href="https://app.valorwell.org" 
-            className="inline-flex items-center text-blue-600 hover:text-blue-800 hover:underline"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            app.valorwell.org
-            <ExternalLink className="ml-1 h-3 w-3" />
-          </a>
-        </div>
-        
-        <div className="flex flex-col space-y-3">
-          <Button asChild variant="default">
-            <Link to="/" className="flex items-center justify-center">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Return to Home
-            </Link>
-          </Button>
-          
-          <Button asChild variant="outline">
-            <Link to="/login" className="flex items-center justify-center">
-              Go to Login
-            </Link>
-          </Button>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold mb-4">404</h1>
+        <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
+        <a href="/" className="text-blue-500 hover:text-blue-700 underline">
+          Return to Home
+        </a>
       </div>
     </div>
   );
