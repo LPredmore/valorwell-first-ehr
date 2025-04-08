@@ -49,11 +49,12 @@ serve(async (req) => {
     // Generate a random password
     const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
 
-    // Create user metadata
+    // Create user metadata - include the tempPassword in the metadata now
     const userData = {
       first_name: firstName,
       last_name: lastName,
       role: "clinician",
+      temp_password: tempPassword, // Add the password to metadata so it gets stored in profiles
     };
 
     // Create user in auth system
