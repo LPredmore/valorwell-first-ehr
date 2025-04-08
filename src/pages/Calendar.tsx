@@ -64,6 +64,12 @@ const CalendarPage = () => {
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
+  // For debugging
+  useEffect(() => {
+    console.log("Calendar selected clinician ID:", selectedClinicianId);
+    console.log("Calendar view mode:", calendarViewMode);
+  }, [selectedClinicianId, calendarViewMode]);
+
   return (
     <Layout>
       <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">

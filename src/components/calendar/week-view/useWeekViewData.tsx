@@ -77,7 +77,7 @@ export const useWeekViewData = (
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
 
-  // Process appointments into blocks
+  // Process appointments into blocks - these should already be filtered by clinician ID
   useEffect(() => {
     if (!appointments.length) {
       setAppointmentBlocks([]);
@@ -88,10 +88,12 @@ export const useWeekViewData = (
     console.log(`Week view processing appointments for clinician: ${clinicianId}`);
     console.log("Processing appointments in week view:", appointments);
     
-    const filteredAppointments = appointments.filter(app => String(app.clinician_id) === String(clinicianId));
-    console.log(`After filtering by clinician ID, ${filteredAppointments.length} appointments remain`);
+    if (appointments.length > 0) {
+      console.log('First appointment clinician_id:', appointments[0].clinician_id);
+      console.log('clinicianId param type:', typeof clinicianId, 'value:', clinicianId);
+    }
     
-    const blocks: AppointmentBlock[] = filteredAppointments.map(appointment => {
+    const blocks: AppointmentBlock[] = appointments.map(appointment => {
       const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
       const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
 

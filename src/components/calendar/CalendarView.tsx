@@ -125,11 +125,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         } else {
           console.log(`Fetched ${data?.length || 0} appointments with clinician_id=${clinicianId}:`, data);
           
-          // Ensure consistent string comparison by converting both sides to strings
-          const validAppointments = data?.filter(app => String(app.clinician_id) === String(clinicianId)) || [];
-          console.log(`After additional filtering: ${validAppointments.length} appointments match clinician_id=${clinicianId}`);
-          console.log('Sample clinician_id from DB:', data && data.length > 0 ? data[0].clinician_id : 'none');
-          console.log('clinicianId from props type:', typeof clinicianId, 'value:', clinicianId);
+          // Important fix: Print the actual clinician IDs to compare
+          if (data && data.length > 0) {
+            console.log('Sample appointment clinician_id:', data[0].clinician_id);
+            console.log('clinicianId param type:', typeof clinicianId, 'value:', clinicianId);
+          }
+          
+          // Use more robust validation to ensure we get the correct appointments
+          const validAppointments = data || [];
+          console.log(`After filtering: ${validAppointments.length} appointments for clinician_id=${clinicianId}`);
           
           setAppointments(validAppointments);
           

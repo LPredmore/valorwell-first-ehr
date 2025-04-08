@@ -30,20 +30,39 @@ serve(async (req) => {
       throw new Error('Clinician ID is required')
     }
     
-    // Fetch the clinician's availability settings
+    console.log(`Fetching availability settings for clinician ID: ${clinicianId}`)
+    console.log(`Clinician ID type: ${typeof clinicianId}`)
+    
+    // Fetch the clinician's availability settings without any type conversion
+    // Let Supabase handle the matching appropriately
     const { data, error } = await supabaseClient
       .from('availability_settings')
       .select('*')
-      .eq('clinician_id', clinicianId.toString()) // Convert to string explicitly
+      .eq('clinician_id', clinicianId)
       .single()
     
     if (error) {
       console.error('Error fetching availability settings:', error)
-      // Return default settings if not found - updated defaults
+      console.error(`Clinician ID used in query: ${clinicianId}`)
+      
+      // Instead of returning defaults, return the error to make problems visible
       return new Response(
-        JSON.stringify({ time_granularity: 'hour', min_days_ahead: 2, max_days_ahead: 60 }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: error.message,
+          details: 'Failed to fetch availability settings'
+        }),
+        { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
+    }
+    
+    // Ensure min_days_ahead is a number
+    if (data) {
+      data.min_days_ahead = Number(data.min_days_ahead) || 2; // Default to 2 if falsy
+      data.max_days_ahead = Number(data.max_days_ahead) || 60; // Default to 60 if falsy
+      console.log(`Successfully retrieved settings: ${JSON.stringify(data, null, 2)}`)
     }
     
     return new Response(

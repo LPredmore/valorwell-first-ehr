@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -145,13 +146,16 @@ export const useMonthViewData = (
     console.log(`MonthView building dayAppointmentsMap for clinician: ${clinicianId}`);
     console.log(`Appointments provided to monthView:`, appointments);
     
-    // Verify we're only processing appointments for the current clinician
-    const filteredAppointments = appointments.filter(app => String(app.clinician_id) === String(clinicianId));
-    console.log(`After filtering by clinician ID, ${filteredAppointments.length} appointments remain`);
+    if (appointments.length > 0) {
+      console.log('Sample appointment clinician_id:', appointments[0].clinician_id);
+      console.log('clinicianId param type:', typeof clinicianId, 'value:', clinicianId);
+    }
     
     days.forEach(day => {
       const dayStr = format(day, 'yyyy-MM-dd');
-      const dayAppointments = filteredAppointments.filter(appointment => appointment.date === dayStr);
+      // We're already receiving filtered appointments from the parent component,
+      // so only filter by date here
+      const dayAppointments = appointments.filter(appointment => appointment.date === dayStr);
       result.set(dayStr, dayAppointments);
     });
     
