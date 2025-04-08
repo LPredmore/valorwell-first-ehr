@@ -112,12 +112,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         
         const { data, error } = await supabase
           .from('appointments')
-          .select(`
-            *,
-            clients:client_id (
-              client_assigned_therapist
-            )
-          `)
+          .select(`*`)
           .eq('clinician_id', clinicianId)
           .gte('date', startDate)
           .lte('date', endDate)
@@ -128,18 +123,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         } else {
           console.log(`Fetched ${data?.length || 0} appointments:`, data);
           
-          const filteredAppointments = data?.filter(app => 
-            app.clients?.client_assigned_therapist === clinicianId
-          ).map(app => {
-            const { clients, ...appointmentData } = app;
-            return appointmentData;
-          }) || [];
+          setAppointments(data || []);
           
-          console.log(`Filtered to ${filteredAppointments.length} appointments for assigned clients`);
-          setAppointments(filteredAppointments);
-          
-          if (filteredAppointments.length > 0) {
-            const clientIds = [...new Set(filteredAppointments.map(app => app.client_id))];
+          if (data && data.length > 0) {
+            const clientIds = [...new Set(data.map(app => app.client_id))];
             
             const { data: clientsData, error: clientsError } = await supabase
               .from('clients')
