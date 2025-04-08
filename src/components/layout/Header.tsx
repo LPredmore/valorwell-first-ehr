@@ -1,3 +1,4 @@
+
 import { Bell, Search, LogOut, User } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -61,19 +62,24 @@ const Header: React.FC<HeaderProps> = ({
   } else if (hours >= 17) {
     greeting = 'Good evening';
   }
+  
   const handleLogout = async () => {
     try {
-      const {
-        error
-      } = await supabase.auth.signOut();
+      console.log('[Header] Logout initiated');
+      const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
       toast({
         title: "Logged out successfully",
         description: "You have been logged out of your account"
       });
-      navigate('/login');
+      
+      console.log('[Header] Redirecting to login page using window.location');
+      // Replace React Router navigation with direct window location change
+      // This forces a full page reload and ensures redirect happens
+      window.location.href = '/login';
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error('[Header] Error logging out:', error);
       toast({
         title: "Logout failed",
         description: "There was a problem logging you out",
