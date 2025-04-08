@@ -77,6 +77,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   const [bookingInProgress, setBookingInProgress] = useState<boolean>(false);
   const [minDaysAhead, setMinDaysAhead] = useState<number>(1);
   const [clinicianTimeZone, setClinicianTimeZone] = useState<string>("America/Chicago");
+  const [timeGranularity, setTimeGranularity] = useState<string>("half-hour");
   const { toast } = useToast();
   
   // Ensure we use the client's timezone with proper validation
@@ -129,6 +130,13 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           console.log('Received availability settings:', settingsData);
           console.log('Parsed min_days_ahead:', parsedMinDays);
           setMinDaysAhead(parsedMinDays || 1);
+          
+          // Set the time granularity from the clinician's settings
+          if (settingsData.time_granularity) {
+            console.log('Setting time granularity to:', settingsData.time_granularity);
+            setTimeGranularity(settingsData.time_granularity);
+          }
+          
           console.log('Set minDaysAhead state to:', parsedMinDays || 1);
         } else {
           console.log('No settings data received, using default value of 1 for minDaysAhead');
@@ -207,9 +215,15 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
             available: true
           });
           
-          // Add 30 minutes to current time for the next slot
+          // Add time increment based on the time granularity setting
           currentTime = addDays(currentTime, 0);
-          currentTime.setMinutes(currentTime.getMinutes() + 30);
+          if (timeGranularity === 'hour') {
+            // For hour granularity, add 60 minutes
+            currentTime.setMinutes(currentTime.getMinutes() + 60);
+          } else {
+            // For half-hour granularity, add 30 minutes (default)
+            currentTime.setMinutes(currentTime.getMinutes() + 30);
+          }
         }
       } catch (error) {
         console.error('Error processing availability block times:', error, {
@@ -274,7 +288,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     };
     
     checkExistingAppointments();
-  }, [selectedDate, availabilityBlocks, clinicianId, minDaysAhead, clinicianTimeZone]);
+  }, [selectedDate, availabilityBlocks, clinicianId, minDaysAhead, clinicianTimeZone, timeGranularity]);
 
   const handleBookAppointment = async () => {
     if (!selectedDate || !selectedTime || !clinicianId || !clientId) {
