@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import CalendarView from '../components/calendar/CalendarView';
@@ -12,6 +11,7 @@ import AppointmentDialog from '../components/calendar/AppointmentDialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Clock } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const CalendarPage = () => {
   const {
@@ -35,6 +35,39 @@ const CalendarPage = () => {
 
   // Use only the month view mode state
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week'>('month');
+
+  // Add logging for current user
+  useEffect(() => {
+    const logCurrentUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      console.log('[Calendar] Current authenticated user:', data?.user ? {
+        id: data.user.id,
+        email: data.user.email,
+      } : 'No user');
+    };
+    
+    logCurrentUser();
+  }, []);
+
+  // Log key state changes
+  useEffect(() => {
+    console.log(`[Calendar] Selected clinicianId: "${selectedClinicianId}"`);
+  }, [selectedClinicianId]);
+
+  useEffect(() => {
+    console.log(`[Calendar] Calendar view mode changed to: ${calendarViewMode}`);
+  }, [calendarViewMode]);
+
+  useEffect(() => {
+    console.log(`[Calendar] Current date changed to: ${currentDate.toISOString()}`);
+  }, [currentDate]);
+
+  useEffect(() => {
+    console.log(`[Calendar] Available clinicians loaded: ${clinicians.length}`);
+    if (clinicians.length > 0) {
+      clinicians.forEach(c => console.log(`  - Clinician: ${c.clinician_professional_name} (ID: ${c.id})`));
+    }
+  }, [clinicians]);
 
   const navigatePrevious = () => {
     if (calendarViewMode === 'week') {
@@ -61,6 +94,7 @@ const CalendarPage = () => {
   };
 
   const handleAppointmentCreated = () => {
+    console.log('[Calendar] Appointment created, triggering refresh');
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
 

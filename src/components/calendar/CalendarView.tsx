@@ -70,15 +70,25 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
 
   useEffect(() => {
+    console.log('[CalendarView] Component initialized with:', {
+      clinicianId,
+      monthViewMode,
+      showAvailability,
+      refreshTrigger,
+      currentDate: currentDate?.toISOString()
+    });
+  }, []);
+
+  useEffect(() => {
     const fetchClinicianTimeZone = async () => {
       if (clinicianId) {
         setIsLoadingTimeZone(true);
         try {
           const timeZone = await getClinicianTimeZone(clinicianId);
-          console.log("Fetched clinician timezone:", timeZone);
+          console.log("[CalendarView] Fetched clinician timezone:", timeZone);
           setClinicianTimeZone(timeZone);
         } catch (error) {
-          console.error("Error fetching clinician timezone:", error);
+          console.error("[CalendarView] Error fetching clinician timezone:", error);
         } finally {
           setIsLoadingTimeZone(false);
         }
@@ -92,7 +102,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
   useEffect(() => {
     const fetchAppointments = async () => {
-      if (!clinicianId) return;
+      if (!clinicianId) {
+        console.log("[CalendarView] No clinicianId provided, skipping appointments fetch");
+        return;
+      }
+      
       try {
         let startDate, endDate;
         
@@ -108,7 +122,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           endDate = format(end, 'yyyy-MM-dd');
         }
         
-        console.log(`Fetching appointments from ${startDate} to ${endDate} for clinician ${clinicianId}`);
+        console.log(`[CalendarView] Fetching appointments from ${startDate} to ${endDate} for clinicianId: "${clinicianId}"`);
+        
+        const { data: authData } = await supabase.auth.getUser();
+        console.log(`[CalendarView] Current authenticated user ID: "${authData?.user?.id}"`);
+        console.log(`[CalendarView] Using clinicianId for query: "${clinicianId}"`);
         
         const { data, error } = await supabase
           .from('appointments')
@@ -124,22 +142,18 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           .eq('status', 'scheduled');
           
         if (error) {
-          console.error('Error fetching appointments:', error);
+          console.error('[CalendarView] Error fetching appointments:', error);
         } else {
-          console.log(`Fetched ${data?.length || 0} appointments:`, data);
+          console.log(`[CalendarView] Fetched ${data?.length || 0} appointments:`, data);
           
-          const filteredAppointments = data?.filter(app => 
-            app.clients?.client_assigned_therapist === clinicianId
-          ).map(app => {
-            const { clients, ...appointmentData } = app;
-            return appointmentData;
-          }) || [];
+          const appointmentsData = data || [];
+          console.log(`[CalendarView] Appointment data after RLS (no filtering): ${appointmentsData.length} appointments`);
           
-          console.log(`Filtered to ${filteredAppointments.length} appointments for assigned clients`);
-          setAppointments(filteredAppointments);
+          setAppointments(appointmentsData);
           
-          if (filteredAppointments.length > 0) {
-            const clientIds = [...new Set(filteredAppointments.map(app => app.client_id))];
+          if (appointmentsData.length > 0) {
+            const clientIds = [...new Set(appointmentsData.map(app => app.client_id))];
+            console.log(`[CalendarView] Fetching details for ${clientIds.length} unique clients`);
             
             const { data: clientsData, error: clientsError } = await supabase
               .from('clients')
@@ -147,23 +161,28 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               .in('id', clientIds);
               
             if (clientsError) {
-              console.error('Error fetching clients:', clientsError);
+              console.error('[CalendarView] Error fetching clients:', clientsError);
             } else if (clientsData) {
               const clientsMapData: Record<string, any> = {};
               clientsData.forEach(client => {
                 clientsMapData[client.id] = client;
               });
+              console.log(`[CalendarView] Built clients map with ${Object.keys(clientsMapData).length} clients`);
               setClientsMap(clientsMapData);
             }
           }
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('[CalendarView] Exception in appointment fetching:', error);
       }
     };
     
     fetchAppointments();
   }, [clinicianId, currentDate, monthViewMode, availabilityRefreshTrigger, appointmentRefreshTrigger, refreshTrigger]);
+
+  useEffect(() => {
+    console.log(`[CalendarView] Appointments list updated. Count: ${appointments.length}`);
+  }, [appointments]);
 
   const handleAvailabilityUpdated = () => {
     console.log("Availability updated - refreshing calendar view");

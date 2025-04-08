@@ -33,41 +33,67 @@ export const useAppointments = (userId: string | null) => {
   const { data: appointments, isLoading, error, refetch } = useQuery({
     queryKey: ['clinician-appointments', userId],
     queryFn: async () => {
-      if (!userId) return [];
+      if (!userId) {
+        console.log('[useAppointments] No userId provided, returning empty appointments array');
+        return [];
+      }
       
-      console.log('Fetching appointments for clinician:', userId);
-      const { data, error } = await supabase
-        .from('appointments')
-        .select(`
-          id,
-          client_id,
-          date,
-          start_time,
-          end_time,
-          type,
-          status,
-          video_room_url,
-          clients (
-            client_first_name,
-            client_last_name
-          )
-        `)
-        .eq('clinician_id', userId)
-        .order('date')
-        .order('start_time');
+      console.log(`[useAppointments] Fetching appointments for clinician ID: "${userId}"`);
+      
+      try {
+        const { data, error } = await supabase
+          .from('appointments')
+          .select(`
+            id,
+            client_id,
+            date,
+            start_time,
+            end_time,
+            type,
+            status,
+            video_room_url,
+            clients (
+              client_first_name,
+              client_last_name
+            )
+          `)
+          .eq('clinician_id', userId)
+          .order('date')
+          .order('start_time');
 
-      if (error) {
-        console.error('Error fetching appointments:', error);
+        if (error) {
+          console.error('[useAppointments] Error fetching appointments:', error);
+          throw error;
+        }
+
+        console.log(`[useAppointments] Retrieved ${data?.length || 0} appointments for clinician ID: "${userId}"`);
+        
+        // Log a sample of the data (limited to prevent console flooding)
+        if (data && data.length > 0) {
+          console.log('[useAppointments] Sample appointment data:', {
+            id: data[0].id,
+            clinician_id: userId, // We know this from the query
+            client_id: data[0].client_id,
+            date: data[0].date,
+            status: data[0].status
+          });
+        }
+
+        return data.map((appointment: any) => ({
+          ...appointment,
+          client: appointment.clients
+        }));
+      } catch (error) {
+        console.error('[useAppointments] Exception in appointment fetching:', error);
         throw error;
       }
-
-      return data.map((appointment: any) => ({
-        ...appointment,
-        client: appointment.clients
-      }));
     },
     enabled: !!userId
   });
+
+  useEffect(() => {
+    console.log(`[useAppointments] Appointments data updated. Count: ${appointments?.length || 0}`);
+  }, [appointments]);
 
   const todayAppointments = appointments?.filter(appointment => {
     const appointmentDate = parseISO(appointment.date);
@@ -85,6 +111,10 @@ export const useAppointments = (userId: string | null) => {
            !isToday(appointmentDate) && 
            appointment.status === "scheduled";
   }) || [];
+
+  useEffect(() => {
+    console.log(`[useAppointments] Appointment counts - Today: ${todayAppointments.length}, Upcoming: ${upcomingAppointments.length}, Past: ${pastAppointments.length}`);
+  }, [todayAppointments, upcomingAppointments, pastAppointments]);
 
   const startVideoSession = async (appointment: Appointment) => {
     try {
