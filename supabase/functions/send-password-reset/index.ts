@@ -104,7 +104,7 @@ serve(async (req) => {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            from: "ValorWell EHR <noreply@valorwell.org>",
+            from: "ValorWell EHR <noreply@updates.valorwell.org>",
             to: email,
             subject: "Reset Your Password - ValorWell EHR",
             html: `
