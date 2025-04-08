@@ -85,15 +85,18 @@ export const useWeekViewData = (
       return;
     }
 
-    console.log(`Week view processing appointments for clinician: ${clinicianId}`);
-    console.log("Processing appointments in week view:", appointments);
+    // Convert clinicianId to string consistently for comparisons
+    const clinicianIdStr = clinicianId ? String(clinicianId).trim() : null;
+    console.log(`Week view processing appointments for clinician: ${clinicianIdStr}`);
     
-    if (appointments.length > 0) {
-      console.log('First appointment clinician_id:', appointments[0].clinician_id);
-      console.log('clinicianId param type:', typeof clinicianId, 'value:', clinicianId);
-    }
+    // Double-check filtering here in case upstream filtering failed
+    const filteredAppointments = clinicianIdStr 
+      ? appointments.filter(app => String(app.clinician_id).trim() === clinicianIdStr)
+      : appointments;
+      
+    console.log(`Week view filtered appointments: ${filteredAppointments.length} of ${appointments.length}`);
     
-    const blocks: AppointmentBlock[] = appointments.map(appointment => {
+    const blocks: AppointmentBlock[] = filteredAppointments.map(appointment => {
       const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
       const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
 
@@ -116,7 +119,8 @@ export const useWeekViewData = (
         startTime: format(start, 'HH:mm'),
         endTime: format(end, 'HH:mm'),
         rawStart: appointment.start_time,
-        rawEnd: appointment.end_time
+        rawEnd: appointment.end_time,
+        clinicianId: appointment.clinician_id
       });
       
       return result;
@@ -137,7 +141,9 @@ export const useWeekViewData = (
           .eq('is_active', true);
 
         if (clinicianId) {
-          query = query.eq('clinician_id', clinicianId);
+          // Convert clinicianId to string consistently
+          const clinicianIdStr = String(clinicianId).trim();
+          query = query.eq('clinician_id', clinicianIdStr);
         }
 
         const { data: availabilityData, error } = await query;
@@ -156,11 +162,14 @@ export const useWeekViewData = (
             const endDateStr = format(days[days.length - 1], 'yyyy-MM-dd');
             const availabilityIds = availabilityData.map(block => block.id);
             
+            // Convert clinicianId to string consistently
+            const clinicianIdStr = String(clinicianId).trim();
+            
             if (availabilityIds.length > 0) {
               const { data: exceptionsData, error: exceptionsError } = await supabase
                 .from('availability_exceptions')
                 .select('*')
-                .eq('clinician_id', clinicianId)
+                .eq('clinician_id', clinicianIdStr)
                 .gte('specific_date', startDateStr)
                 .lte('specific_date', endDateStr)
                 .or(`original_availability_id.in.(${availabilityIds.join(',')}),original_availability_id.is.null`);
@@ -178,7 +187,7 @@ export const useWeekViewData = (
               const { data: exceptionsData, error: exceptionsError } = await supabase
                 .from('availability_exceptions')
                 .select('*')
-                .eq('clinician_id', clinicianId)
+                .eq('clinician_id', clinicianIdStr)
                 .eq('is_deleted', false)
                 .is('original_availability_id', null)
                 .gte('specific_date', startDateStr)
@@ -199,10 +208,13 @@ export const useWeekViewData = (
               const startDateStr = format(days[0], 'yyyy-MM-dd');
               const endDateStr = format(days[days.length - 1], 'yyyy-MM-dd');
               
+              // Convert clinicianId to string consistently
+              const clinicianIdStr = String(clinicianId).trim();
+              
               const { data: exceptionsData, error: exceptionsError } = await supabase
                 .from('availability_exceptions')
                 .select('*')
-                .eq('clinician_id', clinicianId)
+                .eq('clinician_id', clinicianIdStr)
                 .eq('is_deleted', false)
                 .is('original_availability_id', null)
                 .gte('specific_date', startDateStr)

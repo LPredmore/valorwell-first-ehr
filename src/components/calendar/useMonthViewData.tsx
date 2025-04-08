@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -88,7 +87,8 @@ export const useMonthViewData = (
           .eq('is_active', true);
 
         if (clinicianId) {
-          query = query.eq('clinician_id', clinicianId);
+          const clinicianIdStr = String(clinicianId).trim();
+          query = query.eq('clinician_id', clinicianIdStr);
         }
 
         const { data, error } = await query;
@@ -106,10 +106,12 @@ export const useMonthViewData = (
             const availabilityIds = data.map((block: AvailabilityBlock) => block.id);
             
             if (availabilityIds.length > 0) {
+              const clinicianIdStr = String(clinicianId).trim();
+              
               const { data: exceptionsData, error: exceptionsError } = await supabase
                 .from('availability_exceptions')
                 .select('*')
-                .eq('clinician_id', clinicianId)
+                .eq('clinician_id', clinicianIdStr)
                 .gte('specific_date', startDateStr)
                 .lte('specific_date', endDateStr)
                 .in('original_availability_id', availabilityIds);
@@ -146,16 +148,15 @@ export const useMonthViewData = (
     console.log(`MonthView building dayAppointmentsMap for clinician: ${clinicianId}`);
     console.log(`Appointments provided to monthView:`, appointments);
     
-    if (appointments.length > 0) {
-      console.log('Sample appointment clinician_id:', appointments[0].clinician_id);
-      console.log('clinicianId param type:', typeof clinicianId, 'value:', clinicianId);
-    }
+    const filteredAppointments = clinicianId 
+      ? appointments.filter(app => String(app.clinician_id).trim() === String(clinicianId).trim())
+      : appointments;
+    
+    console.log(`After filtering: ${filteredAppointments.length} appointments remain`);
     
     days.forEach(day => {
       const dayStr = format(day, 'yyyy-MM-dd');
-      // We're already receiving filtered appointments from the parent component,
-      // so only filter by date here
-      const dayAppointments = appointments.filter(appointment => appointment.date === dayStr);
+      const dayAppointments = filteredAppointments.filter(appointment => appointment.date === dayStr);
       result.set(dayStr, dayAppointments);
     });
     
@@ -202,7 +203,6 @@ export const useMonthViewData = (
         
         isModified = modifiedExceptions.length > 0;
         
-        // Always display fixed hours range - 6:00 AM to 10:00 PM
         if (hasAvailability) {
           const startTime = "06:00";
           const endTime = "22:00";

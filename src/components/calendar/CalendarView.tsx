@@ -110,12 +110,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           endDate = format(end, 'yyyy-MM-dd');
         }
         
-        console.log(`Fetching appointments from ${startDate} to ${endDate} for clinician ${clinicianId}`);
+        const clinicianIdStr = String(clinicianId).trim();
+        
+        console.log(`Fetching appointments from ${startDate} to ${endDate} for clinician ${clinicianIdStr}`);
         
         const { data, error } = await supabase
           .from('appointments')
           .select(`*`)
-          .eq('clinician_id', clinicianId)
+          .eq('clinician_id', clinicianIdStr)
           .gte('date', startDate)
           .lte('date', endDate)
           .eq('status', 'scheduled');
@@ -123,18 +125,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         if (error) {
           console.error('Error fetching appointments:', error);
         } else {
-          console.log(`Fetched ${data?.length || 0} appointments with clinician_id=${clinicianId}:`, data);
+          console.log(`Fetched ${data?.length || 0} appointments with clinician_id=${clinicianIdStr}:`, data);
           
-          // Important fix: Print the actual clinician IDs to compare
-          if (data && data.length > 0) {
-            console.log('Sample appointment clinician_id:', data[0].clinician_id);
-            console.log('clinicianId param type:', typeof clinicianId, 'value:', clinicianId);
-          }
-          
-          // Use more robust validation to ensure we get the correct appointments
           const validAppointments = data || [];
-          console.log(`After filtering: ${validAppointments.length} appointments for clinician_id=${clinicianId}`);
-          
           setAppointments(validAppointments);
           
           if (validAppointments.length > 0) {

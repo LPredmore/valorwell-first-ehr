@@ -30,22 +30,24 @@ serve(async (req) => {
       throw new Error('Clinician ID is required')
     }
     
-    console.log(`Fetching availability settings for clinician ID: ${clinicianId}`)
-    console.log(`Clinician ID type: ${typeof clinicianId}`)
+    // Ensure clinicianId is consistently treated as a string
+    const clinicianIdStr = String(clinicianId).trim()
     
-    // Fetch the clinician's availability settings without any type conversion
-    // Let Supabase handle the matching appropriately
+    console.log(`Fetching availability settings for clinician ID: ${clinicianIdStr}`)
+    console.log(`Clinician ID type: ${typeof clinicianIdStr}`)
+    
+    // Fetch the clinician's availability settings using string comparison
     const { data, error } = await supabaseClient
       .from('availability_settings')
       .select('*')
-      .eq('clinician_id', clinicianId)
+      .eq('clinician_id', clinicianIdStr)
       .single()
     
     if (error) {
       console.error('Error fetching availability settings:', error)
-      console.error(`Clinician ID used in query: ${clinicianId}`)
+      console.error(`Clinician ID used in query: ${clinicianIdStr}`)
       
-      // Instead of returning defaults, return the error to make problems visible
+      // Return the error to make problems visible
       return new Response(
         JSON.stringify({ 
           error: error.message,
