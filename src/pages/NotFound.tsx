@@ -2,7 +2,7 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Info } from "lucide-react";
+import { ArrowLeft, Info, ExternalLink } from "lucide-react";
 
 const NotFound = () => {
   const location = useLocation();
@@ -25,6 +25,25 @@ const NotFound = () => {
       <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-md">
         <h1 className="text-6xl font-bold text-gray-800 mb-4">404</h1>
         <p className="text-xl text-gray-600 mb-6">Oops! Page not found</p>
+        
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-md">
+          <div className="flex items-center justify-center mb-2">
+            <Info className="h-5 w-5 text-blue-600 mr-2" />
+            <span className="font-medium text-blue-600">Access Information</span>
+          </div>
+          <p className="text-sm text-gray-600 mb-2">
+            If you're trying to access ValorWell EHR, please use:
+          </p>
+          <a 
+            href="https://app.valorwell.org" 
+            className="inline-flex items-center text-blue-600 hover:text-blue-800 hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            app.valorwell.org
+            <ExternalLink className="ml-1 h-3 w-3" />
+          </a>
+        </div>
         
         <div className="flex flex-col space-y-3">
           <Button asChild variant="default">
