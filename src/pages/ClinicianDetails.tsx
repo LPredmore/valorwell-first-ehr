@@ -428,11 +428,13 @@ const ClinicianDetails = () => {
 
     setIsResettingPassword(true);
     try {
-      const origin = window.location.origin;
+      let siteUrl = window.location.origin;
+      
+      console.log("Current site URL for password reset:", siteUrl);
       
       const { error } = await supabase.auth.resetPasswordForEmail(
         clinician.clinician_email,
-        { redirectTo: `${origin}/reset-password` }
+        { redirectTo: `${siteUrl}/reset-password` }
       );
       
       if (error) {

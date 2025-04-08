@@ -11,15 +11,23 @@ const NotFound = () => {
     console.error(
       "404 Error: User attempted to access non-existent route:",
       location.pathname,
-      { search: location.search, hash: location.hash }
+      { 
+        url: window.location.href,
+        origin: window.location.origin,
+        search: location.search, 
+        hash: location.hash 
+      }
     );
   }, [location.pathname, location.search, location.hash]);
 
   // Determine if this might be a broken password reset link
-  const isPossibleResetLink = location.pathname.includes("verify") || 
-                              location.pathname.includes("reset") ||
-                              location.hash.includes("type=recovery") ||
-                              location.search.includes("type=recovery");
+  const isPossibleResetLink = 
+    location.pathname.includes("verify") || 
+    location.pathname.includes("reset") ||
+    location.hash.includes("type=recovery") ||
+    location.search.includes("type=recovery") ||
+    location.hash.includes("access_token") ||
+    location.search.includes("access_token");
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -31,7 +39,11 @@ const NotFound = () => {
           <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-md text-left">
             <h2 className="text-lg font-medium text-amber-800 mb-2">Broken Password Reset Link?</h2>
             <p className="text-sm text-amber-700 mb-3">
-              It looks like you might be trying to reset your password. The link might be expired or invalid.
+              It looks like you might be trying to reset your password. The link might be using an incorrect domain.
+            </p>
+            <p className="text-sm text-amber-700 mb-3">
+              If you're accessing this site through a custom domain (like ehr.valorwell.org), 
+              please make sure you're using the latest password reset link.
             </p>
             <p className="text-sm text-amber-700">
               Please try to reset your password again from the login page or contact support for assistance.

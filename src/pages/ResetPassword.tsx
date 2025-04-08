@@ -18,29 +18,88 @@ const ResetPassword = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isValidLink, setIsValidLink] = useState(false);
+  const [tokenChecked, setTokenChecked] = useState(false);
 
   useEffect(() => {
-    // Check if this is a password reset request
-    const hash = window.location.hash;
-    const query = new URLSearchParams(location.search);
-    
-    // Look for either hash-based or query-based recovery tokens
-    const isRecovery = 
-      (hash && hash.includes("type=recovery")) || 
-      (query.get("type") === "recovery");
+    // Check multiple sources for recovery tokens
+    const checkForRecoveryToken = async () => {
+      console.log("Checking for recovery token...");
+      console.log("Current URL:", window.location.href);
+      
+      try {
+        // Check in hash params
+        const hash = window.location.hash;
+        const hashParams = new URLSearchParams(hash.replace('#', ''));
+        
+        // Check in search params
+        const query = new URLSearchParams(location.search);
+        
+        // Check various potential token locations
+        const isRecovery = 
+          (hash && (hash.includes("type=recovery") || hashParams.get("type") === "recovery")) || 
+          (query.get("type") === "recovery");
 
-    if (!isRecovery) {
-      console.error("Invalid reset link detected:", { hash, query: location.search });
-      toast({
-        title: "Invalid reset link",
-        description: "This doesn't appear to be a valid password reset link.",
-        variant: "destructive",
-      });
-      setIsValidLink(false);
-    } else {
-      setIsValidLink(true);
-    }
-  }, [toast, location.search]);
+        // Also check if we have an access token which would indicate a valid reset link
+        const hasAccessToken = 
+          hashParams.get("access_token") || 
+          query.get("access_token");
+
+        console.log("Is recovery:", isRecovery);
+        console.log("Has access token:", !!hasAccessToken);
+
+        if (isRecovery || hasAccessToken) {
+          console.log("Valid reset link detected");
+          
+          // If we have an access token in the URL, we can try to verify it
+          if (hasAccessToken) {
+            // The token is already applied to the current session automatically
+            // by Supabase client when it detects it in the URL
+            console.log("Access token found in URL, checking session...");
+            
+            // Verify the session is valid
+            const { data, error } = await supabase.auth.getSession();
+            
+            if (error) {
+              console.error("Error verifying session:", error);
+              throw error;
+            }
+            
+            if (data?.session) {
+              console.log("Valid session detected");
+              setIsValidLink(true);
+            } else {
+              console.error("No valid session found");
+              setIsValidLink(false);
+            }
+          } else {
+            // If we don't have an access token but it's a recovery link,
+            // we'll assume it's valid for now
+            setIsValidLink(true);
+          }
+        } else {
+          console.error("Invalid reset link detected");
+          toast({
+            title: "Invalid reset link",
+            description: "This doesn't appear to be a valid password reset link.",
+            variant: "destructive",
+          });
+          setIsValidLink(false);
+        }
+      } catch (err) {
+        console.error("Error checking recovery token:", err);
+        toast({
+          title: "Error",
+          description: "There was a problem validating your reset link. Please try again.",
+          variant: "destructive",
+        });
+        setIsValidLink(false);
+      } finally {
+        setTokenChecked(true);
+      }
+    };
+
+    checkForRecoveryToken();
+  }, [location.search, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,7 +156,15 @@ const ResetPassword = () => {
           <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
           <CardDescription>Create a new password for your account</CardDescription>
         </CardHeader>
-        {isValidLink ? (
+        {!tokenChecked ? (
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-700">
+                Validating your password reset link...
+              </p>
+            </div>
+          </CardContent>
+        ) : isValidLink ? (
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
