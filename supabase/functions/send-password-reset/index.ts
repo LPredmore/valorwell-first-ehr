@@ -70,6 +70,7 @@ serve(async (req) => {
       console.error("RESEND_API_KEY is not set");
       throw new Error("RESEND_API_KEY environment variable is not configured");
     }
+    console.log("API Key length:", resendApiKey.length);  // Log the length of the key to verify it exists
     const resend = new Resend(resendApiKey);
 
     // Generate a secure password reset token using Supabase's built-in functionality
