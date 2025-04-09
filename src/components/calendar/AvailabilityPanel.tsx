@@ -34,12 +34,8 @@ interface AvailabilitySettings {
   clinician_id: string;
   time_granularity: 'hour' | 'half-hour';
   min_days_ahead: number;
-  max_days_ahead: number;
   created_at: string;
   updated_at: string;
-  buffer_minutes?: number;
-  custom_minutes?: number;
-  show_availability_to_clients?: boolean;
 }
 
 interface AvailabilityPanelProps {
@@ -172,7 +168,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
 
         const authUserId = sessionData.session.user.id;
         console.log('[AvailabilityPanel] Current auth user ID:', authUserId);
-        
+
         if (!effectiveClinicianId) {
           console.log('[AvailabilityPanel] No clinician ID to query');
           setLoading(false);
@@ -206,20 +202,10 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
 
             if (settingsData) {
               console.log('[AvailabilityPanel] Retrieved settings:', settingsData);
+              setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
               
-              setTimeGranularity((settingsData.time_granularity as 'hour' | 'half-hour') || 'hour');
-              
-              const minDays = Number(settingsData.min_days_ahead);
-              const maxDays = Number(settingsData.max_days_ahead);
-              
-              setMinDaysAhead(isNaN(minDays) ? 2 : minDays);
-              setMaxDaysAhead(isNaN(maxDays) ? 60 : maxDays);
-              
-              console.log('[AvailabilityPanel] Updated settings state:', {
-                timeGranularity: settingsData.time_granularity,
-                minDaysAhead: minDays,
-                maxDaysAhead: maxDays
-              });
+              setMinDaysAhead(Number(settingsData.min_days_ahead) || 2);
+              setMaxDaysAhead(Number(settingsData.max_days_ahead) || 60);
             }
           } catch (settingsError) {
             console.error('[AvailabilityPanel] Error fetching availability settings:', settingsError);
@@ -236,8 +222,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           availabilityData.forEach(slot => {
             const dayIndex = newSchedule.findIndex(day => day.day === slot.day_of_week);
             if (dayIndex !== -1) {
-              const startTime = slot.start_time?.substring(0, 5) || '08:00';
-              const endTime = slot.end_time?.substring(0, 5) || '16:00';
+              const startTime = slot.start_time.substring(0, 5);
+              const endTime = slot.end_time.substring(0, 5);
               
               const slotKey = `${slot.day_of_week}-${startTime}-${endTime}`;
               
@@ -330,11 +316,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
   const saveAvailability = async () => {
     setIsSaving(true);
     console.log('[AvailabilityPanel] Saving availability...');
-    console.log('[AvailabilityPanel] Current settings values:', {
-      timeGranularity,
-      minDaysAhead,
-      maxDaysAhead
-    });
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -362,26 +343,24 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         return;
       }
 
-      const isClinicianIdInUuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveClinicianId!);
+      // Check if clinician ID matches auth user ID format
+      const isClinicianIdInUuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveClinicianId);
       console.log(`[AvailabilityPanel] Is clinician ID (${effectiveClinicianId}) in UUID format? ${isClinicianIdInUuidFormat}`);
       console.log(`[AvailabilityPanel] Using clinician ID for saving settings: ${effectiveClinicianId}`);
       console.log('[AvailabilityPanel] Time granularity:', timeGranularity);
       console.log('[AvailabilityPanel] Min days ahead:', minDaysAhead);
       console.log('[AvailabilityPanel] Max days ahead:', maxDaysAhead);
       
-      let clinicianIdToUse = effectiveClinicianId!;
+      let clinicianIdToUse = effectiveClinicianId;
       console.log(`[AvailabilityPanel] Final clinician_id being used: ${clinicianIdToUse}`);
-      
-      const minDaysValue = Number(minDaysAhead);
-      const maxDaysValue = Number(maxDaysAhead);
       
       const { error: settingsError } = await supabase
         .from('availability_settings')
         .upsert({
           clinician_id: clinicianIdToUse,
           time_granularity: timeGranularity,
-          min_days_ahead: minDaysValue,
-          max_days_ahead: maxDaysValue
+          min_days_ahead: minDaysAhead,
+          max_days_ahead: maxDaysAhead
         }, {
           onConflict: 'clinician_id'
         });
@@ -399,8 +378,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       
       console.log('[AvailabilityPanel] Successfully saved settings:', {
         time_granularity: timeGranularity,
-        min_days_ahead: minDaysValue,
-        max_days_ahead: maxDaysValue
+        min_days_ahead: minDaysAhead,
+        max_days_ahead: maxDaysAhead
       });
 
       const { data: existingAvailability, error: fetchError } = await supabase
@@ -486,7 +465,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           .from('availability')
           .delete()
           .in('id', availabilityIdsToDelete);
-        
+
         if (deleteError) {
           console.error('[AvailabilityPanel] Error deleting availability:', deleteError);
           toast({
@@ -581,9 +560,11 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         return;
       }
 
+      // Check if clinician ID matches auth user ID format
       const isClinicianIdInUuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveClinicianId);
       console.log(`[AvailabilityPanel] Is clinician ID (${effectiveClinicianId}) in UUID format? ${isClinicianIdInUuidFormat}`);
       
+      // For debugging the clinician ID issue, use the appropriate format
       let clinicianIdToUse = effectiveClinicianId;
       console.log(`[AvailabilityPanel] Final clinician_id being used: ${clinicianIdToUse}`);
 
@@ -732,8 +713,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           ...day.timeSlots,
           {
             id: newId,
-            startTime: '08:00',
-            endTime: '16:00'
+            startTime: '09:00',
+            endTime: '17:00'
           }
         ]
       };
@@ -779,8 +760,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       ...prev,
       {
         id: `single-${Date.now()}-${prev.length + 1}`,
-        startTime: '08:00',
-        endTime: '16:00'
+        startTime: '09:00',
+        endTime: '17:00'
       }
     ]);
   };

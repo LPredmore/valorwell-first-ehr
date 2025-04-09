@@ -46,28 +46,19 @@ serve(async (req) => {
     if (error) {
       console.error('Error fetching availability settings:', error)
       console.error(`Clinician ID used in query: ${clinicianId}`)
-      // Return updated defaults with 8:00-16:00 time slots and 3 days ahead
+      // Return default settings if not found - updated defaults
       return new Response(
-        JSON.stringify({ 
-          time_granularity: 'hour', 
-          min_days_ahead: 3,  // Updated from 2 to 3
-          max_days_ahead: 60,
-          default_start_time: '08:00', // Added default start time
-          default_end_time: '16:00'    // Added default end time
-        }),
+        JSON.stringify({ time_granularity: 'hour', min_days_ahead: 2, max_days_ahead: 60 }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
     
-    // Ensure min_days_ahead and max_days_ahead are numbers and provide defaults for missing fields
+    // Ensure min_days_ahead and max_days_ahead are numbers
+    // FIXED: We no longer modify the data here to allow defaults to take effect
+    // We just ensure the data is of the correct type for the frontend to handle
     if (data) {
-      data.min_days_ahead = Number(data.min_days_ahead || 3);  // Default to 3 days if not set
-      data.max_days_ahead = Number(data.max_days_ahead || 60); // Default to 60 days if not set
-      
-      // Add default times if not present in the data
-      data.default_start_time = data.default_start_time || '08:00';
-      data.default_end_time = data.default_end_time || '16:00';
-      
+      data.min_days_ahead = Number(data.min_days_ahead);
+      data.max_days_ahead = Number(data.max_days_ahead);
       console.log(`Successfully retrieved settings: ${JSON.stringify(data, null, 2)}`)
     }
     
