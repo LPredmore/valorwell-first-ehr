@@ -48,7 +48,13 @@ serve(async (req) => {
       console.error(`Clinician ID used in query: ${clinicianId}`)
       // Return default settings if not found - updated defaults
       return new Response(
-        JSON.stringify({ time_granularity: 'hour', min_days_ahead: 2, max_days_ahead: 60 }),
+        JSON.stringify({ 
+          time_granularity: 'hour', 
+          min_days_ahead: 2, 
+          max_days_ahead: 60,
+          default_start_time: '09:00:00',
+          default_end_time: '17:00:00'
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

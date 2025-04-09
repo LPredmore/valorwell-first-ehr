@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,9 @@ interface AvailabilitySettings {
   clinician_id: string;
   time_granularity: 'hour' | 'half-hour';
   min_days_ahead: number;
+  max_days_ahead: number;
+  default_start_time?: string;
+  default_end_time?: string;
   created_at: string;
   updated_at: string;
 }
@@ -52,6 +56,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
   const [timeGranularity, setTimeGranularity] = useState<'hour' | 'half-hour'>('hour');
   const [minDaysAhead, setMinDaysAhead] = useState<number>(2);
   const [maxDaysAhead, setMaxDaysAhead] = useState<number>(60);
+  const [defaultStartTime, setDefaultStartTime] = useState<string>('09:00');
+  const [defaultEndTime, setDefaultEndTime] = useState<string>('17:00');
   const [currentUserClinicianId, setCurrentUserClinicianId] = useState<string | null>(null);
   const [isCurrentUserClinicianFetched, setIsCurrentUserClinicianFetched] = useState(false);
   const [currentAuthUserId, setCurrentAuthUserId] = useState<string | null>(null);
@@ -204,13 +210,33 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
               console.log('[AvailabilityPanel] Retrieved settings:', settingsData);
               setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
               
+              // Properly handle all the settings from the database
               setMinDaysAhead(Number(settingsData.min_days_ahead) || 2);
               setMaxDaysAhead(Number(settingsData.max_days_ahead) || 60);
+              
+              // Format time values for display - trim seconds if they exist
+              if (settingsData.default_start_time) {
+                setDefaultStartTime(settingsData.default_start_time.substring(0, 5));
+              }
+              
+              if (settingsData.default_end_time) {
+                setDefaultEndTime(settingsData.default_end_time.substring(0, 5));
+              }
+              
+              console.log('[AvailabilityPanel] Updated settings state:', {
+                timeGranularity: settingsData.time_granularity,
+                minDaysAhead: Number(settingsData.min_days_ahead) || 2,
+                maxDaysAhead: Number(settingsData.max_days_ahead) || 60,
+                defaultStartTime: settingsData.default_start_time?.substring(0, 5) || '09:00',
+                defaultEndTime: settingsData.default_end_time?.substring(0, 5) || '17:00'
+              });
             }
           } catch (settingsError) {
             console.error('[AvailabilityPanel] Error fetching availability settings:', settingsError);
             setMinDaysAhead(2);
             setMaxDaysAhead(60);
+            setDefaultStartTime('09:00');
+            setDefaultEndTime('17:00');
           }
 
           newSchedule.forEach(day => {
@@ -350,6 +376,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       console.log('[AvailabilityPanel] Time granularity:', timeGranularity);
       console.log('[AvailabilityPanel] Min days ahead:', minDaysAhead);
       console.log('[AvailabilityPanel] Max days ahead:', maxDaysAhead);
+      console.log('[AvailabilityPanel] Default start time:', defaultStartTime);
+      console.log('[AvailabilityPanel] Default end time:', defaultEndTime);
       
       let clinicianIdToUse = effectiveClinicianId;
       console.log(`[AvailabilityPanel] Final clinician_id being used: ${clinicianIdToUse}`);
@@ -360,7 +388,9 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           clinician_id: clinicianIdToUse,
           time_granularity: timeGranularity,
           min_days_ahead: minDaysAhead,
-          max_days_ahead: maxDaysAhead
+          max_days_ahead: maxDaysAhead,
+          default_start_time: defaultStartTime,
+          default_end_time: defaultEndTime
         }, {
           onConflict: 'clinician_id'
         });
@@ -379,7 +409,9 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       console.log('[AvailabilityPanel] Successfully saved settings:', {
         time_granularity: timeGranularity,
         min_days_ahead: minDaysAhead,
-        max_days_ahead: maxDaysAhead
+        max_days_ahead: maxDaysAhead,
+        default_start_time: defaultStartTime,
+        default_end_time: defaultEndTime
       });
 
       const { data: existingAvailability, error: fetchError } = await supabase
@@ -713,8 +745,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           ...day.timeSlots,
           {
             id: newId,
-            startTime: '09:00',
-            endTime: '17:00'
+            startTime: defaultStartTime || '09:00',
+            endTime: defaultEndTime || '17:00'
           }
         ]
       };
@@ -760,8 +792,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       ...prev,
       {
         id: `single-${Date.now()}-${prev.length + 1}`,
-        startTime: '09:00',
-        endTime: '17:00'
+        startTime: defaultStartTime || '09:00',
+        endTime: defaultEndTime || '17:00'
       }
     ]);
   };
@@ -774,6 +806,150 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
     setSingleDateTimeSlots(prev => 
       prev.map(slot => slot.id === slotId ? { ...slot, [field]: value } : slot)
     );
+  };
+
+  const saveSingleDateAvailability = async () => {
+    if (!selectedDate || singleDateTimeSlots.length === 0) {
+      toast({
+        title: "No time slots added",
+        description: "Please add at least one time slot before saving.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    console.log('[AvailabilityPanel] Saving single date availability...');
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+
+      if (!sessionData?.session?.user) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to save availability",
+          variant: "destructive"
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      const authUserId = sessionData.session.user.id;
+      console.log('[AvailabilityPanel] Current auth user ID:', authUserId);
+
+      if (!effectiveClinicianId) {
+        toast({
+          title: "Error",
+          description: "No clinician ID found to save availability",
+          variant: "destructive"
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      // Check if clinician ID matches auth user ID format
+      const isClinicianIdInUuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveClinicianId);
+      console.log(`[AvailabilityPanel] Is clinician ID (${effectiveClinicianId}) in UUID format? ${isClinicianIdInUuidFormat}`);
+      
+      // For debugging the clinician ID issue, use the appropriate format
+      let clinicianIdToUse = effectiveClinicianId;
+      console.log(`[AvailabilityPanel] Final clinician_id being used: ${clinicianIdToUse}`);
+
+      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+      
+      const { data: existingData, error: fetchError } = await supabase
+        .from('availability_exceptions')
+        .select('id')
+        .eq('clinician_id', clinicianIdToUse)
+        .eq('specific_date', formattedDate)
+        .is('original_availability_id', null);
+        
+      if (fetchError) {
+        console.error('[AvailabilityPanel] Error fetching existing single availability:', fetchError);
+        toast({
+          title: "Error",
+          description: "Could not check for existing availability",
+          variant: "destructive"
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      if (existingData && existingData.length > 0) {
+        console.log(`[AvailabilityPanel] Found ${existingData.length} existing records to delete`);
+        
+        const existingIds = existingData.map(item => item.id);
+        const { error: deleteError } = await supabase
+          .from('availability_exceptions')
+          .delete()
+          .in('id', existingIds);
+          
+        if (deleteError) {
+          console.error('[AvailabilityPanel] Error deleting existing single availability:', deleteError);
+          toast({
+            title: "Error",
+            description: "Could not update existing availability",
+            variant: "destructive"
+          });
+          setIsSaving(false);
+          return;
+        }
+      }
+      
+      const recordsToInsert = singleDateTimeSlots.map(slot => ({
+        clinician_id: clinicianIdToUse,
+        specific_date: formattedDate,
+        start_time: slot.startTime,
+        end_time: slot.endTime,
+        original_availability_id: null,
+        is_deleted: false
+      }));
+      
+      console.log(`[AvailabilityPanel] Inserting ${recordsToInsert.length} availability exceptions`);
+      console.log('[AvailabilityPanel] First insert sample:', recordsToInsert[0]);
+      
+      const { data: insertData, error: insertError } = await supabase
+        .from('availability_exceptions')
+        .insert(recordsToInsert)
+        .select();
+        
+      if (insertError) {
+        console.error('[AvailabilityPanel] Error saving single availability:', insertError);
+        toast({
+          title: "Error",
+          description: "Could not save single date availability",
+          variant: "destructive"
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      console.log('[AvailabilityPanel] Successfully saved data:', insertData);
+      
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      setExistingSingleAvailability(prev => ({
+        ...prev,
+        [dateStr]: singleDateTimeSlots
+      }));
+      
+      toast({
+        title: "Availability Saved",
+        description: `Single day availability for ${format(selectedDate, 'MMMM d, yyyy')} has been saved.`,
+      });
+      
+      if (onAvailabilityUpdated) {
+        onAvailabilityUpdated();
+      }
+    } catch (error) {
+      console.error('[AvailabilityPanel] Error saving single date availability:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (loading) {
@@ -866,6 +1042,47 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Default working hours:
+                  </p>
+                  <div className="flex gap-2 items-center">
+                    <Select
+                      value={defaultStartTime}
+                      onValueChange={setDefaultStartTime}
+                    >
+                      <SelectTrigger className="w-28">
+                        <SelectValue placeholder="Start" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeOptions.map((time) => (
+                          <SelectItem key={`default-start-${time}`} value={time}>
+                            {formatTimeDisplay(time)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    <span className="text-sm">to</span>
+                    
+                    <Select
+                      value={defaultEndTime}
+                      onValueChange={setDefaultEndTime}
+                    >
+                      <SelectTrigger className="w-28">
+                        <SelectValue placeholder="End" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeOptions.map((time) => (
+                          <SelectItem key={`default-end-${time}`} value={time}>
+                            {formatTimeDisplay(time)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </div>

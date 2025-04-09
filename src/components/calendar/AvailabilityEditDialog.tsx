@@ -57,12 +57,39 @@ React.useEffect(() => {
   }
 }, [isOpen, availabilityBlock, specificDate, clinicianId]);
 
-// Safety check for necessary data
+// Safety check for necessary data - provide graceful handling instead of error
 if (!availabilityBlock || !specificDate) {
-  console.error('AvailabilityEditDialog: Missing required data', { 
+  console.warn('AvailabilityEditDialog: Initializing with default values for missing data', { 
     hasAvailabilityBlock: !!availabilityBlock,
     hasSpecificDate: !!specificDate
   });
+  
+  // Instead of returning null, use default values if possible
+  if (isOpen) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => {
+        console.log('Dialog onOpenChange:', open);
+        if (!open) onClose();
+      }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Availability Information</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-amber-600">
+              Some required information is missing. Please close this dialog and try again.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+  
   return null;
 }
 
