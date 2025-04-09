@@ -21,7 +21,10 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
   const endHour = block.end.getHours() + (block.end.getMinutes() / 60);
   const duration = endHour - startHour;
   
-  const top = startHour * hourHeight + 56; // 56px is the header height
+  // First hour shown is 6 AM (index 0), so adjust position calculation
+  // by subtracting 6 from the hour to get the correct vertical offset
+  const displayStartHour = startHour - 6;
+  const top = displayStartHour * hourHeight + 56; // 56px is the header height
   const height = duration * hourHeight;
 
   const handleClick = () => {
@@ -40,7 +43,10 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
       
       console.log('Availability block clicked with formatted times:', {
         day: format(day, 'yyyy-MM-dd'),
-        block: formattedBlock
+        block: formattedBlock,
+        startHour,
+        displayStartHour,
+        topPosition: top
       });
       
       onAvailabilityClick(day, formattedBlock);
@@ -64,12 +70,13 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
       day: format(day, 'yyyy-MM-dd'),
       start: format(block.start, 'HH:mm'),
       end: format(block.end, 'HH:mm'),
-      isException: block.isException,
-      isStandalone: block.isStandalone,
-      originalAvailabilityId: block.originalAvailabilityId,
+      startHour,
+      displayStartHour,
       position: { top, height },
+      isException: block.isException,
+      isStandalone: block.isStandalone
     });
-  }, [block.id, day, block.start, block.end, block.isException, block.isStandalone, block.originalAvailabilityId, top, height]);
+  }, [block.id, day, block.start, block.end, block.isException, block.isStandalone, top, height, startHour]);
 
   return (
     <div 

@@ -50,6 +50,19 @@ const WeekView: React.FC<WeekViewProps> = ({
   // Calculate the height of each hour cell
   const hourHeight = 60; // pixels per hour
 
+  // Add debugging for timeBlocks
+  React.useEffect(() => {
+    if (timeBlocks.length > 0) {
+      console.log('Week view time blocks:', timeBlocks.map(block => ({
+        day: format(block.day, 'yyyy-MM-dd'),
+        start: format(block.start, 'HH:mm'),
+        end: format(block.end, 'HH:mm'),
+        startHour: block.start.getHours() + (block.start.getMinutes() / 60),
+        endHour: block.end.getHours() + (block.end.getMinutes() / 60)
+      })));
+    }
+  }, [timeBlocks]);
+
   if (loading) {
     return (
       <Card className="p-4 flex justify-center items-center h-[300px]">
