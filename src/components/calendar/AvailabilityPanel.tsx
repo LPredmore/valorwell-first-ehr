@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,9 +34,6 @@ interface AvailabilitySettings {
   clinician_id: string;
   time_granularity: 'hour' | 'half-hour';
   min_days_ahead: number;
-  max_days_ahead: number;
-  default_start_time?: string;
-  default_end_time?: string;
   created_at: string;
   updated_at: string;
 }
@@ -56,8 +52,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
   const [timeGranularity, setTimeGranularity] = useState<'hour' | 'half-hour'>('hour');
   const [minDaysAhead, setMinDaysAhead] = useState<number>(2);
   const [maxDaysAhead, setMaxDaysAhead] = useState<number>(60);
-  const [defaultStartTime, setDefaultStartTime] = useState<string>('09:00');
-  const [defaultEndTime, setDefaultEndTime] = useState<string>('17:00');
   const [currentUserClinicianId, setCurrentUserClinicianId] = useState<string | null>(null);
   const [isCurrentUserClinicianFetched, setIsCurrentUserClinicianFetched] = useState(false);
   const [currentAuthUserId, setCurrentAuthUserId] = useState<string | null>(null);
@@ -208,39 +202,15 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
 
             if (settingsData) {
               console.log('[AvailabilityPanel] Retrieved settings:', settingsData);
-              
-              // Update all settings with values from the database
               setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
+              
               setMinDaysAhead(Number(settingsData.min_days_ahead) || 2);
               setMaxDaysAhead(Number(settingsData.max_days_ahead) || 60);
-              
-              // Set default times if they exist
-              if (settingsData.default_start_time) {
-                // Extract HH:MM from the time string
-                const startTime = settingsData.default_start_time.substring(0, 5);
-                setDefaultStartTime(startTime);
-              }
-              
-              if (settingsData.default_end_time) {
-                // Extract HH:MM from the time string
-                const endTime = settingsData.default_end_time.substring(0, 5);
-                setDefaultEndTime(endTime);
-              }
-              
-              console.log('[AvailabilityPanel] Updated settings state:', {
-                timeGranularity: settingsData.time_granularity,
-                minDaysAhead: Number(settingsData.min_days_ahead) || 2,
-                maxDaysAhead: Number(settingsData.max_days_ahead) || 60,
-                defaultStartTime: settingsData.default_start_time?.substring(0, 5) || '09:00',
-                defaultEndTime: settingsData.default_end_time?.substring(0, 5) || '17:00'
-              });
             }
           } catch (settingsError) {
             console.error('[AvailabilityPanel] Error fetching availability settings:', settingsError);
             setMinDaysAhead(2);
             setMaxDaysAhead(60);
-            setDefaultStartTime('09:00');
-            setDefaultEndTime('17:00');
           }
 
           newSchedule.forEach(day => {
@@ -380,8 +350,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       console.log('[AvailabilityPanel] Time granularity:', timeGranularity);
       console.log('[AvailabilityPanel] Min days ahead:', minDaysAhead);
       console.log('[AvailabilityPanel] Max days ahead:', maxDaysAhead);
-      console.log('[AvailabilityPanel] Default start time:', defaultStartTime);
-      console.log('[AvailabilityPanel] Default end time:', defaultEndTime);
       
       let clinicianIdToUse = effectiveClinicianId;
       console.log(`[AvailabilityPanel] Final clinician_id being used: ${clinicianIdToUse}`);
@@ -392,9 +360,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           clinician_id: clinicianIdToUse,
           time_granularity: timeGranularity,
           min_days_ahead: minDaysAhead,
-          max_days_ahead: maxDaysAhead,
-          default_start_time: defaultStartTime,
-          default_end_time: defaultEndTime
+          max_days_ahead: maxDaysAhead
         }, {
           onConflict: 'clinician_id'
         });
@@ -413,9 +379,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       console.log('[AvailabilityPanel] Successfully saved settings:', {
         time_granularity: timeGranularity,
         min_days_ahead: minDaysAhead,
-        max_days_ahead: maxDaysAhead,
-        default_start_time: defaultStartTime,
-        default_end_time: defaultEndTime
+        max_days_ahead: maxDaysAhead
       });
 
       const { data: existingAvailability, error: fetchError } = await supabase
@@ -749,8 +713,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           ...day.timeSlots,
           {
             id: newId,
-            startTime: defaultStartTime,
-            endTime: defaultEndTime
+            startTime: '09:00',
+            endTime: '17:00'
           }
         ]
       };
@@ -796,8 +760,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       ...prev,
       {
         id: `single-${Date.now()}-${prev.length + 1}`,
-        startTime: defaultStartTime,
-        endTime: defaultEndTime
+        startTime: '09:00',
+        endTime: '17:00'
       }
     ]);
   };
@@ -810,15 +774,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
     setSingleDateTimeSlots(prev => 
       prev.map(slot => slot.id === slotId ? { ...slot, [field]: value } : slot)
     );
-  };
-
-  // Helper function to handle default time changes
-  const updateDefaultTime = (type: 'start' | 'end', value: string) => {
-    if (type === 'start') {
-      setDefaultStartTime(value);
-    } else {
-      setDefaultEndTime(value);
-    }
   };
 
   if (loading) {
@@ -911,48 +866,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Default appointment time slot:
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 w-full max-w-xs">
-                    <Select
-                      value={defaultStartTime}
-                      onValueChange={(value) => updateDefaultTime('start', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Start time" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeOptions.map((time) => (
-                          <SelectItem key={`default-start-${time}`} value={time}>
-                            {formatTimeDisplay(time)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    
-                    <Select
-                      value={defaultEndTime}
-                      onValueChange={(value) => updateDefaultTime('end', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="End time" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeOptions.map((time) => (
-                          <SelectItem key={`default-end-${time}`} value={time}>
-                            {formatTimeDisplay(time)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    This will be used as the default time when adding new slots
-                  </p>
                 </div>
               </div>
             </div>

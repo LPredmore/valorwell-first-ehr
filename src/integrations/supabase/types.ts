@@ -151,8 +151,6 @@ export type Database = {
           clinician_id: string
           created_at: string
           custom_minutes: number | null
-          default_end_time: string | null
-          default_start_time: string | null
           id: string
           max_days_ahead: number
           min_days_ahead: number
@@ -165,8 +163,6 @@ export type Database = {
           clinician_id: string
           created_at?: string
           custom_minutes?: number | null
-          default_end_time?: string | null
-          default_start_time?: string | null
           id?: string
           max_days_ahead?: number
           min_days_ahead?: number
@@ -179,8 +175,6 @@ export type Database = {
           clinician_id?: string
           created_at?: string
           custom_minutes?: number | null
-          default_end_time?: string | null
-          default_start_time?: string | null
           id?: string
           max_days_ahead?: number
           min_days_ahead?: number
