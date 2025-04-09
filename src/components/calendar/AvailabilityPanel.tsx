@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -174,7 +173,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
 
         const authUserId = sessionData.session.user.id;
         console.log('[AvailabilityPanel] Current auth user ID:', authUserId);
-
+        
         if (!effectiveClinicianId) {
           console.log('[AvailabilityPanel] No clinician ID to query');
           setLoading(false);
@@ -210,11 +209,9 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
               console.log('[AvailabilityPanel] Retrieved settings:', settingsData);
               setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
               
-              // Properly handle all the settings from the database
               setMinDaysAhead(Number(settingsData.min_days_ahead) || 2);
               setMaxDaysAhead(Number(settingsData.max_days_ahead) || 60);
               
-              // Format time values for display - trim seconds if they exist
               if (settingsData.default_start_time) {
                 setDefaultStartTime(settingsData.default_start_time.substring(0, 5));
               }
@@ -369,7 +366,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         return;
       }
 
-      // Check if clinician ID matches auth user ID format
       const isClinicianIdInUuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveClinicianId);
       console.log(`[AvailabilityPanel] Is clinician ID (${effectiveClinicianId}) in UUID format? ${isClinicianIdInUuidFormat}`);
       console.log(`[AvailabilityPanel] Using clinician ID for saving settings: ${effectiveClinicianId}`);
@@ -592,11 +588,9 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         return;
       }
 
-      // Check if clinician ID matches auth user ID format
       const isClinicianIdInUuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveClinicianId);
       console.log(`[AvailabilityPanel] Is clinician ID (${effectiveClinicianId}) in UUID format? ${isClinicianIdInUuidFormat}`);
       
-      // For debugging the clinician ID issue, use the appropriate format
       let clinicianIdToUse = effectiveClinicianId;
       console.log(`[AvailabilityPanel] Final clinician_id being used: ${clinicianIdToUse}`);
 
@@ -806,150 +800,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
     setSingleDateTimeSlots(prev => 
       prev.map(slot => slot.id === slotId ? { ...slot, [field]: value } : slot)
     );
-  };
-
-  const saveSingleDateAvailability = async () => {
-    if (!selectedDate || singleDateTimeSlots.length === 0) {
-      toast({
-        title: "No time slots added",
-        description: "Please add at least one time slot before saving.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsSaving(true);
-    console.log('[AvailabilityPanel] Saving single date availability...');
-
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-
-      if (!sessionData?.session?.user) {
-        toast({
-          title: "Authentication Error",
-          description: "You must be logged in to save availability",
-          variant: "destructive"
-        });
-        setIsSaving(false);
-        return;
-      }
-
-      const authUserId = sessionData.session.user.id;
-      console.log('[AvailabilityPanel] Current auth user ID:', authUserId);
-
-      if (!effectiveClinicianId) {
-        toast({
-          title: "Error",
-          description: "No clinician ID found to save availability",
-          variant: "destructive"
-        });
-        setIsSaving(false);
-        return;
-      }
-
-      // Check if clinician ID matches auth user ID format
-      const isClinicianIdInUuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveClinicianId);
-      console.log(`[AvailabilityPanel] Is clinician ID (${effectiveClinicianId}) in UUID format? ${isClinicianIdInUuidFormat}`);
-      
-      // For debugging the clinician ID issue, use the appropriate format
-      let clinicianIdToUse = effectiveClinicianId;
-      console.log(`[AvailabilityPanel] Final clinician_id being used: ${clinicianIdToUse}`);
-
-      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-      
-      const { data: existingData, error: fetchError } = await supabase
-        .from('availability_exceptions')
-        .select('id')
-        .eq('clinician_id', clinicianIdToUse)
-        .eq('specific_date', formattedDate)
-        .is('original_availability_id', null);
-        
-      if (fetchError) {
-        console.error('[AvailabilityPanel] Error fetching existing single availability:', fetchError);
-        toast({
-          title: "Error",
-          description: "Could not check for existing availability",
-          variant: "destructive"
-        });
-        setIsSaving(false);
-        return;
-      }
-      
-      if (existingData && existingData.length > 0) {
-        console.log(`[AvailabilityPanel] Found ${existingData.length} existing records to delete`);
-        
-        const existingIds = existingData.map(item => item.id);
-        const { error: deleteError } = await supabase
-          .from('availability_exceptions')
-          .delete()
-          .in('id', existingIds);
-          
-        if (deleteError) {
-          console.error('[AvailabilityPanel] Error deleting existing single availability:', deleteError);
-          toast({
-            title: "Error",
-            description: "Could not update existing availability",
-            variant: "destructive"
-          });
-          setIsSaving(false);
-          return;
-        }
-      }
-      
-      const recordsToInsert = singleDateTimeSlots.map(slot => ({
-        clinician_id: clinicianIdToUse,
-        specific_date: formattedDate,
-        start_time: slot.startTime,
-        end_time: slot.endTime,
-        original_availability_id: null,
-        is_deleted: false
-      }));
-      
-      console.log(`[AvailabilityPanel] Inserting ${recordsToInsert.length} availability exceptions`);
-      console.log('[AvailabilityPanel] First insert sample:', recordsToInsert[0]);
-      
-      const { data: insertData, error: insertError } = await supabase
-        .from('availability_exceptions')
-        .insert(recordsToInsert)
-        .select();
-        
-      if (insertError) {
-        console.error('[AvailabilityPanel] Error saving single availability:', insertError);
-        toast({
-          title: "Error",
-          description: "Could not save single date availability",
-          variant: "destructive"
-        });
-        setIsSaving(false);
-        return;
-      }
-      
-      console.log('[AvailabilityPanel] Successfully saved data:', insertData);
-      
-      const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      setExistingSingleAvailability(prev => ({
-        ...prev,
-        [dateStr]: singleDateTimeSlots
-      }));
-      
-      toast({
-        title: "Availability Saved",
-        description: `Single day availability for ${format(selectedDate, 'MMMM d, yyyy')} has been saved.`,
-      });
-      
-      if (onAvailabilityUpdated) {
-        onAvailabilityUpdated();
-      }
-    } catch (error) {
-      console.error('[AvailabilityPanel] Error saving single date availability:', error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   if (loading) {

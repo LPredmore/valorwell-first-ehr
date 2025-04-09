@@ -58,43 +58,41 @@ React.useEffect(() => {
 }, [isOpen, availabilityBlock, specificDate, clinicianId]);
 
 // Safety check for necessary data - provide graceful handling instead of error
-if (!availabilityBlock || !specificDate) {
+if (isOpen && (!availabilityBlock || !specificDate)) {
   console.warn('AvailabilityEditDialog: Initializing with default values for missing data', { 
     hasAvailabilityBlock: !!availabilityBlock,
     hasSpecificDate: !!specificDate
   });
   
   // Instead of returning null, use default values if possible
-  if (isOpen) {
-    return (
-      <Dialog open={isOpen} onOpenChange={(open) => {
-        console.log('Dialog onOpenChange:', open);
-        if (!open) onClose();
-      }}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Availability Information</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-amber-600">
-              Some required information is missing. Please close this dialog and try again.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={onClose}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-  
-  return null;
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      console.log('Dialog onOpenChange:', open);
+      if (!open) onClose();
+    }}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Availability Information</DialogTitle>
+        </DialogHeader>
+        <div className="py-4">
+          <p className="text-amber-600">
+            Some required information is missing. Please close this dialog and try again.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // Determine what type of availability we're editing for the UI messaging
 const getAvailabilityTypeMessage = () => {
+  if (!availabilityBlock) return "";
+  
   if (availabilityBlock.isStandalone) {
     return "This is a one-time availability slot specifically for this date.";
   } else if (availabilityBlock.isException) {
@@ -112,7 +110,7 @@ return (
 }}>
 <DialogContent className="sm:max-w-[500px]">
 <DialogHeader>
-<DialogTitle>Edit Availability for {format(specificDate, 'EEEE, MMMM d, yyyy')}</DialogTitle>
+<DialogTitle>Edit Availability for {specificDate ? format(specificDate, 'EEEE, MMMM d, yyyy') : 'Selected Date'}</DialogTitle>
 </DialogHeader>
 
 <div className="grid gap-4 py-4">
@@ -152,7 +150,7 @@ timeOptions={timeOptions}
   onClick={handleDeleteClick} 
   disabled={isLoading}
 >
-  {availabilityBlock.isStandalone ? "Delete Availability" : "Cancel Availability"}
+  {availabilityBlock && availabilityBlock.isStandalone ? "Delete Availability" : "Cancel Availability"}
 </Button>
 <div className="flex gap-2">
 <Button variant="outline" onClick={onClose} disabled={isLoading}>
