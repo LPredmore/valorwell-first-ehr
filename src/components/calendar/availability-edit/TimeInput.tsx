@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TimeInputProps } from './types';
 import { formatDisplayTime } from './utils';
 
@@ -11,7 +11,9 @@ const TimeInput: React.FC<TimeInputProps> = ({ id, label, value, onChange, timeO
       <Label htmlFor={id}>{label}</Label>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger id={id}>
-          <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+          <SelectValue placeholder={`Select ${label.toLowerCase()}`}>
+            {formatDisplayTime(value)}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {timeOptions.map((time) => (

@@ -686,6 +686,16 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
     return options;
   }, [timeGranularity]);
 
+  const formatTimeDisplay = (time: string) => {
+    try {
+      const date = new Date(`2023-01-01T${time}`);
+      return format(date, 'h:mm a');
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return time;
+    }
+  };
+
   const toggleDayOpen = (dayIndex: number) => {
     setWeekSchedule(prev => {
       const updated = [...prev];
@@ -916,12 +926,14 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                                 onValueChange={(value) => updateTimeSlot(index, slot.id, 'startTime', value)}
                               >
                                 <SelectTrigger className="h-8">
-                                  <SelectValue placeholder="Start time" />
+                                  <SelectValue placeholder="Start time">
+                                    {formatTimeDisplay(slot.startTime)}
+                                  </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                   {timeOptions.map((time) => (
                                     <SelectItem key={`start-${time}`} value={time}>
-                                      {time}
+                                      {formatTimeDisplay(time)}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -932,12 +944,14 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                                 onValueChange={(value) => updateTimeSlot(index, slot.id, 'endTime', value)}
                               >
                                 <SelectTrigger className="h-8">
-                                  <SelectValue placeholder="End time" />
+                                  <SelectValue placeholder="End time">
+                                    {formatTimeDisplay(slot.endTime)}
+                                  </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                   {timeOptions.map((time) => (
                                     <SelectItem key={`end-${time}`} value={time}>
-                                      {time}
+                                      {formatTimeDisplay(time)}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -1034,12 +1048,14 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                                   onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'startTime', value)}
                                 >
                                   <SelectTrigger className="h-8">
-                                    <SelectValue placeholder="Start time" />
+                                    <SelectValue placeholder="Start time">
+                                      {formatTimeDisplay(slot.startTime)}
+                                    </SelectValue>
                                   </SelectTrigger>
                                   <SelectContent>
                                     {timeOptions.map((time) => (
                                       <SelectItem key={`single-start-${time}-${slot.id}`} value={time}>
-                                        {time}
+                                        {formatTimeDisplay(time)}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
@@ -1050,12 +1066,14 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                                   onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'endTime', value)}
                                 >
                                   <SelectTrigger className="h-8">
-                                    <SelectValue placeholder="End time" />
+                                    <SelectValue placeholder="End time">
+                                      {formatTimeDisplay(slot.endTime)}
+                                    </SelectValue>
                                   </SelectTrigger>
                                   <SelectContent>
                                     {timeOptions.map((time) => (
                                       <SelectItem key={`single-end-${time}-${slot.id}`} value={time}>
-                                        {time}
+                                        {formatTimeDisplay(time)}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
