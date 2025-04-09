@@ -1,11 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
 import MonthView from './MonthView';
-import { WeekView } from './week-view';
+import WeekView from './week-view'; // Changed from import { WeekView } to import WeekView
 import { format, isEqual } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import EditAppointmentDialog from './EditAppointmentDialog';
+import AppointmentDetailsDialog from './AppointmentDetailsDialog'; // Added missing import
 import AvailabilityEditDialog from './AvailabilityEditDialog';
 import AvailabilityDialogWrapper from './availability-edit/AvailabilityDialogWrapper';
+import { TimeBlock } from './week-view/useWeekViewData'; // Import TimeBlock type
 
 interface CalendarViewProps {
   view: 'month' | 'week';
@@ -15,6 +18,17 @@ interface CalendarViewProps {
   userTimeZone?: string;
   refreshTrigger?: number;
   monthViewMode?: 'month' | 'week';
+}
+
+// Define the AvailabilityBlock type to match what's used in MonthView
+interface AvailabilityBlock {
+  id: string;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  clinician_id?: string;
+  is_active?: boolean;
+  isException?: boolean;
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({
@@ -137,11 +151,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     return exceptions.filter(exception => exception.specific_date === formattedDate);
   };
 
-  const handleAvailabilityClick = (availabilityData: any, date: Date) => {
-    console.log('Availability clicked:', availabilityData);
+  // Modified to match the expected parameter order
+  const handleAvailabilityClick = (date: Date, availabilityBlock: AvailabilityBlock | TimeBlock) => {
+    console.log('Availability clicked:', availabilityBlock);
     console.log('For date:', date);
     setSelectedDate(date);
-    setSelectedAvailability(availabilityData);
+    setSelectedAvailability(availabilityBlock);
     setIsAvailabilityDialogOpen(true);
   };
 
@@ -226,10 +241,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           isOpen={isDetailsDialogOpen}
           onClose={() => setIsDetailsDialogOpen(false)}
           appointment={selectedAppointment}
-          onEditClick={() => {
-            setIsDetailsDialogOpen(false);
-            setIsAppointmentDialogOpen(true);
-          }}
+          onAppointmentUpdated={handleAppointmentUpdated}
+          userTimeZone={userTimeZone || 'America/Chicago'}
+          clientTimeZone={userTimeZone || 'America/Chicago'}
         />
       )}
     </div>
