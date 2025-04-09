@@ -54,9 +54,11 @@ serve(async (req) => {
     }
     
     // Ensure min_days_ahead and max_days_ahead are numbers
+    // FIXED: We no longer modify the data here to allow defaults to take effect
+    // We just ensure the data is of the correct type for the frontend to handle
     if (data) {
-      data.min_days_ahead = Number(data.min_days_ahead) || 2; // Default to 2 if falsy
-      data.max_days_ahead = Number(data.max_days_ahead) || 60; // Default to 60 if falsy
+      data.min_days_ahead = Number(data.min_days_ahead);
+      data.max_days_ahead = Number(data.max_days_ahead);
       console.log(`Successfully retrieved settings: ${JSON.stringify(data, null, 2)}`)
     }
     

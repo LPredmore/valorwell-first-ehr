@@ -350,20 +350,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       console.log('[AvailabilityPanel] Time granularity:', timeGranularity);
       console.log('[AvailabilityPanel] Min days ahead:', minDaysAhead);
       console.log('[AvailabilityPanel] Max days ahead:', maxDaysAhead);
-
-      const minRequiredMax = minDaysAhead + 30;
-      const safeMaxDaysAhead = Math.max(minRequiredMax, maxDaysAhead);
       
-      console.log('[AvailabilityPanel] Calculated safe max days ahead:', safeMaxDaysAhead);
-
-      // For debugging the clinician ID issue, try both formats
       let clinicianIdToUse = effectiveClinicianId;
-      if (isClinicianIdInUuidFormat) {
-        console.log('[AvailabilityPanel] Using UUID format clinician ID');
-      } else {
-        console.log('[AvailabilityPanel] Using original format clinician ID');
-      }
-      
       console.log(`[AvailabilityPanel] Final clinician_id being used: ${clinicianIdToUse}`);
       
       const { error: settingsError } = await supabase
@@ -372,7 +360,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           clinician_id: clinicianIdToUse,
           time_granularity: timeGranularity,
           min_days_ahead: minDaysAhead,
-          max_days_ahead: safeMaxDaysAhead
+          max_days_ahead: maxDaysAhead
         }, {
           onConflict: 'clinician_id'
         });
@@ -387,6 +375,12 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         setIsSaving(false);
         return;
       }
+      
+      console.log('[AvailabilityPanel] Successfully saved settings:', {
+        time_granularity: timeGranularity,
+        min_days_ahead: minDaysAhead,
+        max_days_ahead: maxDaysAhead
+      });
 
       const { data: existingAvailability, error: fetchError } = await supabase
         .from('availability')
