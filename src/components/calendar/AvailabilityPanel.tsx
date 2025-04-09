@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -993,45 +994,111 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
 
         {activeTab === 'single' && (
           <div className="space-y-4">
-            {/* Single day availability UI */}
             <div className="p-3 border rounded-md">
               <h3 className="font-medium mb-2">Single Day Availability</h3>
               <Separator className="my-2" />
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={format(selectedDate, 'yyyy-MM-dd')}
-                    onValueChange={(value) => setSelectedDate(new Date(value))}
-                  >
-                    <SelectTrigger className="w-full max-w-xs">
-                      <SelectValue placeholder="Select date" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 30 }, (_, i) => i).map((day) => (
-                        <SelectItem key={`date-${day}`} value={format(new Date(), 'yyyy-MM-dd')}>
-                          {format(new Date(), 'MMMM d, yyyy')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  {singleDateTimeSlots.map(slot => (
-                    <div key={slot.id} className="flex items-center gap-2">
-                      <span className="text-sm">{slot.startTime} - {slot.endTime}</span>
+              <div className="space-y-4">
+                <div className="flex flex-col space-y-2">
+                  <p className="text-sm text-muted-foreground">Select a date:</p>
+                  <Popover>
+                    <PopoverTrigger asChild>
                       <Button
-                        onClick={() => deleteSingleDateTimeSlot(slot.id)}
-                        variant="ghost"
+                        variant={"outline"}
+                        className={cn(
+                          "w-full max-w-xs justify-start text-left font-normal",
+                          !selectedDate && "text-muted-foreground"
+                        )}
                       >
-                        <X className="h-4 w-4" />
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
                       </Button>
-                    </div>
-                  ))}
-                  <Button
-                    onClick={addSingleDateTimeSlot}
-                    variant="ghost"
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-muted-foreground">Available time slots:</p>
+                    <Button
+                      onClick={addSingleDateTimeSlot}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Time Slot
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2 mt-2">
+                    {singleDateTimeSlots.length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic">No time slots added yet</p>
+                    ) : (
+                      singleDateTimeSlots.map(slot => (
+                        <div key={slot.id} className="flex items-center gap-2 p-2 border rounded-md">
+                          <div className="flex-1 flex items-center gap-2">
+                            <Select
+                              value={slot.startTime}
+                              onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'startTime', value)}
+                            >
+                              <SelectTrigger className="w-28">
+                                <SelectValue placeholder="Start" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {timeOptions.map((time) => (
+                                  <SelectItem key={`start-${slot.id}-${time}`} value={time}>
+                                    {formatTimeDisplay(time)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            
+                            <span>to</span>
+                            
+                            <Select
+                              value={slot.endTime}
+                              onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'endTime', value)}
+                            >
+                              <SelectTrigger className="w-28">
+                                <SelectValue placeholder="End" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {timeOptions.map((time) => (
+                                  <SelectItem key={`end-${slot.id}-${time}`} value={time}>
+                                    {formatTimeDisplay(time)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <Button
+                            onClick={() => deleteSingleDateTimeSlot(slot.id)}
+                            variant="ghost"
+                            size="icon"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-end mt-4">
+                  <Button 
+                    onClick={saveSingleDateAvailability}
+                    disabled={isSaving || !selectedDate || singleDateTimeSlots.length === 0}
                   >
-                    <Plus className="h-4 w-4" />
+                    {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Save Single Day Availability
                   </Button>
                 </div>
               </div>
