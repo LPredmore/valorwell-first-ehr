@@ -70,7 +70,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
   const [singleDateTimeSlots, setSingleDateTimeSlots] = useState<TimeSlot[]>([]);
   const [existingSingleAvailability, setExistingSingleAvailability] = useState<{[date: string]: TimeSlot[]}>({});
 
-  // First get the current user's clinician ID
   useEffect(() => {
     async function fetchCurrentUserClinicianId() {
       try {
@@ -96,14 +95,12 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           return;
         }
 
-        // If the user is not a clinician, no need to fetch clinician ID
         if (profileData.role !== 'clinician') {
           console.log('[AvailabilityPanel] User is not a clinician, role:', profileData.role);
           setIsCurrentUserClinicianFetched(true);
           return;
         }
 
-        // Try to find the clinician record for this user
         const { data: clinicianData, error: clinicianError } = await supabase
           .from('clinicians')
           .select('id')
@@ -131,19 +128,15 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
     fetchCurrentUserClinicianId();
   }, []);
 
-  // Decide which clinician ID to use for operations
   const effectiveClinicianId = React.useMemo(() => {
-    // If the user is a clinician, we should only allow them to modify their own availability
     if (currentUserClinicianId) {
       return currentUserClinicianId;
     }
-    // For non-clinicians (admins, etc.), use the provided clinicianId
     return clinicianId;
   }, [currentUserClinicianId, clinicianId, isCurrentUserClinicianFetched]);
 
   useEffect(() => {
     async function fetchAvailability() {
-      // Wait until we know the effective clinician ID
       if (!isCurrentUserClinicianFetched) {
         return;
       }
@@ -419,7 +412,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
 
       console.log('[AvailabilityPanel] Current user:', sessionData.session.user.id);
 
-      // Use the effective clinician ID that was determined earlier
       if (!effectiveClinicianId) {
         toast({
           title: "Error",
@@ -547,7 +539,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
 
       console.log('[AvailabilityPanel] Current user:', sessionData.session.user.id);
       
-      // Use the effective clinician ID that was determined earlier
       if (!effectiveClinicianId) {
         toast({
           title: "Error",
@@ -950,4 +941,108 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                   <p className="text-sm text-muted-foreground mb-2">
                     Select a specific date to set availability:
                   </p>
-                  <
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {selectedDate ? format(selectedDate, 'PPP') : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {selectedDate && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-sm font-medium">Time slots for {format(selectedDate, 'MMM d, yyyy')}</h4>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={addSingleDateTimeSlot}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="space-y-2 mt-2">
+                      {singleDateTimeSlots.length === 0 ? (
+                        <div className="text-sm text-gray-500 text-center py-2">
+                          No time slots added. Click the + button to add one.
+                        </div>
+                      ) : (
+                        singleDateTimeSlots.map((slot) => (
+                          <div key={`single-slot-${slot.id}`} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
+                            <div className="grid grid-cols-2 gap-2 flex-1">
+                              <Select
+                                value={slot.startTime}
+                                onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'startTime', value)}
+                              >
+                                <SelectTrigger className="h-8">
+                                  <SelectValue placeholder="Start time" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {timeOptions.map((time) => (
+                                    <SelectItem key={`start-single-${slot.id}-${time}`} value={time}>
+                                      {time}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
+                              <Select
+                                value={slot.endTime}
+                                onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'endTime', value)}
+                              >
+                                <SelectTrigger className="h-8">
+                                  <SelectValue placeholder="End time" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {timeOptions.map((time) => (
+                                    <SelectItem key={`end-single-${slot.id}-${time}`} value={time}>
+                                      {time}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteSingleDateTimeSlot(slot.id)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <Button
+              className="w-full"
+              onClick={saveSingleDateAvailability}
+              disabled={isSaving || !selectedDate}
+            >
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSaving ? 'Saving...' : 'Save Single Day Availability'}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+export default AvailabilityPanel;
