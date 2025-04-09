@@ -34,6 +34,9 @@ interface AvailabilitySettings {
   clinician_id: string;
   time_granularity: 'hour' | 'half-hour';
   min_days_ahead: number;
+  max_days_ahead: number;
+  default_start_time?: string;
+  default_end_time?: string;
   created_at: string;
   updated_at: string;
 }
@@ -52,6 +55,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
   const [timeGranularity, setTimeGranularity] = useState<'hour' | 'half-hour'>('hour');
   const [minDaysAhead, setMinDaysAhead] = useState<number>(2);
   const [maxDaysAhead, setMaxDaysAhead] = useState<number>(60);
+  const [defaultStartTime, setDefaultStartTime] = useState<string>('09:00');
+  const [defaultEndTime, setDefaultEndTime] = useState<string>('17:00');
   const [currentUserClinicianId, setCurrentUserClinicianId] = useState<string | null>(null);
   const [isCurrentUserClinicianFetched, setIsCurrentUserClinicianFetched] = useState(false);
   const [currentAuthUserId, setCurrentAuthUserId] = useState<string | null>(null);
@@ -70,6 +75,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [singleDateTimeSlots, setSingleDateTimeSlots] = useState<TimeSlot[]>([]);
   const [existingSingleAvailability, setExistingSingleAvailability] = useState<{[date: string]: TimeSlot[]}>({});
+  const [settingsId, setSettingsId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchCurrentUserClinicianId() {
@@ -202,15 +208,31 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
 
             if (settingsData) {
               console.log('[AvailabilityPanel] Retrieved settings:', settingsData);
-              setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
               
+              if (settingsData.id) {
+                setSettingsId(settingsData.id);
+              }
+              
+              setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour' || 'hour');
               setMinDaysAhead(Number(settingsData.min_days_ahead) || 2);
               setMaxDaysAhead(Number(settingsData.max_days_ahead) || 60);
+              setDefaultStartTime(settingsData.default_start_time || '09:00');
+              setDefaultEndTime(settingsData.default_end_time || '17:00');
+              
+              console.log('[AvailabilityPanel] Updated settings state:', {
+                timeGranularity: settingsData.time_granularity,
+                minDaysAhead: Number(settingsData.min_days_ahead) || 2,
+                maxDaysAhead: Number(settingsData.max_days_ahead) || 60,
+                defaultStartTime: settingsData.default_start_time || '09:00',
+                defaultEndTime: settingsData.default_end_time || '17:00'
+              });
             }
           } catch (settingsError) {
             console.error('[AvailabilityPanel] Error fetching availability settings:', settingsError);
             setMinDaysAhead(2);
             setMaxDaysAhead(60);
+            setDefaultStartTime('09:00');
+            setDefaultEndTime('17:00');
           }
 
           newSchedule.forEach(day => {
@@ -242,10 +264,33 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
               }
             }
           });
+          
+          newSchedule.forEach((day, index) => {
+            if (day.isOpen && day.timeSlots.length === 0) {
+              newSchedule[index].timeSlots.push({
+                id: `default-${day.day.toLowerCase()}-${Date.now()}`,
+                startTime: defaultStartTime,
+                endTime: defaultEndTime,
+              });
+            }
+          });
 
           setWeekSchedule(newSchedule);
         } else {
           console.log('[AvailabilityPanel] No availability data found');
+          
+          const defaultNewSchedule = [...weekSchedule];
+          defaultNewSchedule.forEach((day, index) => {
+            if (day.isOpen && day.timeSlots.length === 0) {
+              defaultNewSchedule[index].timeSlots.push({
+                id: `default-${day.day.toLowerCase()}-${Date.now()}`,
+                startTime: defaultStartTime,
+                endTime: defaultEndTime,
+              });
+            }
+          });
+          
+          setWeekSchedule(defaultNewSchedule);
         }
 
         const { data: singleAvailabilityData, error: singleAvailabilityError } = await supabase
@@ -300,7 +345,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
     }
 
     fetchAvailability();
-  }, [effectiveClinicianId, isCurrentUserClinicianFetched]);
+  }, [effectiveClinicianId, isCurrentUserClinicianFetched, defaultStartTime, defaultEndTime]);
 
   useEffect(() => {
     if (selectedDate) {
@@ -337,19 +382,20 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         toast({
           title: "Error",
           description: "No clinician ID found to save availability",
-        variant: "destructive"
+          variant: "destructive"
         });
         setIsSaving(false);
         return;
       }
 
-      // Check if clinician ID matches auth user ID format
       const isClinicianIdInUuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveClinicianId);
       console.log(`[AvailabilityPanel] Is clinician ID (${effectiveClinicianId}) in UUID format? ${isClinicianIdInUuidFormat}`);
       console.log(`[AvailabilityPanel] Using clinician ID for saving settings: ${effectiveClinicianId}`);
       console.log('[AvailabilityPanel] Time granularity:', timeGranularity);
       console.log('[AvailabilityPanel] Min days ahead:', minDaysAhead);
       console.log('[AvailabilityPanel] Max days ahead:', maxDaysAhead);
+      console.log('[AvailabilityPanel] Default start time:', defaultStartTime);
+      console.log('[AvailabilityPanel] Default end time:', defaultEndTime);
       
       let clinicianIdToUse = effectiveClinicianId;
       console.log(`[AvailabilityPanel] Final clinician_id being used: ${clinicianIdToUse}`);
@@ -357,10 +403,13 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       const { error: settingsError } = await supabase
         .from('availability_settings')
         .upsert({
+          id: settingsId,
           clinician_id: clinicianIdToUse,
           time_granularity: timeGranularity,
           min_days_ahead: minDaysAhead,
-          max_days_ahead: maxDaysAhead
+          max_days_ahead: maxDaysAhead,
+          default_start_time: defaultStartTime,
+          default_end_time: defaultEndTime
         }, {
           onConflict: 'clinician_id'
         });
@@ -379,7 +428,9 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       console.log('[AvailabilityPanel] Successfully saved settings:', {
         time_granularity: timeGranularity,
         min_days_ahead: minDaysAhead,
-        max_days_ahead: maxDaysAhead
+        max_days_ahead: maxDaysAhead,
+        default_start_time: defaultStartTime,
+        default_end_time: defaultEndTime
       });
 
       const { data: existingAvailability, error: fetchError } = await supabase
@@ -560,11 +611,9 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         return;
       }
 
-      // Check if clinician ID matches auth user ID format
       const isClinicianIdInUuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveClinicianId);
       console.log(`[AvailabilityPanel] Is clinician ID (${effectiveClinicianId}) in UUID format? ${isClinicianIdInUuidFormat}`);
       
-      // For debugging the clinician ID issue, use the appropriate format
       let clinicianIdToUse = effectiveClinicianId;
       console.log(`[AvailabilityPanel] Final clinician_id being used: ${clinicianIdToUse}`);
 
@@ -693,10 +742,21 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
   const toggleDayOpen = (dayIndex: number) => {
     setWeekSchedule(prev => {
       const updated = [...prev];
+      const isCurrentlyOpen = updated[dayIndex].isOpen;
+      
       updated[dayIndex] = {
         ...updated[dayIndex],
-        isOpen: !updated[dayIndex].isOpen
+        isOpen: !isCurrentlyOpen
       };
+      
+      if (!isCurrentlyOpen && updated[dayIndex].timeSlots.length === 0) {
+        updated[dayIndex].timeSlots.push({
+          id: `default-${updated[dayIndex].day.toLowerCase()}-${Date.now()}`,
+          startTime: defaultStartTime,
+          endTime: defaultEndTime,
+        });
+      }
+      
       return updated;
     });
   };
@@ -713,8 +773,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           ...day.timeSlots,
           {
             id: newId,
-            startTime: '09:00',
-            endTime: '17:00'
+            startTime: defaultStartTime,
+            endTime: defaultEndTime
           }
         ]
       };
@@ -867,6 +927,55 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                     </SelectContent>
                   </Select>
                 </div>
+                
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Default availability time slot:
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label htmlFor="default-start-time" className="text-xs mb-1 block">Default start time</Label>
+                      <Select
+                        value={defaultStartTime}
+                        onValueChange={setDefaultStartTime}
+                      >
+                        <SelectTrigger className="w-full" id="default-start-time">
+                          <SelectValue placeholder="Start time">
+                            {formatTimeDisplay(defaultStartTime)}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeOptions.map((time) => (
+                            <SelectItem key={`default-start-${time}`} value={time}>
+                              {formatTimeDisplay(time)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="default-end-time" className="text-xs mb-1 block">Default end time</Label>
+                      <Select
+                        value={defaultEndTime}
+                        onValueChange={setDefaultEndTime}
+                      >
+                        <SelectTrigger className="w-full" id="default-end-time">
+                          <SelectValue placeholder="End time">
+                            {formatTimeDisplay(defaultEndTime)}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeOptions.map((time) => (
+                            <SelectItem key={`default-end-${time}`} value={time}>
+                              {formatTimeDisplay(time)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -899,6 +1008,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                         size="sm"
                         onClick={() => addTimeSlot(index)}
                         className="h-8 w-8 p-0"
+                        disabled={!day.isOpen}
                       >
                         <Plus className="h-4 w-4" />
                       </Button>

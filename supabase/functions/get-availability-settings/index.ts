@@ -48,17 +48,26 @@ serve(async (req) => {
       console.error(`Clinician ID used in query: ${clinicianId}`)
       // Return default settings if not found - updated defaults
       return new Response(
-        JSON.stringify({ time_granularity: 'hour', min_days_ahead: 2, max_days_ahead: 60 }),
+        JSON.stringify({
+          time_granularity: 'hour',
+          min_days_ahead: 2,
+          max_days_ahead: 60,
+          default_start_time: '09:00',
+          default_end_time: '17:00'
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
     
-    // Ensure min_days_ahead and max_days_ahead are numbers
-    // FIXED: We no longer modify the data here to allow defaults to take effect
-    // We just ensure the data is of the correct type for the frontend to handle
+    // Ensure all fields have proper numeric values
     if (data) {
       data.min_days_ahead = Number(data.min_days_ahead);
       data.max_days_ahead = Number(data.max_days_ahead);
+      
+      // Ensure default times exist
+      if (!data.default_start_time) data.default_start_time = '09:00';
+      if (!data.default_end_time) data.default_end_time = '17:00';
+      
       console.log(`Successfully retrieved settings: ${JSON.stringify(data, null, 2)}`)
     }
     
