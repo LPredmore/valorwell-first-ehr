@@ -208,10 +208,13 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
 
             if (settingsData) {
               console.log('[AvailabilityPanel] Retrieved settings:', settingsData);
+              
+              // Make sure we're properly setting all values from database
               setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
               
-              setMinDaysAhead(Number(settingsData.min_days_ahead) || 2);
-              setMaxDaysAhead(Number(settingsData.max_days_ahead) || 60);
+              // Use database values with fallbacks
+              setMinDaysAhead(settingsData.min_days_ahead !== undefined ? Number(settingsData.min_days_ahead) : 2);
+              setMaxDaysAhead(settingsData.max_days_ahead !== undefined ? Number(settingsData.max_days_ahead) : 60);
               
               if (settingsData.default_start_time) {
                 setDefaultStartTime(settingsData.default_start_time.substring(0, 5));
@@ -223,8 +226,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
               
               console.log('[AvailabilityPanel] Updated settings state:', {
                 timeGranularity: settingsData.time_granularity,
-                minDaysAhead: Number(settingsData.min_days_ahead) || 2,
-                maxDaysAhead: Number(settingsData.max_days_ahead) || 60,
+                minDaysAhead: settingsData.min_days_ahead !== undefined ? Number(settingsData.min_days_ahead) : 2,
+                maxDaysAhead: settingsData.max_days_ahead !== undefined ? Number(settingsData.max_days_ahead) : 60,
                 defaultStartTime: settingsData.default_start_time?.substring(0, 5) || '09:00',
                 defaultEndTime: settingsData.default_end_time?.substring(0, 5) || '17:00'
               });
