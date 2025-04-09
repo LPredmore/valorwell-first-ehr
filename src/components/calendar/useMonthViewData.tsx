@@ -203,13 +203,40 @@ export const useMonthViewData = (
         
         isModified = modifiedExceptions.length > 0;
         
-        // Always display fixed hours range - 6:00 AM to 10:00 PM
+        // Display actual availability time range instead of hardcoded values
         if (hasAvailability) {
-          const startTime = "06:00";
-          const endTime = "22:00";
+          // Find earliest start time and latest end time from all available slots
+          let earliestStart = "23:59";
+          let latestEnd = "00:00";
           
-          const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${startTime}`));
-          const endHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${endTime}`));
+          // Check exceptions first as they override regular availability
+          if (modifiedExceptions.length > 0) {
+            modifiedExceptions.forEach(exception => {
+              if (exception.start_time && exception.start_time < earliestStart) {
+                earliestStart = exception.start_time;
+              }
+              if (exception.end_time && exception.end_time > latestEnd) {
+                latestEnd = exception.end_time;
+              }
+            });
+          } else {
+            // Use regular availability if no exceptions
+            regularAvailability.forEach(slot => {
+              if (!availabilityIds.includes(slot.id) || 
+                  !deletedExceptions.some(e => e.original_availability_id === slot.id)) {
+                if (slot.start_time < earliestStart) {
+                  earliestStart = slot.start_time;
+                }
+                if (slot.end_time > latestEnd) {
+                  latestEnd = slot.end_time;
+                }
+              }
+            });
+          }
+          
+          // Format times for display
+          const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${earliestStart}`));
+          const endHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${latestEnd}`));
           
           displayHours = `${startHourFormatted}-${endHourFormatted}`;
         }
