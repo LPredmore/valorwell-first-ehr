@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import MonthView from './MonthView';
 import WeekView from './week-view'; // Changed from import { WeekView } to import WeekView
@@ -191,26 +190,24 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       {view === 'month' && (
         <MonthView
           currentDate={currentDate}
+          clinicianId={clinicianId}
+          refreshTrigger={refreshTrigger}
           appointments={getAppointmentsForDate(currentDate)}
-          availability={getAvailabilityForDate(currentDate)}
-          timeOffBlocks={getTimeOffBlocksForDate(currentDate)}
-          exceptions={getExceptionsForDate(currentDate)}
-          showAvailability={showAvailability}
+          getClientName={() => 'Client'}
           onAvailabilityClick={handleAvailabilityClick}
           onAppointmentClick={handleAppointmentClick}
           userTimeZone={userTimeZone}
-          monthViewMode={monthViewMode}
+          weekViewMode={monthViewMode === 'week'}
         />
       )}
       
       {view === 'week' && (
         <WeekView
           currentDate={currentDate}
+          clinicianId={clinicianId}
+          refreshTrigger={refreshTrigger}
           appointments={getAppointmentsForDate(currentDate)}
-          availability={getAvailabilityForDate(currentDate)}
-          timeOffBlocks={getTimeOffBlocksForDate(currentDate)}
-          exceptions={getExceptionsForDate(currentDate)}
-          showAvailability={showAvailability}
+          getClientName={() => 'Client'}
           onAvailabilityClick={handleAvailabilityClick}
           onAppointmentClick={handleAppointmentClick}
           userTimeZone={userTimeZone}
