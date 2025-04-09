@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import CalendarView from '../components/calendar/CalendarView';
@@ -83,10 +82,11 @@ const CalendarPage = () => {
           
           // If we have a user email but no selectedClinicianId, try to find the clinician
           if (data.user.email && !selectedClinicianId) {
+            // Updated: Use case-insensitive comparison with ILIKE
             const { data: clinicianData, error: clinicianError } = await supabase
               .from('clinicians')
               .select('id')
-              .eq('clinician_email', data.user.email)
+              .ilike('clinician_email', data.user.email)
               .single();
               
             if (clinicianError && clinicianError.code !== 'PGRST116') {
