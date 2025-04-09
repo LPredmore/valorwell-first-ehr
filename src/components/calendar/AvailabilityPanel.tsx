@@ -915,4 +915,132 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                       </SelectContent>
                     </Select>
                     
-                    <span className="text-sm">to
+                    <span className="text-sm">to</span>
+                    
+                    <Select
+                      value={defaultEndTime}
+                      onValueChange={setDefaultEndTime}
+                    >
+                      <SelectTrigger className="w-28">
+                        <SelectValue placeholder="End" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeOptions.map((time) => (
+                          <SelectItem key={`default-end-${time}`} value={time}>
+                            {formatTimeDisplay(time)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {/* Weekly schedule UI */}
+              <div className="p-3 border rounded-md">
+                <h3 className="font-medium mb-2">Weekly Schedule</h3>
+                <Separator className="my-2" />
+                <div className="space-y-2">
+                  {weekSchedule.map((day, index) => (
+                    <div key={day.day} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <Switch
+                            checked={day.isOpen}
+                            onCheckedChange={() => toggleDayOpen(index)}
+                          />
+                          <Badge variant="outline">{day.day}</Badge>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {day.timeSlots.map(slot => (
+                          <div key={slot.id} className="flex items-center gap-2">
+                            <span className="text-sm">{slot.startTime} - {slot.endTime}</span>
+                            <Button
+                              onClick={() => deleteTimeSlot(index, slot.id)}
+                              variant="ghost"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          onClick={() => addTimeSlot(index)}
+                          variant="ghost"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button 
+                onClick={saveAvailability} 
+                disabled={isSaving}
+              >
+                {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Save Weekly Schedule
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'single' && (
+          <div className="space-y-4">
+            {/* Single day availability UI */}
+            <div className="p-3 border rounded-md">
+              <h3 className="font-medium mb-2">Single Day Availability</h3>
+              <Separator className="my-2" />
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={format(selectedDate, 'yyyy-MM-dd')}
+                    onValueChange={(value) => setSelectedDate(new Date(value))}
+                  >
+                    <SelectTrigger className="w-full max-w-xs">
+                      <SelectValue placeholder="Select date" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 30 }, (_, i) => i).map((day) => (
+                        <SelectItem key={`date-${day}`} value={format(new Date(), 'yyyy-MM-dd')}>
+                          {format(new Date(), 'MMMM d, yyyy')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  {singleDateTimeSlots.map(slot => (
+                    <div key={slot.id} className="flex items-center gap-2">
+                      <span className="text-sm">{slot.startTime} - {slot.endTime}</span>
+                      <Button
+                        onClick={() => deleteSingleDateTimeSlot(slot.id)}
+                        variant="ghost"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    onClick={addSingleDateTimeSlot}
+                    variant="ghost"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+export default AvailabilityPanel;
