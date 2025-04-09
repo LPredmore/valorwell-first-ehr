@@ -57,7 +57,7 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
     }
   }, [isOpen, availabilityBlock, specificDate, clinicianId]);
 
-  // Safety check for necessary data - provide graceful handling instead of error
+  // Safer check for required data - provide graceful handling instead of error
   if (isOpen && (!availabilityBlock || !specificDate)) {
     console.warn('AvailabilityEditDialog: Initializing with default values for missing data', { 
       hasAvailabilityBlock: !!availabilityBlock,

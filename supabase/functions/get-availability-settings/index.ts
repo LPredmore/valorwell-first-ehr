@@ -37,10 +37,10 @@ serve(async (req) => {
     console.log(`Is clinician ID (${clinicianId}) in UUID format? ${isClinicianIdInUuidFormat}`);
     
     // Fetch the clinician's availability settings
-    // Make sure to select all the columns that we need
+    // Make sure to select ALL columns that we need
     const { data, error } = await supabaseClient
       .from('availability_settings')
-      .select('*, time_granularity, min_days_ahead, max_days_ahead, default_start_time, default_end_time')
+      .select('*')  // Select all columns instead of listing them individually
       .eq('clinician_id', clinicianId.toString()) // Convert to string explicitly
       .single()
     
