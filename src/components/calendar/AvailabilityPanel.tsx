@@ -50,7 +50,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
   const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [timeGranularity, setTimeGranularity] = useState<'hour' | 'half-hour'>('hour');
-  const [minDaysAhead, setMinDaysAhead] = useState(number>(2);
+  const [minDaysAhead, setMinDaysAhead] = useState<number>(2);
   const [maxDaysAhead, setMaxDaysAhead] = useState<number>(60);
   const [currentUserClinicianId, setCurrentUserClinicianId] = useState<string | null>(null);
   const [isCurrentUserClinicianFetched, setIsCurrentUserClinicianFetched] = useState(false);
@@ -492,7 +492,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           .from('availability')
           .insert(availabilityToInsert)
           .select();
-
+        
         if (insertError) {
           console.error('[AvailabilityPanel] Error saving availability:', insertError);
           toast({
@@ -919,4 +919,180 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                                   <SelectValue placeholder="Start time" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {timeOptions.map
+                                  {timeOptions.map((time) => (
+                                    <SelectItem key={`start-${time}`} value={time}>
+                                      {time}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
+                              <Select
+                                value={slot.endTime}
+                                onValueChange={(value) => updateTimeSlot(index, slot.id, 'endTime', value)}
+                              >
+                                <SelectTrigger className="h-8">
+                                  <SelectValue placeholder="End time" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {timeOptions.map((time) => (
+                                    <SelectItem key={`end-${time}`} value={time}>
+                                      {time}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteTimeSlot(index, slot.id)}
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <Button 
+                onClick={saveAvailability} 
+                disabled={isSaving}
+              >
+                {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Save Weekly Schedule
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'single' && (
+          <div className="space-y-4">
+            <div className="p-3 border rounded-md">
+              <h3 className="font-medium mb-2">Add Single Day Availability</h3>
+              <Separator className="my-2" />
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Select a date to add specific availability:
+                  </p>
+                  
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full max-w-xs">
+                        <Calendar className="h-4 w-4 mr-2" />
+                        {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Select date'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {selectedDate && (
+                  <>
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-medium">
+                          Availability for {format(selectedDate, 'MMMM d, yyyy')}
+                        </h4>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={addSingleDateTimeSlot}
+                          className="h-8"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add Time Slot
+                        </Button>
+                      </div>
+                      
+                      <div className="mt-2 space-y-2">
+                        {singleDateTimeSlots.length === 0 ? (
+                          <div className="text-sm text-gray-500 text-center py-4 border rounded-md">
+                            No time slots added. Click the Add Time Slot button to add one.
+                          </div>
+                        ) : (
+                          singleDateTimeSlots.map((slot) => (
+                            <div key={`single-slot-${slot.id}`} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
+                              <div className="grid grid-cols-2 gap-2 flex-1">
+                                <Select
+                                  value={slot.startTime}
+                                  onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'startTime', value)}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue placeholder="Start time" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {timeOptions.map((time) => (
+                                      <SelectItem key={`single-start-${time}-${slot.id}`} value={time}>
+                                        {time}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+
+                                <Select
+                                  value={slot.endTime}
+                                  onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'endTime', value)}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue placeholder="End time" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {timeOptions.map((time) => (
+                                      <SelectItem key={`single-end-${time}-${slot.id}`} value={time}>
+                                        {time}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteSingleDateTimeSlot(slot.id)}
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-end">
+                      <Button 
+                        onClick={saveSingleDateAvailability} 
+                        disabled={isSaving || singleDateTimeSlots.length === 0}
+                      >
+                        {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Save Single Day Availability
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+export default AvailabilityPanel;
