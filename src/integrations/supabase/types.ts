@@ -1664,7 +1664,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      debug_rls_check: {
+        Args: {
+          schema_name: string
+          table_name: string
+          operation: string
+          record_id: string
+        }
+        Returns: Json
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "client" | "clinician"
