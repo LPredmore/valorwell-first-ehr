@@ -12,7 +12,7 @@ const TimeInput: React.FC<TimeInputProps> = ({ id, label, value, onChange, timeO
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger id={id}>
           <SelectValue placeholder={`Select ${label.toLowerCase()}`}>
-            {formatDisplayTime(value)}
+            {value ? formatDisplayTime(value) : `Select ${label.toLowerCase()}`}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>

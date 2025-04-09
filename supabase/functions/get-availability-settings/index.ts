@@ -30,6 +30,12 @@ serve(async (req) => {
       throw new Error('Clinician ID is required')
     }
     
+    console.log(`Fetching availability settings for clinician ID: ${clinicianId}`)
+    
+    // Check if clinician ID matches auth user ID format for debugging
+    const isClinicianIdInUuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clinicianId);
+    console.log(`Is clinician ID (${clinicianId}) in UUID format? ${isClinicianIdInUuidFormat}`);
+    
     // Fetch the clinician's availability settings
     const { data, error } = await supabaseClient
       .from('availability_settings')
@@ -39,11 +45,19 @@ serve(async (req) => {
     
     if (error) {
       console.error('Error fetching availability settings:', error)
+      console.error(`Clinician ID used in query: ${clinicianId}`)
       // Return default settings if not found - updated defaults
       return new Response(
         JSON.stringify({ time_granularity: 'hour', min_days_ahead: 2, max_days_ahead: 60 }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+    
+    // Ensure min_days_ahead and max_days_ahead are numbers
+    if (data) {
+      data.min_days_ahead = Number(data.min_days_ahead) || 2; // Default to 2 if falsy
+      data.max_days_ahead = Number(data.max_days_ahead) || 60; // Default to 60 if falsy
+      console.log(`Successfully retrieved settings: ${JSON.stringify(data, null, 2)}`)
     }
     
     return new Response(

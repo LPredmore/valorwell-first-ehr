@@ -1,5 +1,5 @@
 
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 
 // Generate time options for the select dropdown
 export const generateTimeOptions = () => {
@@ -16,6 +16,14 @@ export const generateTimeOptions = () => {
 
 // Format time for display
 export const formatDisplayTime = (time: string) => {
-  return format(new Date(`2023-01-01T${time}`), 'h:mm a');
+  if (!time) return '';
+  
+  try {
+    // Handle potential format issues by parsing the time string correctly
+    const timeObj = parse(time, 'HH:mm', new Date());
+    return format(timeObj, 'h:mm a');
+  } catch (error) {
+    console.error('Error formatting time:', error);
+    return time; // Return original time string if formatting fails
+  }
 };
-

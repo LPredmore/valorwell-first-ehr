@@ -4,8 +4,6 @@ project_id = "gqlkritspnhjxfejvgfg"
 verify_jwt = true
 [functions."get-availability-settings"]
 verify_jwt = true
-[functions.getavailabilitysettings]
-verify_jwt = true
 [functions.create-clinician]
 verify_jwt = true
 [functions.send-password-reset]
