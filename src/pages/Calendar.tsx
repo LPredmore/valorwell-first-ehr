@@ -39,6 +39,7 @@ const CalendarPage = () => {
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week'>('month');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Add logging for current user
@@ -66,6 +67,20 @@ const CalendarPage = () => {
           setCurrentUserId(data.user.id);
           setUserEmail(data.user.email);
           
+          // Fetch user role
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', data.user.id)
+            .single();
+            
+          if (profileError) {
+            console.error('[Calendar] Error fetching user role:', profileError);
+          } else if (profileData) {
+            setUserRole(profileData.role);
+            console.log('[Calendar] User role:', profileData.role);
+          }
+          
           // If we have a user email but no selectedClinicianId, try to find the clinician
           if (data.user.email && !selectedClinicianId) {
             const { data: clinicianData, error: clinicianError } = await supabase
@@ -88,6 +103,7 @@ const CalendarPage = () => {
           console.log('[Calendar] No authenticated user found');
           setCurrentUserId(null);
           setUserEmail(null);
+          setUserRole(null);
         }
       } catch (error) {
         console.error('[Calendar] Exception in user verification:', error);
@@ -146,6 +162,10 @@ const CalendarPage = () => {
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
+  // Determine if user is allowed to change clinician selection
+  // Only allow admin or non-clinician users to change clinician selection
+  const canSelectDifferentClinician = userRole !== 'clinician';
+
   return (
     <Layout>
       <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
@@ -179,7 +199,7 @@ const CalendarPage = () => {
                 New Appointment
               </Button>
 
-              {clinicians.length > 1 && (
+              {clinicians.length > 1 && canSelectDifferentClinician && (
                 <div className="min-w-[200px]">
                   <Select
                     value={selectedClinicianId || undefined}
