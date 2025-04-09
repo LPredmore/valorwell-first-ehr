@@ -25,7 +25,7 @@ const Settings = () => {
   return (
     <Layout>
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="flex border-b overflow-x-auto">
+        <div className="flex flex-wrap border-b overflow-x-auto">
           <button 
             className={`settings-tab px-4 py-3 font-medium border-b-2 transition-all ${activeTab === SettingsTabs.PRACTICE ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
             onClick={() => setActiveTab(SettingsTabs.PRACTICE)}
