@@ -1,14 +1,15 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Clock, Plus, X, ChevronDown, ChevronUp, Loader2, Calendar, CalendarPlus } from 'lucide-react';
+import { Clock, Plus, X, ChevronDown, ChevronUp, Loader2, Calendar, CalendarPlus, AlertTriangle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -62,6 +63,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
   const [isCurrentUserClinicianFetched, setIsCurrentUserClinicianFetched] = useState(false);
   const [currentAuthUserId, setCurrentAuthUserId] = useState<string | null>(null);
   const { toast } = useToast();
+  const [error, setError] = useState<Error | null>(null);
   
   const [weekSchedule, setWeekSchedule] = useState<DaySchedule[]>([
     { day: 'Monday', isOpen: true, timeSlots: [] },
@@ -139,6 +141,37 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
   
   const effectiveClinicianId = clinicianId || currentUserClinicianId;
   
+  // Add this function to validate time slots
+  const validateTimeSlot = (startTime: string, endTime: string, existingSlots: TimeSlot[]): boolean => {
+    // Check if end time is after start time
+    if (startTime >= endTime) {
+      toast({
+        title: "Invalid Time Slot",
+        description: "End time must be after start time.",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
+    // Check for overlaps with existing slots
+    for (const slot of existingSlots) {
+      if (
+        (startTime >= slot.startTime && startTime < slot.endTime) ||
+        (endTime > slot.startTime && endTime <= slot.endTime) ||
+        (startTime <= slot.startTime && endTime >= slot.endTime)
+      ) {
+        toast({
+          title: "Overlapping Time Slot",
+          description: `This time slot overlaps with an existing slot (${slot.startTime} - ${slot.endTime}).`,
+          variant: "destructive"
+        });
+        return false;
+      }
+    }
+    
+    return true;
+  };
+  
   useEffect(() => {
     async function fetchAvailability() {
       if (!effectiveClinicianId || !isCurrentUserClinicianFetched) {
@@ -146,6 +179,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       }
       
       setLoading(true);
+      setError(null); // Reset error state
       console.log('[AvailabilityPanel] Fetching availability for clinician:', effectiveClinicianId);
       
       try {
@@ -225,43 +259,62 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         
         setWeekSchedule(newSchedule);
         
-        const { data: singleDateData, error: singleDateError } = await supabase
-          .from('availability_single_date')
-          .select('id, date, start_time, end_time')
-          .eq('clinician_id', effectiveClinicianId)
-          .gte('date', new Date().toISOString().split('T')[0]);
-          
-        if (singleDateError) {
-          console.error('[AvailabilityPanel] Error fetching single date availability:', singleDateError);
+        // Add table existence check before trying to query single date availability
+        const { data: tableInfo, error: tableCheckError } = await supabase
+          .from('information_schema.tables')
+          .select('table_name')
+          .eq('table_schema', 'public')
+          .eq('table_name', 'availability_single_date')
+          .maybeSingle();
+        
+        if (tableCheckError) {
+          console.error('[AvailabilityPanel] Error checking if table exists:', tableCheckError);
+        }
+        
+        if (!tableInfo) {
+          console.warn('[AvailabilityPanel] availability_single_date table does not exist');
+          setExistingSingleAvailability({});
+          setSingleDateTimeSlots([]);
         } else {
-          console.log('[AvailabilityPanel] Retrieved single date availability:', singleDateData);
-          
-          const singleDateMap: {[date: string]: TimeSlot[]} = {};
-          
-          singleDateData?.forEach(slot => {
-            const dateStr = slot.date;
-            if (!singleDateMap[dateStr]) {
-              singleDateMap[dateStr] = [];
-            }
+          const { data: singleDateData, error: singleDateError } = await supabase
+            .from('availability_single_date')
+            .select('id, date, start_time, end_time')
+            .eq('clinician_id', effectiveClinicianId)
+            .gte('date', new Date().toISOString().split('T')[0]);
             
-            singleDateMap[dateStr].push({
-              id: slot.id,
-              startTime: slot.start_time.substring(0, 5),
-              endTime: slot.end_time.substring(0, 5),
+          if (singleDateError) {
+            console.error('[AvailabilityPanel] Error fetching single date availability:', singleDateError);
+          } else {
+            console.log('[AvailabilityPanel] Retrieved single date availability:', singleDateData);
+            
+            const singleDateMap: {[date: string]: TimeSlot[]} = {};
+            
+            singleDateData?.forEach(slot => {
+              const dateStr = slot.date;
+              if (!singleDateMap[dateStr]) {
+                singleDateMap[dateStr] = [];
+              }
+              
+              singleDateMap[dateStr].push({
+                id: slot.id,
+                startTime: slot.start_time.substring(0, 5),
+                endTime: slot.end_time.substring(0, 5),
+              });
             });
-          });
-          
-          setExistingSingleAvailability(singleDateMap);
-          
-          if (selectedDate) {
-            const dateStr = format(selectedDate, 'yyyy-MM-dd');
-            if (singleDateMap[dateStr]) {
-              setSingleDateTimeSlots(singleDateMap[dateStr]);
+            
+            setExistingSingleAvailability(singleDateMap);
+            
+            if (selectedDate) {
+              const dateStr = format(selectedDate, 'yyyy-MM-dd');
+              if (singleDateMap[dateStr]) {
+                setSingleDateTimeSlots(singleDateMap[dateStr]);
+              }
             }
           }
         }
       } catch (error) {
         console.error('[AvailabilityPanel] Error in fetchAvailability:', error);
+        setError(error as Error);
       } finally {
         setLoading(false);
       }
@@ -481,66 +534,89 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         }
       }
       
+      // For single date availability, check if table exists first
       if (activeTab === 'single' && selectedDate) {
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         
-        const { data: existingSingleSlots, error: singleFetchError } = await supabase
-          .from('availability_single_date')
-          .select('id')
-          .eq('clinician_id', clinicianIdToUse)
-          .eq('date', dateStr);
-          
-        if (singleFetchError) {
-          console.error('[AvailabilityPanel] Error fetching single date slots:', singleFetchError);
-          toast({
-            title: "Error Fetching Single Date Slots",
-            description: singleFetchError.message,
-            variant: "destructive"
-          });
-          setIsSaving(false);
-          return;
+        const { data: tableInfo, error: tableCheckError } = await supabase
+          .from('information_schema.tables')
+          .select('table_name')
+          .eq('table_schema', 'public')
+          .eq('table_name', 'availability_single_date')
+          .maybeSingle();
+        
+        if (tableCheckError) {
+          console.error('[AvailabilityPanel] Error checking if table exists:', tableCheckError);
         }
         
-        if (existingSingleSlots && existingSingleSlots.length > 0) {
-          const singleSlotIds = existingSingleSlots.map(slot => slot.id);
-          
-          const { error: singleDeleteError } = await supabase
+        if (!tableInfo) {
+          console.warn('[AvailabilityPanel] Cannot save single date availability - table does not exist');
+          toast({
+            title: "Warning",
+            description: "Single date availability could not be saved due to a database configuration issue. Please contact support.",
+            variant: "warning"
+          });
+        } else {
+          const { data: existingSingleSlots, error: singleFetchError } = await supabase
             .from('availability_single_date')
-            .delete()
-            .in('id', singleSlotIds);
+            .select('id')
+            .eq('clinician_id', clinicianIdToUse)
+            .eq('date', dateStr);
             
-          if (singleDeleteError) {
-            console.error('[AvailabilityPanel] Error deleting single date slots:', singleDeleteError);
+          if (singleFetchError) {
+            console.error('[AvailabilityPanel] Error fetching single date slots:', singleFetchError);
             toast({
-              title: "Error Deleting Single Date Slots",
-              description: singleDeleteError.message,
+              title: "Error Fetching Single Date Slots",
+              description: singleFetchError.message,
               variant: "destructive"
             });
             setIsSaving(false);
             return;
           }
-        }
-        
-        const singleSlotsToInsert = singleDateTimeSlots.map(slot => ({
-          clinician_id: clinicianIdToUse,
-          date: dateStr,
-          start_time: slot.startTime,
-          end_time: slot.endTime
-        }));
-        
-        const { error: singleInsertError } = await supabase
-          .from('availability_single_date')
-          .insert(singleSlotsToInsert);
           
-        if (singleInsertError) {
-          console.error('[AvailabilityPanel] Error inserting single date slots:', singleInsertError);
-          toast({
-            title: "Error Inserting Single Date Slots",
-            description: singleInsertError.message,
-            variant: "destructive"
-          });
-          setIsSaving(false);
-          return;
+          if (existingSingleSlots && existingSingleSlots.length > 0) {
+            const singleSlotIds = existingSingleSlots.map(slot => slot.id);
+            
+            const { error: singleDeleteError } = await supabase
+              .from('availability_single_date')
+              .delete()
+              .in('id', singleSlotIds);
+              
+            if (singleDeleteError) {
+              console.error('[AvailabilityPanel] Error deleting single date slots:', singleDeleteError);
+              toast({
+                title: "Error Deleting Single Date Slots",
+                description: singleDeleteError.message,
+                variant: "destructive"
+              });
+              setIsSaving(false);
+              return;
+            }
+          }
+          
+          if (singleDateTimeSlots.length > 0) {
+            const singleSlotsToInsert = singleDateTimeSlots.map(slot => ({
+              clinician_id: clinicianIdToUse,
+              date: dateStr,
+              start_time: slot.startTime,
+              end_time: slot.endTime
+            }));
+            
+            const { error: singleInsertError } = await supabase
+              .from('availability_single_date')
+              .insert(singleSlotsToInsert);
+              
+            if (singleInsertError) {
+              console.error('[AvailabilityPanel] Error inserting single date slots:', singleInsertError);
+              toast({
+                title: "Error Inserting Single Date Slots",
+                description: singleInsertError.message,
+                variant: "destructive"
+              });
+              setIsSaving(false);
+              return;
+            }
+          }
         }
       }
       
@@ -556,7 +632,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       console.error('[AvailabilityPanel] Error saving availability:', error);
       toast({
         title: "Error Saving Availability",
-        description: error.message,
+        description: error.message || "An unexpected error occurred while saving your availability.",
         variant: "destructive"
       });
     } finally {
@@ -579,14 +655,23 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
     setWeekSchedule(prev => {
       const updated = [...prev];
       const day = updated[dayIndex];
+      
+      const newStartTime = defaultStartTime.substring(0, 5);
+      const newEndTime = defaultEndTime.substring(0, 5);
+      
+      // Validate the new time slot
+      if (!validateTimeSlot(newStartTime, newEndTime, day.timeSlots)) {
+        return prev; // Return unchanged if validation fails
+      }
+      
       updated[dayIndex] = {
         ...day,
         timeSlots: [
           ...day.timeSlots,
           {
             id: `new-${Date.now()}-${day.timeSlots.length + 1}`,
-            startTime: defaultStartTime,
-            endTime: defaultEndTime
+            startTime: newStartTime,
+            endTime: newEndTime
           }
         ]
       };
@@ -610,11 +695,33 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
     setWeekSchedule(prev => {
       const updated = [...prev];
       const day = updated[dayIndex];
+      
+      const slotIndex = day.timeSlots.findIndex(slot => slot.id === slotId);
+      if (slotIndex === -1) return prev;
+      
+      const updatedSlot = {
+        ...day.timeSlots[slotIndex],
+        [field]: value
+      };
+      
+      // Create a temporary array without the current slot for validation
+      const otherSlots = day.timeSlots.filter(slot => slot.id !== slotId);
+      
+      // Validate the updated time slot
+      if (!validateTimeSlot(
+        field === 'startTime' ? value : day.timeSlots[slotIndex].startTime,
+        field === 'endTime' ? value : day.timeSlots[slotIndex].endTime,
+        otherSlots
+      )) {
+        return prev; // Return unchanged if validation fails
+      }
+      
+      const updatedTimeSlots = [...day.timeSlots];
+      updatedTimeSlots[slotIndex] = updatedSlot;
+      
       updated[dayIndex] = {
         ...day,
-        timeSlots: day.timeSlots.map(slot =>
-          slot.id === slotId ? { ...slot, [field]: value } : slot
-        )
+        timeSlots: updatedTimeSlots
       };
       return updated;
     });
@@ -623,12 +730,20 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
   const addSingleDateTimeSlot = () => {
     if (!selectedDate) return;
     
+    const newStartTime = defaultStartTime || '09:00';
+    const newEndTime = defaultEndTime || '17:00';
+    
+    // Validate the new time slot
+    if (!validateTimeSlot(newStartTime, newEndTime, singleDateTimeSlots)) {
+      return; // Don't add if validation fails
+    }
+    
     setSingleDateTimeSlots(prev => [
       ...prev,
       {
         id: `single-${Date.now()}-${prev.length + 1}`,
-        startTime: defaultStartTime || '09:00',
-        endTime: defaultEndTime || '17:00'
+        startTime: newStartTime,
+        endTime: newEndTime
       }
     ]);
   };
@@ -638,9 +753,31 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
   };
   
   const updateSingleDateTimeSlot = (slotId: string, field: 'startTime' | 'endTime', value: string) => {
-    setSingleDateTimeSlots(prev => 
-      prev.map(slot => slot.id === slotId ? { ...slot, [field]: value } : slot)
-    );
+    setSingleDateTimeSlots(prev => {
+      const slotIndex = prev.findIndex(slot => slot.id === slotId);
+      if (slotIndex === -1) return prev;
+      
+      const updatedSlot = {
+        ...prev[slotIndex],
+        [field]: value
+      };
+      
+      // Create a temporary array without the current slot for validation
+      const otherSlots = prev.filter(slot => slot.id !== slotId);
+      
+      // Validate the updated time slot
+      if (!validateTimeSlot(
+        field === 'startTime' ? value : prev[slotIndex].startTime,
+        field === 'endTime' ? value : prev[slotIndex].endTime,
+        otherSlots
+      )) {
+        return prev; // Return unchanged if validation fails
+      }
+      
+      const updated = [...prev];
+      updated[slotIndex] = updatedSlot;
+      return updated;
+    });
   };
   
   if (loading) {
@@ -650,6 +787,30 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           <div className="flex flex-col items-center gap-2">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">Loading availability...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (error) {
+    return (
+      <Card className="h-full">
+        <CardContent className="flex flex-col items-center justify-center py-10">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <AlertTriangle className="h-8 w-8 text-destructive" />
+            <p className="text-sm text-destructive font-medium">There was a problem loading your availability settings.</p>
+            <p className="text-sm text-muted-foreground max-w-md">{error.message}</p>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => {
+                setError(null);
+                window.location.reload();
+              }}
+            >
+              Try Again
+            </Button>
           </div>
         </CardContent>
       </Card>
