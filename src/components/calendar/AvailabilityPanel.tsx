@@ -1,109 +1,104 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from '@/components/ui/use-toast';
 import { Spinner } from '@/components/ui/spinner';
-import { useToast } from '@/components/ui/use-toast';
 import { TimeInput } from '@/components/ui/time-input';
-import { PlusCircle, Trash2, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
+import { PlusCircle, Trash2 } from 'lucide-react';
 
-type TimeSlot = {
+// Types
+interface TimeSlot {
   id: string;
   startTime: string;
   endTime: string;
-};
+}
 
-type DaySchedule = {
-  day: string;
+interface DaySchedule {
+  day: number;
+  name: string;
   enabled: boolean;
   timeSlots: TimeSlot[];
-};
+}
 
-type AvailabilitySettings = {
-  timeGranularity: 'hour' | 'half_hour';
+interface AvailabilitySettings {
+  timeGranularity: string;
   minDaysAhead: number;
   maxDaysAhead: number;
   defaultStartTime: string;
   defaultEndTime: string;
-};
+}
 
-const defaultSettings: AvailabilitySettings = {
-  timeGranularity: 'hour',
-  minDaysAhead: 2,
-  maxDaysAhead: 60,
-  defaultStartTime: '09:00',
-  defaultEndTime: '17:00',
-};
-
-const defaultWeekSchedule: DaySchedule[] = [
-  { day: 'Monday', enabled: false, timeSlots: [] },
-  { day: 'Tuesday', enabled: false, timeSlots: [] },
-  { day: 'Wednesday', enabled: false, timeSlots: [] },
-  { day: 'Thursday', enabled: false, timeSlots: [] },
-  { day: 'Friday', enabled: false, timeSlots: [] },
-  { day: 'Saturday', enabled: false, timeSlots: [] },
-  { day: 'Sunday', enabled: false, timeSlots: [] },
-];
-
-function AvailabilityPanel() {
-  const { toast } = useToast();
-  const { userId } = useUser();
+export function AvailabilityPanel() {
+  const { user } = useUser();
+  const userId = user?.id;
   
-  const [activeTab, setActiveTab] = useState('weekly');
-  const [weekSchedule, setWeekSchedule] = useState<DaySchedule[]>(defaultWeekSchedule);
-  const [settings, setSettings] = useState<AvailabilitySettings>(defaultSettings);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [singleDateTableExists, setSingleDateTableExists] = useState(false);
-  const [singleDateTableChecked, setSingleDateTableChecked] = useState(false);
-
-  // Fetch availability data when component mounts
+  const [activeTab, setActiveTab] = useState<string>('weekly');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [singleDateTableExists, setSingleDateTableExists] = useState<boolean>(false);
+  const [singleDateTableChecked, setSingleDateTableChecked] = useState<boolean>(false);
+  const [weekSchedule, setWeekSchedule] = useState<DaySchedule[]>([
+    { day: 0, name: 'Sunday', enabled: false, timeSlots: [] },
+    { day: 1, name: 'Monday', enabled: false, timeSlots: [] },
+    { day: 2, name: 'Tuesday', enabled: false, timeSlots: [] },
+    { day: 3, name: 'Wednesday', enabled: false, timeSlots: [] },
+    { day: 4, name: 'Thursday', enabled: false, timeSlots: [] },
+    { day: 5, name: 'Friday', enabled: false, timeSlots: [] },
+    { day: 6, name: 'Saturday', enabled: false, timeSlots: [] },
+  ]);
+  
+  const [settings, setSettings] = useState<AvailabilitySettings>({
+    timeGranularity: 'hour',
+    minDaysAhead: 2,
+    maxDaysAhead: 30,
+    defaultStartTime: '09:00',
+    defaultEndTime: '17:00',
+  });
+  
+  // Fetch availability data on component mount
   useEffect(() => {
     if (userId) {
       fetchAvailability();
-    }
-  }, [userId]);
-
-  // Check if availability_single_date table exists
-  useEffect(() => {
-    if (userId && !singleDateTableChecked) {
       checkSingleDateTableExists();
     }
-  }, [userId, singleDateTableChecked]);
-
-  // Check if the availability_single_date table exists using the RPC function
+  }, [userId]);
+  
+  // Check if the availability_single_date table exists
   const checkSingleDateTableExists = async () => {
     try {
-      console.log('[AvailabilityPanel] Checking if availability_single_date table exists');
-      const { data: tableExists, error: rpcError } = await supabase
+      console.log('[AvailabilityPanel] Checking if availability_single_date table exists...');
+      const { data, error } = await supabase
         .rpc('check_table_exists', { table_name: 'availability_single_date' });
       
-      if (rpcError) {
-        console.error('[AvailabilityPanel] Error checking if table exists:', rpcError);
+      if (error) {
+        console.error('[AvailabilityPanel] Error checking if table exists:', error);
         setSingleDateTableExists(false);
       } else {
-        console.log('[AvailabilityPanel] Table exists:', tableExists);
-        setSingleDateTableExists(!!tableExists);
+        console.log('[AvailabilityPanel] Table exists:', data);
+        setSingleDateTableExists(!!data);
       }
+      
       setSingleDateTableChecked(true);
     } catch (error) {
-      console.error('[AvailabilityPanel] Error checking table existence:', error);
+      console.error('[AvailabilityPanel] Error checking if table exists:', error);
       setSingleDateTableExists(false);
       setSingleDateTableChecked(true);
     }
   };
-
+  
+  // Fetch availability data from the database
   const fetchAvailability = async () => {
     setIsLoading(true);
     try {
-      console.log('[AvailabilityPanel] Fetching availability for clinician:', userId);
+      console.log('[AvailabilityPanel] Fetching availability data...');
       
       // Fetch weekly availability
       const { data: availabilityData, error: availabilityError } = await supabase
@@ -111,11 +106,7 @@ function AvailabilityPanel() {
         .select('*')
         .eq('clinician_id', userId);
       
-      if (availabilityError) {
-        throw availabilityError;
-      }
-      
-      console.log('[AvailabilityPanel] Retrieved', availabilityData?.length || 0, 'availability records:', availabilityData);
+      if (availabilityError) throw availabilityError;
       
       // Fetch availability settings
       const { data: settingsData, error: settingsError } = await supabase
@@ -124,131 +115,67 @@ function AvailabilityPanel() {
         .eq('clinician_id', userId)
         .single();
       
-      if (settingsError && settingsError.code !== 'PGRST116') { // PGRST116 is "no rows returned" error
+      if (settingsError && settingsError.code !== 'PGRST116') {
+        // PGRST116 is "Results contain 0 rows" - not an error for us
         throw settingsError;
       }
       
-      console.log('[AvailabilityPanel] Retrieved settings:', settingsData);
-      
-      // Process and set the data
-      if (availabilityData && availabilityData.length > 0) {
-        const processedSchedule = processAvailabilityData(availabilityData);
-        setWeekSchedule(processedSchedule);
-      }
-      
+      // Update settings if we have data
       if (settingsData) {
-        const processedSettings: AvailabilitySettings = {
-          timeGranularity: settingsData.time_granularity || defaultSettings.timeGranularity,
-          minDaysAhead: settingsData.min_days_ahead || defaultSettings.minDaysAhead,
-          maxDaysAhead: settingsData.max_days_ahead || defaultSettings.maxDaysAhead,
-          defaultStartTime: settingsData.default_start_time || defaultSettings.defaultStartTime,
-          defaultEndTime: settingsData.default_end_time || defaultSettings.defaultEndTime,
-        };
-        
-        console.log('[AvailabilityPanel] Updated settings state:', processedSettings);
-        setSettings(processedSettings);
+        setSettings({
+          timeGranularity: settingsData.time_granularity || 'hour',
+          minDaysAhead: settingsData.min_days_ahead || 2,
+          maxDaysAhead: settingsData.max_days_ahead || 30,
+          defaultStartTime: settingsData.default_start_time || '09:00',
+          defaultEndTime: settingsData.default_end_time || '17:00',
+        });
       }
+      
+      // Process availability data
+      const newSchedule = [...weekSchedule];
+      
+      // Reset all days to disabled with no time slots
+      newSchedule.forEach(day => {
+        day.enabled = false;
+        day.timeSlots = [];
+      });
+      
+      // Add time slots from the database
+      if (availabilityData && availabilityData.length > 0) {
+        availabilityData.forEach(slot => {
+          const dayIndex = slot.day_of_week;
+          if (dayIndex >= 0 && dayIndex < 7) {
+            newSchedule[dayIndex].enabled = true;
+            newSchedule[dayIndex].timeSlots.push({
+              id: slot.id,
+              startTime: slot.start_time,
+              endTime: slot.end_time,
+            });
+          }
+        });
+      }
+      
+      setWeekSchedule(newSchedule);
+      console.log('[AvailabilityPanel] Availability data loaded successfully');
     } catch (error) {
       console.error('[AvailabilityPanel] Error fetching availability:', error);
       toast({
         title: "Error loading availability",
-        description: "There was a problem loading your availability settings. Please try again.",
+        description: "There was a problem loading your availability settings. Please refresh the page and try again.",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
   };
-
-  const processAvailabilityData = (data: any[]): DaySchedule[] => {
-    const newSchedule = [...defaultWeekSchedule];
-    
-    data.forEach(item => {
-      const dayIndex = newSchedule.findIndex(d => d.day.toLowerCase() === item.day_of_week.toLowerCase());
-      if (dayIndex !== -1) {
-        // If day exists in our schedule
-        newSchedule[dayIndex].enabled = true;
-        
-        // Add time slot if it doesn't already exist
-        const timeSlotExists = newSchedule[dayIndex].timeSlots.some(
-          slot => slot.startTime === item.start_time && slot.endTime === item.end_time
-        );
-        
-        if (!timeSlotExists) {
-          newSchedule[dayIndex].timeSlots.push({
-            id: item.id,
-            startTime: item.start_time,
-            endTime: item.end_time,
-          });
-        }
-      }
-    });
-    
-    return newSchedule;
-  };
-
+  
+  // Validate time slot (end time must be after start time)
   const validateTimeSlot = (startTime: string, endTime: string): boolean => {
-    // Convert times to minutes for easier comparison
-    const startMinutes = convertTimeToMinutes(startTime);
-    const endMinutes = convertTimeToMinutes(endTime);
-    
-    // Check if end time is after start time
-    if (endMinutes <= startMinutes) {
-      toast({
-        title: "Invalid time slot",
-        description: "End time must be after start time",
-        variant: "destructive",
-      });
-      return false;
-    }
-    
-    // Check if the slot is at least 30 minutes
-    if (endMinutes - startMinutes < 30) {
-      toast({
-        title: "Invalid time slot",
-        description: "Time slots must be at least 30 minutes",
-        variant: "destructive",
-      });
-      return false;
-    }
-    
-    return true;
+    if (!startTime || !endTime) return false;
+    return startTime < endTime;
   };
-
-  const convertTimeToMinutes = (time: string): number => {
-    const [hours, minutes] = time.split(':').map(Number);
-    return hours * 60 + minutes;
-  };
-
-  const addTimeSlot = (dayIndex: number) => {
-    const newSchedule = [...weekSchedule];
-    const { defaultStartTime, defaultEndTime } = settings;
-    
-    if (!validateTimeSlot(defaultStartTime, defaultEndTime)) {
-      return;
-    }
-    
-    newSchedule[dayIndex].timeSlots.push({
-      id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      startTime: defaultStartTime,
-      endTime: defaultEndTime,
-    });
-    
-    setWeekSchedule(newSchedule);
-  };
-
-  const removeTimeSlot = (dayIndex: number, slotIndex: number) => {
-    const newSchedule = [...weekSchedule];
-    newSchedule[dayIndex].timeSlots.splice(slotIndex, 1);
-    setWeekSchedule(newSchedule);
-  };
-
-  const updateTimeSlot = (dayIndex: number, slotIndex: number, field: 'startTime' | 'endTime', value: string) => {
-    const newSchedule = [...weekSchedule];
-    newSchedule[dayIndex].timeSlots[slotIndex][field] = value;
-    setWeekSchedule(newSchedule);
-  };
-
+  
+  // Toggle day enabled/disabled
   const toggleDayEnabled = (dayIndex: number, enabled: boolean) => {
     const newSchedule = [...weekSchedule];
     newSchedule[dayIndex].enabled = enabled;
@@ -264,14 +191,17 @@ function AvailabilityPanel() {
     
     setWeekSchedule(newSchedule);
   };
-
+  
   const updateSettings = (field: keyof AvailabilitySettings, value: any) => {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
-
+  
+  // Save availability settings to the database
   const saveAvailability = async () => {
     setIsSaving(true);
     try {
+      console.log('[AvailabilityPanel] Starting save operation...');
+      
       // Validate all time slots before saving
       let isValid = true;
       weekSchedule.forEach(day => {
@@ -295,15 +225,22 @@ function AvailabilityPanel() {
       
       // Save weekly availability
       if (activeTab === 'weekly') {
+        console.log('[AvailabilityPanel] Saving weekly availability...');
+        
         // First, get existing records to determine what to delete
         const { data: existingAvailability, error: fetchError } = await supabase
           .from('availability')
           .select('id, day_of_week')
           .eq('clinician_id', userId);
         
-        if (fetchError) throw fetchError;
+        if (fetchError) {
+          console.error('[AvailabilityPanel] Error fetching existing availability:', fetchError);
+          throw fetchError;
+        }
         
-        // Prepare data for upsert
+        console.log('[AvailabilityPanel] Existing availability records:', existingAvailability?.length || 0);
+        
+        // Prepare data for upsert - only include time slots from enabled days
         const availabilityRecords = [];
         
         weekSchedule.forEach(day => {
@@ -320,35 +257,88 @@ function AvailabilityPanel() {
           }
         });
         
-        // Find IDs to delete (records that exist but aren't in the new data)
-        const newSlotIds = availabilityRecords
-          .filter(record => record.id !== undefined)
-          .map(record => record.id);
+        console.log('[AvailabilityPanel] New availability records to save:', availabilityRecords.length);
         
-        const idsToDelete = existingAvailability
-          ?.filter(record => !newSlotIds.includes(record.id))
-          .map(record => record.id) || [];
+        // Get the days that are enabled in the UI
+        const enabledDays = weekSchedule
+          .filter(day => day.enabled)
+          .map(day => day.day);
+        
+        console.log('[AvailabilityPanel] Enabled days:', enabledDays);
+        
+        // FIXED: Improved deletion logic to properly handle disabled days
+        // First, identify all records that need to be deleted
+        let recordsToDelete = [];
+        
+        // If existingAvailability exists, process it
+        if (existingAvailability && existingAvailability.length > 0) {
+          // 1. Find all records for days that are now disabled
+          const disabledDayRecords = existingAvailability.filter(record => 
+            !enabledDays.includes(record.day_of_week)
+          );
+          
+          // 2. For enabled days, find records that are no longer in the new data
+          const enabledDayRecords = existingAvailability.filter(record => 
+            enabledDays.includes(record.day_of_week)
+          );
+          
+          const newSlotIds = availabilityRecords
+            .filter(r => r.id !== undefined)
+            .map(r => r.id);
+          
+          const removedEnabledDayRecords = enabledDayRecords.filter(record => 
+            !newSlotIds.includes(record.id)
+          );
+          
+          // 3. Combine both sets of records to delete
+          recordsToDelete = [...disabledDayRecords, ...removedEnabledDayRecords];
+        }
+        
+        const idsToDelete = recordsToDelete.map(record => record.id);
+        
+        console.log('[AvailabilityPanel] Records to delete:', idsToDelete.length);
+        console.log('[AvailabilityPanel] IDs to delete:', idsToDelete);
         
         // Delete removed records
         if (idsToDelete.length > 0) {
+          console.log('[AvailabilityPanel] Deleting records:', idsToDelete);
+          
           const { error: deleteError } = await supabase
             .from('availability')
             .delete()
             .in('id', idsToDelete);
           
-          if (deleteError) throw deleteError;
+          if (deleteError) {
+            console.error('[AvailabilityPanel] Error deleting records:', deleteError);
+            throw deleteError;
+          }
+          
+          console.log('[AvailabilityPanel] Successfully deleted records');
+        } else {
+          console.log('[AvailabilityPanel] No records to delete');
         }
         
         // Upsert new/updated records
         if (availabilityRecords.length > 0) {
+          console.log('[AvailabilityPanel] Upserting records:', availabilityRecords.length);
+          
           const { error: upsertError } = await supabase
             .from('availability')
             .upsert(availabilityRecords, { onConflict: 'id' });
           
-          if (upsertError) throw upsertError;
+          if (upsertError) {
+            console.error('[AvailabilityPanel] Error upserting records:', upsertError);
+            throw upsertError;
+          }
+          
+          console.log('[AvailabilityPanel] Successfully upserted records');
+        } else {
+          console.log('[AvailabilityPanel] No records to upsert');
         }
         
         // Save settings
+        console.log('[AvailabilityPanel] Saving settings');
+        
         const { error: settingsError } = await supabase
           .from('availability_settings')
           .upsert({
@@ -360,7 +350,12 @@ function AvailabilityPanel() {
             default_end_time: settings.defaultEndTime,
           }, { onConflict: 'clinician_id' });
         
-        if (settingsError) throw settingsError;
+        if (settingsError) {
+          console.error('[AvailabilityPanel] Error saving settings:', settingsError);
+          throw settingsError;
+        }
+        
+        console.log('[AvailabilityPanel] Successfully saved settings');
       }
       // Save single day availability
       else if (activeTab === 'single-day' && singleDateTableExists) {
@@ -382,12 +377,14 @@ function AvailabilityPanel() {
         console.log('[AvailabilityPanel] Single day availability saving not yet implemented');
       }
       
+      console.log('[AvailabilityPanel] Save operation completed successfully');
+      
       toast({
         title: "Availability saved",
         description: "Your availability settings have been updated successfully.",
       });
       
-      // Refresh data
+      // Refresh data to ensure UI is in sync with database
       fetchAvailability();
     } catch (error) {
       console.error('[AvailabilityPanel] Error saving availability:', error);
@@ -400,7 +397,32 @@ function AvailabilityPanel() {
       setIsSaving(false);
     }
   };
-
+  
+  // Add a new time slot to a day
+  const addTimeSlot = (dayIndex: number) => {
+    const newSchedule = [...weekSchedule];
+    newSchedule[dayIndex].timeSlots.push({
+      id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      startTime: settings.defaultStartTime,
+      endTime: settings.defaultEndTime,
+    });
+    setWeekSchedule(newSchedule);
+  };
+  
+  // Remove a time slot from a day
+  const removeTimeSlot = (dayIndex: number, slotIndex: number) => {
+    const newSchedule = [...weekSchedule];
+    newSchedule[dayIndex].timeSlots.splice(slotIndex, 1);
+    setWeekSchedule(newSchedule);
+  };
+  
+  // Update a time slot's start or end time
+  const updateTimeSlot = (dayIndex: number, slotIndex: number, field: 'startTime' | 'endTime', value: string) => {
+    const newSchedule = [...weekSchedule];
+    newSchedule[dayIndex].timeSlots[slotIndex][field] = value;
+    setWeekSchedule(newSchedule);
+  };
+  
   return (
     <div className="p-4 bg-white rounded-lg shadow">
       <div className="flex justify-between items-center mb-6">
@@ -430,178 +452,200 @@ function AvailabilityPanel() {
           <TabsTrigger 
             value="single-day" 
             disabled={!singleDateTableExists}
-            className={!singleDateTableExists ? "opacity-50 cursor-not-allowed" : ""}
+            className={!singleDateTableExists ? "opacity-50" : ""}
           >
             Single Day
-            {!singleDateTableExists && (
-              <Badge variant="outline" className="ml-2 text-xs bg-red-50 text-red-500 border-red-200">
-                Unavailable
-              </Badge>
+            {!singleDateTableExists && singleDateTableChecked && (
+              <Badge variant="outline" className="ml-2 text-xs">Unavailable</Badge>
             )}
           </TabsTrigger>
         </TabsList>
         
-        {isLoading ? (
-          <div className="flex justify-center items-center py-12">
-            <Spinner className="h-8 w-8" />
-            <span className="ml-3">Loading availability settings...</span>
-          </div>
-        ) : (
-          <>
-            <TabsContent value="weekly" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Scheduling Settings</h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">Time Granularity</h4>
-                      <RadioGroup 
-                        value={settings.timeGranularity} 
-                        onValueChange={(value) => updateSettings('timeGranularity', value)}
-                        className="flex flex-col space-y-2"
+        <TabsContent value="weekly" className="mt-0">
+          <div className="space-y-6">
+            {weekSchedule.map((day, dayIndex) => (
+              <Card key={day.day} className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="p-4 border-b flex justify-between items-center">
+                    <div className="flex items-center">
+                      <Switch 
+                        id={`day-${day.day}`}
+                        checked={day.enabled}
+                        onCheckedChange={(checked) => toggleDayEnabled(dayIndex, checked)}
+                      />
+                      <Label 
+                        htmlFor={`day-${day.day}`} 
+                        className={`ml-2 font-medium ${!day.enabled ? 'text-gray-500' : ''}`}
                       >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="hour" id="hour" />
-                          <Label htmlFor="hour">Hour marks only (e.g., 1:00, 2:00)</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="half_hour" id="half_hour" />
-                          <Label htmlFor="half_hour">Hour and half-hour marks (e.g., 1:00, 1:30)</Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-                    
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">How soon can clients schedule with you?</h4>
-                      <Select 
-                        value={settings.minDaysAhead.toString()} 
-                        onValueChange={(value) => updateSettings('minDaysAhead', parseInt(value))}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select minimum days ahead" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0">Same day</SelectItem>
-                          <SelectItem value="1">1 day in advance</SelectItem>
-                          <SelectItem value="2">2 days in advance</SelectItem>
-                          <SelectItem value="3">3 days in advance</SelectItem>
-                          <SelectItem value="7">1 week in advance</SelectItem>
-                          <SelectItem value="14">2 weeks in advance</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">Default working hours</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="defaultStartTime">Start Time</Label>
-                          <TimeInput
-                            id="defaultStartTime"
-                            value={settings.defaultStartTime}
-                            onChange={(value) => updateSettings('defaultStartTime', value)}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="defaultEndTime">End Time</Label>
-                          <TimeInput
-                            id="defaultEndTime"
-                            value={settings.defaultEndTime}
-                            onChange={(value) => updateSettings('defaultEndTime', value)}
-                          />
-                        </div>
-                      </div>
+                        {day.name}
+                      </Label>
                     </div>
                   </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Weekly Schedule</h3>
                   
-                  <div className="space-y-6">
-                    {weekSchedule.map((day, dayIndex) => (
-                      <div key={day.day} className="border rounded-md p-4">
-                        <div className="flex justify-between items-center mb-4">
-                          <h4 className="font-medium">{day.day}</h4>
-                          <Switch
-                            checked={day.enabled}
-                            onCheckedChange={(checked) => toggleDayEnabled(dayIndex, checked)}
-                          />
-                        </div>
-                        
-                        {day.enabled && (
-                          <div className="space-y-4">
-                            {day.timeSlots.map((slot, slotIndex) => (
-                              <div key={slot.id} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
-                                <div>
-                                  <Label htmlFor={`${day.day}-${slotIndex}-start`}>Start Time</Label>
-                                  <TimeInput
-                                    id={`${day.day}-${slotIndex}-start`}
-                                    value={slot.startTime}
-                                    onChange={(value) => updateTimeSlot(dayIndex, slotIndex, 'startTime', value)}
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor={`${day.day}-${slotIndex}-end`}>End Time</Label>
-                                  <TimeInput
-                                    id={`${day.day}-${slotIndex}-end`}
-                                    value={slot.endTime}
-                                    onChange={(value) => updateTimeSlot(dayIndex, slotIndex, 'endTime', value)}
-                                  />
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => removeTimeSlot(dayIndex, slotIndex)}
-                                  className="text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                            
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => addTimeSlot(dayIndex)}
-                              className="w-full"
-                            >
-                              <PlusCircle className="h-4 w-4 mr-2" />
-                              Add Time Slot
-                            </Button>
+                  {day.enabled && (
+                    <div className="p-4 space-y-4">
+                      {day.timeSlots.map((slot, slotIndex) => (
+                        <div key={slot.id} className="flex items-center space-x-4">
+                          <div className="flex-1 grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor={`start-${day.day}-${slotIndex}`} className="text-xs mb-1 block">
+                                Start Time
+                              </Label>
+                              <TimeInput
+                                id={`start-${day.day}-${slotIndex}`}
+                                value={slot.startTime}
+                                onChange={(e) => updateTimeSlot(dayIndex, slotIndex, 'startTime', e.target.value)}
+                                className={!validateTimeSlot(slot.startTime, slot.endTime) ? 'border-red-500' : ''}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`end-${day.day}-${slotIndex}`} className="text-xs mb-1 block">
+                                End Time
+                              </Label>
+                              <TimeInput
+                                id={`end-${day.day}-${slotIndex}`}
+                                value={slot.endTime}
+                                onChange={(e) => updateTimeSlot(dayIndex, slotIndex, 'endTime', e.target.value)}
+                                className={!validateTimeSlot(slot.startTime, slot.endTime) ? 'border-red-500' : ''}
+                              />
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="single-day" className="space-y-6">
-              {!singleDateTableExists ? (
-                <div className="flex items-center p-4 border rounded-md bg-amber-50 text-amber-800">
-                  <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium">Single day availability is not available</p>
-                    <p className="text-sm">The required database table does not exist. Please contact support.</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-4 border rounded-md">
-                  <p>Single day availability settings will be implemented soon.</p>
-                </div>
-              )}
-            </TabsContent>
-          </>
-        )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeTimeSlot(dayIndex, slotIndex)}
+                            className="h-8 w-8"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addTimeSlot(dayIndex)}
+                        className="mt-2"
+                      >
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                        Add Time Slot
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="single-day" className="mt-0">
+          {singleDateTableExists ? (
+            <div className="p-4 border rounded-lg">
+              <p className="text-center text-gray-500">
+                Single day availability settings will be available soon.
+              </p>
+            </div>
+          ) : (
+            <div className="p-4 border rounded-lg">
+              <p className="text-center text-gray-500">
+                Single day availability is not available. Please contact support.
+              </p>
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+      
+      <div className="mt-6 border-t pt-6">
+        <h3 className="text-lg font-medium mb-4">Availability Settings</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <Label htmlFor="time-granularity" className="block mb-2">
+              Time Slot Granularity
+            </Label>
+            <Select
+              value={settings.timeGranularity}
+              onValueChange={(value) => updateSettings('timeGranularity', value)}
+            >
+              <SelectTrigger id="time-granularity">
+                <SelectValue placeholder="Select granularity" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="15min">15 minutes</SelectItem>
+                <SelectItem value="30min">30 minutes</SelectItem>
+                <SelectItem value="hour">1 hour</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label htmlFor="min-days-ahead" className="block mb-2">
+              Minimum Days in Advance
+            </Label>
+            <Select
+              value={settings.minDaysAhead.toString()}
+              onValueChange={(value) => updateSettings('minDaysAhead', parseInt(value))}
+            >
+              <SelectTrigger id="min-days-ahead">
+                <SelectValue placeholder="Select minimum days" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Same day</SelectItem>
+                <SelectItem value="1">1 day</SelectItem>
+                <SelectItem value="2">2 days</SelectItem>
+                <SelectItem value="3">3 days</SelectItem>
+                <SelectItem value="7">1 week</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label htmlFor="max-days-ahead" className="block mb-2">
+              Maximum Days in Advance
+            </Label>
+            <Select
+              value={settings.maxDaysAhead.toString()}
+              onValueChange={(value) => updateSettings('maxDaysAhead', parseInt(value))}
+            >
+              <SelectTrigger id="max-days-ahead">
+                <SelectValue placeholder="Select maximum days" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">1 week</SelectItem>
+                <SelectItem value="14">2 weeks</SelectItem>
+                <SelectItem value="30">1 month</SelectItem>
+                <SelectItem value="60">2 months</SelectItem>
+                <SelectItem value="90">3 months</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="default-start-time" className="block mb-2">
+                Default Start Time
+              </Label>
+              <TimeInput
+                id="default-start-time"
+                value={settings.defaultStartTime}
+                onChange={(e) => updateSettings('defaultStartTime', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="default-end-time" className="block mb-2">
+                Default End Time
+              </Label>
+              <TimeInput
+                id="default-end-time"
+                value={settings.defaultEndTime}
+                onChange={(e) => updateSettings('defaultEndTime', e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-// Add default export for compatibility with existing imports
+// Add default export to support both named and default imports
 export default AvailabilityPanel;
-// Also keep named export for future use
-export { AvailabilityPanel };
