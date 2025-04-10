@@ -61,7 +61,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
   const [isCurrentUserClinicianFetched, setIsCurrentUserClinicianFetched] = useState(false);
   const [currentAuthUserId, setCurrentAuthUserId] = useState<string | null>(null);
   const { toast } = useToast();
-
+  
   const [weekSchedule, setWeekSchedule] = useState<DaySchedule[]>([
     { day: 'Monday', isOpen: true, timeSlots: [] },
     { day: 'Tuesday', isOpen: true, timeSlots: [] },
@@ -71,47 +71,46 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
     { day: 'Saturday', isOpen: false, timeSlots: [] },
     { day: 'Sunday', isOpen: false, timeSlots: [] },
   ]);
-
+  
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [singleDateTimeSlots, setSingleDateTimeSlots] = useState<TimeSlot[]>([]);
   const [existingSingleAvailability, setExistingSingleAvailability] = useState<{[date: string]: TimeSlot[]}>({});
-
+  
   useEffect(() => {
     async function fetchCurrentUserClinicianId() {
       try {
         const { data: sessionData } = await supabase.auth.getSession();
-
         if (!sessionData?.session?.user) {
           console.log('[AvailabilityPanel] User not logged in');
           setIsCurrentUserClinicianFetched(true);
           return;
         }
-
+        
         const authUserId = sessionData.session.user.id;
         setCurrentAuthUserId(authUserId);
         console.log('[AvailabilityPanel] Current auth user ID:', authUserId);
-
+        
         const { data: profileData } = await supabase
           .from('profiles')
           .select('email, role')
           .eq('id', authUserId)
           .single();
-
+          
         if (!profileData) {
           console.log('[AvailabilityPanel] Profile not found');
           setIsCurrentUserClinicianFetched(true);
           return;
         }
-
+        
         console.log('[AvailabilityPanel] User profile role:', profileData.role);
         console.log('[AvailabilityPanel] User profile email:', profileData.email);
-
+        
         if (profileData.role !== 'clinician') {
           console.log('[AvailabilityPanel] User is not a clinician, role:', profileData.role);
           setIsCurrentUserClinicianFetched(true);
           return;
         }
-
+        
         const { data: clinicianData, error: clinicianError } = await supabase
           .from('clinicians')
           .select('id')
@@ -127,207 +126,160 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           console.log('[AvailabilityPanel] Auth user ID for comparison:', authUserId);
           setCurrentUserClinicianId(clinicianData.id);
           setIsCurrentUserClinicianFetched(true);
-        } else {
-          console.log('[AvailabilityPanel] No clinician found for this email');
-          setIsCurrentUserClinicianFetched(true);
         }
       } catch (error) {
         console.error('[AvailabilityPanel] Error fetching current user clinician ID:', error);
         setIsCurrentUserClinicianFetched(true);
       }
     }
-
+    
     fetchCurrentUserClinicianId();
   }, []);
-
-  const effectiveClinicianId = React.useMemo(() => {
-    if (currentUserClinicianId) {
-      return currentUserClinicianId;
-    }
-    return clinicianId;
-  }, [currentUserClinicianId, clinicianId, isCurrentUserClinicianFetched]);
-
-  useEffect(() => {
-    if (effectiveClinicianId) {
-      console.log('[AvailabilityPanel] Using effective clinician ID:', effectiveClinicianId);
-      console.log('[AvailabilityPanel] Current auth user ID:', currentAuthUserId);
-    }
-  }, [effectiveClinicianId, currentAuthUserId]);
-
+  
+  const effectiveClinicianId = clinicianId || currentUserClinicianId;
+  
   useEffect(() => {
     async function fetchAvailability() {
-      if (!isCurrentUserClinicianFetched) {
+      if (!effectiveClinicianId || !isCurrentUserClinicianFetched) {
         return;
       }
-
+      
       setLoading(true);
-
+      console.log('[AvailabilityPanel] Fetching availability for clinician:', effectiveClinicianId);
+      
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-
-        if (!sessionData?.session?.user) {
-          console.log('[AvailabilityPanel] User not logged in');
-          setLoading(false);
-          return;
-        }
-
-        const authUserId = sessionData.session.user.id;
-        console.log('[AvailabilityPanel] Current auth user ID:', authUserId);
-        
-        if (!effectiveClinicianId) {
-          console.log('[AvailabilityPanel] No clinician ID to query');
-          setLoading(false);
-          return;
-        }
-
-        console.log(`[AvailabilityPanel] Fetching availability for clinician: ${effectiveClinicianId}`);
-        
-        const { data: availabilityData, error } = await supabase
+        const { data: availabilityData, error: availabilityError } = await supabase
           .from('availability')
-          .select('*')
+          .select('id, day_of_week, start_time, end_time')
           .eq('clinician_id', effectiveClinicianId)
           .eq('is_active', true);
-
-        if (error) {
-          console.error('[AvailabilityPanel] Error fetching availability:', error);
-          toast({
-            title: "Error fetching availability",
-            description: error.message,
-            variant: "destructive"
-          });
-        } else if (availabilityData && availabilityData.length > 0) {
-          console.log(`[AvailabilityPanel] Retrieved ${availabilityData.length} availability records:`, availabilityData);
           
-          const newSchedule = [...weekSchedule];
-
-          try {
-            const { data: settingsData } = await supabase.functions.invoke('get-availability-settings', {
-              body: { clinicianId: effectiveClinicianId }
-            });
-
-            if (settingsData) {
-              console.log('[AvailabilityPanel] Retrieved settings:', settingsData);
-              
-              // Make sure we're properly setting all values from database
-              setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
-              
-              // Use database values with fallbacks
-              setMinDaysAhead(settingsData.min_days_ahead !== undefined ? Number(settingsData.min_days_ahead) : 2);
-              setMaxDaysAhead(settingsData.max_days_ahead !== undefined ? Number(settingsData.max_days_ahead) : 60);
-              
-              if (settingsData.default_start_time) {
-                setDefaultStartTime(settingsData.default_start_time.substring(0, 5));
-              }
-              
-              if (settingsData.default_end_time) {
-                setDefaultEndTime(settingsData.default_end_time.substring(0, 5));
-              }
-              
-              console.log('[AvailabilityPanel] Updated settings state:', {
-                timeGranularity: settingsData.time_granularity,
-                minDaysAhead: settingsData.min_days_ahead !== undefined ? Number(settingsData.min_days_ahead) : 2,
-                maxDaysAhead: settingsData.max_days_ahead !== undefined ? Number(settingsData.max_days_ahead) : 60,
-                defaultStartTime: settingsData.default_start_time?.substring(0, 5) || '09:00',
-                defaultEndTime: settingsData.default_end_time?.substring(0, 5) || '17:00'
-              });
-            }
-          } catch (settingsError) {
-            console.error('[AvailabilityPanel] Error fetching availability settings:', settingsError);
-            setMinDaysAhead(2);
-            setMaxDaysAhead(60);
-            setDefaultStartTime('09:00');
-            setDefaultEndTime('17:00');
-          }
-
-          newSchedule.forEach(day => {
-            day.timeSlots = [];
-          });
-
-          const uniqueSlots = new Set();
-
-          availabilityData.forEach(slot => {
-            const dayIndex = newSchedule.findIndex(day => day.day === slot.day_of_week);
-            if (dayIndex !== -1) {
-              const startTime = slot.start_time.substring(0, 5);
-              const endTime = slot.end_time.substring(0, 5);
-              
-              const slotKey = `${slot.day_of_week}-${startTime}-${endTime}`;
-              
-              if (!uniqueSlots.has(slotKey)) {
-                uniqueSlots.add(slotKey);
-                
-                newSchedule[dayIndex].timeSlots.push({
-                  id: slot.id,
-                  startTime: startTime,
-                  endTime: endTime,
-                });
-
-                newSchedule[dayIndex].isOpen = true;
-              } else {
-                console.log(`[AvailabilityPanel] Skipping duplicate slot: ${slotKey}`);
-              }
-            }
-          });
-
-          setWeekSchedule(newSchedule);
-        } else {
-          console.log('[AvailabilityPanel] No availability data found');
+        if (availabilityError) {
+          console.error('[AvailabilityPanel] Error fetching availability:', availabilityError);
+          setLoading(false);
+          return;
         }
-
-        const { data: singleAvailabilityData, error: singleAvailabilityError } = await supabase
-          .from('availability_exceptions')
-          .select('*')
-          .eq('clinician_id', effectiveClinicianId)
-          .eq('is_deleted', false)
-          .is('original_availability_id', null);
-
-        if (singleAvailabilityError) {
-          console.error('[AvailabilityPanel] Error fetching single availability:', singleAvailabilityError);
-        } else if (singleAvailabilityData && singleAvailabilityData.length > 0) {
-          console.log('[AvailabilityPanel] Fetched single availability data:', singleAvailabilityData);
-          
-          const byDate: {[date: string]: TimeSlot[]} = {};
-          
-          singleAvailabilityData.forEach(slot => {
-            if (slot.specific_date && slot.start_time && slot.end_time) {
-              const dateStr = slot.specific_date;
-              if (!byDate[dateStr]) {
-                byDate[dateStr] = [];
-              }
-              
-              byDate[dateStr].push({
-                id: slot.id,
-                startTime: slot.start_time.substring(0, 5),
-                endTime: slot.end_time.substring(0, 5)
-              });
-            }
+        
+        console.log('[AvailabilityPanel] Retrieved', availabilityData?.length || 0, 'availability records:', availabilityData);
+        
+        const newSchedule = [...weekSchedule];
+        
+        try {
+          // Fetch availability settings
+          const { data: settingsData } = await supabase.functions.invoke('get-availability-settings', {
+            body: { clinicianId: effectiveClinicianId }
           });
           
-          setExistingSingleAvailability(byDate);
-          
-          if (selectedDate && byDate[format(selectedDate, 'yyyy-MM-dd')]) {
-            setSingleDateTimeSlots(byDate[format(selectedDate, 'yyyy-MM-dd')]);
-          } else {
-            setSingleDateTimeSlots([]);
+          if (settingsData) {
+            console.log('[AvailabilityPanel] Retrieved settings:', settingsData);
+            
+            // FIXED: Always use database values for all settings
+            // Set time granularity from database
+            setTimeGranularity(settingsData.time_granularity as 'hour' | 'half-hour');
+            
+            // FIXED: Always use database values for min_days_ahead and max_days_ahead
+            // Convert to number and use database values
+            setMinDaysAhead(Number(settingsData.min_days_ahead));
+            setMaxDaysAhead(Number(settingsData.max_days_ahead));
+            
+            // FIXED: Always use database values for default times
+            // Format and use database values for start and end times
+            setDefaultStartTime(settingsData.default_start_time?.substring(0, 5) || '09:00');
+            setDefaultEndTime(settingsData.default_end_time?.substring(0, 5) || '17:00');
+            
+            console.log('[AvailabilityPanel] Updated settings state:', {
+              timeGranularity: settingsData.time_granularity,
+              minDaysAhead: Number(settingsData.min_days_ahead),
+              maxDaysAhead: Number(settingsData.max_days_ahead),
+              defaultStartTime: settingsData.default_start_time?.substring(0, 5) || '09:00',
+              defaultEndTime: settingsData.default_end_time?.substring(0, 5) || '17:00'
+            });
           }
+        } catch (settingsError) {
+          console.error('[AvailabilityPanel] Error fetching availability settings:', settingsError);
+          // Only use defaults if there's an error fetching settings
+          setMinDaysAhead(2);
+          setMaxDaysAhead(60);
+          setDefaultStartTime('09:00');
+          setDefaultEndTime('17:00');
+        }
+        
+        newSchedule.forEach(day => {
+          day.timeSlots = [];
+        });
+        
+        const uniqueSlots = new Set();
+        availabilityData.forEach(slot => {
+          const dayIndex = newSchedule.findIndex(day => day.day === slot.day_of_week);
+          if (dayIndex !== -1) {
+            const startTime = slot.start_time.substring(0, 5);
+            const endTime = slot.end_time.substring(0, 5);
+            
+            const slotKey = `${slot.day_of_week}-${startTime}-${endTime}`;
+            
+            if (!uniqueSlots.has(slotKey)) {
+              uniqueSlots.add(slotKey);
+              
+              newSchedule[dayIndex].timeSlots.push({
+                id: slot.id,
+                startTime: startTime,
+                endTime: endTime,
+              });
+              newSchedule[dayIndex].isOpen = true;
+            } else {
+              console.log(`[AvailabilityPanel] Skipping duplicate slot: ${slotKey}`);
+            }
+          }
+        });
+        
+        setWeekSchedule(newSchedule);
+        
+        // Fetch single date availability
+        const { data: singleDateData, error: singleDateError } = await supabase
+          .from('availability_single_date')
+          .select('id, date, start_time, end_time')
+          .eq('clinician_id', effectiveClinicianId)
+          .gte('date', new Date().toISOString().split('T')[0]);
+          
+        if (singleDateError) {
+          console.error('[AvailabilityPanel] Error fetching single date availability:', singleDateError);
         } else {
-          console.log('[AvailabilityPanel] No single date availability data found');
+          console.log('[AvailabilityPanel] Retrieved single date availability:', singleDateData);
+          
+          const singleDateMap: {[date: string]: TimeSlot[]} = {};
+          
+          singleDateData?.forEach(slot => {
+            const dateStr = slot.date;
+            if (!singleDateMap[dateStr]) {
+              singleDateMap[dateStr] = [];
+            }
+            
+            singleDateMap[dateStr].push({
+              id: slot.id,
+              startTime: slot.start_time.substring(0, 5),
+              endTime: slot.end_time.substring(0, 5),
+            });
+          });
+          
+          setExistingSingleAvailability(singleDateMap);
+          
+          if (selectedDate) {
+            const dateStr = format(selectedDate, 'yyyy-MM-dd');
+            if (singleDateMap[dateStr]) {
+              setSingleDateTimeSlots(singleDateMap[dateStr]);
+            }
+          }
         }
       } catch (error) {
-        console.error('[AvailabilityPanel] Error:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load availability data",
-          variant: "destructive"
-        });
+        console.error('[AvailabilityPanel] Error in fetchAvailability:', error);
       } finally {
         setLoading(false);
       }
     }
-
+    
     fetchAvailability();
   }, [effectiveClinicianId, isCurrentUserClinicianFetched, weekSchedule]);
-
+  
   useEffect(() => {
     if (selectedDate) {
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -338,14 +290,13 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       }
     }
   }, [selectedDate, existingSingleAvailability]);
-
+  
   const saveAvailability = async () => {
     setIsSaving(true);
     console.log('[AvailabilityPanel] Saving availability...');
-
+    
     try {
       const { data: sessionData } = await supabase.auth.getSession();
-
       if (!sessionData?.session?.user) {
         toast({
           title: "Authentication Error",
@@ -355,7 +306,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         setIsSaving(false);
         return;
       }
-
+      
       const authUserId = sessionData.session.user.id;
       console.log('[AvailabilityPanel] Current auth user ID:', authUserId);
       
@@ -363,12 +314,12 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         toast({
           title: "Error",
           description: "No clinician ID found to save availability",
-        variant: "destructive"
+          variant: "destructive"
         });
         setIsSaving(false);
         return;
       }
-
+      
       const isClinicianIdInUuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveClinicianId);
       console.log(`[AvailabilityPanel] Is clinician ID (${effectiveClinicianId}) in UUID format? ${isClinicianIdInUuidFormat}`);
       console.log(`[AvailabilityPanel] Using clinician ID for saving settings: ${effectiveClinicianId}`);
@@ -405,7 +356,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         }, {
           onConflict: 'clinician_id'
         });
-
+        
       if (settingsError) {
         console.error('[AvailabilityPanel] Error saving availability settings:', settingsError);
         toast({
@@ -424,13 +375,13 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         default_start_time: formattedStartTime,
         default_end_time: formattedEndTime
       });
-
+      
       const { data: existingAvailability, error: fetchError } = await supabase
         .from('availability')
         .select('id, day_of_week, start_time, end_time')
         .eq('clinician_id', clinicianIdToUse)
         .eq('is_active', true);
-
+        
       if (fetchError) {
         console.error('[AvailabilityPanel] Error fetching existing availability:', fetchError);
         toast({
@@ -441,12 +392,12 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         setIsSaving(false);
         return;
       }
-
+      
       const { data: exceptions, error: exceptionsError } = await supabase
         .from('availability_exceptions')
         .select('original_availability_id')
         .eq('clinician_id', clinicianIdToUse);
-
+        
       if (exceptionsError) {
         console.error('[AvailabilityPanel] Error fetching exceptions:', exceptionsError);
         toast({
@@ -457,24 +408,24 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         setIsSaving(false);
         return;
       }
-
+      
       const referencedIds = new Set(
         exceptions?.map(exception => exception.original_availability_id) || []
       );
-
+      
       const existingAvailabilityMap = new Map();
       existingAvailability?.forEach(slot => {
         const key = `${slot.day_of_week}-${slot.start_time.substring(0, 5)}-${slot.end_time.substring(0, 5)}`;
         existingAvailabilityMap.set(key, slot);
       });
-
+      
       const availabilityToKeep = new Set();
       const availabilityIdsToDelete = [];
       const availabilityToInsert = [];
-
+      
       weekSchedule.forEach(day => {
         if (!day.isOpen) return;
-
+        
         day.timeSlots.forEach(slot => {
           const formattedStartTime = slot.startTime;
           const formattedEndTime = slot.endTime;
@@ -495,20 +446,21 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           }
         });
       });
-
+      
       existingAvailability?.forEach(slot => {
         if (!availabilityToKeep.has(slot.id) && !referencedIds.has(slot.id)) {
           availabilityIdsToDelete.push(slot.id);
         }
       });
-
+      
       if (availabilityIdsToDelete.length > 0) {
         console.log('[AvailabilityPanel] Deleting availability IDs:', availabilityIdsToDelete);
+        
         const { error: deleteError } = await supabase
           .from('availability')
           .delete()
           .in('id', availabilityIdsToDelete);
-
+          
         if (deleteError) {
           console.error('[AvailabilityPanel] Error deleting availability:', deleteError);
           toast({
@@ -520,33 +472,98 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           return;
         }
       }
-
+      
       if (availabilityToInsert.length > 0) {
-        console.log('[AvailabilityPanel] Inserting new availability:', availabilityToInsert);
-        console.log('[AvailabilityPanel] Insertion sample clinician_id:', availabilityToInsert[0].clinician_id);
+        console.log('[AvailabilityPanel] Inserting availability:', availabilityToInsert);
         
-        const { data, error: insertError } = await supabase
+        const { error: insertError } = await supabase
           .from('availability')
-          .insert(availabilityToInsert)
-          .select();
-        
+          .insert(availabilityToInsert);
+          
         if (insertError) {
-          console.error('[AvailabilityPanel] Error saving availability:', insertError);
+          console.error('[AvailabilityPanel] Error inserting availability:', insertError);
           toast({
-            title: "Error Saving Availability",
+            title: "Error Inserting Availability",
             description: insertError.message,
             variant: "destructive"
           });
           setIsSaving(false);
           return;
         }
-        
-        console.log('[AvailabilityPanel] Successfully inserted records:', data);
       }
-
+      
+      // Handle single date availability
+      if (activeTab === 'single' && selectedDate) {
+        const dateStr = format(selectedDate, 'yyyy-MM-dd');
+        
+        // Fetch existing single date slots
+        const { data: existingSingleSlots, error: singleFetchError } = await supabase
+          .from('availability_single_date')
+          .select('id')
+          .eq('clinician_id', clinicianIdToUse)
+          .eq('date', dateStr);
+          
+        if (singleFetchError) {
+          console.error('[AvailabilityPanel] Error fetching single date slots:', singleFetchError);
+          toast({
+            title: "Error Fetching Single Date Slots",
+            description: singleFetchError.message,
+            variant: "destructive"
+          });
+          setIsSaving(false);
+          return;
+        }
+        
+        // Delete existing slots for this date
+        if (existingSingleSlots && existingSingleSlots.length > 0) {
+          const singleSlotIds = existingSingleSlots.map(slot => slot.id);
+          
+          const { error: singleDeleteError } = await supabase
+            .from('availability_single_date')
+            .delete()
+            .in('id', singleSlotIds);
+            
+          if (singleDeleteError) {
+            console.error('[AvailabilityPanel] Error deleting single date slots:', singleDeleteError);
+            toast({
+              title: "Error Deleting Single Date Slots",
+              description: singleDeleteError.message,
+              variant: "destructive"
+            });
+            setIsSaving(false);
+            return;
+          }
+        }
+        
+        // Insert new slots
+        if (singleDateTimeSlots.length > 0) {
+          const singleSlotsToInsert = singleDateTimeSlots.map(slot => ({
+            clinician_id: clinicianIdToUse,
+            date: dateStr,
+            start_time: slot.startTime,
+            end_time: slot.endTime
+          }));
+          
+          const { error: singleInsertError } = await supabase
+            .from('availability_single_date')
+            .insert(singleSlotsToInsert);
+            
+          if (singleInsertError) {
+            console.error('[AvailabilityPanel] Error inserting single date slots:', singleInsertError);
+            toast({
+              title: "Error Inserting Single Date Slots",
+              description: singleInsertError.message,
+              variant: "destructive"
+            });
+            setIsSaving(false);
+            return;
+          }
+        }
+      }
+      
       toast({
         title: "Availability Saved",
-        description: "Your availability has been updated successfully",
+        description: "Your availability has been updated successfully.",
       });
       
       if (onAvailabilityUpdated) {
@@ -555,182 +572,15 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
     } catch (error) {
       console.error('[AvailabilityPanel] Error saving availability:', error);
       toast({
-        title: "Error",
-        description: "An unexpected error occurred while saving your availability",
+        title: "Error Saving Availability",
+        description: error.message,
         variant: "destructive"
       });
     } finally {
       setIsSaving(false);
     }
   };
-
-  const saveSingleDateAvailability = async () => {
-    if (!selectedDate || singleDateTimeSlots.length === 0) {
-      toast({
-        title: "No time slots added",
-        description: "Please add at least one time slot before saving.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsSaving(true);
-    console.log('[AvailabilityPanel] Saving single date availability...');
-
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-
-      if (!sessionData?.session?.user) {
-        toast({
-          title: "Authentication Error",
-          description: "You must be logged in to save availability",
-          variant: "destructive"
-        });
-        setIsSaving(false);
-        return;
-      }
-
-      const authUserId = sessionData.session.user.id;
-      console.log('[AvailabilityPanel] Current auth user ID:', authUserId);
-
-      if (!effectiveClinicianId) {
-        toast({
-          title: "Error",
-          description: "No clinician ID found to save availability",
-          variant: "destructive"
-        });
-        setIsSaving(false);
-        return;
-      }
-
-      const isClinicianIdInUuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveClinicianId);
-      console.log(`[AvailabilityPanel] Is clinician ID (${effectiveClinicianId}) in UUID format? ${isClinicianIdInUuidFormat}`);
-      
-      let clinicianIdToUse = effectiveClinicianId;
-      console.log(`[AvailabilityPanel] Final clinician_id being used: ${clinicianIdToUse}`);
-
-      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-      
-      const { data: existingData, error: fetchError } = await supabase
-        .from('availability_exceptions')
-        .select('id')
-        .eq('clinician_id', clinicianIdToUse)
-        .eq('specific_date', formattedDate)
-        .is('original_availability_id', null);
-        
-      if (fetchError) {
-        console.error('[AvailabilityPanel] Error fetching existing single availability:', fetchError);
-        toast({
-          title: "Error",
-          description: "Could not check for existing availability",
-          variant: "destructive"
-        });
-        setIsSaving(false);
-        return;
-      }
-      
-      if (existingData && existingData.length > 0) {
-        console.log(`[AvailabilityPanel] Found ${existingData.length} existing records to delete`);
-        
-        const existingIds = existingData.map(item => item.id);
-        const { error: deleteError } = await supabase
-          .from('availability_exceptions')
-          .delete()
-          .in('id', existingIds);
-          
-        if (deleteError) {
-          console.error('[AvailabilityPanel] Error deleting existing single availability:', deleteError);
-          toast({
-            title: "Error",
-            description: "Could not update existing availability",
-            variant: "destructive"
-          });
-          setIsSaving(false);
-          return;
-        }
-      }
-      
-      const recordsToInsert = singleDateTimeSlots.map(slot => ({
-        clinician_id: clinicianIdToUse,
-        specific_date: formattedDate,
-        start_time: slot.startTime,
-        end_time: slot.endTime,
-        original_availability_id: null,
-        is_deleted: false
-      }));
-      
-      console.log(`[AvailabilityPanel] Inserting ${recordsToInsert.length} availability exceptions`);
-      console.log('[AvailabilityPanel] First insert sample:', recordsToInsert[0]);
-      
-      const { data: insertData, error: insertError } = await supabase
-        .from('availability_exceptions')
-        .insert(recordsToInsert)
-        .select();
-        
-      if (insertError) {
-        console.error('[AvailabilityPanel] Error saving single availability:', insertError);
-        toast({
-          title: "Error",
-          description: "Could not save single date availability",
-          variant: "destructive"
-        });
-        setIsSaving(false);
-        return;
-      }
-      
-      console.log('[AvailabilityPanel] Successfully saved data:', insertData);
-      
-      const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      setExistingSingleAvailability(prev => ({
-        ...prev,
-        [dateStr]: singleDateTimeSlots
-      }));
-      
-      toast({
-        title: "Availability Saved",
-        description: `Single day availability for ${format(selectedDate, 'MMMM d, yyyy')} has been saved.`,
-      });
-      
-      if (onAvailabilityUpdated) {
-        onAvailabilityUpdated();
-      }
-    } catch (error) {
-      console.error('[AvailabilityPanel] Error saving single date availability:', error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const timeOptions = React.useMemo(() => {
-    const options = [];
-
-    for (let hour = 0; hour < 24; hour++) {
-      const hourFormatted = hour.toString().padStart(2, '0');
-      options.push(`${hourFormatted}:00`);
-
-      if (timeGranularity === 'half-hour') {
-        options.push(`${hourFormatted}:30`);
-      }
-    }
-
-    return options;
-  }, [timeGranularity]);
-
-  const formatTimeDisplay = (time: string) => {
-    try {
-      const date = new Date(`2023-01-01T${time}`);
-      return format(date, 'h:mm a');
-    } catch (error) {
-      console.error('Error formatting time:', error);
-      return time;
-    }
-  };
-
+  
   const toggleDayOpen = (dayIndex: number) => {
     setWeekSchedule(prev => {
       const updated = [...prev];
@@ -741,59 +591,52 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       return updated;
     });
   };
-
+  
   const addTimeSlot = (dayIndex: number) => {
     setWeekSchedule(prev => {
       const updated = [...prev];
       const day = updated[dayIndex];
-      const newId = `${day.day.toLowerCase().substring(0,3)}-${Date.now()}-${day.timeSlots.length + 1}`;
-
       updated[dayIndex] = {
         ...day,
         timeSlots: [
           ...day.timeSlots,
           {
-            id: newId,
-            startTime: defaultStartTime || '09:00',
-            endTime: defaultEndTime || '17:00'
+            id: `new-${Date.now()}-${day.timeSlots.length + 1}`,
+            startTime: defaultStartTime,
+            endTime: defaultEndTime
           }
         ]
       };
-
       return updated;
     });
   };
-
+  
   const deleteTimeSlot = (dayIndex: number, slotId: string) => {
     setWeekSchedule(prev => {
       const updated = [...prev];
       const day = updated[dayIndex];
-
       updated[dayIndex] = {
         ...day,
         timeSlots: day.timeSlots.filter(slot => slot.id !== slotId)
       };
-
       return updated;
     });
   };
-
+  
   const updateTimeSlot = (dayIndex: number, slotId: string, field: 'startTime' | 'endTime', value: string) => {
     setWeekSchedule(prev => {
       const updated = [...prev];
       const day = updated[dayIndex];
-
       updated[dayIndex] = {
         ...day,
         timeSlots: day.timeSlots.map(slot =>
           slot.id === slotId ? { ...slot, [field]: value } : slot
         )
       };
-
       return updated;
     });
   };
-
+  
   const addSingleDateTimeSlot = () => {
     if (!selectedDate) return;
     
@@ -806,17 +649,17 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       }
     ]);
   };
-
+  
   const deleteSingleDateTimeSlot = (slotId: string) => {
     setSingleDateTimeSlots(prev => prev.filter(slot => slot.id !== slotId));
   };
-
+  
   const updateSingleDateTimeSlot = (slotId: string, field: 'startTime' | 'endTime', value: string) => {
     setSingleDateTimeSlots(prev => 
       prev.map(slot => slot.id === slotId ? { ...slot, [field]: value } : slot)
     );
   };
-
+  
   if (loading) {
     return (
       <Card className="h-full">
@@ -829,7 +672,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       </Card>
     );
   }
-
+  
   return (
     <Card className="h-full">
       <CardHeader>
@@ -846,7 +689,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
             />
           </div>
         </div>
-
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="set">
@@ -860,7 +702,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           </TabsList>
         </Tabs>
       </CardHeader>
-
       <CardContent>
         {activeTab === 'set' && (
           <div className="space-y-4">
@@ -887,7 +728,6 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                     </div>
                   </RadioGroup>
                 </div>
-
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">
                     How soon can clients schedule with you?
@@ -902,4 +742,253 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                     <SelectContent>
                       {Array.from({ length: 15 }, (_, i) => i).map((day) => (
                         <SelectItem key={`days-ahead-${day}`} value={day.toString()}>
-                          {day} {
+                          {day} {day === 1 ? 'day' : 'days'} in advance
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Default working hours:
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Select 
+                      value={defaultStartTime} 
+                      onValueChange={setDefaultStartTime}
+                    >
+                      <SelectTrigger className="w-24">
+                        <SelectValue placeholder="Start" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
+                          <SelectItem key={`start-${hour}`} value={`${hour.toString().padStart(2, '0')}:00`}>
+                            {hour.toString().padStart(2, '0')}:00
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <span>to</span>
+                    <Select 
+                      value={defaultEndTime} 
+                      onValueChange={setDefaultEndTime}
+                    >
+                      <SelectTrigger className="w-24">
+                        <SelectValue placeholder="End" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
+                          <SelectItem key={`end-${hour}`} value={`${hour.toString().padStart(2, '0')}:00`}>
+                            {hour.toString().padStart(2, '0')}:00
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-3 border rounded-md">
+              <h3 className="font-medium mb-2">Weekly Schedule</h3>
+              <Separator className="my-2" />
+              <div className="space-y-3">
+                {weekSchedule.map((day, index) => (
+                  <Collapsible key={day.day} className="border rounded-md">
+                    <div className="flex items-center justify-between p-3">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={day.isOpen}
+                          onCheckedChange={() => toggleDayOpen(index)}
+                        />
+                        <span className={cn("font-medium", !day.isOpen && "text-muted-foreground")}>
+                          {day.day}
+                        </span>
+                        {day.isOpen && day.timeSlots.length > 0 && (
+                          <Badge variant="outline" className="ml-2">
+                            {day.timeSlots.length} {day.timeSlots.length === 1 ? 'slot' : 'slots'}
+                          </Badge>
+                        )}
+                      </div>
+                      {day.isOpen && (
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <ChevronDown className="h-4 w-4" />
+                            <span className="sr-only">Toggle</span>
+                          </Button>
+                        </CollapsibleTrigger>
+                      )}
+                    </div>
+                    {day.isOpen && (
+                      <CollapsibleContent>
+                        <div className="p-3 pt-0 space-y-3">
+                          {day.timeSlots.map((slot) => (
+                            <div key={slot.id} className="flex items-center gap-2">
+                              <Select 
+                                value={slot.startTime} 
+                                onValueChange={(value) => updateTimeSlot(index, slot.id, 'startTime', value)}
+                              >
+                                <SelectTrigger className="w-24">
+                                  <SelectValue placeholder="Start" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
+                                    <SelectItem key={`${slot.id}-start-${hour}`} value={`${hour.toString().padStart(2, '0')}:00`}>
+                                      {hour.toString().padStart(2, '0')}:00
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <span>to</span>
+                              <Select 
+                                value={slot.endTime} 
+                                onValueChange={(value) => updateTimeSlot(index, slot.id, 'endTime', value)}
+                              >
+                                <SelectTrigger className="w-24">
+                                  <SelectValue placeholder="End" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
+                                    <SelectItem key={`${slot.id}-end-${hour}`} value={`${hour.toString().padStart(2, '0')}:00`}>
+                                      {hour.toString().padStart(2, '0')}:00
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => deleteTimeSlot(index, slot.id)}
+                                className="h-8 w-8"
+                              >
+                                <X className="h-4 w-4" />
+                                <span className="sr-only">Delete</span>
+                              </Button>
+                            </div>
+                          ))}
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => addTimeSlot(index)}
+                            className="w-full"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Time Slot
+                          </Button>
+                        </div>
+                      </CollapsibleContent>
+                    )}
+                  </Collapsible>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {activeTab === 'single' && (
+          <div className="space-y-4">
+            <div className="p-3 border rounded-md">
+              <h3 className="font-medium mb-2">Select Date</h3>
+              <Separator className="my-2" />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, 'PPP') : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <CalendarComponent
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            {selectedDate && (
+              <div className="p-3 border rounded-md">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium">Time Slots for {format(selectedDate, 'PPP')}</h3>
+                  <Badge variant="outline">
+                    {singleDateTimeSlots.length} {singleDateTimeSlots.length === 1 ? 'slot' : 'slots'}
+                  </Badge>
+                </div>
+                <Separator className="my-2" />
+                <div className="space-y-3">
+                  {singleDateTimeSlots.map((slot) => (
+                    <div key={slot.id} className="flex items-center gap-2">
+                      <Select 
+                        value={slot.startTime} 
+                        onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'startTime', value)}
+                      >
+                        <SelectTrigger className="w-24">
+                          <SelectValue placeholder="Start" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
+                            <SelectItem key={`${slot.id}-start-${hour}`} value={`${hour.toString().padStart(2, '0')}:00`}>
+                              {hour.toString().padStart(2, '0')}:00
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <span>to</span>
+                      <Select 
+                        value={slot.endTime} 
+                        onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'endTime', value)}
+                      >
+                        <SelectTrigger className="w-24">
+                          <SelectValue placeholder="End" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
+                            <SelectItem key={`${slot.id}-end-${hour}`} value={`${hour.toString().padStart(2, '0')}:00`}>
+                              {hour.toString().padStart(2, '0')}:00
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => deleteSingleDateTimeSlot(slot.id)}
+                        className="h-8 w-8"
+                      >
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    </div>
+                  ))}
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={addSingleDateTimeSlot}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Time Slot
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        
+        <div className="mt-4 flex justify-end">
+          <Button onClick={saveAvailability} disabled={isSaving}>
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Availability
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default AvailabilityPanel;
