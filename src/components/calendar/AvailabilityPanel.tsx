@@ -457,9 +457,15 @@ export default function AvailabilityPanel() {
   
   // Handle save button click with explicit event handler
   const handleSaveClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+    // Prevent default behavior and stop propagation
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     console.log('[AvailabilityPanel] Save button clicked via explicit handler');
+    
+    // Call the save function directly
     saveAvailability();
   };
   
@@ -470,7 +476,7 @@ export default function AvailabilityPanel() {
         <div className="flex items-center">
           <Button 
             variant="default" 
-            onClick={handleSaveClick} 
+            onClick={(e) => handleSaveClick(e)} 
             disabled={isLoading || isSaving}
             className="ml-2"
             type="button"
@@ -497,7 +503,7 @@ export default function AvailabilityPanel() {
           >
             Single Day
             {!singleDateTableExists && singleDateTableChecked && (
-              <Badge variant="outline" className="ml-2 text-xs">Unavailable</Badge>
+              <Badge variant="outline" className="ml-2 text-xs">Coming Soon</Badge>
             )}
           </TabsTrigger>
         </TabsList>
@@ -589,7 +595,7 @@ export default function AvailabilityPanel() {
           ) : (
             <div className="p-4 border rounded-lg">
               <p className="text-center text-gray-500">
-                Single day availability is not available. Please contact support.
+                Single day availability is coming soon. This feature will allow you to set specific availability for individual dates.
               </p>
             </div>
           )}
@@ -694,7 +700,7 @@ export default function AvailabilityPanel() {
       <div className="mt-6 flex justify-end">
         <Button 
           variant="default" 
-          onClick={handleSaveClick} 
+          onClick={(e) => handleSaveClick(e)} 
           disabled={isLoading || isSaving}
           type="button"
         >
