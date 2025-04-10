@@ -52,7 +52,7 @@ const defaultWeekSchedule: DaySchedule[] = [
   { day: 'Sunday', enabled: false, timeSlots: [] },
 ];
 
-export function AvailabilityPanel() {
+function AvailabilityPanel() {
   const { toast } = useToast();
   const { userId } = useUser();
   
@@ -600,3 +600,8 @@ export function AvailabilityPanel() {
     </div>
   );
 }
+
+// Add default export for compatibility with existing imports
+export default AvailabilityPanel;
+// Also keep named export for future use
+export { AvailabilityPanel };
