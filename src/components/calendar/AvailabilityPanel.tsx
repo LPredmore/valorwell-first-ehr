@@ -8,7 +8,7 @@ import { Clock, Plus, X, ChevronDown, ChevronUp, Loader2, Calendar, CalendarPlus
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -884,4 +884,4 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                     value={minDaysAhead.toString()} 
                     onValueChange={(value) => setMinDaysAhead(Number(value))}
                   >
-                    <SelectTrigger className="w-full max-w-xs
+                    <SelectTrigger className="w-full max-w-xs">
