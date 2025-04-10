@@ -198,6 +198,18 @@ export function AvailabilityPanel() {
   
   // Save availability settings to the database
   const saveAvailability = async () => {
+    console.log('[AvailabilityPanel] Save button clicked');
+    
+    if (!userId) {
+      console.error('[AvailabilityPanel] Cannot save: No user ID available');
+      toast({
+        title: "Error saving availability",
+        description: "User information is not available. Please refresh the page and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsSaving(true);
     try {
       console.log('[AvailabilityPanel] Starting save operation...');
@@ -209,6 +221,7 @@ export function AvailabilityPanel() {
           day.timeSlots.forEach(slot => {
             if (!validateTimeSlot(slot.startTime, slot.endTime)) {
               isValid = false;
+              console.error(`[AvailabilityPanel] Invalid time slot: ${day.name}, ${slot.startTime} - ${slot.endTime}`);
             }
           });
         }
@@ -240,25 +253,6 @@ export function AvailabilityPanel() {
         
         console.log('[AvailabilityPanel] Existing availability records:', existingAvailability?.length || 0);
         
-        // Prepare data for upsert - only include time slots from enabled days
-        const availabilityRecords = [];
-        
-        weekSchedule.forEach(day => {
-          if (day.enabled && day.timeSlots.length > 0) {
-            day.timeSlots.forEach(slot => {
-              availabilityRecords.push({
-                id: slot.id.startsWith('new-') ? undefined : slot.id,
-                clinician_id: userId,
-                day_of_week: day.day,
-                start_time: slot.startTime,
-                end_time: slot.endTime,
-              });
-            });
-          }
-        });
-        
-        console.log('[AvailabilityPanel] New availability records to save:', availabilityRecords.length);
-        
         // Get the days that are enabled in the UI
         const enabledDays = weekSchedule
           .filter(day => day.enabled)
@@ -266,40 +260,59 @@ export function AvailabilityPanel() {
         
         console.log('[AvailabilityPanel] Enabled days:', enabledDays);
         
-        // FIXED: Improved deletion logic to properly handle disabled days
-        // First, identify all records that need to be deleted
-        let recordsToDelete = [];
+        // COMPLETELY REWRITTEN: Improved deletion logic to properly handle disabled days
+        // Step 1: Identify all records that need to be deleted
+        let recordsToDelete: { id: string }[] = [];
         
-        // If existingAvailability exists, process it
         if (existingAvailability && existingAvailability.length > 0) {
-          // 1. Find all records for days that are now disabled
+          // First identify records from days that are now disabled
           const disabledDayRecords = existingAvailability.filter(record => 
             !enabledDays.includes(record.day_of_week)
           );
           
-          // 2. For enabled days, find records that are no longer in the new data
+          console.log('[AvailabilityPanel] Records from disabled days:', disabledDayRecords.length);
+          
+          // Prepare data for upsert - only include time slots from enabled days
+          const availabilityRecords = [];
+          
+          weekSchedule.forEach(day => {
+            if (day.enabled && day.timeSlots.length > 0) {
+              day.timeSlots.forEach(slot => {
+                // Only include existing IDs (not new ones) for comparison
+                if (!slot.id.startsWith('new-')) {
+                  availabilityRecords.push({
+                    id: slot.id,
+                    day_of_week: day.day
+                  });
+                }
+              });
+            }
+          });
+          
+          // Then identify records from enabled days that are no longer in the new data
+          // (these are time slots that were removed)
           const enabledDayRecords = existingAvailability.filter(record => 
             enabledDays.includes(record.day_of_week)
           );
           
-          const newSlotIds = availabilityRecords
-            .filter(r => r.id !== undefined)
-            .map(r => r.id);
+          const newSlotIds = availabilityRecords.map(r => r.id);
           
           const removedEnabledDayRecords = enabledDayRecords.filter(record => 
             !newSlotIds.includes(record.id)
           );
           
-          // 3. Combine both sets of records to delete
+          console.log('[AvailabilityPanel] Records from enabled days that were removed:', removedEnabledDayRecords.length);
+          
+          // Combine both sets of records to delete
           recordsToDelete = [...disabledDayRecords, ...removedEnabledDayRecords];
         }
         
         const idsToDelete = recordsToDelete.map(record => record.id);
         
-        console.log('[AvailabilityPanel] Records to delete:', idsToDelete.length);
+        console.log('[AvailabilityPanel] Total records to delete:', idsToDelete.length);
         console.log('[AvailabilityPanel] IDs to delete:', idsToDelete);
         
-        // Delete removed records
+        // Step 2: Delete removed records
         if (idsToDelete.length > 0) {
           console.log('[AvailabilityPanel] Deleting records:', idsToDelete);
           
@@ -318,13 +331,32 @@ export function AvailabilityPanel() {
           console.log('[AvailabilityPanel] No records to delete');
         }
         
-        // Upsert new/updated records
-        if (availabilityRecords.length > 0) {
-          console.log('[AvailabilityPanel] Upserting records:', availabilityRecords.length);
+        // Step 3: Prepare records for upsert
+        const availabilityRecordsToUpsert = [];
+        
+        weekSchedule.forEach(day => {
+          if (day.enabled && day.timeSlots.length > 0) {
+            day.timeSlots.forEach(slot => {
+              availabilityRecordsToUpsert.push({
+                id: slot.id.startsWith('new-') ? undefined : slot.id,
+                clinician_id: userId,
+                day_of_week: day.day,
+                start_time: slot.startTime,
+                end_time: slot.endTime,
+              });
+            });
+          }
+        });
+        
+        console.log('[AvailabilityPanel] Records to upsert:', availabilityRecordsToUpsert.length);
+        
+        // Step 4: Upsert new/updated records
+        if (availabilityRecordsToUpsert.length > 0) {
+          console.log('[AvailabilityPanel] Upserting records:', availabilityRecordsToUpsert.length);
           
           const { error: upsertError } = await supabase
             .from('availability')
-            .upsert(availabilityRecords, { onConflict: 'id' });
+            .upsert(availabilityRecordsToUpsert, { onConflict: 'id' });
           
           if (upsertError) {
             console.error('[AvailabilityPanel] Error upserting records:', upsertError);
@@ -336,7 +368,7 @@ export function AvailabilityPanel() {
           console.log('[AvailabilityPanel] No records to upsert');
         }
         
-        // Save settings
+        // Step 5: Save settings
         console.log('[AvailabilityPanel] Saving settings');
         
         const { error: settingsError } = await supabase
@@ -423,6 +455,14 @@ export function AvailabilityPanel() {
     setWeekSchedule(newSchedule);
   };
   
+  // Handle save button click with explicit event handler
+  const handleSaveClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('[AvailabilityPanel] Save button clicked via explicit handler');
+    saveAvailability();
+  };
+  
   return (
     <div className="p-4 bg-white rounded-lg shadow">
       <div className="flex justify-between items-center mb-6">
@@ -430,9 +470,10 @@ export function AvailabilityPanel() {
         <div className="flex items-center">
           <Button 
             variant="default" 
-            onClick={saveAvailability} 
+            onClick={handleSaveClick} 
             disabled={isLoading || isSaving}
             className="ml-2"
+            type="button"
           >
             {isSaving ? <Spinner className="mr-2 h-4 w-4" /> : null}
             Save Availability
@@ -619,33 +660,48 @@ export function AvailabilityPanel() {
             </Select>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="default-start-time" className="block mb-2">
-                Default Start Time
-              </Label>
-              <TimeInput
-                id="default-start-time"
-                value={settings.defaultStartTime}
-                onChange={(e) => updateSettings('defaultStartTime', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="default-end-time" className="block mb-2">
-                Default End Time
-              </Label>
-              <TimeInput
-                id="default-end-time"
-                value={settings.defaultEndTime}
-                onChange={(e) => updateSettings('defaultEndTime', e.target.value)}
-              />
+          <div>
+            <Label htmlFor="default-times" className="block mb-2">
+              Default Time Slot
+            </Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="default-start-time" className="text-xs mb-1 block">
+                  Start Time
+                </Label>
+                <TimeInput
+                  id="default-start-time"
+                  value={settings.defaultStartTime}
+                  onChange={(e) => updateSettings('defaultStartTime', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="default-end-time" className="text-xs mb-1 block">
+                  End Time
+                </Label>
+                <TimeInput
+                  id="default-end-time"
+                  value={settings.defaultEndTime}
+                  onChange={(e) => updateSettings('defaultEndTime', e.target.value)}
+                />
+              </div>
             </div>
           </div>
         </div>
       </div>
+      
+      {/* Secondary save button at bottom for better UX */}
+      <div className="mt-6 flex justify-end">
+        <Button 
+          variant="default" 
+          onClick={handleSaveClick} 
+          disabled={isLoading || isSaving}
+          type="button"
+        >
+          {isSaving ? <Spinner className="mr-2 h-4 w-4" /> : null}
+          Save Availability
+        </Button>
+      </div>
     </div>
   );
 }
-
-// Add default export to support both named and default imports
-export default AvailabilityPanel;
