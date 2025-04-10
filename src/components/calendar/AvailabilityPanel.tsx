@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -273,6 +272,11 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         
         if (!tableInfo) {
           console.warn('[AvailabilityPanel] availability_single_date table does not exist');
+          toast({
+            title: "Database Configuration Issue",
+            description: "Single date availability could not be saved due to a database configuration issue. Please contact support.",
+            variant: "destructive"
+          });
           setExistingSingleAvailability({});
           setSingleDateTimeSlots([]);
         } else {
@@ -552,9 +556,9 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         if (!tableInfo) {
           console.warn('[AvailabilityPanel] Cannot save single date availability - table does not exist');
           toast({
-            title: "Warning",
+            title: "Database Configuration Issue",
             description: "Single date availability could not be saved due to a database configuration issue. Please contact support.",
-            variant: "warning"
+            variant: "destructive"
           });
         } else {
           const { data: existingSingleSlots, error: singleFetchError } = await supabase
@@ -880,274 +884,4 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                     value={minDaysAhead.toString()} 
                     onValueChange={(value) => setMinDaysAhead(Number(value))}
                   >
-                    <SelectTrigger className="w-full max-w-xs">
-                      <SelectValue placeholder="Select days in advance" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 15 }, (_, i) => i).map((day) => (
-                        <SelectItem key={`days-ahead-${day}`} value={day.toString()}>
-                          {day} {day === 1 ? 'day' : 'days'} in advance
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Default working hours:
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Select 
-                      value={defaultStartTime} 
-                      onValueChange={setDefaultStartTime}
-                    >
-                      <SelectTrigger className="w-24">
-                        <SelectValue placeholder="Start" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
-                          <SelectItem key={`start-${hour}`} value={`${hour.toString().padStart(2, '0')}:00`}>
-                            {hour.toString().padStart(2, '0')}:00
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <span>to</span>
-                    <Select 
-                      value={defaultEndTime} 
-                      onValueChange={setDefaultEndTime}
-                    >
-                      <SelectTrigger className="w-24">
-                        <SelectValue placeholder="End" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
-                          <SelectItem key={`end-${hour}`} value={`${hour.toString().padStart(2, '0')}:00`}>
-                            {hour.toString().padStart(2, '0')}:00
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-3 border rounded-md">
-              <h3 className="font-medium mb-2">Weekly Schedule</h3>
-              <Separator className="my-2" />
-              <div className="space-y-3">
-                {weekSchedule.map((day, index) => (
-                  <Collapsible key={day.day} className="border rounded-md">
-                    <div className="flex items-center justify-between p-3">
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={day.isOpen}
-                          onCheckedChange={() => toggleDayOpen(index)}
-                        />
-                        <span className={cn("font-medium", !day.isOpen && "text-muted-foreground")}>
-                          {day.day}
-                        </span>
-                        {day.isOpen && day.timeSlots.length > 0 && (
-                          <Badge variant="outline" className="ml-2">
-                            {day.timeSlots.length} {day.timeSlots.length === 1 ? 'slot' : 'slots'}
-                          </Badge>
-                        )}
-                      </div>
-                      {day.isOpen && (
-                        <CollapsibleTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <ChevronDown className="h-4 w-4" />
-                            <span className="sr-only">Toggle</span>
-                          </Button>
-                        </CollapsibleTrigger>
-                      )}
-                    </div>
-                    {day.isOpen && (
-                      <CollapsibleContent>
-                        <div className="p-3 pt-0 space-y-3">
-                          {day.timeSlots.map((slot) => (
-                            <div key={slot.id} className="flex items-center gap-2">
-                              <Select 
-                                value={slot.startTime} 
-                                onValueChange={(value) => updateTimeSlot(index, slot.id, 'startTime', value)}
-                              >
-                                <SelectTrigger className="w-24">
-                                  <SelectValue placeholder="Start" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
-                                    <SelectItem key={`${slot.id}-start-${hour}`} value={`${hour.toString().padStart(2, '0')}:00`}>
-                                      {hour.toString().padStart(2, '0')}:00
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <span>to</span>
-                              <Select 
-                                value={slot.endTime} 
-                                onValueChange={(value) => updateTimeSlot(index, slot.id, 'endTime', value)}
-                              >
-                                <SelectTrigger className="w-24">
-                                  <SelectValue placeholder="End" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
-                                    <SelectItem key={`${slot.id}-end-${hour}`} value={`${hour.toString().padStart(2, '0')}:00`}>
-                                      {hour.toString().padStart(2, '0')}:00
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => deleteTimeSlot(index, slot.id)}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="w-full mt-2" 
-                            onClick={() => addTimeSlot(index)}
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Time Slot
-                          </Button>
-                        </div>
-                      </CollapsibleContent>
-                    )}
-                  </Collapsible>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {activeTab === 'single' && (
-          <div className="space-y-4">
-            <div className="p-3 border rounded-md">
-              <h3 className="font-medium mb-2">Select Date</h3>
-              <Separator className="my-2" />
-              <div className="flex flex-col lg:flex-row gap-4">
-                <div className="flex-1">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {selectedDate ? (
-                          format(selectedDate, "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <CalendarComponent
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={setSelectedDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  
-                  <div className="mt-4">
-                    <h4 className="font-medium mb-2 text-sm">Time Slots for Selected Date</h4>
-                    
-                    {singleDateTimeSlots.length === 0 ? (
-                      <div className="text-sm text-muted-foreground">
-                        No time slots set for this date. Add a time slot below.
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {singleDateTimeSlots.map((slot) => (
-                          <div key={slot.id} className="flex items-center gap-2">
-                            <Select 
-                              value={slot.startTime} 
-                              onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'startTime', value)}
-                            >
-                              <SelectTrigger className="w-24">
-                                <SelectValue placeholder="Start" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
-                                  <SelectItem key={`${slot.id}-start-${hour}`} value={`${hour.toString().padStart(2, '0')}:00`}>
-                                    {hour.toString().padStart(2, '0')}:00
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <span>to</span>
-                            <Select 
-                              value={slot.endTime} 
-                              onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'endTime', value)}
-                            >
-                              <SelectTrigger className="w-24">
-                                <SelectValue placeholder="End" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
-                                  <SelectItem key={`${slot.id}-end-${hour}`} value={`${hour.toString().padStart(2, '0')}:00`}>
-                                    {hour.toString().padStart(2, '0')}:00
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => deleteSingleDateTimeSlot(slot.id)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full mt-4" 
-                      onClick={addSingleDateTimeSlot}
-                      disabled={!selectedDate}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Time Slot
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <div className="flex justify-end mt-6">
-          <Button
-            onClick={saveAvailability}
-            disabled={isSaving}
-            className="w-full sm:w-auto"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              'Save Availability'
-            )}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-export default AvailabilityPanel;
+                    <SelectTrigger className="w-full max-w-xs
