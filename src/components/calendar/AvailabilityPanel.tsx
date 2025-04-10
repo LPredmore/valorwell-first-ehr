@@ -381,6 +381,18 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
       let clinicianIdToUse = effectiveClinicianId;
       console.log(`[AvailabilityPanel] Final clinician_id being used: ${clinicianIdToUse}`);
       
+      // Ensure we're sending proper time format with seconds for default times
+      const formattedStartTime = defaultStartTime.includes(':') && defaultStartTime.split(':').length === 2
+        ? `${defaultStartTime}:00`
+        : defaultStartTime;
+        
+      const formattedEndTime = defaultEndTime.includes(':') && defaultEndTime.split(':').length === 2
+        ? `${defaultEndTime}:00`
+        : defaultEndTime;
+      
+      console.log(`[AvailabilityPanel] Formatted start time: ${formattedStartTime}`);
+      console.log(`[AvailabilityPanel] Formatted end time: ${formattedEndTime}`);
+      
       const { error: settingsError } = await supabase
         .from('availability_settings')
         .upsert({
@@ -388,8 +400,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
           time_granularity: timeGranularity,
           min_days_ahead: minDaysAhead,
           max_days_ahead: maxDaysAhead,
-          default_start_time: defaultStartTime,
-          default_end_time: defaultEndTime
+          default_start_time: formattedStartTime,
+          default_end_time: formattedEndTime
         }, {
           onConflict: 'clinician_id'
         });
@@ -409,8 +421,8 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
         time_granularity: timeGranularity,
         min_days_ahead: minDaysAhead,
         max_days_ahead: maxDaysAhead,
-        default_start_time: defaultStartTime,
-        default_end_time: defaultEndTime
+        default_start_time: formattedStartTime,
+        default_end_time: formattedEndTime
       });
 
       const { data: existingAvailability, error: fetchError } = await supabase
@@ -890,226 +902,4 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                     <SelectContent>
                       {Array.from({ length: 15 }, (_, i) => i).map((day) => (
                         <SelectItem key={`days-ahead-${day}`} value={day.toString()}>
-                          {day} {day === 1 ? 'day' : 'days'} in advance
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Default working hours:
-                  </p>
-                  <div className="flex gap-2 items-center">
-                    <Select
-                      value={defaultStartTime}
-                      onValueChange={setDefaultStartTime}
-                    >
-                      <SelectTrigger className="w-28">
-                        <SelectValue placeholder="Start" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeOptions.map((time) => (
-                          <SelectItem key={`default-start-${time}`} value={time}>
-                            {formatTimeDisplay(time)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    
-                    <span className="text-sm">to</span>
-                    
-                    <Select
-                      value={defaultEndTime}
-                      onValueChange={setDefaultEndTime}
-                    >
-                      <SelectTrigger className="w-28">
-                        <SelectValue placeholder="End" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeOptions.map((time) => (
-                          <SelectItem key={`default-end-${time}`} value={time}>
-                            {formatTimeDisplay(time)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {/* Weekly schedule UI */}
-              <div className="p-3 border rounded-md">
-                <h3 className="font-medium mb-2">Weekly Schedule</h3>
-                <Separator className="my-2" />
-                <div className="space-y-2">
-                  {weekSchedule.map((day, index) => (
-                    <div key={day.day} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1">
-                          <Switch
-                            checked={day.isOpen}
-                            onCheckedChange={() => toggleDayOpen(index)}
-                          />
-                          <Badge variant="outline">{day.day}</Badge>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {day.timeSlots.map(slot => (
-                          <div key={slot.id} className="flex items-center gap-2">
-                            <span className="text-sm">{slot.startTime} - {slot.endTime}</span>
-                            <Button
-                              onClick={() => deleteTimeSlot(index, slot.id)}
-                              variant="ghost"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                        <Button
-                          onClick={() => addTimeSlot(index)}
-                          variant="ghost"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <Button 
-                onClick={saveAvailability} 
-                disabled={isSaving}
-              >
-                {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Save Weekly Schedule
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'single' && (
-          <div className="space-y-4">
-            <div className="p-3 border rounded-md">
-              <h3 className="font-medium mb-2">Single Day Availability</h3>
-              <Separator className="my-2" />
-              <div className="space-y-4">
-                <div className="flex flex-col space-y-2">
-                  <p className="text-sm text-muted-foreground">Select a date:</p>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full max-w-xs justify-start text-left font-normal",
-                          !selectedDate && "text-muted-foreground"
-                        )}
-                      >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <CalendarComponent
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={setSelectedDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm text-muted-foreground">Available time slots:</p>
-                    <Button
-                      onClick={addSingleDateTimeSlot}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Time Slot
-                    </Button>
-                  </div>
-
-                  <div className="space-y-2 mt-2">
-                    {singleDateTimeSlots.length === 0 ? (
-                      <p className="text-sm text-muted-foreground italic">No time slots added yet</p>
-                    ) : (
-                      singleDateTimeSlots.map(slot => (
-                        <div key={slot.id} className="flex items-center gap-2 p-2 border rounded-md">
-                          <div className="flex-1 flex items-center gap-2">
-                            <Select
-                              value={slot.startTime}
-                              onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'startTime', value)}
-                            >
-                              <SelectTrigger className="w-28">
-                                <SelectValue placeholder="Start" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {timeOptions.map((time) => (
-                                  <SelectItem key={`start-${slot.id}-${time}`} value={time}>
-                                    {formatTimeDisplay(time)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            
-                            <span>to</span>
-                            
-                            <Select
-                              value={slot.endTime}
-                              onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'endTime', value)}
-                            >
-                              <SelectTrigger className="w-28">
-                                <SelectValue placeholder="End" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {timeOptions.map((time) => (
-                                  <SelectItem key={`end-${slot.id}-${time}`} value={time}>
-                                    {formatTimeDisplay(time)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          <Button
-                            onClick={() => deleteSingleDateTimeSlot(slot.id)}
-                            variant="ghost"
-                            size="icon"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex justify-end mt-4">
-                  <Button 
-                    onClick={saveSingleDateAvailability}
-                    disabled={isSaving || !selectedDate || singleDateTimeSlots.length === 0}
-                  >
-                    {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Save Single Day Availability
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
-
-export default AvailabilityPanel;
+                          {day} {
