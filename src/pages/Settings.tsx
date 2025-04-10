@@ -16,7 +16,7 @@ const SettingsTabs = {
   BILLING: 'billing',
   TEMPLATES: 'templates',
   SECURITY: 'security',
-  LICENSES: 'licenses'
+  LICENSES: 'clinician_licenses'
 };
 
 const Settings = () => {
