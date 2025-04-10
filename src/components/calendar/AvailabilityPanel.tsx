@@ -36,7 +36,7 @@ interface AvailabilitySettings {
   defaultEndTime: string;
 }
 
-export function AvailabilityPanel() {
+export default function AvailabilityPanel() {
   const { user } = useUser();
   const userId = user?.id;
   
