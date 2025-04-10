@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Clock, Plus, X, ChevronDown, ChevronUp, Loader2, Calendar, CalendarPlus, AlertTriangle } from 'lucide-react';
+import { Clock, Plus, X, ChevronDown, ChevronUp, Loader2, Calendar as CalendarIcon, CalendarPlus, AlertTriangle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from '@/integrations/supabase/client';
