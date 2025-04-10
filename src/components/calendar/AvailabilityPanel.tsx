@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -327,7 +326,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
     }
 
     fetchAvailability();
-  }, [effectiveClinicianId, isCurrentUserClinicianFetched]);
+  }, [effectiveClinicianId, isCurrentUserClinicianFetched, weekSchedule]);
 
   useEffect(() => {
     if (selectedDate) {
