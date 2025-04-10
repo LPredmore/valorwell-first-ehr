@@ -80,7 +80,7 @@ const ClientHistoryForm: React.FC = () => {
       // Step 2: Add current spouse if applicable
       if (formData.isMarried && formData.currentSpouse) {
         const { error: spouseError } = await supabase
-          .from('client_history_spouse')
+          .from('client_history_current_spouse')
           .insert({
             history_id: historyId,
             name: formData.currentSpouse.name || null,
@@ -142,7 +142,7 @@ const ClientHistoryForm: React.FC = () => {
         }));
         
         const { error: spousesError } = await supabase
-          .from('client_history_spouses')
+          .from('client_history_current_spouses')
           .insert(pastSpouses);
           
         if (spousesError) {
