@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -885,3 +886,339 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
                     onValueChange={(value) => setMinDaysAhead(Number(value))}
                   >
                     <SelectTrigger className="w-full max-w-xs">
+                      <SelectValue placeholder="Select minimum days" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Same day</SelectItem>
+                      <SelectItem value="1">Next day</SelectItem>
+                      <SelectItem value="2">2 days ahead</SelectItem>
+                      <SelectItem value="3">3 days ahead</SelectItem>
+                      <SelectItem value="5">5 days ahead</SelectItem>
+                      <SelectItem value="7">1 week ahead</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    How far in advance can clients schedule with you?
+                  </p>
+                  <Select 
+                    value={maxDaysAhead.toString()} 
+                    onValueChange={(value) => setMaxDaysAhead(Number(value))}
+                  >
+                    <SelectTrigger className="w-full max-w-xs">
+                      <SelectValue placeholder="Select maximum days" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7">1 week</SelectItem>
+                      <SelectItem value="14">2 weeks</SelectItem>
+                      <SelectItem value="30">1 month</SelectItem>
+                      <SelectItem value="60">2 months</SelectItem>
+                      <SelectItem value="90">3 months</SelectItem>
+                      <SelectItem value="180">6 months</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Default availability time window:
+                  </p>
+                  <div className="flex gap-4 items-center">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Start time</p>
+                      <Select 
+                        value={defaultStartTime} 
+                        onValueChange={setDefaultStartTime}
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue placeholder="Start time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="08:00">8:00 AM</SelectItem>
+                          <SelectItem value="09:00">9:00 AM</SelectItem>
+                          <SelectItem value="10:00">10:00 AM</SelectItem>
+                          <SelectItem value="12:00">12:00 PM</SelectItem>
+                          <SelectItem value="14:00">2:00 PM</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">End time</p>
+                      <Select 
+                        value={defaultEndTime} 
+                        onValueChange={setDefaultEndTime}
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue placeholder="End time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="16:00">4:00 PM</SelectItem>
+                          <SelectItem value="17:00">5:00 PM</SelectItem>
+                          <SelectItem value="18:00">6:00 PM</SelectItem>
+                          <SelectItem value="19:00">7:00 PM</SelectItem>
+                          <SelectItem value="20:00">8:00 PM</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              {weekSchedule.map((day, index) => (
+                <Collapsible key={day.day} className="border rounded-md">
+                  <CollapsibleTrigger className="flex w-full items-center justify-between p-4 focus:outline-none">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={day.isOpen}
+                        onCheckedChange={() => toggleDayOpen(index)}
+                      />
+                      <span className="font-medium">{day.day}</span>
+                      {day.isOpen && day.timeSlots.length > 0 && (
+                        <Badge variant="outline" className="ml-2">
+                          {day.timeSlots.length} {day.timeSlots.length === 1 ? 'slot' : 'slots'}
+                        </Badge>
+                      )}
+                    </div>
+                    {day.isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="border-t p-4 space-y-3">
+                      {day.isOpen ? (
+                        <>
+                          {day.timeSlots.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">No time slots added yet.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {day.timeSlots.map(slot => (
+                                <div key={slot.id} className="flex items-center gap-2">
+                                  <Select 
+                                    value={slot.startTime} 
+                                    onValueChange={(value) => updateTimeSlot(index, slot.id, 'startTime', value)}
+                                  >
+                                    <SelectTrigger className="w-[100px]">
+                                      <SelectValue placeholder="Start time" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="08:00">8:00 AM</SelectItem>
+                                      <SelectItem value="09:00">9:00 AM</SelectItem>
+                                      <SelectItem value="10:00">10:00 AM</SelectItem>
+                                      <SelectItem value="12:00">12:00 PM</SelectItem>
+                                      <SelectItem value="14:00">2:00 PM</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <span>to</span>
+                                  <Select 
+                                    value={slot.endTime} 
+                                    onValueChange={(value) => updateTimeSlot(index, slot.id, 'endTime', value)}
+                                  >
+                                    <SelectTrigger className="w-[100px]">
+                                      <SelectValue placeholder="End time" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="16:00">4:00 PM</SelectItem>
+                                      <SelectItem value="17:00">5:00 PM</SelectItem>
+                                      <SelectItem value="18:00">6:00 PM</SelectItem>
+                                      <SelectItem value="19:00">7:00 PM</SelectItem>
+                                      <SelectItem value="20:00">8:00 PM</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="text-destructive" 
+                                    onClick={() => deleteTimeSlot(index, slot.id)}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-2" 
+                            onClick={() => addTimeSlot(index)}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add Time Slot
+                          </Button>
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">This day is set as unavailable.</p>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
+            </div>
+            
+            <div className="flex justify-end mt-6">
+              <Button 
+                onClick={saveAvailability} 
+                disabled={isSaving}
+              >
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Availability
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {activeTab === 'single' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="border rounded-md p-4">
+                <h3 className="font-medium mb-4">Select Date</h3>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedDate ? (
+                        format(selectedDate, "MMMM d, yyyy")
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <CalendarComponent
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={setSelectedDate}
+                      initialFocus
+                      disabled={(date) => date < new Date()}
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                <div className="mt-6">
+                  <h4 className="text-sm font-medium mb-2">Dates with custom availability:</h4>
+                  <div className="max-h-[200px] overflow-y-auto space-y-1">
+                    {Object.keys(existingSingleAvailability).length > 0 ? (
+                      Object.keys(existingSingleAvailability).sort().map(dateStr => (
+                        <Button
+                          key={dateStr}
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left text-sm mb-1",
+                            selectedDate && isSameDay(new Date(dateStr), selectedDate) && "border-primary"
+                          )}
+                          onClick={() => setSelectedDate(new Date(dateStr))}
+                        >
+                          {format(new Date(dateStr), "MMMM d, yyyy")} 
+                          <Badge className="ml-2" variant="outline">
+                            {existingSingleAvailability[dateStr].length} {existingSingleAvailability[dateStr].length === 1 ? 'slot' : 'slots'}
+                          </Badge>
+                        </Button>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No custom availability dates set yet.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="border rounded-md p-4">
+                <h3 className="font-medium mb-4">
+                  Availability for{" "}
+                  {selectedDate ? (
+                    format(selectedDate, "MMMM d, yyyy")
+                  ) : (
+                    "Selected Date"
+                  )}
+                </h3>
+                
+                {selectedDate ? (
+                  <div className="space-y-3">
+                    {singleDateTimeSlots.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No time slots added for this date yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {singleDateTimeSlots.map(slot => (
+                          <div key={slot.id} className="flex items-center gap-2">
+                            <Select 
+                              value={slot.startTime} 
+                              onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'startTime', value)}
+                            >
+                              <SelectTrigger className="w-[100px]">
+                                <SelectValue placeholder="Start time" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="08:00">8:00 AM</SelectItem>
+                                <SelectItem value="09:00">9:00 AM</SelectItem>
+                                <SelectItem value="10:00">10:00 AM</SelectItem>
+                                <SelectItem value="12:00">12:00 PM</SelectItem>
+                                <SelectItem value="14:00">2:00 PM</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <span>to</span>
+                            <Select 
+                              value={slot.endTime} 
+                              onValueChange={(value) => updateSingleDateTimeSlot(slot.id, 'endTime', value)}
+                            >
+                              <SelectTrigger className="w-[100px]">
+                                <SelectValue placeholder="End time" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="16:00">4:00 PM</SelectItem>
+                                <SelectItem value="17:00">5:00 PM</SelectItem>
+                                <SelectItem value="18:00">6:00 PM</SelectItem>
+                                <SelectItem value="19:00">7:00 PM</SelectItem>
+                                <SelectItem value="20:00">8:00 PM</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-destructive" 
+                              onClick={() => deleteSingleDateTimeSlot(slot.id)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="mt-2" 
+                      onClick={addSingleDateTimeSlot}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Time Slot
+                    </Button>
+                    
+                    <div className="pt-6 border-t mt-6">
+                      <Button 
+                        onClick={saveAvailability} 
+                        disabled={isSaving || !selectedDate}
+                        className="w-full"
+                      >
+                        {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Save Single Date Availability
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <Calendar className="h-10 w-10 text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">Select a date to set specific availability</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+export default AvailabilityPanel;
