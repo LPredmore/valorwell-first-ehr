@@ -135,7 +135,10 @@ export default function AvailabilityPanel() {
       
       if (availabilityData && availabilityData.length > 0) {
         availabilityData.forEach(slot => {
-          const dayIndex = slot.day_of_week;
+          const dayIndex = typeof slot.day_of_week === 'number' || !isNaN(Number(slot.day_of_week)) 
+            ? Number(slot.day_of_week)
+            : getDayIndex(slot.day_of_week);
+            
           if (dayIndex >= 0 && dayIndex < 7) {
             newSchedule[dayIndex].enabled = true;
             newSchedule[dayIndex].timeSlots.push({
@@ -162,6 +165,11 @@ export default function AvailabilityPanel() {
     }
   };
   
+  const getDayIndex = (dayName: string): number => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days.indexOf(dayName);
+  };
+
   const validateTimeSlot = (startTime: string, endTime: string): boolean => {
     if (!startTime || !endTime) return false;
     return startTime < endTime;
@@ -243,40 +251,7 @@ export default function AvailabilityPanel() {
         let recordsToDelete: { id: string }[] = [];
         
         if (existingAvailability && existingAvailability.length > 0) {
-          const disabledDayRecords = existingAvailability.filter(record => 
-            !enabledDays.includes(record.day_of_week)
-          );
-          
-          console.log('[AvailabilityPanel] Records from disabled days:', disabledDayRecords.length);
-          
-          const availabilityRecords = [];
-          
-          weekSchedule.forEach(day => {
-            if (day.enabled && day.timeSlots.length > 0) {
-              day.timeSlots.forEach(slot => {
-                if (!slot.id.startsWith('new-')) {
-                  availabilityRecords.push({
-                    id: slot.id,
-                    day_of_week: day.day
-                  });
-                }
-              });
-            }
-          });
-          
-          const enabledDayRecords = existingAvailability.filter(record => 
-            enabledDays.includes(record.day_of_week)
-          );
-          
-          const newSlotIds = availabilityRecords.map(r => r.id);
-          
-          const removedEnabledDayRecords = enabledDayRecords.filter(record => 
-            !newSlotIds.includes(record.id)
-          );
-          
-          console.log('[AvailabilityPanel] Records from enabled days that were removed:', removedEnabledDayRecords.length);
-          
-          recordsToDelete = [...disabledDayRecords, ...removedEnabledDayRecords];
+          recordsToDelete = existingAvailability;
         }
         
         const idsToDelete = recordsToDelete.map(record => record.id);
@@ -307,14 +282,13 @@ export default function AvailabilityPanel() {
         weekSchedule.forEach(day => {
           if (day.enabled && day.timeSlots.length > 0) {
             day.timeSlots.forEach(slot => {
-              const recordId = slot.id.startsWith('new-') ? crypto.randomUUID() : slot.id;
-              
               availabilityRecordsToUpsert.push({
-                id: recordId,
+                id: crypto.randomUUID(),
                 clinician_id: userId,
-                day_of_week: day.day,
+                day_of_week: day.day.toString(),
                 start_time: slot.startTime,
                 end_time: slot.endTime,
+                is_active: true
               });
             });
           }
@@ -369,6 +343,11 @@ export default function AvailabilityPanel() {
             throw updateError;
           }
         } else {
+          await supabase
+            .from('availability_settings')
+            .delete()
+            .eq('clinician_id', userId);
+            
           const { error: insertError } = await supabase
             .from('availability_settings')
             .insert({

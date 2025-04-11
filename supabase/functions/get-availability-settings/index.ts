@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -47,6 +46,43 @@ serve(async (req) => {
     if (error) {
       console.error('Error fetching availability settings:', error)
       console.error(`Clinician ID used in query: ${clinicianId}`)
+      
+      // Check if this is a unique constraint error - user might have duplicate settings
+      if (error.code === '23505') {
+        // Try to fetch the settings again after cleaning up duplicates
+        const { data: duplicateSettings } = await supabaseClient
+          .from('availability_settings')
+          .select('id')
+          .eq('clinician_id', clinicianId.toString())
+        
+        if (duplicateSettings && duplicateSettings.length > 1) {
+          // Keep the first setting and delete the rest
+          const keepSettingId = duplicateSettings[0].id;
+          const deleteIds = duplicateSettings.slice(1).map(s => s.id);
+          
+          if (deleteIds.length > 0) {
+            await supabaseClient
+              .from('availability_settings')
+              .delete()
+              .in('id', deleteIds)
+            
+            // Try fetching again
+            const { data: cleanedData, error: cleanedError } = await supabaseClient
+              .from('availability_settings')
+              .select('*')
+              .eq('clinician_id', clinicianId.toString())
+              .single()
+              
+            if (!cleanedError) {
+              return new Response(
+                JSON.stringify(cleanedData),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              )
+            }
+          }
+        }
+      }
+      
       // Return default settings if not found - updated defaults
       return new Response(
         JSON.stringify({ 

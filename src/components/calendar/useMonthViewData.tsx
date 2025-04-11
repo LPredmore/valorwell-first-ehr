@@ -146,8 +146,7 @@ export const useMonthViewData = (
                 .select('*')
                 .eq('clinician_id', clinicianId)
                 .gte('specific_date', startDateStr)
-                .lte('specific_date', endDateStr)
-                .in('original_availability_id', availabilityIds);
+                .lte('specific_date', endDateStr);
                 
               if (exceptionsError) {
                 console.error('[MonthView] Error fetching exceptions:', exceptionsError);
@@ -191,6 +190,16 @@ export const useMonthViewData = (
       const dayOfWeek = format(day, 'EEEE');
       const dateStr = format(day, 'yyyy-MM-dd');
       
+      // Get exceptions for this specific date (if any)
+      const dateExceptions = exceptions.filter(exception => exception.specific_date === dateStr);
+      
+      // Get deleted availability ids for this date
+      const deletedAvailabilityIds = new Set(
+        dateExceptions
+          .filter(exception => exception.is_deleted)
+          .map(exception => exception.original_availability_id)
+      );
+      
       // Handle both named and numeric day values
       const regularAvailability = availabilityData.filter(
         slot => {
@@ -199,68 +208,54 @@ export const useMonthViewData = (
         }
       );
       
-      let hasAvailability = false;
+      // Filter out deleted availabilities
+      const activeAvailability = regularAvailability.filter(
+        slot => !deletedAvailabilityIds.has(slot.id)
+      );
+      
+      let hasAvailability = activeAvailability.length > 0;
       let isModified = false;
       let displayHours = '';
       
-      if (regularAvailability.length > 0) {
-        const availabilityIds = regularAvailability.map(slot => slot.id);
-        const deletedExceptions = exceptions.filter(
-          exception => 
-            exception.specific_date === dateStr && 
-            availabilityIds.includes(exception.original_availability_id) &&
-            exception.is_deleted
+      if (hasAvailability) {
+        const timeModifiedExceptions = dateExceptions.filter(
+          exception => !exception.is_deleted && exception.start_time && exception.end_time
         );
         
-        hasAvailability = deletedExceptions.length < regularAvailability.length;
-        
-        const modifiedExceptions = exceptions.filter(
-          exception => 
-            exception.specific_date === dateStr && 
-            !exception.is_deleted &&
-            exception.start_time && 
-            exception.end_time
-        );
-        
-        isModified = modifiedExceptions.length > 0;
+        isModified = timeModifiedExceptions.length > 0;
         
         // Display actual availability time range instead of hardcoded values
-        if (hasAvailability) {
-          // Find earliest start time and latest end time from all available slots
-          let earliestStart = "23:59";
-          let latestEnd = "00:00";
-          
-          // Check exceptions first as they override regular availability
-          if (modifiedExceptions.length > 0) {
-            modifiedExceptions.forEach(exception => {
-              if (exception.start_time && exception.start_time < earliestStart) {
-                earliestStart = exception.start_time;
-              }
-              if (exception.end_time && exception.end_time > latestEnd) {
-                latestEnd = exception.end_time;
-              }
-            });
-          } else {
-            // Use regular availability if no exceptions
-            regularAvailability.forEach(slot => {
-              if (!availabilityIds.includes(slot.id) || 
-                  !deletedExceptions.some(e => e.original_availability_id === slot.id)) {
-                if (slot.start_time < earliestStart) {
-                  earliestStart = slot.start_time;
-                }
-                if (slot.end_time > latestEnd) {
-                  latestEnd = slot.end_time;
-                }
-              }
-            });
-          }
-          
-          // Format times for display
-          const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${earliestStart}`));
-          const endHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${latestEnd}`));
-          
-          displayHours = `${startHourFormatted}-${endHourFormatted}`;
+        // Find earliest start time and latest end time from all available slots
+        let earliestStart = "23:59";
+        let latestEnd = "00:00";
+        
+        // Check exceptions first as they override regular availability
+        if (timeModifiedExceptions.length > 0) {
+          timeModifiedExceptions.forEach(exception => {
+            if (exception.start_time && exception.start_time < earliestStart) {
+              earliestStart = exception.start_time;
+            }
+            if (exception.end_time && exception.end_time > latestEnd) {
+              latestEnd = exception.end_time;
+            }
+          });
+        } else {
+          // Use regular availability if no exceptions
+          activeAvailability.forEach(slot => {
+            if (slot.start_time < earliestStart) {
+              earliestStart = slot.start_time;
+            }
+            if (slot.end_time > latestEnd) {
+              latestEnd = slot.end_time;
+            }
+          });
         }
+        
+        // Format times for display
+        const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${earliestStart}`));
+        const endHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${latestEnd}`));
+        
+        displayHours = `${startHourFormatted}-${endHourFormatted}`;
       }
       
       result.set(dateStr, { hasAvailability, isModified, displayHours });
@@ -276,11 +271,21 @@ export const useMonthViewData = (
       const dayOfWeek = format(day, 'EEEE');
       const dateStr = format(day, 'yyyy-MM-dd');
       
+      // Get exceptions for this specific date (if any)
+      const dateExceptions = exceptions.filter(exception => exception.specific_date === dateStr);
+      
+      // Get deleted availability ids for this date
+      const deletedAvailabilityIds = new Set(
+        dateExceptions
+          .filter(exception => exception.is_deleted)
+          .map(exception => exception.original_availability_id)
+      );
+      
       // Handle both named and numeric day values
       const firstAvailability = availabilityData.find(
         slot => {
           const normalizedSlotDay = normalizeDayOfWeek(slot.day_of_week);
-          return normalizedSlotDay === dayOfWeek;
+          return normalizedSlotDay === dayOfWeek && !deletedAvailabilityIds.has(slot.id);
         }
       );
       
@@ -290,7 +295,7 @@ export const useMonthViewData = (
     });
     
     return result;
-  }, [days, availabilityData]);
+  }, [days, availabilityData, exceptions]);
 
   const dayAppointmentsMap = useMemo(() => {
     const result = new Map<string, Appointment[]>();
