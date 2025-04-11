@@ -2,7 +2,8 @@
 import React, { useState, useRef } from 'react';
 import { useUser } from '@/context/UserContext';
 import { useToast } from '@/hooks/use-toast';
-import ClientHistoryTemplate from '@/components/templates/ClientHistoryTemplate';
+import { useQuery } from '@tanstack/react-query';
+import ClientHistoryTemplateWrapper from '@/components/templates/ClientHistoryTemplateWrapper';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { generateAndSavePDF } from '@/utils/pdfUtils';
@@ -13,6 +14,24 @@ const ClientHistoryForm: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
+  
+  // Fetch client data for auto-populating fields
+  const { data: clientData, isLoading: isLoadingClient } = useQuery({
+    queryKey: ['client', userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
   
   const handleSubmit = async (formData: any) => {
     if (!userId) {
@@ -264,9 +283,11 @@ const ClientHistoryForm: React.FC = () => {
   
   return (
     <div ref={formRef} id="client-history-form">
-      <ClientHistoryTemplate 
+      <ClientHistoryTemplateWrapper 
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
+        clientData={clientData}
+        isLoadingClient={isLoadingClient}
       />
     </div>
   );
