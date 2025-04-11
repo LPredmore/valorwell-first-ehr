@@ -74,7 +74,7 @@ export default function AvailabilityPanel() {
     try {
       console.log('[AvailabilityPanel] Checking if availability_single_date table exists...');
       
-      // Use a simple query that doesn't rely on the check_table_exists function
+      // Use a direct query to information_schema instead of the function
       const { data, error } = await supabase
         .from('information_schema.tables')
         .select('table_name')
@@ -315,11 +315,10 @@ export default function AvailabilityPanel() {
         weekSchedule.forEach(day => {
           if (day.enabled && day.timeSlots.length > 0) {
             day.timeSlots.forEach(slot => {
-              // Fix: Ensure we're not passing undefined for ID - generate a new UUID if this is a new slot
               const recordId = slot.id.startsWith('new-') ? crypto.randomUUID() : slot.id;
               
               availabilityRecordsToUpsert.push({
-                id: recordId, // This is the key fix - always provide a valid UUID
+                id: recordId,
                 clinician_id: userId,
                 day_of_week: day.day,
                 start_time: slot.startTime,
@@ -336,7 +335,7 @@ export default function AvailabilityPanel() {
           
           const { error: upsertError } = await supabase
             .from('availability')
-            .upsert(availabilityRecordsToUpsert, { onConflict: 'id' });
+            .upsert(availabilityRecordsToUpsert);
           
           if (upsertError) {
             console.error('[AvailabilityPanel] Error upserting records:', upsertError);
@@ -359,7 +358,7 @@ export default function AvailabilityPanel() {
             max_days_ahead: settings.maxDaysAhead,
             default_start_time: settings.defaultStartTime,
             default_end_time: settings.defaultEndTime,
-          }, { onConflict: 'clinician_id' });
+          });
         
         if (settingsError) {
           console.error('[AvailabilityPanel] Error saving settings:', settingsError);
@@ -368,6 +367,7 @@ export default function AvailabilityPanel() {
         
         console.log('[AvailabilityPanel] Successfully saved settings');
       } else if (activeTab === 'single-day' && singleDateTableExists) {
+        // Check if the availability_single_date table exists using direct query
         const { data: tableExists } = await supabase
           .from('information_schema.tables')
           .select('table_name')
@@ -445,7 +445,7 @@ export default function AvailabilityPanel() {
         <div className="flex items-center">
           <Button 
             variant="default" 
-            onClick={(e) => handleSaveClick(e)} 
+            onClick={handleSaveClick}
             disabled={isLoading || isSaving} 
             className="ml-2"
             type="button"
@@ -668,7 +668,7 @@ export default function AvailabilityPanel() {
       <div className="mt-6 flex justify-end">
         <Button 
           variant="default" 
-          onClick={(e) => handleSaveClick(e)} 
+          onClick={handleSaveClick} 
           disabled={isLoading || isSaving}
           type="button"
         >
@@ -679,3 +679,4 @@ export default function AvailabilityPanel() {
     </div>
   );
 }
+

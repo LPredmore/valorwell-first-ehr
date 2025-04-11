@@ -1876,8 +1876,12 @@ export type Database = {
     }
     Functions: {
       check_table_exists: {
-        Args: { table_name: string }
+        Args: { check_table_name: string }
         Returns: boolean
+      }
+      create_or_replace_check_table_exists_function: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       debug_rls_check: {
         Args: {

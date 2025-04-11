@@ -23,6 +23,7 @@ serve(async (req: Request) => {
     const { error } = await supabase.rpc('create_or_replace_check_table_exists_function');
     
     if (error) {
+      console.error("Error executing RPC:", error);
       throw error;
     }
 
