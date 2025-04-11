@@ -1,143 +1,82 @@
 
 import React, { useState, useEffect } from 'react';
-import { Input } from './input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
+import { Input } from '@/components/ui/input';
 
 interface TimeInputProps {
   id?: string;
   value: string;
   onChange: (value: string) => void;
-  format?: '12h' | '24h';
+  disabled?: boolean;
+  className?: string;
+  placeholder?: string;
 }
 
 export const TimeInput: React.FC<TimeInputProps> = ({
   id,
-  value = '09:00',
+  value,
   onChange,
-  format = '24h'
+  disabled = false,
+  className = '',
+  placeholder = '00:00'
 }) => {
-  const [hours, setHours] = useState('09');
-  const [minutes, setMinutes] = useState('00');
-  const [period, setPeriod] = useState<'AM' | 'PM'>('AM');
-
+  const [inputValue, setInputValue] = useState(value || '');
+  
+  // Update internal state when prop changes
   useEffect(() => {
-    if (value) {
-      const [h, m] = value.split(':');
-      
-      if (format === '12h') {
-        let hour = parseInt(h, 10);
-        const newPeriod = hour >= 12 ? 'PM' : 'AM';
-        
-        // Convert to 12-hour format
-        if (hour === 0) {
-          hour = 12;
-        } else if (hour > 12) {
-          hour -= 12;
-        }
-        
-        setHours(hour.toString().padStart(2, '0'));
-        setPeriod(newPeriod);
-      } else {
-        setHours(h);
-      }
-      
-      setMinutes(m);
-    }
-  }, [value, format]);
-
-  const handleHourChange = (hour: string) => {
-    setHours(hour);
-    updateValue(hour, minutes, period);
-  };
-
-  const handleMinuteChange = (minute: string) => {
-    setMinutes(minute);
-    updateValue(hours, minute, period);
-  };
-
-  const handlePeriodChange = (newPeriod: 'AM' | 'PM') => {
-    setPeriod(newPeriod);
-    updateValue(hours, minutes, newPeriod);
-  };
-
-  const updateValue = (hour: string, minute: string, newPeriod: 'AM' | 'PM') => {
-    let formattedHour = parseInt(hour, 10);
+    setInputValue(value);
+  }, [value]);
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
     
-    if (format === '12h') {
-      // Convert to 24-hour format for storing the value
-      if (newPeriod === 'PM' && formattedHour < 12) {
-        formattedHour += 12;
-      } else if (newPeriod === 'AM' && formattedHour === 12) {
-        formattedHour = 0;
-      }
+    // Allow empty values temporarily during editing
+    if (newValue === '') {
+      setInputValue('');
+      return;
     }
     
-    const formattedValue = `${formattedHour.toString().padStart(2, '0')}:${minute}`;
-    onChange(formattedValue);
-  };
-
-  const generateHourOptions = () => {
-    const options = [];
+    // Only accept numbers and colons
+    const cleaned = newValue.replace(/[^0-9:]/g, '');
     
-    const start = format === '12h' ? 1 : 0;
-    const end = format === '12h' ? 12 : 23;
+    // Simple format validation
+    const timePattern = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
     
-    for (let i = start; i <= end; i++) {
-      options.push(i.toString().padStart(2, '0'));
+    if (timePattern.test(cleaned)) {
+      setInputValue(cleaned);
+      onChange(cleaned);
+    } else if (cleaned.length <= 5) {
+      // Allow partial inputs during typing
+      setInputValue(cleaned);
     }
+  };
+  
+  const handleBlur = () => {
+    // Ensure we have a valid format when input loses focus
+    const timePattern = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
     
-    return options;
-  };
-
-  const generateMinuteOptions = () => {
-    const options = [];
-    for (let i = 0; i < 60; i += 15) {
-      options.push(i.toString().padStart(2, '0'));
+    if (!timePattern.test(inputValue)) {
+      // Reset to previous valid value if invalid
+      setInputValue(value);
+    } else {
+      // Ensure consistent format (e.g., convert 9:30 to 09:30)
+      const [hours, minutes] = inputValue.split(':');
+      const formattedTime = `${hours.padStart(2, '0')}:${minutes}`;
+      setInputValue(formattedTime);
+      onChange(formattedTime);
     }
-    return options;
   };
-
+  
   return (
-    <div className="flex space-x-1 items-center">
-      <Select value={hours} onValueChange={handleHourChange}>
-        <SelectTrigger className="w-[70px]">
-          <SelectValue placeholder="Hour" />
-        </SelectTrigger>
-        <SelectContent>
-          {generateHourOptions().map(hour => (
-            <SelectItem key={hour} value={hour}>
-              {hour}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      
-      <span className="text-lg">:</span>
-      
-      <Select value={minutes} onValueChange={handleMinuteChange}>
-        <SelectTrigger className="w-[70px]">
-          <SelectValue placeholder="Minute" />
-        </SelectTrigger>
-        <SelectContent>
-          {generateMinuteOptions().map(minute => (
-            <SelectItem key={minute} value={minute}>
-              {minute}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      
-      {format === '12h' && (
-        <Select value={period} onValueChange={handlePeriodChange}>
-          <SelectTrigger className="w-[70px]">
-            <SelectValue placeholder="AM/PM" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="AM">AM</SelectItem>
-            <SelectItem value="PM">PM</SelectItem>
-          </SelectContent>
-        </Select>
-      )}
-    </div>
+    <Input
+      id={id}
+      type="text"
+      inputMode="numeric"
+      value={inputValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      disabled={disabled}
+      placeholder={placeholder}
+      className={className}
+    />
   );
 };

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { CalendarIcon, Trash2, Clock, PlusCircle } from 'lucide-react';
 import { format, isValid, isBefore, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { formatTime12Hour } from '@/utils/timeZoneUtils';
 
 interface SingleDayAvailability {
   id: string;
@@ -134,6 +134,7 @@ const SingleDayAvailabilityManager: React.FC<SingleDayAvailabilityManagerProps> 
     try {
       const formattedDate = format(selectedDate!, 'yyyy-MM-dd');
       
+      // Check if there's already an entry for this date
       const { data: existingData } = await supabase
         .from('single_day_availability')
         .select('id')
@@ -210,10 +211,6 @@ const SingleDayAvailabilityManager: React.FC<SingleDayAvailabilityManagerProps> 
     }
   };
 
-  const formatDisplayTime = (time: string): string => {
-    return formatTime12Hour(time);
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
@@ -271,8 +268,7 @@ const SingleDayAvailabilityManager: React.FC<SingleDayAvailabilityManagerProps> 
                   <TimeInput
                     id="startTime" 
                     value={startTime} 
-                    onChange={setStartTime}
-                    format="12h" 
+                    onChange={setStartTime} 
                   />
                 </div>
                 <div>
@@ -280,8 +276,7 @@ const SingleDayAvailabilityManager: React.FC<SingleDayAvailabilityManagerProps> 
                   <TimeInput
                     id="endTime" 
                     value={endTime} 
-                    onChange={setEndTime}
-                    format="12h" 
+                    onChange={setEndTime} 
                   />
                 </div>
               </div>
@@ -316,7 +311,7 @@ const SingleDayAvailabilityManager: React.FC<SingleDayAvailabilityManagerProps> 
                     <div className="font-medium">{format(new Date(item.date), 'PPP')}</div>
                     <div className="text-sm text-gray-500 flex items-center">
                       <Clock className="h-3 w-3 mr-1" />
-                      {formatDisplayTime(item.startTime)} - {formatDisplayTime(item.endTime)}
+                      {item.startTime} - {item.endTime}
                     </div>
                   </div>
                 </div>

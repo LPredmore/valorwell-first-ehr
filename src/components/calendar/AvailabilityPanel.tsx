@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Spinner } from '@/components/ui/spinner';
 import { TimeInput } from '@/components/ui/time-input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { PlusCircle, Trash2, CalendarIcon, Clock, Ban } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -18,7 +19,6 @@ import { format, parseISO, isValid, isBefore } from 'date-fns';
 import { cn } from '@/lib/utils';
 import TimeBlocksManager from './availability/TimeBlocksManager';
 import SingleDayAvailabilityManager from './availability/SingleDayAvailabilityManager';
-import { formatTime12Hour } from '@/utils/timeZoneUtils';
 
 interface TimeSlot {
   id: string;
@@ -204,6 +204,7 @@ export default function AvailabilityPanel() {
     }
   };
 
+  // Helper function to process availability for a specific day
   const processDay = (clinicianData: any, schedule: DaySchedule[], dayName: string, dayIndex: number) => {
     const day = schedule[dayIndex];
     day.timeSlots = [];
@@ -444,10 +445,6 @@ export default function AvailabilityPanel() {
     saveAvailability();
   };
   
-  const formatDisplayTime = (time: string): string => {
-    return formatTime12Hour(time);
-  };
-
   console.log('[AvailabilityPanel] Render - Button disabled state:', isLoading || isSaving);
   
   return (
@@ -519,7 +516,7 @@ export default function AvailabilityPanel() {
                                 id={`start-${day.day}-${slotIndex}`}
                                 value={slot.startTime}
                                 onChange={(value) => updateTimeSlot(dayIndex, slotIndex, 'startTime', value)}
-                                format="12h"
+                                className={!validateTimeSlot(slot.startTime, slot.endTime) ? 'border-red-500' : ''}
                               />
                             </div>
                             <div>
@@ -530,7 +527,7 @@ export default function AvailabilityPanel() {
                                 id={`end-${day.day}-${slotIndex}`}
                                 value={slot.endTime}
                                 onChange={(value) => updateTimeSlot(dayIndex, slotIndex, 'endTime', value)}
-                                format="12h"
+                                className={!validateTimeSlot(slot.startTime, slot.endTime) ? 'border-red-500' : ''}
                               />
                             </div>
                           </div>
@@ -538,11 +535,9 @@ export default function AvailabilityPanel() {
                             variant="ghost"
                             size="icon"
                             onClick={() => removeTimeSlot(dayIndex, slotIndex)}
-                            disabled={day.timeSlots.length <= 1}
-                            title={day.timeSlots.length <= 1 ? "Cannot remove the only time slot" : "Remove time slot"}
-                            className="flex-shrink-0"
+                            className="h-8 w-8"
                           >
-                            <Trash2 className={`h-4 w-4 ${day.timeSlots.length <= 1 ? 'text-gray-400' : 'text-red-500'}`} />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       ))}
@@ -552,7 +547,7 @@ export default function AvailabilityPanel() {
                           variant="outline"
                           size="sm"
                           onClick={() => addTimeSlot(dayIndex)}
-                          className="w-full mt-2"
+                          className="mt-2"
                         >
                           <PlusCircle className="h-4 w-4 mr-2" />
                           Add Time Slot
@@ -564,95 +559,126 @@ export default function AvailabilityPanel() {
               </Card>
             ))}
           </div>
-          
-          <Card className="mt-6 p-4">
-            <CardHeader className="p-0 mb-4">
-              <CardTitle className="text-lg">General Availability Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="minDaysAhead" className="mb-1 block">
-                    Minimum Days Ahead
-                  </Label>
-                  <Input
-                    id="minDaysAhead"
-                    type="number"
-                    min="0"
-                    max={settings.maxDaysAhead - 1}
-                    value={settings.minDaysAhead}
-                    onChange={(e) => updateSettings('minDaysAhead', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="maxDaysAhead" className="mb-1 block">
-                    Maximum Days Ahead
-                  </Label>
-                  <Input
-                    id="maxDaysAhead"
-                    type="number"
-                    min={settings.minDaysAhead + 1}
-                    value={settings.maxDaysAhead}
-                    onChange={(e) => updateSettings('maxDaysAhead', parseInt(e.target.value) || 30)}
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="defaultStartTime" className="mb-1 block">
-                    Default Start Time
-                  </Label>
-                  <TimeInput
-                    id="defaultStartTime"
-                    value={settings.defaultStartTime}
-                    onChange={(value) => updateSettings('defaultStartTime', value)}
-                    format="12h"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="defaultEndTime" className="mb-1 block">
-                    Default End Time
-                  </Label>
-                  <TimeInput
-                    id="defaultEndTime"
-                    value={settings.defaultEndTime}
-                    onChange={(value) => updateSettings('defaultEndTime', value)}
-                    format="12h"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="timeGranularity" className="mb-1 block">
-                  Time Slot Granularity
-                </Label>
-                <Select
-                  value={settings.timeGranularity}
-                  onValueChange={(value) => updateSettings('timeGranularity', value)}
-                >
-                  <SelectTrigger id="timeGranularity">
-                    <SelectValue placeholder="Select granularity" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hour">1 Hour</SelectItem>
-                    <SelectItem value="half_hour">30 Minutes</SelectItem>
-                    <SelectItem value="quarter_hour">15 Minutes</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
         
-        <TabsContent value="time-blocks">
-          {userId && <TimeBlocksManager clinicianId={userId} />}
-        </TabsContent>
+        {timeBlocksTableExists && (
+          <TabsContent value="time-blocks" className="mt-0">
+            <TimeBlocksManager clinicianId={userId} />
+          </TabsContent>
+        )}
         
-        <TabsContent value="single-day">
-          {userId && <SingleDayAvailabilityManager clinicianId={userId} />}
-        </TabsContent>
+        {singleDateTableExists && (
+          <TabsContent value="single-day" className="mt-0">
+            <SingleDayAvailabilityManager clinicianId={userId} />
+          </TabsContent>
+        )}
       </Tabs>
+      
+      <div className="mt-6 border-t pt-6">
+        <h3 className="text-lg font-medium mb-4">Availability Settings</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <Label htmlFor="time-granularity" className="block mb-2">
+              Time Slot Granularity
+            </Label>
+            <Select
+              value={settings.timeGranularity}
+              onValueChange={(value) => updateSettings('timeGranularity', value)}
+            >
+              <SelectTrigger id="time-granularity">
+                <SelectValue placeholder="Select granularity" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="15min">15 minutes</SelectItem>
+                <SelectItem value="30min">30 minutes</SelectItem>
+                <SelectItem value="hour">1 hour</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label htmlFor="min-days-ahead" className="block mb-2">
+              Minimum Days in Advance
+            </Label>
+            <Select
+              value={settings.minDaysAhead.toString()}
+              onValueChange={(value) => updateSettings('minDaysAhead', parseInt(value))}
+            >
+              <SelectTrigger id="min-days-ahead">
+                <SelectValue placeholder="Select minimum days" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Same day</SelectItem>
+                <SelectItem value="1">1 day</SelectItem>
+                <SelectItem value="2">2 days</SelectItem>
+                <SelectItem value="3">3 days</SelectItem>
+                <SelectItem value="7">1 week</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label htmlFor="max-days-ahead" className="block mb-2">
+              Maximum Days in Advance
+            </Label>
+            <Select
+              value={settings.maxDaysAhead.toString()}
+              onValueChange={(value) => updateSettings('maxDaysAhead', parseInt(value))}
+            >
+              <SelectTrigger id="max-days-ahead">
+                <SelectValue placeholder="Select maximum days" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">1 week</SelectItem>
+                <SelectItem value="14">2 weeks</SelectItem>
+                <SelectItem value="30">1 month</SelectItem>
+                <SelectItem value="60">2 months</SelectItem>
+                <SelectItem value="90">3 months</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label htmlFor="default-times" className="block mb-2">
+              Default Time Slot
+            </Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="default-start-time" className="text-xs mb-1 block">
+                  Start Time
+                </Label>
+                <TimeInput
+                  id="default-start-time"
+                  value={settings.defaultStartTime}
+                  onChange={(value) => updateSettings('defaultStartTime', value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="default-end-time" className="text-xs mb-1 block">
+                  End Time
+                </Label>
+                <TimeInput
+                  id="default-end-time"
+                  value={settings.defaultEndTime}
+                  onChange={(value) => updateSettings('defaultEndTime', value)}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="mt-6 flex justify-end">
+        <Button 
+          variant="default" 
+          onClick={handleSaveClick} 
+          disabled={isLoading || isSaving}
+          type="button"
+        >
+          {isSaving ? <Spinner className="mr-2 h-4 w-4" /> : null}
+          Save Availability
+        </Button>
+      </div>
     </div>
   );
 }
