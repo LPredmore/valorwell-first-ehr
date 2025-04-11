@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -255,11 +256,13 @@ export const useWeekViewData = (
 
   const fetchSingleDayAvailability = async (clinicianId: string) => {
     try {
+      // Format date range for this week's view
       const startDateStr = format(days[0], 'yyyy-MM-dd');
       const endDateStr = format(days[days.length - 1], 'yyyy-MM-dd');
       
       console.log(`[WeekView] Fetching single day availability for date range: ${startDateStr} to ${endDateStr}`);
       
+      // First try the single_day_availability table
       const { data: singleDayData, error: singleDayError } = await supabase
         .from('single_day_availability')
         .select('*')
@@ -270,6 +273,7 @@ export const useWeekViewData = (
       if (singleDayError) {
         console.error('[WeekView] Error fetching single day availability:', singleDayError);
         
+        // Try alternate table if first one fails
         const { data: altSingleDayData, error: altError } = await supabase
           .from('availability_single_date')
           .select('*')
@@ -281,6 +285,7 @@ export const useWeekViewData = (
           console.error('[WeekView] Error fetching from alternate single day table:', altError);
           setSingleDayAvailability([]);
         } else {
+          // Map the alternate table structure to our expected format
           const mappedData = altSingleDayData.map(record => ({
             id: record.id,
             availability_date: record.date,
@@ -289,11 +294,11 @@ export const useWeekViewData = (
             clinician_id: record.clinician_id
           }));
           
-          console.log(`[WeekView] Retrieved ${mappedData.length} alternate single day records`);
+          console.log(`[WeekView] Retrieved ${mappedData.length} alternate single day records:`, mappedData);
           setSingleDayAvailability(mappedData);
         }
       } else {
-        console.log(`[WeekView] Retrieved ${singleDayData?.length || 0} single day availability records`);
+        console.log(`[WeekView] Retrieved ${singleDayData?.length || 0} single day availability records:`, singleDayData);
         setSingleDayAvailability(singleDayData || []);
       }
       
@@ -342,23 +347,29 @@ export const useWeekViewData = (
 
     const allTimeBlocks: TimeBlock[] = [];
 
+    // Process each day in the week view
     days.forEach(day => {
       const dayOfWeek = format(day, 'EEEE').toLowerCase();
       const dateStr = format(day, 'yyyy-MM-dd');
       
-      const singleDayRecord = singleDayAvailability.find(item => 
-        item.availability_date === dateStr
-      );
+      // Look for single day availability record first
+      const singleDayRecord = singleDayAvailability.find(item => {
+        // Check exact date match (both formats yyyy-MM-dd to avoid any timezone conversion issues)
+        return format(new Date(item.availability_date), 'yyyy-MM-dd') === dateStr;
+      });
       
       if (singleDayRecord) {
         console.log(`[WeekView] Found single day availability for ${dateStr}:`, singleDayRecord);
         
+        // Parse the time strings into hours and minutes for this specific day
         const [startHour, startMinute] = singleDayRecord.start_time.split(':').map(Number);
         const [endHour, endMinute] = singleDayRecord.end_time.split(':').map(Number);
         
+        // Construct Date objects that represent the actual time slots for this specific day
         const start = setMinutes(setHours(startOfDay(day), startHour), startMinute);
         const end = setMinutes(setHours(startOfDay(day), endHour), endMinute);
         
+        // Add this single day availability to our blocks
         allTimeBlocks.push({
           id: singleDayRecord.id,
           day,
@@ -370,6 +381,7 @@ export const useWeekViewData = (
           originalAvailabilityId: null
         });
       } else {
+        // If no single day availability, use the regular weekly schedule
         const daySchedule = clinicianWeeklySchedule[dayOfWeek] || [];
         
         if (daySchedule.length > 0) {
@@ -399,8 +411,10 @@ export const useWeekViewData = (
       }
     });
     
+    // Sort blocks by start time
     allTimeBlocks.sort((a, b) => a.start.getTime() - b.start.getTime());
     
+    // Handle time blocks (blocked off periods)
     const finalBlocks = allTimeBlocks.flatMap(block => {
       const dateStr = format(block.day, 'yyyy-MM-dd');
       const overlappingBlocks = blockedTimeRecords.filter(tb => 
