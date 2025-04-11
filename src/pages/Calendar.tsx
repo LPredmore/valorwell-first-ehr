@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import CalendarView from '../components/calendar/CalendarView';
@@ -34,8 +35,8 @@ const CalendarPage = () => {
     isLoadingTimeZone,
   } = useCalendarState();
 
-  // Use only the month view mode state
-  const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week'>('month');
+  // Changed default view from 'month' to 'week'
+  const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week'>('week');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
