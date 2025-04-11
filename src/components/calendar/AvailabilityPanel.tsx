@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,7 +14,6 @@ import { TimeInput } from '@/components/ui/time-input';
 import { Card, CardContent } from '@/components/ui/card';
 import { PlusCircle, Trash2 } from 'lucide-react';
 
-// Types
 interface TimeSlot {
   id: string;
   startTime: string;
@@ -63,16 +61,14 @@ export default function AvailabilityPanel() {
     defaultEndTime: '17:00',
   });
   
-  // Fetch availability data on component mount
   useEffect(() => {
     if (userId) {
       console.log('[AvailabilityPanel] userId detected, fetching data');
       fetchAvailability();
       checkSingleDateTableExists();
     }
-  }, [userId]); // Removed weekSchedule from dependency array to prevent infinite loop
+  }, [userId]);
   
-  // Check if the availability_single_date table exists
   const checkSingleDateTableExists = async () => {
     try {
       console.log('[AvailabilityPanel] Checking if availability_single_date table exists...');
@@ -95,13 +91,11 @@ export default function AvailabilityPanel() {
     }
   };
   
-  // Fetch availability data from the database
   const fetchAvailability = async () => {
     setIsLoading(true);
     try {
       console.log('[AvailabilityPanel] Fetching availability data...');
       
-      // Fetch weekly availability
       const { data: availabilityData, error: availabilityError } = await supabase
         .from('availability')
         .select('*')
@@ -109,7 +103,6 @@ export default function AvailabilityPanel() {
       
       if (availabilityError) throw availabilityError;
       
-      // Fetch availability settings
       const { data: settingsData, error: settingsError } = await supabase
         .from('availability_settings')
         .select('*')
@@ -117,11 +110,9 @@ export default function AvailabilityPanel() {
         .single();
       
       if (settingsError && settingsError.code !== 'PGRST116') {
-        // PGRST116 is "Results contain 0 rows" - not an error for us
         throw settingsError;
       }
       
-      // Update settings if we have data
       if (settingsData) {
         setSettings({
           timeGranularity: settingsData.time_granularity || 'hour',
@@ -132,16 +123,13 @@ export default function AvailabilityPanel() {
         });
       }
       
-      // Process availability data
       const newSchedule = [...weekSchedule];
       
-      // Reset all days to disabled with no time slots
       newSchedule.forEach(day => {
         day.enabled = false;
         day.timeSlots = [];
       });
       
-      // Add time slots from the database
       if (availabilityData && availabilityData.length > 0) {
         availabilityData.forEach(slot => {
           const dayIndex = slot.day_of_week;
@@ -166,23 +154,20 @@ export default function AvailabilityPanel() {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false); // Make sure we set loading to false regardless of success/failure
+      setIsLoading(false);
       console.log('[AvailabilityPanel] isLoading set to false');
     }
   };
   
-  // Validate time slot (end time must be after start time)
   const validateTimeSlot = (startTime: string, endTime: string): boolean => {
     if (!startTime || !endTime) return false;
     return startTime < endTime;
   };
   
-  // Toggle day enabled/disabled
   const toggleDayEnabled = (dayIndex: number, enabled: boolean) => {
     const newSchedule = [...weekSchedule];
     newSchedule[dayIndex].enabled = enabled;
     
-    // If enabling a day with no time slots, add a default one
     if (enabled && newSchedule[dayIndex].timeSlots.length === 0) {
       newSchedule[dayIndex].timeSlots.push({
         id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -198,7 +183,6 @@ export default function AvailabilityPanel() {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
   
-  // Save availability settings to the database
   const saveAvailability = async () => {
     console.log('[AvailabilityPanel] Save button clicked');
     
@@ -216,7 +200,6 @@ export default function AvailabilityPanel() {
     try {
       console.log('[AvailabilityPanel] Starting save operation...');
       
-      // Validate all time slots before saving
       let isValid = true;
       weekSchedule.forEach(day => {
         if (day.enabled) {
@@ -233,16 +216,13 @@ export default function AvailabilityPanel() {
         throw new Error("There are invalid time slots. Please fix them before saving.");
       }
       
-      // Check if availability_single_date table exists when in single day tab
       if (activeTab === 'single-day' && !singleDateTableChecked) {
         await checkSingleDateTableExists();
       }
       
-      // Save weekly availability
       if (activeTab === 'weekly') {
         console.log('[AvailabilityPanel] Saving weekly availability...');
         
-        // First, get existing records to determine what to delete
         const { data: existingAvailability, error: fetchError } = await supabase
           .from('availability')
           .select('id, day_of_week')
@@ -255,32 +235,26 @@ export default function AvailabilityPanel() {
         
         console.log('[AvailabilityPanel] Existing availability records:', existingAvailability?.length || 0);
         
-        // Get the days that are enabled in the UI
         const enabledDays = weekSchedule
           .filter(day => day.enabled)
           .map(day => day.day);
         
         console.log('[AvailabilityPanel] Enabled days:', enabledDays);
         
-        // COMPLETELY REWRITTEN: Improved deletion logic to properly handle disabled days
-        // Step 1: Identify all records that need to be deleted
         let recordsToDelete: { id: string }[] = [];
         
         if (existingAvailability && existingAvailability.length > 0) {
-          // First identify records from days that are now disabled
           const disabledDayRecords = existingAvailability.filter(record => 
             !enabledDays.includes(record.day_of_week)
           );
           
           console.log('[AvailabilityPanel] Records from disabled days:', disabledDayRecords.length);
           
-          // Prepare data for upsert - only include time slots from enabled days
           const availabilityRecords = [];
           
           weekSchedule.forEach(day => {
             if (day.enabled && day.timeSlots.length > 0) {
               day.timeSlots.forEach(slot => {
-                // Only include existing IDs (not new ones) for comparison
                 if (!slot.id.startsWith('new-')) {
                   availabilityRecords.push({
                     id: slot.id,
@@ -291,8 +265,6 @@ export default function AvailabilityPanel() {
             }
           });
           
-          // Then identify records from enabled days that are no longer in the new data
-          // (these are time slots that were removed)
           const enabledDayRecords = existingAvailability.filter(record => 
             enabledDays.includes(record.day_of_week)
           );
@@ -305,7 +277,6 @@ export default function AvailabilityPanel() {
           
           console.log('[AvailabilityPanel] Records from enabled days that were removed:', removedEnabledDayRecords.length);
           
-          // Combine both sets of records to delete
           recordsToDelete = [...disabledDayRecords, ...removedEnabledDayRecords];
         }
         
@@ -314,7 +285,6 @@ export default function AvailabilityPanel() {
         console.log('[AvailabilityPanel] Total records to delete:', idsToDelete.length);
         console.log('[AvailabilityPanel] IDs to delete:', idsToDelete);
         
-        // Step 2: Delete removed records
         if (idsToDelete.length > 0) {
           console.log('[AvailabilityPanel] Deleting records:', idsToDelete);
           
@@ -333,7 +303,6 @@ export default function AvailabilityPanel() {
           console.log('[AvailabilityPanel] No records to delete');
         }
         
-        // Step 3: Prepare records for upsert
         const availabilityRecordsToUpsert = [];
         
         weekSchedule.forEach(day => {
@@ -352,7 +321,6 @@ export default function AvailabilityPanel() {
         
         console.log('[AvailabilityPanel] Records to upsert:', availabilityRecordsToUpsert.length);
         
-        // Step 4: Upsert new/updated records
         if (availabilityRecordsToUpsert.length > 0) {
           console.log('[AvailabilityPanel] Upserting records:', availabilityRecordsToUpsert.length);
           
@@ -370,7 +338,6 @@ export default function AvailabilityPanel() {
           console.log('[AvailabilityPanel] No records to upsert');
         }
         
-        // Step 5: Save settings
         console.log('[AvailabilityPanel] Saving settings');
         
         const { error: settingsError } = await supabase
@@ -390,10 +357,7 @@ export default function AvailabilityPanel() {
         }
         
         console.log('[AvailabilityPanel] Successfully saved settings');
-      }
-      // Save single day availability
-      else if (activeTab === 'single-day' && singleDateTableExists) {
-        // Check if the table exists before attempting to save
+      } else if (activeTab === 'single-day' && singleDateTableExists) {
         const { data: tableExists, error: rpcError } = await supabase
           .rpc('check_table_exists', { table_name: 'availability_single_date' });
         
@@ -406,8 +370,6 @@ export default function AvailabilityPanel() {
           throw new Error("The single date availability table does not exist. Please contact support.");
         }
         
-        // Single day availability saving logic would go here
-        // This is a placeholder for future implementation
         console.log('[AvailabilityPanel] Single day availability saving not yet implemented');
       }
       
@@ -418,7 +380,6 @@ export default function AvailabilityPanel() {
         description: "Your availability settings have been updated successfully.",
       });
       
-      // Refresh data to ensure UI is in sync with database
       fetchAvailability();
     } catch (error) {
       console.error('[AvailabilityPanel] Error saving availability:', error);
@@ -432,7 +393,6 @@ export default function AvailabilityPanel() {
     }
   };
   
-  // Add a new time slot to a day
   const addTimeSlot = (dayIndex: number) => {
     const newSchedule = [...weekSchedule];
     newSchedule[dayIndex].timeSlots.push({
@@ -443,23 +403,19 @@ export default function AvailabilityPanel() {
     setWeekSchedule(newSchedule);
   };
   
-  // Remove a time slot from a day
   const removeTimeSlot = (dayIndex: number, slotIndex: number) => {
     const newSchedule = [...weekSchedule];
     newSchedule[dayIndex].timeSlots.splice(slotIndex, 1);
     setWeekSchedule(newSchedule);
   };
   
-  // Update a time slot's start or end time
   const updateTimeSlot = (dayIndex: number, slotIndex: number, field: 'startTime' | 'endTime', value: string) => {
     const newSchedule = [...weekSchedule];
     newSchedule[dayIndex].timeSlots[slotIndex][field] = value;
     setWeekSchedule(newSchedule);
   };
   
-  // Handle save button click with explicit event handler
   const handleSaveClick = (e: React.MouseEvent) => {
-    // Prevent default behavior and stop propagation
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -468,11 +424,9 @@ export default function AvailabilityPanel() {
     console.log('[AvailabilityPanel] Save button clicked via explicit handler');
     console.log('[AvailabilityPanel] isLoading:', isLoading, 'isSaving:', isSaving);
     
-    // Call the save function directly
     saveAvailability();
   };
-
-  // Debug output for button disabled state
+  
   console.log('[AvailabilityPanel] Render - Button disabled state:', isLoading || isSaving);
   
   return (
@@ -547,7 +501,7 @@ export default function AvailabilityPanel() {
                               <TimeInput
                                 id={`start-${day.day}-${slotIndex}`}
                                 value={slot.startTime}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateTimeSlot(dayIndex, slotIndex, 'startTime', e.target.value)}
+                                onChange={(value) => updateTimeSlot(dayIndex, slotIndex, 'startTime', value)}
                                 className={!validateTimeSlot(slot.startTime, slot.endTime) ? 'border-red-500' : ''}
                               />
                             </div>
@@ -558,7 +512,7 @@ export default function AvailabilityPanel() {
                               <TimeInput
                                 id={`end-${day.day}-${slotIndex}`}
                                 value={slot.endTime}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateTimeSlot(dayIndex, slotIndex, 'endTime', e.target.value)}
+                                onChange={(value) => updateTimeSlot(dayIndex, slotIndex, 'endTime', value)}
                                 className={!validateTimeSlot(slot.startTime, slot.endTime) ? 'border-red-500' : ''}
                               />
                             </div>
@@ -684,7 +638,7 @@ export default function AvailabilityPanel() {
                 <TimeInput
                   id="default-start-time"
                   value={settings.defaultStartTime}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSettings('defaultStartTime', e.target.value)}
+                  onChange={(value) => updateSettings('defaultStartTime', value)}
                 />
               </div>
               <div>
@@ -694,7 +648,7 @@ export default function AvailabilityPanel() {
                 <TimeInput
                   id="default-end-time"
                   value={settings.defaultEndTime}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSettings('defaultEndTime', e.target.value)}
+                  onChange={(value) => updateSettings('defaultEndTime', value)}
                 />
               </div>
             </div>
@@ -702,7 +656,6 @@ export default function AvailabilityPanel() {
         </div>
       </div>
       
-      {/* Secondary save button at bottom for better UX */}
       <div className="mt-6 flex justify-end">
         <Button 
           variant="default" 
