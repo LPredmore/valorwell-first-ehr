@@ -408,11 +408,14 @@ export const generateAndSavePDF = async (
     let uploadAttempts = 0;
     let uploadError = null;
     
+    // Define storage bucket name according to document type
+    const bucketName = "session-notes";
+    
     while (uploadAttempts < 3) {
       try {
-        console.log('Attempting to upload PDF to Clinical Documents bucket, path:', filePath);
+        console.log(`Attempting to upload PDF to ${bucketName} bucket, path:`, filePath);
         const { error } = await supabase.storage
-          .from('Clinical Documents')
+          .from(bucketName)
           .upload(filePath, pdfBlob, {
             contentType: 'application/pdf',
             upsert: true
@@ -449,7 +452,7 @@ export const generateAndSavePDF = async (
     let urlData;
     try {
       const response = supabase.storage
-        .from('Clinical Documents')
+        .from(bucketName)
         .getPublicUrl(filePath);
       
       urlData = response.data;
