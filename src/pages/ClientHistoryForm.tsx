@@ -6,6 +6,7 @@ import ClientHistoryTemplate from '@/components/templates/ClientHistoryTemplate'
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { generateAndSavePDF } from '@/utils/pdfUtils';
+import { useClientData } from '@/hooks/useClientData';
 
 const ClientHistoryForm: React.FC = () => {
   const { userId } = useUser();
@@ -13,6 +14,9 @@ const ClientHistoryForm: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
+  
+  // Fetch client data using our custom hook
+  const { clientData, loading } = useClientData(userId);
   
   const handleSubmit = async (formData: any) => {
     if (!userId) {
@@ -262,11 +266,16 @@ const ClientHistoryForm: React.FC = () => {
     }
   };
   
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen">Loading client information...</div>;
+  }
+  
   return (
     <div ref={formRef} id="client-history-form">
       <ClientHistoryTemplate 
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
+        clientData={clientData}
       />
     </div>
   );
