@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { CalendarIcon, Trash2, Clock, Ban, PlusCircle } from 'lucide-react';
 import { format, isValid, isBefore, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { formatTime12Hour } from '@/utils/timeZoneUtils';
 
 interface TimeBlock {
   id: string;
@@ -202,6 +202,10 @@ const TimeBlocksManager: React.FC<TimeBlocksManagerProps> = ({ clinicianId }) =>
     }
   };
 
+  const formatDisplayTime = (time: string): string => {
+    return formatTime12Hour(time);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
@@ -259,7 +263,8 @@ const TimeBlocksManager: React.FC<TimeBlocksManagerProps> = ({ clinicianId }) =>
                   <TimeInput
                     id="startTime" 
                     value={startTime} 
-                    onChange={setStartTime} 
+                    onChange={setStartTime}
+                    format="12h" 
                   />
                 </div>
                 <div>
@@ -268,6 +273,7 @@ const TimeBlocksManager: React.FC<TimeBlocksManagerProps> = ({ clinicianId }) =>
                     id="endTime" 
                     value={endTime} 
                     onChange={setEndTime} 
+                    format="12h"
                   />
                 </div>
               </div>
@@ -313,7 +319,7 @@ const TimeBlocksManager: React.FC<TimeBlocksManagerProps> = ({ clinicianId }) =>
                     <div className="font-medium">{format(new Date(block.blockDate), 'PPP')}</div>
                     <div className="text-sm text-gray-500 flex items-center">
                       <Clock className="h-3 w-3 mr-1" />
-                      {block.startTime} - {block.endTime}
+                      {formatDisplayTime(block.startTime)} - {formatDisplayTime(block.endTime)}
                     </div>
                     {block.reason && (
                       <div className="text-sm text-gray-500 mt-1">{block.reason}</div>
