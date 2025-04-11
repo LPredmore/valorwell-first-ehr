@@ -42,6 +42,23 @@ interface AvailabilityException {
   clinician_id: string;
 }
 
+// Helper function to normalize day_of_week values that can be either numeric or named
+const normalizeDayOfWeek = (day: string): string => {
+  // Map of numeric values to day names
+  const dayMap: { [key: string]: string } = {
+    '0': 'Sunday',
+    '1': 'Monday',
+    '2': 'Tuesday',
+    '3': 'Wednesday',
+    '4': 'Thursday',
+    '5': 'Friday',
+    '6': 'Saturday'
+  };
+
+  // If the day is a number as a string, convert to day name
+  return dayMap[day] || day;
+};
+
 export const useMonthViewData = (
   currentDate: Date,
   clinicianId: string | null,
@@ -174,8 +191,12 @@ export const useMonthViewData = (
       const dayOfWeek = format(day, 'EEEE');
       const dateStr = format(day, 'yyyy-MM-dd');
       
+      // Handle both named and numeric day values
       const regularAvailability = availabilityData.filter(
-        slot => slot.day_of_week === dayOfWeek
+        slot => {
+          const normalizedSlotDay = normalizeDayOfWeek(slot.day_of_week);
+          return normalizedSlotDay === dayOfWeek;
+        }
       );
       
       let hasAvailability = false;
@@ -255,8 +276,12 @@ export const useMonthViewData = (
       const dayOfWeek = format(day, 'EEEE');
       const dateStr = format(day, 'yyyy-MM-dd');
       
+      // Handle both named and numeric day values
       const firstAvailability = availabilityData.find(
-        slot => slot.day_of_week === dayOfWeek
+        slot => {
+          const normalizedSlotDay = normalizeDayOfWeek(slot.day_of_week);
+          return normalizedSlotDay === dayOfWeek;
+        }
       );
       
       if (firstAvailability) {

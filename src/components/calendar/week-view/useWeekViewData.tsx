@@ -64,6 +64,28 @@ interface AppointmentBlock {
   clientName?: string;
 }
 
+// Helper function to normalize day_of_week values that can be either numeric or named
+const normalizeDayOfWeek = (day: string): string => {
+  // Map of numeric values to day names
+  const dayMap: { [key: string]: string } = {
+    '0': 'Sunday',
+    '1': 'Monday',
+    '2': 'Tuesday',
+    '3': 'Wednesday',
+    '4': 'Thursday',
+    '5': 'Friday',
+    '6': 'Saturday'
+  };
+
+  // If the day is a number as a string, convert to day name
+  return dayMap[day] || day;
+};
+
+// Function to get day of week as a string for a given date
+const getDayOfWeekString = (date: Date): string => {
+  return format(date, 'EEEE');
+};
+
 export const useWeekViewData = (
   days: Date[],
   clinicianId: string | null,
@@ -247,7 +269,7 @@ export const useWeekViewData = (
     const allTimeBlocks: TimeBlock[] = [];
 
     days.forEach(day => {
-      const dayOfWeek = format(day, 'EEEE');
+      const dayOfWeek = getDayOfWeekString(day);
       const dateStr = format(day, 'yyyy-MM-dd');
       const exceptionsForDay = exceptionsData.filter(exc => exc.specific_date === dateStr);
       
@@ -259,8 +281,12 @@ export const useWeekViewData = (
       );
       
       // Regular availability blocks that haven't been deleted
+      // Handle both named and numeric day_of_week values
       const dayBlocks = blocks
-        .filter(block => block.day_of_week === dayOfWeek)
+        .filter(block => {
+          const normalizedBlockDay = normalizeDayOfWeek(block.day_of_week);
+          return normalizedBlockDay === dayOfWeek;
+        })
         .filter(block => !deletedAvailabilityIds.has(block.id))
         .map(block => {
           // Find if this block has a time-modification exception
