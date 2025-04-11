@@ -969,21 +969,63 @@ export type Database = {
           clinician_bio: string | null
           clinician_email: string | null
           clinician_first_name: string | null
+          clinician_fridayend1: string | null
+          clinician_fridayend2: string | null
+          clinician_fridayend3: string | null
+          clinician_fridaystart1: string | null
+          clinician_fridaystart2: string | null
+          clinician_fridaystart3: string | null
           clinician_image_url: string | null
           clinician_last_name: string | null
           clinician_license_type: string | null
           clinician_licensed_states: string[] | null
           clinician_min_client_age: number | null
+          clinician_mondayend1: string | null
+          clinician_mondayend2: string | null
+          clinician_mondayend3: string | null
+          clinician_mondaystart1: string | null
+          clinician_mondaystart2: string | null
+          clinician_mondaystart3: string | null
           clinician_nameinsurance: string | null
           clinician_npi_number: string | null
           clinician_phone: string | null
           clinician_professional_name: string | null
+          clinician_saturdayend1: string | null
+          clinician_saturdayend2: string | null
+          clinician_saturdayend3: string | null
+          clinician_saturdaystart1: string | null
+          clinician_saturdaystart2: string | null
+          clinician_saturdaystart3: string | null
           clinician_state: string[] | null
           clinician_status: string | null
+          clinician_sundayend1: string | null
+          clinician_sundayend2: string | null
+          clinician_sundayend3: string | null
+          clinician_sundaystart1: string | null
+          clinician_sundaystart2: string | null
+          clinician_sundaystart3: string | null
           clinician_taxonomy_code: string | null
+          clinician_thursdayend1: string | null
+          clinician_thursdayend2: string | null
+          clinician_thursdayend3: string | null
+          clinician_thursdaystart1: string | null
+          clinician_thursdaystart2: string | null
+          clinician_thursdaystart3: string | null
           clinician_timezone: string | null
           clinician_treatment_approaches: string[] | null
+          clinician_tuesdayend1: string | null
+          clinician_tuesdayend2: string | null
+          clinician_tuesdayend3: string | null
+          clinician_tuesdaystart1: string | null
+          clinician_tuesdaystart2: string | null
+          clinician_tuesdaystart3: string | null
           clinician_type: string | null
+          clinician_wednesdayend1: string | null
+          clinician_wednesdayend2: string | null
+          clinician_wednesdayend3: string | null
+          clinician_wednesdaystart1: string | null
+          clinician_wednesdaystart2: string | null
+          clinician_wednesdaystart3: string | null
           created_at: string
           id: string
           updated_at: string
@@ -993,21 +1035,63 @@ export type Database = {
           clinician_bio?: string | null
           clinician_email?: string | null
           clinician_first_name?: string | null
+          clinician_fridayend1?: string | null
+          clinician_fridayend2?: string | null
+          clinician_fridayend3?: string | null
+          clinician_fridaystart1?: string | null
+          clinician_fridaystart2?: string | null
+          clinician_fridaystart3?: string | null
           clinician_image_url?: string | null
           clinician_last_name?: string | null
           clinician_license_type?: string | null
           clinician_licensed_states?: string[] | null
           clinician_min_client_age?: number | null
+          clinician_mondayend1?: string | null
+          clinician_mondayend2?: string | null
+          clinician_mondayend3?: string | null
+          clinician_mondaystart1?: string | null
+          clinician_mondaystart2?: string | null
+          clinician_mondaystart3?: string | null
           clinician_nameinsurance?: string | null
           clinician_npi_number?: string | null
           clinician_phone?: string | null
           clinician_professional_name?: string | null
+          clinician_saturdayend1?: string | null
+          clinician_saturdayend2?: string | null
+          clinician_saturdayend3?: string | null
+          clinician_saturdaystart1?: string | null
+          clinician_saturdaystart2?: string | null
+          clinician_saturdaystart3?: string | null
           clinician_state?: string[] | null
           clinician_status?: string | null
+          clinician_sundayend1?: string | null
+          clinician_sundayend2?: string | null
+          clinician_sundayend3?: string | null
+          clinician_sundaystart1?: string | null
+          clinician_sundaystart2?: string | null
+          clinician_sundaystart3?: string | null
           clinician_taxonomy_code?: string | null
+          clinician_thursdayend1?: string | null
+          clinician_thursdayend2?: string | null
+          clinician_thursdayend3?: string | null
+          clinician_thursdaystart1?: string | null
+          clinician_thursdaystart2?: string | null
+          clinician_thursdaystart3?: string | null
           clinician_timezone?: string | null
           clinician_treatment_approaches?: string[] | null
+          clinician_tuesdayend1?: string | null
+          clinician_tuesdayend2?: string | null
+          clinician_tuesdayend3?: string | null
+          clinician_tuesdaystart1?: string | null
+          clinician_tuesdaystart2?: string | null
+          clinician_tuesdaystart3?: string | null
           clinician_type?: string | null
+          clinician_wednesdayend1?: string | null
+          clinician_wednesdayend2?: string | null
+          clinician_wednesdayend3?: string | null
+          clinician_wednesdaystart1?: string | null
+          clinician_wednesdaystart2?: string | null
+          clinician_wednesdaystart3?: string | null
           created_at?: string
           id: string
           updated_at?: string
@@ -1017,21 +1101,63 @@ export type Database = {
           clinician_bio?: string | null
           clinician_email?: string | null
           clinician_first_name?: string | null
+          clinician_fridayend1?: string | null
+          clinician_fridayend2?: string | null
+          clinician_fridayend3?: string | null
+          clinician_fridaystart1?: string | null
+          clinician_fridaystart2?: string | null
+          clinician_fridaystart3?: string | null
           clinician_image_url?: string | null
           clinician_last_name?: string | null
           clinician_license_type?: string | null
           clinician_licensed_states?: string[] | null
           clinician_min_client_age?: number | null
+          clinician_mondayend1?: string | null
+          clinician_mondayend2?: string | null
+          clinician_mondayend3?: string | null
+          clinician_mondaystart1?: string | null
+          clinician_mondaystart2?: string | null
+          clinician_mondaystart3?: string | null
           clinician_nameinsurance?: string | null
           clinician_npi_number?: string | null
           clinician_phone?: string | null
           clinician_professional_name?: string | null
+          clinician_saturdayend1?: string | null
+          clinician_saturdayend2?: string | null
+          clinician_saturdayend3?: string | null
+          clinician_saturdaystart1?: string | null
+          clinician_saturdaystart2?: string | null
+          clinician_saturdaystart3?: string | null
           clinician_state?: string[] | null
           clinician_status?: string | null
+          clinician_sundayend1?: string | null
+          clinician_sundayend2?: string | null
+          clinician_sundayend3?: string | null
+          clinician_sundaystart1?: string | null
+          clinician_sundaystart2?: string | null
+          clinician_sundaystart3?: string | null
           clinician_taxonomy_code?: string | null
+          clinician_thursdayend1?: string | null
+          clinician_thursdayend2?: string | null
+          clinician_thursdayend3?: string | null
+          clinician_thursdaystart1?: string | null
+          clinician_thursdaystart2?: string | null
+          clinician_thursdaystart3?: string | null
           clinician_timezone?: string | null
           clinician_treatment_approaches?: string[] | null
+          clinician_tuesdayend1?: string | null
+          clinician_tuesdayend2?: string | null
+          clinician_tuesdayend3?: string | null
+          clinician_tuesdaystart1?: string | null
+          clinician_tuesdaystart2?: string | null
+          clinician_tuesdaystart3?: string | null
           clinician_type?: string | null
+          clinician_wednesdayend1?: string | null
+          clinician_wednesdayend2?: string | null
+          clinician_wednesdayend3?: string | null
+          clinician_wednesdaystart1?: string | null
+          clinician_wednesdaystart2?: string | null
+          clinician_wednesdaystart3?: string | null
           created_at?: string
           id?: string
           updated_at?: string
@@ -1682,6 +1808,36 @@ export type Database = {
         }
         Relationships: []
       }
+      single_day_availability: {
+        Row: {
+          availability_date: string
+          clinician_id: string
+          created_at: string
+          end_time: string
+          id: string
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          availability_date: string
+          clinician_id: string
+          created_at?: string
+          end_time: string
+          id?: string
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          availability_date?: string
+          clinician_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       staff_licenses: {
         Row: {
           created_at: string | null
@@ -1739,6 +1895,39 @@ export type Database = {
           license_type?: string | null
           profile_id?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      time_blocks: {
+        Row: {
+          block_date: string
+          clinician_id: string
+          created_at: string
+          end_time: string
+          id: string
+          reason: string | null
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          block_date: string
+          clinician_id: string
+          created_at?: string
+          end_time: string
+          id?: string
+          reason?: string | null
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          block_date?: string
+          clinician_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          reason?: string | null
+          start_time?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1895,6 +2084,10 @@ export type Database = {
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      migrate_availability_to_clinician_columns: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
     }
     Enums: {

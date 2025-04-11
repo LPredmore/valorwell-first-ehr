@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -96,9 +97,11 @@ serve(async (req) => {
       )
     }
     
-    // Ensure min_days_ahead and max_days_ahead are numbers
-    // and format default_start_time and default_end_time properly
+    // Check if single-date availability table exists
+    // Only do this if we successfully retrieved the base settings
     if (data) {
+      // Ensure min_days_ahead and max_days_ahead are numbers
+      // and format default_start_time and default_end_time properly
       data.min_days_ahead = Number(data.min_days_ahead);
       data.max_days_ahead = Number(data.max_days_ahead);
       
@@ -108,6 +111,17 @@ serve(async (req) => {
       
       if (!data.default_end_time) {
         data.default_end_time = '17:00:00';
+      }
+      
+      // Check if the single_day_availability table exists
+      const { data: tableCheckResult, error: tableCheckError } = await supabaseClient
+        .rpc('check_table_exists', { check_table_name: 'availability_single_date' });
+      
+      if (!tableCheckError && tableCheckResult === true) {
+        // Set a flag to indicate that single date availability is supported
+        data.supports_single_date_availability = true;
+      } else {
+        data.supports_single_date_availability = false;
       }
       
       console.log(`Successfully retrieved settings: ${JSON.stringify(data, null, 2)}`)
