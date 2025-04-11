@@ -38,6 +38,7 @@ interface TimeBlock {
   start_time: string;
   end_time: string;
   reason?: string;
+  clinician_id: string;
 }
 
 interface SingleDayAvailability {
@@ -53,23 +54,6 @@ interface ClinicianScheduleData {
   supports_single_date_availability?: boolean;
   supports_time_blocks?: boolean;
 }
-
-// Helper function to normalize day_of_week values that can be either numeric or named
-const normalizeDayOfWeek = (day: string): string => {
-  // Map of numeric values to day names
-  const dayMap: { [key: string]: string } = {
-    '0': 'Sunday',
-    '1': 'Monday',
-    '2': 'Tuesday',
-    '3': 'Wednesday',
-    '4': 'Thursday',
-    '5': 'Friday',
-    '6': 'Saturday'
-  };
-
-  // If the day is a number as a string, convert to day name
-  return dayMap[day] || day;
-};
 
 export const useMonthViewData = (
   currentDate: Date,
@@ -186,7 +170,8 @@ export const useMonthViewData = (
           block_date: block.block_date,
           start_time: block.start_time,
           end_time: block.end_time,
-          reason: block.reason || undefined
+          reason: block.reason || undefined,
+          clinician_id: block.clinician_id
         })) || [];
         
         setTimeBlocks(formattedBlocks);
@@ -211,6 +196,7 @@ export const useMonthViewData = (
         
         console.log(`[MonthView] Fetching single-day availability for date range: ${startDateStr} to ${endDateStr}`);
         
+        // First try with single_day_availability table
         const { data, error } = await supabase
           .from('single_day_availability')
           .select('*')
@@ -220,12 +206,34 @@ export const useMonthViewData = (
           
         if (error) {
           console.error('[MonthView] Error fetching single-day availability:', error);
-          return;
+          
+          // Try with alternate table name as fallback
+          const { data: altData, error: altError } = await supabase
+            .from('availability_single_date')
+            .select('*')
+            .eq('clinician_id', clinicianId)
+            .gte('date', startDateStr)
+            .lte('date', endDateStr);
+            
+          if (altError) {
+            console.error('[MonthView] Error fetching alternate single-day table:', altError);
+            setSingleDayAvailability([]);
+          } else {
+            // Map to expected format
+            const mappedData = (altData || []).map(item => ({
+              id: item.id,
+              availability_date: item.date,
+              start_time: item.start_time,
+              end_time: item.end_time,
+              clinician_id: item.clinician_id
+            }));
+            console.log(`[MonthView] Retrieved ${mappedData.length} alternate single-day availability records`);
+            setSingleDayAvailability(mappedData);
+          }
+        } else {
+          console.log(`[MonthView] Retrieved ${data?.length || 0} single-day availability records`);
+          setSingleDayAvailability(data || []);
         }
-        
-        console.log(`[MonthView] Retrieved ${data?.length || 0} single-day availability records`);
-        
-        setSingleDayAvailability(data || []);
       } catch (error) {
         console.error('[MonthView] Error fetching single-day availability:', error);
       } finally {

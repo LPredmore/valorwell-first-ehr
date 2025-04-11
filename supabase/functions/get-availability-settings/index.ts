@@ -122,6 +122,16 @@ serve(async (req) => {
         console.error('Error checking single_day_availability table:', singleDayTableError);
       }
       
+      // Also check for the alternate table name
+      if (!data.supports_single_date_availability) {
+        const { data: altSingleDayTableExists, error: altSingleDayTableError } = await supabaseClient
+          .rpc('check_table_exists', { check_table_name: 'availability_single_date' });
+        
+        if (!altSingleDayTableError) {
+          data.supports_single_date_availability = !!altSingleDayTableExists;
+        }
+      }
+      
       // Check if the time_blocks table exists
       const { data: timeBlocksTableExists, error: timeBlocksTableError } = await supabaseClient
         .rpc('check_table_exists', { check_table_name: 'time_blocks' });

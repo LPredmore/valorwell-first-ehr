@@ -48,7 +48,6 @@ interface TimeBlock {
   availabilityIds: string[];
   isException?: boolean;
   isStandalone?: boolean;
-  // Add these properties to fix the TypeScript errors
   id: string;
   originalAvailabilityId?: string | null;
 }
@@ -63,9 +62,28 @@ interface AppointmentBlock {
   clientName?: string;
 }
 
-// Helper function to normalize day_of_week values that can be either numeric or named
+interface ClinicianSchedule {
+  [day: string]: { start_time: string; end_time: string }[];
+}
+
+interface SingleDayAvail {
+  id: string;
+  availability_date: string;
+  start_time: string;
+  end_time: string;
+  clinician_id: string;
+}
+
+interface TimeBlockRecord {
+  id: string;
+  block_date: string;
+  start_time: string;
+  end_time: string;
+  reason?: string;
+  clinician_id: string;
+}
+
 const normalizeDayOfWeek = (day: string): string => {
-  // Map of numeric values to day names
   const dayMap: { [key: string]: string } = {
     '0': 'Sunday',
     '1': 'Monday',
@@ -75,12 +93,9 @@ const normalizeDayOfWeek = (day: string): string => {
     '5': 'Friday',
     '6': 'Saturday'
   };
-
-  // If the day is a number as a string, convert to day name
   return dayMap[day] || day;
 };
 
-// Function to get day of week as a string for a given date
 const getDayOfWeekString = (date: Date): string => {
   return format(date, 'EEEE');
 };
@@ -94,12 +109,12 @@ export const useWeekViewData = (
 ) => {
   const [loading, setLoading] = useState(true);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
-  const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
-  const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [clinicianWeeklySchedule, setClinicianWeeklySchedule] = useState<ClinicianSchedule>({});
+  const [singleDayAvailability, setSingleDayAvailability] = useState<SingleDayAvail[]>([]);
+  const [blockedTimeRecords, setBlockedTimeRecords] = useState<TimeBlockRecord[]>([]);
 
-  // Process appointments into blocks
   useEffect(() => {
     if (!appointments.length) {
       setAppointmentBlocks([]);
@@ -142,298 +157,322 @@ export const useWeekViewData = (
     setAppointmentBlocks(blocks);
   }, [appointments, getClientName]);
 
-  // Fetch availability and exceptions
   useEffect(() => {
-    const fetchAvailability = async () => {
+    const fetchClinicianWeeklySchedule = async () => {
       setLoading(true);
       setError(null);
       
       try {
-        // Verify we have a clinician ID before proceeding
         if (!clinicianId) {
           console.log("[WeekView] No clinicianId provided, skipping availability fetch");
-          setAvailabilityBlocks([]);
-          setExceptions([]);
-          processAvailabilityWithExceptions([], []);
+          setClinicianWeeklySchedule({});
           setLoading(false);
           return;
         }
         
-        console.log(`[WeekView] Fetching availability for clinician: ${clinicianId}`);
+        console.log(`[WeekView] Fetching clinician weekly schedule for: ${clinicianId}`);
         
-        // Get current auth user for verification
         const { data: authData } = await supabase.auth.getUser();
         console.log(`[WeekView] Current user: ${authData?.user?.id || 'No user'}`);
         
-        // Query availability with proper filtering
-        const { data: availabilityData, error } = await supabase
-          .from('availability')
-          .select('*')
-          .eq('is_active', true)
-          .eq('clinician_id', clinicianId);
+        const { data: clinicianData, error } = await supabase
+          .from('clinicians')
+          .select(`
+            clinician_mondaystart1, clinician_mondayend1,
+            clinician_mondaystart2, clinician_mondayend2,
+            clinician_mondaystart3, clinician_mondayend3,
+            clinician_tuesdaystart1, clinician_tuesdayend1,
+            clinician_tuesdaystart2, clinician_tuesdayend2,
+            clinician_tuesdaystart3, clinician_tuesdayend3,
+            clinician_wednesdaystart1, clinician_wednesdayend1,
+            clinician_wednesdaystart2, clinician_wednesdayend2,
+            clinician_wednesdaystart3, clinician_wednesdayend3,
+            clinician_thursdaystart1, clinician_thursdayend1,
+            clinician_thursdaystart2, clinician_thursdayend2,
+            clinician_thursdaystart3, clinician_thursdayend3,
+            clinician_fridaystart1, clinician_fridayend1,
+            clinician_fridaystart2, clinician_fridayend2,
+            clinician_fridaystart3, clinician_fridayend3,
+            clinician_saturdaystart1, clinician_saturdayend1,
+            clinician_saturdaystart2, clinician_saturdayend2,
+            clinician_saturdaystart3, clinician_saturdayend3,
+            clinician_sundaystart1, clinician_sundayend1,
+            clinician_sundaystart2, clinician_sundayend2,
+            clinician_sundaystart3, clinician_sundayend3
+          `)
+          .eq('id', clinicianId)
+          .single();
 
         if (error) {
-          console.error('[WeekView] Error fetching availability:', error);
-          setError(`Error fetching availability: ${error.message}`);
-          setAvailabilityBlocks([]);
-          setExceptions([]);
-          processAvailabilityWithExceptions([], []);
-        } else {
-          console.log(`[WeekView] Retrieved ${availabilityData?.length || 0} availability records for clinician ${clinicianId}:`, availabilityData);
-          setAvailabilityBlocks(availabilityData || []);
+          console.error('[WeekView] Error fetching clinician data:', error);
+          setError(`Error fetching clinician data: ${error.message}`);
+          setClinicianWeeklySchedule({});
+        } else if (clinicianData) {
+          console.log('[WeekView] Retrieved clinician weekly schedule:', clinicianData);
           
-          const startDateStr = format(days[0], 'yyyy-MM-dd');
-          const endDateStr = format(days[days.length - 1], 'yyyy-MM-dd');
+          const schedule: ClinicianSchedule = {
+            monday: [],
+            tuesday: [],
+            wednesday: [],
+            thursday: [],
+            friday: [],
+            saturday: [],
+            sunday: []
+          };
           
-          // Fetch exceptions for this clinician
-          if (availabilityData && availabilityData.length > 0) {
-            console.log(`[WeekView] Fetching exceptions for clinician: ${clinicianId}, dates: ${startDateStr} to ${endDateStr}`);
-            
-            const { data: exceptionsData, error: exceptionsError } = await supabase
-              .from('availability_exceptions')
-              .select('*')
-              .eq('clinician_id', clinicianId)
-              .gte('specific_date', startDateStr)
-              .lte('specific_date', endDateStr);
+          const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+          days.forEach(day => {
+            for (let i = 1; i <= 3; i++) {
+              const startKey = `clinician_${day}start${i}`;
+              const endKey = `clinician_${day}end${i}`;
               
-            if (exceptionsError) {
-              console.error('[WeekView] Error fetching exceptions:', exceptionsError);
-              setError(`Error fetching exceptions: ${exceptionsError.message}`);
-              setExceptions([]);
-              processAvailabilityWithExceptions(availabilityData || [], []);
-            } else {
-              console.log(`[WeekView] Retrieved ${exceptionsData?.length || 0} exceptions:`, exceptionsData);
-              setExceptions(exceptionsData || []);
-              processAvailabilityWithExceptions(availabilityData || [], exceptionsData || []);
+              if (clinicianData[startKey] && clinicianData[endKey]) {
+                schedule[day].push({
+                  start_time: clinicianData[startKey],
+                  end_time: clinicianData[endKey]
+                });
+              }
             }
-          } else {
-            fetchStandaloneExceptions(startDateStr, endDateStr, clinicianId, []);
-          }
+          });
+          
+          console.log('[WeekView] Processed weekly schedule:', schedule);
+          setClinicianWeeklySchedule(schedule);
+          
+          fetchSingleDayAvailability(clinicianId);
+          fetchTimeBlocks(clinicianId);
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error('[WeekView] Exception in availability fetching:', error);
         setError(`Unexpected error: ${errorMessage}`);
-        setAvailabilityBlocks([]);
-        setExceptions([]);
-        processAvailabilityWithExceptions([], []);
-      } finally {
+        setClinicianWeeklySchedule({});
         setLoading(false);
       }
     };
 
-    const fetchStandaloneExceptions = async (startDateStr: string, endDateStr: string, clinicianId: string, availabilityData: AvailabilityBlock[]) => {
-      try {
-        console.log(`[WeekView] Fetching standalone exceptions for clinician: ${clinicianId}`);
-        
-        const { data: exceptionsData, error: exceptionsError } = await supabase
-          .from('availability_exceptions')
-          .select('*')
-          .eq('clinician_id', clinicianId)
-          .eq('is_deleted', false)
-          .is('original_availability_id', null)
-          .gte('specific_date', startDateStr)
-          .lte('specific_date', endDateStr);
-          
-        if (exceptionsError) {
-          console.error('[WeekView] Error fetching standalone exceptions:', exceptionsError);
-          setError(`Error fetching standalone exceptions: ${exceptionsError.message}`);
-          setExceptions([]);
-          processAvailabilityWithExceptions(availabilityData || [], []);
-        } else {
-          console.log(`[WeekView] Retrieved ${exceptionsData?.length || 0} standalone exceptions:`, exceptionsData);
-          setExceptions(exceptionsData || []);
-          processAvailabilityWithExceptions(availabilityData || [], exceptionsData || []);
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error('[WeekView] Exception in standalone exceptions fetching:', error);
-        setError(`Unexpected error: ${errorMessage}`);
-        processAvailabilityWithExceptions(availabilityData || [], []);
-      }
-    };
-
-    fetchAvailability();
+    fetchClinicianWeeklySchedule();
   }, [clinicianId, refreshTrigger, days]);
 
-  // Process availability data with exceptions
-  const processAvailabilityWithExceptions = (blocks: AvailabilityBlock[], exceptionsData: AvailabilityException[]) => {
+  const fetchSingleDayAvailability = async (clinicianId: string) => {
+    try {
+      const startDateStr = format(days[0], 'yyyy-MM-dd');
+      const endDateStr = format(days[days.length - 1], 'yyyy-MM-dd');
+      
+      console.log(`[WeekView] Fetching single day availability for date range: ${startDateStr} to ${endDateStr}`);
+      
+      const { data: singleDayData, error: singleDayError } = await supabase
+        .from('single_day_availability')
+        .select('*')
+        .eq('clinician_id', clinicianId)
+        .gte('availability_date', startDateStr)
+        .lte('availability_date', endDateStr);
+        
+      if (singleDayError) {
+        console.error('[WeekView] Error fetching single day availability:', singleDayError);
+        
+        const { data: altSingleDayData, error: altError } = await supabase
+          .from('availability_single_date')
+          .select('*')
+          .eq('clinician_id', clinicianId)
+          .gte('date', startDateStr)
+          .lte('date', endDateStr);
+          
+        if (altError) {
+          console.error('[WeekView] Error fetching from alternate single day table:', altError);
+          setSingleDayAvailability([]);
+        } else {
+          const mappedData = altSingleDayData.map(record => ({
+            id: record.id,
+            availability_date: record.date,
+            start_time: record.start_time,
+            end_time: record.end_time,
+            clinician_id: record.clinician_id
+          }));
+          
+          console.log(`[WeekView] Retrieved ${mappedData.length} alternate single day records`);
+          setSingleDayAvailability(mappedData);
+        }
+      } else {
+        console.log(`[WeekView] Retrieved ${singleDayData?.length || 0} single day availability records`);
+        setSingleDayAvailability(singleDayData || []);
+      }
+      
+      processAvailabilityData();
+    } catch (error) {
+      console.error('[WeekView] Error in single day availability fetch:', error);
+      setSingleDayAvailability([]);
+    }
+  };
+
+  const fetchTimeBlocks = async (clinicianId: string) => {
+    try {
+      const startDateStr = format(days[0], 'yyyy-MM-dd');
+      const endDateStr = format(days[days.length - 1], 'yyyy-MM-dd');
+      
+      console.log(`[WeekView] Fetching time blocks for date range: ${startDateStr} to ${endDateStr}`);
+      
+      const { data: blocksData, error: blocksError } = await supabase
+        .from('time_blocks')
+        .select('*')
+        .eq('clinician_id', clinicianId)
+        .gte('block_date', startDateStr)
+        .lte('block_date', endDateStr);
+        
+      if (blocksError) {
+        console.error('[WeekView] Error fetching time blocks:', blocksError);
+        setBlockedTimeRecords([]);
+      } else {
+        console.log(`[WeekView] Retrieved ${blocksData?.length || 0} time blocks`);
+        setBlockedTimeRecords(blocksData || []);
+      }
+      
+      processAvailabilityData();
+    } catch (error) {
+      console.error('[WeekView] Error in time blocks fetch:', error);
+      setBlockedTimeRecords([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const processAvailabilityData = () => {
+    if (!Object.keys(clinicianWeeklySchedule).length) {
+      return;
+    }
+
     const allTimeBlocks: TimeBlock[] = [];
 
     days.forEach(day => {
-      const dayOfWeek = getDayOfWeekString(day);
+      const dayOfWeek = format(day, 'EEEE').toLowerCase();
       const dateStr = format(day, 'yyyy-MM-dd');
-      const exceptionsForDay = exceptionsData.filter(exc => exc.specific_date === dateStr);
       
-      // First identify which regular blocks are deleted
-      const deletedAvailabilityIds = new Set(
-        exceptionsForDay
-          .filter(exc => exc.is_deleted && exc.original_availability_id)
-          .map(exc => exc.original_availability_id)
+      const singleDayRecord = singleDayAvailability.find(item => 
+        item.availability_date === dateStr
       );
       
-      // Regular availability blocks that haven't been deleted
-      // Handle both named and numeric day_of_week values
-      const dayBlocks = blocks
-        .filter(block => {
-          const normalizedBlockDay = normalizeDayOfWeek(block.day_of_week);
-          return normalizedBlockDay === dayOfWeek;
-        })
-        .filter(block => !deletedAvailabilityIds.has(block.id))
-        .map(block => {
-          // Find if this block has a time-modification exception
-          const exception = exceptionsForDay.find(e => 
-            e.original_availability_id === block.id && !e.is_deleted
-          );
-          
-          // If there's a time-modification exception, apply it
-          if (exception && exception.start_time && exception.end_time) {
-            console.log(`Found time modification for block ${block.id}:`, {
-              exceptionId: exception.id,
-              originalStartTime: block.start_time,
-              originalEndTime: block.end_time,
-              newStartTime: exception.start_time,
-              newEndTime: exception.end_time,
-              clinicianId: block.clinician_id
-            });
-            
-            return {
-              ...block,
-              start_time: exception.start_time,
-              end_time: exception.end_time,
-              isException: true,
-              // Store the original availability ID for accurate database operations
-              originalAvailabilityId: block.id
-            };
-          }
-          
-          return block;
-        });
-
-      // Get standalone exceptions (original_availability_id is null and not deleted)
-      const standaloneExceptions = exceptionsForDay
-        .filter(exception => 
-          exception.original_availability_id === null && 
-          !exception.is_deleted && 
-          exception.start_time && 
-          exception.end_time
-        );
-      
-      console.log(`Found ${standaloneExceptions.length} standalone exceptions for ${dateStr}`);
-      
-      // Convert standalone exceptions to blocks
-      const standaloneBlocks = standaloneExceptions.map(exception => ({
-        id: exception.id,
-        day_of_week: dayOfWeek,
-        start_time: exception.start_time || '09:00',
-        end_time: exception.end_time || '17:00',
-        clinician_id: exception.clinician_id,
-        is_active: true,
-        isException: true,
-        isStandalone: true,
-        originalAvailabilityId: null
-      }));
-      
-      // Combine regular blocks and standalone blocks
-      const allDayBlocks = [...dayBlocks, ...standaloneBlocks];
-      
-      console.log(`Processing ${allDayBlocks.length} total blocks for ${dateStr}:`, 
-        allDayBlocks.map(b => ({
-          id: b.id, 
-          isException: b.isException, 
-          isStandalone: b.isStandalone,
-          originalAvailabilityId: b.originalAvailabilityId,
-          clinicianId: b.clinician_id
-        }))
-      );
-
-      // Convert to TimeBlock objects
-      const parsedBlocks = allDayBlocks.map(block => {
-        const [startHour, startMinute] = block.start_time.split(':').map(Number);
-        const [endHour, endMinute] = block.end_time.split(':').map(Number);
-
+      if (singleDayRecord) {
+        console.log(`[WeekView] Found single day availability for ${dateStr}:`, singleDayRecord);
+        
+        const [startHour, startMinute] = singleDayRecord.start_time.split(':').map(Number);
+        const [endHour, endMinute] = singleDayRecord.end_time.split(':').map(Number);
+        
         const start = setMinutes(setHours(startOfDay(day), startHour), startMinute);
         const end = setMinutes(setHours(startOfDay(day), endHour), endMinute);
-
-        return {
-          id: block.id,
+        
+        allTimeBlocks.push({
+          id: singleDayRecord.id,
           day,
           start,
           end,
-          availabilityIds: [block.id],
-          isException: block.isException,
-          isStandalone: block.isStandalone,
-          originalAvailabilityId: block.originalAvailabilityId
-        };
-      });
-
-      // Sort blocks by start time
-      parsedBlocks.sort((a, b) => a.start.getTime() - b.start.getTime());
-
-      // Merge adjacent blocks for display
-      const mergedBlocks: TimeBlock[] = [];
-
-      parsedBlocks.forEach(block => {
-        const lastBlock = mergedBlocks[mergedBlocks.length - 1];
-
-        if (lastBlock && block.start <= lastBlock.end) {
-          // Extend the last block if needed
-          if (block.end > lastBlock.end) {
-            lastBlock.end = block.end;
-          }
+          availabilityIds: [singleDayRecord.id],
+          isException: true,
+          isStandalone: true,
+          originalAvailabilityId: null
+        });
+      } else {
+        const daySchedule = clinicianWeeklySchedule[dayOfWeek] || [];
+        
+        if (daySchedule.length > 0) {
+          console.log(`[WeekView] Using weekly schedule for ${dateStr}:`, daySchedule);
           
-          // Add this block's ID to the merged block
-          lastBlock.availabilityIds.push(block.id);
-          
-          // Keep track of block properties
-          if (block.isException) {
-            lastBlock.isException = true;
-          }
-          
-          if (block.isStandalone) {
-            lastBlock.isStandalone = true;
-          }
-          
-          // Preserve the original ID for database operations
-          if (!lastBlock.originalAvailabilityId && block.originalAvailabilityId) {
-            lastBlock.originalAvailabilityId = block.originalAvailabilityId;
-          }
-        } else {
-          // Create a new block if not adjacent
-          mergedBlocks.push({
-            day: block.day,
-            start: block.start,
-            end: block.end,
-            availabilityIds: [block.id],
-            isException: block.isException,
-            isStandalone: block.isStandalone,
-            id: block.id,
-            originalAvailabilityId: block.originalAvailabilityId
+          daySchedule.forEach(slot => {
+            const [startHour, startMinute] = slot.start_time.split(':').map(Number);
+            const [endHour, endMinute] = slot.end_time.split(':').map(Number);
+            
+            const start = setMinutes(setHours(startOfDay(day), startHour), startMinute);
+            const end = setMinutes(setHours(startOfDay(day), endHour), endMinute);
+            
+            const blockId = `${dayOfWeek}-${slot.start_time}-${slot.end_time}`;
+            
+            allTimeBlocks.push({
+              id: blockId,
+              day,
+              start,
+              end,
+              availabilityIds: [blockId],
+              isException: false,
+              isStandalone: false,
+              originalAvailabilityId: null
+            });
           });
         }
-      });
-
-      // Add the merged blocks for this day to the overall collection
-      allTimeBlocks.push(...mergedBlocks);
+      }
     });
-
-    console.log('Final timeBlocks after merging:', 
-      allTimeBlocks.map(b => ({
+    
+    allTimeBlocks.sort((a, b) => a.start.getTime() - b.start.getTime());
+    
+    const finalBlocks = allTimeBlocks.flatMap(block => {
+      const dateStr = format(block.day, 'yyyy-MM-dd');
+      const overlappingBlocks = blockedTimeRecords.filter(tb => 
+        tb.block_date === dateStr && 
+        hasTimeOverlap(
+          block.start, block.end,
+          parseTimeToDate(tb.start_time, block.day),
+          parseTimeToDate(tb.end_time, block.day)
+        )
+      );
+      
+      if (overlappingBlocks.length === 0) {
+        return [block];
+      }
+      
+      const resultBlocks: TimeBlock[] = [];
+      let currentStart = block.start;
+      
+      overlappingBlocks.sort((a, b) => 
+        parseTimeToDate(a.start_time, block.day).getTime() - 
+        parseTimeToDate(b.start_time, block.day).getTime()
+      );
+      
+      for (const timeBlock of overlappingBlocks) {
+        const blockStart = parseTimeToDate(timeBlock.start_time, block.day);
+        const blockEnd = parseTimeToDate(timeBlock.end_time, block.day);
+        
+        if (blockStart > currentStart) {
+          resultBlocks.push({
+            ...block,
+            id: `${block.id}-split-${resultBlocks.length}`,
+            start: currentStart,
+            end: blockStart
+          });
+        }
+        
+        currentStart = new Date(Math.max(currentStart.getTime(), blockEnd.getTime()));
+      }
+      
+      if (currentStart < block.end) {
+        resultBlocks.push({
+          ...block,
+          id: `${block.id}-split-${resultBlocks.length}`,
+          start: currentStart,
+          end: block.end
+        });
+      }
+      
+      return resultBlocks;
+    });
+    
+    console.log(`[WeekView] Final availability blocks: ${finalBlocks.length}`, 
+      finalBlocks.map(b => ({
         day: format(b.day, 'yyyy-MM-dd'),
-        start: format(b.start, 'HH:mm'),
-        end: format(b.end, 'HH:mm'),
-        id: b.id,
+        time: `${format(b.start, 'HH:mm')}-${format(b.end, 'HH:mm')}`,
         isException: b.isException,
-        isStandalone: b.isStandalone,
-        originalAvailabilityId: b.originalAvailabilityId,
-        availabilityIds: b.availabilityIds
+        isStandalone: b.isStandalone
       }))
     );
     
-    setTimeBlocks(allTimeBlocks);
+    setTimeBlocks(finalBlocks);
   };
 
-  // Utility functions for time slot checking
+  const parseTimeToDate = (timeStr: string, baseDate: Date): Date => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return setMinutes(setHours(startOfDay(baseDate), hours), minutes);
+  };
+
+  const hasTimeOverlap = (start1: Date, end1: Date, start2: Date, end2: Date): boolean => {
+    return start1 < end2 && start2 < end1;
+  };
+
   const timeSlotUtils = useMemo(() => {
     const isTimeSlotAvailable = (day: Date, timeSlot: Date) => {
       const slotTime = setMinutes(
@@ -505,19 +544,17 @@ export const useWeekViewData = (
     };
   }, [timeBlocks, appointmentBlocks]);
 
-  // Helper to get availability block by ID
-  const getAvailabilityForBlock = (blockId: string) => {
-    return availabilityBlocks.find(block => block.id === blockId);
-  };
+  useEffect(() => {
+    if (clinicianWeeklySchedule && singleDayAvailability && blockedTimeRecords) {
+      processAvailabilityData();
+    }
+  }, [clinicianWeeklySchedule, singleDayAvailability, blockedTimeRecords]);
 
   return {
     loading,
     error,
     timeBlocks,
     appointmentBlocks,
-    exceptions,
-    availabilityBlocks,
-    getAvailabilityForBlock,
     ...timeSlotUtils
   };
 };
