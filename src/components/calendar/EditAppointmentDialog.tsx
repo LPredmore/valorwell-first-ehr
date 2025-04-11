@@ -21,7 +21,7 @@ import {
   formatTimeZoneDisplay,
   formatUTCTimeForUser
 } from '@/utils/timeZoneUtils';
-import { getClinicianTimeZone } from '@/hooks/useClinicianData';
+import { useClinicianData } from '@/hooks/useClinicianData';
 
 interface EditAppointmentDialogProps {
   isOpen: boolean;
@@ -46,6 +46,8 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
   const [isEditOptionDialogOpen, setIsEditOptionDialogOpen] = useState(false);
   const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago'); // Default timezone
   const [timeZoneDisplay, setTimeZoneDisplay] = useState<string>('Central Time');
+  
+  const { getClinicianTimeZone } = useClinicianData();
 
   // Fetch clinician's timezone when appointment changes
   useEffect(() => {
@@ -68,7 +70,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
     };
 
     fetchClinicianTimeZone();
-  }, [appointment?.clinician_id]);
+  }, [appointment?.clinician_id, getClinicianTimeZone]);
 
   const generateTimeOptions = () => {
     const options = [];
@@ -154,12 +156,11 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
         originalTime: startTime 
       });
       
-      let utcStartTime;
+      let utcStartTime = startTime; // Initialize with default value
       try {
         // We don't actually convert to a full UTC timestamp here,
         // we just need to adjust the time portion to be correct in UTC
         // when it's the given local time in the clinician's timezone
-        utcStartTime = startTime; // Default fallback
         
         // Create a full ISO datetime string for the conversion
         const localDateTimeStr = `${formattedDate}T${startTime}`;

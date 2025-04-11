@@ -1,9 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +12,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { CalendarIcon, Trash2, Clock, Ban, PlusCircle } from 'lucide-react';
 import { format, isValid, isBefore, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { formatTime12Hour } from '@/utils/timeZoneUtils';
 
 interface TimeBlock {
   id: string;
@@ -313,7 +312,7 @@ const TimeBlocksManager: React.FC<TimeBlocksManagerProps> = ({ clinicianId }) =>
                     <div className="font-medium">{format(new Date(block.blockDate), 'PPP')}</div>
                     <div className="text-sm text-gray-500 flex items-center">
                       <Clock className="h-3 w-3 mr-1" />
-                      {block.startTime} - {block.endTime}
+                      {formatTime12Hour(block.startTime)} - {formatTime12Hour(block.endTime)}
                     </div>
                     {block.reason && (
                       <div className="text-sm text-gray-500 mt-1">{block.reason}</div>
