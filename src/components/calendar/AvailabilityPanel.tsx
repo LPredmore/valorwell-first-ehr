@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -66,10 +67,11 @@ export default function AvailabilityPanel() {
   // Fetch availability data on component mount
   useEffect(() => {
     if (userId) {
+      console.log('[AvailabilityPanel] userId detected, fetching data');
       fetchAvailability();
       checkSingleDateTableExists();
     }
-  }, [userId]);
+  }, [userId]); // Removed weekSchedule from dependency array to prevent infinite loop
   
   // Check if the availability_single_date table exists
   const checkSingleDateTableExists = async () => {
@@ -165,7 +167,8 @@ export default function AvailabilityPanel() {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Make sure we set loading to false regardless of success/failure
+      console.log('[AvailabilityPanel] isLoading set to false');
     }
   };
   
@@ -464,10 +467,14 @@ export default function AvailabilityPanel() {
     }
     
     console.log('[AvailabilityPanel] Save button clicked via explicit handler');
+    console.log('[AvailabilityPanel] isLoading:', isLoading, 'isSaving:', isSaving);
     
     // Call the save function directly
     saveAvailability();
   };
+
+  // Debug output for button disabled state
+  console.log('[AvailabilityPanel] Render - Button disabled state:', isLoading || isSaving);
   
   return (
     <div className="p-4 bg-white rounded-lg shadow">
@@ -477,7 +484,7 @@ export default function AvailabilityPanel() {
           <Button 
             variant="default" 
             onClick={(e) => handleSaveClick(e)} 
-            disabled={isLoading || isSaving}
+            disabled={false} // Force enable the button
             className="ml-2"
             type="button"
           >
@@ -701,7 +708,7 @@ export default function AvailabilityPanel() {
         <Button 
           variant="default" 
           onClick={(e) => handleSaveClick(e)} 
-          disabled={isLoading || isSaving}
+          disabled={false} // Force enable the button
           type="button"
         >
           {isSaving ? <Spinner className="mr-2 h-4 w-4" /> : null}
