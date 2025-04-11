@@ -1,4 +1,3 @@
-
 import { Document, Page, Text, View, StyleSheet, Font, pdf } from '@react-pdf/renderer';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "@/components/ui/use-toast";
@@ -411,6 +410,7 @@ export const generateAndSavePDF = async (
     
     while (uploadAttempts < 3) {
       try {
+        console.log('Attempting to upload PDF to Clinical Documents bucket, path:', filePath);
         const { error } = await supabase.storage
           .from('Clinical Documents')
           .upload(filePath, pdfBlob, {
@@ -420,12 +420,13 @@ export const generateAndSavePDF = async (
           
         if (!error) {
           uploadError = null;
+          console.log('PDF uploaded successfully');
           break;
         }
         
         uploadError = error;
         uploadAttempts++;
-        console.log(`Upload attempt ${uploadAttempts} failed, retrying...`);
+        console.log(`Upload attempt ${uploadAttempts} failed, retrying...`, error);
         await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
       } catch (error) {
         uploadError = error;
@@ -459,6 +460,15 @@ export const generateAndSavePDF = async (
     
     // Step 4: Save document metadata to clinical_documents table with error handling
     try {
+      console.log('Saving document metadata to clinical_documents table:', {
+        client_id: documentInfo.clientId,
+        document_type: documentInfo.documentType,
+        document_date: formattedDate,
+        document_title: documentInfo.documentTitle,
+        file_path: filePath,
+        created_by: documentInfo.createdBy
+      });
+      
       const { error: dbError } = await supabase
         .from('clinical_documents')
         .insert({
