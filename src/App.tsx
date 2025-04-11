@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -32,6 +33,12 @@ import InformedConsent from '@/pages/InformedConsent';
 import PatientDocuments from '@/pages/PatientDocuments';
 import Reminders from '@/pages/Reminders';
 import ProfileSetup from '@/pages/ProfileSetup';
+
+// Missing component imports
+import ClinicianDashboard from '@/pages/ClinicianDashboard';
+import MyClients from '@/pages/MyClients';
+import Analytics from '@/pages/Analytics';
+import NotFound from '@/pages/NotFound';
 
 // Create a client
 const queryClient = new QueryClient();

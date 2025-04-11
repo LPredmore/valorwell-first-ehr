@@ -12,7 +12,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 import { SessionDidNotOccurDialog } from '@/components/dashboard/SessionDidNotOccurDialog';
 
-const ClinicianDashboard = () => {
+const ClinicianDashboard: React.FC = () => {
   const { userRole, userId } = useUser();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [clinicianTimeZone, setClinicianTimeZone] = useState<string>(getUserTimeZone());
