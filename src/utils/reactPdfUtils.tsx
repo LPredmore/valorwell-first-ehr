@@ -409,7 +409,7 @@ export const generateAndSavePDF = async (
     let uploadError = null;
     
     // Define storage bucket name according to document type
-    const bucketName = "session-notes";
+    const bucketName = documentInfo.documentType === 'treatment_plan' ? "treatment-plans" : "session-notes";
     
     while (uploadAttempts < 3) {
       try {

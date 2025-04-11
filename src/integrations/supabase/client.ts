@@ -124,23 +124,30 @@ export const fetchClinicalDocuments = async (clientId: string) => {
   }
 };
 
-// Function to get document download URL
-export const getDocumentDownloadURL = async (filePath: string) => {
+// Update the getDocumentDownloadURL function to accept document type
+export const getDocumentDownloadURL = async (filePath: string, documentType?: string): Promise<string | null> => {
   try {
-    console.log('Getting download URL for document:', filePath);
-    const { data, error } = await supabase.storage
-      .from('clinical_documents')
-      .createSignedUrl(filePath, 60); // 60 seconds expiration
-      
-    if (error) {
-      console.error('Error creating signed URL:', error);
-      throw error;
+    // Determine the bucket name based on the document type
+    let bucketName = "session-notes"; // Default bucket
+    
+    if (documentType === 'treatment_plan') {
+      bucketName = "treatment-plans";
     }
     
-    console.log('Generated signed URL');
-    return data.signedUrl;
-  } catch (error) {
-    console.error('Error in getDocumentDownloadURL:', error);
+    console.log(`Getting download URL for file: ${filePath} from bucket: ${bucketName}`);
+    
+    const { data, error } = await supabase.storage
+      .from(bucketName)
+      .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
+    
+    if (error) {
+      console.error('Error creating signed URL:', error);
+      return null;
+    }
+    
+    return data?.signedUrl || null;
+  } catch (err) {
+    console.error('Error in getDocumentDownloadURL:', err);
     return null;
   }
 };

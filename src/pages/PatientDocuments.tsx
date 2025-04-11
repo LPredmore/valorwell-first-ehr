@@ -47,9 +47,10 @@ const PatientDocuments: React.FC = () => {
     loadDocuments();
   }, [userId, toast]);
 
-  const handleViewDocument = async (filePath: string) => {
+  const handleViewDocument = async (filePath: string, documentType: string) => {
     try {
-      const url = await getDocumentDownloadURL(filePath);
+      // Pass the document type to determine which bucket to use
+      const url = await getDocumentDownloadURL(filePath, documentType);
       if (url) {
         window.open(url, '_blank');
       } else {
@@ -125,7 +126,7 @@ const PatientDocuments: React.FC = () => {
                             variant="outline" 
                             size="sm" 
                             className="ml-2" 
-                            onClick={() => handleViewDocument(doc.file_path)}
+                            onClick={() => handleViewDocument(doc.file_path, doc.document_type)}
                           >
                             <Eye className="h-4 w-4 mr-1" />
                             View
