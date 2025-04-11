@@ -8,6 +8,7 @@ import { fetchClinicalDocuments, getDocumentDownloadURL, supabase } from '@/inte
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/context/UserContext';
 import { useNavigate } from 'react-router-dom';
+
 interface Document {
   id: string;
   document_title: string;
@@ -16,6 +17,7 @@ interface Document {
   file_path: string;
   created_at: string;
 }
+
 interface AssignedDocument {
   id: string;
   title: string;
@@ -25,18 +27,17 @@ interface AssignedDocument {
   filePath?: string;
   route?: string;
 }
+
 const MyDocuments = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [assignedDocuments, setAssignedDocuments] = useState<AssignedDocument[]>([]);
   const [isLoadingAssignedDocs, setIsLoadingAssignedDocs] = useState(false);
-  const {
-    toast
-  } = useToast();
-  const {
-    userId
-  } = useUser();
+  
+  const { toast } = useToast();
+  const { userId } = useUser();
   const navigate = useNavigate();
+
   useEffect(() => {
     const loadDocuments = async () => {
       if (!userId) return;
@@ -115,6 +116,7 @@ const MyDocuments = () => {
     };
     loadDocuments();
   }, [userId, toast]);
+
   const handleViewDocument = async (filePath: string) => {
     try {
       const url = await getDocumentDownloadURL(filePath);
@@ -136,6 +138,7 @@ const MyDocuments = () => {
       });
     }
   };
+
   const handleFillOutForm = (doc: AssignedDocument) => {
     if (doc.route) {
       navigate(doc.route);
@@ -146,6 +149,7 @@ const MyDocuments = () => {
       });
     }
   };
+
   return <div className="grid grid-cols-1 gap-6">
       <Card>
         <CardHeader>
@@ -201,9 +205,60 @@ const MyDocuments = () => {
       </Card>
 
       <Card>
-        
-        
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-valorwell-600" />
+            Completed Notes
+          </CardTitle>
+          <CardDescription>View your completed clinical documents</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? <div className="flex justify-center py-8">
+              <p>Loading documents...</p>
+            </div> : documents.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-center">
+              <FileText className="h-12 w-12 text-gray-300 mb-3" />
+              <h3 className="text-lg font-medium">No documents found</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                No clinical documents have been created for your account yet
+              </p>
+            </div> : <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {documents.map(doc => <TableRow key={doc.id}>
+                      <TableCell className="font-medium">{doc.document_title}</TableCell>
+                      <TableCell>{doc.document_type}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4 text-gray-500" />
+                          {format(new Date(doc.document_date), 'MMM d, yyyy')}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="ml-2" 
+                          onClick={() => handleViewDocument(doc.file_path)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>)}
+                </TableBody>
+              </Table>
+            </div>}
+        </CardContent>
       </Card>
     </div>;
 };
+
 export default MyDocuments;
