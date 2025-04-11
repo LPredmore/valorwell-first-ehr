@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -9,28 +8,30 @@ import { UserProvider } from "./context/UserContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 // Pages
-import Index from "./pages/Index";
-import Calendar from "./pages/Calendar";
-import Clients from "./pages/Clients";
-import ClientDetails from "./pages/ClientDetails";
-import Analytics from "./pages/Analytics";
-import Activity from "./pages/Activity";
-import Settings from "./pages/Settings";
-import Reminders from "./pages/Reminders";
-import Messages from "./pages/Messages";
-import NotFound from "./pages/NotFound";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import ClinicianDetails from "./pages/ClinicianDetails";
-import MyClients from "./pages/MyClients";
-import PatientDashboard from "./pages/PatientDashboard";
-import PatientDocuments from "./pages/PatientDocuments";
-import ProfileSetup from "./pages/ProfileSetup";
-import TherapistSelection from "./pages/TherapistSelection";
-import ClinicianDashboard from "./pages/ClinicianDashboard";
-import ClientHistoryForm from "./pages/ClientHistoryForm";
+import Index from '@/pages/Index';
+import Login from '@/pages/Login';
+import Signup from '@/pages/Signup';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
+
+// Core pages
+import Calendar from '@/pages/Calendar';
+import Clients from '@/pages/Clients';
+import ClientDetails from '@/pages/ClientDetails';
+import Activity from '@/pages/Activity';
+import Messages from '@/pages/Messages';
+import Settings from '@/pages/Settings';
+import ClinicianDetails from '@/pages/ClinicianDetails';
+
+// Client pages
+import TherapistSelection from '@/pages/TherapistSelection';
+import PatientDashboard from '@/pages/PatientDashboard';
+import PatientProfile from '@/pages/PatientProfile';
+import ClientHistoryForm from '@/pages/ClientHistoryForm';
+import InformedConsent from '@/pages/InformedConsent';
+import PatientDocuments from '@/pages/PatientDocuments';
+import Reminders from '@/pages/Reminders';
+import ProfileSetup from '@/pages/ProfileSetup';
 
 // Create a client
 const queryClient = new QueryClient();

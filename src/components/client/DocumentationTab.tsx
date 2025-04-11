@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,11 +66,44 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
       
       // In the future, we'll add actual fetching of assigned documents here
       setIsLoadingAssignedDocs(true);
-      // Mock data for assigned documents - this will be replaced with actual API call
-      setTimeout(() => {
-        setAssignedDocuments([]);
-        setIsLoadingAssignedDocs(false);
-      }, 500);
+      
+      // Check for informed consent document
+      const fetchAssignedDocuments = async () => {
+        try {
+          // Check if the client has completed the informed consent form
+          const { data: informedConsent, error: consentError } = await supabase
+            .from('clinical_documents')
+            .select('*')
+            .eq('client_id', clientData.id)
+            .eq('document_type', 'informed_consent')
+            .order('created_at', { ascending: false })
+            .maybeSingle();
+            
+          if (consentError) throw consentError;
+          
+          const assignedDocs = [];
+          
+          // Only add the informed consent to assigned documents if it hasn't been completed
+          if (!informedConsent) {
+            assignedDocs.push({
+              id: '2',
+              title: 'Informed Consent',
+              type: 'Legal',
+              required: true,
+              status: 'not_started'
+            });
+          }
+          
+          setAssignedDocuments(assignedDocs);
+        } catch (error) {
+          console.error('Error fetching assigned documents:', error);
+          setAssignedDocuments([]);
+        } finally {
+          setIsLoadingAssignedDocs(false);
+        }
+      };
+      
+      fetchAssignedDocuments();
     }
   }, [clientData?.id, toast]);
 

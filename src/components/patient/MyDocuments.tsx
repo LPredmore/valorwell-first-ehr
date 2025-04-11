@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
@@ -67,6 +68,21 @@ const MyDocuments = () => {
           error: historyError
         } = await supabase.from('client_history').select('pdf_path').eq('client_id', userId).maybeSingle();
         if (historyError) throw historyError;
+        
+        // Check for informed consent document
+        const {
+          data: informedConsent,
+          error: consentError
+        } = await supabase
+          .from('clinical_documents')
+          .select('file_path')
+          .eq('client_id', userId)
+          .eq('document_type', 'informed_consent')
+          .order('created_at', { ascending: false })
+          .maybeSingle();
+        
+        if (consentError) console.error('Error fetching informed consent:', consentError);
+        
         const assignedDocs: AssignedDocument[] = [{
           id: '1',
           title: 'Client History Form',
@@ -80,8 +96,11 @@ const MyDocuments = () => {
           title: 'Informed Consent',
           type: 'Legal',
           required: true,
-          status: 'not_started'
+          status: informedConsent?.file_path ? 'completed' : 'not_started',
+          filePath: informedConsent?.file_path || undefined,
+          route: informedConsent?.file_path ? undefined : '/informed-consent'
         }];
+        
         if (assignments && assignments.length > 0) {
           assignments.forEach(assignment => {
             const docIndex = assignedDocs.findIndex(doc => doc.id === assignment.document_id);
@@ -108,7 +127,8 @@ const MyDocuments = () => {
           title: 'Informed Consent',
           type: 'Legal',
           required: true,
-          status: 'not_started'
+          status: 'not_started',
+          route: '/informed-consent'
         }]);
       } finally {
         setIsLoadingAssignedDocs(false);

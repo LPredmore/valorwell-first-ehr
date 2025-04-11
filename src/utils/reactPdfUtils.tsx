@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, Font, pdf } from '@react-pdf/renderer';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "@/components/ui/use-toast";
+import InformedConsentPdfDocument from '@/components/templates/pdf/InformedConsentPdfDocument';
 
 const styles = StyleSheet.create({
   page: {
@@ -359,6 +360,9 @@ export const generateAndSavePDF = async (
           break;
         case 'treatment_plan':
           pdfDocument = <TreatmentPlanPdfDocument formData={documentData} />;
+          break;
+        case 'informed_consent':
+          pdfDocument = <InformedConsentPdfDocument formData={documentData} />;
           break;
         default:
           throw new Error(`Unsupported document type: ${documentInfo.documentType}`);
