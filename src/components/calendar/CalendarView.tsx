@@ -300,11 +300,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
       {showAvailability && (
         <div className="w-1/4">
-          <AvailabilityPanel 
-            clinicianId={clinicianId} 
-            onAvailabilityUpdated={handleAvailabilityUpdated} 
-            userTimeZone={userTimeZone} 
-          />
+          <AvailabilityPanel />
         </div>
       )}
 

@@ -38,8 +38,7 @@ interface AvailabilitySettings {
 }
 
 export default function AvailabilityPanel() {
-  const { user } = useUser();
-  const userId = user?.id;
+  const { userId } = useUser();
   
   const [activeTab, setActiveTab] = useState<string>('weekly');
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -484,7 +483,7 @@ export default function AvailabilityPanel() {
           <Button 
             variant="default" 
             onClick={(e) => handleSaveClick(e)} 
-            disabled={false} // Force enable the button
+            disabled={isLoading || isSaving} 
             className="ml-2"
             type="button"
           >
@@ -548,7 +547,7 @@ export default function AvailabilityPanel() {
                               <TimeInput
                                 id={`start-${day.day}-${slotIndex}`}
                                 value={slot.startTime}
-                                onChange={(e) => updateTimeSlot(dayIndex, slotIndex, 'startTime', e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateTimeSlot(dayIndex, slotIndex, 'startTime', e.target.value)}
                                 className={!validateTimeSlot(slot.startTime, slot.endTime) ? 'border-red-500' : ''}
                               />
                             </div>
@@ -559,7 +558,7 @@ export default function AvailabilityPanel() {
                               <TimeInput
                                 id={`end-${day.day}-${slotIndex}`}
                                 value={slot.endTime}
-                                onChange={(e) => updateTimeSlot(dayIndex, slotIndex, 'endTime', e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateTimeSlot(dayIndex, slotIndex, 'endTime', e.target.value)}
                                 className={!validateTimeSlot(slot.startTime, slot.endTime) ? 'border-red-500' : ''}
                               />
                             </div>
@@ -685,7 +684,7 @@ export default function AvailabilityPanel() {
                 <TimeInput
                   id="default-start-time"
                   value={settings.defaultStartTime}
-                  onChange={(e) => updateSettings('defaultStartTime', e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSettings('defaultStartTime', e.target.value)}
                 />
               </div>
               <div>
@@ -695,7 +694,7 @@ export default function AvailabilityPanel() {
                 <TimeInput
                   id="default-end-time"
                   value={settings.defaultEndTime}
-                  onChange={(e) => updateSettings('defaultEndTime', e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSettings('defaultEndTime', e.target.value)}
                 />
               </div>
             </div>
@@ -708,7 +707,7 @@ export default function AvailabilityPanel() {
         <Button 
           variant="default" 
           onClick={(e) => handleSaveClick(e)} 
-          disabled={false} // Force enable the button
+          disabled={isLoading || isSaving}
           type="button"
         >
           {isSaving ? <Spinner className="mr-2 h-4 w-4" /> : null}
