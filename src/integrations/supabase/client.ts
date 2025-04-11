@@ -124,15 +124,11 @@ export const fetchClinicalDocuments = async (clientId: string) => {
   }
 };
 
-// Update the getDocumentDownloadURL function to accept document type
+// Update the getDocumentDownloadURL function to use clinical_documents bucket
 export const getDocumentDownloadURL = async (filePath: string, documentType?: string): Promise<string | null> => {
   try {
-    // Determine the bucket name based on the document type
-    let bucketName = "session-notes"; // Default bucket
-    
-    if (documentType === 'treatment_plan') {
-      bucketName = "treatment-plans";
-    }
+    // All documents are now stored in the clinical_documents bucket
+    const bucketName = "clinical_documents";
     
     console.log(`Getting download URL for file: ${filePath} from bucket: ${bucketName}`);
     
