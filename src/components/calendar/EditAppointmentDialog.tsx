@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,7 @@ import {
   formatTimeZoneDisplay,
   formatUTCTimeForUser
 } from '@/utils/timeZoneUtils';
-import { useClinicianData } from '@/hooks/useClinicianData';
+import { useClinicianData, getClinicianTimeZone } from '@/hooks/useClinicianData';
 
 interface EditAppointmentDialogProps {
   isOpen: boolean;
@@ -47,7 +46,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
   const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago'); // Default timezone
   const [timeZoneDisplay, setTimeZoneDisplay] = useState<string>('Central Time');
   
-  const { getClinicianTimeZone } = useClinicianData();
+  const { clinicianData, loading, error } = useClinicianData();
 
   // Fetch clinician's timezone when appointment changes
   useEffect(() => {
@@ -70,7 +69,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
     };
 
     fetchClinicianTimeZone();
-  }, [appointment?.clinician_id, getClinicianTimeZone]);
+  }, [appointment?.clinician_id]);
 
   const generateTimeOptions = () => {
     const options = [];
@@ -97,7 +96,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
           const dateTimeStr = `${appointment.date}T${appointment.start_time}:00Z`;
           console.log('Displaying in timezone:', { 
             timeZone: clinicianTimeZone, 
-            originalTime: appointment.start_time
+            originalTime: appointment.start_time 
           });
           
           const displayTime = formatUTCTimeForUser(dateTimeStr, clinicianTimeZone, 'HH:mm');
