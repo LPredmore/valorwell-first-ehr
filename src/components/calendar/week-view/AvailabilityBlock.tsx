@@ -53,14 +53,12 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
     }
   };
 
-  // Choose block color based on type
+  // Choose block color based on type - now using green for both regular and standalone availability
   let blockColor;
-  if (block.isStandalone) {
-    blockColor = 'purple'; // Standalone exceptions are purple
-  } else if (block.isException) {
+  if (block.isException && !block.isStandalone) {
     blockColor = 'teal';   // Modified regular availability is teal
   } else {
-    blockColor = 'green';  // Regular weekly availability is green
+    blockColor = 'green';  // Both regular weekly and standalone single-day availability use green
   }
 
   // Log rendering for debugging
@@ -92,7 +90,7 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
         <div className="font-medium truncate flex items-center">
           Available
           {block.isException && block.isStandalone && (
-            <span className="ml-1 text-[10px] px-1 py-0.5 bg-purple-100 text-purple-800 rounded-full">One-time</span>
+            <span className="ml-1 text-[10px] px-1 py-0.5 bg-green-100 text-green-800 rounded-full">One-time</span>
           )}
           {block.isException && !block.isStandalone && (
             <span className="ml-1 text-[10px] px-1 py-0.5 bg-teal-100 text-teal-800 rounded-full">Modified</span>
