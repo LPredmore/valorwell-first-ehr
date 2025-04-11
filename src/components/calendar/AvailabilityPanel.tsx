@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -6,16 +7,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Spinner } from '@/components/ui/spinner';
 import { TimeInput } from '@/components/ui/time-input';
 import { Card, CardContent } from '@/components/ui/card';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, CalendarIcon, Clock, Ban } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format, parseISO, isValid, isBefore } from 'date-fns';
+import { cn } from '@/lib/utils';
+import TimeBlocksManager from './availability/TimeBlocksManager';
+import SingleDayAvailabilityManager from './availability/SingleDayAvailabilityManager';
 
 interface TimeSlot {
   id: string;
+  day: number;
   startTime: string;
   endTime: string;
 }
@@ -42,7 +49,7 @@ export default function AvailabilityPanel() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [singleDateTableExists, setSingleDateTableExists] = useState<boolean>(false);
-  const [singleDateTableChecked, setSingleDateTableChecked] = useState<boolean>(false);
+  const [timeBlocksTableExists, setTimeBlocksTableExists] = useState<boolean>(false);
   const [weekSchedule, setWeekSchedule] = useState<DaySchedule[]>([
     { day: 0, name: 'Sunday', enabled: false, timeSlots: [] },
     { day: 1, name: 'Monday', enabled: false, timeSlots: [] },
@@ -60,52 +67,92 @@ export default function AvailabilityPanel() {
     defaultStartTime: '09:00',
     defaultEndTime: '17:00',
   });
+
+  const { toast } = useToast();
   
   useEffect(() => {
     if (userId) {
       console.log('[AvailabilityPanel] userId detected, fetching data');
       fetchAvailability();
-      checkSingleDateTableExists();
+      checkRequiredTablesExist();
     }
   }, [userId]);
   
-  const checkSingleDateTableExists = async () => {
+  const checkRequiredTablesExist = async () => {
     try {
-      console.log('[AvailabilityPanel] Checking if availability_single_date table exists...');
-      
-      const { data, error } = await supabase
+      // Check if single_day_availability table exists
+      const { data: singleDayExists, error: singleDayError } = await supabase
         .rpc('check_table_exists', { 
-          check_table_name: 'availability_single_date' 
+          check_table_name: 'single_day_availability' 
         });
       
-      if (error) {
-        console.error('[AvailabilityPanel] Error checking if table exists:', error);
-        setSingleDateTableExists(false);
+      if (singleDayError) {
+        console.error('[AvailabilityPanel] Error checking if single_day_availability table exists:', singleDayError);
       } else {
-        console.log('[AvailabilityPanel] Table exists:', !!data);
-        setSingleDateTableExists(!!data);
+        console.log('[AvailabilityPanel] single_day_availability table exists:', !!singleDayExists);
+        setSingleDateTableExists(!!singleDayExists);
       }
+
+      // Check if time_blocks table exists
+      const { data: timeBlocksExists, error: timeBlocksError } = await supabase
+        .rpc('check_table_exists', { 
+          check_table_name: 'time_blocks' 
+        });
       
-      setSingleDateTableChecked(true);
+      if (timeBlocksError) {
+        console.error('[AvailabilityPanel] Error checking if time_blocks table exists:', timeBlocksError);
+      } else {
+        console.log('[AvailabilityPanel] time_blocks table exists:', !!timeBlocksExists);
+        setTimeBlocksTableExists(!!timeBlocksExists);
+      }
     } catch (error) {
-      console.error('[AvailabilityPanel] Error checking if table exists:', error);
+      console.error('[AvailabilityPanel] Error checking if tables exist:', error);
       setSingleDateTableExists(false);
-      setSingleDateTableChecked(true);
+      setTimeBlocksTableExists(false);
     }
   };
   
   const fetchAvailability = async () => {
     setIsLoading(true);
     try {
-      console.log('[AvailabilityPanel] Fetching availability data...');
+      console.log('[AvailabilityPanel] Fetching clinician data...');
       
-      const { data: availabilityData, error: availabilityError } = await supabase
-        .from('availability')
-        .select('*')
-        .eq('clinician_id', userId);
+      // Fetch clinician data which now includes availability in columns
+      const { data: clinicianData, error: clinicianError } = await supabase
+        .from('clinicians')
+        .select(`
+          id,
+          clinician_mondaystart1, clinician_mondayend1,
+          clinician_mondaystart2, clinician_mondayend2,
+          clinician_mondaystart3, clinician_mondayend3,
+          clinician_tuesdaystart1, clinician_tuesdayend1,
+          clinician_tuesdaystart2, clinician_tuesdayend2,
+          clinician_tuesdaystart3, clinician_tuesdayend3,
+          clinician_wednesdaystart1, clinician_wednesdayend1,
+          clinician_wednesdaystart2, clinician_wednesdayend2,
+          clinician_wednesdaystart3, clinician_wednesdayend3,
+          clinician_thursdaystart1, clinician_thursdayend1,
+          clinician_thursdaystart2, clinician_thursdayend2,
+          clinician_thursdaystart3, clinician_thursdayend3,
+          clinician_fridaystart1, clinician_fridayend1,
+          clinician_fridaystart2, clinician_fridayend2,
+          clinician_fridaystart3, clinician_fridayend3,
+          clinician_saturdaystart1, clinician_saturdayend1,
+          clinician_saturdaystart2, clinician_saturdayend2,
+          clinician_saturdaystart3, clinician_saturdayend3,
+          clinician_sundaystart1, clinician_sundayend1,
+          clinician_sundaystart2, clinician_sundayend2,
+          clinician_sundaystart3, clinician_sundayend3
+        `)
+        .eq('id', userId)
+        .single();
       
-      if (availabilityError) throw availabilityError;
+      if (clinicianError) {
+        console.error('[AvailabilityPanel] Error fetching clinician data:', clinicianError);
+        throw clinicianError;
+      }
       
+      // Fetch availability settings
       const { data: settingsData, error: settingsError } = await supabase
         .from('availability_settings')
         .select('*')
@@ -113,6 +160,7 @@ export default function AvailabilityPanel() {
         .single();
       
       if (settingsError && settingsError.code !== 'PGRST116') {
+        console.error('[AvailabilityPanel] Error fetching availability settings:', settingsError);
         throw settingsError;
       }
       
@@ -121,36 +169,27 @@ export default function AvailabilityPanel() {
           timeGranularity: settingsData.time_granularity || 'hour',
           minDaysAhead: settingsData.min_days_ahead || 2,
           maxDaysAhead: settingsData.max_days_ahead || 30,
-          defaultStartTime: settingsData.default_start_time || '09:00',
-          defaultEndTime: settingsData.default_end_time || '17:00',
+          defaultStartTime: settingsData.default_start_time?.slice(0, 5) || '09:00',
+          defaultEndTime: settingsData.default_end_time?.slice(0, 5) || '17:00',
         });
       }
       
-      const newSchedule = [...weekSchedule];
-      
-      newSchedule.forEach(day => {
-        day.enabled = false;
-        day.timeSlots = [];
-      });
-      
-      if (availabilityData && availabilityData.length > 0) {
-        availabilityData.forEach(slot => {
-          const dayIndex = typeof slot.day_of_week === 'number' || !isNaN(Number(slot.day_of_week)) 
-            ? Number(slot.day_of_week)
-            : getDayIndex(slot.day_of_week);
-            
-          if (dayIndex >= 0 && dayIndex < 7) {
-            newSchedule[dayIndex].enabled = true;
-            newSchedule[dayIndex].timeSlots.push({
-              id: slot.id,
-              startTime: slot.start_time,
-              endTime: slot.end_time,
-            });
-          }
-        });
+      // Process the clinician data to update weekly schedule
+      if (clinicianData) {
+        const newSchedule = [...weekSchedule];
+        
+        // Process each day
+        processDay(clinicianData, newSchedule, 'sunday', 0);
+        processDay(clinicianData, newSchedule, 'monday', 1);
+        processDay(clinicianData, newSchedule, 'tuesday', 2);
+        processDay(clinicianData, newSchedule, 'wednesday', 3);
+        processDay(clinicianData, newSchedule, 'thursday', 4);
+        processDay(clinicianData, newSchedule, 'friday', 5);
+        processDay(clinicianData, newSchedule, 'saturday', 6);
+        
+        setWeekSchedule(newSchedule);
       }
       
-      setWeekSchedule(newSchedule);
       console.log('[AvailabilityPanel] Availability data loaded successfully');
     } catch (error) {
       console.error('[AvailabilityPanel] Error fetching availability:', error);
@@ -164,15 +203,42 @@ export default function AvailabilityPanel() {
       console.log('[AvailabilityPanel] isLoading set to false');
     }
   };
-  
-  const getDayIndex = (dayName: string): number => {
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    return days.indexOf(dayName);
+
+  // Helper function to process availability for a specific day
+  const processDay = (clinicianData: any, schedule: DaySchedule[], dayName: string, dayIndex: number) => {
+    const day = schedule[dayIndex];
+    day.timeSlots = [];
+
+    // Check if any slots exist for this day
+    let hasSlots = false;
+    
+    // Process up to 3 slots per day
+    for (let slot = 1; slot <= 3; slot++) {
+      const startKey = `clinician_${dayName}start${slot}`;
+      const endKey = `clinician_${dayName}end${slot}`;
+      
+      if (clinicianData[startKey] && clinicianData[endKey]) {
+        hasSlots = true;
+        
+        day.timeSlots.push({
+          id: `${dayName}-${slot}`,
+          day: dayIndex,
+          startTime: clinicianData[startKey].slice(0, 5), // Format as 'HH:MM'
+          endTime: clinicianData[endKey].slice(0, 5), // Format as 'HH:MM'
+        });
+      }
+    }
+    
+    day.enabled = hasSlots;
   };
 
   const validateTimeSlot = (startTime: string, endTime: string): boolean => {
     if (!startTime || !endTime) return false;
-    return startTime < endTime;
+    
+    const start = parseISO(`2000-01-01T${startTime}`);
+    const end = parseISO(`2000-01-01T${endTime}`);
+    
+    return isValid(start) && isValid(end) && isBefore(start, end);
   };
   
   const toggleDayEnabled = (dayIndex: number, enabled: boolean) => {
@@ -182,6 +248,7 @@ export default function AvailabilityPanel() {
     if (enabled && newSchedule[dayIndex].timeSlots.length === 0) {
       newSchedule[dayIndex].timeSlots.push({
         id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        day: dayIndex,
         startTime: settings.defaultStartTime,
         endTime: settings.defaultEndTime,
       });
@@ -230,91 +297,48 @@ export default function AvailabilityPanel() {
       if (activeTab === 'weekly') {
         console.log('[AvailabilityPanel] Saving weekly availability...');
         
-        const { data: existingAvailability, error: fetchError } = await supabase
-          .from('availability')
-          .select('id, day_of_week')
-          .eq('clinician_id', userId);
+        // Prepare data object for updating clinician
+        const updateData: Record<string, any> = {};
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         
-        if (fetchError) {
-          console.error('[AvailabilityPanel] Error fetching existing availability:', fetchError);
-          throw fetchError;
-        }
-        
-        console.log('[AvailabilityPanel] Existing availability records:', existingAvailability?.length || 0);
-        
-        const enabledDays = weekSchedule
-          .filter(day => day.enabled)
-          .map(day => day.day);
-        
-        console.log('[AvailabilityPanel] Enabled days:', enabledDays);
-        
-        let recordsToDelete: { id: string }[] = [];
-        
-        if (existingAvailability && existingAvailability.length > 0) {
-          recordsToDelete = existingAvailability;
-        }
-        
-        const idsToDelete = recordsToDelete.map(record => record.id);
-        
-        console.log('[AvailabilityPanel] Total records to delete:', idsToDelete.length);
-        console.log('[AvailabilityPanel] IDs to delete:', idsToDelete);
-        
-        if (idsToDelete.length > 0) {
-          console.log('[AvailabilityPanel] Deleting records:', idsToDelete);
-          
-          const { error: deleteError } = await supabase
-            .from('availability')
-            .delete()
-            .in('id', idsToDelete);
-          
-          if (deleteError) {
-            console.error('[AvailabilityPanel] Error deleting records:', deleteError);
-            throw deleteError;
+        // First, clear all slots by setting them to null
+        dayNames.forEach(dayName => {
+          for (let slot = 1; slot <= 3; slot++) {
+            updateData[`clinician_${dayName}start${slot}`] = null;
+            updateData[`clinician_${dayName}end${slot}`] = null;
           }
-          
-          console.log('[AvailabilityPanel] Successfully deleted records');
-        } else {
-          console.log('[AvailabilityPanel] No records to delete');
-        }
+        });
         
-        const availabilityRecordsToUpsert = [];
-        
+        // Then set the enabled slots
         weekSchedule.forEach(day => {
+          const dayName = dayNames[day.day];
+          
           if (day.enabled && day.timeSlots.length > 0) {
-            day.timeSlots.forEach(slot => {
-              availabilityRecordsToUpsert.push({
-                id: crypto.randomUUID(),
-                clinician_id: userId,
-                day_of_week: day.day.toString(),
-                start_time: slot.startTime,
-                end_time: slot.endTime,
-                is_active: true
-              });
+            day.timeSlots.forEach((slot, index) => {
+              // Only handle up to 3 slots per day
+              if (index < 3) {
+                const slotNum = index + 1;
+                updateData[`clinician_${dayName}start${slotNum}`] = slot.startTime;
+                updateData[`clinician_${dayName}end${slotNum}`] = slot.endTime;
+              }
             });
           }
         });
         
-        console.log('[AvailabilityPanel] Records to upsert:', availabilityRecordsToUpsert.length);
+        // Update the clinician record with the new availability data
+        const { error: updateError } = await supabase
+          .from('clinicians')
+          .update(updateData)
+          .eq('id', userId);
         
-        if (availabilityRecordsToUpsert.length > 0) {
-          console.log('[AvailabilityPanel] Upserting records:', availabilityRecordsToUpsert.length);
-          
-          const { error: upsertError } = await supabase
-            .from('availability')
-            .upsert(availabilityRecordsToUpsert);
-          
-          if (upsertError) {
-            console.error('[AvailabilityPanel] Error upserting records:', upsertError);
-            throw upsertError;
-          }
-          
-          console.log('[AvailabilityPanel] Successfully upserted records');
-        } else {
-          console.log('[AvailabilityPanel] No records to upsert');
+        if (updateError) {
+          console.error('[AvailabilityPanel] Error updating clinician availability:', updateError);
+          throw updateError;
         }
         
-        console.log('[AvailabilityPanel] Saving settings');
+        console.log('[AvailabilityPanel] Successfully updated clinician availability');
         
+        // Save settings
         const { data: existingSettings, error: checkError } = await supabase
           .from('availability_settings')
           .select('id')
@@ -326,16 +350,19 @@ export default function AvailabilityPanel() {
           throw checkError;
         }
         
+        const settingsData = {
+          clinician_id: userId,
+          time_granularity: settings.timeGranularity,
+          min_days_ahead: settings.minDaysAhead,
+          max_days_ahead: settings.maxDaysAhead,
+          default_start_time: settings.defaultStartTime,
+          default_end_time: settings.defaultEndTime,
+        };
+        
         if (existingSettings) {
           const { error: updateError } = await supabase
             .from('availability_settings')
-            .update({
-              time_granularity: settings.timeGranularity,
-              min_days_ahead: settings.minDaysAhead,
-              max_days_ahead: settings.maxDaysAhead,
-              default_start_time: settings.defaultStartTime,
-              default_end_time: settings.defaultEndTime,
-            })
+            .update(settingsData)
             .eq('id', existingSettings.id);
             
           if (updateError) {
@@ -343,21 +370,9 @@ export default function AvailabilityPanel() {
             throw updateError;
           }
         } else {
-          await supabase
-            .from('availability_settings')
-            .delete()
-            .eq('clinician_id', userId);
-            
           const { error: insertError } = await supabase
             .from('availability_settings')
-            .insert({
-              clinician_id: userId,
-              time_granularity: settings.timeGranularity,
-              min_days_ahead: settings.minDaysAhead,
-              max_days_ahead: settings.maxDaysAhead,
-              default_start_time: settings.defaultStartTime,
-              default_end_time: settings.defaultEndTime,
-            });
+            .insert(settingsData);
             
           if (insertError) {
             console.error('[AvailabilityPanel] Error inserting settings:', insertError);
@@ -366,20 +381,6 @@ export default function AvailabilityPanel() {
         }
         
         console.log('[AvailabilityPanel] Successfully saved settings');
-      } else if (activeTab === 'single-day' && singleDateTableExists) {
-        const { data: tableExists, error: rpcError } = await supabase
-          .rpc('check_table_exists', { check_table_name: 'availability_single_date' });
-        
-        if (rpcError) {
-          console.error('[AvailabilityPanel] Error checking if table exists:', rpcError);
-          throw rpcError;
-        }
-        
-        if (!tableExists) {
-          throw new Error("The single date availability table does not exist. Please contact support.");
-        }
-        
-        console.log('[AvailabilityPanel] Single day availability saving not yet implemented');
       }
       
       console.log('[AvailabilityPanel] Save operation completed successfully');
@@ -389,6 +390,7 @@ export default function AvailabilityPanel() {
         description: "Your availability settings have been updated successfully.",
       });
       
+      // Refresh the data to ensure we have the latest
       fetchAvailability();
     } catch (error) {
       console.error('[AvailabilityPanel] Error saving availability:', error);
@@ -406,6 +408,7 @@ export default function AvailabilityPanel() {
     const newSchedule = [...weekSchedule];
     newSchedule[dayIndex].timeSlots.push({
       id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      day: dayIndex,
       startTime: settings.defaultStartTime,
       endTime: settings.defaultEndTime,
     });
@@ -415,6 +418,12 @@ export default function AvailabilityPanel() {
   const removeTimeSlot = (dayIndex: number, slotIndex: number) => {
     const newSchedule = [...weekSchedule];
     newSchedule[dayIndex].timeSlots.splice(slotIndex, 1);
+    
+    // If removing the last time slot, also disable the day
+    if (newSchedule[dayIndex].timeSlots.length === 0) {
+      newSchedule[dayIndex].enabled = false;
+    }
+    
     setWeekSchedule(newSchedule);
   };
   
@@ -458,23 +467,19 @@ export default function AvailabilityPanel() {
       
       <div className="mb-4 flex justify-between items-center">
         <Badge variant="outline" className="text-sm">
-          Enable Availability
+          Manage Your Availability
         </Badge>
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="weekly">Weekly Schedule</TabsTrigger>
-          <TabsTrigger 
-            value="single-day" 
-            disabled={!singleDateTableExists}
-            className={!singleDateTableExists ? "opacity-50" : ""}
-          >
-            Single Day
-            {!singleDateTableExists && singleDateTableChecked && (
-              <Badge variant="outline" className="ml-2 text-xs">Coming Soon</Badge>
-            )}
-          </TabsTrigger>
+          {timeBlocksTableExists && (
+            <TabsTrigger value="time-blocks">Time Blocks</TabsTrigger>
+          )}
+          {singleDateTableExists && (
+            <TabsTrigger value="single-day">Single Day</TabsTrigger>
+          )}
         </TabsList>
         
         <TabsContent value="weekly" className="mt-0">
@@ -537,15 +542,17 @@ export default function AvailabilityPanel() {
                         </div>
                       ))}
                       
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => addTimeSlot(dayIndex)}
-                        className="mt-2"
-                      >
-                        <PlusCircle className="h-4 w-4 mr-2" />
-                        Add Time Slot
-                      </Button>
+                      {day.timeSlots.length < 3 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addTimeSlot(dayIndex)}
+                          className="mt-2"
+                        >
+                          <PlusCircle className="h-4 w-4 mr-2" />
+                          Add Time Slot
+                        </Button>
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -554,21 +561,17 @@ export default function AvailabilityPanel() {
           </div>
         </TabsContent>
         
-        <TabsContent value="single-day" className="mt-0">
-          {singleDateTableExists ? (
-            <div className="p-4 border rounded-lg">
-              <p className="text-center text-gray-500">
-                Single day availability settings will be available soon.
-              </p>
-            </div>
-          ) : (
-            <div className="p-4 border rounded-lg">
-              <p className="text-center text-gray-500">
-                Single day availability is coming soon. This feature will allow you to set specific availability for individual dates.
-              </p>
-            </div>
-          )}
-        </TabsContent>
+        {timeBlocksTableExists && (
+          <TabsContent value="time-blocks" className="mt-0">
+            <TimeBlocksManager clinicianId={userId} />
+          </TabsContent>
+        )}
+        
+        {singleDateTableExists && (
+          <TabsContent value="single-day" className="mt-0">
+            <SingleDayAvailabilityManager clinicianId={userId} />
+          </TabsContent>
+        )}
       </Tabs>
       
       <div className="mt-6 border-t pt-6">

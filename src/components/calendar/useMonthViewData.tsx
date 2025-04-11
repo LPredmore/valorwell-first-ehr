@@ -32,23 +32,26 @@ interface AvailabilityBlock {
   isException?: boolean;
 }
 
-interface AvailabilityException {
+interface TimeBlock {
   id: string;
-  specific_date: string;
-  original_availability_id: string | null;
-  start_time: string | null;
-  end_time: string | null;
-  is_deleted: boolean;
-  clinician_id: string;
+  block_date: string;
+  start_time: string;
+  end_time: string;
+  reason?: string;
 }
 
 interface SingleDayAvailability {
   id: string;
-  date: string;
+  availability_date: string;
   start_time: string;
   end_time: string;
   clinician_id: string;
-  is_active?: boolean;
+}
+
+interface ClinicianScheduleData {
+  weekly_schedule?: Record<string, { start_time: string, end_time: string }[]>;
+  supports_single_date_availability?: boolean;
+  supports_time_blocks?: boolean;
 }
 
 // Helper function to normalize day_of_week values that can be either numeric or named
@@ -77,10 +80,11 @@ export const useMonthViewData = (
 ) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [availabilityData, setAvailabilityData] = useState<AvailabilityBlock[]>([]);
-  const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
+  const [clinicianSchedule, setClinicianSchedule] = useState<ClinicianScheduleData | null>(null);
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
   const [singleDayAvailability, setSingleDayAvailability] = useState<SingleDayAvailability[]>([]);
-  const [singleDateTableExists, setSingleDateTableExists] = useState<boolean>(false);
+  const [supportsTimeBlocks, setSupportsTimeBlocks] = useState<boolean>(false);
+  const [supportsSingleDateAvailability, setSupportsSingleDateAvailability] = useState<boolean>(false);
 
   const { monthStart, monthEnd, startDate, endDate, days } = useMemo(() => {
     if (weekViewMode) {
@@ -106,143 +110,138 @@ export const useMonthViewData = (
     return { monthStart, monthEnd, startDate, endDate, days };
   }, [currentDate, weekViewMode]);
 
-  // Check if the availability_single_date table exists
+  // Fetch availability settings and schedule data
   useEffect(() => {
-    const checkSingleDateTableExists = async () => {
+    const fetchAvailabilitySettings = async () => {
       try {
-        const { data, error } = await supabase
-          .rpc('check_table_exists', { check_table_name: 'availability_single_date' });
-        
-        if (error) {
-          console.error('[MonthView] Error checking if single date table exists:', error);
-          setSingleDateTableExists(false);
-        } else {
-          console.log('[MonthView] Single date table exists:', !!data);
-          setSingleDateTableExists(!!data);
-        }
-      } catch (error) {
-        console.error('[MonthView] Error checking if single date table exists:', error);
-        setSingleDateTableExists(false);
-      }
-    };
-    
-    checkSingleDateTableExists();
-  }, []);
-
-  useEffect(() => {
-    const fetchAvailabilityAndExceptions = async () => {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        // Verify if we have a clinician ID
         if (!clinicianId) {
           console.log('[MonthView] No clinicianId provided, skipping availability fetch');
-          setAvailabilityData([]);
-          setExceptions([]);
+          setClinicianSchedule(null);
+          setTimeBlocks([]);
           setSingleDayAvailability([]);
           setLoading(false);
           return;
         }
         
-        console.log(`[MonthView] Fetching availability for clinician: ${clinicianId}`);
+        console.log(`[MonthView] Fetching availability settings for clinician: ${clinicianId}`);
         
-        // Get current authenticated user
-        const { data: authData } = await supabase.auth.getUser();
-        console.log(`[MonthView] Current user: ${authData?.user?.id || 'No user'}`);
-        
-        // Query availability with proper filtering
-        const { data, error } = await supabase
-          .from('availability')
-          .select('*')
-          .eq('is_active', true)
-          .eq('clinician_id', clinicianId);
+        // Call edge function to get availability settings and weekly schedule
+        const response = await fetch(`${window.location.origin}/functions/v1/get-availability-settings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          },
+          body: JSON.stringify({ clinicianId })
+        });
 
-        if (error) {
-          console.error('[MonthView] Error fetching availability:', error);
-          setError(`Error fetching availability: ${error.message}`);
-          setAvailabilityData([]);
-          setExceptions([]);
-          setSingleDayAvailability([]);
-        } else {
-          console.log(`[MonthView] Retrieved ${data?.length || 0} availability records for clinician ${clinicianId}:`, data);
-          setAvailabilityData(data || []);
-          
-          // Format dates for queries
-          const startDateStr = format(startDate, 'yyyy-MM-dd');
-          const endDateStr = format(endDate, 'yyyy-MM-dd');
-          
-          // Fetch exceptions
-          if (data && data.length > 0) {
-            const availabilityIds = data.map((block: AvailabilityBlock) => block.id);
-            
-            if (availabilityIds.length > 0) {
-              console.log(`[MonthView] Fetching exceptions for clinician: ${clinicianId}, dates: ${startDateStr} to ${endDateStr}`);
-              
-              const { data: exceptionsData, error: exceptionsError } = await supabase
-                .from('availability_exceptions')
-                .select('*')
-                .eq('clinician_id', clinicianId)
-                .gte('specific_date', startDateStr)
-                .lte('specific_date', endDateStr);
-                
-              if (exceptionsError) {
-                console.error('[MonthView] Error fetching exceptions:', exceptionsError);
-                setError(`Error fetching exceptions: ${exceptionsError.message}`);
-                setExceptions([]);
-              } else {
-                console.log(`[MonthView] Retrieved ${exceptionsData?.length || 0} exceptions:`, exceptionsData);
-                setExceptions(exceptionsData || []);
-              }
-            }
-          }
-          
-          // Fetch single-day availability if the table exists
-          if (singleDateTableExists) {
-            console.log(`[MonthView] Fetching single day availability for clinician: ${clinicianId}`);
-            
-            const { data: singleDayData, error: singleDayError } = await supabase
-              .from('availability_single_date')
-              .select('*')
-              .eq('clinician_id', clinicianId)
-              .gte('date', startDateStr)
-              .lte('date', endDateStr)
-              .eq('is_active', true);
-              
-            if (singleDayError) {
-              console.error('[MonthView] Error fetching single day availability:', singleDayError);
-              setSingleDayAvailability([]);
-            } else {
-              console.log(`[MonthView] Retrieved ${singleDayData?.length || 0} single day availability entries:`, singleDayData);
-              
-              // Map the data to our expected interface
-              const formattedSingleDayData = singleDayData?.map(item => ({
-                id: item.id,
-                date: item.date,
-                start_time: item.start_time,
-                end_time: item.end_time,
-                clinician_id: item.clinician_id,
-                is_active: true
-              })) || [];
-              
-              setSingleDayAvailability(formattedSingleDayData);
-            }
-          }
+        if (!response.ok) {
+          throw new Error(`Failed to fetch availability settings: ${response.statusText}`);
         }
+
+        const data = await response.json();
+        console.log('[MonthView] Received availability settings:', data);
+        
+        setClinicianSchedule(data);
+        setSupportsSingleDateAvailability(!!data.supports_single_date_availability);
+        setSupportsTimeBlocks(!!data.supports_time_blocks);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error('[MonthView] Exception in availability fetching:', error);
-        setError(`Unexpected error: ${errorMessage}`);
-        setAvailabilityData([]);
-        setExceptions([]);
-        setSingleDayAvailability([]);
+        console.error('[MonthView] Error fetching availability settings:', error);
+        setError('Failed to fetch availability settings');
+      }
+    };
+
+    fetchAvailabilitySettings();
+  }, [clinicianId, refreshTrigger]);
+
+  // Fetch time blocks if supported
+  useEffect(() => {
+    const fetchTimeBlocks = async () => {
+      if (!clinicianId || !supportsTimeBlocks) {
+        return;
+      }
+
+      try {
+        const startDateStr = format(startDate, 'yyyy-MM-dd');
+        const endDateStr = format(endDate, 'yyyy-MM-dd');
+        
+        console.log(`[MonthView] Fetching time blocks for date range: ${startDateStr} to ${endDateStr}`);
+        
+        const { data, error } = await supabase
+          .from('time_blocks')
+          .select('*')
+          .eq('clinician_id', clinicianId)
+          .gte('block_date', startDateStr)
+          .lte('block_date', endDateStr);
+          
+        if (error) {
+          console.error('[MonthView] Error fetching time blocks:', error);
+          return;
+        }
+        
+        console.log(`[MonthView] Retrieved ${data?.length || 0} time blocks`);
+        
+        const formattedBlocks = data?.map(block => ({
+          id: block.id,
+          block_date: block.block_date,
+          start_time: block.start_time,
+          end_time: block.end_time,
+          reason: block.reason || undefined
+        })) || [];
+        
+        setTimeBlocks(formattedBlocks);
+      } catch (error) {
+        console.error('[MonthView] Error fetching time blocks:', error);
+      }
+    };
+    
+    fetchTimeBlocks();
+  }, [clinicianId, startDate, endDate, supportsTimeBlocks, refreshTrigger]);
+
+  // Fetch single-day availability if supported
+  useEffect(() => {
+    const fetchSingleDayAvailability = async () => {
+      if (!clinicianId || !supportsSingleDateAvailability) {
+        return;
+      }
+
+      try {
+        const startDateStr = format(startDate, 'yyyy-MM-dd');
+        const endDateStr = format(endDate, 'yyyy-MM-dd');
+        
+        console.log(`[MonthView] Fetching single-day availability for date range: ${startDateStr} to ${endDateStr}`);
+        
+        const { data, error } = await supabase
+          .from('single_day_availability')
+          .select('*')
+          .eq('clinician_id', clinicianId)
+          .gte('availability_date', startDateStr)
+          .lte('availability_date', endDateStr);
+          
+        if (error) {
+          console.error('[MonthView] Error fetching single-day availability:', error);
+          return;
+        }
+        
+        console.log(`[MonthView] Retrieved ${data?.length || 0} single-day availability records`);
+        
+        setSingleDayAvailability(data || []);
+      } catch (error) {
+        console.error('[MonthView] Error fetching single-day availability:', error);
       } finally {
         setLoading(false);
       }
     };
+    
+    fetchSingleDayAvailability();
+  }, [clinicianId, startDate, endDate, supportsSingleDateAvailability, refreshTrigger]);
 
-    fetchAvailabilityAndExceptions();
-  }, [clinicianId, refreshTrigger, startDate, endDate, singleDateTableExists]);
+  // Process all data once loaded
+  useEffect(() => {
+    if (clinicianId && clinicianSchedule) {
+      setLoading(false);
+    }
+  }, [clinicianId, clinicianSchedule, timeBlocks, singleDayAvailability]);
 
   const dayAvailabilityMap = useMemo(() => {
     const result = new Map<string, { 
@@ -251,84 +250,61 @@ export const useMonthViewData = (
       displayHours: string 
     }>();
     
+    if (!clinicianSchedule?.weekly_schedule) {
+      return result;
+    }
+    
     days.forEach(day => {
-      const dayOfWeek = format(day, 'EEEE');
       const dateStr = format(day, 'yyyy-MM-dd');
+      const dayOfWeek = format(day, 'EEEE').toLowerCase();
       
-      // Get exceptions for this specific date (if any)
-      const dateExceptions = exceptions.filter(exception => exception.specific_date === dateStr);
+      // Get regular availability for this day of the week
+      const regularAvailability = clinicianSchedule.weekly_schedule?.[dayOfWeek] || [];
       
-      // Get deleted availability ids for this date
-      const deletedAvailabilityIds = new Set(
-        dateExceptions
-          .filter(exception => exception.is_deleted)
-          .map(exception => exception.original_availability_id)
+      // Check for single-day availability that overrides regular schedule
+      const singleDayRecord = singleDayAvailability.find(item => 
+        item.availability_date === dateStr
       );
       
-      // Handle both named and numeric day values
-      const regularAvailability = availabilityData.filter(
-        slot => {
-          const normalizedSlotDay = normalizeDayOfWeek(slot.day_of_week);
-          return normalizedSlotDay === dayOfWeek;
-        }
+      // Check for time blocks on this date
+      const dateTimeBlocks = timeBlocks.filter(block => 
+        block.block_date === dateStr
       );
       
-      // Filter out deleted availabilities
-      const activeAvailability = regularAvailability.filter(
-        slot => !deletedAvailabilityIds.has(slot.id)
-      );
-      
-      // Check for single-day availability for this date
-      const daySpecificAvailability = singleDayAvailability.filter(item => item.date === dateStr);
-      
-      let hasAvailability = activeAvailability.length > 0 || daySpecificAvailability.length > 0;
+      // Determine if there's any availability for this day
+      let hasAvailability = regularAvailability.length > 0;
       let isModified = false;
       let displayHours = '';
       
-      if (hasAvailability) {
-        const timeModifiedExceptions = dateExceptions.filter(
-          exception => !exception.is_deleted && exception.start_time && exception.end_time
-        );
+      // If there's a single-day availability record, it overrides regular availability
+      if (singleDayRecord) {
+        hasAvailability = true;
+        isModified = true;
         
-        isModified = timeModifiedExceptions.length > 0 || daySpecificAvailability.length > 0;
+        const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${singleDayRecord.start_time}`));
+        const endHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${singleDayRecord.end_time}`));
         
-        // Find earliest start time and latest end time from all available slots
+        displayHours = `${startHourFormatted}-${endHourFormatted}`;
+      } else if (hasAvailability) {
+        // Use regular availability if no single-day record
+        // But also check if time blocks affect this day
+        
+        if (dateTimeBlocks.length > 0) {
+          isModified = true;
+        }
+        
+        // Find earliest start time and latest end time from regular availability
         let earliestStart = "23:59";
         let latestEnd = "00:00";
         
-        // Check exceptions first as they override regular availability
-        if (timeModifiedExceptions.length > 0) {
-          timeModifiedExceptions.forEach(exception => {
-            if (exception.start_time && exception.start_time < earliestStart) {
-              earliestStart = exception.start_time;
-            }
-            if (exception.end_time && exception.end_time > latestEnd) {
-              latestEnd = exception.end_time;
-            }
-          });
-        } else {
-          // Use regular availability if no exceptions
-          activeAvailability.forEach(slot => {
-            if (slot.start_time < earliestStart) {
-              earliestStart = slot.start_time;
-            }
-            if (slot.end_time > latestEnd) {
-              latestEnd = slot.end_time;
-            }
-          });
-        }
-        
-        // Also check single-day availability
-        if (daySpecificAvailability.length > 0) {
-          daySpecificAvailability.forEach(slot => {
-            if (slot.start_time < earliestStart) {
-              earliestStart = slot.start_time;
-            }
-            if (slot.end_time > latestEnd) {
-              latestEnd = slot.end_time;
-            }
-          });
-        }
+        regularAvailability.forEach(slot => {
+          if (slot.start_time < earliestStart) {
+            earliestStart = slot.start_time;
+          }
+          if (slot.end_time > latestEnd) {
+            latestEnd = slot.end_time;
+          }
+        });
         
         // Format times for display
         const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${earliestStart}`));
@@ -341,55 +317,57 @@ export const useMonthViewData = (
     });
     
     return result;
-  }, [days, availabilityData, exceptions, singleDayAvailability]);
+  }, [days, clinicianSchedule, singleDayAvailability, timeBlocks]);
 
   const availabilityByDay = useMemo(() => {
     const result = new Map<string, AvailabilityBlock>();
     
+    if (!clinicianSchedule?.weekly_schedule) {
+      return result;
+    }
+    
     days.forEach(day => {
-      const dayOfWeek = format(day, 'EEEE');
+      const dayOfWeek = format(day, 'EEEE').toLowerCase();
       const dateStr = format(day, 'yyyy-MM-dd');
       
-      // Get exceptions for this specific date (if any)
-      const dateExceptions = exceptions.filter(exception => exception.specific_date === dateStr);
+      // Check for single-day availability first
+      const singleDayRecord = singleDayAvailability.find(item => item.availability_date === dateStr);
       
-      // Get deleted availability ids for this date
-      const deletedAvailabilityIds = new Set(
-        dateExceptions
-          .filter(exception => exception.is_deleted)
-          .map(exception => exception.original_availability_id)
-      );
-      
-      // Handle both named and numeric day values
-      const firstAvailability = availabilityData.find(
-        slot => {
-          const normalizedSlotDay = normalizeDayOfWeek(slot.day_of_week);
-          return normalizedSlotDay === dayOfWeek && !deletedAvailabilityIds.has(slot.id);
-        }
-      );
-      
-      // Check for single-day availability for this date
-      const daySpecificAvailability = singleDayAvailability.find(item => item.date === dateStr);
-      
-      // If we have single-day availability, prioritize it over regular availability
-      if (daySpecificAvailability) {
-        const convertedBlock: AvailabilityBlock = {
-          id: daySpecificAvailability.id,
-          day_of_week: dayOfWeek, // Use the day name for consistent handling
-          start_time: daySpecificAvailability.start_time,
-          end_time: daySpecificAvailability.end_time,
-          clinician_id: daySpecificAvailability.clinician_id,
+      if (singleDayRecord) {
+        // Single-day availability overrides regular schedule
+        const block: AvailabilityBlock = {
+          id: singleDayRecord.id,
+          day_of_week: format(day, 'EEEE'), // Use the full day name
+          start_time: singleDayRecord.start_time,
+          end_time: singleDayRecord.end_time,
+          clinician_id: singleDayRecord.clinician_id,
           is_active: true,
-          isException: true // Mark as an exception to show it's not regular weekly availability
+          isException: true // Mark as an exception for UI
         };
-        result.set(dateStr, convertedBlock);
-      } else if (firstAvailability) {
-        result.set(dateStr, firstAvailability);
+        result.set(dateStr, block);
+      } else {
+        // Use regular weekly schedule if available
+        const daySchedule = clinicianSchedule.weekly_schedule?.[dayOfWeek] || [];
+        
+        if (daySchedule.length > 0) {
+          // Use first slot as representative for the day
+          const firstSlot = daySchedule[0];
+          const block: AvailabilityBlock = {
+            id: `${clinicianId}-${dayOfWeek}-${firstSlot.start_time}`,
+            day_of_week: format(day, 'EEEE'),
+            start_time: firstSlot.start_time,
+            end_time: firstSlot.end_time,
+            clinician_id: clinicianId || undefined,
+            is_active: true,
+            isException: false
+          };
+          result.set(dateStr, block);
+        }
       }
     });
     
     return result;
-  }, [days, availabilityData, exceptions, singleDayAvailability]);
+  }, [days, clinicianSchedule, singleDayAvailability, clinicianId]);
 
   const dayAppointmentsMap = useMemo(() => {
     const result = new Map<string, Appointment[]>();
@@ -412,6 +390,10 @@ export const useMonthViewData = (
     dayAvailabilityMap,
     dayAppointmentsMap,
     availabilityByDay,
-    singleDateTableExists
+    clinicianSchedule,
+    timeBlocks,
+    singleDayAvailability,
+    supportsSingleDateAvailability,
+    supportsTimeBlocks
   };
 };
