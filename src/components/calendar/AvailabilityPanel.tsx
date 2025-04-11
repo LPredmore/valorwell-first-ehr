@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -74,13 +73,10 @@ export default function AvailabilityPanel() {
     try {
       console.log('[AvailabilityPanel] Checking if availability_single_date table exists...');
       
-      // Use a direct query to information_schema instead of the function
       const { data, error } = await supabase
-        .from('information_schema.tables')
-        .select('table_name')
-        .eq('table_schema', 'public')
-        .eq('table_name', 'availability_single_date')
-        .maybeSingle();
+        .rpc('check_table_exists', { 
+          check_table_name: 'availability_single_date' 
+        });
       
       if (error) {
         console.error('[AvailabilityPanel] Error checking if table exists:', error);
@@ -223,10 +219,6 @@ export default function AvailabilityPanel() {
         throw new Error("There are invalid time slots. Please fix them before saving.");
       }
       
-      if (activeTab === 'single-day' && !singleDateTableChecked) {
-        await checkSingleDateTableExists();
-      }
-      
       if (activeTab === 'weekly') {
         console.log('[AvailabilityPanel] Saving weekly availability...');
         
@@ -349,31 +341,60 @@ export default function AvailabilityPanel() {
         
         console.log('[AvailabilityPanel] Saving settings');
         
-        const { error: settingsError } = await supabase
+        const { data: existingSettings, error: checkError } = await supabase
           .from('availability_settings')
-          .upsert({
-            clinician_id: userId,
-            time_granularity: settings.timeGranularity,
-            min_days_ahead: settings.minDaysAhead,
-            max_days_ahead: settings.maxDaysAhead,
-            default_start_time: settings.defaultStartTime,
-            default_end_time: settings.defaultEndTime,
-          });
+          .select('id')
+          .eq('clinician_id', userId)
+          .maybeSingle();
         
-        if (settingsError) {
-          console.error('[AvailabilityPanel] Error saving settings:', settingsError);
-          throw settingsError;
+        if (checkError && checkError.code !== 'PGRST116') {
+          console.error('[AvailabilityPanel] Error checking existing settings:', checkError);
+          throw checkError;
+        }
+        
+        if (existingSettings) {
+          const { error: updateError } = await supabase
+            .from('availability_settings')
+            .update({
+              time_granularity: settings.timeGranularity,
+              min_days_ahead: settings.minDaysAhead,
+              max_days_ahead: settings.maxDaysAhead,
+              default_start_time: settings.defaultStartTime,
+              default_end_time: settings.defaultEndTime,
+            })
+            .eq('id', existingSettings.id);
+            
+          if (updateError) {
+            console.error('[AvailabilityPanel] Error updating settings:', updateError);
+            throw updateError;
+          }
+        } else {
+          const { error: insertError } = await supabase
+            .from('availability_settings')
+            .insert({
+              clinician_id: userId,
+              time_granularity: settings.timeGranularity,
+              min_days_ahead: settings.minDaysAhead,
+              max_days_ahead: settings.maxDaysAhead,
+              default_start_time: settings.defaultStartTime,
+              default_end_time: settings.defaultEndTime,
+            });
+            
+          if (insertError) {
+            console.error('[AvailabilityPanel] Error inserting settings:', insertError);
+            throw insertError;
+          }
         }
         
         console.log('[AvailabilityPanel] Successfully saved settings');
       } else if (activeTab === 'single-day' && singleDateTableExists) {
-        // Check if the availability_single_date table exists using direct query
-        const { data: tableExists } = await supabase
-          .from('information_schema.tables')
-          .select('table_name')
-          .eq('table_schema', 'public')
-          .eq('table_name', 'availability_single_date')
-          .maybeSingle();
+        const { data: tableExists, error: rpcError } = await supabase
+          .rpc('check_table_exists', { check_table_name: 'availability_single_date' });
+        
+        if (rpcError) {
+          console.error('[AvailabilityPanel] Error checking if table exists:', rpcError);
+          throw rpcError;
+        }
         
         if (!tableExists) {
           throw new Error("The single date availability table does not exist. Please contact support.");
@@ -679,4 +700,3 @@ export default function AvailabilityPanel() {
     </div>
   );
 }
-
