@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -72,14 +73,20 @@ export default function AvailabilityPanel() {
   const checkSingleDateTableExists = async () => {
     try {
       console.log('[AvailabilityPanel] Checking if availability_single_date table exists...');
+      
+      // Use a simple query that doesn't rely on the check_table_exists function
       const { data, error } = await supabase
-        .rpc('check_table_exists', { table_name: 'availability_single_date' });
+        .from('information_schema.tables')
+        .select('table_name')
+        .eq('table_schema', 'public')
+        .eq('table_name', 'availability_single_date')
+        .maybeSingle();
       
       if (error) {
         console.error('[AvailabilityPanel] Error checking if table exists:', error);
         setSingleDateTableExists(false);
       } else {
-        console.log('[AvailabilityPanel] Table exists:', data);
+        console.log('[AvailabilityPanel] Table exists:', !!data);
         setSingleDateTableExists(!!data);
       }
       
@@ -308,8 +315,11 @@ export default function AvailabilityPanel() {
         weekSchedule.forEach(day => {
           if (day.enabled && day.timeSlots.length > 0) {
             day.timeSlots.forEach(slot => {
+              // Fix: Ensure we're not passing undefined for ID - generate a new UUID if this is a new slot
+              const recordId = slot.id.startsWith('new-') ? crypto.randomUUID() : slot.id;
+              
               availabilityRecordsToUpsert.push({
-                id: slot.id.startsWith('new-') ? undefined : slot.id,
+                id: recordId, // This is the key fix - always provide a valid UUID
                 clinician_id: userId,
                 day_of_week: day.day,
                 start_time: slot.startTime,
@@ -358,13 +368,12 @@ export default function AvailabilityPanel() {
         
         console.log('[AvailabilityPanel] Successfully saved settings');
       } else if (activeTab === 'single-day' && singleDateTableExists) {
-        const { data: tableExists, error: rpcError } = await supabase
-          .rpc('check_table_exists', { table_name: 'availability_single_date' });
-        
-        if (rpcError) {
-          console.error('[AvailabilityPanel] Error checking if table exists:', rpcError);
-          throw new Error("Could not verify if the single date availability table exists.");
-        }
+        const { data: tableExists } = await supabase
+          .from('information_schema.tables')
+          .select('table_name')
+          .eq('table_schema', 'public')
+          .eq('table_name', 'availability_single_date')
+          .maybeSingle();
         
         if (!tableExists) {
           throw new Error("The single date availability table does not exist. Please contact support.");
