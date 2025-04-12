@@ -1216,39 +1216,27 @@ export type Database = {
         Row: {
           assigned_by: string | null
           client_id: string
-          completed_at: string | null
           created_at: string
-          document_id: string
-          due_date: string | null
+          document_name: string
           id: string
-          pdf_url: string | null
-          response_data: Json | null
           status: string | null
           updated_at: string
         }
         Insert: {
           assigned_by?: string | null
           client_id: string
-          completed_at?: string | null
           created_at?: string
-          document_id: string
-          due_date?: string | null
+          document_name: string
           id?: string
-          pdf_url?: string | null
-          response_data?: Json | null
           status?: string | null
           updated_at?: string
         }
         Update: {
           assigned_by?: string | null
           client_id?: string
-          completed_at?: string | null
           created_at?: string
-          document_id?: string
-          due_date?: string | null
+          document_name?: string
           id?: string
-          pdf_url?: string | null
-          response_data?: Json | null
           status?: string | null
           updated_at?: string
         }
