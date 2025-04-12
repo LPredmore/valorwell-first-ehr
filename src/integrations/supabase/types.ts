@@ -1886,6 +1886,36 @@ export type Database = {
         }
         Relationships: []
       }
+      template_settings: {
+        Row: {
+          created_at: string
+          id: string
+          is_assignable: boolean
+          template_id: string
+          template_name: string
+          template_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_assignable?: boolean
+          template_id: string
+          template_name: string
+          template_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_assignable?: boolean
+          template_id?: string
+          template_name?: string
+          template_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       time_blocks: {
         Row: {
           block_date: string

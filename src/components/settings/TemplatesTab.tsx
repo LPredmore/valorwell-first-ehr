@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -12,6 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import TreatmentPlanTemplate from '@/components/templates/TreatmentPlanTemplate';
 import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 import PHQ9Template from '@/components/templates/PHQ9Template';
@@ -26,7 +28,18 @@ interface Template {
   isAssignable: boolean;
 }
 
+// Template settings from database
+interface TemplateSettings {
+  id: string;
+  template_id: string;
+  template_type: string;
+  template_name: string;
+  is_assignable: boolean;
+}
+
 const TemplatesTab = () => {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
   const [showTreatmentPlanTemplate, setShowTreatmentPlanTemplate] = useState(false);
   const [showSessionNoteTemplate, setShowSessionNoteTemplate] = useState(false);
   const [showPHQ9Template, setShowPHQ9Template] = useState(false);
@@ -46,6 +59,55 @@ const TemplatesTab = () => {
     { id: 'client_intake', name: 'Client Intake Form', isAssignable: false },
     { id: 'informed_consent', name: 'Informed Consent', isAssignable: false },
   ]);
+
+  // Fetch template settings from the database
+  useEffect(() => {
+    const fetchTemplateSettings = async () => {
+      try {
+        setIsLoading(true);
+        const { data: templateSettings, error } = await supabase
+          .from('template_settings')
+          .select('*');
+
+        if (error) {
+          throw error;
+        }
+
+        if (templateSettings) {
+          // Update assessment templates
+          setAssessmentTemplates(prev => 
+            prev.map(template => {
+              const dbSetting = templateSettings.find(
+                (setting: TemplateSettings) => setting.template_id === template.id && setting.template_type === 'assessment'
+              );
+              return dbSetting ? { ...template, isAssignable: dbSetting.is_assignable } : template;
+            })
+          );
+
+          // Update online templates
+          setOnlineTemplates(prev => 
+            prev.map(template => {
+              const dbSetting = templateSettings.find(
+                (setting: TemplateSettings) => setting.template_id === template.id && setting.template_type === 'online'
+              );
+              return dbSetting ? { ...template, isAssignable: dbSetting.is_assignable } : template;
+            })
+          );
+        }
+      } catch (error) {
+        console.error('Error fetching template settings:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load template settings",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTemplateSettings();
+  }, [toast]);
 
   const handleCloseTreatmentPlan = () => {
     setShowTreatmentPlanTemplate(false);
@@ -71,26 +133,81 @@ const TemplatesTab = () => {
     setShowInformedConsentTemplate(false);
   };
 
+  // Update template assignable status in database
+  const updateTemplateAssignable = async (
+    templateId: string, 
+    isAssignable: boolean, 
+    templateName: string, 
+    templateType: string
+  ) => {
+    try {
+      const { error } = await supabase
+        .from('template_settings')
+        .upsert({
+          template_id: templateId,
+          template_type: templateType,
+          template_name: templateName,
+          is_assignable: isAssignable,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'template_id',
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Settings updated",
+        description: `${templateName} is now ${isAssignable ? 'assignable' : 'not assignable'}`,
+      });
+
+    } catch (error) {
+      console.error('Error updating template settings:', error);
+      toast({
+        title: "Update failed",
+        description: "Could not update template settings",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Handle toggle change for assessment templates
   const toggleAssessmentTemplateAssignable = (id: string) => {
-    setAssessmentTemplates(prev => 
-      prev.map(template => 
+    setAssessmentTemplates(prev => {
+      const updatedTemplates = prev.map(template => 
         template.id === id 
           ? { ...template, isAssignable: !template.isAssignable } 
           : template
-      )
-    );
+      );
+      
+      // Find the updated template to get name and new isAssignable value
+      const updatedTemplate = updatedTemplates.find(t => t.id === id);
+      if (updatedTemplate) {
+        updateTemplateAssignable(id, updatedTemplate.isAssignable, updatedTemplate.name, 'assessment');
+      }
+      
+      return updatedTemplates;
+    });
   };
 
   // Handle toggle change for online templates
   const toggleOnlineTemplateAssignable = (id: string) => {
-    setOnlineTemplates(prev => 
-      prev.map(template => 
+    setOnlineTemplates(prev => {
+      const updatedTemplates = prev.map(template => 
         template.id === id 
           ? { ...template, isAssignable: !template.isAssignable } 
           : template
-      )
-    );
+      );
+      
+      // Find the updated template to get name and new isAssignable value
+      const updatedTemplate = updatedTemplates.find(t => t.id === id);
+      if (updatedTemplate) {
+        updateTemplateAssignable(id, updatedTemplate.isAssignable, updatedTemplate.name, 'online');
+      }
+      
+      return updatedTemplates;
+    });
   };
 
   return (
@@ -212,6 +329,7 @@ const TemplatesTab = () => {
                             id={`toggle-${template.id}`}
                             checked={template.isAssignable}
                             onCheckedChange={() => toggleAssessmentTemplateAssignable(template.id)}
+                            disabled={isLoading}
                           />
                         </div>
                       </TableCell>
@@ -276,6 +394,7 @@ const TemplatesTab = () => {
                               id={`toggle-online-${template.id}`}
                               checked={template.isAssignable}
                               onCheckedChange={() => toggleOnlineTemplateAssignable(template.id)}
+                              disabled={isLoading}
                             />
                           </div>
                         </TableCell>
