@@ -56,10 +56,8 @@ const MyDocuments = () => {
         setIsLoading(false);
       }
       
-      // Fetch assigned documents
       setIsLoadingAssignedDocs(true);
       try {
-        // Fetch from document_assignments table
         const { data: assignments, error: assignmentsError } = await supabase
           .from('document_assignments')
           .select('*')
@@ -67,7 +65,6 @@ const MyDocuments = () => {
           
         if (assignmentsError) throw assignmentsError;
         
-        // Check for client history form
         const { data: clientHistory, error: historyError } = await supabase
           .from('client_history')
           .select('pdf_path')
@@ -76,7 +73,6 @@ const MyDocuments = () => {
           
         if (historyError) throw historyError;
 
-        // Check for informed consent document
         const { data: informedConsent, error: consentError } = await supabase
           .from('clinical_documents')
           .select('file_path')
@@ -87,7 +83,6 @@ const MyDocuments = () => {
           
         if (consentError) console.error('Error fetching informed consent:', consentError);
         
-        // Create assigned documents array with default required documents
         const assignedDocs: AssignedDocument[] = [
           {
             id: '1',
@@ -107,22 +102,18 @@ const MyDocuments = () => {
           }
         ];
         
-        // Add documents from document_assignments table
         if (assignments && assignments.length > 0) {
           assignments.forEach(assignment => {
-            // Check if this document is already in our list
             const existingIndex = assignedDocs.findIndex(doc => 
               doc.document_name.toLowerCase() === assignment.document_name.toLowerCase()
             );
             
             if (existingIndex >= 0) {
-              // Update existing document status
               assignedDocs[existingIndex].status = assignment.status as 'not_started' | 'in_progress' | 'completed';
               if (assignment.pdf_url) {
                 assignedDocs[existingIndex].filePath = assignment.pdf_url;
               }
             } else {
-              // Add new document
               assignedDocs.push({
                 id: assignment.id,
                 document_name: assignment.document_name,
@@ -137,7 +128,6 @@ const MyDocuments = () => {
         setAssignedDocuments(assignedDocs);
       } catch (error) {
         console.error('Error fetching document assignments:', error);
-        // Fallback to default documents if there's an error
         setAssignedDocuments([
           {
             id: '1',

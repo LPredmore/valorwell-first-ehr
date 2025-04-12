@@ -452,17 +452,23 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
         </div>
       )}
 
-      {showSessionNoteTemplate && <div className="animate-fade-in">
+      {showSessionNoteTemplate && (
+        <div className="animate-fade-in">
           <SessionNoteTemplate onClose={handleCloseSessionNote} clinicianName={clinicianData?.clinician_professional_name || ''} clientData={clientData} />
-        </div>}
+        </div>
+      )}
 
-      {showPHQ9Template && <div className="animate-fade-in">
+      {showPHQ9Template && (
+        <div className="animate-fade-in">
           <PHQ9Template onClose={handleClosePHQ9} clinicianName={clinicianData?.clinician_professional_name || ''} clientData={clientData} />
-        </div>}
+        </div>
+      )}
       
-      {showPCL5Template && <div className="animate-fade-in">
+      {showPCL5Template && (
+        <div className="animate-fade-in">
           <PCL5Template onClose={handleClosePCL5} clinicianName={clinicianData?.clinician_professional_name || ''} clientData={clientData} />
-        </div>}
+        </div>
+      )}
 
       <Card>
         <CardHeader>

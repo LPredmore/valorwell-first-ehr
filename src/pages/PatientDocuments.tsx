@@ -24,7 +24,7 @@ const PatientDocuments: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const { userId } = useUser();
+  const { userId, userRole } = useUser();
 
   useEffect(() => {
     const loadDocuments = async () => {
@@ -70,6 +70,74 @@ const PatientDocuments: React.FC = () => {
     }
   };
 
+  // Helper function to filter clinical notes (treatment plans and session notes)
+  const getClinicalNotes = () => {
+    return documents.filter(doc => 
+      doc.document_type === 'treatment_plan' || 
+      doc.document_type === 'session_note'
+    );
+  };
+
+  // Helper function to filter other completed forms/documents
+  const getCompletedForms = () => {
+    return documents.filter(doc => 
+      doc.document_type !== 'treatment_plan' && 
+      doc.document_type !== 'session_note'
+    );
+  };
+
+  const renderDocumentsTable = (docs: Document[], emptyMessage: string) => {
+    if (docs.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <FileX className="h-12 w-12 text-gray-300 mb-3" />
+          <h3 className="text-lg font-medium">No documents found</h3>
+          <p className="text-sm text-gray-500 mt-1">{emptyMessage}</p>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Title</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {docs.map(doc => (
+              <TableRow key={doc.id}>
+                <TableCell className="font-medium">{doc.document_title}</TableCell>
+                <TableCell>{doc.document_type}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4 text-gray-500" />
+                    {format(new Date(doc.document_date), 'MMM d, yyyy')}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="ml-2" 
+                    onClick={() => handleViewDocument(doc.file_path, doc.document_type)}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    View
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
+
   return (
     <Layout>
       <div className="flex flex-col gap-6">
@@ -83,60 +151,38 @@ const PatientDocuments: React.FC = () => {
         
         <Card>
           <CardHeader>
-            <CardTitle>Document Library</CardTitle>
-            <CardDescription>Access all patient forms, records, and documents</CardDescription>
+            <CardTitle>Clinical Notes</CardTitle>
+            <CardDescription>Treatment plans and session notes</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="flex justify-center py-8">
                 <p>Loading documents...</p>
               </div>
-            ) : documents.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <FileX className="h-12 w-12 text-gray-300 mb-3" />
-                <h3 className="text-lg font-medium">No documents found</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  No documents have been created for your account yet
-                </p>
+            ) : (
+              renderDocumentsTable(
+                getClinicalNotes(), 
+                "No clinical notes have been created for your account yet"
+              )
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Completed Forms</CardTitle>
+            <CardDescription>Assessment forms and other documentation</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <p>Loading documents...</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {documents.map(doc => (
-                      <TableRow key={doc.id}>
-                        <TableCell className="font-medium">{doc.document_title}</TableCell>
-                        <TableCell>{doc.document_type}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4 text-gray-500" />
-                            {format(new Date(doc.document_date), 'MMM d, yyyy')}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="ml-2" 
-                            onClick={() => handleViewDocument(doc.file_path, doc.document_type)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              renderDocumentsTable(
+                getCompletedForms(), 
+                "No completed forms have been found for your account yet"
+              )
             )}
           </CardContent>
         </Card>
