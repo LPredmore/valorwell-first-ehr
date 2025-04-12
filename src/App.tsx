@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -76,6 +77,20 @@ const App: React.FC = () => {
                 <Route path="/therapist-selection" element={
                   <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
                     <TherapistSelection />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Restored: Patient Dashboard route */}
+                <Route path="/patient-dashboard" element={
+                  <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
+                    <PatientDashboard />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Restored: Patient Documents route */}
+                <Route path="/patient-documents" element={
+                  <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
+                    <PatientDocuments />
                   </ProtectedRoute>
                 } />
                 
