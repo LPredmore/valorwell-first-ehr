@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Calendar, Eye, FileText, FileX, FilePlus2 } from 'lucide-react';
+import { Calendar, Eye, FileText, FileX, FilePlus2, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fetchClinicalDocuments, getDocumentDownloadURL, supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -65,85 +65,33 @@ const MyDocuments = () => {
           
         if (assignmentsError) throw assignmentsError;
         
-        const { data: clientHistory, error: historyError } = await supabase
-          .from('client_history')
-          .select('pdf_path')
-          .eq('client_id', userId)
-          .maybeSingle();
-          
-        if (historyError) throw historyError;
-
-        const { data: informedConsent, error: consentError } = await supabase
-          .from('clinical_documents')
-          .select('file_path')
-          .eq('client_id', userId)
-          .eq('document_type', 'informed_consent')
-          .order('created_at', { ascending: false })
-          .maybeSingle();
-          
-        if (consentError) console.error('Error fetching informed consent:', consentError);
-        
-        const assignedDocs: AssignedDocument[] = [
-          {
-            id: '1',
-            document_name: 'Client History Form',
-            status: clientHistory?.pdf_path ? 'completed' : 'not_started',
-            created_at: new Date().toISOString(),
-            filePath: clientHistory?.pdf_path || undefined,
-            route: clientHistory?.pdf_path ? undefined : '/client-history-form'
-          }, 
-          {
-            id: '2',
-            document_name: 'Informed Consent',
-            status: informedConsent?.file_path ? 'completed' : 'not_started',
-            created_at: new Date().toISOString(),
-            filePath: informedConsent?.file_path || undefined,
-            route: informedConsent?.file_path ? undefined : '/informed-consent'
-          }
-        ];
+        const assignedDocs: AssignedDocument[] = [];
         
         if (assignments && assignments.length > 0) {
           assignments.forEach(assignment => {
-            const existingIndex = assignedDocs.findIndex(doc => 
-              doc.document_name.toLowerCase() === assignment.document_name.toLowerCase()
-            );
+            let route: string | undefined = undefined;
             
-            if (existingIndex >= 0) {
-              assignedDocs[existingIndex].status = assignment.status as 'not_started' | 'in_progress' | 'completed';
-              if (assignment.pdf_url) {
-                assignedDocs[existingIndex].filePath = assignment.pdf_url;
-              }
-            } else {
-              assignedDocs.push({
-                id: assignment.id,
-                document_name: assignment.document_name,
-                status: (assignment.status as 'not_started' | 'in_progress' | 'completed') || 'not_started',
-                created_at: assignment.created_at,
-                filePath: assignment.pdf_url
-              });
+            if (assignment.document_name.toLowerCase().includes('client history')) {
+              route = '/client-history-form';
+            } else if (assignment.document_name.toLowerCase().includes('informed consent')) {
+              route = '/informed-consent';
             }
+            
+            assignedDocs.push({
+              id: assignment.id,
+              document_name: assignment.document_name,
+              status: (assignment.status as 'not_started' | 'in_progress' | 'completed') || 'not_started',
+              created_at: assignment.created_at,
+              filePath: assignment.pdf_url,
+              route
+            });
           });
         }
         
         setAssignedDocuments(assignedDocs);
       } catch (error) {
         console.error('Error fetching document assignments:', error);
-        setAssignedDocuments([
-          {
-            id: '1',
-            document_name: 'Client History Form',
-            status: 'not_started',
-            created_at: new Date().toISOString(),
-            route: '/client-history-form'
-          }, 
-          {
-            id: '2',
-            document_name: 'Informed Consent',
-            status: 'not_started',
-            created_at: new Date().toISOString(),
-            route: '/informed-consent'
-          }
-        ]);
+        setAssignedDocuments([]);
       } finally {
         setIsLoadingAssignedDocs(false);
       }
@@ -263,8 +211,8 @@ const MyDocuments = () => {
             </div>
           ) : assignedDocuments.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
-              <FileX className="h-12 w-12 text-gray-300 mb-3" />
-              <h3 className="text-lg font-medium">No documents assigned</h3>
+              <CheckCircle2 className="h-12 w-12 text-green-500 mb-3" />
+              <h3 className="text-lg font-medium">Great job! You're all caught up.</h3>
               <p className="text-sm text-gray-500 mt-1">
                 There are currently no forms or documents assigned to you
               </p>
