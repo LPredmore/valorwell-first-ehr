@@ -7,6 +7,11 @@ import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById, formatDateForDB } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useDocumentAssignments } from '@/hooks/useDocumentAssignments';
+import MyPortal from '@/components/patient/MyPortal';
+import MyProfile from '@/components/patient/MyProfile';
+import MyAppointments from '@/components/patient/MyAppointments';
+import MyInsurance from '@/components/patient/MyInsurance';
+import MyDocuments from '@/components/patient/MyDocuments';
 
 const PatientDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
