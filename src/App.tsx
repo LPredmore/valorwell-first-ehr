@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -63,22 +62,20 @@ const App: React.FC = () => {
                 {/* Client accessible routes */}
                 <Route path="/profile-setup" element={<ProfileSetup />} />
                 
+                {/* Added: Make Informed Consent accessible to clients */}
+                <Route path="/informed-consent" element={
+                  <ProtectedRoute allowedRoles={['client']} blockNewClients={false}>
+                    <InformedConsent />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Add this route to your existing routes (location may vary based on your router setup) */}
+                <Route path="/client-history-form" element={<ClientHistoryForm />} />
+                
                 {/* Routes that block "New" clients */}
                 <Route path="/therapist-selection" element={
                   <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
                     <TherapistSelection />
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="/patient-dashboard" element={
-                  <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
-                    <PatientDashboard />
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="/patient-documents" element={
-                  <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
-                    <PatientDocuments />
                   </ProtectedRoute>
                 } />
                 
@@ -95,9 +92,6 @@ const App: React.FC = () => {
                     <ClinicianDetails />
                   </ProtectedRoute>
                 } />
-                
-                {/* Add this route to your existing routes (location may vary based on your router setup) */}
-                <Route path="/client-history-form" element={<ClientHistoryForm />} />
                 
                 {/* Protected routes - clinician, admin, moderator */}
                 <Route path="/clinician-dashboard" element={
