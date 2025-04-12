@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
@@ -8,6 +9,7 @@ import { fetchClinicalDocuments, getDocumentDownloadURL, supabase } from '@/inte
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/context/UserContext';
 import { useNavigate } from 'react-router-dom';
+
 interface Document {
   id: string;
   document_title: string;
@@ -16,30 +18,30 @@ interface Document {
   file_path: string;
   created_at: string;
 }
+
 interface AssignedDocument {
   id: string;
-  title: string;
-  type: string;
-  required: boolean;
+  document_name: string;
   status: 'not_started' | 'in_progress' | 'completed';
+  created_at: string;
   filePath?: string;
   route?: string;
 }
+
 const MyDocuments = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [assignedDocuments, setAssignedDocuments] = useState<AssignedDocument[]>([]);
   const [isLoadingAssignedDocs, setIsLoadingAssignedDocs] = useState(false);
-  const {
-    toast
-  } = useToast();
-  const {
-    userId
-  } = useUser();
+  
+  const { toast } = useToast();
+  const { userId } = useUser();
   const navigate = useNavigate();
+
   useEffect(() => {
     const loadDocuments = async () => {
       if (!userId) return;
+      
       setIsLoading(true);
       try {
         const docs = await fetchClinicalDocuments(userId);
@@ -54,79 +56,113 @@ const MyDocuments = () => {
       } finally {
         setIsLoading(false);
       }
+      
+      // Fetch assigned documents
       setIsLoadingAssignedDocs(true);
       try {
-        const {
-          data: assignments,
-          error: assignmentsError
-        } = await supabase.from('document_assignments').select('*').eq('client_id', userId);
+        // Fetch from document_assignments table
+        const { data: assignments, error: assignmentsError } = await supabase
+          .from('document_assignments')
+          .select('*')
+          .eq('client_id', userId);
+          
         if (assignmentsError) throw assignmentsError;
-        const {
-          data: clientHistory,
-          error: historyError
-        } = await supabase.from('client_history').select('pdf_path').eq('client_id', userId).maybeSingle();
+        
+        // Check for client history form
+        const { data: clientHistory, error: historyError } = await supabase
+          .from('client_history')
+          .select('pdf_path')
+          .eq('client_id', userId)
+          .maybeSingle();
+          
         if (historyError) throw historyError;
 
         // Check for informed consent document
-        const {
-          data: informedConsent,
-          error: consentError
-        } = await supabase.from('clinical_documents').select('file_path').eq('client_id', userId).eq('document_type', 'informed_consent').order('created_at', {
-          ascending: false
-        }).maybeSingle();
+        const { data: informedConsent, error: consentError } = await supabase
+          .from('clinical_documents')
+          .select('file_path')
+          .eq('client_id', userId)
+          .eq('document_type', 'informed_consent')
+          .order('created_at', { ascending: false })
+          .maybeSingle();
+          
         if (consentError) console.error('Error fetching informed consent:', consentError);
-        const assignedDocs: AssignedDocument[] = [{
-          id: '1',
-          title: 'Client History Form',
-          type: 'Intake',
-          required: true,
-          status: clientHistory?.pdf_path ? 'completed' : 'not_started',
-          filePath: clientHistory?.pdf_path || undefined,
-          route: clientHistory?.pdf_path ? undefined : '/client-history-form'
-        }, {
-          id: '2',
-          title: 'Informed Consent',
-          type: 'Legal',
-          required: true,
-          status: informedConsent?.file_path ? 'completed' : 'not_started',
-          filePath: informedConsent?.file_path || undefined,
-          route: informedConsent?.file_path ? undefined : '/informed-consent'
-        }];
+        
+        // Create assigned documents array with default required documents
+        const assignedDocs: AssignedDocument[] = [
+          {
+            id: '1',
+            document_name: 'Client History Form',
+            status: clientHistory?.pdf_path ? 'completed' : 'not_started',
+            created_at: new Date().toISOString(),
+            filePath: clientHistory?.pdf_path || undefined,
+            route: clientHistory?.pdf_path ? undefined : '/client-history-form'
+          }, 
+          {
+            id: '2',
+            document_name: 'Informed Consent',
+            status: informedConsent?.file_path ? 'completed' : 'not_started',
+            created_at: new Date().toISOString(),
+            filePath: informedConsent?.file_path || undefined,
+            route: informedConsent?.file_path ? undefined : '/informed-consent'
+          }
+        ];
+        
+        // Add documents from document_assignments table
         if (assignments && assignments.length > 0) {
           assignments.forEach(assignment => {
-            const docIndex = assignedDocs.findIndex(doc => doc.id === assignment.document_id);
-            if (docIndex >= 0) {
-              assignedDocs[docIndex].status = assignment.status as 'not_started' | 'in_progress' | 'completed';
+            // Check if this document is already in our list
+            const existingIndex = assignedDocs.findIndex(doc => 
+              doc.document_name.toLowerCase() === assignment.document_name.toLowerCase()
+            );
+            
+            if (existingIndex >= 0) {
+              // Update existing document status
+              assignedDocs[existingIndex].status = assignment.status as 'not_started' | 'in_progress' | 'completed';
               if (assignment.pdf_url) {
-                assignedDocs[docIndex].filePath = assignment.pdf_url;
+                assignedDocs[existingIndex].filePath = assignment.pdf_url;
               }
+            } else {
+              // Add new document
+              assignedDocs.push({
+                id: assignment.id,
+                document_name: assignment.document_name,
+                status: (assignment.status as 'not_started' | 'in_progress' | 'completed') || 'not_started',
+                created_at: assignment.created_at,
+                filePath: assignment.pdf_url
+              });
             }
           });
         }
+        
         setAssignedDocuments(assignedDocs);
       } catch (error) {
         console.error('Error fetching document assignments:', error);
-        setAssignedDocuments([{
-          id: '1',
-          title: 'Client History Form',
-          type: 'Intake',
-          required: true,
-          status: 'not_started',
-          route: '/client-history-form'
-        }, {
-          id: '2',
-          title: 'Informed Consent',
-          type: 'Legal',
-          required: true,
-          status: 'not_started',
-          route: '/informed-consent'
-        }]);
+        // Fallback to default documents if there's an error
+        setAssignedDocuments([
+          {
+            id: '1',
+            document_name: 'Client History Form',
+            status: 'not_started',
+            created_at: new Date().toISOString(),
+            route: '/client-history-form'
+          }, 
+          {
+            id: '2',
+            document_name: 'Informed Consent',
+            status: 'not_started',
+            created_at: new Date().toISOString(),
+            route: '/informed-consent'
+          }
+        ]);
       } finally {
         setIsLoadingAssignedDocs(false);
       }
     };
+    
     loadDocuments();
   }, [userId, toast]);
+
   const handleViewDocument = async (filePath: string, documentType?: string) => {
     try {
       const url = await getDocumentDownloadURL(filePath, documentType);
@@ -148,6 +184,7 @@ const MyDocuments = () => {
       });
     }
   };
+
   const handleFillOutForm = (doc: AssignedDocument) => {
     if (doc.route) {
       navigate(doc.route);
@@ -158,7 +195,9 @@ const MyDocuments = () => {
       });
     }
   };
-  return <div className="grid grid-cols-1 gap-6">
+
+  return (
+    <div className="grid grid-cols-1 gap-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -168,47 +207,58 @@ const MyDocuments = () => {
           <CardDescription>Forms and documents that need your attention</CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoadingAssignedDocs ? <div className="flex justify-center py-8">
+          {isLoadingAssignedDocs ? (
+            <div className="flex justify-center py-8">
               <p>Loading assigned documents...</p>
-            </div> : assignedDocuments.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-center">
+            </div>
+          ) : assignedDocuments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
               <FileX className="h-12 w-12 text-gray-300 mb-3" />
               <h3 className="text-lg font-medium">No documents assigned</h3>
               <p className="text-sm text-gray-500 mt-1">
                 There are currently no forms or documents assigned to you
               </p>
-            </div> : <div className="overflow-x-auto">
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Form Name</TableHead>
-                    
-                    
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {assignedDocuments.map(doc => <TableRow key={doc.id}>
-                      <TableCell className="font-medium">{doc.title}</TableCell>
-                      
-                      
+                  {assignedDocuments.map(doc => (
+                    <TableRow key={doc.id}>
+                      <TableCell className="font-medium">{doc.document_name}</TableCell>
                       <TableCell>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium 
-                          ${doc.status === 'completed' ? 'bg-green-100 text-green-800' : doc.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}`}>
-                          {doc.status === 'completed' ? 'Completed' : doc.status === 'in_progress' ? 'In Progress' : 'Not Started'}
+                          ${doc.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                            doc.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : 
+                            'bg-blue-100 text-blue-800'}`}>
+                          {doc.status === 'completed' ? 'Completed' : 
+                           doc.status === 'in_progress' ? 'In Progress' : 'Not Started'}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        {doc.status === 'completed' ? <Button variant="outline" size="sm" onClick={() => doc.filePath && handleViewDocument(doc.filePath)}>
+                        {doc.status === 'completed' ? (
+                          <Button variant="outline" size="sm" onClick={() => doc.filePath && handleViewDocument(doc.filePath)}>
                             <Eye className="h-4 w-4 mr-1" /> View
-                          </Button> : <Button variant="default" size="sm" onClick={() => handleFillOutForm(doc)}>
+                          </Button>
+                        ) : (
+                          <Button variant="default" size="sm" onClick={() => handleFillOutForm(doc)}>
                             Fill Out
-                          </Button>}
+                          </Button>
+                        )}
                       </TableCell>
-                    </TableRow>)}
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
-            </div>}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -221,15 +271,20 @@ const MyDocuments = () => {
           <CardDescription>View your completed clinical documents</CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? <div className="flex justify-center py-8">
+          {isLoading ? (
+            <div className="flex justify-center py-8">
               <p>Loading documents...</p>
-            </div> : documents.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-center">
+            </div>
+          ) : documents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
               <FileText className="h-12 w-12 text-gray-300 mb-3" />
               <h3 className="text-lg font-medium">No documents found</h3>
               <p className="text-sm text-gray-500 mt-1">
                 No clinical documents have been created for your account yet
               </p>
-            </div> : <div className="overflow-x-auto">
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -240,7 +295,8 @@ const MyDocuments = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {documents.map(doc => <TableRow key={doc.id}>
+                  {documents.map(doc => (
+                    <TableRow key={doc.id}>
                       <TableCell className="font-medium">{doc.document_title}</TableCell>
                       <TableCell>{doc.document_type}</TableCell>
                       <TableCell>
@@ -255,12 +311,16 @@ const MyDocuments = () => {
                           View
                         </Button>
                       </TableCell>
-                    </TableRow>)}
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
-            </div>}
+            </div>
+          )}
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 };
+
 export default MyDocuments;

@@ -2,7 +2,10 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart2, ClipboardCheck, FileText, ClipboardList, Download, Calendar, Eye, PenLine, FileX, FilePlus2 } from "lucide-react";
+import { 
+  BarChart2, ClipboardCheck, FileText, Calendar, 
+  Eye, PenLine, FileX, FilePlus2, Plus, ChevronDown
+} from "lucide-react";
 import TreatmentPlanTemplate from "@/components/templates/TreatmentPlanTemplate";
 import SessionNoteTemplate from "@/components/templates/SessionNoteTemplate";
 import PHQ9Template from "@/components/templates/PHQ9Template";
@@ -14,6 +17,12 @@ import { format } from "date-fns";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface DocumentationTabProps {
   clientData?: ClientDetails | null;
@@ -29,6 +38,25 @@ interface ClinicalDocument {
   created_by?: string;
 }
 
+interface AssignableTemplate {
+  id: string;
+  template_id: string;
+  template_name: string;
+  template_type: string;
+  is_assignable: boolean;
+}
+
+interface DocumentAssignment {
+  id: string;
+  document_name: string;
+  assigned_by?: string;
+  status?: string;
+  client_id: string;
+  created_at: string;
+  updated_at: string;
+  pdf_url?: string;
+}
+
 const DocumentationTab: React.FC<DocumentationTabProps> = ({
   clientData
 }) => {
@@ -38,8 +66,10 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
   const [showPCL5Template, setShowPCL5Template] = useState(false);
   const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [assignedDocuments, setAssignedDocuments] = useState<any[]>([]);
+  const [assignedDocuments, setAssignedDocuments] = useState<DocumentAssignment[]>([]);
   const [isLoadingAssignedDocs, setIsLoadingAssignedDocs] = useState(false);
+  const [assignableTemplates, setAssignableTemplates] = useState<AssignableTemplate[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 
   const {
     clinicianData
@@ -47,8 +77,9 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
   const {
     toast
   } = useToast();
-  const { userRole } = useUser();
+  const { userRole, userId } = useUser();
 
+  // Fetch clinical documents and assigned documents
   useEffect(() => {
     if (clientData?.id) {
       setIsLoading(true);
@@ -65,13 +96,19 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
         });
       });
       
-      // In the future, we'll add actual fetching of assigned documents here
+      // Fetch assigned documents from document_assignments table
       setIsLoadingAssignedDocs(true);
       
-      // Check for informed consent document
       const fetchAssignedDocuments = async () => {
         try {
-          // Check if the client has completed the informed consent form
+          const { data, error } = await supabase
+            .from('document_assignments')
+            .select('*')
+            .eq('client_id', clientData.id);
+            
+          if (error) throw error;
+          
+          // Check for informed consent document
           const { data: informedConsent, error: consentError } = await supabase
             .from('clinical_documents')
             .select('*')
@@ -80,22 +117,24 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
             .order('created_at', { ascending: false })
             .maybeSingle();
             
-          if (consentError) throw consentError;
+          if (consentError) console.error('Error fetching informed consent:', consentError);
           
-          const assignedDocs = [];
+          // Add informed consent to assigned documents if it's not completed
+          let assignmentsList = data || [];
           
           // Only add the informed consent to assigned documents if it hasn't been completed
           if (!informedConsent) {
-            assignedDocs.push({
-              id: '2',
-              title: 'Informed Consent',
-              type: 'Legal',
-              required: true,
-              status: 'not_started'
-            });
+            assignmentsList = [...assignmentsList, {
+              id: 'informed-consent',
+              document_name: 'Informed Consent',
+              client_id: clientData.id,
+              status: 'not_started',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }];
           }
           
-          setAssignedDocuments(assignedDocs);
+          setAssignedDocuments(assignmentsList);
         } catch (error) {
           console.error('Error fetching assigned documents:', error);
           setAssignedDocuments([]);
@@ -105,8 +144,30 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
       };
       
       fetchAssignedDocuments();
+      
+      // Fetch assignable templates
+      if (userRole === 'clinician' || userRole === 'admin') {
+        setIsLoadingTemplates(true);
+        supabase
+          .from('template_settings')
+          .select('*')
+          .eq('is_assignable', true)
+          .then(({ data, error }) => {
+            if (error) {
+              console.error('Error fetching assignable templates:', error);
+              toast({
+                title: "Error",
+                description: "Failed to load assignable templates",
+                variant: "destructive"
+              });
+            } else {
+              setAssignableTemplates(data || []);
+            }
+            setIsLoadingTemplates(false);
+          });
+      }
     }
-  }, [clientData?.id, toast]);
+  }, [clientData?.id, toast, userRole]);
 
   const handleCloseTreatmentPlan = () => {
     setShowTreatmentPlanTemplate(false);
@@ -158,8 +219,58 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
     }
   };
 
+  const handleAssignDocument = async (templateId: string, templateName: string) => {
+    if (!clientData?.id || !userId) {
+      toast({
+        title: "Error",
+        description: "Client information is missing",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      const assignment = {
+        document_name: templateName,
+        client_id: clientData.id,
+        assigned_by: userId,
+        status: 'not_started'
+      };
+      
+      const { error } = await supabase
+        .from('document_assignments')
+        .insert([assignment]);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: `${templateName} has been assigned to the client`
+      });
+      
+      // Refresh assigned documents
+      const { data: updatedData, error: fetchError } = await supabase
+        .from('document_assignments')
+        .select('*')
+        .eq('client_id', clientData.id);
+        
+      if (fetchError) throw fetchError;
+      
+      setAssignedDocuments(updatedData || []);
+      
+    } catch (error) {
+      console.error('Error assigning document:', error);
+      toast({
+        title: "Error",
+        description: "Failed to assign document to client",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Only show documentation creation options for clinicians and admins
   const canCreateDocumentation = userRole === 'clinician' || userRole === 'admin';
+  const canAssignDocuments = userRole === 'clinician' || userRole === 'admin';
 
   return <div className="grid grid-cols-1 gap-6">
       {canCreateDocumentation && (
@@ -184,14 +295,42 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
         </Card>
       )}
 
-      {/* New section: Assigned Documents */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FilePlus2 className="h-5 w-5 text-valorwell-600" />
-            Assigned Documents
-          </CardTitle>
-          <CardDescription>Forms and documents that need your attention</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <FilePlus2 className="h-5 w-5 text-valorwell-600" />
+              Assigned Documents
+            </CardTitle>
+            <CardDescription>Forms and documents that need client's attention</CardDescription>
+          </div>
+          {canAssignDocuments && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-1">
+                  <Plus className="h-4 w-4" /> 
+                  Assign New Document
+                  <ChevronDown className="h-4 w-4 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-white">
+                {isLoadingTemplates ? (
+                  <DropdownMenuItem disabled>Loading templates...</DropdownMenuItem>
+                ) : assignableTemplates.length > 0 ? (
+                  assignableTemplates.map(template => (
+                    <DropdownMenuItem
+                      key={template.id}
+                      onClick={() => handleAssignDocument(template.template_id, template.template_name)}
+                    >
+                      {template.template_name}
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem disabled>No assignable templates available</DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </CardHeader>
         <CardContent>
           {isLoadingAssignedDocs ? (
@@ -212,18 +351,15 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Form Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Required</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Date Assigned</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {assignedDocuments.map((doc) => (
                     <TableRow key={doc.id}>
-                      <TableCell className="font-medium">{doc.title}</TableCell>
-                      <TableCell>{doc.type}</TableCell>
-                      <TableCell>{doc.required ? "Yes" : "No"}</TableCell>
+                      <TableCell className="font-medium">{doc.document_name}</TableCell>
                       <TableCell>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium 
                           ${doc.status === 'completed' ? 'bg-green-100 text-green-800' : 
@@ -233,9 +369,10 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
                            doc.status === 'in_progress' ? 'In Progress' : 'Not Started'}
                         </span>
                       </TableCell>
+                      <TableCell>{format(new Date(doc.created_at), 'MMM d, yyyy')}</TableCell>
                       <TableCell className="text-right">
-                        {doc.status === 'completed' ? (
-                          <Button variant="outline" size="sm" onClick={() => handleViewDocument(doc.filePath)}>
+                        {doc.status === 'completed' && doc.pdf_url ? (
+                          <Button variant="outline" size="sm" onClick={() => handleViewDocument(doc.pdf_url!)}>
                             <Eye className="h-4 w-4 mr-1" /> View
                           </Button>
                         ) : (
@@ -250,19 +387,6 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ClipboardCheck className="h-5 w-5 text-valorwell-600" />
-            Assigned Forms
-          </CardTitle>
-          <CardDescription>View and complete patient assessments</CardDescription>
-        </CardHeader>
-        <CardContent className="py-6">
-          {/* Assessment content */}
         </CardContent>
       </Card>
 
