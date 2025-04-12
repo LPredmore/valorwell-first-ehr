@@ -1,18 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LayoutDashboard, User, Clock3, Shield, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, User, Clock3, Shield, ClipboardList, AlertTriangle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById, formatDateForDB } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
-
-// Import the new tab components
-import MyPortal from '@/components/patient/MyPortal';
-import MyProfile from '@/components/patient/MyProfile';
-import MyAppointments from '@/components/patient/MyAppointments';
-import MyInsurance from '@/components/patient/MyInsurance';
-import MyDocuments from '@/components/patient/MyDocuments';
+import { useToast } from '@/hooks/use-toast';
+import { useDocumentAssignments } from '@/hooks/useDocumentAssignments';
 
 const PatientDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
@@ -24,6 +18,7 @@ const PatientDashboard: React.FC = () => {
     toast
   } = useToast();
   const navigate = useNavigate();
+  
   const genderOptions = ['Male', 'Female', 'Non-Binary', 'Other', 'Prefer not to say'];
   const genderIdentityOptions = ['Male', 'Female', 'Trans Man', 'Trans Woman', 'Non-Binary', 'Other', 'Prefer not to say'];
   const stateOptions = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'];
@@ -77,6 +72,9 @@ const PatientDashboard: React.FC = () => {
       client_tricare_referral_number: ''
     }
   });
+
+  const { pendingDocuments, isLoading: isLoadingDocuments } = useDocumentAssignments(clientData?.id);
+  const hasPendingDocuments = pendingDocuments.length > 0;
 
   const fetchClinicianName = async (clinicianId: string) => {
     if (!clinicianId) return;
@@ -322,6 +320,9 @@ const PatientDashboard: React.FC = () => {
               Insurance
             </TabsTrigger>
             <TabsTrigger value="documents" className="gap-2 rounded-b-none rounded-t-lg data-[state=active]:border-b-2 data-[state=active]:border-valorwell-600">
+              {hasPendingDocuments && (
+                <AlertTriangle className="h-4 w-4 text-red-600 mr-1" aria-label="Pending documents" />
+              )}
               <ClipboardList className="h-4 w-4" />
               Documents
             </TabsTrigger>
