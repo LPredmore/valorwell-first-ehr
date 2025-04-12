@@ -17,6 +17,7 @@ import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 import PHQ9Template from '@/components/templates/PHQ9Template';
 import GAD7Template from '@/components/templates/GAD7Template';
 import PCL5Template from '@/components/templates/PCL5Template';
+import InformedConsentTemplate from '@/components/templates/InformedConsentTemplate';
 
 // Define template types for tracking assignable status
 interface Template {
@@ -31,6 +32,7 @@ const TemplatesTab = () => {
   const [showPHQ9Template, setShowPHQ9Template] = useState(false);
   const [showGAD7Template, setShowGAD7Template] = useState(false);
   const [showPCL5Template, setShowPCL5Template] = useState(false);
+  const [showInformedConsentTemplate, setShowInformedConsentTemplate] = useState(false);
 
   // Initial state for assessment form templates
   const [assessmentTemplates, setAssessmentTemplates] = useState<Template[]>([
@@ -39,8 +41,11 @@ const TemplatesTab = () => {
     { id: 'pcl5', name: 'PCL-5', isAssignable: false },
   ]);
 
-  // Initial state for online form templates (empty for now)
-  const [onlineTemplates, setOnlineTemplates] = useState<Template[]>([]);
+  // Initial state for online form templates
+  const [onlineTemplates, setOnlineTemplates] = useState<Template[]>([
+    { id: 'client_intake', name: 'Client Intake Form', isAssignable: false },
+    { id: 'informed_consent', name: 'Informed Consent', isAssignable: false },
+  ]);
 
   const handleCloseTreatmentPlan = () => {
     setShowTreatmentPlanTemplate(false);
@@ -60,6 +65,10 @@ const TemplatesTab = () => {
   
   const handleClosePCL5 = () => {
     setShowPCL5Template(false);
+  };
+  
+  const handleCloseInformedConsent = () => {
+    setShowInformedConsentTemplate(false);
   };
 
   // Handle toggle change for assessment templates
@@ -96,6 +105,8 @@ const TemplatesTab = () => {
         <GAD7Template onClose={() => setShowGAD7Template(false)} clinicianName="" />
       ) : showPCL5Template ? (
         <PCL5Template onClose={() => setShowPCL5Template(false)} clinicianName="" />
+      ) : showInformedConsentTemplate ? (
+        <InformedConsentTemplate onClose={() => setShowInformedConsentTemplate(false)} />
       ) : (
         <>
           <div className="mb-8">
@@ -242,10 +253,23 @@ const TemplatesTab = () => {
                   </TableHeader>
                   <TableBody>
                     {onlineTemplates.map(template => (
-                      <TableRow key={template.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium">{template.name}</TableCell>
+                      <TableRow 
+                        key={template.id} 
+                        className="hover:bg-gray-50"
+                      >
+                        <TableCell 
+                          className="font-medium cursor-pointer"
+                          onClick={() => {
+                            if (template.id === 'informed_consent') setShowInformedConsentTemplate(true);
+                          }}
+                        >
+                          {template.name}
+                        </TableCell>
                         <TableCell>Online Form</TableCell>
-                        <TableCell></TableCell>
+                        <TableCell>
+                          {template.id === 'client_intake' ? 'Initial client history and information' :
+                           template.id === 'informed_consent' ? 'Telehealth informed consent document' : ''}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             <Switch
