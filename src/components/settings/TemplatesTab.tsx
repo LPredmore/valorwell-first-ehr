@@ -1,9 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -47,6 +45,12 @@ const TemplatesTab = () => {
   const [showPCL5Template, setShowPCL5Template] = useState(false);
   const [showInformedConsentTemplate, setShowInformedConsentTemplate] = useState(false);
 
+  // Initial state for chart templates
+  const [chartTemplates, setChartTemplates] = useState<Template[]>([
+    { id: 'treatment_plan', name: 'Treatment Plan', isAssignable: false },
+    { id: 'session_note', name: 'Session Note', isAssignable: false },
+  ]);
+
   // Initial state for assessment form templates
   const [assessmentTemplates, setAssessmentTemplates] = useState<Template[]>([
     { id: 'phq9', name: 'PHQ-9', isAssignable: false },
@@ -74,6 +78,18 @@ const TemplatesTab = () => {
         }
 
         if (templateSettings) {
+          // Update chart templates
+          setChartTemplates(prev => 
+            prev.map(template => {
+              const dbSetting = templateSettings.find(
+                (setting: TemplateSettings) => 
+                  setting.template_id === template.id && 
+                  setting.template_type === 'clinical'
+              );
+              return dbSetting ? { ...template, isAssignable: dbSetting.is_assignable } : template;
+            })
+          );
+
           // Update assessment templates
           setAssessmentTemplates(prev => 
             prev.map(template => {
@@ -172,6 +188,25 @@ const TemplatesTab = () => {
     }
   };
 
+  // Handle toggle change for chart templates
+  const toggleChartTemplateAssignable = (id: string) => {
+    setChartTemplates(prev => {
+      const updatedTemplates = prev.map(template => 
+        template.id === id 
+          ? { ...template, isAssignable: !template.isAssignable } 
+          : template
+      );
+      
+      // Find the updated template to get name and new isAssignable value
+      const updatedTemplate = updatedTemplates.find(t => t.id === id);
+      if (updatedTemplate) {
+        updateTemplateAssignable(id, updatedTemplate.isAssignable, updatedTemplate.name, 'clinical');
+      }
+      
+      return updatedTemplates;
+    });
+  };
+
   // Handle toggle change for assessment templates
   const toggleAssessmentTemplateAssignable = (id: string) => {
     setAssessmentTemplates(prev => {
@@ -241,37 +276,43 @@ const TemplatesTab = () => {
                   <TableRow>
                     <TableHead>Template Name</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Last Modified</TableHead>
+                    <TableHead>Assignable</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <TableRow className="cursor-pointer hover:bg-gray-50" onClick={() => setShowTreatmentPlanTemplate(true)}>
-                    <TableCell className="font-medium">Treatment Plan</TableCell>
-                    <TableCell>Chart Template</TableCell>
-                    <TableCell>{new Date().toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500">
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow className="cursor-pointer hover:bg-gray-50" onClick={() => setShowSessionNoteTemplate(true)}>
-                    <TableCell className="font-medium">Session Note</TableCell>
-                    <TableCell>Chart Template</TableCell>
-                    <TableCell>{new Date().toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500">
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                  {chartTemplates.map(template => (
+                    <TableRow key={template.id} className="hover:bg-gray-50">
+                      <TableCell 
+                        className="font-medium cursor-pointer" 
+                        onClick={() => {
+                          if (template.id === 'treatment_plan') setShowTreatmentPlanTemplate(true);
+                          else if (template.id === 'session_note') setShowSessionNoteTemplate(true);
+                        }}
+                      >
+                        {template.name}
+                      </TableCell>
+                      <TableCell>Chart Template</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id={`toggle-chart-${template.id}`}
+                            checked={template.isAssignable}
+                            onCheckedChange={() => toggleChartTemplateAssignable(template.id)}
+                            disabled={isLoading}
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500">
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
