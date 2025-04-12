@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
@@ -9,7 +8,6 @@ import { fetchClinicalDocuments, getDocumentDownloadURL, supabase } from '@/inte
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/context/UserContext';
 import { useNavigate } from 'react-router-dom';
-
 interface Document {
   id: string;
   document_title: string;
@@ -18,7 +16,6 @@ interface Document {
   file_path: string;
   created_at: string;
 }
-
 interface AssignedDocument {
   id: string;
   title: string;
@@ -28,17 +25,18 @@ interface AssignedDocument {
   filePath?: string;
   route?: string;
 }
-
 const MyDocuments = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [assignedDocuments, setAssignedDocuments] = useState<AssignedDocument[]>([]);
   const [isLoadingAssignedDocs, setIsLoadingAssignedDocs] = useState(false);
-  
-  const { toast } = useToast();
-  const { userId } = useUser();
+  const {
+    toast
+  } = useToast();
+  const {
+    userId
+  } = useUser();
   const navigate = useNavigate();
-
   useEffect(() => {
     const loadDocuments = async () => {
       if (!userId) return;
@@ -68,21 +66,15 @@ const MyDocuments = () => {
           error: historyError
         } = await supabase.from('client_history').select('pdf_path').eq('client_id', userId).maybeSingle();
         if (historyError) throw historyError;
-        
+
         // Check for informed consent document
         const {
           data: informedConsent,
           error: consentError
-        } = await supabase
-          .from('clinical_documents')
-          .select('file_path')
-          .eq('client_id', userId)
-          .eq('document_type', 'informed_consent')
-          .order('created_at', { ascending: false })
-          .maybeSingle();
-        
+        } = await supabase.from('clinical_documents').select('file_path').eq('client_id', userId).eq('document_type', 'informed_consent').order('created_at', {
+          ascending: false
+        }).maybeSingle();
         if (consentError) console.error('Error fetching informed consent:', consentError);
-        
         const assignedDocs: AssignedDocument[] = [{
           id: '1',
           title: 'Client History Form',
@@ -100,7 +92,6 @@ const MyDocuments = () => {
           filePath: informedConsent?.file_path || undefined,
           route: informedConsent?.file_path ? undefined : '/informed-consent'
         }];
-        
         if (assignments && assignments.length > 0) {
           assignments.forEach(assignment => {
             const docIndex = assignedDocs.findIndex(doc => doc.id === assignment.document_id);
@@ -136,7 +127,6 @@ const MyDocuments = () => {
     };
     loadDocuments();
   }, [userId, toast]);
-
   const handleViewDocument = async (filePath: string, documentType?: string) => {
     try {
       const url = await getDocumentDownloadURL(filePath, documentType);
@@ -158,7 +148,6 @@ const MyDocuments = () => {
       });
     }
   };
-
   const handleFillOutForm = (doc: AssignedDocument) => {
     if (doc.route) {
       navigate(doc.route);
@@ -169,7 +158,6 @@ const MyDocuments = () => {
       });
     }
   };
-
   return <div className="grid grid-cols-1 gap-6">
       <Card>
         <CardHeader>
@@ -193,8 +181,8 @@ const MyDocuments = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Form Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Required</TableHead>
+                    
+                    
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
@@ -202,8 +190,8 @@ const MyDocuments = () => {
                 <TableBody>
                   {assignedDocuments.map(doc => <TableRow key={doc.id}>
                       <TableCell className="font-medium">{doc.title}</TableCell>
-                      <TableCell>{doc.type}</TableCell>
-                      <TableCell>{doc.required ? "Yes" : "No"}</TableCell>
+                      
+                      
                       <TableCell>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium 
                           ${doc.status === 'completed' ? 'bg-green-100 text-green-800' : doc.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}`}>
@@ -262,12 +250,7 @@ const MyDocuments = () => {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="ml-2" 
-                          onClick={() => handleViewDocument(doc.file_path, doc.document_type)}
-                        >
+                        <Button variant="outline" size="sm" className="ml-2" onClick={() => handleViewDocument(doc.file_path, doc.document_type)}>
                           <Eye className="h-4 w-4 mr-1" />
                           View
                         </Button>
@@ -280,5 +263,4 @@ const MyDocuments = () => {
       </Card>
     </div>;
 };
-
 export default MyDocuments;
