@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
@@ -196,6 +195,67 @@ const MyDocuments = () => {
     }
   };
 
+  const getClinicalNotes = () => {
+    return documents.filter(doc => 
+      doc.document_type === 'treatment_plan' || 
+      doc.document_type === 'session_note'
+    );
+  };
+
+  const getCompletedForms = () => {
+    return documents.filter(doc => 
+      doc.document_type !== 'treatment_plan' && 
+      doc.document_type !== 'session_note'
+    );
+  };
+
+  const renderDocumentsTable = (docs: Document[], emptyMessage: string) => {
+    if (docs.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <FileText className="h-12 w-12 text-gray-300 mb-3" />
+          <h3 className="text-lg font-medium">No documents found</h3>
+          <p className="text-sm text-gray-500 mt-1">{emptyMessage}</p>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Title</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {docs.map(doc => (
+              <TableRow key={doc.id}>
+                <TableCell className="font-medium">{doc.document_title}</TableCell>
+                <TableCell>{doc.document_type}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4 text-gray-500" />
+                    {format(new Date(doc.document_date), 'MMM d, yyyy')}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button variant="outline" size="sm" className="ml-2" onClick={() => handleViewDocument(doc.file_path, doc.document_type)}>
+                    <Eye className="h-4 w-4 mr-1" />
+                    View
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
+
   return (
     <div className="grid grid-cols-1 gap-6">
       <Card>
@@ -266,56 +326,42 @@ const MyDocuments = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-valorwell-600" />
-            Completed Notes
+            Clinical Notes
           </CardTitle>
-          <CardDescription>View your completed clinical documents</CardDescription>
+          <CardDescription>View your treatment plans and session notes</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center py-8">
-              <p>Loading documents...</p>
-            </div>
-          ) : documents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <FileText className="h-12 w-12 text-gray-300 mb-3" />
-              <h3 className="text-lg font-medium">No documents found</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                No clinical documents have been created for your account yet
-              </p>
+              <p>Loading clinical notes...</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {documents.map(doc => (
-                    <TableRow key={doc.id}>
-                      <TableCell className="font-medium">{doc.document_title}</TableCell>
-                      <TableCell>{doc.document_type}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4 text-gray-500" />
-                          {format(new Date(doc.document_date), 'MMM d, yyyy')}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="outline" size="sm" className="ml-2" onClick={() => handleViewDocument(doc.file_path, doc.document_type)}>
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            renderDocumentsTable(
+              getClinicalNotes(), 
+              "No clinical notes have been created for your account yet"
+            )
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-valorwell-600" />
+            Completed Forms
+          </CardTitle>
+          <CardDescription>View your completed assessment forms and other documentation</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <p>Loading completed forms...</p>
             </div>
+          ) : (
+            renderDocumentsTable(
+              getCompletedForms(), 
+              "No completed forms have been found for your account yet"
+            )
           )}
         </CardContent>
       </Card>
