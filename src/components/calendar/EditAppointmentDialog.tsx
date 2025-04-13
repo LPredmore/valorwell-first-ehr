@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,8 @@ import {
   formatTimeZoneDisplay,
   formatUTCTimeForUser
 } from '@/utils/timeZoneUtils';
-import { useClinicianData, getClinicianTimeZone } from '@/hooks/useClinicianData';
+import { useClinicianData } from '@/hooks/useClinicianData';
+import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 
 interface EditAppointmentDialogProps {
   isOpen: boolean;
@@ -44,32 +44,17 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
   const [isRecurring, setIsRecurring] = useState(false);
   const [editOption, setEditOption] = useState<'single' | 'series'>('single');
   const [isEditOptionDialogOpen, setIsEditOptionDialogOpen] = useState(false);
-  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago'); // Default timezone
+  
+  const { timeZone: clinicianTimeZone, loading: timeZoneLoading } = 
+    useUserTimeZone(appointment?.clinician_id);
+  
   const [timeZoneDisplay, setTimeZoneDisplay] = useState<string>('Central Time');
   
-  const { clinicianData, loading, error } = useClinicianData();
-
   useEffect(() => {
-    const fetchClinicianTimeZone = async () => {
-      if (appointment?.clinician_id) {
-        try {
-          const timezone = await getClinicianTimeZone(appointment.clinician_id);
-          const validTimeZone = ensureIANATimeZone(timezone);
-          console.log('Fetched clinician timezone:', validTimeZone);
-          setClinicianTimeZone(validTimeZone);
-          setTimeZoneDisplay(formatTimeZoneDisplay(validTimeZone));
-        } catch (error) {
-          console.error('Error fetching clinician timezone:', error);
-          // Fallback to browser's timezone
-          const systemTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-          setClinicianTimeZone(systemTimeZone);
-          setTimeZoneDisplay(formatTimeZoneDisplay(systemTimeZone));
-        }
-      }
-    };
-
-    fetchClinicianTimeZone();
-  }, [appointment?.clinician_id]);
+    if (clinicianTimeZone) {
+      setTimeZoneDisplay(formatTimeZoneDisplay(clinicianTimeZone));
+    }
+  }, [clinicianTimeZone]);
 
   const generateTimeOptions = () => {
     const options = [];
@@ -157,7 +142,6 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       });
 
       if (mode === 'single') {
-        // Define the base update data object
         const updateData: {
           date: string;
           start_time: string;
@@ -174,7 +158,6 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
           appointment_end_datetime: endTimestamp
         };
 
-        // Conditionally add recurring fields if this is a recurring appointment
         if (isRecurring) {
           updateData.recurring_group_id = null;
           updateData.appointment_recurring = null;

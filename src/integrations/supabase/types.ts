@@ -1501,6 +1501,7 @@ export type Database = {
           profile_type: string | null
           role: Database["public"]["Enums"]["app_role"]
           temp_password: string | null
+          time_zone: string | null
           updated_at: string
         }
         Insert: {
@@ -1513,6 +1514,7 @@ export type Database = {
           profile_type?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           temp_password?: string | null
+          time_zone?: string | null
           updated_at?: string
         }
         Update: {
@@ -1525,6 +1527,7 @@ export type Database = {
           profile_type?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           temp_password?: string | null
+          time_zone?: string | null
           updated_at?: string
         }
         Relationships: []

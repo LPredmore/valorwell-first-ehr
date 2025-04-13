@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
-import { getClinicianTimeZone } from '@/hooks/useClinicianData';
+import { useUserTimeZone } from './useUserTimeZone';
 
 interface Client {
   id: string;
@@ -19,38 +18,26 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   const [loadingClients, setLoadingClients] = useState(false);
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago');
   const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
   const [userTimeZone, setUserTimeZone] = useState<string>('');
 
-  // Fetch clinician timezone
+  // Use our new hook to fetch the clinician's time zone from the profiles table
+  const { timeZone: clinicianTimeZone, loading: loadingClinicianTimeZone } = 
+    useUserTimeZone(selectedClinicianId);
+
+  // Update loading state based on the hook's loading state
   useEffect(() => {
-    const fetchClinicianTimeZone = async () => {
-      if (selectedClinicianId) {
-        setIsLoadingTimeZone(true);
-        try {
-          const timeZone = await getClinicianTimeZone(selectedClinicianId);
-          console.log("Fetched clinician timezone:", timeZone);
-          setClinicianTimeZone(timeZone);
-        } catch (error) {
-          console.error("Error fetching clinician timezone:", error);
-        } finally {
-          setIsLoadingTimeZone(false);
-        }
-      }
-    };
-    
-    fetchClinicianTimeZone();
-  }, [selectedClinicianId]);
+    setIsLoadingTimeZone(loadingClinicianTimeZone);
+  }, [loadingClinicianTimeZone]);
 
   // Set user timezone
   useEffect(() => {
-    if (clinicianTimeZone && !isLoadingTimeZone) {
+    if (!loadingClinicianTimeZone) {
       setUserTimeZone(clinicianTimeZone);
     } else {
       setUserTimeZone(getUserTimeZone());
     }
-  }, [clinicianTimeZone, isLoadingTimeZone]);
+  }, [clinicianTimeZone, loadingClinicianTimeZone]);
 
   // Load clinicians
   useEffect(() => {

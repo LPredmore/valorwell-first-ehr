@@ -202,8 +202,9 @@ export const useMonthViewData = (
       // in the user's timezone
       if (processedAppointment.appointment_datetime) {
         try {
-          console.log(`Converting appointment time from UTC to ${safeTimeZone}`);
-          console.log(`Original UTC: ${processedAppointment.appointment_datetime}`);
+          console.log(`Converting appointment time from UTC for appointment ${processedAppointment.id}`);
+          console.log(`Using timezone: ${safeTimeZone}`);
+          console.log(`Original UTC timestamp: ${processedAppointment.appointment_datetime}`);
           
           // Convert UTC timestamp to user's timezone for display
           const localDateTime = fromUTCTimestamp(
@@ -214,6 +215,7 @@ export const useMonthViewData = (
           // Format the local time for display (but keep the original fields too)
           const localTimeString = format(localDateTime, 'HH:mm:ss');
           console.log(`Converted local time: ${localTimeString}`);
+          console.log(`Original date field: ${processedAppointment.date}`);
           
           // Override the start_time with the timezone-adjusted time for display
           processedAppointment.start_time = localTimeString;
@@ -230,7 +232,7 @@ export const useMonthViewData = (
           // Keep original times if conversion fails
         }
       } else {
-        console.log('No UTC timestamp available, using legacy time fields');
+        console.log('No UTC timestamp available for appointment', processedAppointment.id, 'using legacy time fields');
       }
       
       // Add to the map

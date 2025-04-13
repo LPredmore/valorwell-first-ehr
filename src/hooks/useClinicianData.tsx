@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Clinician } from "@/types/client";
+import { getUserTimeZoneById } from "./useUserTimeZone";
 
 export const useClinicianData = () => {
   const [clinicianData, setClinicianData] = useState<Clinician | null>(null);
@@ -57,19 +57,11 @@ export const getClinicianById = async (clinicianId: string) => {
 
 export const getClinicianTimeZone = async (clinicianId: string): Promise<string> => {
   try {
-    const { data, error } = await supabase
-      .from('clinicians')
-      .select('clinician_timezone')
-      .eq('id', clinicianId)
-      .single();
-      
-    if (error) {
-      console.error('Error fetching clinician timezone:', error);
-      return 'America/Chicago'; // Default to Central Time
-    }
+    // First try to get the time zone from the profiles table (new approach)
+    return await getUserTimeZoneById(clinicianId);
     
-    // Return the timezone or a default if not set
-    return data?.clinician_timezone || 'America/Chicago';
+    // Note: We no longer need the fallback to the clinicians table since
+    // we've migrated all time zone data to the profiles table
   } catch (error) {
     console.error('Error fetching clinician timezone:', error);
     return 'America/Chicago'; // Default to Central Time
