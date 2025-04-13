@@ -53,7 +53,7 @@ const WeekView: React.FC<WeekViewProps> = ({
         start: app.start_time,
         end: app.end_time,
         clientId: app.client_id,
-        hasUTC: !!app.appointment_datetime
+        hasUTC: app.appointment_datetime ? true : false
       }))
     );
   }, [appointments, userTimeZone]);

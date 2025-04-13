@@ -20,6 +20,8 @@ export interface Appointment {
   end_time: string;
   type: string;
   status: string;
+  appointment_datetime?: string;  // UTC timestamp
+  appointment_end_datetime?: string; // UTC end timestamp
 }
 
 export interface AvailabilityBlock {

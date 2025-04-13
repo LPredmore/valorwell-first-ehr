@@ -28,7 +28,7 @@ const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
   const top = startHour * hourHeight + 56; // 56px is the header height
   const height = duration * hourHeight;
 
-  // Log positioning information for debugging
+  // Enhanced logging for appointment positioning
   console.log(`[AppointmentBlock] Rendering appointment ${appointment.id}:`, {
     clientName: appointment.clientName,
     date: format(appointment.day, 'yyyy-MM-dd'),
@@ -39,14 +39,30 @@ const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
     duration,
     top,
     height,
-    userTimeZone
+    userTimeZone,
+    dayISOString: appointment.day.toISOString(),
+    startISOString: appointment.start.toISOString(),
+    endISOString: appointment.end.toISOString()
   });
 
+  // Find the original appointment details for the click handler
   const handleClick = () => {
     if (onAppointmentClick) {
       const originalAppointment = originalAppointments.find(app => 
         app.id === appointment.id
       );
+      
+      // Log the found original appointment for debugging
+      console.log('[AppointmentBlock] Original appointment data for click:', 
+        originalAppointment ? {
+          id: originalAppointment.id,
+          date: originalAppointment.date,
+          start_time: originalAppointment.start_time,
+          end_time: originalAppointment.end_time,
+          hasUTC: originalAppointment.appointment_datetime ? true : false,
+          utc_time: originalAppointment.appointment_datetime
+        } : 'Not found');
+        
       if (originalAppointment) {
         onAppointmentClick(originalAppointment);
       }
