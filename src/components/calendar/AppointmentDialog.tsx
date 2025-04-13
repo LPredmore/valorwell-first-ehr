@@ -164,6 +164,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
             const endTimestamp = toUTCTimestamp(date, endTime, validTimeZone);
             
             console.log(`[AppointmentDialog] Creating appointment for ${formattedDate} at ${startTime}-${endTime}`);
+            console.log(`[AppointmentDialog] UTC timestamps: ${startTimestamp} to ${endTimestamp}`);
             
             appointmentsToInsert.push({
               client_id: selectedClientId,

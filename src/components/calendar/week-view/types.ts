@@ -33,4 +33,5 @@ export interface AvailabilityBlock {
   is_active?: boolean;
   isException?: boolean;
   isStandalone?: boolean;
+  originalAvailabilityId?: string | null;
 }

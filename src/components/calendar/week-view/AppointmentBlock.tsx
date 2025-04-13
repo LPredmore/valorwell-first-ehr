@@ -39,10 +39,7 @@ const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
     duration,
     top,
     height,
-    userTimeZone,
-    dayISOString: appointment.day.toISOString(),
-    startISOString: appointment.start.toISOString(),
-    endISOString: appointment.end.toISOString()
+    userTimeZone
   });
 
   // Find the original appointment details for the click handler

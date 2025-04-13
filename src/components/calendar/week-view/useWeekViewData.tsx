@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -143,20 +144,24 @@ export const useWeekViewData = (
       let start: Date;
       let end: Date;
       
+      // Prioritize UTC timestamps for accurate timezone conversion
       if (appointment.appointment_datetime) {
         console.log(`[useWeekViewData] Using UTC timestamp for appointment ${appointment.id}`);
         
         start = fromUTCTimestamp(appointment.appointment_datetime, userTimeZone);
         
+        // Use the correct day based on the converted start time
         dateObj = startOfDay(start);
         
         if (appointment.appointment_end_datetime) {
           end = fromUTCTimestamp(appointment.appointment_end_datetime, userTimeZone);
         } else {
+          // Fallback if end timestamp is missing but start is present
           const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
           end = setMinutes(setHours(dateObj, endHour), endMinute);
         }
       } else {
+        // Legacy approach for appointments without UTC timestamps
         console.log(`[useWeekViewData] Using legacy time fields for appointment ${appointment.id}`);
         const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
         const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
