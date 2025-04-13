@@ -118,6 +118,9 @@ export const toUTCTimestamp = (
   }
 };
 
+// Export aliases for backward compatibility
+export const toUTC = toUTCTimestamp;
+
 /**
  * Convert UTC datetime to local time in specified timezone
  * Use this to convert stored UTC time to user's local time
@@ -149,6 +152,9 @@ export const fromUTCTimestamp = (
     return new Date();
   }
 };
+
+// Export aliases for backward compatibility
+export const fromUTC = fromUTCTimestamp;
 
 /**
  * Extract date string and time string from a timestamp
