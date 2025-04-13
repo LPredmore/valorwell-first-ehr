@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useTimeZone } from '@/context/TimeZoneContext';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const CalendarPage = () => {
   const {
@@ -31,9 +33,10 @@ const CalendarPage = () => {
     setAppointmentRefreshTrigger,
     isDialogOpen,
     setIsDialogOpen,
-    userTimeZone,
-    isLoadingTimeZone,
   } = useCalendarState();
+
+  // Use the TimeZone context
+  const { userTimeZone, isLoading: isLoadingTimeZone } = useTimeZone();
 
   // Changed default view from 'month' to 'week'
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week'>('week');
@@ -166,6 +169,24 @@ const CalendarPage = () => {
   // Determine if user is allowed to change clinician selection
   // Only allow admin or non-clinician users to change clinician selection
   const canSelectDifferentClinician = userRole !== 'clinician';
+
+  // Show loading state while time zone is loading
+  if (isLoadingTimeZone) {
+    return (
+      <Layout>
+        <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
+          <div className="flex flex-col space-y-6">
+            <div className="flex justify-between items-center">
+              <h1 className="text-2xl font-bold text-gray-800">Calendar</h1>
+              <Skeleton className="h-10 w-64" />
+            </div>
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-[500px] w-full" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
