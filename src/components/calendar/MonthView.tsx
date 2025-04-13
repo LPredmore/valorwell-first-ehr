@@ -6,6 +6,7 @@ import { useMonthViewData } from './useMonthViewData';
 import CalendarGrid from './CalendarGrid';
 import WeekView from './week-view';
 import { TimeBlock } from './week-view/useWeekViewData'; 
+import { fromUTCTimestamp, ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
 interface Appointment {
   id: string;
@@ -15,6 +16,8 @@ interface Appointment {
   end_time: string;
   type: string;
   status: string;
+  appointment_datetime?: string; // New field for UTC timestamp
+  appointment_end_datetime?: string; // New field for UTC end timestamp
 }
 
 interface AvailabilityBlock {
@@ -50,6 +53,26 @@ const MonthView: React.FC<MonthViewProps> = ({
   userTimeZone,
   weekViewMode = false
 }) => {
+  // Ensure we have a valid timezone
+  const validTimeZone = ensureIANATimeZone(userTimeZone || 'America/Chicago');
+  
+  console.log(`[MonthView] Rendering with timezone: ${validTimeZone}`, {
+    appointmentsCount: appointments.length,
+    weekViewMode,
+    currentDate: currentDate.toISOString()
+  });
+  
+  // Log the appointments with timestamps for debugging
+  if (appointments.length > 0) {
+    console.log(`[MonthView] First 3 appointments:`, appointments.slice(0, 3).map(apt => ({
+      id: apt.id,
+      date: apt.date,
+      start_time: apt.start_time,
+      timestamp: apt.appointment_datetime,
+      useTimestamp: !!apt.appointment_datetime
+    })));
+  }
+  
   const {
     loading,
     monthStart,
@@ -77,7 +100,7 @@ const MonthView: React.FC<MonthViewProps> = ({
         getClientName={getClientName}
         onAppointmentClick={onAppointmentClick}
         onAvailabilityClick={onAvailabilityClick as (day: Date, block: TimeBlock) => void}
-        userTimeZone={userTimeZone}
+        userTimeZone={validTimeZone}
       />
     );
   }
@@ -94,6 +117,7 @@ const MonthView: React.FC<MonthViewProps> = ({
         onAppointmentClick={onAppointmentClick}
         onAvailabilityClick={onAvailabilityClick}
         weekViewMode={weekViewMode}
+        userTimeZone={validTimeZone}
       />
     </Card>
   );

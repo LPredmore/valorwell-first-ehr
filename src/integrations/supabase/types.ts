@@ -11,6 +11,8 @@ export type Database = {
     Tables: {
       appointments: {
         Row: {
+          appointment_datetime: string | null
+          appointment_end_datetime: string | null
           appointment_recurring: string | null
           client_id: string
           clinician_id: string
@@ -27,6 +29,8 @@ export type Database = {
           video_room_url: string | null
         }
         Insert: {
+          appointment_datetime?: string | null
+          appointment_end_datetime?: string | null
           appointment_recurring?: string | null
           client_id: string
           clinician_id: string
@@ -43,6 +47,8 @@ export type Database = {
           video_room_url?: string | null
         }
         Update: {
+          appointment_datetime?: string | null
+          appointment_end_datetime?: string | null
           appointment_recurring?: string | null
           client_id?: string
           clinician_id?: string
