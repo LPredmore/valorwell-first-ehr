@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -156,7 +157,16 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       });
 
       if (mode === 'single') {
-        const updateData = {
+        // Define the base update data object
+        const updateData: {
+          date: string;
+          start_time: string;
+          end_time: string;
+          appointment_datetime: string;
+          appointment_end_datetime: string;
+          recurring_group_id?: null;
+          appointment_recurring?: null;
+        } = {
           date: formattedDate,
           start_time: startTime,
           end_time: endTimeStr,
@@ -164,6 +174,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
           appointment_end_datetime: endTimestamp
         };
 
+        // Conditionally add recurring fields if this is a recurring appointment
         if (isRecurring) {
           updateData.recurring_group_id = null;
           updateData.appointment_recurring = null;
