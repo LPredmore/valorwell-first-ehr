@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import CalendarView from '../components/calendar/CalendarView';
@@ -35,18 +34,16 @@ const CalendarPage = () => {
     setIsDialogOpen,
   } = useCalendarState();
 
-  // Use the TimeZone context
   const { userTimeZone, isLoading: isLoadingTimeZone } = useTimeZone();
 
-  // Changed default view from 'month' to 'week'
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week'>('week');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Add logging for current user
   useEffect(() => {
+    console.log('[Calendar] Page initialized with timezone:', userTimeZone);
     const fetchCurrentUser = async () => {
       try {
         const { data, error } = await supabase.auth.getUser();
@@ -70,10 +67,9 @@ const CalendarPage = () => {
           setCurrentUserId(data.user.id);
           setUserEmail(data.user.email);
           
-          // Fetch user role
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('role')
+            .select('role, time_zone')
             .eq('id', data.user.id)
             .single();
             
@@ -81,12 +77,13 @@ const CalendarPage = () => {
             console.error('[Calendar] Error fetching user role:', profileError);
           } else if (profileData) {
             setUserRole(profileData.role);
-            console.log('[Calendar] User role:', profileData.role);
+            console.log('[Calendar] User profile data:', {
+              role: profileData.role,
+              timeZone: profileData.time_zone
+            });
           }
           
-          // If we have a user email but no selectedClinicianId, try to find the clinician
           if (data.user.email && !selectedClinicianId) {
-            // Updated: Use case-insensitive comparison with ILIKE
             const { data: clinicianData, error: clinicianError } = await supabase
               .from('clinicians')
               .select('id')
@@ -100,7 +97,6 @@ const CalendarPage = () => {
               setSelectedClinicianId(clinicianData.id);
             } else {
               console.log('[Calendar] No clinician found for email:', data.user.email);
-              // Potential UI feedback could go here
             }
           }
         } else {
@@ -115,9 +111,8 @@ const CalendarPage = () => {
     };
     
     fetchCurrentUser();
-  }, []);
+  }, [userTimeZone]);
 
-  // Log key state changes
   useEffect(() => {
     console.log(`[Calendar] Selected clinicianId: "${selectedClinicianId}"`);
   }, [selectedClinicianId]);
@@ -166,11 +161,8 @@ const CalendarPage = () => {
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
-  // Determine if user is allowed to change clinician selection
-  // Only allow admin or non-clinician users to change clinician selection
   const canSelectDifferentClinician = userRole !== 'clinician';
 
-  // Show loading state while time zone is loading
   if (isLoadingTimeZone) {
     return (
       <Layout>

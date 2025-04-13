@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import {
   format,
   startOfWeek,
@@ -17,6 +17,7 @@ import { WeekViewProps } from './types';
 import AppointmentBlock from './AppointmentBlock';
 import AvailabilityBlock from './AvailabilityBlock';
 import TimeColumn from './TimeColumn';
+import { useTimeZone } from '@/context/TimeZoneContext';
 
 const WeekView: React.FC<WeekViewProps> = ({ 
   currentDate, 
@@ -27,6 +28,9 @@ const WeekView: React.FC<WeekViewProps> = ({
   onAppointmentClick,
   onAvailabilityClick
 }) => {
+  // Get user timezone
+  const { userTimeZone } = useTimeZone();
+
   // Create array of days for the week and time slots for each day
   const { days, hours } = useMemo(() => {
     const days = eachDayOfInterval({
@@ -40,6 +44,20 @@ const WeekView: React.FC<WeekViewProps> = ({
     return { days, hours };
   }, [currentDate]);
 
+  // Log appointments data received by WeekView
+  useEffect(() => {
+    console.log(`[WeekView] Received ${appointments.length} appointments with timezone ${userTimeZone}:`, 
+      appointments.map(app => ({
+        id: app.id,
+        date: app.date,
+        start: app.start_time,
+        end: app.end_time,
+        clientId: app.client_id,
+        hasUTC: !!app.appointment_datetime
+      }))
+    );
+  }, [appointments, userTimeZone]);
+
   // Use the custom hook to get all the data
   const {
     loading,
@@ -50,10 +68,25 @@ const WeekView: React.FC<WeekViewProps> = ({
   // Calculate the height of each hour cell
   const hourHeight = 60; // pixels per hour
 
+  // Log appointment blocks for debugging
+  useEffect(() => {
+    if (appointmentBlocks.length > 0) {
+      console.log('[WeekView] Appointment blocks for rendering:', appointmentBlocks.map(block => ({
+        id: block.id,
+        clientName: block.clientName,
+        day: format(block.day, 'yyyy-MM-dd'),
+        start: format(block.start, 'HH:mm:ss'),
+        end: format(block.end, 'HH:mm:ss'),
+        startHour: block.start.getHours() + (block.start.getMinutes() / 60),
+        endHour: block.end.getHours() + (block.end.getMinutes() / 60)
+      })));
+    }
+  }, [appointmentBlocks]);
+
   // Add debugging for timeBlocks
-  React.useEffect(() => {
+  useEffect(() => {
     if (timeBlocks.length > 0) {
-      console.log('Week view time blocks:', timeBlocks.map(block => ({
+      console.log('[WeekView] Time blocks for rendering:', timeBlocks.map(block => ({
         day: format(block.day, 'yyyy-MM-dd'),
         start: format(block.start, 'HH:mm'),
         end: format(block.end, 'HH:mm'),

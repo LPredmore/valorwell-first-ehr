@@ -3,6 +3,7 @@ import React from 'react';
 import { format } from 'date-fns';
 import { AppointmentBlock as AppointmentBlockType, Appointment } from './useWeekViewData';
 import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
+import { useTimeZone } from '@/context/TimeZoneContext';
 
 interface AppointmentBlockProps {
   appointment: AppointmentBlockType;
@@ -17,6 +18,8 @@ const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
   onAppointmentClick,
   originalAppointments
 }) => {
+  const { userTimeZone } = useTimeZone();
+  
   // Calculate position and height based on start and end time
   const startHour = appointment.start.getHours() + (appointment.start.getMinutes() / 60);
   const endHour = appointment.end.getHours() + (appointment.end.getMinutes() / 60);
@@ -24,6 +27,20 @@ const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
   
   const top = startHour * hourHeight + 56; // 56px is the header height
   const height = duration * hourHeight;
+
+  // Log positioning information for debugging
+  console.log(`[AppointmentBlock] Rendering appointment ${appointment.id}:`, {
+    clientName: appointment.clientName,
+    date: format(appointment.day, 'yyyy-MM-dd'),
+    startTime: format(appointment.start, 'HH:mm:ss'),
+    endTime: format(appointment.end, 'HH:mm:ss'),
+    startHour,
+    endHour,
+    duration,
+    top,
+    height,
+    userTimeZone
+  });
 
   const handleClick = () => {
     if (onAppointmentClick) {

@@ -26,6 +26,7 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     const fetchTimeZone = async () => {
+      console.log('[TimeZoneContext] Initializing time zone detection...');
       try {
         // Get current user
         const { data: authData, error: authError } = await supabase.auth.getUser();
@@ -35,6 +36,7 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
         
         if (authData?.user) {
+          console.log(`[TimeZoneContext] User authenticated: ${authData.user.id}`);
           // Fetch user's time zone from profiles
           const { data, error: profileError } = await supabase
             .from("profiles")
@@ -50,13 +52,23 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (data?.time_zone) {
             // Ensure time zone is in IANA format
             const validTimeZone = ensureIANATimeZone(data.time_zone);
-            console.log(`[TimeZoneContext] User time zone set to: ${validTimeZone}`);
+            console.log(`[TimeZoneContext] User time zone set from DB: ${validTimeZone}`);
             setUserTimeZone(validTimeZone);
           } else {
             // If no time zone in profile, use browser's time zone
             const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            console.log(`[TimeZoneContext] Using browser time zone: ${browserTimeZone}`);
+            console.log(`[TimeZoneContext] No time zone in profile. Using browser time zone: ${browserTimeZone}`);
             setUserTimeZone(browserTimeZone);
+            
+            // Log browser's detected time zone information for debugging
+            console.log('[TimeZoneContext] Browser time zone details:', {
+              resolvedTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              resolvedCalendar: Intl.DateTimeFormat().resolvedOptions().calendar,
+              resolvedLocale: Intl.DateTimeFormat().resolvedOptions().locale,
+              currentTime: new Date().toString(),
+              currentTimeISO: new Date().toISOString(),
+              timezoneOffset: new Date().getTimezoneOffset()
+            });
           }
         } else {
           // No authenticated user, use browser's time zone
@@ -73,6 +85,7 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setUserTimeZone(browserTimeZone);
       } finally {
         setIsLoading(false);
+        console.log('[TimeZoneContext] Time zone initialization completed.');
       }
     };
 
