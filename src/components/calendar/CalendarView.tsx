@@ -26,8 +26,6 @@ interface Appointment {
   date: string;
   start_time: string;
   end_time: string;
-  appointment_datetime?: string; // New UTC timestamp field
-  appointment_end_datetime?: string; // New UTC timestamp field
   type: string;
   status: string;
 }
@@ -48,6 +46,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   monthViewMode = 'month',
   currentDate: propCurrentDate
 }) => {
+  // Use provided currentDate or default to today
   const [currentDate, setCurrentDate] = useState(propCurrentDate || new Date());
   const [availabilityRefreshTrigger, setAvailabilityRefreshTrigger] = useState(0);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -65,12 +64,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   
+  // Update currentDate when propCurrentDate changes
   useEffect(() => {
     if (propCurrentDate) {
       setCurrentDate(propCurrentDate);
     }
   }, [propCurrentDate]);
 
+  // Add logging for initialization
   useEffect(() => {
     console.log('[CalendarView] Component initialized with:', {
       clinicianId,
@@ -81,6 +82,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     });
   }, []);
 
+  // Verify current logged in user and permissions
   useEffect(() => {
     const checkUserPermissions = async () => {
       try {
@@ -106,6 +108,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     checkUserPermissions();
   }, []);
 
+  // Fetch clinician's timezone
   useEffect(() => {
     const fetchClinicianTimeZone = async () => {
       if (clinicianId) {
@@ -116,6 +119,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           setClinicianTimeZone(timeZone);
         } catch (error) {
           console.error("[CalendarView] Error fetching clinician timezone:", error);
+          // Fallback to system timezone
           setClinicianTimeZone(getUserTimeZone());
         } finally {
           setIsLoadingTimeZone(false);
@@ -128,6 +132,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
   const userTimeZone = propTimeZone || (isLoadingTimeZone ? getUserTimeZone() : clinicianTimeZone);
 
+  // Fetch appointments with enhanced logging
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!clinicianId) {
@@ -159,7 +164,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         console.log(`[CalendarView] Current authenticated user ID: "${authData?.user?.id}"`);
         console.log(`[CalendarView] Using clinicianId for query: "${clinicianId}"`);
         
-        let query = supabase
+        const { data, error } = await supabase
           .from('appointments')
           .select(`
             *,
@@ -168,12 +173,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             )
           `)
           .eq('clinician_id', clinicianId)
+          .gte('date', startDate)
+          .lte('date', endDate)
           .eq('status', 'scheduled');
-        
-        query = query.or(`date.gte.${startDate},appointment_datetime.gte.${startDate}T00:00:00Z`);
-        query = query.or(`date.lte.${endDate},appointment_datetime.lte.${endDate}T23:59:59Z`);
-        
-        const { data, error } = await query;
           
         if (error) {
           console.error('[CalendarView] Error fetching appointments:', error);
@@ -266,7 +268,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     setSelectedAvailabilityDate(date);
     setIsAvailabilityDialogOpen(true);
   };
-
+  
+  // Display error if needed
   if (error && !clinicianId) {
     return (
       <Card className="p-6">
@@ -277,7 +280,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       </Card>
     );
   }
-
+  
   return (
     <div className="flex gap-4">
       <div className={`flex-1 ${showAvailability ? "w-3/4" : "w-full"}`}>
