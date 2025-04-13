@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -9,6 +8,7 @@ import {
   parseISO
 } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { formatUTCInTimeZone, ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
 interface Appointment {
   id: string;
@@ -16,8 +16,13 @@ interface Appointment {
   date: string;
   start_time: string;
   end_time: string;
+  appointment_datetime?: string;
+  appointment_end_datetime?: string;
   type: string;
   status: string;
+  displayDate?: string;
+  displayStartTime?: string;
+  displayEndTime?: string;
 }
 
 interface AvailabilityBlock {
@@ -106,7 +111,8 @@ export const useWeekViewData = (
   clinicianId: string | null,
   refreshTrigger: number = 0,
   appointments: Appointment[] = [],
-  getClientName: (clientId: string) => string = () => 'Client'
+  getClientName: (clientId: string) => string = () => 'Client',
+  userTimeZone: string = 'America/Chicago'
 ) => {
   const [loading, setLoading] = useState(true);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
@@ -115,6 +121,8 @@ export const useWeekViewData = (
   const [clinicianWeeklySchedule, setClinicianWeeklySchedule] = useState<ClinicianSchedule>({});
   const [singleDayAvailability, setSingleDayAvailability] = useState<SingleDayAvail[]>([]);
   const [blockedTimeRecords, setBlockedTimeRecords] = useState<TimeBlockRecord[]>([]);
+
+  const validTimeZone = ensureIANATimeZone(userTimeZone);
 
   useEffect(() => {
     if (!appointments.length) {
@@ -126,10 +134,57 @@ export const useWeekViewData = (
     console.log("Processing appointments in week view:", appointments);
     
     const blocks: AppointmentBlock[] = appointments.map(appointment => {
-      const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
-      const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
+      let startHour = 0, startMinute = 0, endHour = 0, endMinute = 0;
+      let dateObj = new Date();
+      
+      if (appointment.displayDate && appointment.displayStartTime) {
+        dateObj = parseISO(appointment.displayDate);
+        [startHour, startMinute] = appointment.displayStartTime.split(':').map(Number);
+        
+        if (appointment.displayEndTime) {
+          [endHour, endMinute] = appointment.displayEndTime.split(':').map(Number);
+        } else {
+          endHour = startHour + 1;
+          endMinute = startMinute;
+        }
+      } 
+      else if (appointment.appointment_datetime) {
+        try {
+          const localStartTimeStr = formatUTCInTimeZone(
+            appointment.appointment_datetime, 
+            validTimeZone,
+            'yyyy-MM-dd HH:mm'
+          );
+          
+          dateObj = parseISO(localStartTimeStr.split(' ')[0]);
+          [startHour, startMinute] = localStartTimeStr.split(' ')[1].split(':').map(Number);
+          
+          if (appointment.appointment_end_datetime) {
+            const localEndTimeStr = formatUTCInTimeZone(
+              appointment.appointment_end_datetime,
+              validTimeZone,
+              'HH:mm'
+            );
+            [endHour, endMinute] = localEndTimeStr.split(':').map(Number);
+          } else {
+            endHour = startHour + 1;
+            endMinute = startMinute;
+          }
+        } catch (error) {
+          console.error('[WeekView] Error converting UTC appointment time:', error);
+          dateObj = parseISO(appointment.date);
+          [startHour, startMinute] = appointment.start_time.split(':').map(Number);
+          [endHour, endMinute] = (appointment.end_time || '').split(':').map(Number);
+          if (!endHour) endHour = startHour + 1;
+        }
+      } 
+      else {
+        dateObj = parseISO(appointment.date);
+        [startHour, startMinute] = appointment.start_time.split(':').map(Number);
+        [endHour, endMinute] = (appointment.end_time || '').split(':').map(Number);
+        if (!endHour) endHour = startHour + 1;
+      }
 
-      const dateObj = parseISO(appointment.date);
       const start = setMinutes(setHours(startOfDay(dateObj), startHour), startMinute);
       const end = setMinutes(setHours(startOfDay(dateObj), endHour), endMinute);
 
@@ -143,20 +198,19 @@ export const useWeekViewData = (
         clientName: getClientName(appointment.client_id)
       };
       
-      console.log(`Week view processed appointment ${appointment.id}:`, {
+      console.log(`[WeekView] Processed appointment ${appointment.id}:`, {
         date: format(dateObj, 'yyyy-MM-dd'),
         startTime: format(start, 'HH:mm'),
         endTime: format(end, 'HH:mm'),
-        rawStart: appointment.start_time,
-        rawEnd: appointment.end_time
+        timezone: validTimeZone
       });
       
       return result;
     });
 
-    console.log("Week view appointment blocks created:", blocks);
+    console.log("[WeekView] Appointment blocks created:", blocks);
     setAppointmentBlocks(blocks);
-  }, [appointments, getClientName]);
+  }, [appointments, getClientName, validTimeZone]);
 
   useEffect(() => {
     const fetchClinicianWeeklySchedule = async () => {
@@ -256,13 +310,11 @@ export const useWeekViewData = (
 
   const fetchSingleDayAvailability = async (clinicianId: string) => {
     try {
-      // Format date range for this week's view
       const startDateStr = format(days[0], 'yyyy-MM-dd');
       const endDateStr = format(days[days.length - 1], 'yyyy-MM-dd');
       
       console.log(`[WeekView] Fetching single day availability for date range: ${startDateStr} to ${endDateStr}`);
       
-      // First try the single_day_availability table
       const { data: singleDayData, error: singleDayError } = await supabase
         .from('single_day_availability')
         .select('*')
@@ -273,7 +325,6 @@ export const useWeekViewData = (
       if (singleDayError) {
         console.error('[WeekView] Error fetching single day availability:', singleDayError);
         
-        // Try alternate table if first one fails
         const { data: altSingleDayData, error: altError } = await supabase
           .from('availability_single_date')
           .select('*')
@@ -285,7 +336,6 @@ export const useWeekViewData = (
           console.error('[WeekView] Error fetching from alternate single day table:', altError);
           setSingleDayAvailability([]);
         } else {
-          // Map the alternate table structure to our expected format
           const mappedData = altSingleDayData.map(record => ({
             id: record.id,
             availability_date: record.date,
@@ -347,29 +397,23 @@ export const useWeekViewData = (
 
     const allTimeBlocks: TimeBlock[] = [];
 
-    // Process each day in the week view
     days.forEach(day => {
       const dayOfWeek = format(day, 'EEEE').toLowerCase();
       const dateStr = format(day, 'yyyy-MM-dd');
       
-      // Look for single day availability record first
       const singleDayRecord = singleDayAvailability.find(item => {
-        // Check exact date match (both formats yyyy-MM-dd to avoid any timezone conversion issues)
         return format(new Date(item.availability_date), 'yyyy-MM-dd') === dateStr;
       });
       
       if (singleDayRecord) {
         console.log(`[WeekView] Found single day availability for ${dateStr}:`, singleDayRecord);
         
-        // Parse the time strings into hours and minutes for this specific day
         const [startHour, startMinute] = singleDayRecord.start_time.split(':').map(Number);
         const [endHour, endMinute] = singleDayRecord.end_time.split(':').map(Number);
         
-        // Construct Date objects that represent the actual time slots for this specific day
         const start = setMinutes(setHours(startOfDay(day), startHour), startMinute);
         const end = setMinutes(setHours(startOfDay(day), endHour), endMinute);
         
-        // Add this single day availability to our blocks
         allTimeBlocks.push({
           id: singleDayRecord.id,
           day,
@@ -381,7 +425,6 @@ export const useWeekViewData = (
           originalAvailabilityId: null
         });
       } else {
-        // If no single day availability, use the regular weekly schedule
         const daySchedule = clinicianWeeklySchedule[dayOfWeek] || [];
         
         if (daySchedule.length > 0) {
@@ -411,10 +454,8 @@ export const useWeekViewData = (
       }
     });
     
-    // Sort blocks by start time
     allTimeBlocks.sort((a, b) => a.start.getTime() - b.start.getTime());
     
-    // Handle time blocks (blocked off periods)
     const finalBlocks = allTimeBlocks.flatMap(block => {
       const dateStr = format(block.day, 'yyyy-MM-dd');
       const overlappingBlocks = blockedTimeRecords.filter(tb => 
@@ -566,9 +607,12 @@ export const useWeekViewData = (
 
   return {
     loading,
-    error,
     timeBlocks,
     appointmentBlocks,
+    error,
+    clinicianWeeklySchedule,
+    singleDayAvailability,
+    blockedTimeRecords,
     ...timeSlotUtils
   };
 };
