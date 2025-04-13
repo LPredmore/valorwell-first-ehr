@@ -9,6 +9,7 @@ import {
 } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useTimeZone } from '@/context/TimeZoneContext';
+import { fromUTCTimestamp } from '@/utils/timeZoneUtils';
 
 interface Appointment {
   id: string;
@@ -138,13 +139,31 @@ export const useWeekViewData = (
         appointment_end_datetime: appointment.appointment_end_datetime
       });
       
-      const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
-      const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
-
-      const dateObj = parseISO(appointment.date);
+      let dateObj = parseISO(appointment.date);
+      let start: Date;
+      let end: Date;
       
-      const start = setMinutes(setHours(startOfDay(dateObj), startHour), startMinute);
-      const end = setMinutes(setHours(startOfDay(dateObj), endHour), endMinute);
+      if (appointment.appointment_datetime) {
+        console.log(`[useWeekViewData] Using UTC timestamp for appointment ${appointment.id}`);
+        
+        start = fromUTCTimestamp(appointment.appointment_datetime, userTimeZone);
+        
+        dateObj = startOfDay(start);
+        
+        if (appointment.appointment_end_datetime) {
+          end = fromUTCTimestamp(appointment.appointment_end_datetime, userTimeZone);
+        } else {
+          const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
+          end = setMinutes(setHours(dateObj, endHour), endMinute);
+        }
+      } else {
+        console.log(`[useWeekViewData] Using legacy time fields for appointment ${appointment.id}`);
+        const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
+        const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
+        
+        start = setMinutes(setHours(dateObj, startHour), startMinute);
+        end = setMinutes(setHours(dateObj, endHour), endMinute);
+      }
 
       const clientName = getClientName(appointment.client_id);
       
@@ -162,10 +181,6 @@ export const useWeekViewData = (
         date: format(dateObj, 'yyyy-MM-dd'),
         startTime: format(start, 'HH:mm'),
         endTime: format(end, 'HH:mm'),
-        startHour,
-        startMinute,
-        endHour,
-        endMinute,
         rawStart: appointment.start_time,
         rawEnd: appointment.end_time,
         clientName
