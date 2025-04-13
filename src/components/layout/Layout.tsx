@@ -33,6 +33,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         console.log("[Layout] Session check result:", data.session ? "Session exists" : "No session");
         setSession(data.session);
         
+        // If no session is found, redirect to login immediately
+        if (!data.session) {
+          console.log("[Layout] No session found, redirecting to login");
+          window.location.href = '/login';
+          return;
+        }
+        
         // Set up auth state listener
         console.log("[Layout] Setting up layout auth state listener");
         const { data: authListener } = supabase.auth.onAuthStateChange(
@@ -42,7 +49,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             if (event === 'SIGNED_OUT') {
               console.log("[Layout] User signed out, redirecting to login");
               setSession(null);
-              navigate('/login');
+              // Use window.location for immediate redirect and full page reload
+              window.location.href = '/login';
             } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
               console.log("[Layout] User signed in or token refreshed");
               setSession(newSession);
