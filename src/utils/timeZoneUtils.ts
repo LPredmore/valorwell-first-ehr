@@ -12,7 +12,6 @@ const TIME_ZONE_MAP: Record<string, string> = {
   'Alaska Time (AKT)': 'America/Anchorage',
   'Hawaii-Aleutian Time (HST)': 'Pacific/Honolulu',
   'Atlantic Time (AST)': 'America/Puerto_Rico',
-  // Added support for Standard Time format used in dropdown
   'Eastern Standard Time (EST)': 'America/New_York',
   'Central Standard Time (CST)': 'America/Chicago',
   'Mountain Standard Time (MST)': 'America/Denver',
