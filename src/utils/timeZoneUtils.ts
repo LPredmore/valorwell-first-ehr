@@ -1,5 +1,9 @@
 import { format, parse, parseISO } from 'date-fns';
-import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { 
+  formatInTimeZone, 
+  utcToZonedTime as toZonedTime, 
+  zonedTimeToUtc as fromZonedTime 
+} from 'date-fns-tz';
 
 /**
  * Map of common timezone display names to IANA format
