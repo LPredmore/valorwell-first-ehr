@@ -14,13 +14,10 @@ import { fromUTCTimestamp } from '@/utils/timeZoneUtils';
 interface Appointment {
   id: string;
   client_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
   type: string;
   status: string;
-  appointment_datetime?: string;  // UTC timestamp
-  appointment_end_datetime?: string; // UTC end timestamp
+  appointment_datetime: string;  // UTC timestamp
+  appointment_end_datetime: string; // UTC end timestamp
 }
 
 interface AvailabilityBlock {
@@ -153,11 +150,10 @@ export const useWeekViewData = (
 
     try {
       console.log(`[useWeekViewData] Processing ${appointments.length} appointments in week view with timezone: ${effectiveTimeZone}`);
-      console.log("[useWeekViewData] Raw appointments data:", appointments);
       
       const blocks: AppointmentBlock[] = appointments
         .filter(appointment => {
-          if (!appointment || !appointment.date || !appointment.start_time || !appointment.end_time) {
+          if (!appointment?.appointment_datetime || !appointment?.appointment_end_datetime) {
             console.warn('[useWeekViewData] Skipping invalid appointment:', appointment);
             return false;
           }
@@ -166,33 +162,14 @@ export const useWeekViewData = (
         .map(appointment => {
           try {
             console.log(`[useWeekViewData] Processing appointment: ${appointment.id}`, {
-              date: appointment.date,
-              start_time: appointment.start_time,
-              end_time: appointment.end_time,
               appointment_datetime: appointment.appointment_datetime,
               appointment_end_datetime: appointment.appointment_end_datetime
             });
             
-            let dateObj = parseISO(appointment.date);
-            let start: Date;
-            let end: Date;
+            const start = fromUTCTimestamp(appointment.appointment_datetime, effectiveTimeZone);
+            const end = fromUTCTimestamp(appointment.appointment_end_datetime, effectiveTimeZone);
+            const dateObj = startOfDay(start);
             
-            if (appointment.appointment_datetime) {
-              console.log(`[useWeekViewData] Using UTC timestamp for appointment ${appointment.id}`);
-              start = fromUTCTimestamp(appointment.appointment_datetime, effectiveTimeZone);
-              dateObj = startOfDay(start);
-              
-              if (appointment.appointment_end_datetime) {
-                end = fromUTCTimestamp(appointment.appointment_end_datetime, effectiveTimeZone);
-              } else {
-                end = convertUTCToLocal(appointment.date, appointment.end_time, effectiveTimeZone);
-              }
-            } else {
-              console.log(`[useWeekViewData] Using legacy time fields for appointment ${appointment.id}`);
-              start = convertUTCToLocal(appointment.date, appointment.start_time, effectiveTimeZone);
-              end = convertUTCToLocal(appointment.date, appointment.end_time, effectiveTimeZone);
-            }
-
             const clientName = getClientName(appointment.client_id);
             
             const result = {
@@ -209,8 +186,6 @@ export const useWeekViewData = (
               date: format(dateObj, 'yyyy-MM-dd'),
               startTime: format(start, 'HH:mm'),
               endTime: format(end, 'HH:mm'),
-              rawStart: appointment.start_time,
-              rawEnd: appointment.end_time,
               clientName
             });
             
