@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { format } from 'date-fns';
 import { AppointmentBlock as AppointmentBlockType, Appointment } from './useWeekViewData';
@@ -22,8 +21,24 @@ const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
   const endHour = appointment.end.getHours() + (appointment.end.getMinutes() / 60);
   const duration = endHour - startHour;
   
-  const top = startHour * hourHeight + 56; // 56px is the header height
+  // First hour shown is 6 AM (index 0), so adjust position calculation
+  // by subtracting 6 from the hour to get the correct vertical offset
+  const displayStartHour = startHour - 6;
+  const top = displayStartHour * hourHeight + 56; // 56px is the header height
   const height = duration * hourHeight;
+
+  // Add debugging log to verify the calculation
+  React.useEffect(() => {
+    console.debug('Rendering appointment block:', {
+      id: appointment.id,
+      clientName: appointment.clientName,
+      start: format(appointment.start, 'HH:mm'),
+      end: format(appointment.end, 'HH:mm'),
+      startHour,
+      displayStartHour,
+      position: { top, height }
+    });
+  }, [appointment.id, appointment.start, appointment.end, top, height, startHour, displayStartHour]);
 
   const handleClick = () => {
     if (onAppointmentClick) {
