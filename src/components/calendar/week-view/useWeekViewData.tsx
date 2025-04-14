@@ -5,7 +5,7 @@ import {
   isSameDay,
   setHours,
   setMinutes,
-  parseISO
+  parseISO,
 } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useTimeZone } from '@/context/TimeZoneContext';
@@ -104,6 +104,28 @@ const getDayOfWeekString = (date: Date): string => {
   return format(date, 'EEEE');
 };
 
+const convertUTCToLocal = (dateStr: string, timeStr: string, timezone: string): Date => {
+  try {
+    console.log(`[convertUTCToLocal] Converting ${dateStr} ${timeStr} to ${timezone}`);
+    
+    // Create a UTC ISO string (append Z to indicate UTC)
+    const utcString = `${dateStr}T${timeStr}:00Z`;
+    console.log(`[convertUTCToLocal] UTC string: ${utcString}`);
+    
+    // Parse and convert to target timezone
+    const localDate = fromUTCTimestamp(utcString, timezone);
+    console.log(`[convertUTCToLocal] Converted to local: ${format(localDate, 'yyyy-MM-dd HH:mm:ss')}`);
+    
+    return localDate;
+  } catch (error) {
+    console.error('[convertUTCToLocal] Error converting UTC to local time:', error, {dateStr, timeStr, timezone});
+    // Fallback to direct parsing if conversion fails
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const dateObj = parseISO(dateStr);
+    return setMinutes(setHours(startOfDay(dateObj), hours), minutes);
+  }
+};
+
 export const useWeekViewData = (
   days: Date[],
   clinicianId: string | null,
@@ -155,18 +177,14 @@ export const useWeekViewData = (
         if (appointment.appointment_end_datetime) {
           end = fromUTCTimestamp(appointment.appointment_end_datetime, userTimeZone);
         } else {
-          // Fallback if end timestamp is missing but start is present
-          const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
-          end = setMinutes(setHours(dateObj, endHour), endMinute);
+          // Use new helper function if end timestamp is missing
+          end = convertUTCToLocal(appointment.date, appointment.end_time, userTimeZone);
         }
       } else {
-        // Legacy approach for appointments without UTC timestamps
+        // Use new helper function for legacy time fields
         console.log(`[useWeekViewData] Using legacy time fields for appointment ${appointment.id}`);
-        const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
-        const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
-        
-        start = setMinutes(setHours(dateObj, startHour), startMinute);
-        end = setMinutes(setHours(dateObj, endHour), endMinute);
+        start = convertUTCToLocal(appointment.date, appointment.start_time, userTimeZone);
+        end = convertUTCToLocal(appointment.date, appointment.end_time, userTimeZone);
       }
 
       const clientName = getClientName(appointment.client_id);
