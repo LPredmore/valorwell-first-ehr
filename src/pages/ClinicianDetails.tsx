@@ -29,8 +29,11 @@ interface Clinician {
   clinician_type: string | null;
   clinician_licensed_states: string[] | null;
   clinician_image_url: string | null;
-  clinician_timezone: string | null;
   clinician_min_client_age: number | null;
+}
+
+interface Profile {
+  time_zone: string | null;
 }
 
 const ClinicianDetails = () => {
@@ -43,6 +46,7 @@ const ClinicianDetails = () => {
   } = useToast();
   const [clinician, setClinician] = useState<Clinician | null>(null);
   const [editedClinician, setEditedClinician] = useState<Clinician | null>(null);
+  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago');
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
@@ -241,18 +245,36 @@ const ClinicianDetails = () => {
   const fetchClinicianData = async () => {
     setIsLoading(true);
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('clinicians').select('*').eq('id', clinicianId).single();
-      if (error) {
-        throw error;
+      const { data: clinicianData, error: clinicianError } = await supabase
+        .from('clinicians')
+        .select('*')
+        .eq('id', clinicianId)
+        .single();
+        
+      if (clinicianError) {
+        throw clinicianError;
       }
-      console.log("Fetched clinician data:", data);
-      setClinician(data);
-      setEditedClinician(data);
-      if (data.clinician_licensed_states) {
-        const fullStateNames = data.clinician_licensed_states.map(state => {
+      
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('time_zone')
+        .eq('id', clinicianId)
+        .single();
+        
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Error fetching timezone:', profileError);
+      }
+      
+      console.log("Fetched clinician data:", clinicianData);
+      console.log("Fetched profile timezone:", profileData?.time_zone);
+      
+      setClinician(clinicianData);
+      setEditedClinician(clinicianData);
+      
+      setClinicianTimeZone(profileData?.time_zone || 'America/Chicago');
+      
+      if (clinicianData.clinician_licensed_states) {
+        const fullStateNames = clinicianData.clinician_licensed_states.map(state => {
           if (states.some(s => s.name === state)) {
             return state;
           }
@@ -261,8 +283,9 @@ const ClinicianDetails = () => {
         });
         setSelectedStates(fullStateNames);
       }
-      if (data.clinician_image_url) {
-        setImagePreview(data.clinician_image_url);
+      
+      if (clinicianData.clinician_image_url) {
+        setImagePreview(clinicianData.clinician_image_url);
       }
     } catch (error) {
       console.error('Error fetching clinician:', error);
@@ -284,6 +307,11 @@ const ClinicianDetails = () => {
         [field]: value
       });
     }
+  };
+
+  const handleTimeZoneChange = (value: string) => {
+    console.log(`Updating timezone to ${value}`);
+    setClinicianTimeZone(value);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -350,7 +378,7 @@ const ClinicianDetails = () => {
   const handleSave = async () => {
     try {
       if (!editedClinician) return;
-      let imageUrl = editedClinician.clinician_image_url;
+      let imageUrl = clinician?.clinician_image_url;
       if (profileImage) {
         console.log("Uploading profile image...");
         const uploadedUrl = await uploadProfileImage();
@@ -361,6 +389,7 @@ const ClinicianDetails = () => {
           console.error("Failed to upload profile image");
         }
       }
+      
       const updatedClinicianData = {
         ...editedClinician,
         clinician_licensed_states: selectedStates,
@@ -369,25 +398,44 @@ const ClinicianDetails = () => {
         clinician_image_url: imageUrl,
         clinician_min_client_age: editedClinician.clinician_min_client_age
       };
+      
       console.log("Saving clinician data:", updatedClinicianData);
-      const {
-        error
-      } = await supabase.from('clinicians').update(updatedClinicianData).eq('id', clinicianId);
-      if (error) {
-        console.error("Error updating clinician:", error);
-        throw error;
+      
+      const { error: clinicianError } = await supabase
+        .from('clinicians')
+        .update(updatedClinicianData)
+        .eq('id', clinicianId);
+        
+      if (clinicianError) {
+        console.error("Error updating clinician:", clinicianError);
+        throw clinicianError;
       }
+      
+      console.log("Updating timezone in profiles table:", clinicianTimeZone);
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ time_zone: clinicianTimeZone })
+        .eq('id', clinicianId);
+        
+      if (profileError) {
+        console.error("Error updating timezone:", profileError);
+        throw profileError;
+      }
+      
       setClinician({
         ...editedClinician,
         clinician_licensed_states: selectedStates,
         clinician_image_url: imageUrl
       });
+      
       setIsEditing(false);
       setProfileImage(null);
+      
       toast({
         title: "Success",
         description: "Clinician details updated successfully."
       });
+      
       fetchClinicianData();
     } catch (error) {
       console.error('Error updating clinician:', error);
@@ -534,7 +582,9 @@ const ClinicianDetails = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Time Zone
                     </label>
-                    {isEditing ? <Select value={editedClinician?.clinician_timezone || 'America/Chicago'} onValueChange={value => handleInputChange('clinician_timezone', value)}>
+                    {isEditing ? <Select 
+                        value={clinicianTimeZone || 'America/Chicago'} 
+                        onValueChange={handleTimeZoneChange}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select time zone" />
                         </SelectTrigger>
@@ -544,7 +594,7 @@ const ClinicianDetails = () => {
                             </SelectItem>)}
                         </SelectContent>
                       </Select> : <p className="p-2 border rounded-md bg-gray-50">
-                        {timezoneOptions.find(tz => tz.value === clinician.clinician_timezone)?.label || clinician.clinician_timezone || 'Central Time (CT)'}
+                        {timezoneOptions.find(tz => tz.value === clinicianTimeZone)?.label || clinicianTimeZone || 'Central Time (CT)'}
                       </p>}
                   </div>
                 </div>
