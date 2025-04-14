@@ -153,62 +153,78 @@ export const useWeekViewData = (
     console.log("[useWeekViewData] Raw appointments data:", appointments);
     
     const blocks: AppointmentBlock[] = appointments.map(appointment => {
-      console.log(`[useWeekViewData] Processing appointment: ${appointment.id}`, {
-        date: appointment.date,
-        start_time: appointment.start_time,
-        end_time: appointment.end_time,
-        appointment_datetime: appointment.appointment_datetime,
-        appointment_end_datetime: appointment.appointment_end_datetime
-      });
-      
-      let dateObj = parseISO(appointment.date);
-      let start: Date;
-      let end: Date;
-      
-      // Prioritize UTC timestamps for accurate timezone conversion
-      if (appointment.appointment_datetime) {
-        console.log(`[useWeekViewData] Using UTC timestamp for appointment ${appointment.id}`);
+      try {
+        console.log(`[useWeekViewData] Processing appointment: ${appointment.id}`, {
+          date: appointment.date,
+          start_time: appointment.start_time,
+          end_time: appointment.end_time,
+          appointment_datetime: appointment.appointment_datetime,
+          appointment_end_datetime: appointment.appointment_end_datetime
+        });
         
-        start = fromUTCTimestamp(appointment.appointment_datetime, userTimeZone);
+        let dateObj = parseISO(appointment.date);
+        let start: Date;
+        let end: Date;
         
-        // Use the correct day based on the converted start time
-        dateObj = startOfDay(start);
-        
-        if (appointment.appointment_end_datetime) {
-          end = fromUTCTimestamp(appointment.appointment_end_datetime, userTimeZone);
+        // Prioritize UTC timestamps for accurate timezone conversion
+        if (appointment.appointment_datetime) {
+          console.log(`[useWeekViewData] Using UTC timestamp for appointment ${appointment.id}`);
+          start = fromUTCTimestamp(appointment.appointment_datetime, userTimeZone);
+          dateObj = startOfDay(start);
+          
+          if (appointment.appointment_end_datetime) {
+            end = fromUTCTimestamp(appointment.appointment_end_datetime, userTimeZone);
+          } else {
+            end = convertUTCToLocal(appointment.date, appointment.end_time, userTimeZone);
+          }
         } else {
-          // Use new helper function if end timestamp is missing
+          console.log(`[useWeekViewData] Using legacy time fields for appointment ${appointment.id}`);
+          start = convertUTCToLocal(appointment.date, appointment.start_time, userTimeZone);
           end = convertUTCToLocal(appointment.date, appointment.end_time, userTimeZone);
         }
-      } else {
-        // Use new helper function for legacy time fields
-        console.log(`[useWeekViewData] Using legacy time fields for appointment ${appointment.id}`);
-        start = convertUTCToLocal(appointment.date, appointment.start_time, userTimeZone);
-        end = convertUTCToLocal(appointment.date, appointment.end_time, userTimeZone);
-      }
 
-      const clientName = getClientName(appointment.client_id);
-      
-      const result = {
-        id: appointment.id,
-        day: dateObj,
-        start,
-        end,
-        clientId: appointment.client_id,
-        type: appointment.type,
-        clientName
-      };
-      
-      console.log(`[useWeekViewData] Processed appointment ${appointment.id}:`, {
-        date: format(dateObj, 'yyyy-MM-dd'),
-        startTime: format(start, 'HH:mm'),
-        endTime: format(end, 'HH:mm'),
-        rawStart: appointment.start_time,
-        rawEnd: appointment.end_time,
-        clientName
-      });
-      
-      return result;
+        const clientName = getClientName(appointment.client_id);
+        
+        const result = {
+          id: appointment.id,
+          day: dateObj,
+          start,
+          end,
+          clientId: appointment.client_id,
+          type: appointment.type,
+          clientName
+        };
+        
+        console.log(`[useWeekViewData] Processed appointment ${appointment.id}:`, {
+          date: format(dateObj, 'yyyy-MM-dd'),
+          startTime: format(start, 'HH:mm'),
+          endTime: format(end, 'HH:mm'),
+          rawStart: appointment.start_time,
+          rawEnd: appointment.end_time,
+          clientName
+        });
+        
+        return result;
+      } catch (error) {
+        console.error(`[useWeekViewData] Error processing appointment ${appointment.id}:`, error);
+        // Fallback to direct parsing if conversion fails
+        const dateObj = parseISO(appointment.date);
+        const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
+        const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
+        
+        const start = setMinutes(setHours(startOfDay(dateObj), startHour), startMinute);
+        const end = setMinutes(setHours(startOfDay(dateObj), endHour), endMinute);
+        
+        return {
+          id: appointment.id,
+          day: dateObj,
+          start,
+          end,
+          clientId: appointment.client_id,
+          type: appointment.type,
+          clientName: getClientName(appointment.client_id)
+        };
+      }
     });
 
     console.log("[useWeekViewData] Week view appointment blocks created:", blocks);
