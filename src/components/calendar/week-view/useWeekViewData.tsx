@@ -108,18 +108,15 @@ const convertUTCToLocal = (dateStr: string, timeStr: string, timezone: string): 
   try {
     console.log(`[convertUTCToLocal] Converting ${dateStr} ${timeStr} to ${timezone}`);
     
-    // Create a UTC ISO string (append Z to indicate UTC)
     const utcString = `${dateStr}T${timeStr}:00Z`;
     console.log(`[convertUTCToLocal] UTC string: ${utcString}`);
     
-    // Parse and convert to target timezone
     const localDate = fromUTCTimestamp(utcString, timezone);
     console.log(`[convertUTCToLocal] Converted to local: ${format(localDate, 'yyyy-MM-dd HH:mm:ss')}`);
     
     return localDate;
   } catch (error) {
     console.error('[convertUTCToLocal] Error converting UTC to local time:', error, {dateStr, timeStr, timezone});
-    // Fallback to direct parsing if conversion fails
     const [hours, minutes] = timeStr.split(':').map(Number);
     const dateObj = parseISO(dateStr);
     return setMinutes(setHours(startOfDay(dateObj), hours), minutes);
@@ -146,92 +143,83 @@ export const useWeekViewData = (
   const effectiveTimeZone = userTimeZone || contextTimeZone;
 
   useEffect(() => {
+    setError(null);
+    
     if (!appointments.length) {
       setAppointmentBlocks([]);
       console.log("[useWeekViewData] No appointments to process in week view");
       return;
     }
 
-    console.log(`[useWeekViewData] Processing ${appointments.length} appointments in week view with timezone: ${effectiveTimeZone}`);
-    console.log("[useWeekViewData] Raw appointments data:", appointments);
-    
-    const blocks: AppointmentBlock[] = appointments.map(appointment => {
-      try {
-        console.log(`[useWeekViewData] Processing appointment: ${appointment.id}`, {
-          date: appointment.date,
-          start_time: appointment.start_time,
-          end_time: appointment.end_time,
-          appointment_datetime: appointment.appointment_datetime,
-          appointment_end_datetime: appointment.appointment_end_datetime
-        });
-        
-        let dateObj = parseISO(appointment.date);
-        let start: Date;
-        let end: Date;
-        
-        // Prioritize UTC timestamps for accurate timezone conversion
-        if (appointment.appointment_datetime) {
-          console.log(`[useWeekViewData] Using UTC timestamp for appointment ${appointment.id}`);
-          start = fromUTCTimestamp(appointment.appointment_datetime, effectiveTimeZone);
-          dateObj = startOfDay(start);
+    try {
+      console.log(`[useWeekViewData] Processing ${appointments.length} appointments in week view with timezone: ${effectiveTimeZone}`);
+      console.log("[useWeekViewData] Raw appointments data:", appointments);
+      
+      const blocks: AppointmentBlock[] = appointments.map(appointment => {
+        try {
+          console.log(`[useWeekViewData] Processing appointment: ${appointment.id}`, {
+            date: appointment.date,
+            start_time: appointment.start_time,
+            end_time: appointment.end_time,
+            appointment_datetime: appointment.appointment_datetime,
+            appointment_end_datetime: appointment.appointment_end_datetime
+          });
           
-          if (appointment.appointment_end_datetime) {
-            end = fromUTCTimestamp(appointment.appointment_end_datetime, effectiveTimeZone);
+          let dateObj = parseISO(appointment.date);
+          let start: Date;
+          let end: Date;
+          
+          if (appointment.appointment_datetime) {
+            console.log(`[useWeekViewData] Using UTC timestamp for appointment ${appointment.id}`);
+            start = fromUTCTimestamp(appointment.appointment_datetime, effectiveTimeZone);
+            dateObj = startOfDay(start);
+            
+            if (appointment.appointment_end_datetime) {
+              end = fromUTCTimestamp(appointment.appointment_end_datetime, effectiveTimeZone);
+            } else {
+              end = convertUTCToLocal(appointment.date, appointment.end_time, effectiveTimeZone);
+            }
           } else {
+            console.log(`[useWeekViewData] Using legacy time fields for appointment ${appointment.id}`);
+            start = convertUTCToLocal(appointment.date, appointment.start_time, effectiveTimeZone);
             end = convertUTCToLocal(appointment.date, appointment.end_time, effectiveTimeZone);
           }
-        } else {
-          console.log(`[useWeekViewData] Using legacy time fields for appointment ${appointment.id}`);
-          start = convertUTCToLocal(appointment.date, appointment.start_time, effectiveTimeZone);
-          end = convertUTCToLocal(appointment.date, appointment.end_time, effectiveTimeZone);
+
+          const clientName = getClientName(appointment.client_id);
+          
+          const result = {
+            id: appointment.id,
+            day: dateObj,
+            start,
+            end,
+            clientId: appointment.client_id,
+            type: appointment.type,
+            clientName
+          };
+          
+          console.log(`[useWeekViewData] Processed appointment ${appointment.id}:`, {
+            date: format(dateObj, 'yyyy-MM-dd'),
+            startTime: format(start, 'HH:mm'),
+            endTime: format(end, 'HH:mm'),
+            rawStart: appointment.start_time,
+            rawEnd: appointment.end_time,
+            clientName
+          });
+          
+          return result;
+        } catch (error) {
+          console.error(`[useWeekViewData] Error processing appointment ${appointment.id}:`, error);
+          throw error;
         }
+      });
 
-        const clientName = getClientName(appointment.client_id);
-        
-        const result = {
-          id: appointment.id,
-          day: dateObj,
-          start,
-          end,
-          clientId: appointment.client_id,
-          type: appointment.type,
-          clientName
-        };
-        
-        console.log(`[useWeekViewData] Processed appointment ${appointment.id}:`, {
-          date: format(dateObj, 'yyyy-MM-dd'),
-          startTime: format(start, 'HH:mm'),
-          endTime: format(end, 'HH:mm'),
-          rawStart: appointment.start_time,
-          rawEnd: appointment.end_time,
-          clientName
-        });
-        
-        return result;
-      } catch (error) {
-        console.error(`[useWeekViewData] Error processing appointment ${appointment.id}:`, error);
-        // Fallback to direct parsing if conversion fails
-        const dateObj = parseISO(appointment.date);
-        const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
-        const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
-        
-        const start = setMinutes(setHours(startOfDay(dateObj), startHour), startMinute);
-        const end = setMinutes(setHours(startOfDay(dateObj), endHour), endMinute);
-        
-        return {
-          id: appointment.id,
-          day: dateObj,
-          start,
-          end,
-          clientId: appointment.client_id,
-          type: appointment.type,
-          clientName: getClientName(appointment.client_id)
-        };
-      }
-    });
-
-    console.log("[useWeekViewData] Week view appointment blocks created:", blocks);
-    setAppointmentBlocks(blocks);
+      console.log("[useWeekViewData] Week view appointment blocks created:", blocks);
+      setAppointmentBlocks(blocks);
+    } catch (error) {
+      console.error("[useWeekViewData] Error processing appointments in week view:", error);
+      setAppointmentBlocks([]);
+      setError("Failed to process appointments. Please try refreshing the page.");
+    }
   }, [appointments, getClientName, effectiveTimeZone]);
 
   useEffect(() => {
@@ -319,10 +307,10 @@ export const useWeekViewData = (
           fetchTimeBlocks(clinicianId);
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
         console.error('[WeekView] Exception in availability fetching:', error);
-        setError(`Unexpected error: ${errorMessage}`);
+        setError(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
         setClinicianWeeklySchedule({});
+      } finally {
         setLoading(false);
       }
     };
