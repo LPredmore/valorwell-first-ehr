@@ -9,21 +9,11 @@ import {
 } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useTimeZone } from '@/context/TimeZoneContext';
-import { fromUTCTimestamp } from '@/utils/timeZoneUtils';
+import { fromUTCTimestamp, ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import { getClinicianTimeZone } from '@/hooks/useClinicianData';
+import { BaseAppointment } from './types';
 
-interface BaseAppointment {
-  id: string;
-  client_id: string;
-  type: string;
-  status: string;
-  appointment_datetime: string;  // UTC timestamp
-  appointment_end_datetime: string; // UTC end timestamp
-}
-
-interface Appointment extends BaseAppointment {
-  appointment_datetime?: string;
-  appointment_end_datetime?: string;
-}
+export interface Appointment extends BaseAppointment {}
 
 interface AvailabilityBlock {
   id: string;
@@ -137,12 +127,28 @@ export const useWeekViewData = (
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
   const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [clinicianWeeklySchedule, setClinicianWeeklySchedule] = useState<ClinicianSchedule>({});
-  const [singleDayAvailability, setSingleDayAvailability] = useState<SingleDayAvail[]>([]);
-  const [blockedTimeRecords, setBlockedTimeRecords] = useState<TimeBlockRecord[]>([]);
+  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago');
   const { userTimeZone: contextTimeZone } = useTimeZone();
-  
   const effectiveTimeZone = userTimeZone || contextTimeZone;
+
+  // Fetch clinician time zone
+  useEffect(() => {
+    const fetchClinicianTimeZone = async () => {
+      if (clinicianId) {
+        try {
+          const timeZone = await getClinicianTimeZone(clinicianId);
+          console.log("Fetched clinician timezone for week view:", timeZone);
+          const validTimeZone = ensureIANATimeZone(timeZone);
+          setClinicianTimeZone(validTimeZone);
+        } catch (error) {
+          console.error("Error fetching clinician timezone:", error);
+          setClinicianTimeZone('America/Chicago');
+        }
+      }
+    };
+    
+    fetchClinicianTimeZone();
+  }, [clinicianId]);
 
   useEffect(() => {
     setError(null);
@@ -156,51 +162,38 @@ export const useWeekViewData = (
     try {
       console.log(`[useWeekViewData] Processing ${appointments.length} appointments in week view with timezone: ${effectiveTimeZone}`);
       
-      const blocks: AppointmentBlock[] = appointments
-        .filter(appointment => {
-          if (!appointment?.appointment_datetime || !appointment?.appointment_end_datetime) {
-            console.warn('[useWeekViewData] Skipping invalid appointment:', appointment);
-            return false;
+      const blocks: AppointmentBlock[] = appointments.map(appointment => {
+        try {
+          const dateObj = parseISO(appointment.date);
+          let start: Date;
+          let end: Date;
+
+          if (appointment.appointment_datetime && appointment.appointment_end_datetime) {
+            // Use UTC timestamps if available
+            start = fromUTCTimestamp(appointment.appointment_datetime, effectiveTimeZone);
+            end = fromUTCTimestamp(appointment.appointment_end_datetime, effectiveTimeZone);
+          } else {
+            // Fallback to direct time processing
+            const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
+            const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
+            start = setMinutes(setHours(startOfDay(dateObj), startHour), startMinute);
+            end = setMinutes(setHours(startOfDay(dateObj), endHour), endMinute);
           }
-          return true;
-        })
-        .map(appointment => {
-          try {
-            console.log(`[useWeekViewData] Processing appointment: ${appointment.id}`, {
-              appointment_datetime: appointment.appointment_datetime,
-              appointment_end_datetime: appointment.appointment_end_datetime
-            });
-            
-            const start = fromUTCTimestamp(appointment.appointment_datetime, effectiveTimeZone);
-            const end = fromUTCTimestamp(appointment.appointment_end_datetime, effectiveTimeZone);
-            const dateObj = startOfDay(start);
-            
-            const clientName = getClientName(appointment.client_id);
-            
-            const result = {
-              id: appointment.id,
-              day: dateObj,
-              start,
-              end,
-              clientId: appointment.client_id,
-              type: appointment.type,
-              clientName
-            };
-            
-            console.log(`[useWeekViewData] Processed appointment ${appointment.id}:`, {
-              date: format(dateObj, 'yyyy-MM-dd'),
-              startTime: format(start, 'HH:mm'),
-              endTime: format(end, 'HH:mm'),
-              clientName
-            });
-            
-            return result;
-          } catch (error) {
-            console.error(`[useWeekViewData] Error processing appointment ${appointment.id}:`, error);
-            throw error;
-          }
-        })
-        .filter(block => block !== undefined) as AppointmentBlock[];
+
+          return {
+            id: appointment.id,
+            day: dateObj,
+            start,
+            end,
+            clientId: appointment.client_id,
+            type: appointment.type,
+            clientName: getClientName(appointment.client_id)
+          };
+        } catch (error) {
+          console.error(`Error processing appointment ${appointment.id}:`, error);
+          throw error;
+        }
+      });
 
       console.log("[useWeekViewData] Week view appointment blocks created:", blocks);
       setAppointmentBlocks(blocks);

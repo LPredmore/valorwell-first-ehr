@@ -23,11 +23,12 @@ import {
 import { useClinicianData } from '@/hooks/useClinicianData';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 import { BaseAppointment } from './week-view/types';
+import { Appointment } from './week-view/useWeekViewData';
 
 interface EditAppointmentDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  appointment: BaseAppointment;
+  appointment: Appointment;
   onAppointmentUpdated: () => void;
 }
 
