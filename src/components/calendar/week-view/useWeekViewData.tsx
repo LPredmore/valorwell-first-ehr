@@ -12,17 +12,8 @@ import { useTimeZone } from '@/context/TimeZoneContext';
 import { fromUTCTimestamp } from '@/utils/timeZoneUtils';
 import { AppointmentWithAllFields } from './types';
 
-interface Appointment {
-  id: string;
-  client_id: string;
-  type: string;
-  status: string;
-  appointment_datetime: string;  // UTC timestamp
-  appointment_end_datetime: string; // UTC end timestamp
-  date?: string;  // Legacy field
-  start_time?: string; // Legacy field
-  end_time?: string; // Legacy field
-  video_room_url?: string | null;
+export interface Appointment extends AppointmentWithAllFields {
+  // This is now an extension of our unified appointment type
 }
 
 interface AvailabilityBlock {

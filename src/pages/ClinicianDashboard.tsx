@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, AlertCircle } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
@@ -74,7 +73,6 @@ const ClinicianDashboard: React.FC = () => {
     );
   }
 
-  // Show loading state while time zone is loading
   if (isLoadingTimeZone) {
     return (
       <Layout>
@@ -102,7 +100,6 @@ const ClinicianDashboard: React.FC = () => {
         <h1 className="text-2xl font-bold mb-6">Clinician Dashboard</h1>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Today's Appointments */}
           <div>
             <AppointmentsList
               title="Today's Appointments"
@@ -118,7 +115,6 @@ const ClinicianDashboard: React.FC = () => {
             />
           </div>
           
-          {/* Outstanding Documentation */}
           <div>
             <AppointmentsList
               title="Outstanding Documentation"
@@ -134,7 +130,6 @@ const ClinicianDashboard: React.FC = () => {
             />
           </div>
           
-          {/* Upcoming Appointments */}
           <div>
             <AppointmentsList
               title="Upcoming Appointments"
@@ -151,7 +146,6 @@ const ClinicianDashboard: React.FC = () => {
         </div>
       </div>
       
-      {/* Video Chat Component */}
       {isVideoOpen && (
         <VideoChat
           roomUrl={currentVideoUrl}
@@ -160,7 +154,6 @@ const ClinicianDashboard: React.FC = () => {
         />
       )}
 
-      {/* Session Did Not Occur Dialog */}
       {showSessionDidNotOccurDialog && selectedAppointmentForNoShow && (
         <SessionDidNotOccurDialog
           isOpen={showSessionDidNotOccurDialog}
