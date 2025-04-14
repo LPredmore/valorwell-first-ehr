@@ -20,12 +20,9 @@ export interface BaseAppointment {
   end_time: string;
   type: string;
   status: string;
-  clinician_id?: string;
   video_room_url?: string | null;
   appointment_recurring?: string | null;
   recurring_group_id?: string | null;
-  appointment_datetime?: string;
-  appointment_end_datetime?: string;
   client?: {
     client_first_name: string;
     client_last_name: string;
