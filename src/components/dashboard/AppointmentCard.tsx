@@ -10,9 +10,9 @@ export interface AppointmentCardProps {
   appointment: {
     id: string;
     client_id: string;
-    date: string;
-    start_time: string;
-    end_time: string;
+    date?: string;
+    start_time?: string;
+    end_time?: string;
     type: string;
     status: string;
     video_room_url: string | null;
@@ -20,6 +20,8 @@ export interface AppointmentCardProps {
       client_first_name: string;
       client_last_name: string;
     };
+    appointment_datetime?: string;
+    appointment_end_datetime?: string;
   };
   timeZoneDisplay: string;
   userTimeZone: string;
@@ -39,13 +41,27 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   onSessionDidNotOccur
 }) => {
   // Format time for display in user's time zone
-  const formatTimeDisplay = (timeString: string) => {
+  const formatTimeDisplay = (timeString?: string) => {
+    if (!timeString) return 'Time not available';
+
     try {
       // Use formatTimeInUserTimeZone as it's designed for time strings without dates
       return formatTimeInUserTimeZone(timeString, userTimeZone, 'h:mm a');
     } catch (error) {
       console.error('Error formatting time with time zone:', error);
-      return formatTime12Hour(timeString);
+      return formatTime12Hour(timeString) || 'Time unavailable';
+    }
+  };
+
+  // Safely format dates with proper null/undefined checks
+  const formatAppointmentDate = (dateString?: string) => {
+    if (!dateString) return 'Date not available';
+    
+    try {
+      return format(parseISO(dateString), 'EEEE, MMMM do, yyyy');
+    } catch (error) {
+      console.error('Error formatting date:', error, { dateString });
+      return 'Invalid date format';
     }
   };
 
@@ -59,14 +75,15 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
           </CardTitle>
           <CardDescription className="flex items-center">
             <Calendar className="h-4 w-4 mr-2" />
-            {format(parseISO(appointment.date), 'EEEE, MMMM do, yyyy')}
+            {appointment.date ? formatAppointmentDate(appointment.date) : 'Date not available'}
           </CardDescription>
         </CardHeader>
         <CardContent className="pb-2">
           <div className="flex items-center">
             <Clock className="h-4 w-4 mr-2" />
             <span className="text-sm">
-              {formatTimeDisplay(appointment.start_time)} - {formatTimeDisplay(appointment.end_time)}
+              {appointment.start_time ? formatTimeDisplay(appointment.start_time) : 'Start time not available'} - 
+              {appointment.end_time ? formatTimeDisplay(appointment.end_time) : 'End time not available'}
             </span>
           </div>
           <div className="text-sm mt-1">{appointment.type}</div>
@@ -104,12 +121,13 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-semibold flex items-center">
           <Clock className="h-4 w-4 mr-2" />
-          {formatTimeDisplay(appointment.start_time)} - {formatTimeDisplay(appointment.end_time)} 
+          {appointment.start_time ? formatTimeDisplay(appointment.start_time) : 'Start time not available'} - 
+          {appointment.end_time ? formatTimeDisplay(appointment.end_time) : 'End time not available'} 
           <span className="text-xs text-gray-500 ml-1">({timeZoneDisplay})</span>
         </CardTitle>
         <CardDescription className="flex items-center">
           <Calendar className="h-4 w-4 mr-2" />
-          {format(parseISO(appointment.date), 'EEEE, MMMM do, yyyy')}
+          {appointment.date ? formatAppointmentDate(appointment.date) : 'Date not available'}
         </CardDescription>
       </CardHeader>
       <CardContent className="pb-2">
