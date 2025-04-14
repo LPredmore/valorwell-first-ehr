@@ -131,7 +131,8 @@ export const useWeekViewData = (
   clinicianId: string | null,
   refreshTrigger: number = 0,
   appointments: Appointment[] = [],
-  getClientName: (clientId: string) => string = () => 'Client'
+  getClientName: (clientId: string) => string = () => 'Client',
+  userTimeZone?: string
 ) => {
   const [loading, setLoading] = useState(true);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
@@ -140,7 +141,9 @@ export const useWeekViewData = (
   const [clinicianWeeklySchedule, setClinicianWeeklySchedule] = useState<ClinicianSchedule>({});
   const [singleDayAvailability, setSingleDayAvailability] = useState<SingleDayAvail[]>([]);
   const [blockedTimeRecords, setBlockedTimeRecords] = useState<TimeBlockRecord[]>([]);
-  const { userTimeZone } = useTimeZone();
+  const { userTimeZone: contextTimeZone } = useTimeZone();
+  
+  const effectiveTimeZone = userTimeZone || contextTimeZone;
 
   useEffect(() => {
     if (!appointments.length) {
@@ -149,7 +152,7 @@ export const useWeekViewData = (
       return;
     }
 
-    console.log(`[useWeekViewData] Processing ${appointments.length} appointments in week view with timezone: ${userTimeZone}`);
+    console.log(`[useWeekViewData] Processing ${appointments.length} appointments in week view with timezone: ${effectiveTimeZone}`);
     console.log("[useWeekViewData] Raw appointments data:", appointments);
     
     const blocks: AppointmentBlock[] = appointments.map(appointment => {
@@ -169,18 +172,18 @@ export const useWeekViewData = (
         // Prioritize UTC timestamps for accurate timezone conversion
         if (appointment.appointment_datetime) {
           console.log(`[useWeekViewData] Using UTC timestamp for appointment ${appointment.id}`);
-          start = fromUTCTimestamp(appointment.appointment_datetime, userTimeZone);
+          start = fromUTCTimestamp(appointment.appointment_datetime, effectiveTimeZone);
           dateObj = startOfDay(start);
           
           if (appointment.appointment_end_datetime) {
-            end = fromUTCTimestamp(appointment.appointment_end_datetime, userTimeZone);
+            end = fromUTCTimestamp(appointment.appointment_end_datetime, effectiveTimeZone);
           } else {
-            end = convertUTCToLocal(appointment.date, appointment.end_time, userTimeZone);
+            end = convertUTCToLocal(appointment.date, appointment.end_time, effectiveTimeZone);
           }
         } else {
           console.log(`[useWeekViewData] Using legacy time fields for appointment ${appointment.id}`);
-          start = convertUTCToLocal(appointment.date, appointment.start_time, userTimeZone);
-          end = convertUTCToLocal(appointment.date, appointment.end_time, userTimeZone);
+          start = convertUTCToLocal(appointment.date, appointment.start_time, effectiveTimeZone);
+          end = convertUTCToLocal(appointment.date, appointment.end_time, effectiveTimeZone);
         }
 
         const clientName = getClientName(appointment.client_id);
@@ -229,7 +232,7 @@ export const useWeekViewData = (
 
     console.log("[useWeekViewData] Week view appointment blocks created:", blocks);
     setAppointmentBlocks(blocks);
-  }, [appointments, getClientName, userTimeZone]);
+  }, [appointments, getClientName, effectiveTimeZone]);
 
   useEffect(() => {
     const fetchClinicianWeeklySchedule = async () => {
