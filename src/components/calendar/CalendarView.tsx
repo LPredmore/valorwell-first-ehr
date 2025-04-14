@@ -1,11 +1,20 @@
+
 import React, { useState, useEffect } from 'react';
-import { format, startOfWeek, endOfWeek, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import MonthView from './MonthView';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getClinicianTimeZone } from '@/hooks/useClinicianData';
+import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
+
+// Import the missing components (assuming they exist elsewhere in your project)
+// If they don't exist, you'll need to create them or modify the code that uses them
+import AppointmentDetailsDialog from './AppointmentDetailsDialog';
+import AvailabilityEditDialog from './AvailabilityEditDialog';
+import AvailabilityPanel from './AvailabilityPanel';
 
 interface CalendarViewProps {
   view: 'week' | 'month';  // Keeping for backward compatibility
@@ -123,7 +132,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           setClinicianTimeZone(timeZone);
         } catch (error) {
           console.error("[CalendarView] Error fetching clinician timezone:", error);
-          setClinicianTimeZone(getUserTimeZone());
+          setClinicianTimeZone('America/Chicago'); // Default to Central Time
         } finally {
           setIsLoadingTimeZone(false);
         }
@@ -133,7 +142,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     fetchClinicianTimeZone();
   }, [clinicianId]);
 
-  const userTimeZone = propTimeZone || (isLoadingTimeZone ? getUserTimeZone() : clinicianTimeZone);
+  // Use the timezone from props or the clinician's timezone
+  const effectiveTimeZone = propTimeZone || (isLoadingTimeZone ? 'America/Chicago' : clinicianTimeZone);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -249,7 +259,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
   const getClientTimeZone = (clientId: string): string => {
     const client = clientsMap[clientId];
-    return client?.client_time_zone || getUserTimeZone();
+    return client?.client_time_zone || 'America/Chicago'; // Default timezone if not found
   };
 
   const handleAppointmentClick = (appointment: Appointment) => {
@@ -300,7 +310,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             getClientName={getClientName} 
             onAppointmentClick={handleAppointmentClick} 
             onAvailabilityClick={handleAvailabilityClick}
-            userTimeZone={userTimeZone}
+            userTimeZone={effectiveTimeZone}
             weekViewMode={monthViewMode === 'week'} 
           />
         </div>
@@ -316,7 +326,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           onClose={() => setIsDetailsDialogOpen(false)} 
           appointment={selectedAppointment} 
           onAppointmentUpdated={handleAppointmentUpdated} 
-          userTimeZone={userTimeZone} 
+          userTimeZone={effectiveTimeZone} 
           clientTimeZone={selectedAppointment ? getClientTimeZone(selectedAppointment.client_id) : ''} 
         />
 

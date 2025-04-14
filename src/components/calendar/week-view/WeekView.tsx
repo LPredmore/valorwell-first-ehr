@@ -1,4 +1,5 @@
-import React, { useMemo, useEffect } from 'react';
+
+import React, { useMemo, useEffect, useState } from 'react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addHours, startOfDay, addMinutes, isSameDay } from 'date-fns';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
@@ -21,6 +22,7 @@ const WeekView: React.FC<WeekViewProps> = ({
 }) => {
   const { userTimeZone: contextTimeZone } = useTimeZone();
   const effectiveTimeZone = userTimeZone || contextTimeZone;
+  const [errorState, setErrorState] = useState<string | null>(null);
 
   const { days, hours } = useMemo(() => {
     const days = eachDayOfInterval({
@@ -49,7 +51,8 @@ const WeekView: React.FC<WeekViewProps> = ({
   const {
     loading,
     timeBlocks,
-    appointmentBlocks
+    appointmentBlocks,
+    error
   } = useWeekViewData(days, clinicianId, refreshTrigger, appointments, getClientName, effectiveTimeZone);
 
   const hourHeight = 60;
