@@ -1,4 +1,3 @@
-
 import React, { useMemo, useEffect } from 'react';
 import {
   format,
@@ -26,10 +25,12 @@ const WeekView: React.FC<WeekViewProps> = ({
   appointments = [],
   getClientName = () => 'Client',
   onAppointmentClick,
-  onAvailabilityClick
+  onAvailabilityClick,
+  userTimeZone
 }) => {
-  // Get user timezone
-  const { userTimeZone } = useTimeZone();
+  // Get fallback timezone from context if not provided
+  const { userTimeZone: contextTimeZone } = useTimeZone();
+  const effectiveTimeZone = userTimeZone || contextTimeZone;
 
   // Create array of days for the week and time slots for each day
   const { days, hours } = useMemo(() => {
@@ -46,7 +47,7 @@ const WeekView: React.FC<WeekViewProps> = ({
 
   // Log appointments data received by WeekView
   useEffect(() => {
-    console.log(`[WeekView] Received ${appointments.length} appointments with timezone ${userTimeZone}:`, 
+    console.log(`[WeekView] Received ${appointments.length} appointments with timezone ${effectiveTimeZone}:`, 
       appointments.map(app => ({
         id: app.id,
         date: app.date,
@@ -56,14 +57,14 @@ const WeekView: React.FC<WeekViewProps> = ({
         hasUTC: app.appointment_datetime ? true : false
       }))
     );
-  }, [appointments, userTimeZone]);
+  }, [appointments, effectiveTimeZone]);
 
   // Use the custom hook to get all the data
   const {
     loading,
     timeBlocks,
     appointmentBlocks
-  } = useWeekViewData(days, clinicianId, refreshTrigger, appointments, getClientName);
+  } = useWeekViewData(days, clinicianId, refreshTrigger, appointments, getClientName, effectiveTimeZone);
 
   // Calculate the height of each hour cell
   const hourHeight = 60; // pixels per hour
