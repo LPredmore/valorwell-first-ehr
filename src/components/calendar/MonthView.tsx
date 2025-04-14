@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
@@ -16,8 +15,8 @@ interface Appointment {
   end_time: string;
   type: string;
   status: string;
-  appointment_datetime?: string; // New field for UTC timestamp
-  appointment_end_datetime?: string; // New field for UTC end timestamp
+  appointment_datetime?: string; // UTC timestamp
+  appointment_end_datetime?: string; // UTC end timestamp
 }
 
 interface AvailabilityBlock {

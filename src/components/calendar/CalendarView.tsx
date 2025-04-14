@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
+import { ErrorBoundary } from 'react-error-boundary';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import MonthView from './MonthView';
-import AvailabilityPanel from './AvailabilityPanel';
-import AppointmentDetailsDialog from './AppointmentDetailsDialog';
-import AvailabilityEditDialog from './AvailabilityEditDialog';
 import { supabase } from '@/integrations/supabase/client';
-import { getUserTimeZone } from '@/utils/timeZoneUtils';
-import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 import { useToast } from '@/hooks/use-toast';
 
 interface CalendarViewProps {
@@ -38,6 +35,18 @@ interface AvailabilityBlock {
   isException?: boolean;
 }
 
+const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) => {
+  return (
+    <Card className="p-6">
+      <div className="text-center text-red-500">
+        <p className="mb-2 font-medium">Error loading calendar</p>
+        <p className="mb-4">{error.message || 'An unexpected error occurred'}</p>
+        <Button onClick={resetErrorBoundary}>Try Again</Button>
+      </div>
+    </Card>
+  );
+};
+
 const CalendarView: React.FC<CalendarViewProps> = ({
   showAvailability,
   clinicianId,
@@ -46,7 +55,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   monthViewMode = 'month',
   currentDate: propCurrentDate
 }) => {
-  // Use provided currentDate or default to today
   const [currentDate, setCurrentDate] = useState(propCurrentDate || new Date());
   const [availabilityRefreshTrigger, setAvailabilityRefreshTrigger] = useState(0);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -64,14 +72,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   
-  // Update currentDate when propCurrentDate changes
   useEffect(() => {
     if (propCurrentDate) {
       setCurrentDate(propCurrentDate);
     }
   }, [propCurrentDate]);
 
-  // Add logging for initialization
   useEffect(() => {
     console.log('[CalendarView] Component initialized with:', {
       clinicianId,
@@ -82,7 +88,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     });
   }, []);
 
-  // Verify current logged in user and permissions
   useEffect(() => {
     const checkUserPermissions = async () => {
       try {
@@ -108,7 +113,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     checkUserPermissions();
   }, []);
 
-  // Fetch clinician's timezone
   useEffect(() => {
     const fetchClinicianTimeZone = async () => {
       if (clinicianId) {
@@ -119,7 +123,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           setClinicianTimeZone(timeZone);
         } catch (error) {
           console.error("[CalendarView] Error fetching clinician timezone:", error);
-          // Fallback to system timezone
           setClinicianTimeZone(getUserTimeZone());
         } finally {
           setIsLoadingTimeZone(false);
@@ -132,7 +135,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
   const userTimeZone = propTimeZone || (isLoadingTimeZone ? getUserTimeZone() : clinicianTimeZone);
 
-  // Fetch appointments with enhanced logging
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!clinicianId) {
@@ -269,7 +271,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     setIsAvailabilityDialogOpen(true);
   };
   
-  // Display error if needed
   if (error && !clinicianId) {
     return (
       <Card className="p-6">
@@ -282,45 +283,53 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   }
   
   return (
-    <div className="flex gap-4">
-      <div className={`flex-1 ${showAvailability ? "w-3/4" : "w-full"}`}>
-        <MonthView 
-          currentDate={currentDate} 
-          clinicianId={clinicianId} 
-          refreshTrigger={availabilityRefreshTrigger} 
-          appointments={appointments} 
-          getClientName={getClientName} 
-          onAppointmentClick={handleAppointmentClick} 
-          onAvailabilityClick={handleAvailabilityClick}
-          userTimeZone={userTimeZone}
-          weekViewMode={monthViewMode === 'week'} 
+    <ErrorBoundary 
+      FallbackComponent={ErrorFallback}
+      onReset={() => {
+        setAvailabilityRefreshTrigger(prev => prev + 1);
+        setAppointmentRefreshTrigger(prev => prev + 1);
+      }}
+    >
+      <div className="flex gap-4">
+        <div className={`flex-1 ${showAvailability ? "w-3/4" : "w-full"}`}>
+          <MonthView 
+            currentDate={currentDate} 
+            clinicianId={clinicianId} 
+            refreshTrigger={availabilityRefreshTrigger} 
+            appointments={appointments} 
+            getClientName={getClientName} 
+            onAppointmentClick={handleAppointmentClick} 
+            onAvailabilityClick={handleAvailabilityClick}
+            userTimeZone={userTimeZone}
+            weekViewMode={monthViewMode === 'week'} 
+          />
+        </div>
+
+        {showAvailability && (
+          <div className="w-1/4">
+            <AvailabilityPanel />
+          </div>
+        )}
+
+        <AppointmentDetailsDialog 
+          isOpen={isDetailsDialogOpen} 
+          onClose={() => setIsDetailsDialogOpen(false)} 
+          appointment={selectedAppointment} 
+          onAppointmentUpdated={handleAppointmentUpdated} 
+          userTimeZone={userTimeZone} 
+          clientTimeZone={selectedAppointment ? getClientTimeZone(selectedAppointment.client_id) : ''} 
+        />
+
+        <AvailabilityEditDialog
+          isOpen={isAvailabilityDialogOpen}
+          onClose={() => setIsAvailabilityDialogOpen(false)}
+          availabilityBlock={selectedAvailability}
+          specificDate={selectedAvailabilityDate}
+          clinicianId={clinicianId}
+          onAvailabilityUpdated={handleAvailabilityUpdated}
         />
       </div>
-
-      {showAvailability && (
-        <div className="w-1/4">
-          <AvailabilityPanel />
-        </div>
-      )}
-
-      <AppointmentDetailsDialog 
-        isOpen={isDetailsDialogOpen} 
-        onClose={() => setIsDetailsDialogOpen(false)} 
-        appointment={selectedAppointment} 
-        onAppointmentUpdated={handleAppointmentUpdated} 
-        userTimeZone={userTimeZone} 
-        clientTimeZone={selectedAppointment ? getClientTimeZone(selectedAppointment.client_id) : ''} 
-      />
-
-      <AvailabilityEditDialog
-        isOpen={isAvailabilityDialogOpen}
-        onClose={() => setIsAvailabilityDialogOpen(false)}
-        availabilityBlock={selectedAvailability}
-        specificDate={selectedAvailabilityDate}
-        clinicianId={clinicianId}
-        onAvailabilityUpdated={handleAvailabilityUpdated}
-      />
-    </div>
+    </ErrorBoundary>
   );
 };
 
