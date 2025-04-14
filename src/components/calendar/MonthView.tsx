@@ -33,9 +33,9 @@ interface MonthViewProps {
   currentDate: Date;
   clinicianId: string | null;
   refreshTrigger?: number;
-  appointments?: Appointment[];
+  appointments?: BaseAppointment[];
   getClientName?: (clientId: string) => string;
-  onAppointmentClick?: (appointment: Appointment) => void;
+  onAppointmentClick?: (appointment: BaseAppointment) => void;
   onAvailabilityClick?: (date: Date, availabilityBlock: AvailabilityBlock | TimeBlock) => void;
   userTimeZone?: string;
   weekViewMode?: boolean;

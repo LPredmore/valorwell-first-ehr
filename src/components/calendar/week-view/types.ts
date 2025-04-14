@@ -5,16 +5,26 @@ export interface WeekViewProps {
   currentDate: Date;
   clinicianId: string | null;
   refreshTrigger?: number;
-  appointments?: {
-    id: string;
-    client_id: string;
-    type: string;
-    status: string;
-    appointment_datetime: string;
-    appointment_end_datetime: string;
-  }[];
+  appointments?: Appointment[];
   getClientName?: (clientId: string) => string;
   onAppointmentClick?: (appointment: Appointment) => void;
   onAvailabilityClick?: (day: Date, block: TimeBlock) => void;
   userTimeZone?: string;
+}
+
+export interface BaseAppointment {
+  id: string;
+  client_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  type: string;
+  status: string;
+  video_room_url?: string | null;
+  appointment_recurring?: string | null;
+  recurring_group_id?: string | null;
+  client?: {
+    client_first_name: string;
+    client_last_name: string;
+  };
 }
