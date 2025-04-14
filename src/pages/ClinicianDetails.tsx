@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -307,6 +308,11 @@ const ClinicianDetails = () => {
         [field]: value
       });
     }
+  };
+
+  const handleTimeZoneChange = (value: string) => {
+    console.log(`Updating timezone to ${value}`);
+    setClinicianTimeZone(value);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
