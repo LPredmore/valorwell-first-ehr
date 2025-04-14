@@ -57,11 +57,8 @@ export const getClinicianById = async (clinicianId: string) => {
 
 export const getClinicianTimeZone = async (clinicianId: string): Promise<string> => {
   try {
-    // First try to get the time zone from the profiles table (new approach)
+    // Get the time zone from the profiles table
     return await getUserTimeZoneById(clinicianId);
-    
-    // Note: We no longer need the fallback to the clinicians table since
-    // we've migrated all time zone data to the profiles table
   } catch (error) {
     console.error('Error fetching clinician timezone:', error);
     return 'America/Chicago'; // Default to Central Time

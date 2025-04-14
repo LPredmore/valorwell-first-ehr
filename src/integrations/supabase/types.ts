@@ -1017,7 +1017,6 @@ export type Database = {
           clinician_thursdaystart1: string | null
           clinician_thursdaystart2: string | null
           clinician_thursdaystart3: string | null
-          clinician_timezone: string | null
           clinician_treatment_approaches: string[] | null
           clinician_tuesdayend1: string | null
           clinician_tuesdayend2: string | null
@@ -1083,7 +1082,6 @@ export type Database = {
           clinician_thursdaystart1?: string | null
           clinician_thursdaystart2?: string | null
           clinician_thursdaystart3?: string | null
-          clinician_timezone?: string | null
           clinician_treatment_approaches?: string[] | null
           clinician_tuesdayend1?: string | null
           clinician_tuesdayend2?: string | null
@@ -1149,7 +1147,6 @@ export type Database = {
           clinician_thursdaystart1?: string | null
           clinician_thursdaystart2?: string | null
           clinician_thursdaystart3?: string | null
-          clinician_timezone?: string | null
           clinician_treatment_approaches?: string[] | null
           clinician_tuesdayend1?: string | null
           clinician_tuesdayend2?: string | null
