@@ -252,6 +252,24 @@ export const useMonthViewData = (
     }
   }, [existingAppointments, safeTimeZone]);
 
+  const fetchAvailabilitySettings = async (clinicianId) => {
+    try {
+      console.log('[MonthView] Fetching availability settings for clinician:', clinicianId);
+      const { data: settingsData, error: settingsError } = await supabase.functions.invoke('get-availability-settings', {
+        body: { clinicianId }
+      });
+      
+      if (settingsError) {
+        console.error('[MonthView] Error fetching availability settings:', settingsError);
+      } else if (settingsData) {
+        console.log('[MonthView] Received availability settings:', settingsData);
+        // Process the settings data as needed
+      }
+    } catch (error) {
+      console.error('[MonthView] Error fetching availability settings:', error);
+    }
+  };
+
   return {
     loading,
     monthStart,
