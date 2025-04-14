@@ -8,7 +8,7 @@ import VideoChat from '@/components/video/VideoChat';
 import { formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
 import { AppointmentsList } from '@/components/dashboard/AppointmentsList';
 import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
-import { useAppointments } from '@/hooks/useAppointments';
+import { useAppointments, Appointment } from '@/hooks/useAppointments';
 import { SessionDidNotOccurDialog } from '@/components/dashboard/SessionDidNotOccurDialog';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -51,7 +51,7 @@ const ClinicianDashboard: React.FC = () => {
     closeVideoSession
   } = useAppointments(currentUserId);
 
-  const handleSessionDidNotOccur = (appointment: any) => {
+  const handleSessionDidNotOccur = (appointment: Appointment) => {
     setSelectedAppointmentForNoShow(appointment);
     setShowSessionDidNotOccurDialog(true);
   };

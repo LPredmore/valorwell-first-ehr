@@ -36,16 +36,18 @@ const WeekView: React.FC<WeekViewProps> = ({
   }, [currentDate]);
 
   useEffect(() => {
-    console.log(`[WeekView] Received ${appointments.length} appointments with timezone ${effectiveTimeZone}:`, 
-      appointments.map(app => ({
-        id: app.id,
-        clientId: app.client_id,
-        type: app.type,
-        status: app.status,
-        timestamp: app.appointment_datetime,
-        endTimestamp: app.appointment_end_datetime
-      }))
-    );
+    if (appointments.length > 0) {
+      console.log(`[WeekView] Received ${appointments.length} appointments with timezone ${effectiveTimeZone}:`, 
+        appointments.map(app => ({
+          id: app.id,
+          clientId: app.client_id,
+          type: app.type,
+          status: app.status,
+          timestamp: app.appointment_datetime,
+          endTimestamp: app.appointment_end_datetime
+        }))
+      );
+    }
   }, [appointments, effectiveTimeZone]);
 
   const {

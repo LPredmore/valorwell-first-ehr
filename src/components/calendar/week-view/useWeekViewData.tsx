@@ -10,6 +10,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { fromUTCTimestamp } from '@/utils/timeZoneUtils';
+import { AppointmentWithAllFields } from './types';
 
 interface Appointment {
   id: string;
@@ -18,6 +19,10 @@ interface Appointment {
   status: string;
   appointment_datetime: string;  // UTC timestamp
   appointment_end_datetime: string; // UTC end timestamp
+  date?: string;  // Legacy field
+  start_time?: string; // Legacy field
+  end_time?: string; // Legacy field
+  video_room_url?: string | null;
 }
 
 interface AvailabilityBlock {
