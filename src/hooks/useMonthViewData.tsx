@@ -48,17 +48,14 @@ export const useMonthViewData = (
   const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
   const [timeOffBlocks, setTimeOffBlocks] = useState<any[]>([]);
 
-  // Ensure valid timezone
   const safeTimeZone = ensureIANATimeZone(userTimeZone);
 
   useEffect(() => {
-    // Generate days for the month or week
     const start = weekViewMode ? startOfWeek(currentDate) : startOfMonth(currentDate);
     const end = weekViewMode ? addDays(startOfWeek(currentDate), 6) : endOfMonth(currentDate);
     
     setMonthStart(start);
 
-    // Create array of dates
     let daysArray: Date[] = [];
     let day = start;
     
@@ -67,7 +64,6 @@ export const useMonthViewData = (
       day = addDays(day, 1);
     }
     
-    // If not in week mode and not starting on Sunday, add days from previous month to fill week
     if (!weekViewMode) {
       const startDay = start.getDay();
       if (startDay !== 0) {
@@ -79,7 +75,6 @@ export const useMonthViewData = (
         daysArray = [...previousDays, ...daysArray];
       }
 
-      // Add days from next month to complete the grid (maximum 6 weeks)
       const endDay = end.getDay();
       if (endDay !== 6) {
         const nextDays = [];
@@ -104,7 +99,6 @@ export const useMonthViewData = (
       setLoading(true);
 
       try {
-        // Fetch availability data for the clinician
         const { data: availabilityData, error: availabilityError } = await supabase
           .from('availability')
           .select('*')
@@ -114,7 +108,6 @@ export const useMonthViewData = (
           throw availabilityError;
         }
 
-        // Fetch time-off blocks for the clinician
         const { data: timeOffData, error: timeOffError } = await supabase
           .from('time_off_blocks')
           .select('*')
@@ -128,28 +121,22 @@ export const useMonthViewData = (
         setAvailabilityBlocks(availabilityData || []);
         setTimeOffBlocks(timeOffData || []);
 
-        // Process the data to create day availability map
         const availabilityMap = new Map<string, DayAvailabilityData>();
         const availByDay = new Map<string, AvailabilityBlock>();
 
-        // Process each day in the month or week
         days.forEach(day => {
           const dateStr = format(day, 'yyyy-MM-dd');
           const dayOfWeek = format(day, 'EEEE');
           
-          // Find availability blocks for this day of week
           const dayAvailability = availabilityData?.filter(
             block => block.day_of_week === dayOfWeek && block.is_active
           ) || [];
 
           if (dayAvailability.length > 0) {
-            // Sort by start time
             dayAvailability.sort((a, b) => a.start_time.localeCompare(b.start_time));
             
-            // Store the first block for quick reference
             availByDay.set(dateStr, dayAvailability[0]);
             
-            // Format display hours
             const displayHours = dayAvailability
               .map(block => `${block.start_time.substring(0, 5)}-${block.end_time.substring(0, 5)}`)
               .join(', ');
@@ -171,7 +158,6 @@ export const useMonthViewData = (
         setDayAvailabilityMap(availabilityMap);
         setAvailabilityByDay(availByDay);
 
-        // Process appointments
         processAppointments(existingAppointments);
       } catch (error) {
         console.error('Error fetching calendar data:', error);
@@ -188,36 +174,28 @@ export const useMonthViewData = (
   const processAppointments = (appointments: Appointment[]) => {
     console.log(`Processing ${appointments.length} appointments with timezone: ${safeTimeZone}`);
     
-    // Group appointments by date
     const appointmentsMap = new Map<string, Appointment[]>();
     
     appointments.forEach(appointment => {
-      // Date key for mapping
       const dateKey = appointment.date;
       
-      // Make a copy of the appointment to avoid mutating the original
       const processedAppointment = { ...appointment };
       
-      // If we have UTC timestamps, use them to compute the correct display time
-      // in the user's timezone
       if (processedAppointment.appointment_datetime) {
         try {
           console.log(`Converting appointment time from UTC for appointment ${processedAppointment.id}`);
           console.log(`Using timezone: ${safeTimeZone}`);
           console.log(`Original UTC timestamp: ${processedAppointment.appointment_datetime}`);
           
-          // Convert UTC timestamp to user's timezone for display
           const localDateTime = fromUTCTimestamp(
             processedAppointment.appointment_datetime,
             safeTimeZone
           );
           
-          // Format the local time for display (but keep the original fields too)
           const localTimeString = format(localDateTime, 'HH:mm:ss');
           console.log(`Converted local time: ${localTimeString}`);
           console.log(`Original date field: ${processedAppointment.date}`);
           
-          // Override the start_time with the timezone-adjusted time for display
           processedAppointment.start_time = localTimeString;
           
           if (processedAppointment.appointment_end_datetime) {
@@ -229,13 +207,11 @@ export const useMonthViewData = (
           }
         } catch (error) {
           console.error('Error converting appointment time for display:', error);
-          // Keep original times if conversion fails
         }
       } else {
         console.log('No UTC timestamp available for appointment', processedAppointment.id, 'using legacy time fields');
       }
       
-      // Add to the map
       if (!appointmentsMap.has(dateKey)) {
         appointmentsMap.set(dateKey, []);
       }
