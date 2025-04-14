@@ -2,7 +2,18 @@ import { useState, useEffect } from 'react';
 import { addDays, format, isSameMonth, isSameDay, startOfMonth, startOfWeek, endOfMonth, endOfWeek, parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { fromUTCTimestamp, ensureIANATimeZone } from '@/utils/timeZoneUtils';
-import { Appointment } from '@/components/calendar/week-view/useWeekViewData';
+
+interface Appointment {
+  id: string;
+  client_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  type: string;
+  status: string;
+  appointment_datetime?: string; // UTC timestamp
+  appointment_end_datetime?: string; // UTC end timestamp
+}
 
 interface AvailabilityBlock {
   id: string;
@@ -166,25 +177,45 @@ export const useMonthViewData = (
     const appointmentsMap = new Map<string, Appointment[]>();
     
     appointments.forEach(appointment => {
-      try {
-        console.log(`Converting appointment time from UTC for appointment ${appointment.id}`);
-        console.log(`Using timezone: ${safeTimeZone}`);
-        console.log(`UTC timestamp: ${appointment.appointment_datetime}`);
-        
-        const localDateTime = fromUTCTimestamp(
-          appointment.appointment_datetime,
-          safeTimeZone
-        );
-        
-        const dateKey = format(localDateTime, 'yyyy-MM-dd');
-        
-        if (!appointmentsMap.has(dateKey)) {
-          appointmentsMap.set(dateKey, []);
+      const dateKey = appointment.date;
+      
+      const processedAppointment = { ...appointment };
+      
+      if (processedAppointment.appointment_datetime) {
+        try {
+          console.log(`Converting appointment time from UTC for appointment ${processedAppointment.id}`);
+          console.log(`Using timezone: ${safeTimeZone}`);
+          console.log(`Original UTC timestamp: ${processedAppointment.appointment_datetime}`);
+          
+          const localDateTime = fromUTCTimestamp(
+            processedAppointment.appointment_datetime,
+            safeTimeZone
+          );
+          
+          const localTimeString = format(localDateTime, 'HH:mm:ss');
+          console.log(`Converted local time: ${localTimeString}`);
+          console.log(`Original date field: ${processedAppointment.date}`);
+          
+          processedAppointment.start_time = localTimeString;
+          
+          if (processedAppointment.appointment_end_datetime) {
+            const localEndDateTime = fromUTCTimestamp(
+              processedAppointment.appointment_end_datetime,
+              safeTimeZone
+            );
+            processedAppointment.end_time = format(localEndDateTime, 'HH:mm:ss');
+          }
+        } catch (error) {
+          console.error('Error converting appointment time for display:', error);
         }
-        appointmentsMap.get(dateKey)!.push(appointment);
-      } catch (error) {
-        console.error('Error converting appointment time for display:', error);
+      } else {
+        console.log('No UTC timestamp available for appointment', processedAppointment.id, 'using legacy time fields');
       }
+      
+      if (!appointmentsMap.has(dateKey)) {
+        appointmentsMap.set(dateKey, []);
+      }
+      appointmentsMap.get(dateKey)!.push(processedAppointment);
     });
     
     console.log(`Processed appointments map with ${appointmentsMap.size} dates`);

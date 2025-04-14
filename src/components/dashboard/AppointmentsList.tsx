@@ -4,12 +4,11 @@ import { AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { AppointmentCard, AppointmentCardProps } from './AppointmentCard';
-import { Appointment } from '@/components/calendar/week-view/useWeekViewData';
 
 interface AppointmentsListProps {
   title: string;
   icon: React.ReactNode;
-  appointments: Appointment[];
+  appointments: AppointmentCardProps['appointment'][];
   isLoading: boolean;
   error: Error | null;
   emptyMessage: string;
@@ -17,9 +16,9 @@ interface AppointmentsListProps {
   userTimeZone: string;
   showStartButton?: boolean;
   showViewAllButton?: boolean;
-  onStartSession?: (appointment: Appointment) => void;
-  onDocumentSession?: (appointment: Appointment) => void;
-  onSessionDidNotOccur?: (appointment: Appointment) => void;
+  onStartSession?: (appointment: AppointmentCardProps['appointment']) => void;
+  onDocumentSession?: (appointment: AppointmentCardProps['appointment']) => void;
+  onSessionDidNotOccur?: (appointment: AppointmentCardProps['appointment']) => void;
 }
 
 export const AppointmentsList: React.FC<AppointmentsListProps> = ({

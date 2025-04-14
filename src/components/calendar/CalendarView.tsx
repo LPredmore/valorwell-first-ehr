@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -8,19 +9,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
+
+// Import the missing components (assuming they exist elsewhere in your project)
+// If they don't exist, you'll need to create them or modify the code that uses them
 import AppointmentDetailsDialog from './AppointmentDetailsDialog';
 import AvailabilityEditDialog from './AvailabilityEditDialog';
 import AvailabilityPanel from './AvailabilityPanel';
-import { Appointment } from '@/components/calendar/week-view/useWeekViewData';
 
 interface CalendarViewProps {
-  view: 'week' | 'month';
+  view: 'week' | 'month';  // Keeping for backward compatibility
   showAvailability: boolean;
   clinicianId: string | null;
   userTimeZone?: string;
   refreshTrigger?: number;
   monthViewMode?: 'month' | 'week';
-  currentDate?: Date;
+  currentDate?: Date; // Add currentDate prop
 }
 
 interface Appointment {
@@ -139,6 +142,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     fetchClinicianTimeZone();
   }, [clinicianId]);
 
+  // Use the timezone from props or the clinician's timezone
   const effectiveTimeZone = propTimeZone || (isLoadingTimeZone ? 'America/Chicago' : clinicianTimeZone);
 
   useEffect(() => {
@@ -255,7 +259,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
   const getClientTimeZone = (clientId: string): string => {
     const client = clientsMap[clientId];
-    return client?.client_time_zone || 'America/Chicago';
+    return client?.client_time_zone || 'America/Chicago'; // Default timezone if not found
   };
 
   const handleAppointmentClick = (appointment: Appointment) => {

@@ -10,7 +10,6 @@ export type {
   TimeBlock,
   AppointmentBlock as AppointmentBlockType
 } from './useWeekViewData';
-export type { AppointmentWithAllFields } from './types';
 
 export { default as AppointmentBlock } from './AppointmentBlock';
 export { default as AvailabilityBlock } from './AvailabilityBlock';
