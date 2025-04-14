@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -412,6 +411,7 @@ const ClinicianDetails = () => {
         throw clinicianError;
       }
       
+      console.log("Updating timezone in profiles table:", clinicianTimeZone);
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ time_zone: clinicianTimeZone })
