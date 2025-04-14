@@ -1,33 +1,12 @@
+
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { useMonthViewData } from './useMonthViewData';
 import CalendarGrid from './CalendarGrid';
 import WeekView from './week-view';
-import { TimeBlock } from './week-view/useWeekViewData'; 
+import { TimeBlock, Appointment } from './week-view/useWeekViewData'; 
 import { fromUTCTimestamp, ensureIANATimeZone } from '@/utils/timeZoneUtils';
-
-interface Appointment {
-  id: string;
-  client_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  type: string;
-  status: string;
-  appointment_datetime?: string; // UTC timestamp
-  appointment_end_datetime?: string; // UTC end timestamp
-}
-
-interface AvailabilityBlock {
-  id: string;
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
-  clinician_id?: string;
-  is_active?: boolean;
-  isException?: boolean;
-}
 
 interface MonthViewProps {
   currentDate: Date;
@@ -39,6 +18,16 @@ interface MonthViewProps {
   onAvailabilityClick?: (date: Date, availabilityBlock: AvailabilityBlock | TimeBlock) => void;
   userTimeZone?: string;
   weekViewMode?: boolean;
+}
+
+interface AvailabilityBlock {
+  id: string;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  clinician_id?: string;
+  is_active?: boolean;
+  isException?: boolean;
 }
 
 const MonthView: React.FC<MonthViewProps> = ({ 
@@ -65,10 +54,8 @@ const MonthView: React.FC<MonthViewProps> = ({
   if (appointments.length > 0) {
     console.log(`[MonthView] First 3 appointments:`, appointments.slice(0, 3).map(apt => ({
       id: apt.id,
-      date: apt.date,
-      start_time: apt.start_time,
       timestamp: apt.appointment_datetime,
-      useTimestamp: !!apt.appointment_datetime
+      endTimestamp: apt.appointment_end_datetime
     })));
   }
   

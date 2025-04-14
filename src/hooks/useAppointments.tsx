@@ -4,15 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTimeZone } from '@/context/TimeZoneContext';
+import { Appointment as WeekViewAppointment } from '@/components/calendar/week-view/useWeekViewData';
 
-export interface Appointment {
-  id: string;
-  client_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  type: string;
-  status: string;
+export interface Appointment extends WeekViewAppointment {
   video_room_url: string | null;
   client?: {
     client_first_name: string;
@@ -46,9 +40,6 @@ export const useAppointments = (userId: string | null) => {
           .select(`
             id,
             client_id,
-            date,
-            start_time,
-            end_time,
             type,
             status,
             video_room_url,
@@ -60,8 +51,7 @@ export const useAppointments = (userId: string | null) => {
             )
           `)
           .eq('clinician_id', userId)
-          .order('date')
-          .order('start_time');
+          .order('appointment_datetime');
 
         if (error) {
           console.error('[useAppointments] Error fetching appointments:', error);
@@ -87,17 +77,23 @@ export const useAppointments = (userId: string | null) => {
   }, [appointments]);
 
   const todayAppointments = appointments?.filter(appointment => {
-    const appointmentDate = parseISO(appointment.date);
+    if (!appointment.appointment_datetime) return false;
+    
+    const appointmentDate = parseISO(appointment.appointment_datetime);
     return isToday(appointmentDate);
   }) || [];
 
   const upcomingAppointments = appointments?.filter(appointment => {
-    const appointmentDate = parseISO(appointment.date);
+    if (!appointment.appointment_datetime) return false;
+    
+    const appointmentDate = parseISO(appointment.appointment_datetime);
     return isFuture(appointmentDate) && !isToday(appointmentDate);
   }) || [];
 
   const pastAppointments = appointments?.filter(appointment => {
-    const appointmentDate = parseISO(appointment.date);
+    if (!appointment.appointment_datetime) return false;
+    
+    const appointmentDate = parseISO(appointment.appointment_datetime);
     return isBefore(appointmentDate, new Date()) && 
            !isToday(appointmentDate) && 
            appointment.status === "scheduled";

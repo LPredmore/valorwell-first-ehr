@@ -39,11 +39,11 @@ const WeekView: React.FC<WeekViewProps> = ({
     console.log(`[WeekView] Received ${appointments.length} appointments with timezone ${effectiveTimeZone}:`, 
       appointments.map(app => ({
         id: app.id,
-        date: app.date,
-        start: app.start_time,
-        end: app.end_time,
         clientId: app.client_id,
-        hasUTC: app.appointment_datetime ? true : false
+        type: app.type,
+        status: app.status,
+        timestamp: app.appointment_datetime,
+        endTimestamp: app.appointment_end_datetime
       }))
     );
   }, [appointments, effectiveTimeZone]);

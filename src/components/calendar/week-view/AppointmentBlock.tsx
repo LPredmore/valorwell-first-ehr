@@ -53,11 +53,8 @@ const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
       console.log('[AppointmentBlock] Original appointment data for click:', 
         originalAppointment ? {
           id: originalAppointment.id,
-          date: originalAppointment.date,
-          start_time: originalAppointment.start_time,
-          end_time: originalAppointment.end_time,
-          hasUTC: originalAppointment.appointment_datetime ? true : false,
-          utc_time: originalAppointment.appointment_datetime
+          timestamp: originalAppointment.appointment_datetime,
+          endTimestamp: originalAppointment.appointment_end_datetime
         } : 'Not found');
         
       if (originalAppointment) {
