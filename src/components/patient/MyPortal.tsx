@@ -54,6 +54,32 @@ const MyPortal: React.FC<MyPortalProps> = ({
   } = useToast();
 
   const clientTimeZone = ensureIANATimeZone(clientData?.client_time_zone || getUserTimeZone());
+  
+  useEffect(() => {
+    const fetchAssignedDocuments = async () => {
+      if (!clientData?.id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('document_assignments')
+          .select('*')
+          .eq('client_id', clientData.id)
+          .eq('status', 'not_started');
+          
+        if (error) {
+          console.error('Error fetching document assignments:', error);
+          return;
+        }
+        
+        setHasAssignedDocuments(data && data.length > 0);
+        console.log('Assigned documents found:', data?.length || 0);
+      } catch (error) {
+        console.error('Error checking assigned documents:', error);
+      }
+    };
+    
+    fetchAssignedDocuments();
+  }, [clientData]);
 
   useEffect(() => {
     const fetchClinicianData = async () => {

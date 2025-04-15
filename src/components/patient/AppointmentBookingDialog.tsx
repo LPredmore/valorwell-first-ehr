@@ -43,6 +43,7 @@ interface AppointmentBookingDialogProps {
   clientId: string | null;
   onAppointmentBooked: () => void;
   userTimeZone?: string;
+  disabled?: boolean;
 }
 
 interface AvailabilityBlock {
@@ -69,7 +70,8 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   clinicianName,
   clientId,
   onAppointmentBooked,
-  userTimeZone: propTimeZone
+  userTimeZone: propTimeZone,
+  disabled = false
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -472,7 +474,12 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        {loading ? (
+        {disabled ? (
+          <div className="text-center py-6">
+            <p className="text-gray-500">You need to complete your assigned documents before booking appointments.</p>
+            <p className="text-sm text-gray-400 mt-2">Please check your documents section for any pending forms.</p>
+          </div>
+        ) : loading ? (
           <div className="flex justify-center items-center py-10">
             <Loader2 className="h-8 w-8 animate-spin text-valorwell-500" />
           </div>
@@ -555,7 +562,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           </Button>
           <Button
             onClick={handleBookAppointment}
-            disabled={!selectedDate || !selectedTime || bookingInProgress}
+            disabled={!selectedDate || !selectedTime || bookingInProgress || disabled}
           >
             {bookingInProgress ? (
               <>

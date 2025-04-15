@@ -677,7 +677,9 @@ const ProfileSetup = () => {
       if (isSubmitting) return;
       setIsSubmitting(true);
       
-      if (!values.client_time_zone) {
+      const formValues = form.getValues();
+      
+      if (!formValues.client_time_zone) {
         toast({
           title: "Time Zone Required",
           description: "Please select your time zone to continue.",
@@ -687,10 +689,20 @@ const ProfileSetup = () => {
         return;
       }
 
+      if (!clientId) {
+        toast({
+          title: "Error",
+          description: "Client ID not found. Please try again or contact support.",
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          time_zone: values.client_time_zone
+          time_zone: formValues.client_time_zone
         })
         .eq('id', clientId);
 
@@ -702,8 +714,8 @@ const ProfileSetup = () => {
       const { error } = await supabase
         .from('clients')
         .update({
-          client_self_goal: values.client_self_goal || null,
-          client_referral_source: values.client_referral_source || null,
+          client_self_goal: formValues.client_self_goal || null,
+          client_referral_source: formValues.client_referral_source || null,
           client_status: 'Profile Complete',
           client_is_profile_complete: 'true'
         })
