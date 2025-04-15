@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZoneById } from '@/hooks/useUserTimeZone';
 import { ensureIANATimeZone, formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
 import { getAppointmentInUserTimeZone } from '@/utils/appointmentUtils';
+import { AppointmentType } from '@/types/appointment';
 
 import { 
   Card, 
@@ -16,24 +17,6 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-interface AppointmentType {
-  id: string;
-  client_id: string;
-  clinician_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  appointment_datetime?: string;
-  appointment_end_datetime?: string;
-  source_time_zone?: string;
-  type: string;
-  notes?: string;
-  status: string;
-  display_date?: string;
-  display_start_time?: string;
-  display_end_time?: string;
-}
 
 interface TestCase {
   name: string;
@@ -127,6 +110,9 @@ const TimeZoneIntegrationTest: React.FC = () => {
           
           // Create test appointment data
           const appointment: Partial<AppointmentType> = {
+            id: `test-${testCase.name}`,
+            client_id: 'test-client-id',
+            clinician_id: 'test-clinician-id',
             date: appointmentDate,
             start_time: appointmentTime,
             end_time: appointmentEndTime,
@@ -258,7 +244,7 @@ const TimeZoneIntegrationTest: React.FC = () => {
                         <p><span className="font-medium">Client Time Zone:</span> {formatTimeZoneDisplay(result.testCase.clientTimeZone)}</p>
                         <p><span className="font-medium">Clinician Time Zone:</span> {formatTimeZoneDisplay(result.testCase.clinicianTimeZone)}</p>
                         <p><span className="font-medium">Original Appointment Time:</span> {result.testCase.appointmentTime}</p>
-                        <p><span className="font-medium">Source Time Zone:</span> {formatTimeZoneDisplay(result.appointment.source_time_zone || '')}</p>
+                        <p><span className="font-medium">Source Time Zone:</span> {formatTimeZoneDisplay(result.appointment?.source_time_zone || '')}</p>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
