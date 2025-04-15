@@ -12,6 +12,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { SessionDidNotOccurDialog } from '@/components/dashboard/SessionDidNotOccurDialog';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { Skeleton } from '@/components/ui/skeleton';
+import { BaseAppointment } from '@/components/calendar/week-view/types';
 
 const ClinicianDashboard: React.FC = () => {
   const { userRole, userId } = useUser();
@@ -19,7 +20,7 @@ const ClinicianDashboard: React.FC = () => {
   const { userTimeZone, isLoading: isLoadingTimeZone } = useTimeZone();
   const timeZoneDisplay = formatTimeZoneDisplay(userTimeZone);
   const [showSessionDidNotOccurDialog, setShowSessionDidNotOccurDialog] = useState(false);
-  const [selectedAppointmentForNoShow, setSelectedAppointmentForNoShow] = useState<any>(null);
+  const [selectedAppointmentForNoShow, setSelectedAppointmentForNoShow] = useState<BaseAppointment | null>(null);
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -51,7 +52,7 @@ const ClinicianDashboard: React.FC = () => {
     closeVideoSession
   } = useAppointments(currentUserId);
 
-  const handleSessionDidNotOccur = (appointment: any) => {
+  const handleSessionDidNotOccur = (appointment: BaseAppointment) => {
     setSelectedAppointmentForNoShow(appointment);
     setShowSessionDidNotOccurDialog(true);
   };
@@ -114,7 +115,7 @@ const ClinicianDashboard: React.FC = () => {
               timeZoneDisplay={timeZoneDisplay}
               userTimeZone={userTimeZone}
               showStartButton={true}
-              onStartSession={startVideoSession}
+              onStartSession={startVideoSession as (appointment: BaseAppointment) => void}
             />
           </div>
           
@@ -129,7 +130,7 @@ const ClinicianDashboard: React.FC = () => {
               emptyMessage="No outstanding documentation."
               timeZoneDisplay={timeZoneDisplay}
               userTimeZone={userTimeZone}
-              onDocumentSession={openSessionTemplate}
+              onDocumentSession={openSessionTemplate as (appointment: BaseAppointment) => void}
               onSessionDidNotOccur={handleSessionDidNotOccur}
             />
           </div>

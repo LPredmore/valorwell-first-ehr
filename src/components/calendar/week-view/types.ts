@@ -20,7 +20,7 @@ export interface BaseAppointment {
   end_time: string;
   type: string;
   status: string;
-  clinician_id: string; // Adding this field to resolve the error
+  clinician_id: string;
   video_room_url?: string | null;
   appointment_recurring?: string | null;
   recurring_group_id?: string | null;
