@@ -112,12 +112,12 @@ export const handleFormSubmission = async (
       console.log(`Found document assignment with ID: ${assignment.id}, name: ${assignment.document_name}, current status: ${assignment.status}`);
       
       // Use a transaction to ensure the update is committed
+      // Removed the completed_at field which doesn't exist in the schema
       const { error: updateError } = await supabase
         .from('document_assignments')
         .update({
           status: 'completed',
           pdf_url: filePath,
-          completed_at: new Date().toISOString(),
           response_data: responseData
         })
         .eq('id', assignment.id);
