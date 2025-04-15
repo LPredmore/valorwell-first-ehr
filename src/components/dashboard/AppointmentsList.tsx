@@ -2,13 +2,13 @@ import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { AppointmentCard, AppointmentCardProps } from './AppointmentCard';
-import { BaseAppointment } from '@/components/calendar/week-view/types';
+import { AppointmentCard } from './AppointmentCard';
+import { Appointment } from '@/types/appointment';
 
 interface AppointmentsListProps {
   title: string;
   icon: React.ReactNode;
-  appointments: BaseAppointment[];
+  appointments: Appointment[];
   isLoading: boolean;
   error: Error | null;
   emptyMessage: string;
@@ -16,9 +16,9 @@ interface AppointmentsListProps {
   userTimeZone: string;
   showStartButton?: boolean;
   showViewAllButton?: boolean;
-  onStartSession?: (appointment: BaseAppointment) => void;
-  onDocumentSession?: (appointment: BaseAppointment) => void;
-  onSessionDidNotOccur?: (appointment: BaseAppointment) => void;
+  onStartSession?: (appointment: Appointment) => void;
+  onDocumentSession?: (appointment: Appointment) => void;
+  onSessionDidNotOccur?: (appointment: Appointment) => void;
 }
 
 export const AppointmentsList: React.FC<AppointmentsListProps> = ({

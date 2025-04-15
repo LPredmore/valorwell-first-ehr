@@ -4,38 +4,17 @@ import { Loader2 } from 'lucide-react';
 import { useMonthViewData } from './useMonthViewData';
 import CalendarGrid from './CalendarGrid';
 import WeekView from './week-view';
-import { TimeBlock } from './week-view/useWeekViewData'; 
+import { TimeBlock, AvailabilityBlock } from './week-view/types';
 import { fromUTCTimestamp, ensureIANATimeZone } from '@/utils/timeZoneUtils';
-
-interface Appointment {
-  id: string;
-  client_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  type: string;
-  status: string;
-  appointment_datetime?: string; // UTC timestamp
-  appointment_end_datetime?: string; // UTC end timestamp
-}
-
-interface AvailabilityBlock {
-  id: string;
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
-  clinician_id?: string;
-  is_active?: boolean;
-  isException?: boolean;
-}
+import { Appointment } from '@/types/appointment';
 
 interface MonthViewProps {
   currentDate: Date;
   clinicianId: string | null;
   refreshTrigger?: number;
-  appointments?: BaseAppointment[];
+  appointments?: Appointment[];
   getClientName?: (clientId: string) => string;
-  onAppointmentClick?: (appointment: BaseAppointment) => void;
+  onAppointmentClick?: (appointment: Appointment) => void;
   onAvailabilityClick?: (date: Date, availabilityBlock: AvailabilityBlock | TimeBlock) => void;
   userTimeZone?: string;
   weekViewMode?: boolean;

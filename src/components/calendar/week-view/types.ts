@@ -1,5 +1,24 @@
 
-import { Appointment, TimeBlock } from "./useWeekViewData";
+import { Appointment } from '@/types/appointment';
+
+export interface AvailabilityBlock {
+  id: string;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  clinician_id?: string;
+  is_active?: boolean;
+  isException?: boolean;
+}
+
+export interface TimeBlock {
+  id?: string;
+  day: Date;
+  start: Date;
+  end: Date;
+  availabilityIds: string[];
+  type?: 'block' | 'unblock';
+}
 
 export interface WeekViewProps {
   currentDate: Date;
@@ -8,23 +27,6 @@ export interface WeekViewProps {
   appointments?: Appointment[];
   getClientName?: (clientId: string) => string;
   onAppointmentClick?: (appointment: Appointment) => void;
-  onAvailabilityClick?: (day: Date, block: TimeBlock) => void;
+  onAvailabilityClick?: (date: Date, block: TimeBlock) => void;
   userTimeZone?: string;
-}
-
-export interface BaseAppointment {
-  id: string;
-  client_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  type: string;
-  status: string;
-  video_room_url?: string | null;
-  appointment_recurring?: string | null;
-  recurring_group_id?: string | null;
-  client?: {
-    client_first_name: string;
-    client_last_name: string;
-  };
 }

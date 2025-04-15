@@ -4,26 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTimeZone } from '@/context/TimeZoneContext';
+import { BaseAppointment } from '@/types/appointment';
 
-export interface Appointment {
-  id: string;
-  client_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  type: string;
-  status: string;
-  video_room_url: string | null;
-  client?: {
-    client_first_name: string;
-    client_last_name: string;
-  };
-}
+export type { BaseAppointment };
 
 export const useAppointments = (userId: string | null) => {
   const { toast } = useToast();
   const { userTimeZone } = useTimeZone();
-  const [currentAppointment, setCurrentAppointment] = useState<Appointment | null>(null);
+  const [currentAppointment, setCurrentAppointment] = useState<BaseAppointment | null>(null);
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [showSessionTemplate, setShowSessionTemplate] = useState(false);
@@ -73,7 +61,7 @@ export const useAppointments = (userId: string | null) => {
         return data.map((appointment: any) => ({
           ...appointment,
           client: appointment.clients
-        }));
+        })) as BaseAppointment[];
       } catch (error) {
         console.error('[useAppointments] Exception in appointment fetching:', error);
         throw error;
@@ -103,7 +91,7 @@ export const useAppointments = (userId: string | null) => {
            appointment.status === "scheduled";
   }) || [];
 
-  const startVideoSession = async (appointment: Appointment) => {
+  const startVideoSession = async (appointment: BaseAppointment) => {
     try {
       console.log("Starting video session for appointment:", appointment.id);
       
@@ -135,7 +123,7 @@ export const useAppointments = (userId: string | null) => {
     }
   };
 
-  const openSessionTemplate = async (appointment: Appointment) => {
+  const openSessionTemplate = async (appointment: BaseAppointment) => {
     if (!appointment || !appointment.client_id) {
       toast({
         title: 'Error',

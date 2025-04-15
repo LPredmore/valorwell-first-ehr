@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -22,12 +23,12 @@ import {
 } from '@/utils/timeZoneUtils';
 import { useClinicianData } from '@/hooks/useClinicianData';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
-import { BaseAppointment } from './week-view/types';
+import { Appointment } from '@/types/appointment';
 
 interface EditAppointmentDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  appointment: BaseAppointment;
+  appointment: Appointment;
   onAppointmentUpdated: () => void;
 }
 

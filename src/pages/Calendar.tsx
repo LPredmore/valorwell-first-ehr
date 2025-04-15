@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { Appointment } from '@/types/appointment';
+import { TimeBlock, AvailabilityBlock } from '@/components/calendar/week-view/types';
 import Layout from '../components/layout/Layout';
 import CalendarView from '../components/calendar/CalendarView';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,7 +18,19 @@ import { useToast } from '@/hooks/use-toast';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const CalendarPage = () => {
+interface MonthViewProps {
+  currentDate: Date;
+  clinicianId: string | null;
+  refreshTrigger?: number;
+  appointments?: Appointment[];
+  getClientName?: (clientId: string) => string;
+  onAppointmentClick?: (appointment: Appointment) => void;
+  onAvailabilityClick?: (date: Date, availabilityBlock: AvailabilityBlock | TimeBlock) => void;
+  userTimeZone?: string;
+  weekViewMode?: boolean;
+}
+
+const CalendarPage: React.FC = () => {
   const {
     showAvailability,
     setShowAvailability,
