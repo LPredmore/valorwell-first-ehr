@@ -27,6 +27,12 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
   const top = displayStartHour * hourHeight + 56; // 56px is the header height
   const height = duration * hourHeight;
 
+  const handleClick = () => {
+    if (onAvailabilityClick) {
+      onAvailabilityClick(day, block);
+    }
+  };
+
   // Log rendering for debugging
   React.useEffect(() => {
     console.debug('Rendering availability block:', {
@@ -42,12 +48,15 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
 
   return (
     <div 
-      className={`absolute left-0.5 right-0.5 z-5 rounded-md border border-green-400 bg-green-50 p-1 overflow-hidden`}
+      className={`absolute left-0.5 right-0.5 z-5 rounded-md border border-green-400 bg-green-50 p-1 overflow-hidden cursor-pointer hover:bg-green-100`}
       style={{ 
         top: `${top}px`, 
         height: `${height}px`,
         maxHeight: `${Math.max(height, 24)}px` // Ensure minimum height for very short blocks
       }}
+      onClick={handleClick}
+      role="button"
+      aria-label={`Available from ${format(block.start, 'h:mm a')} to ${format(block.end, 'h:mm a')}`}
     >
       <div className="flex flex-col h-full text-xs">
         <div className="font-medium truncate flex items-center">

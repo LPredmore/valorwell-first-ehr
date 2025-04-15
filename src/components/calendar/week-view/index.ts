@@ -1,3 +1,4 @@
+
 import WeekView from './WeekView';
 export default WeekView;
 
@@ -5,8 +6,7 @@ export { useWeekViewData } from './useWeekViewData';
 
 export type { 
   ProcessedAppointment,
-  ProcessedAvailability,
-  WeekViewData
+  TimeBlock
 } from './useWeekViewData';
 
 // Future centralized type imports/exports:
