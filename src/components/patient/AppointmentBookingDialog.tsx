@@ -30,11 +30,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2 } from 'lucide-react';
 
 interface AppointmentBookingDialogProps {
@@ -86,7 +84,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   const [timeGranularity, setTimeGranularity] = useState<string>("half-hour");
   const { toast } = useToast();
 
-  // Fetch client time zone from database when dialog opens
   useEffect(() => {
     if (open && clientId) {
       const fetchClientTimeZone = async () => {
@@ -96,7 +93,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           setClientTimeZone(timeZone);
         } catch (error) {
           console.error('[AppointmentBookingDialog] Error fetching client time zone:', error);
-          // Fall back to prop or browser time zone
           setClientTimeZone(ensureIANATimeZone(propTimeZone || getUserTimeZone()));
         }
       };
@@ -116,7 +112,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     
     const fetchClinicianTimeZone = async () => {
       try {
-        // Use the enhanced getUserTimeZoneById function to get clinician time zone
         const timeZone = await getUserTimeZoneById(clinicianId);
         console.log('[AppointmentBookingDialog] Fetched clinician timezone:', timeZone);
         setClinicianTimeZone(timeZone);
@@ -167,7 +162,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
       
       setLoading(true);
       try {
-        // Fetch clinician data which includes availability in columns
         const { data: clinicianData, error: clinicianError } = await supabase
           .from('clinicians')
           .select(getClinicianAvailabilityFieldsQuery())
@@ -184,7 +178,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           return;
         }
         
-        // Convert clinician data to availability blocks format
         const availabilityData = convertClinicianDataToAvailabilityBlocks(clinicianData);
         setAvailabilityBlocks(availabilityData || []);
       } catch (error) {
@@ -347,7 +340,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
         timezone: clientTimeZone
       });
       
-      // Convert local time to UTC timestamps
       const startTimestamp = toUTCTimestamp(selectedDate, startTime, clientTimeZone);
       const endTimestamp = toUTCTimestamp(selectedDate, endTime, clientTimeZone);
       
@@ -490,87 +482,68 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
             <p className="text-sm text-gray-400 mt-2">Please contact the clinic for assistance.</p>
           </div>
         ) : (
-          <Tabs defaultValue="calendar">
-            <TabsList className="mb-4">
-              <TabsTrigger value="calendar">
-                <CalendarIcon className="h-4 w-4 mr-2" />
-                Select Date
-              </TabsTrigger>
-              <TabsTrigger value="details" disabled={!selectedTime}>
-                <Clock className="h-4 w-4 mr-2" />
-                Appointment Details
-              </TabsTrigger>
-            </TabsList>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm text-muted-foreground mb-2 block">
+                Your time zone: {timeZoneDisplay}
+              </Label>
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                disabled={disabledDays}
+                className="rounded-md border mx-auto"
+              />
+            </div>
             
-            <TabsContent value="calendar" className="space-y-4">
-              <div className="flex flex-col space-y-4">
-                <div>
-                  <Label className="text-sm text-muted-foreground mb-2 block">
-                    Your time zone: {timeZoneDisplay}
-                  </Label>
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    disabled={disabledDays}
-                    className="rounded-md border mx-auto"
-                  />
-                </div>
-                
-                {timeSlots.length > 0 ? (
-                  <div className="mt-4">
-                    <Label className="text-sm font-medium mb-2 block">
-                      Available Times <span className="text-xs text-muted-foreground">({timeZoneDisplay})</span>
-                    </Label>
-                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                      {timeSlots.map((slot, index) => (
-                        <Button
-                          key={index}
-                          variant={selectedTime === slot.time ? "default" : "outline"}
-                          className={`${!slot.available ? "opacity-50 cursor-not-allowed" : ""}`}
-                          disabled={!slot.available}
-                          onClick={() => setSelectedTime(slot.time)}
-                        >
-                          {formatTimeDisplay(slot.time)}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                ) : selectedDate ? (
-                  <div className="text-center py-4">
-                    <p className="text-muted-foreground">No available times for this date.</p>
-                  </div>
-                ) : null}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="details" className="space-y-4">
-              <div className="space-y-4">
-                <div className="flex flex-col space-y-1.5">
-                  <Label htmlFor="notes">Notes (optional)</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Add any notes or questions for your therapist"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                  />
-                </div>
-                
-                <div className="bg-muted p-4 rounded-lg">
-                  <h3 className="font-medium mb-2">Appointment Summary</h3>
-                  <div className="text-sm space-y-1">
-                    <p><span className="text-muted-foreground">Date:</span> {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : ''}</p>
-                    <p>
-                      <span className="text-muted-foreground">Time:</span> {selectedTime ? formatTimeDisplay(selectedTime) : ''} 
-                      <span className="text-xs text-muted-foreground ml-1">({timeZoneDisplay})</span>
-                    </p>
-                    <p><span className="text-muted-foreground">Therapist:</span> {clinicianName}</p>
-                    <p><span className="text-muted-foreground">Type:</span> Therapy Session</p>
-                  </div>
+            {timeSlots.length > 0 ? (
+              <div className="mt-4">
+                <Label className="text-sm font-medium mb-2 block">
+                  Available Times <span className="text-xs text-muted-foreground">({timeZoneDisplay})</span>
+                </Label>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  {timeSlots.map((slot, index) => (
+                    <Button
+                      key={index}
+                      variant={selectedTime === slot.time ? "default" : "outline"}
+                      className={`${!slot.available ? "opacity-50 cursor-not-allowed" : ""}`}
+                      disabled={!slot.available}
+                      onClick={() => setSelectedTime(slot.time)}
+                    >
+                      {formatTimeDisplay(slot.time)}
+                    </Button>
+                  ))}
                 </div>
               </div>
-            </TabsContent>
-          </Tabs>
+            ) : selectedDate ? (
+              <div className="text-center py-4">
+                <p className="text-muted-foreground">No available times for this date.</p>
+              </div>
+            ) : null}
+
+            <div className="flex flex-col space-y-1.5">
+              <Label htmlFor="notes">Notes (optional)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Add any notes or questions for your therapist"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
+            
+            <div className="bg-muted p-4 rounded-lg">
+              <h3 className="font-medium mb-2">Appointment Summary</h3>
+              <div className="text-sm space-y-1">
+                <p><span className="text-muted-foreground">Date:</span> {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : ''}</p>
+                <p>
+                  <span className="text-muted-foreground">Time:</span> {selectedTime ? formatTimeDisplay(selectedTime) : ''} 
+                  <span className="text-xs text-muted-foreground ml-1">({timeZoneDisplay})</span>
+                </p>
+                <p><span className="text-muted-foreground">Therapist:</span> {clinicianName}</p>
+                <p><span className="text-muted-foreground">Type:</span> Therapy Session</p>
+              </div>
+            </div>
+          </div>
         )}
         
         <DialogFooter>
