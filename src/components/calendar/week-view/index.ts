@@ -14,4 +14,3 @@ export { AvailabilityBlock };
 export { default as AppointmentBlock } from './AppointmentBlock';
 export { default as AvailabilityBlock as AvailabilityBlockComponent } from './AvailabilityBlock';
 export { default as TimeColumn } from './TimeColumn';
-
