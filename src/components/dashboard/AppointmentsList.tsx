@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { AppointmentCard } from './AppointmentCard';
 import { BaseAppointment } from '@/types/appointment';
 
-// Modify the props interface to match BaseAppointment
 interface AppointmentsListProps {
   title: string;
   icon: React.ReactNode;

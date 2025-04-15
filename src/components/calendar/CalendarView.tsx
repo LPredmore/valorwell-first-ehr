@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -9,21 +8,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
-
-// Import the missing components (assuming they exist elsewhere in your project)
-// If they don't exist, you'll need to create them or modify the code that uses them
 import AppointmentDetailsDialog from './AppointmentDetailsDialog';
 import AvailabilityEditDialog from './AvailabilityEditDialog';
 import AvailabilityPanel from './AvailabilityPanel';
+import { BaseAppointment } from '@/types/appointment';
 
 interface CalendarViewProps {
-  view: 'week' | 'month';  // Keeping for backward compatibility
+  view: 'week' | 'month';
   showAvailability: boolean;
   clinicianId: string | null;
   userTimeZone?: string;
   refreshTrigger?: number;
   monthViewMode?: 'month' | 'week';
-  currentDate?: Date; // Add currentDate prop
+  currentDate?: Date;
 }
 
 interface Appointment {
@@ -66,7 +63,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 }) => {
   const [currentDate, setCurrentDate] = useState(propCurrentDate || new Date());
   const [availabilityRefreshTrigger, setAvailabilityRefreshTrigger] = useState(0);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointments, setAppointments] = useState<BaseAppointment[]>([]);
   const [clientsMap, setClientsMap] = useState<Record<string, any>>({});
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment & {
     clientName?: string;
@@ -142,7 +139,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     fetchClinicianTimeZone();
   }, [clinicianId]);
 
-  // Use the timezone from props or the clinician's timezone
   const effectiveTimeZone = propTimeZone || (isLoadingTimeZone ? 'America/Chicago' : clinicianTimeZone);
 
   useEffect(() => {

@@ -1,5 +1,4 @@
 
-// Export the Appointment type
 import { Appointment, BaseAppointment } from '@/types/appointment';
 
 export type { 
@@ -9,4 +8,5 @@ export type {
   AvailabilityException, 
   TimeBlock, 
   AppointmentBlock 
-};
+} from '@/types/appointment';
+

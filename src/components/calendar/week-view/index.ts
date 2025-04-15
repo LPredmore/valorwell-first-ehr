@@ -1,7 +1,10 @@
 
 import WeekView from './WeekView';
 export default WeekView;
-export { useWeekViewData } from './useWeekViewData';
+
+import { useWeekViewData } from './useWeekViewData';
+export { useWeekViewData };
+
 export type { 
   Appointment,
   BaseAppointment,
@@ -9,8 +12,9 @@ export type {
   AvailabilityException,
   TimeBlock,
   AppointmentBlock as AppointmentBlockType
-} from './useWeekViewData';
+} from '@/types/appointment';
 
 export { default as AppointmentBlock } from './AppointmentBlock';
 export { default as AvailabilityBlock } from './AvailabilityBlock';
 export { default as TimeColumn } from './TimeColumn';
+
