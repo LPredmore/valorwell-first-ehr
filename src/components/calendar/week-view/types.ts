@@ -27,4 +27,7 @@ export interface BaseAppointment {
     client_first_name: string;
     client_last_name: string;
   };
+  clientName?: string; // Adding this field to resolve the error
+  appointment_datetime?: string; // UTC timestamp
+  appointment_end_datetime?: string; // UTC end timestamp
 }

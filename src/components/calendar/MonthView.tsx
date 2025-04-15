@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
@@ -5,6 +6,7 @@ import { useMonthViewData } from './useMonthViewData';
 import CalendarGrid from './CalendarGrid';
 import WeekView from './week-view';
 import { TimeBlock } from './week-view/useWeekViewData'; 
+import { BaseAppointment } from './week-view/types';
 import { fromUTCTimestamp, ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
 interface Appointment {

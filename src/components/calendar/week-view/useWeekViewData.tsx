@@ -16,13 +16,22 @@ interface BaseAppointment {
   client_id: string;
   type: string;
   status: string;
-  appointment_datetime: string;  // UTC timestamp
-  appointment_end_datetime: string; // UTC end timestamp
+  date: string;
+  start_time: string;
+  end_time: string;
+  appointment_datetime?: string;  // UTC timestamp
+  appointment_end_datetime?: string; // UTC end timestamp
 }
 
-interface Appointment extends BaseAppointment {
-  appointment_datetime?: string;
-  appointment_end_datetime?: string;
+export interface Appointment extends BaseAppointment {
+  appointment_recurring?: string | null;
+  recurring_group_id?: string | null;
+  video_room_url?: string | null;
+  client?: {
+    client_first_name: string;
+    client_last_name: string;
+  };
+  clientName?: string;
 }
 
 interface AvailabilityBlock {

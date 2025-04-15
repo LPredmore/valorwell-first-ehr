@@ -232,7 +232,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
             <div className="grid gap-2">
               <Label htmlFor="client">Client</Label>
               <div className="p-2 bg-gray-50 rounded border">
-                {appointment?.clientName || 'Unknown Client'}
+                {appointment?.client?.client_first_name} {appointment?.client?.client_last_name || 'Unknown Client'}
               </div>
             </div>
 
