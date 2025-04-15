@@ -3,7 +3,8 @@ import { format, isToday, isFuture, parseISO, isBefore } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useTimeZone } from '@/context/TimeZoneContext';
+import { getUserTimeZone } from '@/utils/timeZoneUtils';
+import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 
 export interface Appointment {
   id: string;
@@ -22,7 +23,6 @@ export interface Appointment {
 
 export const useAppointments = (userId: string | null) => {
   const { toast } = useToast();
-  const { userTimeZone } = useTimeZone();
   const [currentAppointment, setCurrentAppointment] = useState<Appointment | null>(null);
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
   const [isVideoOpen, setIsVideoOpen] = useState(false);
@@ -31,14 +31,14 @@ export const useAppointments = (userId: string | null) => {
   const [isLoadingClientData, setIsLoadingClientData] = useState(false);
 
   const { data: appointments, isLoading, error, refetch } = useQuery({
-    queryKey: ['clinician-appointments', userId, userTimeZone],
+    queryKey: ['clinician-appointments', userId],
     queryFn: async () => {
       if (!userId) {
         console.log('[useAppointments] No userId provided, returning empty appointments array');
         return [];
       }
       
-      console.log(`[useAppointments] Fetching appointments for clinician ID: "${userId}" with timezone: ${userTimeZone}`);
+      console.log(`[useAppointments] Fetching appointments for clinician ID: "${userId}"`);
       
       try {
         const { data, error } = await supabase
@@ -52,8 +52,6 @@ export const useAppointments = (userId: string | null) => {
             type,
             status,
             video_room_url,
-            appointment_datetime,
-            appointment_end_datetime,
             clients (
               client_first_name,
               client_last_name
@@ -69,6 +67,17 @@ export const useAppointments = (userId: string | null) => {
         }
 
         console.log(`[useAppointments] Retrieved ${data?.length || 0} appointments for clinician ID: "${userId}"`);
+        
+        // Log a sample of the data (limited to prevent console flooding)
+        if (data && data.length > 0) {
+          console.log('[useAppointments] Sample appointment data:', {
+            id: data[0].id,
+            clinician_id: userId, // We know this from the query
+            client_id: data[0].client_id,
+            date: data[0].date,
+            status: data[0].status
+          });
+        }
 
         return data.map((appointment: any) => ({
           ...appointment,
@@ -79,7 +88,7 @@ export const useAppointments = (userId: string | null) => {
         throw error;
       }
     },
-    enabled: !!userId && !!userTimeZone
+    enabled: !!userId
   });
 
   useEffect(() => {
@@ -102,6 +111,10 @@ export const useAppointments = (userId: string | null) => {
            !isToday(appointmentDate) && 
            appointment.status === "scheduled";
   }) || [];
+
+  useEffect(() => {
+    console.log(`[useAppointments] Appointment counts - Today: ${todayAppointments.length}, Upcoming: ${upcomingAppointments.length}, Past: ${pastAppointments.length}`);
+  }, [todayAppointments, upcomingAppointments, pastAppointments]);
 
   const startVideoSession = async (appointment: Appointment) => {
     try {

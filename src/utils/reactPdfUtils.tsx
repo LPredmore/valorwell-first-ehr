@@ -1,8 +1,9 @@
+
 import { Document, Page, Text, View, StyleSheet, Font, pdf } from '@react-pdf/renderer';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "@/components/ui/use-toast";
-import InformedConsentPdfDocument from '@/components/templates/pdf/InformedConsentPdfDocument';
 
+// Define document styles
 const styles = StyleSheet.create({
   page: {
     flexDirection: 'column',
@@ -77,6 +78,7 @@ const styles = StyleSheet.create({
   }
 });
 
+// Register default fonts if needed
 Font.register({
   family: 'Helvetica',
   fonts: [
@@ -85,22 +87,26 @@ Font.register({
       src: 'https://cdn.jsdelivr.net/npm/@react-pdf/font/lib/assets/Helvetica-Bold.ttf', 
       fontWeight: 'bold',
       fontStyle: 'normal',
+      // Remove the fontFamily property as it's not allowed in FontSource
     }
   ]
 });
 
+// Register the bold font separately
 Font.register({
   family: 'Helvetica-Bold',
   src: 'https://cdn.jsdelivr.net/npm/@react-pdf/font/lib/assets/Helvetica-Bold.ttf',
   fontWeight: 'bold'
 });
 
+// Splits text into chunks to avoid overflow
 interface SplitTextProps {
   text?: string;
   style?: any;
 }
 
 const SplitText: React.FC<SplitTextProps> = ({ text = "", style = {} }) => {
+  // If the text is empty or just whitespace, don't render anything
   if (!text || text.trim() === '') {
     return null;
   }
@@ -112,6 +118,7 @@ const SplitText: React.FC<SplitTextProps> = ({ text = "", style = {} }) => {
   );
 };
 
+// Generic label-value pair component
 interface LabeledFieldProps {
   label: string;
   value: string | number | null | undefined;
@@ -124,6 +131,7 @@ const LabeledField: React.FC<LabeledFieldProps> = ({ label, value }) => (
   </View>
 );
 
+// Create Session Note PDF
 interface SessionNotePdfDocumentProps {
   formData: any;
   phq9Data?: any;
@@ -134,6 +142,7 @@ const SessionNotePdfDocument: React.FC<SessionNotePdfDocumentProps> = ({ formDat
     <Page size="A4" style={styles.page}>
       <Text style={styles.header}>Therapy Session Note</Text>
       
+      {/* Client Information Section */}
       <View style={styles.clientInfo}>
         <LabeledField label="Client Name" value={formData.patientName} />
         <LabeledField label="Client DOB" value={formData.patientDOB} />
@@ -142,6 +151,7 @@ const SessionNotePdfDocument: React.FC<SessionNotePdfDocumentProps> = ({ formDat
         <LabeledField label="Session Type" value={formData.sessionType} />
       </View>
       
+      {/* Mental Status Section */}
       <View style={styles.sectionMargin}>
         <Text style={styles.subheader}>Mental Status Examination</Text>
         <LabeledField label="Appearance" value={formData.appearance} />
@@ -160,6 +170,7 @@ const SessionNotePdfDocument: React.FC<SessionNotePdfDocumentProps> = ({ formDat
         <LabeledField label="Homicidal Ideation" value={formData.homicidalIdeation} />
       </View>
       
+      {/* Problem & Treatment Goals - Conditionally shown */}
       {(formData.problemNarrative || formData.treatmentGoalNarrative) && (
         <View style={styles.sectionMargin}>
           <Text style={styles.subheader}>Problem & Treatment Goals</Text>
@@ -178,6 +189,7 @@ const SessionNotePdfDocument: React.FC<SessionNotePdfDocumentProps> = ({ formDat
         </View>
       )}
       
+      {/* Treatment Objectives */}
       <View style={styles.sectionMargin}>
         <Text style={styles.subheader}>Treatment Objectives & Interventions</Text>
         <View style={styles.section}>
@@ -206,6 +218,7 @@ const SessionNotePdfDocument: React.FC<SessionNotePdfDocumentProps> = ({ formDat
         )}
       </View>
       
+      {/* PHQ-9 Assessment if available */}
       {phq9Data && (
         <View style={styles.sectionMargin}>
           <Text style={styles.subheader}>PHQ-9 Assessment</Text>
@@ -213,6 +226,7 @@ const SessionNotePdfDocument: React.FC<SessionNotePdfDocumentProps> = ({ formDat
         </View>
       )}
       
+      {/* Session Assessment */}
       <View style={styles.sectionMargin}>
         <Text style={styles.subheader}>Session Assessment</Text>
         <LabeledField label="Current Symptoms" value={formData.currentSymptoms} />
@@ -221,6 +235,7 @@ const SessionNotePdfDocument: React.FC<SessionNotePdfDocumentProps> = ({ formDat
         <LabeledField label="Progress" value={formData.progress} />
       </View>
       
+      {/* Session Narrative */}
       {formData.sessionNarrative && (
         <View style={styles.sectionMargin}>
           <Text style={styles.subheader}>Session Narrative</Text>
@@ -228,6 +243,7 @@ const SessionNotePdfDocument: React.FC<SessionNotePdfDocumentProps> = ({ formDat
         </View>
       )}
       
+      {/* Plan and Signature */}
       <View style={styles.sectionMargin}>
         <Text style={styles.subheader}>Plan & Signature</Text>
         <LabeledField label="Next Treatment Plan Update" value={formData.nextTreatmentPlanUpdate} />
@@ -242,6 +258,7 @@ const SessionNotePdfDocument: React.FC<SessionNotePdfDocumentProps> = ({ formDat
   </Document>
 );
 
+// New component for Treatment Plan PDF
 interface TreatmentPlanPdfDocumentProps {
   formData: any;
 }
@@ -251,6 +268,7 @@ const TreatmentPlanPdfDocument: React.FC<TreatmentPlanPdfDocumentProps> = ({ for
     <Page size="A4" style={styles.page}>
       <Text style={styles.header}>Therapy Treatment Plan</Text>
       
+      {/* Client Information Section */}
       <View style={styles.clientInfo}>
         <LabeledField label="Client Name" value={formData.clientName} />
         <LabeledField label="Client DOB" value={formData.clientDob} />
@@ -260,6 +278,7 @@ const TreatmentPlanPdfDocument: React.FC<TreatmentPlanPdfDocumentProps> = ({ for
         <LabeledField label="Treatment Frequency" value={formData.treatmentFrequency} />
       </View>
       
+      {/* Diagnosis Section */}
       <View style={styles.sectionMargin}>
         <Text style={styles.subheader}>Diagnosis</Text>
         {Array.isArray(formData.diagnosisCodes) && formData.diagnosisCodes.length > 0 ? (
@@ -271,6 +290,7 @@ const TreatmentPlanPdfDocument: React.FC<TreatmentPlanPdfDocumentProps> = ({ for
         )}
       </View>
       
+      {/* Problem & Treatment Goals */}
       <View style={styles.sectionMargin}>
         <Text style={styles.subheader}>Problem & Treatment Goals</Text>
         <View style={styles.section}>
@@ -283,6 +303,7 @@ const TreatmentPlanPdfDocument: React.FC<TreatmentPlanPdfDocumentProps> = ({ for
         </View>
       </View>
       
+      {/* Treatment Objectives */}
       <View style={styles.sectionMargin}>
         <Text style={styles.subheader}>Treatment Objectives & Interventions</Text>
         <View style={styles.section}>
@@ -311,6 +332,7 @@ const TreatmentPlanPdfDocument: React.FC<TreatmentPlanPdfDocumentProps> = ({ for
         )}
       </View>
       
+      {/* Plan and Review */}
       <View style={styles.sectionMargin}>
         <Text style={styles.subheader}>Plan & Review</Text>
         <LabeledField label="Next Treatment Plan Update" value={formData.nextUpdate} />
@@ -319,6 +341,7 @@ const TreatmentPlanPdfDocument: React.FC<TreatmentPlanPdfDocumentProps> = ({ for
   </Document>
 );
 
+// Enhanced error handling for storage operations
 const handleStorageOperation = async (operation: () => Promise<any>, errorMessage: string) => {
   try {
     return await operation();
@@ -333,6 +356,7 @@ const handleStorageOperation = async (operation: () => Promise<any>, errorMessag
   }
 };
 
+// Generic PDF generator function with improved error handling
 export const generateAndSavePDF = async (
   documentData: any,
   documentInfo: {
@@ -343,6 +367,7 @@ export const generateAndSavePDF = async (
     createdBy?: string;
   }
 ) => {
+  // Format date for file naming
   const formattedDate = typeof documentInfo.documentDate === 'string' 
     ? documentInfo.documentDate 
     : documentInfo.documentDate.toISOString().split('T')[0];
@@ -350,10 +375,12 @@ export const generateAndSavePDF = async (
   console.log('Generating PDF for:', documentInfo.documentTitle);
   
   try {
+    // Step 1: Generate PDF - Enhanced error handling
     let pdfDocument;
     let pdfBlob;
     
     try {
+      // Determine which PDF document to render based on documentType
       switch (documentInfo.documentType) {
         case 'session_note':
           pdfDocument = <SessionNotePdfDocument formData={documentData} phq9Data={documentData.phq9Data} />;
@@ -361,13 +388,11 @@ export const generateAndSavePDF = async (
         case 'treatment_plan':
           pdfDocument = <TreatmentPlanPdfDocument formData={documentData} />;
           break;
-        case 'informed_consent':
-          pdfDocument = <InformedConsentPdfDocument formData={documentData} />;
-          break;
         default:
           throw new Error(`Unsupported document type: ${documentInfo.documentType}`);
       }
       
+      // Generate PDF as binary data
       pdfBlob = await pdf(pdfDocument).toBlob();
     } catch (pdfError) {
       console.error('Error generating PDF:', pdfError);
@@ -379,17 +404,15 @@ export const generateAndSavePDF = async (
       return { success: false, error: pdfError, step: 'pdf_generation' };
     }
     
+    // Step 2: Upload PDF to storage - With retry logic
     const filePath = `${documentInfo.clientId}/${documentInfo.documentType}/${formattedDate}-${Date.now()}.pdf`;
     let uploadAttempts = 0;
     let uploadError = null;
     
-    const bucketName = 'clinical_documents';
-    
     while (uploadAttempts < 3) {
       try {
-        console.log(`Attempting to upload PDF to ${bucketName} bucket, path:`, filePath);
         const { error } = await supabase.storage
-          .from(bucketName)
+          .from('Clinical Documents')
           .upload(filePath, pdfBlob, {
             contentType: 'application/pdf',
             upsert: true
@@ -397,14 +420,13 @@ export const generateAndSavePDF = async (
           
         if (!error) {
           uploadError = null;
-          console.log('PDF uploaded successfully');
           break;
         }
         
         uploadError = error;
         uploadAttempts++;
-        console.log(`Upload attempt ${uploadAttempts} failed, retrying...`, error);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log(`Upload attempt ${uploadAttempts} failed, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
       } catch (error) {
         uploadError = error;
         uploadAttempts++;
@@ -422,27 +444,21 @@ export const generateAndSavePDF = async (
       return { success: false, error: uploadError, step: 'storage_upload' };
     }
     
+    // Step 3: Get the public URL
     let urlData;
     try {
       const response = supabase.storage
-        .from(bucketName)
+        .from('Clinical Documents')
         .getPublicUrl(filePath);
       
       urlData = response.data;
     } catch (urlError) {
       console.error('Error getting public URL:', urlError);
+      // Continue with the process even if getting URL fails
     }
     
+    // Step 4: Save document metadata to clinical_documents table with error handling
     try {
-      console.log('Saving document metadata to clinical_documents table:', {
-        client_id: documentInfo.clientId,
-        document_type: documentInfo.documentType,
-        document_date: formattedDate,
-        document_title: documentInfo.documentTitle,
-        file_path: filePath,
-        created_by: documentInfo.createdBy
-      });
-      
       const { error: dbError } = await supabase
         .from('clinical_documents')
         .insert({
@@ -476,6 +492,7 @@ export const generateAndSavePDF = async (
     console.log('PDF generated and stored successfully:', filePath);
     return { success: true, filePath };
   } catch (error) {
+    // Catch-all for any unhandled errors
     console.error('Unexpected error in generateAndSavePDF:', error);
     toast({
       title: "Error",

@@ -27,6 +27,42 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
   const top = displayStartHour * hourHeight + 56; // 56px is the header height
   const height = duration * hourHeight;
 
+  const handleClick = () => {
+    if (onAvailabilityClick) {
+      // Create full block data with properly formatted time strings
+      const formattedBlock = {
+        ...block,
+        id: block.id,
+        start_time: format(block.start, 'HH:mm'),
+        end_time: format(block.end, 'HH:mm'),
+        isException: block.isException,
+        isStandalone: block.isStandalone,
+        originalAvailabilityId: block.originalAvailabilityId,
+        availabilityIds: block.availabilityIds
+      };
+      
+      console.log('Availability block clicked with formatted times:', {
+        day: format(day, 'yyyy-MM-dd'),
+        block: formattedBlock,
+        startHour,
+        displayStartHour,
+        topPosition: top
+      });
+      
+      onAvailabilityClick(day, formattedBlock);
+    }
+  };
+
+  // Choose block color based on type
+  let blockColor;
+  if (block.isStandalone) {
+    blockColor = 'purple'; // Standalone exceptions are purple
+  } else if (block.isException) {
+    blockColor = 'teal';   // Modified regular availability is teal
+  } else {
+    blockColor = 'green';  // Regular weekly availability is green
+  }
+
   // Log rendering for debugging
   React.useEffect(() => {
     console.debug('Rendering availability block:', {
@@ -42,28 +78,21 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
     });
   }, [block.id, day, block.start, block.end, block.isException, block.isStandalone, top, height, startHour]);
 
-  // Choose block color based on type - now using green for both regular and standalone availability
-  let blockColor;
-  if (block.isException && !block.isStandalone) {
-    blockColor = 'teal';   // Modified regular availability is teal
-  } else {
-    blockColor = 'green';  // Both regular weekly and standalone single-day availability use green
-  }
-
   return (
     <div 
-      className={`absolute left-0.5 right-0.5 z-5 rounded-md border border-${blockColor}-400 bg-${blockColor}-50 p-1 overflow-hidden`}
+      className={`absolute left-0.5 right-0.5 z-5 rounded-md border border-${blockColor}-400 bg-${blockColor}-50 p-1 overflow-hidden cursor-pointer hover:opacity-90 transition-colors`}
       style={{ 
         top: `${top}px`, 
         height: `${height}px`,
         maxHeight: `${Math.max(height, 24)}px` // Ensure minimum height for very short blocks
       }}
+      onClick={handleClick}
     >
       <div className="flex flex-col h-full text-xs">
         <div className="font-medium truncate flex items-center">
           Available
           {block.isException && block.isStandalone && (
-            <span className="ml-1 text-[10px] px-1 py-0.5 bg-green-100 text-green-800 rounded-full">One-time</span>
+            <span className="ml-1 text-[10px] px-1 py-0.5 bg-purple-100 text-purple-800 rounded-full">One-time</span>
           )}
           {block.isException && !block.isStandalone && (
             <span className="ml-1 text-[10px] px-1 py-0.5 bg-teal-100 text-teal-800 rounded-full">Modified</span>

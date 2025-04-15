@@ -1,3 +1,4 @@
+
 import { Bell, Search, LogOut, User } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +22,7 @@ const Header: React.FC<HeaderProps> = ({
   const [lastName, setLastName] = useState('');
   const [initials, setInitials] = useState('');
 
+  // Get user profile data
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -39,6 +41,7 @@ const Header: React.FC<HeaderProps> = ({
             setFirstName(data.first_name || '');
             setLastName(data.last_name || '');
 
+            // Generate initials
             const firstInitial = data.first_name ? data.first_name.charAt(0).toUpperCase() : '';
             const lastInitial = data.last_name ? data.last_name.charAt(0).toUpperCase() : '';
             setInitials(firstInitial + lastInitial);
@@ -51,6 +54,7 @@ const Header: React.FC<HeaderProps> = ({
     fetchUserProfile();
   }, []);
 
+  // Get current time to display greeting
   const hours = new Date().getHours();
   let greeting = 'Good morning';
   if (hours >= 12 && hours < 17) {
@@ -71,6 +75,8 @@ const Header: React.FC<HeaderProps> = ({
       });
       
       console.log('[Header] Redirecting to login page using window.location');
+      // Replace React Router navigation with direct window location change
+      // This forces a full page reload and ensures redirect happens
       window.location.href = '/login';
     } catch (error) {
       console.error('[Header] Error logging out:', error);
@@ -82,6 +88,7 @@ const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  // Create display name from first and last name, fallback to the provided userName prop
   const displayName = firstName && lastName ? `${firstName} ${lastName}` : userName || 'User';
   return <header className="h-16 border-b bg-white flex items-center justify-between px-6">
       

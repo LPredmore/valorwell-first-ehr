@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, parse, addDays, isSameDay, isAfter, differenceInCalendarDays } from 'date-fns';
 import { Calendar as CalendarIcon, Clock, Check } from 'lucide-react';
@@ -79,8 +80,10 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   const [timeGranularity, setTimeGranularity] = useState<string>("half-hour");
   const { toast } = useToast();
   
+  // Ensure we use the client's timezone with proper validation
   const clientTimeZone = ensureIANATimeZone(propTimeZone || getUserTimeZone());
 
+  // Debug logging for timezone issues
   useEffect(() => {
     if (open) {
       console.log("AppointmentBookingDialog opened with client timezone:", clientTimeZone);
@@ -90,6 +93,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   useEffect(() => {
     if (!open || !clinicianId) return;
     
+    // Fetch the clinician's timezone for proper time conversion
     const fetchClinicianData = async () => {
       try {
         const { data, error } = await supabase
@@ -115,7 +119,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     const fetchSettings = async () => {
       try {
         console.log('Fetching availability settings for clinician ID:', clinicianId);
-        const { data: settingsData, error: settingsError } = await supabase.functions.invoke('get-availability-settings', {
+        const { data: settingsData, error: settingsError } = await supabase.functions.invoke('getavailabilitysettings', {
           body: { clinicianId }
         });
         
@@ -127,6 +131,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           console.log('Parsed min_days_ahead:', parsedMinDays);
           setMinDaysAhead(parsedMinDays || 1);
           
+          // Set the time granularity from the clinician's settings
           if (settingsData.time_granularity) {
             console.log('Setting time granularity to:', settingsData.time_granularity);
             setTimeGranularity(settingsData.time_granularity);
@@ -138,8 +143,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
         }
       } catch (error) {
         console.error('Caught error in fetchSettings:', error);
-        setMinDaysAhead(1);
-        setTimeGranularity('half-hour');
       }
     };
     
@@ -200,6 +203,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
       console.log(`Processing availability block: ${block.start_time} - ${block.end_time} (clinician timezone: ${clinicianTimeZone})`);
       
       try {
+        // Parse the times in the clinician's timezone
         const startTimeDate = parse(block.start_time, 'HH:mm:ss', new Date());
         const endTimeDate = parse(block.end_time, 'HH:mm:ss', new Date());
         
@@ -211,10 +215,13 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
             available: true
           });
           
+          // Add time increment based on the time granularity setting
           currentTime = addDays(currentTime, 0);
           if (timeGranularity === 'hour') {
+            // For hour granularity, add 60 minutes
             currentTime.setMinutes(currentTime.getMinutes() + 60);
           } else {
+            // For half-hour granularity, add 30 minutes (default)
             currentTime.setMinutes(currentTime.getMinutes() + 30);
           }
         }
@@ -260,6 +267,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           const updatedSlots = slots.map(slot => {
             const slotTimeStr = `${slot.time}:00`;
             
+            // Check if this time slot matches any existing appointments
             const isBooked = data.some(appointment => {
               return appointment.start_time === slotTimeStr;
             });
@@ -315,6 +323,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
       
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
       
+      // Documentation: Converting local time (clientTimeZone) to UTC for database storage
       console.log(`Booking appointment: ${dateStr} at ${startTime} in timezone: ${clientTimeZone}`);
       console.log('Converting from client timezone to database format:', { 
         originalDate: dateStr, 
@@ -415,18 +424,21 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     return unavailable || pastDate || tooSoon;
   };
 
+  // Format time for display in the client's timezone
   const formatTimeDisplay = (timeString: string) => {
     try {
+      // Documentation: Converting UTC time from database to client timezone for display
       console.log('Displaying in timezone', clientTimeZone, ':', {
         originalTime: timeString
       });
       
+      // This correctly formats the time from clinician timezone to client timezone
       const formattedTime = formatTimeInUserTimeZone(timeString, clientTimeZone, 'h:mm a');
       console.log('Formatted time result:', formattedTime);
       return formattedTime;
     } catch (error) {
       console.error('Error formatting time for display:', error, { timeString, clientTimeZone });
-      return formatTime12Hour(timeString);
+      return formatTime12Hour(timeString); // Fallback to simple formatter
     }
   };
 

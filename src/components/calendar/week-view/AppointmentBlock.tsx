@@ -2,7 +2,6 @@ import React from 'react';
 import { format } from 'date-fns';
 import { AppointmentBlock as AppointmentBlockType, Appointment } from './useWeekViewData';
 import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
-import { useTimeZone } from '@/context/TimeZoneContext';
 
 interface AppointmentBlockProps {
   appointment: AppointmentBlockType;
@@ -17,8 +16,6 @@ const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
   onAppointmentClick,
   originalAppointments
 }) => {
-  const { userTimeZone } = useTimeZone();
-  
   // Calculate position and height based on start and end time
   const startHour = appointment.start.getHours() + (appointment.start.getMinutes() / 60);
   const endHour = appointment.end.getHours() + (appointment.end.getMinutes() / 60);
@@ -30,39 +27,24 @@ const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
   const top = displayStartHour * hourHeight + 56; // 56px is the header height
   const height = duration * hourHeight;
 
-  // Enhanced logging for appointment positioning
-  console.log(`[AppointmentBlock] Rendering appointment ${appointment.id}:`, {
-    clientName: appointment.clientName,
-    date: format(appointment.day, 'yyyy-MM-dd'),
-    startTime: format(appointment.start, 'HH:mm:ss'),
-    endTime: format(appointment.end, 'HH:mm:ss'),
-    startHour,
-    displayStartHour, // Include the adjusted hour value
-    endHour,
-    duration,
-    top,
-    height,
-    userTimeZone
-  });
+  // Add debugging log to verify the calculation
+  React.useEffect(() => {
+    console.debug('Rendering appointment block:', {
+      id: appointment.id,
+      clientName: appointment.clientName,
+      start: format(appointment.start, 'HH:mm'),
+      end: format(appointment.end, 'HH:mm'),
+      startHour,
+      displayStartHour,
+      position: { top, height }
+    });
+  }, [appointment.id, appointment.start, appointment.end, top, height, startHour, displayStartHour]);
 
-  // Find the original appointment details for the click handler
   const handleClick = () => {
     if (onAppointmentClick) {
       const originalAppointment = originalAppointments.find(app => 
         app.id === appointment.id
       );
-      
-      // Log the found original appointment for debugging
-      console.log('[AppointmentBlock] Original appointment data for click:', 
-        originalAppointment ? {
-          id: originalAppointment.id,
-          date: originalAppointment.date,
-          start_time: originalAppointment.start_time,
-          end_time: originalAppointment.end_time,
-          hasUTC: originalAppointment.appointment_datetime ? true : false,
-          utc_time: originalAppointment.appointment_datetime
-        } : 'Not found');
-        
       if (originalAppointment) {
         onAppointmentClick(originalAppointment);
       }

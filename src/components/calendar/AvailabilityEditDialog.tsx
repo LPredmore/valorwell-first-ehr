@@ -3,7 +3,7 @@ import React from 'react';
 import { format } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, X, Save } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { AvailabilityEditDialogProps } from './availability-edit/types';
 import TimeInput from './availability-edit/TimeInput';
 import DeleteConfirmationDialog from './availability-edit/DeleteConfirmationDialog';
@@ -149,17 +149,15 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
               variant="destructive" 
               onClick={handleDeleteClick} 
               disabled={isLoading}
-              className="gap-2"
             >
-              <X className="h-4 w-4" />
               {availabilityBlock && availabilityBlock.isStandalone ? "Delete Availability" : "Cancel Availability"}
             </Button>
             <div className="flex gap-2">
               <Button variant="outline" onClick={onClose} disabled={isLoading}>
                 Close
               </Button>
-              <Button type="button" onClick={handleSaveClick} disabled={isLoading} className="gap-2">
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              <Button type="button" onClick={handleSaveClick} disabled={isLoading}>
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 {isLoading ? "Saving..." : "Save Changes"}
               </Button>
             </div>

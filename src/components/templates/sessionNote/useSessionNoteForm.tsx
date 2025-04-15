@@ -444,11 +444,6 @@ export const useSessionNoteForm = ({
       if (sessionDate) {
         console.log("Generating PDF...");
         const clientName = formState.patientName || 'Unknown Client';
-        
-        // Create a clean version of formState without privateNote for the PDF
-        const pdfFormData = { ...formState };
-        delete pdfFormData.privateNote; // Remove private note from PDF data
-        
         const documentInfo = {
           clientId: clientData.id,
           documentType: 'session_note',
@@ -458,24 +453,25 @@ export const useSessionNoteForm = ({
         };
 
         try {
-          // Pass the form data and document info to the PDF generator
-          const result = await generateAndSavePDF({ ...pdfFormData, phq9Data }, documentInfo);
+          // Pass the form data and document info to the new PDF generator
+          pdfPath = await generateAndSavePDF({ ...formState, phq9Data }, documentInfo);
           
-          if (result.success && result.filePath && sessionNoteId) {
-            console.log("Updating session note with PDF path:", result.filePath);
+          if (pdfPath && sessionNoteId) {
+            console.log("Updating session note with PDF path:", pdfPath);
             await supabase
               .from('session_notes')
-              .update({ pdf_path: result.filePath })
+              .update({ pdf_path: pdfPath })
               .eq('id', sessionNoteId);
-            
-            pdfPath = result.filePath;
+          }
+          
+          if (pdfPath) {
             console.log('PDF saved successfully:', pdfPath);
             toast({
               title: "Success",
               description: "Session note saved and PDF generated successfully.",
             });
           } else {
-            console.error('Failed to generate PDF:', result);
+            console.error('Failed to generate PDF');
             toast({
               title: "Warning",
               description: "Session note saved, but PDF generation failed.",

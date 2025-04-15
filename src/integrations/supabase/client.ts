@@ -124,26 +124,23 @@ export const fetchClinicalDocuments = async (clientId: string) => {
   }
 };
 
-// Update the getDocumentDownloadURL function to use clinical_documents bucket
-export const getDocumentDownloadURL = async (filePath: string, documentType?: string): Promise<string | null> => {
+// Function to get document download URL
+export const getDocumentDownloadURL = async (filePath: string) => {
   try {
-    // All documents are now stored in the clinical_documents bucket
-    const bucketName = "clinical_documents";
-    
-    console.log(`Getting download URL for file: ${filePath} from bucket: ${bucketName}`);
-    
+    console.log('Getting download URL for document:', filePath);
     const { data, error } = await supabase.storage
-      .from(bucketName)
-      .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
-    
+      .from('clinical_documents')
+      .createSignedUrl(filePath, 60); // 60 seconds expiration
+      
     if (error) {
       console.error('Error creating signed URL:', error);
-      return null;
+      throw error;
     }
     
-    return data?.signedUrl || null;
-  } catch (err) {
-    console.error('Error in getDocumentDownloadURL:', err);
+    console.log('Generated signed URL');
+    return data.signedUrl;
+  } catch (error) {
+    console.error('Error in getDocumentDownloadURL:', error);
     return null;
   }
 };

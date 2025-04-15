@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -99,7 +98,6 @@ const ProfileSetup = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [navigationHistory, setNavigationHistory] = useState<number[]>([1]);
   const [otherInsurance, setOtherInsurance] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState(false); // Add state for tracking submission
   
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(
@@ -675,10 +673,6 @@ const ProfileSetup = () => {
 
   const handleSubmit = async () => {
     try {
-      // Prevent multiple submissions
-      if (isSubmitting) return;
-      setIsSubmitting(true);
-      
       const values = form.getValues();
       
       if (!clientId) {
@@ -687,7 +681,6 @@ const ProfileSetup = () => {
           description: "No client record found. Please contact support.",
           variant: "destructive"
         });
-        setIsSubmitting(false);
         return;
       }
       
@@ -715,7 +708,6 @@ const ProfileSetup = () => {
           description: error.message,
           variant: "destructive"
         });
-        setIsSubmitting(false);
         return;
       }
       
@@ -725,10 +717,7 @@ const ProfileSetup = () => {
         description: "Your information has been saved. You can now select a therapist.",
       });
       
-      // Navigate to the therapist selection page
-      setTimeout(() => {
-        navigate('/therapist-selection');
-      }, 100);
+      navigate('/therapist-selection');
     } catch (error) {
       console.error("Exception in handleSubmit:", error);
       toast({
@@ -736,7 +725,6 @@ const ProfileSetup = () => {
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
-      setIsSubmitting(false);
     }
   };
 
@@ -1059,10 +1047,9 @@ const ProfileSetup = () => {
           <Button 
             type="button" 
             onClick={handleSubmit}
-            disabled={isSubmitting}
             className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
           >
-            {isSubmitting ? "Completing..." : "Complete Profile"}
+            Complete Profile
           </Button>
         </div>
       </div>

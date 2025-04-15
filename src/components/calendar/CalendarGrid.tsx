@@ -1,3 +1,4 @@
+
 import React from 'react';
 import DayCell from './DayCell';
 
@@ -37,7 +38,6 @@ interface CalendarGridProps {
   onAppointmentClick?: (appointment: Appointment) => void;
   onAvailabilityClick?: (day: Date, availabilityBlock: AvailabilityBlock) => void;
   weekViewMode?: boolean;
-  userTimeZone: string;
 }
 
 const CalendarGrid: React.FC<CalendarGridProps> = ({
@@ -49,8 +49,7 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
   getClientName,
   onAppointmentClick,
   onAvailabilityClick,
-  weekViewMode = false,
-  userTimeZone
+  weekViewMode = false
 }) => {
   const weekDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 

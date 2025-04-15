@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, addWeeks, addMonths, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -16,12 +17,11 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { 
-  toUTCTimestamp,
+  toUTC, 
   ensureIANATimeZone, 
   formatUTCTimeForUser,
   formatTime12Hour,
-  formatTimeZoneDisplay,
-  createISODateTimeString
+  formatTimeZoneDisplay
 } from '@/utils/timeZoneUtils';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 
@@ -55,17 +55,19 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago');
   const [isLoadingTimeZone, setIsLoadingTimeZone] = useState<boolean>(true);
 
+  // Fetch clinician time zone
   useEffect(() => {
     const fetchClinicianTimeZone = async () => {
       if (selectedClinicianId) {
         setIsLoadingTimeZone(true);
         try {
           const timeZone = await getClinicianTimeZone(selectedClinicianId);
-          console.log("[AppointmentDialog] Fetched clinician timezone:", timeZone);
+          console.log("Fetched clinician timezone for appointments:", timeZone);
           const validTimeZone = ensureIANATimeZone(timeZone);
           setClinicianTimeZone(validTimeZone);
         } catch (error) {
-          console.error("[AppointmentDialog] Error fetching clinician timezone:", error);
+          console.error("Error fetching clinician timezone:", error);
+          // Default to America/Chicago as fallback
           setClinicianTimeZone('America/Chicago');
         } finally {
           setIsLoadingTimeZone(false);
@@ -119,6 +121,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
 
   const calculateEndTime = (startTimeStr: string): string => {
     try {
+      // Parse time components
       const startTimeParts = startTimeStr.split(':').map(Number);
       const startDateTime = new Date();
       startDateTime.setHours(startTimeParts[0], startTimeParts[1], 0, 0);
@@ -128,7 +131,8 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
       
       return `${endDateTime.getHours().toString().padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}`;
     } catch (error) {
-      console.error('[AppointmentDialog] Error calculating end time:', error);
+      console.error('Error calculating end time:', error);
+      // Default to 1 hour later
       const startHour = parseInt(startTimeStr.split(':')[0], 10);
       return `${(startHour + 1) % 24}:${startTimeStr.split(':')[1]}`;
     }
@@ -145,26 +149,30 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
     }
 
     try {
+      // Validate timezone
       const validTimeZone = ensureIANATimeZone(clinicianTimeZone);
-      console.log(`[AppointmentDialog] Using clinician timezone: ${validTimeZone} (${formatTimeZoneDisplay(validTimeZone)})`);
+      console.log(`Using clinician timezone: ${validTimeZone} (${formatTimeZoneDisplay(validTimeZone)})`);
       
+      // Calculate end time based on start time
       const endTime = calculateEndTime(startTime);
       
       if (isRecurring) {
-        const recurringGroupId = uuidv4();
+        const recurringGroupId = uuidv4(); // Generate a unique ID to link recurring appointments
         const recurringDates = generateRecurringDates(selectedDate, recurrenceType);
         
         const appointmentsToInsert = [];
         
         for (const date of recurringDates) {
           try {
+            // Format date for storage
             const formattedDate = format(date, 'yyyy-MM-dd');
             
-            const startTimestamp = toUTCTimestamp(date, startTime, validTimeZone);
-            const endTimestamp = toUTCTimestamp(date, endTime, validTimeZone);
-            
-            console.log(`[AppointmentDialog] Creating appointment for ${formattedDate} at ${startTime}-${endTime}`);
-            console.log(`[AppointmentDialog] UTC timestamps: ${startTimestamp} to ${endTimestamp}`);
+            // Documentation: Converting local time (clinicianTimeZone) to UTC for database storage
+            console.log('Converting from', validTimeZone, 'to UTC:', { 
+              originalDate: formattedDate, 
+              originalStartTime: startTime,
+              originalEndTime: endTime
+            });
             
             appointmentsToInsert.push({
               client_id: selectedClientId,
@@ -172,19 +180,18 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
               date: formattedDate,
               start_time: startTime,
               end_time: endTime,
-              appointment_datetime: startTimestamp,
-              appointment_end_datetime: endTimestamp,
               type: "Therapy Session",
               status: 'scheduled',
               appointment_recurring: recurrenceType,
               recurring_group_id: recurringGroupId
             });
           } catch (error) {
-            console.error('[AppointmentDialog] Error processing appointment date:', error, date);
+            console.error('Error processing appointment date:', error, date);
+            // Skip this date if there's an error
           }
         }
 
-        console.log('[AppointmentDialog] Inserting recurring appointments:', appointmentsToInsert);
+        console.log('Inserting recurring appointments:', appointmentsToInsert);
         
         const { data, error } = await supabase
           .from('appointments')
@@ -192,7 +199,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           .select();
 
         if (error) {
-          console.error('[AppointmentDialog] Error details:', error.message, error);
+          console.error('Error details:', error.message, error);
           throw error;
         }
 
@@ -204,12 +211,12 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
         try {
           const formattedDate = format(selectedDate, 'yyyy-MM-dd');
 
-          const startTimestamp = toUTCTimestamp(selectedDate, startTime, validTimeZone);
-          const endTimestamp = toUTCTimestamp(selectedDate, endTime, validTimeZone);
-          
-          console.log(`[AppointmentDialog] Creating appointment for ${formattedDate}:`);
-          console.log(`- Local time (${validTimeZone}): ${startTime}-${endTime}`);
-          console.log(`- UTC timestamps: ${startTimestamp} to ${endTimestamp}`);
+          // Documentation: Converting local time (clinicianTimeZone) to UTC for database storage
+          console.log('Converting from', validTimeZone, 'to UTC:', { 
+            originalDate: formattedDate, 
+            originalStartTime: startTime,
+            originalEndTime: endTime
+          });
 
           const { data, error } = await supabase
             .from('appointments')
@@ -219,15 +226,13 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
               date: formattedDate,
               start_time: startTime,
               end_time: endTime,
-              appointment_datetime: startTimestamp,
-              appointment_end_datetime: endTimestamp,
               type: "Therapy Session",
               status: 'scheduled'
             }])
             .select();
 
           if (error) {
-            console.error('[AppointmentDialog] Error details:', error.message, error);
+            console.error('Error details:', error.message, error);
             throw error;
           }
 
@@ -236,7 +241,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
             description: "The appointment has been successfully scheduled.",
           });
         } catch (error) {
-          console.error('[AppointmentDialog] Error creating single appointment:', error);
+          console.error('Error creating single appointment:', error);
           throw error;
         }
       }
@@ -248,7 +253,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
       onAppointmentCreated();
 
     } catch (error) {
-      console.error('[AppointmentDialog] Error creating appointment:', error);
+      console.error('Error creating appointment:', error);
       toast({
         title: "Error",
         description: "Failed to create appointment. Please try again.",
@@ -257,6 +262,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
     }
   };
 
+  // Get clinician timezone display for UI
   const timeZoneDisplay = formatTimeZoneDisplay(clinicianTimeZone);
 
   return (
@@ -334,12 +340,15 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
               </SelectTrigger>
               <SelectContent>
                 {timeOptions.map((time) => {
+                  // Format time for display in clinician's timezone
                   let displayTime;
                   try {
+                    // Documentation: Converting UTC time from database to user timezone (clinicianTimeZone) for display
                     const timeDate = new Date();
                     const [hours, minutes] = time.split(':').map(Number);
                     timeDate.setHours(hours, minutes, 0, 0);
                     displayTime = format(timeDate, 'h:mm a');
+                    
                   } catch (error) {
                     console.error('Error formatting time for display:', error, time);
                     displayTime = formatTime12Hour(time);
