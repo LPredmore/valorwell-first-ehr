@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -99,8 +98,8 @@ const ProfileSetup = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [navigationHistory, setNavigationHistory] = useState<number[]>([1]);
   const [otherInsurance, setOtherInsurance] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState(false); // Add state for tracking submission
-  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(
       currentStep === 1 
@@ -408,8 +407,8 @@ const ProfileSetup = () => {
   const handleNext = async () => {
     const values = form.getValues();
     const vaCoverage = values.client_vacoverage;
-    const hasMoreInsurance = values.hasMoreInsurance; // Updated to use the local field
-    
+    const hasMoreInsurance = values.hasMoreInsurance;
+
     if (currentStep === 2) {
       if (clientId) {
         const formattedDateOfBirth = values.client_date_of_birth 
@@ -678,19 +677,16 @@ const ProfileSetup = () => {
       if (isSubmitting) return;
       setIsSubmitting(true);
       
-      const values = form.getValues();
-      
-      if (!clientId) {
+      if (!values.client_time_zone) {
         toast({
-          title: "Error",
-          description: "No client record found. Please contact support.",
-          variant: "destructive"
+          title: "Time Zone Required",
+          description: "Please select your time zone to continue.",
+          variant: "destructive",
         });
         setIsSubmitting(false);
         return;
       }
 
-      // First update the time zone in profiles table
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -702,13 +698,6 @@ const ProfileSetup = () => {
         console.error("Error updating profile time zone:", profileError);
         throw profileError;
       }
-      
-      console.log("Submitting final form data:", {
-        client_self_goal: values.client_self_goal,
-        client_referral_source: values.client_referral_source,
-        client_status: 'Profile Complete',
-        client_is_profile_complete: 'true'
-      });
 
       const { error } = await supabase
         .from('clients')
@@ -719,35 +708,26 @@ const ProfileSetup = () => {
           client_is_profile_complete: 'true'
         })
         .eq('id', clientId);
-      
+
       if (error) {
-        console.error("Error updating profile:", error);
-        toast({
-          title: "Error updating profile",
-          description: error.message,
-          variant: "destructive"
-        });
-        setIsSubmitting(false);
-        return;
+        console.error("Error updating client:", error);
+        throw error;
       }
-      
-      console.log("Profile completed successfully");
+
       toast({
-        title: "Profile complete!",
-        description: "Your information has been saved. You can now select a therapist.",
+        title: "Profile Complete",
+        description: "Your profile has been completed successfully."
       });
-      
-      // Navigate to the therapist selection page
-      setTimeout(() => {
-        navigate('/therapist-selection');
-      }, 100);
+
+      navigate('/therapist-selection');
     } catch (error) {
-      console.error("Exception in handleSubmit:", error);
+      console.error('Error in handleSubmit:', error);
       toast({
-        title: "Error updating profile",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Error",
+        description: "There was an error completing your profile. Please try again.",
         variant: "destructive"
       });
+    } finally {
       setIsSubmitting(false);
     }
   };

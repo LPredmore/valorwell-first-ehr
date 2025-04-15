@@ -14,6 +14,8 @@ import VideoChat from '@/components/video/VideoChat';
 import { getUserTimeZone, formatTimeZoneDisplay, formatTimeInUserTimeZone, formatTime12Hour, ensureIANATimeZone } from '@/utils/timeZoneUtils';
 import PHQ9Template from '@/components/templates/PHQ9Template';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 interface Appointment {
   id: number;
@@ -46,6 +48,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const [showPHQ9, setShowPHQ9] = useState(false);
   const [pendingAppointmentId, setPendingAppointmentId] = useState<string | number | null>(null);
   const [clinicianData, setClinicianData] = useState<any>(null);
+  const [hasAssignedDocuments, setHasAssignedDocuments] = useState<boolean>(false);
   const {
     toast
   } = useToast();
@@ -241,6 +244,8 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const todayAppointments = upcomingAppointments.filter(appointment => isAppointmentToday(appointment.rawDate));
   const futureAppointments = upcomingAppointments.filter(appointment => !isAppointmentToday(appointment.rawDate));
 
+  const showBookingButtons = clientData?.client_status !== 'Profile Complete' || !hasAssignedDocuments;
+  
   return <div className="grid grid-cols-1 gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -248,9 +253,23 @@ const MyPortal: React.FC<MyPortalProps> = ({
             <CardTitle>Today's Appointments</CardTitle>
             <CardDescription>Sessions scheduled for today</CardDescription>
           </div>
-          
+          {showBookingButtons && (
+            <Button variant="outline" size="sm" onClick={() => setIsBookingOpen(true)}>
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              Book New Appointment
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
+          {!showBookingButtons && hasAssignedDocuments && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                You still need to complete the Assigned Documents before you can schedule your appointment.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           {todayAppointments.length > 0 ? <Table>
               <TableHeader>
                 <TableRow>
@@ -285,10 +304,12 @@ const MyPortal: React.FC<MyPortalProps> = ({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Your Therapist</CardTitle>
-          <Button variant="outline" size="sm" onClick={() => setIsBookingOpen(true)}>
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            Book New Appointment
-          </Button>
+          {showBookingButtons && (
+            <Button variant="outline" size="sm" onClick={() => setIsBookingOpen(true)}>
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              Book New Appointment
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {clientData && clientData.client_assigned_therapist && clinicianData ? <div className="bg-gray-50 p-4 rounded-md mb-4">
@@ -348,9 +369,11 @@ const MyPortal: React.FC<MyPortalProps> = ({
               <Calendar className="h-12 w-12 text-gray-300 mb-3" />
               <h3 className="text-lg font-medium">No upcoming appointments</h3>
               <p className="text-sm text-gray-500 mt-1">Schedule a session with your therapist</p>
-              <Button className="mt-4" onClick={() => setIsBookingOpen(true)}>
-                Book Appointment
-              </Button>
+              {showBookingButtons && (
+                <Button className="mt-4" onClick={() => setIsBookingOpen(true)}>
+                  Book Appointment
+                </Button>
+              )}
             </div>}
         </CardContent>
         <CardFooter className="flex justify-between">
@@ -364,8 +387,9 @@ const MyPortal: React.FC<MyPortalProps> = ({
         clinicianId={clientData?.client_assigned_therapist || null} 
         clinicianName={clinicianName} 
         clientId={clientData?.id || null} 
-        onAppointmentBooked={handleBookingComplete} 
-        userTimeZone={clientTimeZone} 
+        onAppointmentBooked={handleBookingComplete}
+        userTimeZone={clientTimeZone}
+        disabled={!showBookingButtons}
       />
 
       {showPHQ9 && <PHQ9Template 
