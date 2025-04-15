@@ -15,6 +15,7 @@ export interface WeekViewProps {
 export interface BaseAppointment {
   id: string;
   client_id: string;
+  clinician_id: string;
   date: string;
   start_time: string;
   end_time: string;
@@ -23,6 +24,8 @@ export interface BaseAppointment {
   video_room_url?: string | null;
   appointment_recurring?: string | null;
   recurring_group_id?: string | null;
+  appointment_datetime?: string;
+  appointment_end_datetime?: string;
   client?: {
     client_first_name: string;
     client_last_name: string;
