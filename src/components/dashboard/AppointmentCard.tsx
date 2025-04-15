@@ -5,28 +5,16 @@ import { Calendar, Clock, UserCircle, Video, FileText, XCircle } from 'lucide-re
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatTime12Hour, formatTimeInUserTimeZone, formatUTCTimeForUser } from '@/utils/timeZoneUtils';
+import { BaseAppointment } from '@/types/appointment';
 
 export interface AppointmentCardProps {
-  appointment: {
-    id: string;
-    client_id: string;
-    date: string;
-    start_time: string;
-    end_time: string;
-    type: string;
-    status: string;
-    video_room_url: string | null;
-    client?: {
-      client_first_name: string;
-      client_last_name: string;
-    };
-  };
+  appointment: BaseAppointment;
   timeZoneDisplay: string;
   userTimeZone: string;
   showStartButton?: boolean;
-  onStartSession?: (appointment: AppointmentCardProps['appointment']) => void;
-  onDocumentSession?: (appointment: AppointmentCardProps['appointment']) => void;
-  onSessionDidNotOccur?: (appointment: AppointmentCardProps['appointment']) => void;
+  onStartSession?: (appointment: BaseAppointment) => void;
+  onDocumentSession?: (appointment: BaseAppointment) => void;
+  onSessionDidNotOccur?: (appointment: BaseAppointment) => void;
 }
 
 export const AppointmentCard: React.FC<AppointmentCardProps> = ({
