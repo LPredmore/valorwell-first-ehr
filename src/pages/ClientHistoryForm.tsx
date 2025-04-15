@@ -1,11 +1,10 @@
-
 import React, { useState, useRef } from 'react';
 import { useUser } from '@/context/UserContext';
 import { useToast } from '@/hooks/use-toast';
 import ClientHistoryTemplate from '@/components/templates/ClientHistoryTemplate';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { generateAndSavePDF } from '@/utils/pdfUtils';
+import { handleFormSubmission } from '@/utils/formSubmissionUtils';
 import { useClientData } from '@/hooks/useClientData';
 
 const ClientHistoryForm: React.FC = () => {
@@ -191,70 +190,64 @@ const ClientHistoryForm: React.FC = () => {
         }
       }
       
-      // Step 8: Generate PDF and save it
-      // We need to give the DOM a moment to reflect any state changes
-      setTimeout(async () => {
-        try {
-          if (formRef.current) {
-            const docDate = new Date();
-            const pdfPath = await generateAndSavePDF('client-history-form', {
-              clientId: userId,
-              documentType: 'client_history',
-              documentDate: docDate,
-              documentTitle: 'Client History Form',
-              createdBy: userId
-            });
+      // Step 8: Generate PDF and update document assignment using our utility function
+      if (formRef.current) {
+        const docDate = new Date();
+        const documentInfo = {
+          clientId: userId,
+          documentType: 'client_history',
+          documentDate: docDate,
+          documentTitle: 'Client History Form',
+          createdBy: userId
+        };
+        
+        const result = await handleFormSubmission(
+          'client-history-form',
+          documentInfo,
+          'Client History',
+          formData
+        );
+        
+        if (result.success && result.filePath) {
+          // Update the client_history record with the PDF path
+          const { error: pdfUpdateError } = await supabase
+            .from('client_history')
+            .update({ pdf_path: result.filePath })
+            .eq('id', historyId);
             
-            if (pdfPath) {
-              // Update the client_history record with the PDF path
-              const { error: pdfUpdateError } = await supabase
-                .from('client_history')
-                .update({ pdf_path: pdfPath })
-                .eq('id', historyId);
-                
-              if (pdfUpdateError) {
-                console.error("Error updating history with PDF path:", pdfUpdateError);
-              }
-              
-              // Update the document assignment status
-              const { error: assignmentError } = await supabase
-                .from('document_assignments')
-                .update({
-                  status: 'completed',
-                  pdf_url: pdfPath,
-                  completed_at: new Date().toISOString()
-                })
-                .eq('document_id', '1')
-                .eq('client_id', userId);
-                
-              if (assignmentError) {
-                console.error("Error updating document assignment:", assignmentError);
-              }
-            }
+          if (pdfUpdateError) {
+            console.error("Error updating history with PDF path:", pdfUpdateError);
           }
-        } catch (pdfError) {
-          console.error("Error generating PDF:", pdfError);
-        }
-        
-        // Success! Update client status if needed
-        const { error: clientStatusError } = await supabase
-          .from('clients')
-          .update({ client_status: 'Active' })
-          .eq('id', userId);
           
-        if (clientStatusError) {
-          console.error("Error updating client status:", clientStatusError);
+          // Success! Update client status if needed
+          const { error: clientStatusError } = await supabase
+            .from('clients')
+            .update({ client_status: 'Active' })
+            .eq('id', userId);
+            
+          if (clientStatusError) {
+            console.error("Error updating client status:", clientStatusError);
+          }
+          
+          toast({
+            title: "Success!",
+            description: "Your client history form has been submitted successfully.",
+          });
+          
+          // Redirect to patient dashboard
+          navigate("/patient-dashboard");
+        } else {
+          // Handle PDF generation failure
+          toast({
+            title: "Warning",
+            description: result.message || "There was an issue with document generation.",
+            variant: "destructive"
+          });
+          setIsSubmitting(false);
         }
-        
-        toast({
-          title: "Success!",
-          description: "Your client history form has been submitted successfully.",
-        });
-        
-        // Redirect to patient dashboard
-        navigate("/patient-dashboard");
-      }, 500);
-      
+      } else {
+        throw new Error("Form reference not available");
+      }
     } catch (error) {
       console.error("Error submitting client history form:", error);
       toast({

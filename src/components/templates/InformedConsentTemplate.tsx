@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
@@ -12,7 +11,7 @@ import { format } from 'date-fns';
 import { useUser } from '@/context/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { generateAndSavePDF } from '@/utils/reactPdfUtils';
+import { handleFormSubmission } from '@/utils/formSubmissionUtils';
 import { supabase } from '@/integrations/supabase/client';
 
 // Form validation schema
@@ -36,6 +35,7 @@ const InformedConsentTemplate: React.FC<InformedConsentTemplateProps> = ({
   const { userId } = useUser();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const formRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -67,52 +67,24 @@ const InformedConsentTemplate: React.FC<InformedConsentTemplateProps> = ({
         signatureDate: format(new Date(), 'MMMM d, yyyy')
       };
 
-      // Generate and save PDF document
-      const result = await generateAndSavePDF(
-        documentData, 
-        {
-          clientId: userId,
-          documentType: 'informed_consent',
-          documentDate: new Date(),
-          documentTitle: 'Informed Consent for Telehealth Services',
-          createdBy: userId
-        }
+      // Create document info for PDF generation
+      const documentInfo = {
+        clientId: userId,
+        documentType: 'informed_consent',
+        documentDate: new Date(),
+        documentTitle: 'Informed Consent for Telehealth Services',
+        createdBy: userId
+      };
+
+      // Use the shared form submission utility to handle PDF generation and document assignment updates
+      const result = await handleFormSubmission(
+        'informed-consent-form',
+        documentInfo,
+        'Informed Consent',
+        documentData
       );
 
       if (result.success) {
-        // Update document_assignments table if needed
-        const { data: assignmentData, error: assignmentError } = await supabase
-          .from('document_assignments')
-          .select('*')
-          .eq('client_id', userId)
-          .eq('document_id', '2')  // Assuming '2' is the ID for Informed Consent
-          .maybeSingle();
-
-        if (!assignmentError && assignmentData) {
-          // Update existing assignment
-          await supabase
-            .from('document_assignments')
-            .update({
-              status: 'completed',
-              completed_at: new Date().toISOString(),
-              pdf_url: result.filePath,
-              response_data: documentData
-            })
-            .eq('id', assignmentData.id);
-        } else {
-          // Create new assignment record
-          await supabase
-            .from('document_assignments')
-            .insert({
-              client_id: userId,
-              document_id: '2',  // Assuming '2' is the ID for Informed Consent
-              status: 'completed',
-              completed_at: new Date().toISOString(),
-              pdf_url: result.filePath,
-              response_data: documentData
-            });
-        }
-
         toast({
           title: "Success",
           description: "Your informed consent has been submitted successfully.",
@@ -124,7 +96,11 @@ const InformedConsentTemplate: React.FC<InformedConsentTemplateProps> = ({
           navigate('/patient-dashboard');
         }
       } else {
-        throw new Error("Failed to generate PDF");
+        toast({
+          title: "Error",
+          description: result.message || "There was a problem submitting your informed consent.",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error("Error submitting informed consent:", error);
@@ -139,7 +115,7 @@ const InformedConsentTemplate: React.FC<InformedConsentTemplateProps> = ({
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto pb-12">
+    <div className="w-full max-w-5xl mx-auto pb-12" ref={formRef} id="informed-consent-form">
       <Card className="overflow-hidden">
         <CardHeader className="bg-zinc-50 border-b border-zinc-200">
           <div className="flex items-center justify-between">
