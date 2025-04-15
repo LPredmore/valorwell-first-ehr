@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useTimeZone } from '@/context/TimeZoneContext';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const CalendarPage = () => {
   const {
@@ -30,19 +32,18 @@ const CalendarPage = () => {
     setAppointmentRefreshTrigger,
     isDialogOpen,
     setIsDialogOpen,
-    userTimeZone,
-    isLoadingTimeZone,
   } = useCalendarState();
 
-  // Use only the month view mode state
-  const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week'>('month');
+  const { userTimeZone, isLoading: isLoadingTimeZone } = useTimeZone();
+
+  const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week'>('week');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Add logging for current user
   useEffect(() => {
+    console.log('[Calendar] Page initialized with timezone:', userTimeZone);
     const fetchCurrentUser = async () => {
       try {
         const { data, error } = await supabase.auth.getUser();
@@ -66,10 +67,9 @@ const CalendarPage = () => {
           setCurrentUserId(data.user.id);
           setUserEmail(data.user.email);
           
-          // Fetch user role
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('role')
+            .select('role, time_zone')
             .eq('id', data.user.id)
             .single();
             
@@ -77,12 +77,13 @@ const CalendarPage = () => {
             console.error('[Calendar] Error fetching user role:', profileError);
           } else if (profileData) {
             setUserRole(profileData.role);
-            console.log('[Calendar] User role:', profileData.role);
+            console.log('[Calendar] User profile data:', {
+              role: profileData.role,
+              timeZone: profileData.time_zone
+            });
           }
           
-          // If we have a user email but no selectedClinicianId, try to find the clinician
           if (data.user.email && !selectedClinicianId) {
-            // Updated: Use case-insensitive comparison with ILIKE
             const { data: clinicianData, error: clinicianError } = await supabase
               .from('clinicians')
               .select('id')
@@ -96,7 +97,6 @@ const CalendarPage = () => {
               setSelectedClinicianId(clinicianData.id);
             } else {
               console.log('[Calendar] No clinician found for email:', data.user.email);
-              // Potential UI feedback could go here
             }
           }
         } else {
@@ -111,9 +111,8 @@ const CalendarPage = () => {
     };
     
     fetchCurrentUser();
-  }, []);
+  }, [userTimeZone]);
 
-  // Log key state changes
   useEffect(() => {
     console.log(`[Calendar] Selected clinicianId: "${selectedClinicianId}"`);
   }, [selectedClinicianId]);
@@ -162,9 +161,24 @@ const CalendarPage = () => {
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
-  // Determine if user is allowed to change clinician selection
-  // Only allow admin or non-clinician users to change clinician selection
   const canSelectDifferentClinician = userRole !== 'clinician';
+
+  if (isLoadingTimeZone) {
+    return (
+      <Layout>
+        <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
+          <div className="flex flex-col space-y-6">
+            <div className="flex justify-between items-center">
+              <h1 className="text-2xl font-bold text-gray-800">Calendar</h1>
+              <Skeleton className="h-10 w-64" />
+            </div>
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-[500px] w-full" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
