@@ -675,7 +675,6 @@ const ProfileSetup = () => {
 
   const handleSubmit = async () => {
     try {
-      // Prevent multiple submissions
       if (isSubmitting) return;
       setIsSubmitting(true);
       
@@ -689,6 +688,19 @@ const ProfileSetup = () => {
         });
         setIsSubmitting(false);
         return;
+      }
+
+      // First update the time zone in profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          time_zone: values.client_time_zone
+        })
+        .eq('id', clientId);
+
+      if (profileError) {
+        console.error("Error updating profile time zone:", profileError);
+        throw profileError;
       }
       
       console.log("Submitting final form data:", {
