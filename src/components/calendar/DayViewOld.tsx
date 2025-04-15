@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, addMinutes, startOfDay, setHours, setMinutes, isSameDay, differenceInMinutes, parseISO } from 'date-fns';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
+import { getClinicianAvailabilityForDay } from '@/utils/availabilityUtils';
 
 interface DayViewProps {
   currentDate: Date;
@@ -114,44 +114,55 @@ const DayView: React.FC<DayViewProps> = ({
     const fetchAvailabilityAndExceptions = async () => {
       setLoading(true);
       try {
-        let availabilityQuery = supabase
-          .from('availability')
-          .select('*')
-          .eq('day_of_week', dayOfWeek)
-          .eq('is_active', true);
-
-        if (clinicianId) {
-          availabilityQuery = availabilityQuery.eq('clinician_id', clinicianId);
+        if (!clinicianId) {
+          setAvailabilityBlocks([]);
+          setExceptions([]);
+          processAvailabilityWithExceptions([], []);
+          setLoading(false);
+          return;
         }
 
-        const { data: availabilityData, error: availabilityError } = await availabilityQuery;
+        // Fetch clinician data for the specific day
+        const { data: clinicianData, error: clinicianError } = await supabase
+          .from('clinicians')
+          .select(`
+            id,
+            clinician_${dayOfWeek.toLowerCase()}start1, clinician_${dayOfWeek.toLowerCase()}end1,
+            clinician_${dayOfWeek.toLowerCase()}start2, clinician_${dayOfWeek.toLowerCase()}end2,
+            clinician_${dayOfWeek.toLowerCase()}start3, clinician_${dayOfWeek.toLowerCase()}end3
+          `)
+          .eq('id', clinicianId)
+          .single();
 
-        if (availabilityError) {
-          console.error('Error fetching availability:', availabilityError);
-        } else {
-          console.log('DayView availability data:', availabilityData);
-          setAvailabilityBlocks(availabilityData || []);
+        if (clinicianError) {
+          console.error('Error fetching clinician data:', clinicianError);
+          throw clinicianError;
+        }
+
+        // Convert clinician data to availability blocks format
+        const availabilityData = getClinicianAvailabilityForDay(clinicianData, dayOfWeek);
+        console.log('DayView availability data:', availabilityData);
+        setAvailabilityBlocks(availabilityData || []);
+        
+        if (availabilityData && availabilityData.length > 0) {
+          const availabilityIds = availabilityData.map(block => block.id);
           
-          if (availabilityData && availabilityData.length > 0 && clinicianId) {
-            const availabilityIds = availabilityData.map(block => block.id);
+          const { data: exceptionsData, error: exceptionsError } = await supabase
+            .from('availability_exceptions')
+            .select('*')
+            .eq('clinician_id', clinicianId)
+            .eq('specific_date', formattedDate)
+            .in('original_availability_id', availabilityIds);
             
-            const { data: exceptionsData, error: exceptionsError } = await supabase
-              .from('availability_exceptions')
-              .select('*')
-              .eq('clinician_id', clinicianId)
-              .eq('specific_date', formattedDate)
-              .in('original_availability_id', availabilityIds);
-              
-            if (exceptionsError) {
-              console.error('Error fetching availability exceptions:', exceptionsError);
-            } else {
-              console.log('DayView exceptions data:', exceptionsData);
-              setExceptions(exceptionsData || []);
-            }
+          if (exceptionsError) {
+            console.error('Error fetching availability exceptions:', exceptionsError);
+          } else {
+            console.log('DayView exceptions data:', exceptionsData);
+            setExceptions(exceptionsData || []);
           }
-          
-          processAvailabilityWithExceptions(availabilityData || [], exceptions || []);
         }
+        
+        processAvailabilityWithExceptions(availabilityData || [], exceptions || []);
       } catch (error) {
         console.error('Error:', error);
       } finally {

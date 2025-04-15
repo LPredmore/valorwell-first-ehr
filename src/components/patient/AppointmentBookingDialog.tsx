@@ -13,6 +13,10 @@ import {
   ensureIANATimeZone,
   formatTime12Hour
 } from '@/utils/timeZoneUtils';
+import { 
+  convertClinicianDataToAvailabilityBlocks,
+  getClinicianAvailabilityFieldsQuery
+} from '@/utils/availabilityUtils';
 
 import { 
   Dialog, 
@@ -152,24 +156,33 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
       
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('availability')
-          .select('*')
-          .eq('clinician_id', clinicianId)
-          .eq('is_active', true);
+        // Fetch clinician data which includes availability in columns
+        const { data: clinicianData, error: clinicianError } = await supabase
+          .from('clinicians')
+          .select(getClinicianAvailabilityFieldsQuery())
+          .eq('id', clinicianId)
+          .single();
           
-        if (error) {
-          console.error('Error fetching availability:', error);
+        if (clinicianError) {
+          console.error('Error fetching clinician data:', clinicianError);
           toast({
             title: "Error",
             description: "Could not fetch therapist availability",
             variant: "destructive"
           });
-        } else {
-          setAvailabilityBlocks(data || []);
+          return;
         }
+        
+        // Convert clinician data to availability blocks format
+        const availabilityData = convertClinicianDataToAvailabilityBlocks(clinicianData);
+        setAvailabilityBlocks(availabilityData || []);
       } catch (error) {
         console.error('Error:', error);
+        toast({
+          title: "Error",
+          description: "Could not fetch therapist availability",
+          variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }
@@ -485,121 +498,119 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
 
                 <div>
                   <h3 className="text-sm font-medium mb-2">Available Time Slots</h3>
-                  <div className="text-xs text-gray-600 mb-2">
-                    All times shown in your local time zone ({formatTimeZoneDisplay(clientTimeZone)})
+                  <div className="text-xs text-gray-600 mb-1">
+                    {selectedDate ? format(selectedDate, 'EEEE, MMMM d, yyyy') : 'Select a date'}
                   </div>
-                  {timeSlots.length > 0 ? (
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto p-2">
-                      <RadioGroup value={selectedTime || ''} onValueChange={setSelectedTime}>
-                        <div className="grid grid-cols-2 gap-2">
-                          {timeSlots.map(slot => (
-                            <div key={slot.time} className="flex items-center">
-                              <RadioGroupItem
-                                value={slot.time}
-                                id={`time-${slot.time}`}
-                                disabled={!slot.available}
-                                className="focus:ring-valorwell-500"
-                              />
-                              <Label
-                                htmlFor={`time-${slot.time}`}
-                                className={`ml-2 ${!slot.available ? 'line-through text-gray-400' : ''}`}
-                              >
-                                {formatTimeDisplay(slot.time)}
-                              </Label>
-                            </div>
-                          ))}
+                  
+                  {selectedDate && timeSlots.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto p-1">
+                      {timeSlots.map((slot, index) => (
+                        <div key={index} className="relative">
+                          <button
+                            type="button"
+                            className={`w-full p-2 rounded-md text-sm transition-colors ${
+                              selectedTime === slot.time
+                                ? 'bg-valorwell-500 text-white'
+                                : slot.available
+                                ? 'bg-white border border-gray-200 hover:bg-gray-50'
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            }`}
+                            onClick={() => {
+                              if (slot.available) {
+                                setSelectedTime(slot.time);
+                              }
+                            }}
+                            disabled={!slot.available}
+                          >
+                            {formatTimeDisplay(`${slot.time}:00`)}
+                            {selectedTime === slot.time && (
+                              <Check className="h-4 w-4 absolute right-2 top-1/2 transform -translate-y-1/2" />
+                            )}
+                          </button>
                         </div>
-                      </RadioGroup>
+                      ))}
+                    </div>
+                  ) : selectedDate ? (
+                    <div className="flex items-center justify-center h-[200px] border rounded-md bg-gray-50">
+                      <p className="text-sm text-gray-500">No available time slots for this date</p>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-[300px] border rounded-md p-4 bg-gray-50">
-                      <p className="text-gray-500">
-                        {selectedDate 
-                          ? 'No available time slots for this date' 
-                          : 'Please select a date to view available times'}
-                      </p>
+                    <div className="flex items-center justify-center h-[200px] border rounded-md bg-gray-50">
+                      <p className="text-sm text-gray-500">Please select a date first</p>
                     </div>
                   )}
                 </div>
               </div>
               
-              <DialogFooter>
+              <div className="flex justify-end">
                 <Button 
+                  type="button" 
                   onClick={() => {
                     if (selectedTime) {
-                      const tabsList = document.querySelector('[role="tablist"]');
-                      if (tabsList) {
-                        const detailsTab = tabsList.querySelector('[value="details"]');
-                        if (detailsTab) {
-                          (detailsTab as HTMLElement).click();
-                        }
-                      }
+                      document.querySelector('[data-value="details"]')?.click();
                     }
                   }}
                   disabled={!selectedTime}
                 >
                   Continue
                 </Button>
-              </DialogFooter>
+              </div>
             </TabsContent>
             
             <TabsContent value="details" className="space-y-4">
               <div>
-                <h3 className="text-sm font-medium mb-2">Notes (Optional)</h3>
-                <Textarea
-                  placeholder="Add any notes or questions for your therapist"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
-                />
-              </div>
-              
-              <div className="bg-gray-50 p-4 rounded-md">
-                <h3 className="text-sm font-medium mb-3">Appointment Summary</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Date:</span>
-                    <span className="font-medium">
-                      {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : ''}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Time:</span>
-                    <span className="font-medium">
-                      {selectedTime ? formatTimeDisplay(selectedTime) : ''}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Type:</span>
-                    <span className="font-medium">Therapy Session</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Provider:</span>
-                    <span className="font-medium">{clinicianName || 'Your therapist'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Time Zone:</span>
-                    <span className="font-medium">{formatTimeZoneDisplay(clientTimeZone)}</span>
+                <h3 className="text-sm font-medium mb-2">Appointment Details</h3>
+                <div className="space-y-4 p-4 border rounded-md bg-gray-50">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-gray-500">Date:</span>
+                      <span className="ml-2 font-medium">
+                        {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : ''}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Time:</span>
+                      <span className="ml-2 font-medium">
+                        {selectedTime ? formatTimeDisplay(`${selectedTime}:00`) : ''}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Therapist:</span>
+                      <span className="ml-2 font-medium">{clinicianName}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Session Type:</span>
+                      <span className="ml-2 font-medium">Therapy Session</span>
+                    </div>
                   </div>
                 </div>
               </div>
               
-              <DialogFooter className="flex justify-between items-center pt-4">
+              <div>
+                <Label htmlFor="notes" className="text-sm font-medium">
+                  Notes (optional)
+                </Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Add any notes or questions for your therapist"
+                  className="mt-1"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              </div>
+              
+              <div className="flex justify-between">
                 <Button 
+                  type="button" 
                   variant="outline" 
                   onClick={() => {
-                    const tabsList = document.querySelector('[role="tablist"]');
-                    if (tabsList) {
-                      const calendarTab = tabsList.querySelector('[value="calendar"]');
-                      if (calendarTab) {
-                        (calendarTab as HTMLElement).click();
-                      }
-                    }
+                    document.querySelector('[data-value="calendar"]')?.click();
                   }}
                 >
                   Back
                 </Button>
                 <Button 
+                  type="button" 
                   onClick={handleBookAppointment}
                   disabled={bookingInProgress}
                 >
@@ -609,13 +620,10 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
                       Booking...
                     </>
                   ) : (
-                    <>
-                      <Check className="mr-2 h-4 w-4" />
-                      Confirm Booking
-                    </>
+                    'Book Appointment'
                   )}
                 </Button>
-              </DialogFooter>
+              </div>
             </TabsContent>
           </Tabs>
         )}

@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { addDays, format, isSameMonth, isSameDay, startOfMonth, startOfWeek, endOfMonth, endOfWeek, parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { fromUTCTimestamp, ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import { 
+  convertClinicianDataToAvailabilityBlocks, 
+  getClinicianAvailabilityFieldsQuery 
+} from '@/utils/availabilityUtils';
 
 interface Appointment {
   id: string;
@@ -99,14 +103,20 @@ export const useMonthViewData = (
       setLoading(true);
 
       try {
-        const { data: availabilityData, error: availabilityError } = await supabase
-          .from('availability')
-          .select('*')
-          .eq('clinician_id', clinicianId);
+        // Fetch clinician data which includes availability in columns
+        const { data: clinicianData, error: clinicianError } = await supabase
+          .from('clinicians')
+          .select(getClinicianAvailabilityFieldsQuery())
+          .eq('id', clinicianId)
+          .single();
 
-        if (availabilityError) {
-          throw availabilityError;
+        if (clinicianError) {
+          console.error('Error fetching clinician data:', clinicianError);
+          throw clinicianError;
         }
+
+        // Convert clinician data to availability blocks format
+        const availabilityData = convertClinicianDataToAvailabilityBlocks(clinicianData);
 
         const { data: timeOffData, error: timeOffError } = await supabase
           .from('time_off_blocks')
