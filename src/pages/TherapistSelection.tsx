@@ -8,6 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Eye } from 'lucide-react';
+import ViewAvailabilityDialog from '@/components/patient/ViewAvailabilityDialog';
 
 interface Client {
   client_state: string | null;
@@ -25,7 +27,7 @@ interface Therapist {
   clinician_licensed_states: string[] | null;
   clinician_min_client_age: number | null;
   clinician_profile_image: string | null;
-  clinician_image_url: string | null; // Added this field to match the database
+  clinician_image_url: string | null;
 }
 
 const TherapistSelection = () => {
@@ -40,6 +42,11 @@ const TherapistSelection = () => {
   const [selectingTherapist, setSelectingTherapist] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [noMatchingTherapists, setNoMatchingTherapists] = useState(false);
+  const [isViewingAvailability, setIsViewingAvailability] = useState(false);
+  const [selectedTherapistForAvailability, setSelectedTherapistForAvailability] = useState<{
+    id: string;
+    name: string | null;
+  } | null>(null);
 
   useEffect(() => {
     const fetchClientData = async () => {
@@ -299,9 +306,30 @@ const TherapistSelection = () => {
                               </h3>
                               <p className="text-sm text-gray-500 mt-1">{therapist.clinician_title || 'Therapist'}</p>
                               
-                              <Button className="mt-4 w-full bg-valorwell-600 hover:bg-valorwell-700" onClick={() => handleSelectTherapist(therapist)} disabled={selectingTherapist}>
-                                {selectingTherapist ? 'Selecting...' : 'Select Therapist'}
-                              </Button>
+                              <div className="mt-4 w-full space-y-2">
+                                <Button 
+                                  className="w-full bg-valorwell-600 hover:bg-valorwell-700" 
+                                  onClick={() => handleSelectTherapist(therapist)} 
+                                  disabled={selectingTherapist}
+                                >
+                                  {selectingTherapist ? 'Selecting...' : 'Select Therapist'}
+                                </Button>
+                                
+                                <Button
+                                  variant="outline"
+                                  className="w-full"
+                                  onClick={() => {
+                                    setSelectedTherapistForAvailability({
+                                      id: therapist.id,
+                                      name: therapist.clinician_professional_name || `${therapist.clinician_first_name} ${therapist.clinician_last_name}`
+                                    });
+                                    setIsViewingAvailability(true);
+                                  }}
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Availability
+                                </Button>
+                              </div>
                             </div>
                             
                             <div className="md:w-3/4">
@@ -331,6 +359,12 @@ const TherapistSelection = () => {
           </CardContent>
         </Card>
       </div>
+      <ViewAvailabilityDialog
+        open={isViewingAvailability}
+        onOpenChange={setIsViewingAvailability}
+        clinicianId={selectedTherapistForAvailability?.id ?? null}
+        clinicianName={selectedTherapistForAvailability?.name ?? null}
+      />
     </Layout>;
 };
 
