@@ -1,4 +1,3 @@
-
 import { Appointment, TimeBlock } from "./useWeekViewData";
 
 export interface WeekViewProps {
@@ -15,6 +14,7 @@ export interface WeekViewProps {
 export interface BaseAppointment {
   id: string;
   client_id: string;
+  clinician_id: string;
   date: string;
   start_time: string;
   end_time: string;
@@ -27,4 +27,5 @@ export interface BaseAppointment {
     client_first_name: string;
     client_last_name: string;
   };
+  clientName?: string; // Adding this for EditAppointmentDialog
 }
