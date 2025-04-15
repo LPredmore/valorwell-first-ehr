@@ -11,7 +11,8 @@ import {
   formatUTCTimeForUser,
   formatTimeZoneDisplay,
   ensureIANATimeZone,
-  formatTime12Hour
+  formatTime12Hour,
+  toUTCTimestamp
 } from '@/utils/timeZoneUtils';
 import { 
   convertClinicianDataToAvailabilityBlocks,
@@ -336,6 +337,15 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
         timezone: clientTimeZone
       });
       
+      // Convert local time to UTC timestamps
+      const startTimestamp = toUTCTimestamp(selectedDate, startTime, clientTimeZone);
+      const endTimestamp = toUTCTimestamp(selectedDate, endTime, clientTimeZone);
+      
+      console.log('Converted to UTC timestamps:', {
+        startTimestamp,
+        endTimestamp
+      });
+      
       const { data, error } = await supabase
         .from('appointments')
         .insert([
@@ -345,6 +355,9 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
             date: dateStr,
             start_time: startTime,
             end_time: endTime,
+            appointment_datetime: startTimestamp,
+            appointment_end_datetime: endTimestamp,
+            source_time_zone: clientTimeZone,
             type: "Therapy Session",
             notes: notes,
             status: 'scheduled'
@@ -501,6 +514,9 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
                   <div className="text-xs text-gray-600 mb-1">
                     {selectedDate ? format(selectedDate, 'EEEE, MMMM d, yyyy') : 'Select a date'}
                   </div>
+                  <div className="text-xs text-gray-500 mb-2">
+                    Times shown in {formatTimeZoneDisplay(clientTimeZone)}
+                  </div>
                   
                   {selectedDate && timeSlots.length > 0 ? (
                     <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto p-1">
@@ -572,6 +588,9 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
                       <span className="text-gray-500">Time:</span>
                       <span className="ml-2 font-medium">
                         {selectedTime ? formatTimeDisplay(`${selectedTime}:00`) : ''}
+                      </span>
+                      <span className="ml-1 text-xs text-gray-500">
+                        ({formatTimeZoneDisplay(clientTimeZone)})
                       </span>
                     </div>
                     <div>

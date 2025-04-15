@@ -5,6 +5,7 @@ import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { BaseAppointment } from '@/types/appointment';
+import { getAppointmentsInUserTimeZone } from '@/utils/appointmentUtils';
 
 export type { BaseAppointment };
 
@@ -42,6 +43,7 @@ export const useAppointments = (userId: string | null) => {
             video_room_url,
             appointment_datetime,
             appointment_end_datetime,
+            source_time_zone,
             clients (
               client_first_name,
               client_last_name
@@ -57,11 +59,18 @@ export const useAppointments = (userId: string | null) => {
         }
 
         console.log(`[useAppointments] Retrieved ${data?.length || 0} appointments for clinician ID: "${userId}"`);
-
-        return data.map((appointment: any) => ({
+        
+        // Convert appointments to user's time zone
+        const appointmentsWithClient = data.map((appointment: any) => ({
           ...appointment,
           client: appointment.clients
         })) as BaseAppointment[];
+        
+        // Apply time zone conversion to all appointments
+        const convertedAppointments = getAppointmentsInUserTimeZone(appointmentsWithClient, userTimeZone);
+        console.log(`[useAppointments] Converted ${convertedAppointments.length} appointments to timezone: ${userTimeZone}`);
+        
+        return convertedAppointments;
       } catch (error) {
         console.error('[useAppointments] Exception in appointment fetching:', error);
         throw error;
@@ -75,17 +84,23 @@ export const useAppointments = (userId: string | null) => {
   }, [appointments]);
 
   const todayAppointments = appointments?.filter(appointment => {
-    const appointmentDate = parseISO(appointment.date);
+    // Use display_date if available (time zone converted), otherwise fall back to date
+    const dateToUse = appointment.display_date || appointment.date;
+    const appointmentDate = parseISO(dateToUse);
     return isToday(appointmentDate);
   }) || [];
 
   const upcomingAppointments = appointments?.filter(appointment => {
-    const appointmentDate = parseISO(appointment.date);
+    // Use display_date if available (time zone converted), otherwise fall back to date
+    const dateToUse = appointment.display_date || appointment.date;
+    const appointmentDate = parseISO(dateToUse);
     return isFuture(appointmentDate) && !isToday(appointmentDate);
   }) || [];
 
   const pastAppointments = appointments?.filter(appointment => {
-    const appointmentDate = parseISO(appointment.date);
+    // Use display_date if available (time zone converted), otherwise fall back to date
+    const dateToUse = appointment.display_date || appointment.date;
+    const appointmentDate = parseISO(dateToUse);
     return isBefore(appointmentDate, new Date()) && 
            !isToday(appointmentDate) && 
            appointment.status === "scheduled";
