@@ -1,4 +1,3 @@
-
 /**
  * Shared utility functions for form submission and document handling
  */
@@ -113,13 +112,13 @@ export const handleFormSubmission = async (
       console.log(`Found document assignment with ID: ${assignment.id}, name: ${assignment.document_name}, current status: ${assignment.status}`);
       
       // Use a transaction to ensure the update is committed
-      // FIX: Remove completed_at and pdf_url fields that don't exist in the table
       const { error: updateError } = await supabase
         .from('document_assignments')
         .update({
           status: 'completed',
-          // Store PDF path in the response_data JSON field instead
-          response_data: { ...responseData, pdf_path: filePath }
+          pdf_url: filePath,
+          completed_at: new Date().toISOString(),
+          response_data: responseData
         })
         .eq('id', assignment.id);
         
