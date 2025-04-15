@@ -22,6 +22,7 @@ export type Database = {
           id: string
           notes: string | null
           recurring_group_id: string | null
+          source_time_zone: string
           start_time: string
           status: string
           type: string
@@ -40,6 +41,7 @@ export type Database = {
           id?: string
           notes?: string | null
           recurring_group_id?: string | null
+          source_time_zone?: string
           start_time: string
           status?: string
           type: string
@@ -58,6 +60,7 @@ export type Database = {
           id?: string
           notes?: string | null
           recurring_group_id?: string | null
+          source_time_zone?: string
           start_time?: string
           status?: string
           type?: string

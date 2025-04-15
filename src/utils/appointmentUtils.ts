@@ -1,3 +1,4 @@
+
 import { format } from 'date-fns';
 import { fromUTCTimestamp, ensureIANATimeZone } from './timeZoneUtils';
 
@@ -13,7 +14,7 @@ export interface AppointmentType {
   end_time: string;
   appointment_datetime?: string;
   appointment_end_datetime?: string;
-  source_time_zone?: string;
+  source_time_zone: string;  // Added this field
   type: string;
   notes?: string;
   status: string;
