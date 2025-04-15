@@ -1,155 +1,198 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
-import { ensureIANATimeZone, fromUTCTimestamp, toUTCTimestamp } from '@/utils/timeZoneUtils';
+import { getUserTimeZoneById } from '@/hooks/useUserTimeZone';
+import { ensureIANATimeZone, formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
 import { getAppointmentInUserTimeZone } from '@/utils/appointmentUtils';
 
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { Loader2 } from 'lucide-react';
+
+interface AppointmentType {
+  id: string;
+  client_id: string;
+  clinician_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  appointment_datetime?: string;
+  appointment_end_datetime?: string;
+  source_time_zone?: string;
+  type: string;
+  notes?: string;
+  status: string;
+  display_date?: string;
+  display_start_time?: string;
+  display_end_time?: string;
+}
+
+const PST_TIME_ZONE = 'America/Los_Angeles';
+
 const TimeZoneTester: React.FC = () => {
-  const [testResults, setTestResults] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Test time zones
-  const timeZones = [
-    'America/New_York',    // Eastern Time
-    'America/Chicago',     // Central Time
-    'America/Denver',      // Mountain Time
-    'America/Los_Angeles', // Pacific Time
-    'Europe/London',       // GMT/UTC
-    'Asia/Tokyo'           // Japan Standard Time
-  ];
-  
-  const runTests = async () => {
-    setIsLoading(true);
-    setError(null);
-    const results: any[] = [];
-    
-    try {
-      // Create a test appointment in each time zone
-      const testDate = new Date();
-      const dateStr = format(testDate, 'yyyy-MM-dd');
-      const timeStr = '14:00'; // 2:00 PM
-      
-      for (const sourceTimeZone of timeZones) {
-        // Convert to UTC for storage
-        const startTimestamp = toUTCTimestamp(dateStr, timeStr, sourceTimeZone);
-        const endTimestamp = toUTCTimestamp(dateStr, '14:30', sourceTimeZone);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [testAppointment, setTestAppointment] = useState<AppointmentType | null>(null);
+  const [clientTimeZone, setClientTimeZone] = useState<string>(PST_TIME_ZONE);
+  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>(PST_TIME_ZONE);
+  const [clientView, setClientView] = useState<AppointmentType | null>(null);
+  const [clinicianView, setClinicianView] = useState<AppointmentType | null>(null);
+  const [testResult, setTestResult] = useState<'success' | 'failure' | null>(null);
+  const [testMessage, setTestMessage] = useState<string>('');
+
+  useEffect(() => {
+    const createTestAppointment = async () => {
+      setLoading(true);
+      try {
+        // Create a test appointment with both client and clinician in PST
+        const now = new Date();
+        const appointmentDate = format(now, 'yyyy-MM-dd');
+        const appointmentTime = '09:00'; // 9 AM
+        const appointmentEndTime = '09:30'; // 9:30 AM
         
-        // Create a test appointment object
-        const testAppointment = {
-          id: `test-${sourceTimeZone}`,
-          client_id: 'test-client',
-          clinician_id: 'test-clinician',
-          date: dateStr,
-          start_time: timeStr,
-          end_time: '14:30',
-          appointment_datetime: startTimestamp,
-          appointment_end_datetime: endTimestamp,
-          source_time_zone: sourceTimeZone,
-          type: 'Test Session',
+        // Create test appointment data
+        const appointment: Partial<AppointmentType> = {
+          date: appointmentDate,
+          start_time: appointmentTime,
+          end_time: appointmentEndTime,
+          appointment_datetime: new Date(`${appointmentDate}T${appointmentTime}:00Z`).toISOString(),
+          appointment_end_datetime: new Date(`${appointmentDate}T${appointmentEndTime}:00Z`).toISOString(),
+          source_time_zone: PST_TIME_ZONE,
+          type: 'Test Appointment',
           status: 'scheduled'
         };
         
-        // Test conversion to each target time zone
-        for (const targetTimeZone of timeZones) {
-          const convertedAppointment = getAppointmentInUserTimeZone(
-            testAppointment, 
-            targetTimeZone
-          );
-          
-          // Calculate expected time in target time zone
-          const expectedLocalTime = fromUTCTimestamp(startTimestamp, targetTimeZone);
-          const expectedTimeStr = format(expectedLocalTime, 'HH:mm');
-          
-          // Check if conversion is correct
-          const isCorrect = convertedAppointment.display_start_time === expectedTimeStr;
-          
-          results.push({
-            sourceTimeZone,
-            targetTimeZone,
-            originalTime: timeStr,
-            convertedTime: convertedAppointment.display_start_time,
-            expectedTime: expectedTimeStr,
-            isCorrect,
-            utcTime: startTimestamp
-          });
+        setTestAppointment(appointment as AppointmentType);
+        
+        // Convert appointment to client view (PST)
+        const clientAppointment = getAppointmentInUserTimeZone(
+          appointment as AppointmentType,
+          clientTimeZone
+        );
+        setClientView(clientAppointment);
+        
+        // Convert appointment to clinician view (PST)
+        const clinicianAppointment = getAppointmentInUserTimeZone(
+          appointment as AppointmentType,
+          clinicianTimeZone
+        );
+        setClinicianView(clinicianAppointment);
+        
+        // Verify the test
+        if (clientAppointment.display_start_time === appointmentTime && 
+            clinicianAppointment.display_start_time === appointmentTime) {
+          setTestResult('success');
+          setTestMessage('PST to PST conversion test passed! Appointments display at the correct time.');
+        } else {
+          setTestResult('failure');
+          setTestMessage(`PST to PST conversion test failed! Client sees ${clientAppointment.display_start_time}, Clinician sees ${clinicianAppointment.display_start_time}, Expected: ${appointmentTime}`);
         }
+      } catch (error) {
+        console.error('Error in time zone test:', error);
+        setTestResult('failure');
+        setTestMessage('Error running time zone test: ' + (error instanceof Error ? error.message : String(error)));
+      } finally {
+        setLoading(false);
       }
-      
-      setTestResults(results);
-    } catch (err) {
-      console.error('Error running time zone tests:', err);
-      setError(`Test failed: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  useEffect(() => {
-    runTests();
+    };
+    
+    createTestAppointment();
   }, []);
-  
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Time Zone Conversion Tester</h1>
+    <div className="container mx-auto py-8">
+      <h1 className="text-2xl font-bold mb-6">Time Zone Conversion Tester</h1>
       
-      {isLoading ? (
-        <div className="text-center py-8">
-          <p>Running time zone conversion tests...</p>
-        </div>
-      ) : error ? (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          <p>{error}</p>
+      {loading ? (
+        <div className="flex justify-center items-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-valorwell-500" />
+          <span className="ml-2">Running time zone tests...</span>
         </div>
       ) : (
-        <>
-          <div className="mb-4">
-            <button 
-              onClick={runTests}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Run Tests Again
-            </button>
-          </div>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>PST to PST Conversion Test</CardTitle>
+              <CardDescription>
+                Testing appointment display when both client and clinician are in PST
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="p-4 rounded-md bg-muted">
+                  <h3 className="font-medium mb-2">Test Configuration</h3>
+                  <p><span className="font-medium">Client Time Zone:</span> {formatTimeZoneDisplay(clientTimeZone)}</p>
+                  <p><span className="font-medium">Clinician Time Zone:</span> {formatTimeZoneDisplay(clinicianTimeZone)}</p>
+                  <p><span className="font-medium">Original Appointment Time:</span> {testAppointment?.start_time}</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="border rounded-md p-4">
+                    <h3 className="font-medium mb-2">Client View</h3>
+                    <p><span className="text-muted-foreground">Date:</span> {clientView?.display_date || clientView?.date}</p>
+                    <p><span className="text-muted-foreground">Start Time:</span> {clientView?.display_start_time || clientView?.start_time}</p>
+                    <p><span className="text-muted-foreground">End Time:</span> {clientView?.display_end_time || clientView?.end_time}</p>
+                  </div>
+                  
+                  <div className="border rounded-md p-4">
+                    <h3 className="font-medium mb-2">Clinician View</h3>
+                    <p><span className="text-muted-foreground">Date:</span> {clinicianView?.display_date || clinicianView?.date}</p>
+                    <p><span className="text-muted-foreground">Start Time:</span> {clinicianView?.display_start_time || clinicianView?.start_time}</p>
+                    <p><span className="text-muted-foreground">End Time:</span> {clinicianView?.display_end_time || clinicianView?.end_time}</p>
+                  </div>
+                </div>
+                
+                <div className={`p-4 rounded-md ${testResult === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                  <h3 className="font-medium mb-2">Test Result: {testResult === 'success' ? 'PASSED' : 'FAILED'}</h3>
+                  <p>{testMessage}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
           
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white border border-gray-200">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="py-2 px-4 border">Source Time Zone</th>
-                  <th className="py-2 px-4 border">Target Time Zone</th>
-                  <th className="py-2 px-4 border">Original Time</th>
-                  <th className="py-2 px-4 border">Converted Time</th>
-                  <th className="py-2 px-4 border">Expected Time</th>
-                  <th className="py-2 px-4 border">Result</th>
-                </tr>
-              </thead>
-              <tbody>
-                {testResults.map((result, index) => (
-                  <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                    <td className="py-2 px-4 border">{result.sourceTimeZone}</td>
-                    <td className="py-2 px-4 border">{result.targetTimeZone}</td>
-                    <td className="py-2 px-4 border">{result.originalTime}</td>
-                    <td className="py-2 px-4 border">{result.convertedTime}</td>
-                    <td className="py-2 px-4 border">{result.expectedTime}</td>
-                    <td className={`py-2 px-4 border ${result.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                      {result.isCorrect ? 'PASS' : 'FAIL'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-          <div className="mt-6">
-            <h2 className="text-xl font-semibold mb-2">Summary</h2>
-            <p>
-              Total Tests: {testResults.length}<br />
-              Passed: {testResults.filter(r => r.isCorrect).length}<br />
-              Failed: {testResults.filter(r => !r.isCorrect).length}
-            </p>
-          </div>
-        </>
+          <Card>
+            <CardHeader>
+              <CardTitle>Technical Details</CardTitle>
+              <CardDescription>
+                Raw appointment data and conversion information
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-medium mb-2">Original Appointment Data</h3>
+                  <pre className="bg-muted p-4 rounded-md overflow-auto text-xs">
+                    {JSON.stringify(testAppointment, null, 2)}
+                  </pre>
+                </div>
+                
+                <Separator />
+                
+                <div>
+                  <h3 className="font-medium mb-2">Client View (Converted)</h3>
+                  <pre className="bg-muted p-4 rounded-md overflow-auto text-xs">
+                    {JSON.stringify(clientView, null, 2)}
+                  </pre>
+                </div>
+                
+                <Separator />
+                
+                <div>
+                  <h3 className="font-medium mb-2">Clinician View (Converted)</h3>
+                  <pre className="bg-muted p-4 rounded-md overflow-auto text-xs">
+                    {JSON.stringify(clinicianView, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

@@ -18,6 +18,7 @@ import {
   convertClinicianDataToAvailabilityBlocks,
   getClinicianAvailabilityFieldsQuery
 } from '@/utils/availabilityUtils';
+import { getUserTimeZoneById } from '@/hooks/useUserTimeZone';
 
 import { 
   Dialog, 
@@ -81,41 +82,50 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   const [bookingInProgress, setBookingInProgress] = useState<boolean>(false);
   const [minDaysAhead, setMinDaysAhead] = useState<number>(1);
   const [clinicianTimeZone, setClinicianTimeZone] = useState<string>("America/Chicago");
+  const [clientTimeZone, setClientTimeZone] = useState<string>(ensureIANATimeZone(propTimeZone || getUserTimeZone()));
   const [timeGranularity, setTimeGranularity] = useState<string>("half-hour");
   const { toast } = useToast();
-  
-  const clientTimeZone = ensureIANATimeZone(propTimeZone || getUserTimeZone());
+
+  // Fetch client time zone from database when dialog opens
+  useEffect(() => {
+    if (open && clientId) {
+      const fetchClientTimeZone = async () => {
+        try {
+          const timeZone = await getUserTimeZoneById(clientId);
+          console.log(`[AppointmentBookingDialog] Fetched client time zone from database: ${timeZone}`);
+          setClientTimeZone(timeZone);
+        } catch (error) {
+          console.error('[AppointmentBookingDialog] Error fetching client time zone:', error);
+          // Fall back to prop or browser time zone
+          setClientTimeZone(ensureIANATimeZone(propTimeZone || getUserTimeZone()));
+        }
+      };
+      
+      fetchClientTimeZone();
+    }
+  }, [open, clientId, propTimeZone]);
 
   useEffect(() => {
     if (open) {
-      console.log("AppointmentBookingDialog opened with client timezone:", clientTimeZone);
+      console.log("[AppointmentBookingDialog] Opened with client timezone:", clientTimeZone);
     }
   }, [open, clientTimeZone]);
 
   useEffect(() => {
     if (!open || !clinicianId) return;
     
-    const fetchClinicianData = async () => {
+    const fetchClinicianTimeZone = async () => {
       try {
-        const { data, error } = await supabase
-          .from('clinicians')
-          .select('clinician_timezone')
-          .eq('id', clinicianId)
-          .single();
-          
-        if (error) {
-          console.error('Error fetching clinician timezone:', error);
-        } else if (data?.clinician_timezone) {
-          const timezone = ensureIANATimeZone(data.clinician_timezone);
-          console.log('Fetched clinician timezone:', timezone);
-          setClinicianTimeZone(timezone);
-        }
+        // Use the enhanced getUserTimeZoneById function to get clinician time zone
+        const timeZone = await getUserTimeZoneById(clinicianId);
+        console.log('[AppointmentBookingDialog] Fetched clinician timezone:', timeZone);
+        setClinicianTimeZone(timeZone);
       } catch (error) {
-        console.error('Error in fetchClinicianData:', error);
+        console.error('[AppointmentBookingDialog] Error fetching clinician timezone:', error);
       }
     };
     
-    fetchClinicianData();
+    fetchClinicianTimeZone();
     
     const fetchSettings = async () => {
       try {
@@ -456,6 +466,8 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     }
   };
 
+  const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -491,161 +503,97 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
             </TabsList>
             
             <TabsContent value="calendar" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex flex-col space-y-4">
                 <div>
-                  <h3 className="text-sm font-medium mb-2">Select Date</h3>
-                  <div className="text-xs text-gray-600 mb-1">
-                    Minimum advance booking: {minDaysAhead} day{minDaysAhead !== 1 ? 's' : ''}
-                  </div>
+                  <Label className="text-sm text-muted-foreground mb-2 block">
+                    Your time zone: {timeZoneDisplay}
+                  </Label>
                   <Calendar
                     mode="single"
                     selected={selectedDate}
-                    onSelect={(date) => {
-                      console.log('Date selected:', date ? format(date, 'yyyy-MM-dd') : 'none');
-                      setSelectedDate(date);
-                    }}
+                    onSelect={setSelectedDate}
                     disabled={disabledDays}
-                    className="border rounded-md"
+                    className="rounded-md border mx-auto"
                   />
                 </div>
-
-                <div>
-                  <h3 className="text-sm font-medium mb-2">Available Time Slots</h3>
-                  <div className="text-xs text-gray-600 mb-1">
-                    {selectedDate ? format(selectedDate, 'EEEE, MMMM d, yyyy') : 'Select a date'}
-                  </div>
-                  <div className="text-xs text-gray-500 mb-2">
-                    Times shown in {formatTimeZoneDisplay(clientTimeZone)}
-                  </div>
-                  
-                  {selectedDate && timeSlots.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto p-1">
+                
+                {timeSlots.length > 0 ? (
+                  <div className="mt-4">
+                    <Label className="text-sm font-medium mb-2 block">
+                      Available Times <span className="text-xs text-muted-foreground">({timeZoneDisplay})</span>
+                    </Label>
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                       {timeSlots.map((slot, index) => (
-                        <div key={index} className="relative">
-                          <button
-                            type="button"
-                            className={`w-full p-2 rounded-md text-sm transition-colors ${
-                              selectedTime === slot.time
-                                ? 'bg-valorwell-500 text-white'
-                                : slot.available
-                                ? 'bg-white border border-gray-200 hover:bg-gray-50'
-                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            }`}
-                            onClick={() => {
-                              if (slot.available) {
-                                setSelectedTime(slot.time);
-                              }
-                            }}
-                            disabled={!slot.available}
-                          >
-                            {formatTimeDisplay(`${slot.time}:00`)}
-                            {selectedTime === slot.time && (
-                              <Check className="h-4 w-4 absolute right-2 top-1/2 transform -translate-y-1/2" />
-                            )}
-                          </button>
-                        </div>
+                        <Button
+                          key={index}
+                          variant={selectedTime === slot.time ? "default" : "outline"}
+                          className={`${!slot.available ? "opacity-50 cursor-not-allowed" : ""}`}
+                          disabled={!slot.available}
+                          onClick={() => setSelectedTime(slot.time)}
+                        >
+                          {formatTimeDisplay(slot.time)}
+                        </Button>
                       ))}
                     </div>
-                  ) : selectedDate ? (
-                    <div className="flex items-center justify-center h-[200px] border rounded-md bg-gray-50">
-                      <p className="text-sm text-gray-500">No available time slots for this date</p>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-[200px] border rounded-md bg-gray-50">
-                      <p className="text-sm text-gray-500">Please select a date first</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex justify-end">
-                <Button 
-                  type="button" 
-                  onClick={() => {
-                    if (selectedTime) {
-                      document.querySelector('[data-value="details"]')?.click();
-                    }
-                  }}
-                  disabled={!selectedTime}
-                >
-                  Continue
-                </Button>
+                  </div>
+                ) : selectedDate ? (
+                  <div className="text-center py-4">
+                    <p className="text-muted-foreground">No available times for this date.</p>
+                  </div>
+                ) : null}
               </div>
             </TabsContent>
             
             <TabsContent value="details" className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium mb-2">Appointment Details</h3>
-                <div className="space-y-4 p-4 border rounded-md bg-gray-50">
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="text-gray-500">Date:</span>
-                      <span className="ml-2 font-medium">
-                        {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : ''}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Time:</span>
-                      <span className="ml-2 font-medium">
-                        {selectedTime ? formatTimeDisplay(`${selectedTime}:00`) : ''}
-                      </span>
-                      <span className="ml-1 text-xs text-gray-500">
-                        ({formatTimeZoneDisplay(clientTimeZone)})
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Therapist:</span>
-                      <span className="ml-2 font-medium">{clinicianName}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Session Type:</span>
-                      <span className="ml-2 font-medium">Therapy Session</span>
-                    </div>
+              <div className="space-y-4">
+                <div className="flex flex-col space-y-1.5">
+                  <Label htmlFor="notes">Notes (optional)</Label>
+                  <Textarea
+                    id="notes"
+                    placeholder="Add any notes or questions for your therapist"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+                </div>
+                
+                <div className="bg-muted p-4 rounded-lg">
+                  <h3 className="font-medium mb-2">Appointment Summary</h3>
+                  <div className="text-sm space-y-1">
+                    <p><span className="text-muted-foreground">Date:</span> {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : ''}</p>
+                    <p>
+                      <span className="text-muted-foreground">Time:</span> {selectedTime ? formatTimeDisplay(selectedTime) : ''} 
+                      <span className="text-xs text-muted-foreground ml-1">({timeZoneDisplay})</span>
+                    </p>
+                    <p><span className="text-muted-foreground">Therapist:</span> {clinicianName}</p>
+                    <p><span className="text-muted-foreground">Type:</span> Therapy Session</p>
                   </div>
                 </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="notes" className="text-sm font-medium">
-                  Notes (optional)
-                </Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Add any notes or questions for your therapist"
-                  className="mt-1"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-              </div>
-              
-              <div className="flex justify-between">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => {
-                    document.querySelector('[data-value="calendar"]')?.click();
-                  }}
-                >
-                  Back
-                </Button>
-                <Button 
-                  type="button" 
-                  onClick={handleBookAppointment}
-                  disabled={bookingInProgress}
-                >
-                  {bookingInProgress ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Booking...
-                    </>
-                  ) : (
-                    'Book Appointment'
-                  )}
-                </Button>
               </div>
             </TabsContent>
           </Tabs>
         )}
+        
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleBookAppointment}
+            disabled={!selectedDate || !selectedTime || bookingInProgress}
+          >
+            {bookingInProgress ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Booking...
+              </>
+            ) : (
+              'Book Appointment'
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

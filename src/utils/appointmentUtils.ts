@@ -40,8 +40,21 @@ export const getAppointmentInUserTimeZone = (
       console.log(`Converting appointment from UTC to ${validTimeZone}:`, {
         id: appointment.id,
         utcStart: appointment.appointment_datetime,
-        utcEnd: appointment.appointment_end_datetime
+        utcEnd: appointment.appointment_end_datetime,
+        sourceTimeZone: appointment.source_time_zone || 'unknown'
       });
+      
+      // Check if source time zone matches user time zone to prevent double conversion
+      if (appointment.source_time_zone && 
+          ensureIANATimeZone(appointment.source_time_zone) === validTimeZone) {
+        console.log(`Source and target time zones match (${validTimeZone}), using original times`);
+        return {
+          ...appointment,
+          display_date: appointment.date,
+          display_start_time: appointment.start_time,
+          display_end_time: appointment.end_time
+        };
+      }
       
       const localStart = fromUTCTimestamp(appointment.appointment_datetime, validTimeZone);
       const localEnd = fromUTCTimestamp(appointment.appointment_end_datetime, validTimeZone);
