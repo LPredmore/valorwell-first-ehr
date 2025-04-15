@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -6,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { AppointmentCard } from './AppointmentCard';
 import { BaseAppointment } from '@/types/appointment';
 
+// Modify the props interface to match BaseAppointment
 interface AppointmentsListProps {
   title: string;
   icon: React.ReactNode;

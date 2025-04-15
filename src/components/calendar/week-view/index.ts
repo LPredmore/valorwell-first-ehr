@@ -1,10 +1,10 @@
 
 import WeekView from './WeekView';
-
 export default WeekView;
 export { useWeekViewData } from './useWeekViewData';
 export type { 
   Appointment,
+  BaseAppointment,
   AvailabilityBlock as AvailabilityBlockType,
   AvailabilityException,
   TimeBlock,

@@ -6,18 +6,7 @@ import CalendarGrid from './CalendarGrid';
 import WeekView from './week-view';
 import { TimeBlock } from './week-view/useWeekViewData'; 
 import { fromUTCTimestamp, ensureIANATimeZone } from '@/utils/timeZoneUtils';
-
-interface Appointment {
-  id: string;
-  client_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  type: string;
-  status: string;
-  appointment_datetime?: string; // UTC timestamp
-  appointment_end_datetime?: string; // UTC end timestamp
-}
+import { Appointment, BaseAppointment } from '@/types/appointment';
 
 interface AvailabilityBlock {
   id: string;
