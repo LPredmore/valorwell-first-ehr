@@ -15,8 +15,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Appointment } from '@/types/appointment'; // Updated import
 
-const CalendarPage = () => {
+interface MonthViewProps {
+  currentDate: Date;
+  clinicianId: string | null;
+  refreshTrigger?: number;
+  appointments?: Appointment[]; // Updated type from BaseAppointment
+  getClientName?: (clientId: string) => string;
+  onAppointmentClick?: (appointment: Appointment) => void; // Updated type
+  onAvailabilityClick?: (date: Date, availabilityBlock: AvailabilityBlock | TimeBlock) => void;
+  userTimeZone?: string;
+  weekViewMode?: boolean;
+}
+
+const CalendarPage: React.FC = () => {
   const {
     showAvailability,
     setShowAvailability,
