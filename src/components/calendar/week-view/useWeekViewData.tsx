@@ -10,10 +10,19 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { fromUTCTimestamp } from '@/utils/timeZoneUtils';
-import { BaseAppointment } from './types';
+
+interface BaseAppointment {
+  id: string;
+  client_id: string;
+  type: string;
+  status: string;
+  appointment_datetime: string;  // UTC timestamp
+  appointment_end_datetime: string; // UTC end timestamp
+}
 
 interface Appointment extends BaseAppointment {
-  // Add any additional properties specific to this component
+  appointment_datetime?: string;
+  appointment_end_datetime?: string;
 }
 
 interface AvailabilityBlock {

@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { AppointmentCard } from './AppointmentCard';
+import { AppointmentCard, AppointmentCardProps } from './AppointmentCard';
 import { BaseAppointment } from '@/components/calendar/week-view/types';
 
 interface AppointmentsListProps {

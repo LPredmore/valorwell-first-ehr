@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -8,11 +9,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
-import { BaseAppointment } from './week-view/types';
+
+// Import the missing components (assuming they exist elsewhere in your project)
+// If they don't exist, you'll need to create them or modify the code that uses them
 import AppointmentDetailsDialog from './AppointmentDetailsDialog';
 import AvailabilityEditDialog from './AvailabilityEditDialog';
 import AvailabilityPanel from './AvailabilityPanel';
-import { Appointment as WeekViewAppointment, TimeBlock } from './week-view/useWeekViewData';
 
 interface CalendarViewProps {
   view: 'week' | 'month';  // Keeping for backward compatibility
@@ -64,14 +66,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 }) => {
   const [currentDate, setCurrentDate] = useState(propCurrentDate || new Date());
   const [availabilityRefreshTrigger, setAvailabilityRefreshTrigger] = useState(0);
-  const [appointments, setAppointments] = useState<BaseAppointment[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clientsMap, setClientsMap] = useState<Record<string, any>>({});
-  const [selectedAppointment, setSelectedAppointment] = useState<WeekViewAppointment & {
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment & {
     clientName?: string;
   } | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
-  const [selectedAvailability, setSelectedAvailability] = useState<any | null>(null);
+  const [selectedAvailability, setSelectedAvailability] = useState<AvailabilityBlock | null>(null);
   const [selectedAvailabilityDate, setSelectedAvailabilityDate] = useState<Date | null>(null);
   const [isAvailabilityDialogOpen, setIsAvailabilityDialogOpen] = useState(false);
   const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago');
@@ -140,6 +142,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     fetchClinicianTimeZone();
   }, [clinicianId]);
 
+  // Use the timezone from props or the clinician's timezone
   const effectiveTimeZone = propTimeZone || (isLoadingTimeZone ? 'America/Chicago' : clinicianTimeZone);
 
   useEffect(() => {
@@ -259,7 +262,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     return client?.client_time_zone || 'America/Chicago'; // Default timezone if not found
   };
 
-  const handleAppointmentClick = (appointment: WeekViewAppointment) => {
+  const handleAppointmentClick = (appointment: Appointment) => {
     const appointmentWithClientName = {
       ...appointment,
       clientName: getClientName(appointment.client_id)
@@ -272,7 +275,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
-  const handleAvailabilityClick = (date: Date, availabilityBlock: any) => {
+  const handleAvailabilityClick = (date: Date, availabilityBlock: AvailabilityBlock) => {
     setSelectedAvailability(availabilityBlock);
     setSelectedAvailabilityDate(date);
     setIsAvailabilityDialogOpen(true);
@@ -305,7 +308,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             refreshTrigger={availabilityRefreshTrigger} 
             appointments={appointments} 
             getClientName={getClientName} 
-            onAppointmentClick={handleAppointmentClick as any} 
+            onAppointmentClick={handleAppointmentClick} 
             onAvailabilityClick={handleAvailabilityClick}
             userTimeZone={effectiveTimeZone}
             weekViewMode={monthViewMode === 'week'} 
