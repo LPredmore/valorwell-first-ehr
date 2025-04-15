@@ -5,13 +5,13 @@ export default WeekView;
 import { useWeekViewData } from './useWeekViewData';
 export { useWeekViewData };
 
-export type { 
-  Appointment,
-  ProcessedAppointment,
-  TimeBlock,
-  AppointmentBlock
-} from '@/types/appointment';
+import { Appointment, ProcessedAppointment } from '@/types/appointment';
+export { Appointment, ProcessedAppointment };
+
+import { AvailabilityBlock } from './types';
+export { AvailabilityBlock };
 
 export { default as AppointmentBlock } from './AppointmentBlock';
-export { default as AvailabilityBlock } from './AvailabilityBlock';
+export { default as AvailabilityBlock as AvailabilityBlockComponent } from './AvailabilityBlock';
 export { default as TimeColumn } from './TimeColumn';
+
