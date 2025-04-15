@@ -36,23 +36,13 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
       end: format(block.end, 'HH:mm'),
       startHour,
       displayStartHour,
-      position: { top, height },
-      isException: block.isException,
-      isStandalone: block.isStandalone
+      position: { top, height }
     });
-  }, [block.id, day, block.start, block.end, block.isException, block.isStandalone, top, height, startHour]);
-
-  // Choose block color based on type - now using green for both regular and standalone availability
-  let blockColor;
-  if (block.isException && !block.isStandalone) {
-    blockColor = 'teal';   // Modified regular availability is teal
-  } else {
-    blockColor = 'green';  // Both regular weekly and standalone single-day availability use green
-  }
+  }, [block.id, day, block.start, block.end, top, height, startHour]);
 
   return (
     <div 
-      className={`absolute left-0.5 right-0.5 z-5 rounded-md border border-${blockColor}-400 bg-${blockColor}-50 p-1 overflow-hidden`}
+      className={`absolute left-0.5 right-0.5 z-5 rounded-md border border-green-400 bg-green-50 p-1 overflow-hidden`}
       style={{ 
         top: `${top}px`, 
         height: `${height}px`,
@@ -62,12 +52,6 @@ const AvailabilityBlock: React.FC<AvailabilityBlockProps> = ({
       <div className="flex flex-col h-full text-xs">
         <div className="font-medium truncate flex items-center">
           Available
-          {block.isException && block.isStandalone && (
-            <span className="ml-1 text-[10px] px-1 py-0.5 bg-green-100 text-green-800 rounded-full">One-time</span>
-          )}
-          {block.isException && !block.isStandalone && (
-            <span className="ml-1 text-[10px] px-1 py-0.5 bg-teal-100 text-teal-800 rounded-full">Modified</span>
-          )}
         </div>
         {height >= 40 && (
           <div className="text-[10px] text-gray-500 mt-0.5">

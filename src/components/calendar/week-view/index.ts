@@ -7,14 +7,11 @@ export { useWeekViewData };
 
 export type { 
   Appointment,
-  BaseAppointment,
-  AvailabilityBlock as AvailabilityBlockType,
-  AvailabilityException,
+  ProcessedAppointment,
   TimeBlock,
-  AppointmentBlock as AppointmentBlockType
+  AppointmentBlock
 } from '@/types/appointment';
 
 export { default as AppointmentBlock } from './AppointmentBlock';
 export { default as AvailabilityBlock } from './AvailabilityBlock';
 export { default as TimeColumn } from './TimeColumn';
-
