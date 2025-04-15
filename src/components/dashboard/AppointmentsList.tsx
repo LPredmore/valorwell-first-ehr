@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -60,10 +59,7 @@ export const AppointmentsList: React.FC<AppointmentsListProps> = ({
           {appointments.slice(0, 5).map((appointment) => (
             <AppointmentCard
               key={appointment.id}
-              appointment={{
-                ...appointment,
-                video_room_url: appointment.video_room_url || null
-              }}
+              appointment={appointment}
               timeZoneDisplay={timeZoneDisplay}
               userTimeZone={userTimeZone}
               showStartButton={showStartButton}
@@ -82,4 +78,4 @@ export const AppointmentsList: React.FC<AppointmentsListProps> = ({
       )}
     </div>
   );
-}
+};

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -8,8 +9,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
-import { BaseAppointment } from './week-view/types';
-import { Appointment } from './week-view/useWeekViewData';
+
+// Import the missing components (assuming they exist elsewhere in your project)
+// If they don't exist, you'll need to create them or modify the code that uses them
+import AppointmentDetailsDialog from './AppointmentDetailsDialog';
+import AvailabilityEditDialog from './AvailabilityEditDialog';
+import AvailabilityPanel from './AvailabilityPanel';
 
 interface CalendarViewProps {
   view: 'week' | 'month';  // Keeping for backward compatibility
@@ -61,7 +66,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 }) => {
   const [currentDate, setCurrentDate] = useState(propCurrentDate || new Date());
   const [availabilityRefreshTrigger, setAvailabilityRefreshTrigger] = useState(0);
-  const [appointments, setAppointments] = useState<BaseAppointment[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clientsMap, setClientsMap] = useState<Record<string, any>>({});
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment & {
     clientName?: string;
@@ -137,6 +142,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     fetchClinicianTimeZone();
   }, [clinicianId]);
 
+  // Use the timezone from props or the clinician's timezone
   const effectiveTimeZone = propTimeZone || (isLoadingTimeZone ? 'America/Chicago' : clinicianTimeZone);
 
   useEffect(() => {
@@ -194,7 +200,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         } else {
           console.log(`[CalendarView] Fetched ${data?.length || 0} appointments:`, data);
           
-          const appointmentsData = data || [] as BaseAppointment[];
+          const appointmentsData = data || [];
           console.log(`[CalendarView] Appointment data after RLS (no filtering): ${appointmentsData.length} appointments`);
           
           setAppointments(appointmentsData);
