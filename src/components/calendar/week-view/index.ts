@@ -2,15 +2,13 @@
 import WeekView from './WeekView';
 export default WeekView;
 
-import { useWeekViewData } from './useWeekViewData';
-export { useWeekViewData };
+export { useWeekViewData } from './useWeekViewData';
 
-import { Appointment, ProcessedAppointment } from '@/types/appointment';
-export { Appointment, ProcessedAppointment };
+// Export types correctly with 'export type'
+export type { Appointment, ProcessedAppointment } from '@/types/appointment';
+export type { AvailabilityBlock } from './types';
 
-import { AvailabilityBlock } from './types';
-export { AvailabilityBlock };
-
+// Export components
 export { default as AppointmentBlock } from './AppointmentBlock';
 export { default as AvailabilityBlock as AvailabilityBlockComponent } from './AvailabilityBlock';
 export { default as TimeColumn } from './TimeColumn';
