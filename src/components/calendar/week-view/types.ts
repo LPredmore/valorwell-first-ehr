@@ -1,31 +1,17 @@
-import { Appointment, TimeBlock } from "./useWeekViewData";
+
+import { BaseAppointment } from '@/types/appointment';
+import { TimeBlock } from "./useWeekViewData";
 
 export interface WeekViewProps {
   currentDate: Date;
   clinicianId: string | null;
   refreshTrigger?: number;
-  appointments?: Appointment[];
+  appointments?: BaseAppointment[];
   getClientName?: (clientId: string) => string;
-  onAppointmentClick?: (appointment: Appointment) => void;
+  onAppointmentClick?: (appointment: BaseAppointment) => void;
   onAvailabilityClick?: (day: Date, block: TimeBlock) => void;
   userTimeZone?: string;
 }
 
-export interface BaseAppointment {
-  id: string;
-  client_id: string;
-  clinician_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  type: string;
-  status: string;
-  video_room_url?: string | null;
-  appointment_recurring?: string | null;
-  recurring_group_id?: string | null;
-  client?: {
-    client_first_name: string;
-    client_last_name: string;
-  };
-  clientName?: string; // Adding this for EditAppointmentDialog
-}
+// Re-export BaseAppointment for components that import from here
+export type { BaseAppointment } from '@/types/appointment';

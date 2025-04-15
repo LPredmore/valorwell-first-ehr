@@ -10,20 +10,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { fromUTCTimestamp } from '@/utils/timeZoneUtils';
-
-interface BaseAppointment {
-  id: string;
-  client_id: string;
-  type: string;
-  status: string;
-  appointment_datetime: string;  // UTC timestamp
-  appointment_end_datetime: string; // UTC end timestamp
-}
-
-interface Appointment extends BaseAppointment {
-  appointment_datetime?: string;
-  appointment_end_datetime?: string;
-}
+import { BaseAppointment } from '@/types/appointment';
 
 interface AvailabilityBlock {
   id: string;
@@ -125,11 +112,14 @@ const convertUTCToLocal = (dateStr: string, timeStr: string, timezone: string): 
   }
 };
 
+export type { BaseAppointment };
+export type { TimeBlock, AppointmentBlock };
+
 export const useWeekViewData = (
   days: Date[],
   clinicianId: string | null,
   refreshTrigger: number = 0,
-  appointments: Appointment[] = [],
+  appointments: BaseAppointment[] = [],
   getClientName: (clientId: string) => string = () => 'Client',
   userTimeZone?: string
 ) => {
@@ -157,7 +147,7 @@ export const useWeekViewData = (
       console.log(`[useWeekViewData] Processing ${appointments.length} appointments in week view with timezone: ${effectiveTimeZone}`);
       
       const blocks: AppointmentBlock[] = appointments
-        .filter(appointment => {
+        .filter((appointment: BaseAppointment) => {
           if (!appointment?.appointment_datetime || !appointment?.appointment_end_datetime) {
             console.warn('[useWeekViewData] Skipping invalid appointment:', appointment);
             return false;
@@ -612,5 +602,3 @@ export const useWeekViewData = (
     ...timeSlotUtils
   };
 };
-
-export type { Appointment, AvailabilityBlock, AvailabilityException, TimeBlock, AppointmentBlock };
