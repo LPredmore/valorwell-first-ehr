@@ -20,6 +20,7 @@ export interface BaseAppointment {
   end_time: string;
   type: string;
   status: string;
+  clinician_id: string; // Adding this field to resolve the error
   video_room_url?: string | null;
   appointment_recurring?: string | null;
   recurring_group_id?: string | null;
@@ -27,7 +28,7 @@ export interface BaseAppointment {
     client_first_name: string;
     client_last_name: string;
   };
-  clientName?: string; // Adding this field to resolve the error
+  clientName?: string;
   appointment_datetime?: string; // UTC timestamp
   appointment_end_datetime?: string; // UTC end timestamp
 }
