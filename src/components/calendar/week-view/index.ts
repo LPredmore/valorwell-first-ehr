@@ -4,8 +4,16 @@ export default WeekView;
 
 export { useWeekViewData } from './useWeekViewData';
 
-// Export types correctly with 'export type'
-export type { Appointment, ProcessedAppointment } from '@/types/appointment';
+export type { 
+  ProcessedAppointment,
+  ProcessedAvailability,
+  WeekViewData
+} from './useWeekViewData';
+
+// Future centralized type imports/exports:
+// import { Appointment } from '@/types/appointment';
+// export type { Appointment };
+
 export type { AvailabilityBlock } from './types';
 
 // Export components
