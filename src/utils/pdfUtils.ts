@@ -1,4 +1,3 @@
-
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { supabase } from '@/integrations/supabase/client';
@@ -100,8 +99,8 @@ export const generateAndSavePDF = async (
     const margin = 10; // margin in mm
     const contentWidth = pdfWidth - (margin * 2);
     
-    // Improved scaling calculation
-    const scale = 2; // Higher scale for better quality
+    // REDUCED SCALE: Lower scale factor to reduce file size
+    const scale = 1; // Reduced from 2 to 1 to decrease file size
     const pixelsPerMm = 3.78; // Approximate conversion factor
     
     console.log('Generating PDF with dimensions:', { 
@@ -112,13 +111,32 @@ export const generateAndSavePDF = async (
     let verticalOffset = margin;
     let currentPage = 0;
     
-    // Capture the whole content at once with high resolution
+    // Capture the whole content at once with optimized resolution
     const canvas = await html2canvas(preparedElement, {
       scale: scale,
       useCORS: true,
       logging: false,
       backgroundColor: '#ffffff',
       allowTaint: true,
+      // OPTIMIZATION: Reduce image quality to decrease file size
+      imageTimeout: 0, // Disable timeout for large forms
+      onclone: (clonedDoc) => {
+        // Further optimize the cloned document for PDF generation
+        const clonedElement = clonedDoc.getElementById(elementId);
+        if (clonedElement) {
+          // Remove unnecessary elements that increase file size
+          const images = clonedElement.querySelectorAll('img:not(.essential-image)');
+          images.forEach(img => {
+            img.remove();
+          });
+          
+          // Simplify complex UI elements
+          const complexElements = clonedElement.querySelectorAll('.complex-ui');
+          complexElements.forEach(el => {
+            el.classList.add('simplified-for-pdf');
+          });
+        }
+      }
     });
     
     // Calculate how many pages we need based on content height
@@ -161,31 +179,170 @@ export const generateAndSavePDF = async (
         );
         
         // Add this page segment to the PDF
-        const imgData = pageCanvas.toDataURL('image/png');
+        // OPTIMIZATION: Use lower image quality for PDF
+        const imgData = pageCanvas.toDataURL('image/jpeg', 0.7); // Use JPEG with 70% quality instead of PNG
         const imgWidth = pdfWidth - (margin * 2);
         const imgHeight = (pageCanvas.height * imgWidth) / pageCanvas.width;
         
-        pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
+        pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight);
       }
     }
     
     // Clean up the temporary element
     document.body.removeChild(preparedElement);
     
-    // Get the PDF as a blob
-    const pdfBlob = pdf.output('blob');
+    // OPTIMIZATION: Set PDF compression options
+    const pdfOptions = {
+      compress: true,
+      precision: 2,
+      quality: 0.7
+    };
+    
+    // Get the PDF as a blob with compression
+    const pdfBlob = pdf.output('blob', pdfOptions);
+    
+    // Check file size before upload
+    const fileSizeMB = pdfBlob.size / (1024 * 1024);
+    console.log(`PDF file size: ${fileSizeMB.toFixed(2)} MB`);
+    
+    // If file is still too large, implement chunked upload or further compression
+    if (fileSizeMB > 5) { // Supabase typically has a 5MB limit
+      console.warn('PDF file size exceeds recommended limit, applying additional compression');
+      
+      // Create a new PDF with even more aggressive compression
+      const compressedPdf = new jsPDF('p', 'mm', 'a4');
+      
+      // Add content with more aggressive compression
+      for (let page = 0; page < totalPages; page++) {
+        if (page > 0) {
+          compressedPdf.addPage();
+        }
+        
+        // Calculate which portion of the canvas to use for this page
+        const sourceY = page * contentHeightPerPage * scale * pixelsPerMm;
+        const sourceHeight = Math.min(
+          contentHeightPerPage * scale * pixelsPerMm,
+          canvas.height - sourceY
+        );
+        
+        // Only proceed if we have content for this page
+        if (sourceHeight <= 0) continue;
+        
+        // Create a temporary canvas for this page segment
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sourceHeight;
+        const ctx = pageCanvas.getContext('2d');
+        
+        if (ctx) {
+          // Draw the appropriate portion of the main canvas
+          ctx.drawImage(
+            canvas, 
+            0, sourceY, canvas.width, sourceHeight,
+            0, 0, pageCanvas.width, pageCanvas.height
+          );
+          
+          // Add this page segment to the PDF with more aggressive compression
+          const imgData = pageCanvas.toDataURL('image/jpeg', 0.5); // Use JPEG with 50% quality
+          const imgWidth = pdfWidth - (margin * 2);
+          const imgHeight = (pageCanvas.height * imgWidth) / pageCanvas.width;
+          
+          compressedPdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight);
+        }
+      }
+      
+      // Use the more compressed PDF
+      const compressedPdfBlob = compressedPdf.output('blob', {
+        compress: true,
+        precision: 1,
+        quality: 0.5
+      });
+      
+      const compressedSizeMB = compressedPdfBlob.size / (1024 * 1024);
+      console.log(`Compressed PDF file size: ${compressedSizeMB.toFixed(2)} MB`);
+      
+      // Use the compressed blob for upload
+      if (compressedSizeMB < fileSizeMB) {
+        console.log('Using more compressed PDF version for upload');
+        pdfBlob = compressedPdfBlob;
+      }
+    }
     
     // Step 2: Upload PDF to Supabase storage
     const filePath = `${documentInfo.clientId}/${documentInfo.documentType}/${formattedDate}.pdf`;
-    const { error: uploadError } = await supabase.storage
-      .from('clinical_documents')
-      .upload(filePath, pdfBlob, {
-        contentType: 'application/pdf',
-        upsert: true
-      });
     
-    if (uploadError) {
-      console.error('Error uploading PDF:', uploadError);
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('clinical_documents')
+        .upload(filePath, pdfBlob, {
+          contentType: 'application/pdf',
+          upsert: true
+        });
+      
+      if (uploadError) {
+        console.error('Error uploading PDF:', uploadError);
+        
+        // FALLBACK: If file is still too large, create a simplified text-only version
+        if (uploadError.statusCode === '413') {
+          console.log('Attempting fallback to text-only PDF');
+          
+          // Create a simplified text-only PDF
+          const textPdf = new jsPDF('p', 'mm', 'a4');
+          
+          // Extract text content from the form
+          const textContent = preparedElement.innerText || 'Form content unavailable';
+          
+          // Add text content to PDF
+          const splitText = textPdf.splitTextToSize(textContent, pdfWidth - (margin * 2));
+          textPdf.setFontSize(10);
+          
+          let yPosition = margin;
+          const lineHeight = 5;
+          
+          // Add title
+          textPdf.setFontSize(16);
+          textPdf.text(documentInfo.documentTitle, pdfWidth / 2, yPosition, { align: 'center' });
+          yPosition += lineHeight * 2;
+          
+          // Reset font size for content
+          textPdf.setFontSize(10);
+          
+          // Add content page by page
+          for (let i = 0; i < splitText.length; i++) {
+            if (yPosition > pdfHeight - margin) {
+              textPdf.addPage();
+              yPosition = margin;
+            }
+            
+            textPdf.text(splitText[i], margin, yPosition);
+            yPosition += lineHeight;
+          }
+          
+          // Get the text-only PDF as a blob
+          const textPdfBlob = textPdf.output('blob', {
+            compress: true
+          });
+          
+          // Try uploading the text-only version
+          const { error: textUploadError } = await supabase.storage
+            .from('clinical_documents')
+            .upload(filePath, textPdfBlob, {
+              contentType: 'application/pdf',
+              upsert: true
+            });
+          
+          if (textUploadError) {
+            console.error('Error uploading text-only PDF:', textUploadError);
+            return null;
+          } else {
+            console.log('Successfully uploaded text-only PDF as fallback');
+          }
+        } else {
+          return null;
+        }
+      }
+    } catch (uploadError) {
+      console.error('Exception during PDF upload:', uploadError);
       return null;
     }
     
