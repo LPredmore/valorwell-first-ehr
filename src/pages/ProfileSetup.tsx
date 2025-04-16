@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -153,6 +152,12 @@ const formSchema = z.object({
   }),
 })
 
+// Define the interface for country options to fix type issues
+interface CountryOption {
+  value: string;
+  label: string;
+}
+
 const ProfileSetup = () => {
   const [isSaving, setIsSaving] = React.useState<boolean>(false);
   const [isAlertDialogOpen, setIsAlertDialogOpen] = React.useState<boolean>(false);
@@ -210,9 +215,9 @@ const ProfileSetup = () => {
     },
   })
 
-  const countryOptions = Object.entries(countries).map(([key, value]) => ({
+  const countryOptions: CountryOption[] = Object.entries(countries).map(([key, value]) => ({
     value: key,
-    label: value.name,
+    label: value.name as string,
   }));
 
   const genderOptions = [
