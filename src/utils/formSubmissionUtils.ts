@@ -111,14 +111,12 @@ export const handleFormSubmission = async (
       const assignment = exactAssignments[0];
       console.log(`Found document assignment with ID: ${assignment.id}, name: ${assignment.document_name}, current status: ${assignment.status}`);
       
-      // Use a transaction to ensure the update is committed
-      // Removed the completed_at field which doesn't exist in the schema
+      // FIXED: Only update columns that actually exist in the document_assignments table
       const { error: updateError } = await supabase
         .from('document_assignments')
         .update({
           status: 'completed',
-          pdf_url: filePath,
-          response_data: responseData
+          updated_at: new Date().toISOString()
         })
         .eq('id', assignment.id);
         
@@ -169,6 +167,7 @@ export const handleFormSubmission = async (
           ? documentInfo.documentDate 
           : documentInfo.documentDate.toISOString().split('T')[0];
           
+        // Store the PDF path and response data in the clinical_documents table
         const { error: insertError } = await supabase
           .from('clinical_documents')
           .insert({
@@ -177,13 +176,14 @@ export const handleFormSubmission = async (
             document_date: formattedDate,
             document_title: documentInfo.documentTitle,
             file_path: filePath,
-            created_by: documentInfo.createdBy
+            created_by: documentInfo.createdBy,
+            response_data: responseData // Store response data here instead of document_assignments
           });
           
         if (insertError) {
           console.error('Error saving document metadata:', insertError);
         } else {
-          console.log('Successfully saved document metadata');
+          console.log('Successfully saved document metadata with response data');
         }
       }
     } catch (error) {
