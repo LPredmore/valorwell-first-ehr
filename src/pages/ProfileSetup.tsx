@@ -901,4 +901,186 @@ const ProfileSetup = () => {
                 "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", 
                 "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", 
                 "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", 
-                "Mississippi", "Missouri", "Montana",
+                "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", 
+                "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina", 
+                "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", 
+                "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", 
+                "Utah", "Vermont", "Virginia", "Washington", "West Virginia", 
+                "Wisconsin", "Wyoming"
+              ]}
+              required={true}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_time_zone"
+              label="Your Time Zone"
+              type="select"
+              options={timezoneOptions}
+              required={true}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_vacoverage"
+              label="VA Coverage"
+              type="select"
+              options={[
+                "CHAMPVA", 
+                "TRICARE", 
+                "VA Community Care Network", 
+                "None - I am a veteran", 
+                "None - I am not a veteran"
+              ]}
+              required={true}
+            />
+          </div>
+        </div>
+      </Form>
+    );
+  };
+
+  return (
+    <Layout>
+      <div className="container max-w-4xl mx-auto py-8">
+        <Card className="shadow-lg">
+          <CardHeader className="bg-gray-50 border-b">
+            <CardTitle className="text-2xl font-bold text-center text-gray-800">
+              Profile Setup
+            </CardTitle>
+            <CardDescription className="text-center text-gray-600">
+              {currentStep === 1 && "Please confirm your identity"}
+              {currentStep === 2 && "Tell us about yourself"}
+              {currentStep === 3 && form.getValues().client_vacoverage === "CHAMPVA" && "CHAMPVA Information"}
+              {currentStep === 3 && form.getValues().client_vacoverage === "TRICARE" && "TRICARE Information"}
+              {currentStep === 3 && form.getValues().client_vacoverage === "VA Community Care Network" && "VA Community Care Network Information"}
+              {currentStep === 3 && form.getValues().client_vacoverage === "None - I am a veteran" && "Veteran Information"}
+              {currentStep === 3 && form.getValues().client_vacoverage === "None - I am not a veteran" && "Additional Information"}
+              {currentStep === 4 && "Additional Insurance Information"}
+              {currentStep === 5 && "More Insurance Information"}
+              {currentStep === 6 && "Final Steps"}
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="p-6">
+            <div className="mb-8 flex justify-center">
+              <div className="flex items-center">
+                <div className={`rounded-full h-10 w-10 flex items-center justify-center ${currentStep >= 1 ? 'bg-valorwell-600 text-white' : 'bg-gray-200'}`}>
+                  1
+                </div>
+                <div className={`w-12 h-1 ${currentStep >= 2 ? 'bg-valorwell-600' : 'bg-gray-200'}`} />
+                <div className={`rounded-full h-10 w-10 flex items-center justify-center ${currentStep >= 2 ? 'bg-valorwell-600 text-white' : 'bg-gray-200'}`}>
+                  2
+                </div>
+                <div className={`w-12 h-1 ${currentStep >= 3 ? 'bg-valorwell-600' : 'bg-gray-200'}`} />
+                <div className={`rounded-full h-10 w-10 flex items-center justify-center ${currentStep >= 3 ? 'bg-valorwell-600 text-white' : 'bg-gray-200'}`}>
+                  3
+                </div>
+                {(form.getValues().client_vacoverage === "TRICARE" || form.getValues().client_vacoverage === "CHAMPVA") && (
+                  <>
+                    <div className={`w-12 h-1 ${currentStep >= 4 ? 'bg-valorwell-600' : 'bg-gray-200'}`} />
+                    <div className={`rounded-full h-10 w-10 flex items-center justify-center ${currentStep >= 4 ? 'bg-valorwell-600 text-white' : 'bg-gray-200'}`}>
+                      4
+                    </div>
+                    {form.getValues().hasMoreInsurance === "Yes" && (
+                      <>
+                        <div className={`w-12 h-1 ${currentStep >= 5 ? 'bg-valorwell-600' : 'bg-gray-200'}`} />
+                        <div className={`rounded-full h-10 w-10 flex items-center justify-center ${currentStep >= 5 ? 'bg-valorwell-600 text-white' : 'bg-gray-200'}`}>
+                          5
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+                <div className={`w-12 h-1 ${currentStep >= 6 ? 'bg-valorwell-600' : 'bg-gray-200'}`} />
+                <div className={`rounded-full h-10 w-10 flex items-center justify-center ${currentStep >= 6 ? 'bg-valorwell-600 text-white' : 'bg-gray-200'}`}>
+                  {form.getValues().hasMoreInsurance === "Yes" ? "6" : "4"}
+                </div>
+              </div>
+            </div>
+            
+            {currentStep === 1 && renderStepOne()}
+            {currentStep === 2 && renderStepTwo()}
+            
+            {currentStep === 3 && form.getValues().client_vacoverage === "CHAMPVA" && (
+              <SignupChampva 
+                form={form} 
+                onOtherInsuranceChange={handleOtherInsuranceChange} 
+              />
+            )}
+            
+            {currentStep === 3 && form.getValues().client_vacoverage === "TRICARE" && (
+              <SignupTricare 
+                form={form} 
+                onOtherInsuranceChange={handleOtherInsuranceChange} 
+              />
+            )}
+            
+            {currentStep === 3 && form.getValues().client_vacoverage === "VA Community Care Network" && (
+              <SignupVaCcn form={form} />
+            )}
+            
+            {currentStep === 3 && form.getValues().client_vacoverage === "None - I am a veteran" && (
+              <SignupVeteran form={form} />
+            )}
+            
+            {currentStep === 3 && form.getValues().client_vacoverage === "None - I am not a veteran" && (
+              <SignupNotAVeteran form={form} />
+            )}
+            
+            {currentStep === 4 && (
+              <AdditionalInsurance form={form} />
+            )}
+            
+            {currentStep === 5 && (
+              <MoreAdditionalInsurance form={form} />
+            )}
+            
+            {currentStep === 6 && (
+              <SignupLast form={form} />
+            )}
+            
+            <div className="flex justify-between mt-8">
+              {currentStep > 1 && (
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={handleGoBack}
+                  className="flex items-center gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </Button>
+              )}
+              
+              {currentStep < 6 && currentStep > 1 && (
+                <Button 
+                  type="button"
+                  onClick={handleNext}
+                  className="bg-valorwell-600 hover:bg-valorwell-700 text-white ml-auto flex items-center gap-2"
+                >
+                  Next
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              )}
+              
+              {currentStep === 6 && (
+                <Button 
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="bg-valorwell-600 hover:bg-valorwell-700 text-white ml-auto flex items-center gap-2"
+                >
+                  {isSubmitting ? 'Processing...' : 'Complete Profile'}
+                  <Check className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
+  );
+};
+
+export default ProfileSetup;
