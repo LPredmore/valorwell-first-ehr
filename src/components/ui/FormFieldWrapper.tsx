@@ -34,8 +34,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
       control={control}
       name={name}
       render={({ field }) => {
-        // For debugging purposes
-        console.log(`Field ${name} value:`, field.value);
+        // Removed console logging for performance improvement
         
         const handleSelectChange = (selectedValue: string) => {
           // If a valueMapper is provided, map the selected option label to its actual value
