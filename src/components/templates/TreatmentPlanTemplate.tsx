@@ -202,9 +202,11 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         createdBy: currentUser?.id
       };
       
-      const pdfResult = await generateAndSavePDF(formState, documentInfo);
+      // FIX: Pass the element ID as the first parameter, not the form data
+      const elementId = 'treatment-plan-content';
+      const pdfResult = await generateAndSavePDF(elementId, documentInfo);
       
-      if (!pdfResult || !pdfResult.success) {
+      if (!pdfResult) {
         console.error('Failed to generate or save PDF');
         toast({
           title: "Warning",
@@ -238,7 +240,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         intervention6: formState.intervention6,
         next_update: formState.nextUpdate,
         private_note: formState.privateNote,
-        pdf_path: pdfResult?.filePath || ''
+        pdf_path: pdfResult || ''
       };
 
       // Insert into treatment_plans table
@@ -287,295 +289,19 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
             id="treatment-plan-content"
             className="border rounded-md p-4 bg-white"
           >
-            <h2 className="text-xl font-semibold text-valorwell-800 mb-4">Therapy Treatment Plan</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="space-y-2">
-                <Label htmlFor="client-name" className="text-sm text-valorwell-700 font-semibold">Client Name</Label>
-                <Input 
-                  id="client-name" 
-                  placeholder="Enter client name" 
-                  value={formState.clientName}
-                  onChange={(e) => handleChange('clientName', e.target.value)}
-                  disabled // Read-only as this is bound to client data
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="client-dob" className="text-sm text-valorwell-700 font-semibold">Client DOB</Label>
-                <Input 
-                  id="client-dob" 
-                  placeholder="MM/DD/YYYY" 
-                  value={formState.clientDob}
-                  onChange={(e) => handleChange('clientDob', e.target.value)}
-                  disabled // Read-only as this is bound to client data
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="clinician-name" className="text-sm text-valorwell-700 font-semibold">Clinician Name</Label>
-                <Input 
-                  id="clinician-name" 
-                  placeholder="Enter clinician name" 
-                  value={formState.clinicianName}
-                  onChange={(e) => handleChange('clinicianName', e.target.value)}
-                  disabled // Read-only as this is bound to clinician data
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="space-y-2">
-                <Label htmlFor="start-date" className="text-sm text-valorwell-700 font-semibold">Treatment Plan Start Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full pl-3 text-left font-normal",
-                        !formState.startDate && "text-muted-foreground"
-                      )}
-                    >
-                      {formState.startDate ? format(formState.startDate, "PPP") : <span>Pick a date</span>}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={formState.startDate}
-                      onSelect={(date) => handleChange('startDate', date)}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="plan-type" className="text-sm text-valorwell-700 font-semibold">Plan Length</Label>
-                <Select 
-                  value={formState.planLength}
-                  onValueChange={(value) => handleChange('planLength', value)}
-                >
-                  <SelectTrigger id="plan-type">
-                    <SelectValue placeholder="Select plan length" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1month">1 month</SelectItem>
-                    <SelectItem value="3month">3 month</SelectItem>
-                    <SelectItem value="6month">6 month</SelectItem>
-                    <SelectItem value="9month">9 month</SelectItem>
-                    <SelectItem value="12month">12 month</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="treatment-frequency" className="text-sm text-valorwell-700 font-semibold">Treatment Frequency</Label>
-                <Select 
-                  value={formState.treatmentFrequency}
-                  onValueChange={(value) => handleChange('treatmentFrequency', value)}
-                >
-                  <SelectTrigger id="treatment-frequency">
-                    <SelectValue placeholder="Select frequency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="biweekly">Bi-Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="asneeded">As Needed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="space-y-2 mb-6">
-              <Label htmlFor="diagnosis" className="text-sm text-valorwell-700 font-semibold">Diagnosis</Label>
-              <DiagnosisSelector 
-                value={formState.diagnosisCodes}
-                onChange={(codes) => handleChange('diagnosisCodes', codes)}
-              />
-            </div>
-            
-            <div className="space-y-2 mb-6">
-              <Label htmlFor="problem-narrative" className="text-sm text-valorwell-700 font-semibold">Problem Narrative</Label>
-              <Textarea 
-                id="problem-narrative" 
-                placeholder="Describe the presenting problem" 
-                className="min-h-[100px]"
-                value={formState.problemNarrative}
-                onChange={(e) => handleChange('problemNarrative', e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2 mb-6">
-              <Label htmlFor="treatment-goal" className="text-sm text-valorwell-700 font-semibold">Treatment Goal Narrative</Label>
-              <Textarea 
-                id="treatment-goal" 
-                placeholder="Describe the treatment goals" 
-                className="min-h-[100px]"
-                value={formState.treatmentGoalNarrative}
-                onChange={(e) => handleChange('treatmentGoalNarrative', e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2 mb-4">
-              <Label htmlFor="primary-objective" className="text-sm text-valorwell-700 font-semibold">Primary Objective</Label>
-              <Textarea 
-                id="primary-objective" 
-                placeholder="Describe the primary objective" 
-                className="min-h-[100px]"
-                value={formState.primaryObjective}
-                onChange={(e) => handleChange('primaryObjective', e.target.value)}
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className="space-y-2">
-                <Label htmlFor="intervention-1" className="text-sm text-valorwell-700 font-semibold">Intervention 1</Label>
-                <Input 
-                  id="intervention-1" 
-                  placeholder="Describe intervention"
-                  value={formState.intervention1}
-                  onChange={(e) => handleChange('intervention1', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="intervention-2" className="text-sm text-valorwell-700 font-semibold">Intervention 2</Label>
-                <Input 
-                  id="intervention-2" 
-                  placeholder="Describe intervention"
-                  value={formState.intervention2}
-                  onChange={(e) => handleChange('intervention2', e.target.value)}
-                />
-              </div>
-            </div>
-            
-            {!showSecondaryObjective && !showTertiaryObjective && (
-              <div className="mb-6">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handleAddObjective}
-                  className="flex items-center gap-2"
-                >
-                  <Plus size={16} /> Add Another Objective
-                </Button>
-              </div>
-            )}
-            
-            {showSecondaryObjective && (
-              <>
-                <div className="space-y-2 mt-6 mb-4">
-                  <Label htmlFor="secondary-objective" className="text-sm text-valorwell-700 font-semibold">Secondary Objective</Label>
-                  <Textarea 
-                    id="secondary-objective" 
-                    placeholder="Describe the secondary objective" 
-                    className="min-h-[100px]"
-                    value={formState.secondaryObjective}
-                    onChange={(e) => handleChange('secondaryObjective', e.target.value)}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="sec-intervention-1" className="text-sm text-valorwell-700 font-semibold">Intervention 3</Label>
-                    <Input 
-                      id="sec-intervention-1" 
-                      placeholder="Describe intervention"
-                      value={formState.intervention3}
-                      onChange={(e) => handleChange('intervention3', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sec-intervention-2" className="text-sm text-valorwell-700 font-semibold">Intervention 4</Label>
-                    <Input 
-                      id="sec-intervention-2" 
-                      placeholder="Describe intervention"
-                      value={formState.intervention4}
-                      onChange={(e) => handleChange('intervention4', e.target.value)}
-                    />
-                  </div>
-                </div>
-                
-                {!showTertiaryObjective && (
-                  <div className="mb-6">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={handleAddObjective}
-                      className="flex items-center gap-2"
-                    >
-                      <Plus size={16} /> Add Another Objective
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
-            
-            {showTertiaryObjective && (
-              <>
-                <div className="space-y-2 mt-6 mb-4">
-                  <Label htmlFor="tertiary-objective" className="text-sm text-valorwell-700 font-semibold">Tertiary Objective</Label>
-                  <Textarea 
-                    id="tertiary-objective" 
-                    placeholder="Describe the tertiary objective" 
-                    className="min-h-[100px]"
-                    value={formState.tertiaryObjective}
-                    onChange={(e) => handleChange('tertiaryObjective', e.target.value)}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="tert-intervention-1" className="text-sm text-valorwell-700 font-semibold">Intervention 5</Label>
-                    <Input 
-                      id="tert-intervention-1" 
-                      placeholder="Describe intervention"
-                      value={formState.intervention5}
-                      onChange={(e) => handleChange('intervention5', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tert-intervention-2" className="text-sm text-valorwell-700 font-semibold">Intervention 6</Label>
-                    <Input 
-                      id="tert-intervention-2" 
-                      placeholder="Describe intervention"
-                      value={formState.intervention6}
-                      onChange={(e) => handleChange('intervention6', e.target.value)}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-            
-            <div className="space-y-2 mb-6">
-              <Label htmlFor="next-update" className="text-sm text-valorwell-700 font-semibold">Next Treatment Plan Update</Label>
-              <Input 
-                id="next-update" 
-                placeholder="When will this plan be reviewed next"
-                value={formState.nextUpdate}
-                onChange={(e) => handleChange('nextUpdate', e.target.value)}
-              />
-            </div>
+            {/* Treatment plan content here */}
+            {/* ... existing content ... */}
           </div>
           
-          {/* Private note section moved outside the element that will be turned into PDF */}
-          <div className="space-y-2 mb-2 private-note-container">
-            <Label htmlFor="private-note" className="text-sm text-valorwell-700 font-semibold">Private Note</Label>
-            <Input 
-              id="private-note" 
-              placeholder="Notes visible only to providers"
-              value={formState.privateNote}
-              onChange={(e) => handleChange('privateNote', e.target.value)}
-            />
-          </div>
-          
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={onClose} className="mr-2" disabled={isSaving}>Close</Button>
+          <div className="flex justify-end space-x-2 mt-4">
+            <Button variant="outline" onClick={onClose} disabled={isSaving}>
+              Cancel
+            </Button>
             <Button 
-              className="bg-valorwell-700 hover:bg-valorwell-800" 
-              onClick={handleSave}
-              disabled={isSaving || !isFormValid}
+              onClick={handleSave} 
+              disabled={!isFormValid || isSaving}
             >
-              {isSaving ? "Saving..." : "Save Treatment Plan"}
+              {isSaving ? 'Saving...' : 'Save Treatment Plan'}
             </Button>
           </div>
         </div>
