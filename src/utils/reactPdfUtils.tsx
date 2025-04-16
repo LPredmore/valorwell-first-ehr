@@ -1,5 +1,7 @@
 
-import { generateAndSavePDF as originalGenerateAndSavePDF } from './pdfUtils';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { supabase } from '@/integrations/supabase/client';
 
 // Type definition for document info
 interface DocumentInfo {
@@ -16,6 +18,9 @@ export interface PdfGenerationResult {
   filePath: string | null;
   error?: string;
 }
+
+// Import original PDF generation function
+import { generateAndSavePDF as originalGenerateAndSavePDF } from './pdfUtils';
 
 /**
  * Enhanced version of generateAndSavePDF that can handle form data
