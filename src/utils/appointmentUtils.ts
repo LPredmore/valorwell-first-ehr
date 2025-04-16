@@ -1,6 +1,26 @@
 import { format } from 'date-fns';
 import { fromUTCTimestamp, ensureIANATimeZone } from './timeZoneUtils';
-import { AppointmentType } from '@/types/appointment';
+
+/**
+ * Interface for appointment data
+ */
+export interface AppointmentType {
+  id: string;
+  client_id: string;
+  clinician_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  appointment_datetime?: string;
+  appointment_end_datetime?: string;
+  source_time_zone?: string;
+  type: string;
+  notes?: string;
+  status: string;
+  display_date?: string;
+  display_start_time?: string;
+  display_end_time?: string;
+}
 
 /**
  * Convert an appointment to the user's time zone for display
@@ -25,7 +45,6 @@ export const getAppointmentInUserTimeZone = (
       });
       
       // Check if source time zone matches user time zone to prevent double conversion
-      // Only perform this check if source_time_zone is defined
       if (appointment.source_time_zone && 
           ensureIANATimeZone(appointment.source_time_zone) === validTimeZone) {
         console.log(`Source and target time zones match (${validTimeZone}), using original times`);

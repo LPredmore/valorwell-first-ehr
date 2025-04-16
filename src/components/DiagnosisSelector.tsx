@@ -10,16 +10,9 @@ import { Button } from "@/components/ui/button";
 interface DiagnosisSelectorProps {
   value: string[];
   onChange: (value: string[]) => void;
-  clientId?: string;
-  onClose?: () => void;
 }
 
-export const DiagnosisSelector: React.FC<DiagnosisSelectorProps> = ({ 
-  value, 
-  onChange,
-  clientId, // This prop is now optional
-  onClose // This prop is now optional
-}) => {
+export const DiagnosisSelector: React.FC<DiagnosisSelectorProps> = ({ value, onChange }) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const { data: icd10Codes, isLoading } = useICD10Codes(search);

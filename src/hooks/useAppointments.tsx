@@ -4,15 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTimeZone } from '@/context/TimeZoneContext';
-import { AppointmentType } from '@/types/appointment';
+import { BaseAppointment } from '@/types/appointment';
 import { getAppointmentsInUserTimeZone } from '@/utils/appointmentUtils';
 
-export type { AppointmentType };
+export type { BaseAppointment };
 
 export const useAppointments = (userId: string | null) => {
   const { toast } = useToast();
   const { userTimeZone } = useTimeZone();
-  const [currentAppointment, setCurrentAppointment] = useState<AppointmentType | null>(null);
+  const [currentAppointment, setCurrentAppointment] = useState<BaseAppointment | null>(null);
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [showSessionTemplate, setShowSessionTemplate] = useState(false);
@@ -35,7 +35,6 @@ export const useAppointments = (userId: string | null) => {
           .select(`
             id,
             client_id,
-            clinician_id,
             date,
             start_time,
             end_time,
@@ -65,7 +64,7 @@ export const useAppointments = (userId: string | null) => {
         const appointmentsWithClient = data.map((appointment: any) => ({
           ...appointment,
           client: appointment.clients
-        })) as AppointmentType[];
+        })) as BaseAppointment[];
         
         // Apply time zone conversion to all appointments
         const convertedAppointments = getAppointmentsInUserTimeZone(appointmentsWithClient, userTimeZone);
@@ -107,7 +106,7 @@ export const useAppointments = (userId: string | null) => {
            appointment.status === "scheduled";
   }) || [];
 
-  const startVideoSession = async (appointment: AppointmentType) => {
+  const startVideoSession = async (appointment: BaseAppointment) => {
     try {
       console.log("Starting video session for appointment:", appointment.id);
       
@@ -139,7 +138,7 @@ export const useAppointments = (userId: string | null) => {
     }
   };
 
-  const openSessionTemplate = async (appointment: AppointmentType) => {
+  const openSessionTemplate = async (appointment: BaseAppointment) => {
     if (!appointment || !appointment.client_id) {
       toast({
         title: 'Error',

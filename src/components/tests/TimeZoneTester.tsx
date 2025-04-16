@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZoneById } from '@/hooks/useUserTimeZone';
 import { ensureIANATimeZone, formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
 import { getAppointmentInUserTimeZone } from '@/utils/appointmentUtils';
-import { AppointmentType } from '@/types/appointment';
 
 import { 
   Card, 
@@ -16,6 +15,24 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
+
+interface AppointmentType {
+  id: string;
+  client_id: string;
+  clinician_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  appointment_datetime?: string;
+  appointment_end_datetime?: string;
+  source_time_zone?: string;
+  type: string;
+  notes?: string;
+  status: string;
+  display_date?: string;
+  display_start_time?: string;
+  display_end_time?: string;
+}
 
 const PST_TIME_ZONE = 'America/Los_Angeles';
 
@@ -41,9 +58,6 @@ const TimeZoneTester: React.FC = () => {
         
         // Create test appointment data
         const appointment: Partial<AppointmentType> = {
-          id: 'test-appointment-id',
-          client_id: 'test-client-id',
-          clinician_id: 'test-clinician-id',
           date: appointmentDate,
           start_time: appointmentTime,
           end_time: appointmentEndTime,
