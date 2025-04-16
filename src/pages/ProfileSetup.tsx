@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -99,8 +98,10 @@ const ProfileSetup = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [navigationHistory, setNavigationHistory] = useState<number[]>([1]);
   const [otherInsurance, setOtherInsurance] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState(false); // Add state for tracking submission
-  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProfileCompleted, setIsProfileCompleted] = useState(false);
+  const isInitialMount = useRef(true);
+
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(
       currentStep === 1 
@@ -165,6 +166,20 @@ const ProfileSetup = () => {
   });
 
   useEffect(() => {
+    // Skip fetching user data if profile is already completed
+    if (isProfileCompleted) {
+      console.log("Profile is completed, skipping fetchUser");
+      return;
+    }
+
+    // Skip the initial mount if we're in the middle of completing the profile
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+    } else if (isSubmitting) {
+      console.log("Form is submitting, skipping fetchUser");
+      return;
+    }
+
     const fetchUser = async () => {
       try {
         console.log("Starting fetchUser function");
@@ -253,6 +268,14 @@ const ProfileSetup = () => {
           const data = clientData[0];
           console.log("Processing client data:", data);
           
+          // Check if profile is already complete
+          if (data.client_status === 'Profile Complete' || data.client_is_profile_complete === 'true') {
+            console.log("Profile is already complete, redirecting to therapist selection");
+            setIsProfileCompleted(true);
+            window.location.href = '/therapist-selection';
+            return;
+          }
+          
           setClientId(data.id);
           
           let dateOfBirth = undefined;
@@ -327,7 +350,7 @@ const ProfileSetup = () => {
     };
     
     fetchUser();
-  }, [form, toast]);
+  }, [form, toast, isSubmitting, isProfileCompleted]);
 
   const navigateToStep = (nextStep: number) => {
     setNavigationHistory(prev => [...prev, nextStep]);
@@ -408,8 +431,8 @@ const ProfileSetup = () => {
   const handleNext = async () => {
     const values = form.getValues();
     const vaCoverage = values.client_vacoverage;
-    const hasMoreInsurance = values.hasMoreInsurance; // Updated to use the local field
-    
+    const hasMoreInsurance = values.hasMoreInsurance;
+
     if (currentStep === 2) {
       if (clientId) {
         const formattedDateOfBirth = values.client_date_of_birth 
@@ -430,25 +453,27 @@ const ProfileSetup = () => {
             .eq('id', clientId);
             
           if (error) {
-            console.error("Error saving step 2 data:", error);
+            console.error("Error saving demographic data:", error);
             toast({
               title: "Error saving data",
               description: error.message,
               variant: "destructive"
             });
-          } else {
-            toast({
-              title: "Information saved",
-              description: "Your demographic information has been updated.",
-            });
+            return;
           }
+          
+          toast({
+            title: "Information saved",
+            description: "Your demographic information has been updated.",
+          });
         } catch (error) {
-          console.error("Exception saving step 2 data:", error);
+          console.error("Exception saving demographic data:", error);
           toast({
             title: "Error saving data",
             description: "An unexpected error occurred.",
             variant: "destructive"
           });
+          return;
         }
       }
       
@@ -456,12 +481,15 @@ const ProfileSetup = () => {
     } else if (currentStep === 3) {
       if (vaCoverage === "CHAMPVA" && clientId) {
         try {
-          console.log("Saving CHAMPVA #:", values.client_champva);
+          console.log("Saving CHAMPVA Information");
           
           const { error } = await supabase
             .from('clients')
             .update({
-              client_champva: values.client_champva
+              client_champva: values.client_champva,
+              client_other_insurance: values.client_other_insurance,
+              client_champva_agreement: values.client_champva_agreement,
+              client_mental_health_referral: values.client_mental_health_referral
             })
             .eq('id', clientId);
             
@@ -488,7 +516,7 @@ const ProfileSetup = () => {
         }
       } else if (vaCoverage === "TRICARE" && clientId) {
         try {
-          console.log("Saving TRICARE data");
+          console.log("Saving TRICARE Information");
           
           const { error } = await supabase
             .from('clients')
@@ -676,67 +704,89 @@ const ProfileSetup = () => {
   const handleSubmit = async () => {
     try {
       // Prevent multiple submissions
-      if (isSubmitting) return;
-      setIsSubmitting(true);
-      
-      const values = form.getValues();
-      
-      if (!clientId) {
-        toast({
-          title: "Error",
-          description: "No client record found. Please contact support.",
-          variant: "destructive"
-        });
-        setIsSubmitting(false);
+      if (isSubmitting || isProfileCompleted) {
+        console.log("Submission already in progress or profile already completed, skipping");
         return;
       }
       
-      console.log("Submitting final form data:", {
-        client_self_goal: values.client_self_goal,
-        client_referral_source: values.client_referral_source,
-        client_status: 'Profile Complete',
-        client_is_profile_complete: 'true'
-      });
+      console.log("Starting profile completion process");
+      setIsSubmitting(true);
+      setIsProfileCompleted(true); // Set this early to prevent race conditions
+      
+      const formValues = form.getValues();
+      
+      if (!formValues.client_time_zone) {
+        console.log("Time zone is required but not provided");
+        toast({
+          title: "Time Zone Required",
+          description: "Please select your time zone to continue.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        setIsProfileCompleted(false);
+        return;
+      }
 
+      if (!clientId) {
+        console.log("Client ID not found");
+        toast({
+          title: "Error",
+          description: "Client ID not found. Please try again or contact support.",
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        setIsProfileCompleted(false);
+        return;
+      }
+
+      console.log("Updating profile time zone in profiles table");
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          time_zone: formValues.client_time_zone
+        })
+        .eq('id', clientId);
+
+      if (profileError) {
+        console.error("Error updating profile time zone:", profileError);
+        throw profileError;
+      }
+
+      console.log("Updating client status to 'Profile Complete'");
       const { error } = await supabase
         .from('clients')
         .update({
-          client_self_goal: values.client_self_goal || null,
-          client_referral_source: values.client_referral_source || null,
+          client_self_goal: formValues.client_self_goal || null,
+          client_referral_source: formValues.client_referral_source || null,
           client_status: 'Profile Complete',
           client_is_profile_complete: 'true'
         })
         .eq('id', clientId);
-      
+
       if (error) {
-        console.error("Error updating profile:", error);
-        toast({
-          title: "Error updating profile",
-          description: error.message,
-          variant: "destructive"
-        });
-        setIsSubmitting(false);
-        return;
+        console.error("Error updating client:", error);
+        throw error;
       }
-      
-      console.log("Profile completed successfully");
+
+      console.log("Profile completion successful, showing success message");
       toast({
-        title: "Profile complete!",
-        description: "Your information has been saved. You can now select a therapist.",
+        title: "Profile Complete",
+        description: "Your profile has been completed successfully."
       });
+
+      // Use window.location.href for immediate navigation
+      console.log("Redirecting to therapist selection page");
+      window.location.href = '/therapist-selection';
       
-      // Navigate to the therapist selection page
-      setTimeout(() => {
-        navigate('/therapist-selection');
-      }, 100);
     } catch (error) {
-      console.error("Exception in handleSubmit:", error);
+      console.error('Error in handleSubmit:', error);
       toast({
-        title: "Error updating profile",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Error",
+        description: "There was an error completing your profile. Please try again.",
         variant: "destructive"
       });
       setIsSubmitting(false);
+      setIsProfileCompleted(false);
     }
   };
 
@@ -1059,7 +1109,7 @@ const ProfileSetup = () => {
           <Button 
             type="button" 
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isProfileCompleted}
             className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
           >
             {isSubmitting ? "Completing..." : "Complete Profile"}
@@ -1068,6 +1118,28 @@ const ProfileSetup = () => {
       </div>
     </Form>
   );
+
+  // If profile is already completed, show loading message while redirecting
+  if (isProfileCompleted) {
+    return (
+      <Layout>
+        <div className="max-w-5xl mx-auto">
+          <Card className="border-valorwell-200 shadow-xl">
+            <CardHeader className="bg-gradient-to-r from-valorwell-500 to-valorwell-600 text-white rounded-t-lg p-6">
+              <CardTitle className="text-xl sm:text-2xl font-semibold">Profile Complete</CardTitle>
+              <CardDescription className="text-valorwell-50">Redirecting to therapist selection...</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 sm:p-8 flex justify-center items-center">
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-valorwell-600 mx-auto mb-4"></div>
+                <p>Your profile is complete. Redirecting you to select a therapist...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
