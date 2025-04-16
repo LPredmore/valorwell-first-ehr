@@ -351,8 +351,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
             <div className="mb-6">
               <Label htmlFor="diagnosisCodes">Diagnosis Codes</Label>
               <DiagnosisSelector
-                selected={formState.diagnosisCodes}
-                onSelect={(codes) => handleChange('diagnosisCodes', codes)}
+                value={formState.diagnosisCodes}
+                onChange={(codes) => handleChange('diagnosisCodes', codes)}
               />
             </div>
             <div className="mb-6">

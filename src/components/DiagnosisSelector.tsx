@@ -12,35 +12,26 @@ interface DiagnosisSelectorProps {
   onChange: (value: string[]) => void;
 }
 
-export const DiagnosisSelector: React.FC<DiagnosisSelectorProps> = ({ value, onChange }) => {
+export const DiagnosisSelector: React.FC<DiagnosisSelectorProps> = ({ 
+  value, 
+  onChange 
+}) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const { data: icd10Codes, isLoading } = useICD10Codes(search);
-  const [selectedCodes, setSelectedCodes] = useState<string[]>(value || []);
   
-  // Update parent component when selections change
-  useEffect(() => {
-    onChange(selectedCodes);
-  }, [selectedCodes, onChange]);
-
-  // Update local state when value from parent changes
-  useEffect(() => {
-    setSelectedCodes(value || []);
-  }, [value]);
-
   const handleSelect = (code: string) => {
-    // Only add if not already in the list
-    if (!selectedCodes.includes(code)) {
-      setSelectedCodes([...selectedCodes, code]);
-    }
+    const updatedCodes = !value.includes(code) 
+      ? [...value, code] 
+      : value;
     
-    // Clear search and close popover
+    onChange(updatedCodes);
     setSearch("");
     setOpen(false);
   };
 
   const handleRemove = (codeToRemove: string) => {
-    setSelectedCodes(selectedCodes.filter(code => code !== codeToRemove));
+    onChange(value.filter(code => code !== codeToRemove));
   };
 
   return (
@@ -51,7 +42,7 @@ export const DiagnosisSelector: React.FC<DiagnosisSelectorProps> = ({ value, onC
             variant="outline" 
             className="w-full justify-start text-left font-normal"
           >
-            {selectedCodes.length > 0 ? 'Add another diagnosis code' : 'Select diagnosis codes'}
+            {value.length > 0 ? 'Add another diagnosis code' : 'Select diagnosis codes'}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="p-0" align="start">
@@ -84,9 +75,9 @@ export const DiagnosisSelector: React.FC<DiagnosisSelectorProps> = ({ value, onC
         </PopoverContent>
       </Popover>
 
-      {selectedCodes.length > 0 && (
+      {value.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {selectedCodes.map((code) => (
+          {value.map((code) => (
             <Badge key={code} variant="secondary" className="py-1 px-2">
               {code}
               <button
