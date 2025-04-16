@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById, formatDateForDB, supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { getUserTimeZoneById } from '@/hooks/useUserTimeZone';
 
 // Import the tab components
 import MyPortal from '@/components/patient/MyPortal';
@@ -138,6 +139,10 @@ const PatientDashboard: React.FC = () => {
         
         checkForAssignedDocuments(user.id);
         
+        // Fetch time zone from profiles table
+        const userTimeZone = await getUserTimeZoneById(user.id);
+        console.log("Retrieved user time zone from profiles:", userTimeZone);
+        
         let age = '';
         if (client.client_date_of_birth) {
           const dob = new Date(client.client_date_of_birth);
@@ -164,7 +169,7 @@ const PatientDashboard: React.FC = () => {
           gender: client.client_gender || '',
           genderIdentity: client.client_gender_identity || '',
           state: client.client_state || '',
-          timeZone: client.client_time_zone || '',
+          timeZone: userTimeZone || '', // Use time zone from profiles table
           client_insurance_company_primary: client.client_insurance_company_primary || '',
           client_insurance_type_primary: client.client_insurance_type_primary || '',
           client_policy_number_primary: client.client_policy_number_primary || '',
@@ -232,13 +237,14 @@ const PatientDashboard: React.FC = () => {
       const formValues = form.getValues();
       console.log("Form values to save:", formValues);
       
+      // Update client profile in clients table
       const updates = {
         client_preferred_name: formValues.preferredName,
         client_phone: formValues.phone,
         client_gender: formValues.gender,
         client_gender_identity: formValues.genderIdentity,
         client_state: formValues.state,
-        client_time_zone: formValues.timeZone,
+        // Removed client_time_zone as we're now storing it in profiles table
         client_insurance_company_primary: formValues.client_insurance_company_primary,
         client_insurance_type_primary: formValues.client_insurance_type_primary,
         client_policy_number_primary: formValues.client_policy_number_primary,
@@ -278,8 +284,21 @@ const PatientDashboard: React.FC = () => {
         client_tricare_referral_number: formValues.client_tricare_referral_number
       };
       
-      console.log("Sending updates to database:", updates);
+      console.log("Sending updates to clients table:", updates);
       const result = await updateClientProfile(clientData.id, updates);
+      
+      // Update time zone in profiles table
+      console.log("Updating time zone in profiles table:", formValues.timeZone);
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ time_zone: formValues.timeZone })
+        .eq('id', clientData.id);
+        
+      if (profileError) {
+        console.error("Error updating time zone in profiles:", profileError);
+        throw new Error("Failed to update time zone: " + JSON.stringify(profileError));
+      }
+      
       if (result.success) {
         console.log("Profile update successful");
         toast({
