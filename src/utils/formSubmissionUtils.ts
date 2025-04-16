@@ -1,4 +1,3 @@
-
 /**
  * Shared utility functions for form submission and document handling
  */
@@ -107,45 +106,41 @@ export const handleFormSubmission = async (
       }
     }
     
-    // Step 3: Update the document assignment if found
+    // Step 3: Delete the document assignment if found (instead of updating status)
     if (exactAssignments && exactAssignments.length > 0) {
       const assignment = exactAssignments[0];
       console.log(`Found document assignment with ID: ${assignment.id}, name: ${assignment.document_name}, current status: ${assignment.status}`);
       
-      // Use a transaction to ensure the update is committed
-      // FIX: Remove completed_at and pdf_url fields that don't exist in the table
-      const { error: updateError } = await supabase
+      // DELETE the document assignment instead of updating it
+      const { error: deleteError } = await supabase
         .from('document_assignments')
-        .update({
-          status: 'completed',
-          // Store PDF path in the response_data JSON field instead
-          response_data: { ...responseData, pdf_path: filePath }
-        })
+        .delete()
         .eq('id', assignment.id);
         
-      if (updateError) {
-        console.error('Error updating document assignment:', updateError);
+      if (deleteError) {
+        console.error('Error deleting document assignment:', deleteError);
         return {
           success: false,
           filePath,
-          error: updateError,
-          message: 'Document was generated but there was an issue updating its status.'
+          error: deleteError,
+          message: 'Document was generated but there was an issue removing it from your assignments.'
         };
       }
       
-      console.log(`Successfully updated document assignment status to 'completed'`);
+      console.log(`Successfully deleted document assignment with ID: ${assignment.id}`);
       
-      // Verify the update was successful
+      // Verify the deletion was successful
       const { data: verifyData, error: verifyError } = await supabase
         .from('document_assignments')
-        .select('status')
-        .eq('id', assignment.id)
-        .single();
+        .select('id')
+        .eq('id', assignment.id);
         
       if (verifyError) {
-        console.error('Error verifying document assignment update:', verifyError);
+        console.error('Error verifying document assignment deletion:', verifyError);
+      } else if (!verifyData || verifyData.length === 0) {
+        console.log('Verified document assignment was successfully deleted');
       } else {
-        console.log(`Verified document status is now: ${verifyData.status}`);
+        console.warn('Document assignment still exists after deletion attempt');
       }
     } else {
       console.warn(`No document assignment found for ${documentName}`);
@@ -170,6 +165,7 @@ export const handleFormSubmission = async (
           ? documentInfo.documentDate 
           : documentInfo.documentDate.toISOString().split('T')[0];
           
+        // Store the PDF path and response data in the clinical_documents table
         const { error: insertError } = await supabase
           .from('clinical_documents')
           .insert({
@@ -178,13 +174,14 @@ export const handleFormSubmission = async (
             document_date: formattedDate,
             document_title: documentInfo.documentTitle,
             file_path: filePath,
-            created_by: documentInfo.createdBy
+            created_by: documentInfo.createdBy,
+            response_data: responseData // Store response data here instead of document_assignments
           });
           
         if (insertError) {
           console.error('Error saving document metadata:', insertError);
         } else {
-          console.log('Successfully saved document metadata');
+          console.log('Successfully saved document metadata with response data');
         }
       }
     } catch (error) {
@@ -194,7 +191,7 @@ export const handleFormSubmission = async (
     return {
       success: true,
       filePath,
-      message: 'Your form has been submitted successfully.'
+      message: 'Your form has been submitted successfully and removed from your assignments.'
     };
   } catch (error) {
     console.error('Error in form submission:', error);
