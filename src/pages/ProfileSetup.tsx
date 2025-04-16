@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +24,9 @@ import SignupNotAVeteran from '@/components/signup/SignupNotAVeteran';
 import AdditionalInsurance from '@/components/signup/AdditionalInsurance';
 import MoreAdditionalInsurance from '@/components/signup/MoreAdditionalInsurance';
 import SignupLast from '@/components/signup/SignupLast';
+import { useUser } from '@/context/UserContext';
 
+// Schema definitions
 const profileStep1Schema = z.object({
   client_first_name: z.string().min(1, "First name is required"),
   client_last_name: z.string().min(1, "Last name is required"),
@@ -91,17 +94,52 @@ type ProfileFormValues = z.infer<typeof profileStep1Schema> & {
   tricareInsuranceAgreement: boolean;
 };
 
+// Helper function to save form state to localStorage
+const saveFormState = (formValues: ProfileFormValues, step: number) => {
+  localStorage.setItem('profileFormValues', JSON.stringify(formValues));
+  localStorage.setItem('profileStep', String(step));
+};
+
+// Helper function to load form state from localStorage
+const loadFormState = () => {
+  const formValuesStr = localStorage.getItem('profileFormValues');
+  const stepStr = localStorage.getItem('profileStep');
+  
+  const step = stepStr ? parseInt(stepStr, 10) : 1;
+  const formValues = formValuesStr ? JSON.parse(formValuesStr) : null;
+  
+  // Convert date strings back to Date objects
+  if (formValues) {
+    if (formValues.client_date_of_birth) {
+      formValues.client_date_of_birth = new Date(formValues.client_date_of_birth);
+    }
+    if (formValues.client_recentdischarge) {
+      formValues.client_recentdischarge = new Date(formValues.client_recentdischarge);
+    }
+    if (formValues.client_subscriber_dob_primary) {
+      formValues.client_subscriber_dob_primary = new Date(formValues.client_subscriber_dob_primary);
+    }
+    if (formValues.client_subscriber_dob_secondary) {
+      formValues.client_subscriber_dob_secondary = new Date(formValues.client_subscriber_dob_secondary);
+    }
+  }
+  
+  return { formValues, step };
+};
+
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { userId } = useUser(); // Use userId from UserContext
   const [clientId, setClientId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentStep, setCurrentStep] = useState(1);
   const [navigationHistory, setNavigationHistory] = useState<number[]>([1]);
   const [otherInsurance, setOtherInsurance] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProfileCompleted, setIsProfileCompleted] = useState(false);
-  const isInitialMount = useRef(true);
 
+  // Initialize form with default values
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(
       currentStep === 1 
@@ -165,193 +203,159 @@ const ProfileSetup = () => {
     }
   });
 
+  // Load saved form state and check profile completion status
   useEffect(() => {
-    if (isProfileCompleted) {
-      console.log("Profile is completed, skipping fetchUser");
-      return;
-    }
-
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-    } else if (isSubmitting) {
-      console.log("Form is submitting, skipping fetchUser");
-      return;
-    }
-
-    const fetchUser = async () => {
+    const checkProfileStatus = async () => {
       try {
-        console.log("Starting fetchUser function");
+        setIsLoading(true);
+        console.log("Checking profile status");
         
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        // First try to use the userId from context
+        let id = userId;
         
-        console.log("Auth getUser result:", { user, authError });
+        // If not available, try to get the user from Supabase
+        if (!id) {
+          const { data: { user } } = await supabase.auth.getUser();
+          id = user?.id || null;
+        }
         
-        if (authError || !user) {
-          console.log("No authenticated user or auth error:", authError);
+        if (!id) {
+          console.log("No user ID available");
+          setIsLoading(false);
           return;
         }
         
-        console.log("Authenticated user:", user);
-        console.log("User ID:", user.id);
-        console.log("User email:", user.email);
+        console.log("Fetching client data for user:", id);
+        setClientId(id);
         
-        let { data: clientData, error: clientIdError } = await supabase
+        // Check if the profile is already complete
+        const { data: clientData, error: clientError } = await supabase
           .from('clients')
           .select('*')
-          .eq('id', user.id);
+          .eq('id', id)
+          .single();
           
-        console.log("Client query by ID result:", { clientData, clientIdError });
-        
-        if ((!clientData || clientData.length === 0) && user.email) {
-          console.log("No client found by ID, checking by email:", user.email);
-          
-          const { data: emailData, error: emailError } = await supabase
-            .from('clients')
-            .select('*')
-            .eq('client_email', user.email);
-            
-          console.log("Client query by email result:", { emailData, emailError });
-          
-          if (!emailError && emailData && emailData.length > 0) {
-            clientData = emailData;
-            
-            const { error: updateError } = await supabase
-              .from('clients')
-              .update({ id: user.id })
-              .eq('id', clientData[0].id);
-              
-            if (updateError) {
-              console.error("Error updating client ID:", updateError);
-            } else {
-              const { data: updatedData } = await supabase
-                .from('clients')
-                .select('*')
-                .eq('id', user.id);
-                
-              if (updatedData && updatedData.length > 0) {
-                clientData = updatedData;
-              }
-            }
-          }
+        if (clientError) {
+          console.error("Error fetching client data:", clientError);
+          setIsLoading(false);
+          return;
         }
         
-        if (!clientData || clientData.length === 0) {
-          console.log("No client record found, creating new one for user:", user.id);
+        if (clientData && (clientData.client_status === 'Profile Complete' || clientData.client_is_profile_complete === 'true')) {
+          console.log("Profile is already complete");
+          setIsProfileCompleted(true);
+          setIsLoading(false);
           
-          const { data: newClient, error: insertError } = await supabase
-            .from('clients')
-            .insert([
-              { 
-                id: user.id,
-                client_email: user.email,
-              }
-            ])
-            .select();
-            
-          if (insertError) {
-            console.error("Error creating client record:", insertError);
-            toast({
-              title: "Profile Error", 
-              description: "Failed to create your profile. Please try again.",
-              variant: "destructive"
-            });
-            return;
-          }
-          
-          clientData = newClient;
-          console.log("Created new client record:", clientData);
-        }
-        
-        if (clientData && clientData.length > 0) {
-          const data = clientData[0];
-          console.log("Processing client data:", data);
-          
-          if (data.client_status === 'Profile Complete' || data.client_is_profile_complete === 'true') {
-            console.log("Profile is already complete, redirecting to therapist selection");
-            setIsProfileCompleted(true);
+          // Wait a brief moment before redirecting to ensure state updates
+          setTimeout(() => {
             window.location.href = '/therapist-selection';
-            return;
-          }
+          }, 100);
+          return;
+        }
+        
+        // Try to load saved form state
+        const { formValues, step } = loadFormState();
+        
+        if (formValues) {
+          console.log("Restoring saved form state:", formValues);
+          console.log("Restoring to step:", step);
+          form.reset(formValues);
+          setCurrentStep(step);
+          setNavigationHistory([...Array(step).keys()].map(i => i + 1));
           
-          setClientId(data.id);
+          // If we have other insurance set, restore that as well
+          if (formValues.client_other_insurance) {
+            setOtherInsurance(formValues.client_other_insurance);
+          }
+        }
+        
+        // If we didn't load from localStorage, try to load from database
+        if (!formValues && clientData) {
+          console.log("Loading form data from database");
           
           let dateOfBirth = undefined;
-          if (data.client_date_of_birth) {
-            dateOfBirth = new Date(data.client_date_of_birth);
-            console.log("Parsed date of birth:", dateOfBirth);
+          if (clientData.client_date_of_birth) {
+            dateOfBirth = new Date(clientData.client_date_of_birth);
           }
           
           let dischargeDate = undefined;
-          if (data.client_recentdischarge) {
-            dischargeDate = new Date(data.client_recentdischarge);
-            console.log("Parsed discharge date:", dischargeDate);
+          if (clientData.client_recentdischarge) {
+            dischargeDate = new Date(clientData.client_recentdischarge);
           }
           
-          console.log("Setting form values with client data");
-          
-          const formValues = {
-            client_first_name: data.client_first_name || '',
-            client_preferred_name: data.client_preferred_name || '',
-            client_last_name: data.client_last_name || '',
-            client_email: data.client_email || '',
-            client_phone: data.client_phone || '',
-            client_relationship: data.client_relationship || '',
+          const dbFormValues = {
+            client_first_name: clientData.client_first_name || '',
+            client_preferred_name: clientData.client_preferred_name || '',
+            client_last_name: clientData.client_last_name || '',
+            client_email: clientData.client_email || '',
+            client_phone: clientData.client_phone || '',
+            client_relationship: clientData.client_relationship || '',
             client_date_of_birth: dateOfBirth,
-            client_gender: data.client_gender || '',
-            client_gender_identity: data.client_gender_identity || '',
-            client_state: data.client_state || '',
-            client_time_zone: data.client_time_zone || '',
-            client_vacoverage: data.client_vacoverage || '',
-            client_champva: data.client_champva || '',
-            client_other_insurance: data.client_other_insurance || '',
-            client_champva_agreement: data.client_champva_agreement || false,
-            client_mental_health_referral: data.client_mental_health_referral || '',
-            client_branchOS: data.client_branchOS || '',
+            client_gender: clientData.client_gender || '',
+            client_gender_identity: clientData.client_gender_identity || '',
+            client_state: clientData.client_state || '',
+            client_time_zone: clientData.client_time_zone || '',
+            client_vacoverage: clientData.client_vacoverage || '',
+            client_champva: clientData.client_champva || '',
+            client_other_insurance: clientData.client_other_insurance || '',
+            client_champva_agreement: clientData.client_champva_agreement || false,
+            client_mental_health_referral: clientData.client_mental_health_referral || '',
+            client_branchOS: clientData.client_branchOS || '',
             client_recentdischarge: dischargeDate,
-            client_disabilityrating: data.client_disabilityrating || '',
-            client_tricare_beneficiary_category: data.client_tricare_beneficiary_category || '',
-            client_tricare_sponsor_name: data.client_tricare_sponsor_name || '',
-            client_tricare_sponsor_branch: data.client_tricare_sponsor_branch || '',
-            client_tricare_sponsor_id: data.client_tricare_sponsor_id || '',
-            client_tricare_plan: data.client_tricare_plan || '',
-            client_tricare_region: data.client_tricare_region || '',
-            client_tricare_policy_id: data.client_tricare_policy_id || '',
-            client_tricare_has_referral: data.client_tricare_has_referral || '',
-            client_tricare_referral_number: data.client_tricare_referral_number || '',
-            client_tricare_insurance_agreement: data.client_tricare_insurance_agreement || false,
-            client_veteran_relationship: data.client_veteran_relationship || '',
-            client_situation_explanation: data.client_situation_explanation || '',
-            client_self_goal: data.client_self_goal || '',
-            client_referral_source: data.client_referral_source || '',
+            client_disabilityrating: clientData.client_disabilityrating || '',
+            client_tricare_beneficiary_category: clientData.client_tricare_beneficiary_category || '',
+            client_tricare_sponsor_name: clientData.client_tricare_sponsor_name || '',
+            client_tricare_sponsor_branch: clientData.client_tricare_sponsor_branch || '',
+            client_tricare_sponsor_id: clientData.client_tricare_sponsor_id || '',
+            client_tricare_plan: clientData.client_tricare_plan || '',
+            client_tricare_region: clientData.client_tricare_region || '',
+            client_tricare_policy_id: clientData.client_tricare_policy_id || '',
+            client_tricare_has_referral: clientData.client_tricare_has_referral || '',
+            client_tricare_referral_number: clientData.client_tricare_referral_number || '',
+            client_tricare_insurance_agreement: clientData.client_tricare_insurance_agreement || false,
+            client_veteran_relationship: clientData.client_veteran_relationship || '',
+            client_situation_explanation: clientData.client_situation_explanation || '',
+            client_self_goal: clientData.client_self_goal || '',
+            client_referral_source: clientData.client_referral_source || '',
           };
           
-          console.log("Form values to be set:", formValues);
-          form.reset(formValues);
-          console.log("Form reset completed");
+          form.reset(dbFormValues);
           
-          setTimeout(() => {
-            const currentValues = form.getValues();
-            console.log("Current form values after reset:", currentValues);
-          }, 100);
-        } else {
-          console.log("No client data found after all attempts");
+          if (clientData.client_other_insurance) {
+            setOtherInsurance(clientData.client_other_insurance);
+          }
         }
       } catch (error) {
-        console.error("Exception in fetchUser:", error);
+        console.error("Error in checkProfileStatus:", error);
         toast({
           title: "Error", 
           description: "An unexpected error occurred loading your profile.",
           variant: "destructive"
         });
+      } finally {
+        setIsLoading(false);
       }
     };
     
-    fetchUser();
-  }, [form, toast, isSubmitting, isProfileCompleted]);
+    checkProfileStatus();
+  }, [userId, form, toast]);
+
+  // Save form state whenever it changes
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      if (!isLoading && !isSubmitting) {
+        saveFormState(value as ProfileFormValues, currentStep);
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form, isLoading, isSubmitting, currentStep]);
 
   const navigateToStep = (nextStep: number) => {
     setNavigationHistory(prev => [...prev, nextStep]);
     setCurrentStep(nextStep);
+    // Save the form state with the new step
+    saveFormState(form.getValues(), nextStep);
   };
 
   const handleConfirmIdentity = async () => {
@@ -418,11 +422,17 @@ const ProfileSetup = () => {
       const previousStep = newHistory[newHistory.length - 1];
       setNavigationHistory(newHistory);
       setCurrentStep(previousStep);
+      
+      // Save the form state with the new step
+      saveFormState(form.getValues(), previousStep);
     }
   };
 
   const handleOtherInsuranceChange = (value: string) => {
     setOtherInsurance(value);
+    const values = form.getValues();
+    values.client_other_insurance = value;
+    saveFormState(values, currentStep);
   };
 
   const handleNext = async () => {
@@ -707,7 +717,6 @@ const ProfileSetup = () => {
       
       console.log("Starting profile completion process");
       setIsSubmitting(true);
-      setIsProfileCompleted(true);
       
       const formValues = form.getValues();
       
@@ -719,7 +728,6 @@ const ProfileSetup = () => {
           variant: "destructive",
         });
         setIsSubmitting(false);
-        setIsProfileCompleted(false);
         return;
       }
 
@@ -731,7 +739,6 @@ const ProfileSetup = () => {
           variant: "destructive"
         });
         setIsSubmitting(false);
-        setIsProfileCompleted(false);
         return;
       }
 
@@ -764,14 +771,23 @@ const ProfileSetup = () => {
         throw error;
       }
 
+      // Mark as completed before navigation
+      setIsProfileCompleted(true);
+      
       console.log("Profile completion successful, showing success message");
       toast({
         title: "Profile Complete",
         description: "Your profile has been completed successfully."
       });
 
-      console.log("Redirecting to therapist selection page");
-      window.location.href = '/therapist-selection';
+      // Clear localStorage
+      localStorage.removeItem('profileFormValues');
+      localStorage.removeItem('profileStep');
+
+      // Redirect with a slight delay to ensure state updates and toast is visible
+      setTimeout(() => {
+        window.location.href = '/therapist-selection';
+      }, 1000);
       
     } catch (error) {
       console.error('Error in handleSubmit:', error);
@@ -781,7 +797,6 @@ const ProfileSetup = () => {
         variant: "destructive"
       });
       setIsSubmitting(false);
-      setIsProfileCompleted(false);
     }
   };
 
@@ -939,6 +954,33 @@ const ProfileSetup = () => {
       </Form>
     );
   };
+
+  // Show loading state if we're still initializing
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="container max-w-4xl mx-auto py-8 flex items-center justify-center min-h-[50vh]">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-valorwell-600 mx-auto"></div>
+            <p className="text-lg">Loading your profile information...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Redirect if profile is already completed
+  if (isProfileCompleted) {
+    return (
+      <Layout>
+        <div className="container max-w-4xl mx-auto py-8 flex items-center justify-center min-h-[50vh]">
+          <div className="text-center space-y-4">
+            <p className="text-lg">Your profile is complete. Redirecting to therapist selection...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
