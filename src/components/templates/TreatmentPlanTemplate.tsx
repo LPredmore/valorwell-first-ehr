@@ -289,8 +289,231 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
             id="treatment-plan-content"
             className="border rounded-md p-4 bg-white"
           >
-            {/* Treatment plan content here */}
-            {/* ... existing content ... */}
+            <div className="mb-6">
+              <Label htmlFor="clientName">Client Name</Label>
+              <Input
+                type="text"
+                id="clientName"
+                value={formState.clientName}
+                onChange={(e) => handleChange('clientName', e.target.value)}
+                disabled
+              />
+            </div>
+            <div className="mb-6">
+              <Label htmlFor="clientDob">Client Date of Birth</Label>
+              <Input
+                type="text"
+                id="clientDob"
+                value={formState.clientDob}
+                onChange={(e) => handleChange('clientDob', e.target.value)}
+                disabled
+              />
+            </div>
+            <div className="mb-6">
+              <Label htmlFor="clinicianName">Clinician Name</Label>
+              <Input
+                type="text"
+                id="clinicianName"
+                value={formState.clinicianName}
+                onChange={(e) => handleChange('clinicianName', e.target.value)}
+              />
+            </div>
+            <div className="mb-6">
+              <Label>Start Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-[240px] justify-start text-left font-normal",
+                      !formState.startDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formState.startDate ? (
+                      format(formState.startDate, "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={formState.startDate}
+                    onSelect={(date) => handleChange('startDate', date)}
+                    disabled={(date) =>
+                      date > new Date()
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="mb-6">
+              <Label htmlFor="planLength">Plan Length</Label>
+              <Select onValueChange={(value) => handleChange('planLength', value)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Select length" value={formState.planLength} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30 Days">30 Days</SelectItem>
+                  <SelectItem value="60 Days">60 Days</SelectItem>
+                  <SelectItem value="90 Days">90 Days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="mb-6">
+              <Label htmlFor="treatmentFrequency">Treatment Frequency</Label>
+              <Input
+                type="text"
+                id="treatmentFrequency"
+                value={formState.treatmentFrequency}
+                onChange={(e) => handleChange('treatmentFrequency', e.target.value)}
+                placeholder="e.g., Weekly"
+              />
+            </div>
+            <div className="mb-6">
+              <Label htmlFor="diagnosisCodes">Diagnosis Codes</Label>
+              <DiagnosisSelector
+                selectedCodes={formState.diagnosisCodes}
+                onChange={(codes) => handleChange('diagnosisCodes', codes)}
+              />
+            </div>
+            <div className="mb-6">
+              <Label htmlFor="problemNarrative">Problem Narrative</Label>
+              <Textarea
+                id="problemNarrative"
+                placeholder="Describe the client's presenting problem"
+                value={formState.problemNarrative}
+                onChange={(e) => handleChange('problemNarrative', e.target.value)}
+              />
+            </div>
+            <div className="mb-6">
+              <Label htmlFor="treatmentGoalNarrative">Treatment Goal Narrative</Label>
+              <Textarea
+                id="treatmentGoalNarrative"
+                placeholder="Define the overall goal of treatment"
+                value={formState.treatmentGoalNarrative}
+                onChange={(e) => handleChange('treatmentGoalNarrative', e.target.value)}
+              />
+            </div>
+            <div className="mb-6">
+              <Label htmlFor="primaryObjective">Primary Objective</Label>
+              <Textarea
+                id="primaryObjective"
+                placeholder="Define the primary objective"
+                value={formState.primaryObjective}
+                onChange={(e) => handleChange('primaryObjective', e.target.value)}
+              />
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <div>
+                  <Label htmlFor="intervention1">Intervention 1</Label>
+                  <Textarea
+                    id="intervention1"
+                    placeholder="Describe intervention 1"
+                    value={formState.intervention1}
+                    onChange={(e) => handleChange('intervention1', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="intervention2">Intervention 2</Label>
+                  <Textarea
+                    id="intervention2"
+                    placeholder="Describe intervention 2"
+                    value={formState.intervention2}
+                    onChange={(e) => handleChange('intervention2', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            {showSecondaryObjective && (
+              <div className="mb-6">
+                <Label htmlFor="secondaryObjective">Secondary Objective</Label>
+                <Textarea
+                  id="secondaryObjective"
+                  placeholder="Define the secondary objective"
+                  value={formState.secondaryObjective}
+                  onChange={(e) => handleChange('secondaryObjective', e.target.value)}
+                />
+                <div className="grid grid-cols-2 gap-4 mt-2">
+                  <div>
+                    <Label htmlFor="intervention3">Intervention 3</Label>
+                    <Textarea
+                      id="intervention3"
+                      placeholder="Describe intervention 3"
+                      value={formState.intervention3}
+                      onChange={(e) => handleChange('intervention3', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="intervention4">Intervention 4</Label>
+                    <Textarea
+                      id="intervention4"
+                      placeholder="Describe intervention 4"
+                      value={formState.intervention4}
+                      onChange={(e) => handleChange('intervention4', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            {showTertiaryObjective && (
+              <div className="mb-6">
+                <Label htmlFor="tertiaryObjective">Tertiary Objective</Label>
+                <Textarea
+                  id="tertiaryObjective"
+                  placeholder="Define the tertiary objective"
+                  value={formState.tertiaryObjective}
+                  onChange={(e) => handleChange('tertiaryObjective', e.target.value)}
+                />
+                <div className="grid grid-cols-2 gap-4 mt-2">
+                  <div>
+                    <Label htmlFor="intervention5">Intervention 5</Label>
+                    <Textarea
+                      id="intervention5"
+                      placeholder="Describe intervention 5"
+                      value={formState.intervention5}
+                      onChange={(e) => handleChange('intervention5', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="intervention6">Intervention 6</Label>
+                    <Textarea
+                      id="intervention6"
+                      placeholder="Describe intervention 6"
+                      value={formState.intervention6}
+                      onChange={(e) => handleChange('intervention6', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            {!showSecondaryObjective && !showTertiaryObjective && (
+              <Button variant="secondary" size="sm" onClick={handleAddObjective}>
+                <Plus className="h-4 w-4 mr-2" /> Add Objective
+              </Button>
+            )}
+            <div className="mb-6">
+              <Label htmlFor="nextUpdate">Next Treatment Plan Update</Label>
+              <Input
+                type="text"
+                id="nextUpdate"
+                placeholder="Enter date for next update"
+                value={formState.nextUpdate}
+                onChange={(e) => handleChange('nextUpdate', e.target.value)}
+              />
+            </div>
+            <div className="mb-6">
+              <Label htmlFor="privateNote">Private Note</Label>
+              <Textarea
+                id="privateNote"
+                placeholder="Enter private note (therapist only)"
+                className="private-note-container"
+                value={formState.privateNote}
+                onChange={(e) => handleChange('privateNote', e.target.value)}
+              />
+            </div>
           </div>
           
           <div className="flex justify-end space-x-2 mt-4">
