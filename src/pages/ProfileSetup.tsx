@@ -1,1060 +1,1178 @@
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from "@hookform/resolvers/zod";
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from "@/components/ui/use-toast"
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
-import { generateAndSavePDF } from "@/utils/reactPdfUtils";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer"
-import { Progress } from "@/components/ui/progress"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Badge } from "@/components/ui/badge"
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card"
-import { Calendar } from "@/components/ui/calendar"
-import { cn } from "@/lib/utils"
-import { format } from "date-fns"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon } from "lucide-react"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
-import { countries } from 'countries-list';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Form } from '@/components/ui/form';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Check, ArrowLeft, ArrowRight } from 'lucide-react';
+import Layout from '@/components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
-import { useUser } from '@/context/UserContext';
-import { z } from "zod"
+import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
+import { useToast } from '@/hooks/use-toast';
+import { timezoneOptions } from '@/utils/timezoneOptions';
+import { DateField } from '@/components/ui/DateField';
+import { format } from 'date-fns';
+import SignupChampva from '@/components/signup/SignupChampva';
+import SignupTricare from '@/components/signup/SignupTricare';
+import SignupVaCcn from '@/components/signup/SignupVaCcn';
+import SignupVeteran from '@/components/signup/SignupVeteran';
+import SignupNotAVeteran from '@/components/signup/SignupNotAVeteran';
+import AdditionalInsurance from '@/components/signup/AdditionalInsurance';
+import MoreAdditionalInsurance from '@/components/signup/MoreAdditionalInsurance';
+import SignupLast from '@/components/signup/SignupLast';
 
-// Define the schema for form validation
-const formSchema = z.object({
-  champva_agreement: z.boolean().optional(),
-  client_first_name: z.string().min(2, {
-    message: "First name must be at least 2 characters.",
-  }),
-  client_last_name: z.string().min(2, {
-    message: "Last name must be at least 2 characters.",
-  }),
+const profileStep1Schema = z.object({
+  client_first_name: z.string().min(1, "First name is required"),
+  client_last_name: z.string().min(1, "Last name is required"),
+  client_preferred_name: z.string().optional(),
+  client_email: z.string().email("Valid email is required"),
+  client_phone: z.string().min(10, "Valid phone number is required"),
+  client_relationship: z.string().min(1, "Relationship is required"),
+});
+
+const profileStep2Schema = z.object({
   client_date_of_birth: z.date({
-    required_error: "A date of birth is required.",
+    required_error: "Date of birth is required",
   }),
-  client_email: z.string().email({
-    message: "Invalid email address.",
-  }),
-  client_phone: z.string().min(10, {
-    message: "Phone number must be at least 10 digits.",
-  }),
-  client_address: z.string().min(5, {
-    message: "Address must be at least 5 characters.",
-  }),
-  client_city: z.string().min(2, {
-    message: "City must be at least 2 characters.",
-  }),
-  client_state: z.string().min(2, {
-    message: "State must be at least 2 characters.",
-  }),
-  client_zip: z.string().min(5, {
-    message: "Zip code must be at least 5 characters.",
-  }),
-  client_country: z.string().min(2, {
-    message: "Country must be at least 2 characters.",
-  }),
-  client_gender: z.string().min(2, {
-    message: "Gender must be at least 2 characters.",
-  }),
-  client_race: z.string().min(2, {
-    message: "Race must be at least 2 characters.",
-  }),
-  client_ethnicity: z.string().min(2, {
-    message: "Ethnicity must be at least 2 characters.",
-  }),
-  client_sexual_orientation: z.string().min(2, {
-    message: "Sexual orientation must be at least 2 characters.",
-  }),
-  client_relationship_status: z.string().min(2, {
-    message: "Relationship status must be at least 2 characters.",
-  }),
-  client_education_level: z.string().min(2, {
-    message: "Education level must be at least 2 characters.",
-  }),
-  client_occupation: z.string().min(2, {
-    message: "Occupation must be at least 2 characters.",
-  }),
-  client_living_situation: z.string().min(2, {
-    message: "Living situation must be at least 2 characters.",
-  }),
-  client_preferred_language: z.string().min(2, {
-    message: "Preferred language must be at least 2 characters.",
-  }),
-  client_emergency_contact_name: z.string().min(2, {
-    message: "Emergency contact name must be at least 2 characters.",
-  }),
-  client_emergency_contact_phone: z.string().min(10, {
-    message: "Emergency contact phone must be at least 10 digits.",
-  }),
-  client_emergency_contact_relationship: z.string().min(2, {
-    message: "Emergency contact relationship must be at least 2 characters.",
-  }),
-  client_insurance_provider: z.string().optional(),
-  client_insurance_policy_number: z.string().optional(),
-  client_insurance_group_number: z.string().optional(),
-  other_insurance: z.string().optional(),
-  client_champva: z.string().optional(),
-  client_referral_source: z.string().optional(),
-  client_additional_information: z.string().optional(),
-  terms: z.boolean().refine((value) => value === true, {
-    message: "You must accept the terms and conditions.",
-  }),
-})
+  client_gender: z.string().min(1, "Birth gender is required"),
+  client_gender_identity: z.string().min(1, "Gender identity is required"),
+  client_state: z.string().min(1, "State is required"),
+  client_time_zone: z.string().min(1, "Time zone is required"),
+  client_vacoverage: z.string().min(1, "VA coverage information is required"),
+});
 
-// Define the interface for country options to fix type issues
-interface CountryOption {
-  value: string;
-  label: string;
-}
+type ProfileFormValues = z.infer<typeof profileStep1Schema> & {
+  client_date_of_birth: Date | undefined;
+  client_gender: string;
+  client_gender_identity: string;
+  client_state: string;
+  client_time_zone: string;
+  client_vacoverage: string;
+  client_champva: string;
+  client_other_insurance: string;
+  client_champva_agreement: boolean;
+  client_mental_health_referral: string;
+  client_branchOS: string;
+  client_recentdischarge: Date | undefined;
+  client_disabilityrating: string;
+  client_tricare_beneficiary_category: string;
+  client_tricare_sponsor_name: string;
+  client_tricare_sponsor_branch: string;
+  client_tricare_sponsor_id: string;
+  client_tricare_plan: string;
+  client_tricare_region: string;
+  client_tricare_policy_id: string;
+  client_tricare_has_referral: string;
+  client_tricare_referral_number: string;
+  client_tricare_insurance_agreement: boolean;
+  client_veteran_relationship: string;
+  client_situation_explanation: string;
+  client_insurance_company_primary: string;
+  client_insurance_type_primary: string;
+  client_subscriber_name_primary: string;
+  client_subscriber_relationship_primary: string;
+  client_subscriber_dob_primary: Date | undefined;
+  client_group_number_primary: string;
+  client_policy_number_primary: string;
+  client_insurance_company_secondary: string;
+  client_insurance_type_secondary: string;
+  client_subscriber_name_secondary: string;
+  client_subscriber_relationship_secondary: string;
+  client_subscriber_dob_secondary: Date | undefined;
+  client_group_number_secondary: string;
+  client_policy_number_secondary: string;
+  hasMoreInsurance: string;
+  client_has_even_more_insurance: string;
+  client_self_goal: string;
+  client_referral_source: string;
+  tricareInsuranceAgreement: boolean;
+};
 
 const ProfileSetup = () => {
-  const [isSaving, setIsSaving] = React.useState<boolean>(false);
-  const [isAlertDialogOpen, setIsAlertDialogOpen] = React.useState<boolean>(false);
-  const [progress, setProgress] = React.useState<number>(0);
-  const [showChampva, setShowChampva] = React.useState<boolean>(false);
-  const [showInsurance, setShowInsurance] = React.useState<boolean>(false);
-  const [showReferral, setShowReferral] = React.useState<boolean>(false);
-  const [showAdditionalInfo, setShowAdditionalInfo] = React.useState<boolean>(false);
-  const [showTerms, setShowTerms] = React.useState<boolean>(false);
-  const [showSuccess, setShowSuccess] = React.useState<boolean>(false);
-  const [showError, setShowError] = React.useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = React.useState<string>('');
-  const [showProgress, setShowProgress] = React.useState<boolean>(false);
-  const [showDrawer, setShowDrawer] = React.useState<boolean>(false);
-  const [showHoverCard, setShowHoverCard] = React.useState<boolean>(false);
-  const [date, setDate] = React.useState<Date | undefined>(new Date())
-  const [isMounted, setIsMounted] = useState(false);
-  const { userId } = useUser();
   const navigate = useNavigate();
-  const { toast } = useToast()
+  const { toast } = useToast();
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [navigationHistory, setNavigationHistory] = useState<number[]>([1]);
+  const [otherInsurance, setOtherInsurance] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProfileCompleted, setIsProfileCompleted] = useState(false);
+  const isInitialMount = useRef(true);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(
+      currentStep === 1 
+        ? profileStep1Schema 
+        : currentStep === 2 
+          ? profileStep2Schema 
+          : profileStep1Schema
+    ),
+    mode: "onChange",
     defaultValues: {
-      client_first_name: "",
-      client_last_name: "",
-      client_date_of_birth: new Date(),
-      client_email: "",
-      client_phone: "",
-      client_address: "",
-      client_city: "",
-      client_state: "",
-      client_zip: "",
-      client_country: "",
-      client_gender: "",
-      client_race: "",
-      client_ethnicity: "",
-      client_sexual_orientation: "",
-      client_relationship_status: "",
-      client_education_level: "",
-      client_occupation: "",
-      client_living_situation: "",
-      client_preferred_language: "",
-      client_emergency_contact_name: "",
-      client_emergency_contact_phone: "",
-      client_emergency_contact_relationship: "",
-      client_insurance_provider: "",
-      client_insurance_policy_number: "",
-      client_insurance_group_number: "",
-      other_insurance: "",
-      client_champva: "",
-      client_referral_source: "",
-      client_additional_information: "",
-      terms: false,
-    },
-  })
-
-  const countryOptions: CountryOption[] = Object.entries(countries).map(([key, value]) => ({
-    value: key,
-    label: value.name as string,
-  }));
-
-  const genderOptions = [
-    "Male",
-    "Female",
-    "Non-binary",
-    "Transgender",
-    "Other",
-    "Prefer not to say",
-  ];
-
-  const raceOptions = [
-    "White",
-    "Black or African American",
-    "Asian",
-    "Native American or Alaska Native",
-    "Native Hawaiian or Other Pacific Islander",
-    "Other",
-    "Prefer not to say",
-  ];
-
-  const ethnicityOptions = [
-    "Hispanic or Latino",
-    "Not Hispanic or Latino",
-    "Prefer not to say",
-  ];
-
-  const sexualOrientationOptions = [
-    "Straight",
-    "Gay",
-    "Lesbian",
-    "Bisexual",
-    "Pansexual",
-    "Asexual",
-    "Other",
-    "Prefer not to say",
-  ];
-
-  const relationshipStatusOptions = [
-    "Single",
-    "Married",
-    "Divorced",
-    "Widowed",
-    "Separated",
-    "In a relationship",
-    "Other",
-    "Prefer not to say",
-  ];
-
-  const educationLevelOptions = [
-    "Less than high school",
-    "High school graduate",
-    "Some college",
-    "Associate's degree",
-    "Bachelor's degree",
-    "Master's degree",
-    "Doctorate degree",
-    "Other",
-    "Prefer not to say",
-  ];
-
-  const livingSituationOptions = [
-    "Living with family",
-    "Living with friends",
-    "Living alone",
-    "Living in a dorm",
-    "Living in a shelter",
-    "Living on the street",
-    "Other",
-    "Prefer not to say",
-  ];
-
-  const referralSourceOptions = [
-    "Google",
-    "Friend",
-    "Family",
-    "Therapist",
-    "Psychiatrist",
-    "Other",
-    "Prefer not to say",
-  ];
-
-  const stateOptions = [
-    "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
-    "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas",
-    "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
-    "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey",
-    "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon",
-    "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas",
-    "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"
-  ];
-
-  function handleOtherInsuranceChange(value: string) {
-    setShowChampva(value === "No");
-    setShowInsurance(value === "Yes");
-  }
-
-  function handleReferralSourceChange(value: string) {
-    setShowReferral(value === "Other");
-  }
-
-  function handleAdditionalInfoChange(value: string) {
-    setShowAdditionalInfo(value === "Yes");
-  }
-
-  function handleTermsChange(value: string) {
-    setShowTerms(value === "Yes");
-  }
-
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setIsSaving(true);
-    setShowProgress(true);
-    setProgress(0);
-
-    try {
-      // Simulate progress
-      for (let i = 0; i <= 100; i += 20) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        setProgress(i);
-      }
-
-      // Step 1: Upload the data to Supabase
-      const { data, error } = await supabase
-        .from('clients')
-        .insert([
-          {
-            ...values,
-            user_id: userId,
-          },
-        ]);
-
-      if (error) {
-        console.error("Error uploading data:", error);
-        setErrorMessage('Failed to create profile. Please try again.');
-        setShowError(true);
-        setShowSuccess(false);
-        return;
-      }
-
-      console.log("Data uploaded successfully:", data);
-
-      // Step 2: Generate and save the PDF
-      const documentInfo = {
-        clientId: userId || 'unknown', // Use a default if userId is null
-        documentType: 'profile-setup',
-        documentDate: new Date(),
-        documentTitle: 'Profile Setup Form',
-        createdBy: userId,
-      };
-
-      const pdfResult = await generateAndSavePDF('profile-setup-form', documentInfo);
-
-      if (!pdfResult.success) {
-        console.error("PDF generation failed:", pdfResult.error);
-        setErrorMessage('Profile created, but PDF generation failed. Please contact support.');
-        setShowError(true);
-        setShowSuccess(true);
-        return;
-      }
-
-      console.log("PDF generated and saved successfully:", pdfResult.filePath);
-
-      // Step 3: Update the user's metadata
-      const { data: userUpdate, error: userError } = await supabase.auth.updateUser({
-        data: {
-          isNewUser: false,
-        },
-      });
-
-      if (userError) {
-        console.error("Error updating user metadata:", userError);
-        setErrorMessage('Profile created, but failed to update user status. Please contact support.');
-        setShowError(true);
-        setShowSuccess(true);
-        return;
-      }
-
-      console.log("User metadata updated successfully:", userUpdate);
-
-      // If everything was successful
-      setShowSuccess(true);
-      setShowError(false);
-      setErrorMessage('');
-
-      toast({
-        title: "Success!",
-        description: "You've completed your profile setup.",
-      })
-
-      // Redirect to the patient dashboard
-      navigate('/patient-dashboard');
-
-    } catch (error: any) {
-      console.error("An unexpected error occurred:", error);
-      setErrorMessage('An unexpected error occurred. Please try again.');
-      setShowError(true);
-      setShowSuccess(false);
-    } finally {
-      setIsSaving(false);
-      setShowProgress(false);
-      setProgress(100);
+      client_first_name: '',
+      client_preferred_name: '',
+      client_last_name: '',
+      client_email: '',
+      client_phone: '',
+      client_relationship: '',
+      client_date_of_birth: undefined as Date | undefined,
+      client_gender: '',
+      client_gender_identity: '',
+      client_state: '',
+      client_time_zone: '',
+      client_vacoverage: '',
+      client_champva: '',
+      client_other_insurance: '',
+      client_champva_agreement: false,
+      client_mental_health_referral: '',
+      client_branchOS: '',
+      client_recentdischarge: undefined as Date | undefined,
+      client_disabilityrating: '',
+      client_tricare_beneficiary_category: '',
+      client_tricare_sponsor_name: '',
+      client_tricare_sponsor_branch: '',
+      client_tricare_sponsor_id: '',
+      client_tricare_plan: '',
+      client_tricare_region: '',
+      client_tricare_policy_id: '',
+      client_tricare_has_referral: '',
+      client_tricare_referral_number: '',
+      client_tricare_insurance_agreement: false,
+      client_veteran_relationship: '',
+      client_situation_explanation: '',
+      client_insurance_company_primary: '',
+      client_insurance_type_primary: '',
+      client_subscriber_name_primary: '',
+      client_subscriber_relationship_primary: '',
+      client_subscriber_dob_primary: undefined as Date | undefined,
+      client_group_number_primary: '',
+      client_policy_number_primary: '',
+      client_insurance_company_secondary: '',
+      client_insurance_type_secondary: '',
+      client_subscriber_name_secondary: '',
+      client_subscriber_relationship_secondary: '',
+      client_subscriber_dob_secondary: undefined as Date | undefined,
+      client_group_number_secondary: '',
+      client_policy_number_secondary: '',
+      hasMoreInsurance: '',
+      client_has_even_more_insurance: '',
+      client_self_goal: '',
+      client_referral_source: '',
+      tricareInsuranceAgreement: false
     }
-  }
+  });
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    // Skip fetching user data if profile is already completed
+    if (isProfileCompleted) {
+      console.log("Profile is completed, skipping fetchUser");
+      return;
+    }
+
+    // Skip the initial mount if we're in the middle of completing the profile
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+    } else if (isSubmitting) {
+      console.log("Form is submitting, skipping fetchUser");
+      return;
+    }
+
+    const fetchUser = async () => {
+      try {
+        console.log("Starting fetchUser function");
+        
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        console.log("Auth getUser result:", { user, authError });
+        
+        if (authError || !user) {
+          console.log("No authenticated user or auth error:", authError);
+          return;
+        }
+        
+        console.log("Authenticated user:", user);
+        console.log("User ID:", user.id);
+        console.log("User email:", user.email);
+        
+        let { data: clientData, error: clientIdError } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('id', user.id);
+          
+        console.log("Client query by ID result:", { clientData, clientIdError });
+        
+        if ((!clientData || clientData.length === 0) && user.email) {
+          console.log("No client found by ID, checking by email:", user.email);
+          
+          const { data: emailData, error: emailError } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('client_email', user.email);
+            
+          console.log("Client query by email result:", { emailData, emailError });
+          
+          if (!emailError && emailData && emailData.length > 0) {
+            clientData = emailData;
+            
+            const { error: updateError } = await supabase
+              .from('clients')
+              .update({ id: user.id })
+              .eq('id', clientData[0].id);
+              
+            if (updateError) {
+              console.error("Error updating client ID:", updateError);
+            } else {
+              const { data: updatedData } = await supabase
+                .from('clients')
+                .select('*')
+                .eq('id', user.id);
+                
+              if (updatedData && updatedData.length > 0) {
+                clientData = updatedData;
+              }
+            }
+          }
+        }
+        
+        if (!clientData || clientData.length === 0) {
+          console.log("No client record found, creating new one for user:", user.id);
+          
+          const { data: newClient, error: insertError } = await supabase
+            .from('clients')
+            .insert([
+              { 
+                id: user.id,
+                client_email: user.email,
+              }
+            ])
+            .select();
+            
+          if (insertError) {
+            console.error("Error creating client record:", insertError);
+            toast({
+              title: "Profile Error", 
+              description: "Failed to create your profile. Please try again.",
+              variant: "destructive"
+            });
+            return;
+          }
+          
+          clientData = newClient;
+          console.log("Created new client record:", clientData);
+        }
+        
+        if (clientData && clientData.length > 0) {
+          const data = clientData[0];
+          console.log("Processing client data:", data);
+          
+          // Check if profile is already complete
+          if (data.client_status === 'Profile Complete' || data.client_is_profile_complete === 'true') {
+            console.log("Profile is already complete, redirecting to therapist selection");
+            setIsProfileCompleted(true);
+            window.location.href = '/therapist-selection';
+            return;
+          }
+          
+          setClientId(data.id);
+          
+          let dateOfBirth = undefined;
+          if (data.client_date_of_birth) {
+            dateOfBirth = new Date(data.client_date_of_birth);
+            console.log("Parsed date of birth:", dateOfBirth);
+          }
+          
+          let dischargeDate = undefined;
+          if (data.client_recentdischarge) {
+            dischargeDate = new Date(data.client_recentdischarge);
+            console.log("Parsed discharge date:", dischargeDate);
+          }
+          
+          console.log("Setting form values with client data");
+          
+          const formValues = {
+            client_first_name: data.client_first_name || '',
+            client_preferred_name: data.client_preferred_name || '',
+            client_last_name: data.client_last_name || '',
+            client_email: data.client_email || '',
+            client_phone: data.client_phone || '',
+            client_relationship: data.client_relationship || '',
+            client_date_of_birth: dateOfBirth,
+            client_gender: data.client_gender || '',
+            client_gender_identity: data.client_gender_identity || '',
+            client_state: data.client_state || '',
+            client_time_zone: data.client_time_zone || '',
+            client_vacoverage: data.client_vacoverage || '',
+            client_champva: data.client_champva || '',
+            client_other_insurance: data.client_other_insurance || '',
+            client_champva_agreement: data.client_champva_agreement || false,
+            client_mental_health_referral: data.client_mental_health_referral || '',
+            client_branchOS: data.client_branchOS || '',
+            client_recentdischarge: dischargeDate,
+            client_disabilityrating: data.client_disabilityrating || '',
+            client_tricare_beneficiary_category: data.client_tricare_beneficiary_category || '',
+            client_tricare_sponsor_name: data.client_tricare_sponsor_name || '',
+            client_tricare_sponsor_branch: data.client_tricare_sponsor_branch || '',
+            client_tricare_sponsor_id: data.client_tricare_sponsor_id || '',
+            client_tricare_plan: data.client_tricare_plan || '',
+            client_tricare_region: data.client_tricare_region || '',
+            client_tricare_policy_id: data.client_tricare_policy_id || '',
+            client_tricare_has_referral: data.client_tricare_has_referral || '',
+            client_tricare_referral_number: data.client_tricare_referral_number || '',
+            client_tricare_insurance_agreement: data.client_tricare_insurance_agreement || false,
+            client_veteran_relationship: data.client_veteran_relationship || '',
+            client_situation_explanation: data.client_situation_explanation || '',
+            client_self_goal: data.client_self_goal || '',
+            client_referral_source: data.client_referral_source || '',
+          };
+          
+          console.log("Form values to be set:", formValues);
+          form.reset(formValues);
+          console.log("Form reset completed");
+          
+          setTimeout(() => {
+            const currentValues = form.getValues();
+            console.log("Current form values after reset:", currentValues);
+          }, 100);
+        } else {
+          console.log("No client data found after all attempts");
+        }
+      } catch (error) {
+        console.error("Exception in fetchUser:", error);
+        toast({
+          title: "Error", 
+          description: "An unexpected error occurred loading your profile.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    fetchUser();
+  }, [form, toast, isSubmitting, isProfileCompleted]);
+
+  const navigateToStep = (nextStep: number) => {
+    setNavigationHistory(prev => [...prev, nextStep]);
+    setCurrentStep(nextStep);
+  };
+
+  const handleConfirmIdentity = async () => {
+    const isValid = await form.trigger();
+    if (!isValid) {
+      return;
+    }
+
+    if (!clientId) {
+      toast({
+        title: "Error",
+        description: "No client record found. Please contact support.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const values = form.getValues();
+    console.log("Saving initial profile data:", values);
+    
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          client_first_name: values.client_first_name,
+          client_last_name: values.client_last_name,
+          client_preferred_name: values.client_preferred_name,
+          client_email: values.client_email,
+          client_phone: values.client_phone,
+          client_relationship: values.client_relationship
+        })
+        .eq('id', clientId);
+        
+      if (error) {
+        console.error("Error saving identity data:", error);
+        toast({
+          title: "Error saving data",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      toast({
+        title: "Personal information saved",
+        description: "Your identity details have been updated.",
+      });
+      
+      navigateToStep(2);
+    } catch (error) {
+      console.error("Exception saving identity data:", error);
+      toast({
+        title: "Error saving data",
+        description: "An unexpected error occurred.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleGoBack = () => {
+    if (navigationHistory.length > 1) {
+      const newHistory = [...navigationHistory];
+      newHistory.pop();
+      const previousStep = newHistory[newHistory.length - 1];
+      setNavigationHistory(newHistory);
+      setCurrentStep(previousStep);
+    }
+  };
+
+  const handleOtherInsuranceChange = (value: string) => {
+    setOtherInsurance(value);
+  };
+
+  const handleNext = async () => {
+    const values = form.getValues();
+    const vaCoverage = values.client_vacoverage;
+    const hasMoreInsurance = values.hasMoreInsurance;
+
+    if (currentStep === 2) {
+      if (clientId) {
+        const formattedDateOfBirth = values.client_date_of_birth 
+          ? format(values.client_date_of_birth, 'yyyy-MM-dd') 
+          : null;
+          
+        try {
+          const { error } = await supabase
+            .from('clients')
+            .update({
+              client_date_of_birth: formattedDateOfBirth,
+              client_gender: values.client_gender,
+              client_gender_identity: values.client_gender_identity,
+              client_state: values.client_state,
+              client_time_zone: values.client_time_zone,
+              client_vacoverage: values.client_vacoverage
+            })
+            .eq('id', clientId);
+            
+          if (error) {
+            console.error("Error saving demographic data:", error);
+            toast({
+              title: "Error saving data",
+              description: error.message,
+              variant: "destructive"
+            });
+            return;
+          }
+          
+          toast({
+            title: "Information saved",
+            description: "Your demographic information has been updated.",
+          });
+        } catch (error) {
+          console.error("Exception saving demographic data:", error);
+          toast({
+            title: "Error saving data",
+            description: "An unexpected error occurred.",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+      
+      navigateToStep(3);
+    } else if (currentStep === 3) {
+      if (vaCoverage === "CHAMPVA" && clientId) {
+        try {
+          console.log("Saving CHAMPVA Information");
+          
+          const { error } = await supabase
+            .from('clients')
+            .update({
+              client_champva: values.client_champva,
+              client_other_insurance: values.client_other_insurance,
+              client_champva_agreement: values.client_champva_agreement,
+              client_mental_health_referral: values.client_mental_health_referral
+            })
+            .eq('id', clientId);
+            
+          if (error) {
+            console.error("Error saving CHAMPVA data:", error);
+            toast({
+              title: "Error saving data",
+              description: error.message,
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Information saved",
+              description: "Your CHAMPVA information has been updated.",
+            });
+          }
+        } catch (error) {
+          console.error("Exception saving CHAMPVA data:", error);
+          toast({
+            title: "Error saving data",
+            description: "An unexpected error occurred.",
+            variant: "destructive"
+          });
+        }
+      } else if (vaCoverage === "TRICARE" && clientId) {
+        try {
+          console.log("Saving TRICARE Information");
+          
+          const { error } = await supabase
+            .from('clients')
+            .update({
+              client_tricare_beneficiary_category: values.client_tricare_beneficiary_category,
+              client_tricare_sponsor_name: values.client_tricare_sponsor_name,
+              client_tricare_sponsor_branch: values.client_tricare_sponsor_branch,
+              client_tricare_sponsor_id: values.client_tricare_sponsor_id,
+              client_tricare_plan: values.client_tricare_plan,
+              client_tricare_region: values.client_tricare_region,
+              client_tricare_policy_id: values.client_tricare_policy_id,
+              client_tricare_has_referral: values.client_tricare_has_referral,
+              client_tricare_referral_number: values.client_tricare_referral_number
+            })
+            .eq('id', clientId);
+            
+          if (error) {
+            console.error("Error saving TRICARE data:", error);
+            toast({
+              title: "Error saving data",
+              description: error.message,
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Information saved",
+              description: "Your TRICARE information has been updated.",
+            });
+          }
+        } catch (error) {
+          console.error("Exception saving TRICARE data:", error);
+          toast({
+            title: "Error saving data",
+            description: "An unexpected error occurred.",
+            variant: "destructive"
+          });
+        }
+      } else if (vaCoverage === "None - I am a veteran" && clientId) {
+        try {
+          console.log("Saving Veteran Information");
+          
+          const formattedDischargeDate = values.client_recentdischarge 
+            ? format(values.client_recentdischarge, 'yyyy-MM-dd') 
+            : null;
+          
+          const { error } = await supabase
+            .from('clients')
+            .update({
+              client_branchOS: values.client_branchOS,
+              client_recentdischarge: formattedDischargeDate,
+              client_disabilityrating: values.client_disabilityrating
+            })
+            .eq('id', clientId);
+            
+          if (error) {
+            console.error("Error saving veteran data:", error);
+            toast({
+              title: "Error saving data",
+              description: error.message,
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Information saved",
+              description: "Your veteran information has been updated.",
+            });
+          }
+        } catch (error) {
+          console.error("Exception saving veteran data:", error);
+          toast({
+            title: "Error saving data",
+            description: "An unexpected error occurred.",
+            variant: "destructive"
+          });
+        }
+      }
+      
+      if (vaCoverage === "TRICARE" && otherInsurance === "No") {
+        navigateToStep(6);
+      } else if (otherInsurance === "Yes" && (vaCoverage === "TRICARE" || vaCoverage === "CHAMPVA")) {
+        navigateToStep(4);
+      } else {
+        navigateToStep(6);
+      }
+    } else if (currentStep === 4) {
+      if (clientId) {
+        try {
+          console.log("Saving primary insurance data");
+          
+          const formattedSubscriberDob = values.client_subscriber_dob_primary 
+            ? format(values.client_subscriber_dob_primary, 'yyyy-MM-dd') 
+            : null;
+            
+          const { error } = await supabase
+            .from('clients')
+            .update({
+              client_insurance_company_primary: values.client_insurance_company_primary,
+              client_insurance_type_primary: values.client_insurance_type_primary,
+              client_subscriber_name_primary: values.client_subscriber_name_primary,
+              client_subscriber_relationship_primary: values.client_subscriber_relationship_primary,
+              client_subscriber_dob_primary: formattedSubscriberDob,
+              client_group_number_primary: values.client_group_number_primary,
+              client_policy_number_primary: values.client_policy_number_primary
+            })
+            .eq('id', clientId);
+            
+          if (error) {
+            console.error("Error saving primary insurance data:", error);
+            toast({
+              title: "Error saving data",
+              description: error.message,
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Information saved",
+              description: "Your primary insurance information has been updated.",
+            });
+          }
+        } catch (error) {
+          console.error("Exception saving primary insurance data:", error);
+          toast({
+            title: "Error saving data",
+            description: "An unexpected error occurred.",
+            variant: "destructive"
+          });
+        }
+      }
+    
+      if (hasMoreInsurance === "Yes") {
+        navigateToStep(5);
+      } else {
+        navigateToStep(6);
+      }
+    } else if (currentStep === 5) {
+      if (clientId) {
+        try {
+          console.log("Saving secondary insurance data");
+          
+          const formattedSubscriberDobSecondary = values.client_subscriber_dob_secondary 
+            ? format(values.client_subscriber_dob_secondary, 'yyyy-MM-dd') 
+            : null;
+            
+          const { error } = await supabase
+            .from('clients')
+            .update({
+              client_insurance_company_secondary: values.client_insurance_company_secondary,
+              client_insurance_type_secondary: values.client_insurance_type_secondary,
+              client_subscriber_name_secondary: values.client_subscriber_name_secondary,
+              client_subscriber_relationship_secondary: values.client_subscriber_relationship_secondary,
+              client_subscriber_dob_secondary: formattedSubscriberDobSecondary,
+              client_group_number_secondary: values.client_group_number_secondary,
+              client_policy_number_secondary: values.client_policy_number_secondary
+            })
+            .eq('id', clientId);
+            
+          if (error) {
+            console.error("Error saving secondary insurance data:", error);
+            toast({
+              title: "Error saving data",
+              description: error.message,
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Information saved",
+              description: "Your additional insurance information has been updated.",
+            });
+          }
+        } catch (error) {
+          console.error("Exception saving secondary insurance data:", error);
+          toast({
+            title: "Error saving data",
+            description: "An unexpected error occurred.",
+            variant: "destructive"
+          });
+        }
+      }
+      navigateToStep(6);
+    } else if (currentStep === 6) {
+      handleSubmit();
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      // Prevent multiple submissions
+      if (isSubmitting || isProfileCompleted) {
+        console.log("Submission already in progress or profile already completed, skipping");
+        return;
+      }
+      
+      console.log("Starting profile completion process");
+      setIsSubmitting(true);
+      setIsProfileCompleted(true); // Set this early to prevent race conditions
+      
+      const formValues = form.getValues();
+      
+      if (!formValues.client_time_zone) {
+        console.log("Time zone is required but not provided");
+        toast({
+          title: "Time Zone Required",
+          description: "Please select your time zone to continue.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        setIsProfileCompleted(false);
+        return;
+      }
+
+      if (!clientId) {
+        console.log("Client ID not found");
+        toast({
+          title: "Error",
+          description: "Client ID not found. Please try again or contact support.",
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        setIsProfileCompleted(false);
+        return;
+      }
+
+      console.log("Updating profile time zone in profiles table");
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          time_zone: formValues.client_time_zone
+        })
+        .eq('id', clientId);
+
+      if (profileError) {
+        console.error("Error updating profile time zone:", profileError);
+        throw profileError;
+      }
+
+      console.log("Updating client status to 'Profile Complete'");
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          client_self_goal: formValues.client_self_goal || null,
+          client_referral_source: formValues.client_referral_source || null,
+          client_status: 'Profile Complete',
+          client_is_profile_complete: 'true'
+        })
+        .eq('id', clientId);
+
+      if (error) {
+        console.error("Error updating client:", error);
+        throw error;
+      }
+
+      console.log("Profile completion successful, showing success message");
+      toast({
+        title: "Profile Complete",
+        description: "Your profile has been completed successfully."
+      });
+
+      // Use window.location.href for immediate navigation
+      console.log("Redirecting to therapist selection page");
+      window.location.href = '/therapist-selection';
+      
+    } catch (error) {
+      console.error('Error in handleSubmit:', error);
+      toast({
+        title: "Error",
+        description: "There was an error completing your profile. Please try again.",
+        variant: "destructive"
+      });
+      setIsSubmitting(false);
+      setIsProfileCompleted(false);
+    }
+  };
+
+  const renderStepOne = () => {
+    const { formState } = form;
+    const isStep1Valid = formState.isValid;
+    
+    return (
+      <Form {...form}>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormFieldWrapper
+              control={form.control}
+              name="client_first_name"
+              label="First Name"
+              required={true}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_last_name"
+              label="Last Name"
+              required={true}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_preferred_name"
+              label="Preferred Name (optional)"
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_email"
+              label="Email"
+              type="email"
+              readOnly={true}
+              required={true}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_phone"
+              label="Phone"
+              type="tel"
+              required={true}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_relationship"
+              label="What is your relationship with the patient?"
+              type="select"
+              options={[
+                "Self", "Parent/Guardian", "Spouse", "Child", "Other"
+              ]}
+              required={true}
+            />
+          </div>
+          
+          <div className="flex justify-center mt-8">
+            <Button 
+              type="button" 
+              size="lg" 
+              onClick={handleConfirmIdentity}
+              disabled={!isStep1Valid}
+              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Check className="h-5 w-5" />
+              I confirm that this is me
+            </Button>
+          </div>
+        </div>
+      </Form>
+    );
+  };
+
+  const renderStepTwo = () => {
+    const isStep2Valid = form.formState.isValid;
+    
+    return (
+      <Form {...form}>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <DateField
+              control={form.control}
+              name="client_date_of_birth"
+              label="Date of Birth"
+              required={true}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_gender"
+              label="Birth Gender"
+              type="select"
+              options={["Male", "Female"]}
+              required={true}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_gender_identity"
+              label="Gender Identity"
+              type="select"
+              options={["Male", "Female", "Other"]}
+              required={true}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_state"
+              label="State of Primary Residence"
+              type="select"
+              options={[
+                "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", 
+                "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", 
+                "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", 
+                "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", 
+                "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", 
+                "New Hampshire", "New Jersey", "New Mexico", "New York", 
+                "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", 
+                "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", 
+                "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", 
+                "West Virginia", "Wisconsin", "Wyoming"
+              ]}
+              required={true}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_time_zone"
+              label="Time Zone"
+              type="select"
+              options={timezoneOptions.map(tz => tz.label)}
+              valueMapper={(label) => {
+                const option = timezoneOptions.find(tz => tz.label === label);
+                return option ? option.value : '';
+              }}
+              labelMapper={(value) => {
+                const option = timezoneOptions.find(tz => tz.value === value);
+                return option ? option.label : '';
+              }}
+              required={true}
+            />
+            
+            <FormFieldWrapper
+              control={form.control}
+              name="client_vacoverage"
+              label="What type of VA Coverage do you have?"
+              type="select"
+              options={[
+                "CHAMPVA", 
+                "TRICARE", 
+                "VA Community Care", 
+                "None - I am a veteran", 
+                "None - I am not a veteran"
+              ]}
+              required={true}
+            />
+          </div>
+          
+          <div className="flex justify-between mt-8">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handleGoBack}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            
+            <Button 
+              type="button" 
+              onClick={handleNext}
+              disabled={!isStep2Valid}
+              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </Form>
+    );
+  };
+
+  const renderStepThree = () => {
+    const vaCoverage = form.getValues('client_vacoverage');
+    
+    return (
+      <Form {...form}>
+        <div className="space-y-6">
+          {vaCoverage === 'CHAMPVA' && (
+            <SignupChampva 
+              form={form} 
+              onOtherInsuranceChange={handleOtherInsuranceChange}
+            />
+          )}
+          
+          {vaCoverage === 'TRICARE' && (
+            <SignupTricare 
+              form={form}
+              onOtherInsuranceChange={handleOtherInsuranceChange}
+            />
+          )}
+          
+          {vaCoverage === 'VA Community Care' && (
+            <SignupVaCcn form={form} />
+          )}
+          
+          {vaCoverage === 'None - I am a veteran' && (
+            <SignupVeteran form={form} />
+          )}
+          
+          {vaCoverage === 'None - I am not a veteran' && (
+            <SignupNotAVeteran form={form} />
+          )}
+          
+          <div className="flex justify-between mt-8">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handleGoBack}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            
+            <Button 
+              type="button" 
+              onClick={handleNext}
+              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+            >
+              Next
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </Form>
+    );
+  };
+
+  const renderStepFour = () => (
+    <Form {...form}>
+      <div className="space-y-6">
+        <AdditionalInsurance form={form} />
+        
+        <div className="flex justify-between mt-8">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          
+          <Button 
+            type="button" 
+            onClick={handleNext}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
+            Next
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </Form>
+  );
+
+  const renderStepFive = () => (
+    <Form {...form}>
+      <div className="space-y-6">
+        <MoreAdditionalInsurance form={form} />
+        
+        <div className="flex justify-between mt-8">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          
+          <Button 
+            type="button" 
+            onClick={handleNext}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
+            Next
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </Form>
+  );
+
+  const renderStepSix = () => (
+    <Form {...form}>
+      <div className="space-y-6">
+        <SignupLast form={form} />
+        
+        <div className="flex justify-between mt-8">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          
+          <Button 
+            type="button" 
+            onClick={handleSubmit}
+            disabled={isSubmitting || isProfileCompleted}
+            className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+          >
+            {isSubmitting ? "Completing..." : "Complete Profile"}
+          </Button>
+        </div>
+      </div>
+    </Form>
+  );
+
+  // If profile is already completed, show loading message while redirecting
+  if (isProfileCompleted) {
+    return (
+      <Layout>
+        <div className="max-w-5xl mx-auto">
+          <Card className="border-valorwell-200 shadow-xl">
+            <CardHeader className="bg-gradient-to-r from-valorwell-500 to-valorwell-600 text-white rounded-t-lg p-6">
+              <CardTitle className="text-xl sm:text-2xl font-semibold">Profile Complete</CardTitle>
+              <CardDescription className="text-valorwell-50">Redirecting to therapist selection...</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 sm:p-8 flex justify-center items-center">
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-valorwell-600 mx-auto mb-4"></div>
+                <p>Your profile is complete. Redirecting you to select a therapist...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
-    <div className="container py-12">
-      <AlertDialog open={isAlertDialogOpen} onOpenChange={setIsAlertDialogOpen}>
-        <AlertDialogTrigger asChild>
-          <Button variant="outline">Open Alert</Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete your
-              account and remove your data from our servers.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction>Continue</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Drawer open={showDrawer} onOpenChange={setShowDrawer}>
-        <DrawerTrigger asChild>
-          <Button variant="outline">Open Drawer</Button>
-        </DrawerTrigger>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>Are you absolutely sure?</DrawerTitle>
-            <DrawerDescription>
-              This action cannot be undone. This will permanently delete your
-              account and remove your data from our servers.
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="px-6 pb-4">
-            <Input placeholder="Type at..." />
-          </div>
-          <DrawerFooter>
-            <DrawerClose>
-              <Button variant="outline" size="lg">Cancel</Button>
-            </DrawerClose>
-            <Button size="lg">Continue</Button>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
-
-      <HoverCard open={showHoverCard} onOpenChange={setShowHoverCard}>
-        <HoverCardTrigger asChild>
-          <Button variant="outline">Open HoverCard</Button>
-        </HoverCardTrigger>
-        <HoverCardContent className="w-80">
-          <div className="space-y-1">
-            <h4 className="text-sm font-semibold">shadcn/ui</h4>
-            <p className="text-sm">
-              Beautifully designed components that you can copy and paste into
-              your apps. Accessible. Customizable. Open Source.
-            </p>
-            <div className="flex items-center pt-2">
-              <CalendarIcon className="mr-2 h-4 w-4 opacity-70" />
-              <span className="text-xs text-muted-foreground">
-                Tuesday, Jan 23, 2023
-              </span>
-            </div>
-          </div>
-        </HoverCardContent>
-      </HoverCard>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile Setup</CardTitle>
-          <CardDescription>
-            Please fill out the form below to complete your profile setup.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form id="profile-setup-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <Accordion type="single" collapsible>
-                <AccordionItem value="personal">
-                  <AccordionTrigger>Personal Information</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="client_first_name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>First Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="First name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_last_name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Last Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Last name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_date_of_birth"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                            <FormLabel>Date of birth</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                      "w-full pl-3 text-left font-normal",
-                                      !field.value && "text-muted-foreground"
-                                    )}
-                                  >
-                                    {field.value ? (
-                                      format(field.value, "PPP")
-                                    ) : (
-                                      <span>Pick a date</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={field.value}
-                                  onSelect={(date) => field.onChange(date)}
-                                  disabled={(date) =>
-                                    date > new Date() || date < new Date("1900-01-01")
-                                  }
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Email" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_phone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Phone</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Phone" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_gender"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Gender</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a gender" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {genderOptions.map((gender) => (
-                                  <SelectItem key={gender} value={gender}>
-                                    {gender}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-                <AccordionItem value="address">
-                  <AccordionTrigger>Address Information</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="client_address"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Address</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Address" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_city"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>City</FormLabel>
-                            <FormControl>
-                              <Input placeholder="City" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_state"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>State</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a state" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {stateOptions.map((state) => (
-                                  <SelectItem key={state} value={state}>
-                                    {state}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_zip"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Zip Code</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Zip Code" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_country"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Country</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a country" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {countryOptions.map((country) => (
-                                  <SelectItem key={country.value} value={country.value}>
-                                    {country.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-                <AccordionItem value="background">
-                  <AccordionTrigger>Background Information</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="client_race"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Race</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a race" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {raceOptions.map((race) => (
-                                  <SelectItem key={race} value={race}>
-                                    {race}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_ethnicity"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Ethnicity</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select an ethnicity" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {ethnicityOptions.map((ethnicity) => (
-                                  <SelectItem key={ethnicity} value={ethnicity}>
-                                    {ethnicity}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_sexual_orientation"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Sexual Orientation</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a sexual orientation" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {sexualOrientationOptions.map((orientation) => (
-                                  <SelectItem key={orientation} value={orientation}>
-                                    {orientation}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_relationship_status"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Relationship Status</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a relationship status" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {relationshipStatusOptions.map((status) => (
-                                  <SelectItem key={status} value={status}>
-                                    {status}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_education_level"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Education Level</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select an education level" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {educationLevelOptions.map((level) => (
-                                  <SelectItem key={level} value={level}>
-                                    {level}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_occupation"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Occupation</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Occupation" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_living_situation"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Living Situation</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a living situation" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {livingSituationOptions.map((situation) => (
-                                  <SelectItem key={situation} value={situation}>
-                                    {situation}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_preferred_language"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Preferred Language</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Preferred Language" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-                <AccordionItem value="emergency">
-                  <AccordionTrigger>Emergency Contact Information</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="client_emergency_contact_name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Emergency Contact Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Emergency Contact Name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_emergency_contact_phone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Emergency Contact Phone</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Emergency Contact Phone" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="client_emergency_contact_relationship"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Emergency Contact Relationship</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Emergency Contact Relationship" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-                <AccordionItem value="insurance">
-                  <AccordionTrigger>Insurance Information</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="other_insurance"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Do you have other insurance?</FormLabel>
-                            <Select
-                              onValueChange={(value) => {
-                                field.onChange(value);
-                                handleOtherInsuranceChange(value); // Call the handler here
-                              }}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="Yes">Yes</SelectItem>
-                                <SelectItem value="No">No</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      {showInsurance && (
-                        <>
-                          <FormField
-                            control={form.control}
-                            name="client_insurance_provider"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Insurance Provider</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Insurance Provider" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="client_insurance_policy_number"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Insurance Policy Number</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Insurance Policy Number" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="client_insurance_group_number"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Insurance Group Number</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Insurance Group Number" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </>
-                      )}
-                      {showChampva && (
-                        <FormField
-                          control={form.control}
-                          name="client_champva"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>CHAMPVA Number</FormLabel>
-                              <FormControl>
-                                <Input placeholder="CHAMPVA Number" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-              
-              {showProgress && (
-                <Progress value={progress} max={100} className="w-full" />
-              )}
-              
-              <div className="flex justify-end">
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? "Saving..." : "Submit"}
-                </Button>
+    <Layout>
+      <div className="max-w-5xl mx-auto">
+        <Card className="border-valorwell-200 shadow-xl">
+          <CardHeader className="bg-gradient-to-r from-valorwell-500 to-valorwell-600 text-white rounded-t-lg p-6">
+            <CardTitle className="text-xl sm:text-2xl font-semibold">Profile Setup</CardTitle>
+            <CardDescription className="text-valorwell-50">Tell us about yourself to get started</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 sm:p-8">
+            <div className="mb-6">
+              <div className="flex justify-between mb-2">
+                <span className="text-sm text-valorwell-700">Step {currentStep} of 6</span>
+                <span className="text-sm text-valorwell-700">{Math.round((currentStep / 6) * 100)}% Complete</span>
               </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-    </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-valorwell-600 h-2.5 rounded-full" 
+                  style={{ width: `${(currentStep / 6) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+            
+            {currentStep === 1 && renderStepOne()}
+            {currentStep === 2 && renderStepTwo()}
+            {currentStep === 3 && renderStepThree()}
+            {currentStep === 4 && renderStepFour()}
+            {currentStep === 5 && renderStepFive()}
+            {currentStep === 6 && renderStepSix()}
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
   );
 };
 
