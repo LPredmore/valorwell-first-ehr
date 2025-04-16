@@ -37,7 +37,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
   const [showTertiaryObjective, setShowTertiaryObjective] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
   
-  // Initialize form state from client data
   const [formState, setFormState] = useState({
     clientName: clientName || `${clientData?.client_first_name || ''} ${clientData?.client_last_name || ''}`,
     clientDob: clientDob || clientData?.client_date_of_birth || '',
@@ -61,9 +60,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
     privateNote: clientData?.client_privatenote || ''
   });
 
-  // Validate form fields
   const validateForm = () => {
-    // Check required fields that are always visible
     const baseFieldsValid = [
       !!formState.planLength,
       !!formState.treatmentFrequency,
@@ -76,14 +73,12 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
       !!formState.nextUpdate.trim()
     ].every(Boolean);
     
-    // Check secondary objective fields if visible
     const secondaryFieldsValid = !showSecondaryObjective || [
       !!formState.secondaryObjective.trim(),
       !!formState.intervention3.trim(),
       !!formState.intervention4.trim()
     ].every(Boolean);
     
-    // Check tertiary objective fields if visible
     const tertiaryFieldsValid = !showTertiaryObjective || [
       !!formState.tertiaryObjective.trim(),
       !!formState.intervention5.trim(),
@@ -93,7 +88,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
     return baseFieldsValid && secondaryFieldsValid && tertiaryFieldsValid;
   };
 
-  // Update form state if clientData changes
   useEffect(() => {
     if (clientData) {
       setFormState({
@@ -119,13 +113,11 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         privateNote: clientData.client_privatenote || ''
       });
       
-      // Show objectives if they exist in client data
       setShowSecondaryObjective(!!clientData.client_secondaryobjective);
       setShowTertiaryObjective(!!clientData.client_tertiaryobjective);
     }
   }, [clientData, clinicianName]);
 
-  // Check form validity whenever form state changes
   useEffect(() => {
     setIsFormValid(validateForm());
   }, [formState, showSecondaryObjective, showTertiaryObjective]);
@@ -157,7 +149,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
 
       const formattedStartDate = formatDateForDB(formState.startDate);
 
-      // Map form data back to database schema
       const clientUpdates = {
         client_planlength: formState.planLength,
         client_treatmentfrequency: formState.treatmentFrequency,
@@ -181,18 +172,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
       console.log('Saving treatment plan with updates:', clientUpdates);
       console.log('For client with ID:', clientData.id);
 
-      // Update client in database
-      const { error: clientError } = await supabase
-        .from('clients')
-        .update(clientUpdates)
-        .eq('id', clientData.id);
-
-      if (clientError) {
-        console.error('Error updating client:', clientError);
-        throw clientError;
-      }
-
-      // Generate and save PDF using React-PDF
       const currentUser = await getCurrentUser();
       const documentInfo = {
         clientId: clientData.id,
@@ -202,7 +181,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         createdBy: currentUser?.id
       };
       
-      // FIX: Pass the element ID as the first parameter, not the form data
       const elementId = 'treatment-plan-content';
       const pdfResult = await generateAndSavePDF(elementId, documentInfo);
       
@@ -213,10 +191,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
           description: "Treatment plan saved but PDF generation failed.",
           variant: "default",
         });
-        // Continue with saving the treatment plan record even if PDF fails
       }
 
-      // Create new entry in treatment_plans table
       const treatmentPlanData = {
         client_id: clientData.id,
         clinician_id: clientData.client_assigned_therapist || '',
@@ -243,7 +219,6 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
         pdf_path: pdfResult || ''
       };
 
-      // Insert into treatment_plans table
       const { error: treatmentPlanError } = await supabase
         .from('treatment_plans')
         .insert(treatmentPlanData);
@@ -354,7 +329,7 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
               <Label htmlFor="planLength">Plan Length</Label>
               <Select onValueChange={(value) => handleChange('planLength', value)}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Select length" value={formState.planLength} />
+                  <SelectValue placeholder="Select length" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="30 Days">30 Days</SelectItem>
@@ -376,8 +351,8 @@ const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
             <div className="mb-6">
               <Label htmlFor="diagnosisCodes">Diagnosis Codes</Label>
               <DiagnosisSelector
-                selectedCodes={formState.diagnosisCodes}
-                onChange={(codes) => handleChange('diagnosisCodes', codes)}
+                selected={formState.diagnosisCodes}
+                onSelect={(codes) => handleChange('diagnosisCodes', codes)}
               />
             </div>
             <div className="mb-6">

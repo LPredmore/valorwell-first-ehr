@@ -191,25 +191,18 @@ export const generateAndSavePDF = async (
     // Clean up the temporary element
     document.body.removeChild(preparedElement);
     
-    // OPTIMIZATION: Set PDF compression options
-    const pdfOptions = {
-      compress: true,
-      precision: 2,
-      quality: 0.7
-    };
+    // Get initial PDF data as array buffer
+    let pdfData = pdf.output('arraybuffer');
+    let currentBlob = new Blob([pdfData], { type: 'application/pdf' });
     
-    // Get the PDF as a blob with compression
-    const pdfBlob = pdf.output('blob', pdfOptions);
+    // Check file size and compress if needed
+    const fileSizeMB = currentBlob.size / (1024 * 1024);
+    console.log(`Initial PDF file size: ${fileSizeMB.toFixed(2)} MB`);
     
-    // Check file size before upload
-    const fileSizeMB = pdfBlob.size / (1024 * 1024);
-    console.log(`PDF file size: ${fileSizeMB.toFixed(2)} MB`);
-    
-    // If file is still too large, implement chunked upload or further compression
-    if (fileSizeMB > 5) { // Supabase typically has a 5MB limit
+    if (fileSizeMB > 5) {
       console.warn('PDF file size exceeds recommended limit, applying additional compression');
       
-      // Create a new PDF with even more aggressive compression
+      // Create a new PDF with more aggressive compression
       const compressedPdf = new jsPDF('p', 'mm', 'a4');
       
       // Add content with more aggressive compression
@@ -251,20 +244,15 @@ export const generateAndSavePDF = async (
         }
       }
       
-      // Use the more compressed PDF
-      const compressedPdfBlob = compressedPdf.output('blob', {
-        compress: true,
-        precision: 1,
-        quality: 0.5
-      });
-      
-      const compressedSizeMB = compressedPdfBlob.size / (1024 * 1024);
+      // Get compressed PDF data
+      const compressedData = compressedPdf.output('arraybuffer');
+      const compressedBlob = new Blob([compressedData], { type: 'application/pdf' });
+      const compressedSizeMB = compressedBlob.size / (1024 * 1024);
       console.log(`Compressed PDF file size: ${compressedSizeMB.toFixed(2)} MB`);
       
-      // Use the compressed blob for upload
       if (compressedSizeMB < fileSizeMB) {
         console.log('Using more compressed PDF version for upload');
-        pdfBlob = compressedPdfBlob;
+        currentBlob = compressedBlob;
       }
     }
     
@@ -274,7 +262,7 @@ export const generateAndSavePDF = async (
     try {
       const { error: uploadError } = await supabase.storage
         .from('clinical_documents')
-        .upload(filePath, pdfBlob, {
+        .upload(filePath, currentBlob, {
           contentType: 'application/pdf',
           upsert: true
         });
@@ -282,11 +270,11 @@ export const generateAndSavePDF = async (
       if (uploadError) {
         console.error('Error uploading PDF:', uploadError);
         
-        // FALLBACK: If file is still too large, create a simplified text-only version
-        if (uploadError.statusCode === '413') {
+        // If upload fails, try text-only version
+        if (uploadError.message?.includes('413') || uploadError.message?.includes('too large')) {
           console.log('Attempting fallback to text-only PDF');
           
-          // Create a simplified text-only PDF
+          // Create text-only PDF
           const textPdf = new jsPDF('p', 'mm', 'a4');
           
           // Extract text content from the form
@@ -318,12 +306,11 @@ export const generateAndSavePDF = async (
             yPosition += lineHeight;
           }
           
-          // Get the text-only PDF as a blob
-          const textPdfBlob = textPdf.output('blob', {
-            compress: true
-          });
+          // Get text PDF data
+          const textPdfData = textPdf.output('arraybuffer');
+          const textPdfBlob = new Blob([textPdfData], { type: 'application/pdf' });
           
-          // Try uploading the text-only version
+          // Try uploading text-only version
           const { error: textUploadError } = await supabase.storage
             .from('clinical_documents')
             .upload(filePath, textPdfBlob, {
@@ -334,9 +321,8 @@ export const generateAndSavePDF = async (
           if (textUploadError) {
             console.error('Error uploading text-only PDF:', textUploadError);
             return null;
-          } else {
-            console.log('Successfully uploaded text-only PDF as fallback');
           }
+          console.log('Successfully uploaded text-only PDF as fallback');
         } else {
           return null;
         }
@@ -370,7 +356,7 @@ export const generateAndSavePDF = async (
     
     return filePath;
   } catch (error) {
-    console.error('Error generating or saving PDF:', error);
+    console.error('Error in generateAndSavePDF:', error);
     return null;
   }
 };
