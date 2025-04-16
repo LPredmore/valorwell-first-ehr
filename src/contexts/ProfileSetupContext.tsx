@@ -451,10 +451,8 @@ export const ProfileSetupProvider: React.FC<{ children: React.ReactNode }> = ({ 
           const { error } = await supabase
             .from('clients')
             .update({
-              client_champva: values.client_champva,
-              client_other_insurance: values.client_other_insurance,
-              client_champva_agreement: values.client_champva_agreement,
-              client_mental_health_referral: values.client_mental_health_referral
+              client_champva: values.client_champva
+              // Removed other fields that shouldn't be saved to database
             })
             .eq('id', clientId);
             
