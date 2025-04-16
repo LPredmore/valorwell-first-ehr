@@ -1,32 +1,62 @@
 
 import React from 'react';
-import { Form } from '@/components/ui/form';
+import { UseFormReturn } from 'react-hook-form';
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
+import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { FormField, FormItem, FormControl, FormLabel } from '@/components/ui/form';
 
-export const SignupLast = ({ form }: { form: any }) => {
+interface SignupLastProps {
+  form: UseFormReturn<any>;
+}
+
+const SignupLast: React.FC<SignupLastProps> = ({ form }) => {
   return (
-    <Form {...form}>
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 gap-6">
-          <FormFieldWrapper
-            control={form.control}
-            name="client_self_goal"
-            label="What is your goal for therapy? (Optional)"
-            required={false}
-          />
-          
-          <FormFieldWrapper
-            control={form.control}
-            name="client_referral_source"
-            label="How did you hear about us? (Optional)"
-            required={false}
-          />
-        </div>
+    <div className="space-y-6">
+      <h3 className="text-lg font-medium">Final Steps</h3>
+      <p className="text-gray-600 mb-4">
+        Please tell us a bit more about what brings you here.
+      </p>
+      
+      <div className="grid grid-cols-1 gap-6">
+        <FormField
+          control={form.control}
+          name="client_self_goal"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>What is your Goal for Therapy?</FormLabel>
+              <FormControl>
+                <Textarea 
+                  placeholder="Please describe what you hope to achieve through therapy..."
+                  className="min-h-[120px] resize-y"
+                  {...field}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
         
-        <div className="p-4 bg-green-50 border border-green-200 rounded-md">
-          <p className="text-green-800 font-medium">Thank you for completing your profile information. Click "Complete Profile" below to finish setup and proceed to therapist selection.</p>
-        </div>
+        <Separator className="my-2" />
+        
+        <FormFieldWrapper
+          control={form.control}
+          name="client_referral_source"
+          label="How did you hear about us?"
+          type="select"
+          options={[
+            "Friend/Family", 
+            "Veterans Organization", 
+            "Facebook", 
+            "Instagram", 
+            "TikTok", 
+            "Other Social Media", 
+            "Online Search", 
+            "Other"
+          ]}
+        />
       </div>
-    </Form>
+    </div>
   );
 };
+
+export default SignupLast;

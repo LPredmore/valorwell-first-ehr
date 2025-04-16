@@ -1,38 +1,56 @@
 
 import React from 'react';
-import { Form } from '@/components/ui/form';
+import { UseFormReturn } from 'react-hook-form';
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
+import { Textarea } from '@/components/ui/textarea';
+import { FormField, FormItem, FormControl, FormLabel } from '@/components/ui/form';
 
-export const SignupNotAVeteran = ({ form }: { form: any }) => {
+interface SignupNotAVeteranProps {
+  form: UseFormReturn<any>;
+}
+
+const SignupNotAVeteran: React.FC<SignupNotAVeteranProps> = ({ form }) => {
   return (
-    <Form {...form}>
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 gap-6">
-          <FormFieldWrapper
-            control={form.control}
-            name="client_veteran_relationship"
-            label="Do you have a relationship with a veteran?"
-            type="select"
-            options={[
-              "Yes - Spouse/Partner",
-              "Yes - Parent",
-              "Yes - Child",
-              "Yes - Other Family Member",
-              "Yes - Friend",
-              "Yes - Caregiver",
-              "No"
-            ]}
-            required={true}
-          />
-          
-          <FormFieldWrapper
-            control={form.control}
-            name="client_situation_explanation"
-            label="Please briefly describe your current situation"
-            required={false}
-          />
-        </div>
+    <div className="space-y-6">
+      <h3 className="text-lg font-medium">Family Member Information</h3>
+      
+      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-6">
+        <p className="text-blue-700">
+          ValorWell was created to serve as a bridge for Veterans and their families. 
+          We understand that some spouses and other family members need help as much as 
+          the veterans themselves, and we are working with various non-profits to assist 
+          with coverage. The below information will help us to get you the coverage you need.
+        </p>
       </div>
-    </Form>
+
+      <div className="grid grid-cols-1 gap-6">
+        <FormFieldWrapper
+          control={form.control}
+          name="veteranRelationship"
+          label="Are you a child or spouse of a veteran?"
+          type="select"
+          options={["Yes", "No"]}
+        />
+
+        <FormField
+          control={form.control}
+          name="situationExplanation"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Please explain your situation so that we can understand how to best serve you.</FormLabel>
+              <FormControl>
+                <Textarea 
+                  placeholder="Type your explanation here..."
+                  className="min-h-[150px]"
+                  {...field}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+      </div>
+    </div>
   );
 };
+
+export default SignupNotAVeteran;
