@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { useUser } from '@/context/UserContext';
 import { useToast } from '@/hooks/use-toast';
@@ -7,7 +6,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { handleFormSubmission } from '@/utils/formSubmissionUtils';
 import { useClientData } from '@/hooks/useClientData';
-import { ClientHistoryFormData } from '@/components/templates/client-history';
 
 const ClientHistoryForm: React.FC = () => {
   const { userId } = useUser();
@@ -19,7 +17,7 @@ const ClientHistoryForm: React.FC = () => {
   // Fetch client data using our custom hook
   const { clientData, loading } = useClientData(userId);
   
-  const handleSubmit = async (formData: ClientHistoryFormData) => {
+  const handleSubmit = async (formData: any) => {
     if (!userId) {
       toast({
         title: "Error",
@@ -42,35 +40,35 @@ const ClientHistoryForm: React.FC = () => {
           emergency_name: formData.emergencyContact?.name || null,
           emergency_relationship: formData.emergencyContact?.relationship || null,
           emergency_phone: formData.emergencyContact?.phone || null,
-          current_issues: formData.presentingProblems?.chiefComplaint || null,
-          progression_of_issues: formData.presentingProblems?.duration || null,
-          selected_symptoms: formData.presentingProblems?.symptoms || [],
-          hospitalized_psychiatric: false,
-          attempted_suicide: false,
-          psych_hold: false,
-          life_changes: formData.socialHistory?.significantEvents || null,
-          additional_info: formData.additionalInformation?.anythingElse || null,
-          counseling_goals: formData.presentingProblems?.goalsForTreatment || null,
-          childhood_elaboration: formData.developmentalHistory?.earlyChildhood || null,
-          occupation_details: formData.personalInfo?.occupation || null,
-          education_level: formData.personalInfo?.educationLevel || null,
-          relationship_problems: formData.socialHistory?.relationshipHistory || null,
-          chronic_health_problems: formData.medicalHistory?.chronicIllnesses || null,
-          sleep_hours: formData.medicalHistory?.sleepPatterns || null,
-          alcohol_use: formData.medicalHistory?.substanceUse || null,
-          tobacco_use: null,
-          drug_use: null,
-          personal_strengths: formData.strengthsResources?.personalStrengths || null,
-          hobbies: null,
-          additional_info2: null,
+          current_issues: formData.currentIssues || null,
+          progression_of_issues: formData.progressionOfIssues || null,
+          selected_symptoms: formData.symptoms || [],
+          hospitalized_psychiatric: formData.hospitalizedPsychiatric || false,
+          attempted_suicide: formData.attemptedSuicide || false,
+          psych_hold: formData.psychHold || false,
+          life_changes: formData.lifeChanges || null,
+          additional_info: formData.additionalInfo || null,
+          counseling_goals: formData.counselingGoals || null,
+          childhood_elaboration: formData.childhoodElaboration || null,
+          occupation_details: formData.occupationDetails || null,
+          education_level: formData.educationLevel || null,
+          relationship_problems: formData.relationshipProblems || null,
+          chronic_health_problems: formData.chronicHealthProblems || null,
+          sleep_hours: formData.sleepHours || null,
+          alcohol_use: formData.alcoholUse || null,
+          tobacco_use: formData.tobaccoUse || null,
+          drug_use: formData.drugUse || null,
+          personal_strengths: formData.personalStrengths || null,
+          hobbies: formData.hobbies || null,
+          additional_info2: formData.additionalInfo2 || null,
           signature: formData.signature || null,
-          selected_childhood_experiences: [],
-          selected_medical_conditions: [],
-          is_family_same_as_household: false,
-          is_married: false,
-          has_past_spouses: false,
-          has_received_mental_health_treatment: false,
-          takes_medications: false
+          selected_childhood_experiences: formData.childhoodExperiences || [],
+          selected_medical_conditions: formData.medicalConditions || [],
+          is_family_same_as_household: formData.isFamilySameAsHousehold || false,
+          is_married: formData.isMarried || false,
+          has_past_spouses: formData.hasPastSpouses || false,
+          has_received_mental_health_treatment: formData.hasReceivedTreatment || false,
+          takes_medications: formData.takesMedications || false
         })
         .select('id')
         .single();

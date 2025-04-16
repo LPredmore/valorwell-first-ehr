@@ -209,7 +209,17 @@ export const useSessionNoteForm = ({
   };
 
   const handleSave = async () => {
+    if (!clientData?.id) {
+      toast({
+        title: "Error",
+        description: "No client ID found. Cannot save session note.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
+
     try {
       // Format diagnosis from string to array if needed
       let client_diagnosis: string[] = [];
@@ -443,12 +453,14 @@ export const useSessionNoteForm = ({
             createdBy: clinician_id
           };
           
+          // FIX: Pass the element ID as the first parameter, not the form data
           const elementId = 'session-note-content';
           const pdfResult = await generateAndSavePDF(elementId, documentInfo);
           
           if (pdfResult) {
             console.log("PDF generated successfully:", pdfResult);
             
+            // Update session note with PDF path
             const { error: pdfUpdateError } = await supabase
               .from('session_notes')
               .update({ pdf_path: pdfResult })
@@ -465,6 +477,8 @@ export const useSessionNoteForm = ({
         } catch (pdfError) {
           console.error('Error generating PDF:', pdfError);
         }
+      } else {
+        console.warn("No content reference available for PDF generation");
       }
 
       toast({
@@ -494,6 +508,7 @@ export const useSessionNoteForm = ({
   };
 };
 
+// Helper function for date formatting
 function format(date: Date, formatStr: string): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
