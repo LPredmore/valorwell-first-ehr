@@ -104,7 +104,7 @@ export const DateField: React.FC<DateFieldProps> = ({ control, name, label, requ
                   )}
                 >
                   {field.value ? (
-                    format(new Date(field.value), "MMMM d, yyyy")
+                    format(field.value, "MMMM d, yyyy")
                   ) : (
                     <span>Select date</span>
                   )}
@@ -139,7 +139,7 @@ export const DateField: React.FC<DateFieldProps> = ({ control, name, label, requ
               ) : (
                 <Calendar
                   mode="single"
-                  selected={field.value ? new Date(field.value) : undefined}
+                  selected={field.value}
                   onSelect={(date) => {
                     field.onChange(date);
                     setCalendarOpen(false);

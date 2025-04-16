@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Form } from '@/components/ui/form';
@@ -6,7 +5,6 @@ import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { useProfileSetup } from '@/contexts/ProfileSetupContext';
 import { ProfileFormValues } from '@/validations/profileSchemas';
 import StepNavigation from '../StepNavigation';
-import { DateField } from '@/components/ui/DateField';
 
 const ProfileStep2 = () => {
   const { handleNext } = useProfileSetup();
@@ -18,14 +16,13 @@ const ProfileStep2 = () => {
     <Form {...form}>
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="col-span-1">
-            <DateField
-              control={form.control}
-              name="client_date_of_birth"
-              label="Date of Birth"
-              required={true}
-            />
-          </div>
+          <FormFieldWrapper
+            control={form.control}
+            name="client_date_of_birth"
+            label="Date of Birth"
+            type="date"
+            required={true}
+          />
           
           <FormFieldWrapper
             control={form.control}
