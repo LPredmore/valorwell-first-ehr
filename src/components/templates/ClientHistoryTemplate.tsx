@@ -382,6 +382,16 @@ const ClientHistoryTemplate: React.FC<ClientHistoryTemplateProps> = ({
       })) : [],
     };
     
+    // Validate required fields
+    if (!formData.signature) {
+      toast({
+        title: "Error",
+        description: "Please provide your signature to submit the form.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     onSubmit(formData);
   };
 
@@ -445,70 +455,20 @@ const ClientHistoryTemplate: React.FC<ClientHistoryTemplateProps> = ({
               disabled
             />
           </div>
-          
-          <div className="form-group">
-            <label className="block text-gray-700 mb-1">Age</label>
-            <input
-              type="text"
-              className="w-full p-2 border rounded"
-              value={clientData?.client_age?.toString() || ''}
-              disabled
-            />
-          </div>
-          
-          <div className="form-group">
-            <label className="block text-gray-700 mb-1">State</label>
-            <input
-              type="text"
-              className="w-full p-2 border rounded"
-              value={clientData?.client_state || ''}
-              disabled
-            />
-          </div>
-          
-          <div className="form-group">
-            <label className="block text-gray-700 mb-1">Gender</label>
-            <input
-              type="text"
-              className="w-full p-2 border rounded"
-              value={clientData?.client_gender || ''}
-              disabled
-            />
-          </div>
-          
-          <div className="form-group">
-            <label className="block text-gray-700 mb-1">Phone Number</label>
-            <input
-              type="text"
-              className="w-full p-2 border rounded"
-              value={clientData?.client_phone || ''}
-              disabled
-            />
-          </div>
-          
-          <div className="form-group">
-            <label className="block text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              className="w-full p-2 border rounded"
-              value={clientData?.client_email || ''}
-              disabled
-            />
-          </div>
         </div>
       </div>
       
-      {/* SECTION: Emergency Contact */}
-      <Card>
+      {/* Emergency Contact */}
+      <Card className="mb-8">
         <CardHeader>
           <CardTitle>Emergency Contact</CardTitle>
-          <CardDescription>Person to contact in case of emergency</CardDescription>
+          <CardDescription>Please provide information for an emergency contact</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="emergencyName">Name</Label>
-              <Input id="emergencyName" placeholder="Enter emergency contact name" />
+              <Input id="emergencyName" placeholder="Enter name" />
             </div>
             <div>
               <Label htmlFor="emergencyRelationship">Relationship</Label>
@@ -516,117 +476,112 @@ const ClientHistoryTemplate: React.FC<ClientHistoryTemplateProps> = ({
             </div>
             <div>
               <Label htmlFor="emergencyPhone">Phone Number</Label>
-              <Input id="emergencyPhone" placeholder="Enter emergency contact phone" />
+              <Input id="emergencyPhone" placeholder="Enter phone number" />
             </div>
           </div>
         </CardContent>
       </Card>
-
-      {/* SECTION: Current Status */}
-      <Card>
+      
+      {/* Current Issues */}
+      <Card className="mb-8">
         <CardHeader>
-          <CardTitle>Current Status</CardTitle>
-          <CardDescription>Information about your current situation and concerns</CardDescription>
+          <CardTitle>Current Issues</CardTitle>
+          <CardDescription>Please describe your current concerns and symptoms</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <Label htmlFor="currentIssues">What current issues are you wanting to discuss with your counselor? Be as detailed as you can</Label>
-            <Textarea id="currentIssues" className="mt-1 min-h-[120px]" placeholder="Describe your current issues..." />
+            <Label htmlFor="currentIssues">What issues or concerns bring you to therapy at this time?</Label>
+            <Textarea id="currentIssues" placeholder="Describe your current issues..." className="min-h-[120px]" />
           </div>
           
           <div>
-            <Label htmlFor="progressionOfIssues">Describe when the client began exhibiting problems listed above. How has this progressed over time?</Label>
-            <Textarea id="progressionOfIssues" className="mt-1 min-h-[120px]" placeholder="Describe the progression..." />
+            <Label htmlFor="progressionOfIssues">How have these issues progressed over time?</Label>
+            <Textarea id="progressionOfIssues" placeholder="Describe how these issues have changed..." className="min-h-[120px]" />
           </div>
           
           <div>
-            <Label className="mb-2 block">Please check any of the following you have experienced in the past six months</Label>
+            <Label className="mb-2 block">Please check any symptoms you are experiencing:</Label>
             
-            {/* Mood/Emotions Section */}
-            <div className="mb-6">
-              <h4 className="text-md font-medium mb-2">Mood/Emotions</h4>
+            <div className="mb-4">
+              <h4 className="font-medium mb-2">Mood Symptoms</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 {symptoms.mood.map((symptom) => (
                   <div key={symptom} className="flex items-center space-x-2">
                     <Checkbox 
-                      id={`mood-${symptom}`} 
+                      id={`symptom-${symptom}`} 
                       onCheckedChange={(checked) => 
                         handleSymptomChange(symptom, checked === true)
                       }
                     />
-                    <Label htmlFor={`mood-${symptom}`}>{symptom}</Label>
+                    <Label htmlFor={`symptom-${symptom}`}>{symptom}</Label>
                   </div>
                 ))}
               </div>
             </div>
             
-            {/* Physical Section */}
-            <div className="mb-6">
-              <h4 className="text-md font-medium mb-2">Physical</h4>
+            <div className="mb-4">
+              <h4 className="font-medium mb-2">Physical Symptoms</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 {symptoms.physical.map((symptom) => (
                   <div key={symptom} className="flex items-center space-x-2">
                     <Checkbox 
-                      id={`physical-${symptom}`} 
+                      id={`symptom-${symptom}`} 
                       onCheckedChange={(checked) => 
                         handleSymptomChange(symptom, checked === true)
                       }
                     />
-                    <Label htmlFor={`physical-${symptom}`}>{symptom}</Label>
+                    <Label htmlFor={`symptom-${symptom}`}>{symptom}</Label>
                   </div>
                 ))}
               </div>
             </div>
             
-            {/* Behavioral/Social Section */}
-            <div className="mb-6">
-              <h4 className="text-md font-medium mb-2">Behavioral/Social</h4>
+            <div className="mb-4">
+              <h4 className="font-medium mb-2">Behavioral Symptoms</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 {symptoms.behavioral.map((symptom) => (
                   <div key={symptom} className="flex items-center space-x-2">
                     <Checkbox 
-                      id={`behavioral-${symptom}`} 
+                      id={`symptom-${symptom}`} 
                       onCheckedChange={(checked) => 
                         handleSymptomChange(symptom, checked === true)
                       }
                     />
-                    <Label htmlFor={`behavioral-${symptom}`}>{symptom}</Label>
+                    <Label htmlFor={`symptom-${symptom}`}>{symptom}</Label>
                   </div>
                 ))}
               </div>
             </div>
             
-            {/* Cognitive Section */}
-            <div className="mb-6">
-              <h4 className="text-md font-medium mb-2">Cognitive</h4>
+            <div className="mb-4">
+              <h4 className="font-medium mb-2">Cognitive Symptoms</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 {symptoms.cognitive.map((symptom) => (
                   <div key={symptom} className="flex items-center space-x-2">
                     <Checkbox 
-                      id={`cognitive-${symptom}`} 
+                      id={`symptom-${symptom}`} 
                       onCheckedChange={(checked) => 
                         handleSymptomChange(symptom, checked === true)
                       }
                     />
-                    <Label htmlFor={`cognitive-${symptom}`}>{symptom}</Label>
+                    <Label htmlFor={`symptom-${symptom}`}>{symptom}</Label>
                   </div>
                 ))}
               </div>
             </div>
             
-            {/* Life Stressors Section */}
-            <div>
-              <h4 className="text-md font-medium mb-2">Life Stressors</h4>
+            <div className="mb-4">
+              <h4 className="font-medium mb-2">Life Stressors</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 {symptoms.lifeStressors.map((symptom) => (
                   <div key={symptom} className="flex items-center space-x-2">
                     <Checkbox 
-                      id={`stressor-${symptom}`} 
+                      id={`symptom-${symptom}`} 
                       onCheckedChange={(checked) => 
                         handleSymptomChange(symptom, checked === true)
                       }
                     />
-                    <Label htmlFor={`stressor-${symptom}`}>{symptom}</Label>
+                    <Label htmlFor={`symptom-${symptom}`}>{symptom}</Label>
                   </div>
                 ))}
               </div>
@@ -634,7 +589,7 @@ const ClientHistoryTemplate: React.FC<ClientHistoryTemplateProps> = ({
           </div>
           
           <div>
-            <Label className="mb-2 block">Have you ever been hospitalized for a psychiatric issue?</Label>
+            <Label className="mb-2 block">Have you ever been hospitalized for psychiatric reasons?</Label>
             <RadioGroup defaultValue="no" className="flex space-x-4">
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="yes" id="hospitalized-yes" />
@@ -662,7 +617,7 @@ const ClientHistoryTemplate: React.FC<ClientHistoryTemplateProps> = ({
           </div>
           
           <div>
-            <Label className="mb-2 block">Have you ever been placed on a psych hold?</Label>
+            <Label className="mb-2 block">Have you ever been placed on a psychiatric hold?</Label>
             <RadioGroup defaultValue="no" className="flex space-x-4">
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="yes" id="psychhold-yes" />
@@ -676,42 +631,64 @@ const ClientHistoryTemplate: React.FC<ClientHistoryTemplateProps> = ({
           </div>
           
           <div>
-            <Label htmlFor="lifeChanges">Has there been any significant life change that has occurred recently or around the time that symptoms started to occur?</Label>
-            <Textarea id="lifeChanges" className="mt-1 min-h-[120px]" placeholder="Describe any significant life changes..." />
+            <Label htmlFor="lifeChanges">Have there been any significant life changes or stressful events that may be contributing to your current difficulties?</Label>
+            <Textarea id="lifeChanges" placeholder="Describe any significant life changes..." className="min-h-[120px]" />
           </div>
           
           <div>
-            <Label htmlFor="additionalInfo">Is there anything else that you would like to mention or clarify about the above information?</Label>
-            <Textarea id="additionalInfo" className="mt-1 min-h-[120px]" placeholder="Add any additional information..." />
+            <Label htmlFor="additionalInfo">Is there anything else you'd like me to know about your current situation?</Label>
+            <Textarea id="additionalInfo" placeholder="Any additional information..." className="min-h-[120px]" />
           </div>
           
           <div>
-            <Label htmlFor="counselingGoals">What are your goals for counseling? What would success look like for you?</Label>
-            <Textarea id="counselingGoals" className="mt-1 min-h-[120px]" placeholder="Describe your counseling goals..." />
+            <Label htmlFor="counselingGoals">What are your goals for counseling?</Label>
+            <Textarea id="counselingGoals" placeholder="Describe your goals..." className="min-h-[120px]" />
           </div>
         </CardContent>
       </Card>
-
-      {/* SECTION: Family History */}
-      <Card>
+      
+      {/* Childhood and Family History */}
+      <Card className="mb-8">
         <CardHeader>
-          <CardTitle>Family History</CardTitle>
-          <CardDescription>Information about your family background</CardDescription>
+          <CardTitle>Childhood and Family History</CardTitle>
+          <CardDescription>Information about your childhood and family background</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <Label className="mb-4 block">Your Family (as you experienced them growing up)</Label>
+            <Label className="mb-2 block">Please check any of the following that describe your childhood experience:</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {childhoodExperiences.map((experience) => (
+                <div key={experience} className="flex items-center space-x-2">
+                  <Checkbox 
+                    id={`childhood-${experience}`} 
+                    onCheckedChange={(checked) => 
+                      handleChildhoodExperienceChange(experience, checked === true)
+                    }
+                  />
+                  <Label htmlFor={`childhood-${experience}`}>{experience}</Label>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <Label htmlFor="childhoodElaboration">Please elaborate on any of the above or add any other significant childhood experiences:</Label>
+            <Textarea id="childhoodElaboration" placeholder="Describe your childhood experiences..." className="min-h-[120px]" />
+          </div>
+          
+          <div>
+            <Label className="mb-4 block">Please list your family of origin (the family you grew up with):</Label>
             {family.map((member, index) => (
               <div key={member.id} className="mb-6 p-4 border rounded-md bg-gray-50">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
                     <Label htmlFor={`familyType-${index}`}>Relationship Type</Label>
-                    <Select>
-                      <SelectTrigger id={`familyType-${index}`}>
-                        <SelectValue placeholder="Select relationship type" />
+                    <Select id={`familyType-${index}`}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select relationship" />
                       </SelectTrigger>
                       <SelectContent>
-                        {relationshipTypes.map(type => (
+                        {relationshipTypes.map((type) => (
                           <SelectItem key={type} value={type}>{type}</SelectItem>
                         ))}
                       </SelectContent>
@@ -722,16 +699,16 @@ const ClientHistoryTemplate: React.FC<ClientHistoryTemplateProps> = ({
                     <Input id={`familyName-${index}`} placeholder="Enter name" />
                   </div>
                   <div>
-                    <Label htmlFor={`familyPersonality-${index}`}>Their Personality</Label>
-                    <Input id={`familyPersonality-${index}`} placeholder="Describe their personality" />
+                    <Label htmlFor={`familyPersonality-${index}`}>Personality</Label>
+                    <Input id={`familyPersonality-${index}`} placeholder="Describe personality" />
                   </div>
                   <div>
-                    <Label htmlFor={`familyRelationshipGrowing-${index}`}>How was Your Relationship while Growing Up?</Label>
-                    <Input id={`familyRelationshipGrowing-${index}`} placeholder="Describe your relationship" />
+                    <Label htmlFor={`familyRelationshipGrowing-${index}`}>Relationship While Growing Up</Label>
+                    <Input id={`familyRelationshipGrowing-${index}`} placeholder="Describe relationship" />
                   </div>
                   <div>
-                    <Label htmlFor={`familyRelationshipNow-${index}`}>How is Your Relationship Now?</Label>
-                    <Input id={`familyRelationshipNow-${index}`} placeholder="Describe your current relationship" />
+                    <Label htmlFor={`familyRelationshipNow-${index}`}>Relationship Now</Label>
+                    <Input id={`familyRelationshipNow-${index}`} placeholder="Describe current relationship" />
                   </div>
                 </div>
                 {family.length > 1 && (
@@ -757,128 +734,84 @@ const ClientHistoryTemplate: React.FC<ClientHistoryTemplateProps> = ({
           </div>
           
           <div>
-            <Label className="mb-2 block">Childhood Experience (Check all that Apply)</Label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              {childhoodExperiences.map((experience) => (
-                <div key={experience} className="flex items-center space-x-2">
-                  <Checkbox 
-                    id={`childhood-${experience}`} 
-                    onCheckedChange={(checked) => 
-                      handleChildhoodExperienceChange(experience, checked === true)
-                    }
-                  />
-                  <Label htmlFor={`childhood-${experience}`}>{experience}</Label>
-                </div>
-              ))}
+            <div className="flex items-center space-x-2 mb-4">
+              <Checkbox 
+                id="sameHousehold" 
+                checked={sameHousehold}
+                onCheckedChange={(checked) => setSameHousehold(checked === true)}
+              />
+              <Label htmlFor="sameHousehold">My current household is the same as my family of origin</Label>
             </div>
             
-            <div className="mt-4">
-              <Label htmlFor="childhoodElaboration">
-                If you checked any of the boxes above, please feel free to elaborate on them here, and discuss any other childhood experiences that would help your therapist better help you.
-              </Label>
-              <Textarea 
-                id="childhoodElaboration" 
-                className="mt-2 min-h-[120px]" 
-                placeholder="Please elaborate on your childhood experiences..."
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* SECTION: Current Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Information</CardTitle>
-          <CardDescription>Information about your current living situation</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div>
-            <Label className="mb-2 block">Is your Family listed above the same as your Current Household?</Label>
-            <RadioGroup 
-              defaultValue="no" 
-              className="flex space-x-4" 
-              onValueChange={(value) => setSameHousehold(value === "yes")}
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="yes" id="sameHousehold-yes" />
-                <Label htmlFor="sameHousehold-yes">Yes</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="no" id="sameHousehold-no" />
-                <Label htmlFor="sameHousehold-no">No</Label>
-              </div>
-            </RadioGroup>
-          </div>
-          
-          {!sameHousehold && (
-            <div>
-              <Label className="mb-4 block">Members of Your Current Household</Label>
-              {currentHousehold.map((member, index) => (
-                <div key={member.id} className="mb-6 p-4 border rounded-md bg-gray-50">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <Label htmlFor={`householdType-${index}`}>Relationship Type</Label>
-                      <Select>
-                        <SelectTrigger id={`householdType-${index}`}>
-                          <SelectValue placeholder="Select relationship type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {relationshipTypes.map(type => (
-                            <SelectItem key={type} value={type}>{type}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+            {!sameHousehold && (
+              <div>
+                <Label className="mb-4 block">Please list your current household members:</Label>
+                {currentHousehold.map((member, index) => (
+                  <div key={member.id} className="mb-6 p-4 border rounded-md bg-gray-50">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <Label htmlFor={`householdType-${index}`}>Relationship Type</Label>
+                        <Select id={`householdType-${index}`}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select relationship" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {relationshipTypes.map((type) => (
+                              <SelectItem key={type} value={type}>{type}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor={`householdName-${index}`}>Name</Label>
+                        <Input id={`householdName-${index}`} placeholder="Enter name" />
+                      </div>
+                      <div>
+                        <Label htmlFor={`householdPersonality-${index}`}>Personality</Label>
+                        <Input id={`householdPersonality-${index}`} placeholder="Describe personality" />
+                      </div>
+                      <div>
+                        <Label htmlFor={`householdRelationship-${index}`}>Relationship</Label>
+                        <Input id={`householdRelationship-${index}`} placeholder="Describe relationship" />
+                      </div>
                     </div>
-                    <div>
-                      <Label htmlFor={`householdName-${index}`}>Name</Label>
-                      <Input id={`householdName-${index}`} placeholder="Enter name" />
-                    </div>
-                    <div>
-                      <Label htmlFor={`householdPersonality-${index}`}>Their Personality</Label>
-                      <Input id={`householdPersonality-${index}`} placeholder="Describe their personality" />
-                    </div>
-                    <div>
-                      <Label htmlFor={`householdRelationship-${index}`}>How is Your Relationship?</Label>
-                      <Input id={`householdRelationship-${index}`} placeholder="Describe your relationship" />
-                    </div>
+                    {currentHousehold.length > 1 && (
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setCurrentHousehold(currentHousehold.filter(h => h.id !== member.id))}
+                      >
+                        <X className="h-4 w-4 mr-1" /> Remove
+                      </Button>
+                    )}
                   </div>
-                  {currentHousehold.length > 1 && (
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setCurrentHousehold(currentHousehold.filter(h => h.id !== member.id))}
-                    >
-                      <X className="h-4 w-4 mr-1" /> Remove
-                    </Button>
-                  )}
-                </div>
-              ))}
-              <Button 
-                type="button" 
-                variant="outline" 
-                className="mt-2" 
-                onClick={handleAddHousehold}
-              >
-                <Plus className="h-4 w-4 mr-1" /> Add Household Member
-              </Button>
-            </div>
-          )}
-          
-          <div>
-            <Label htmlFor="occupation">What is your current occupation? What do you do? How long have you been doing it?</Label>
-            <Textarea id="occupation" placeholder="Describe your current occupation..." />
+                ))}
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="mt-2" 
+                  onClick={handleAddHousehold}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add Household Member
+                </Button>
+              </div>
+            )}
           </div>
           
           <div>
-            <Label htmlFor="education">Highest Level of Education Completed</Label>
+            <Label htmlFor="occupation">Current Occupation (if student, indicate school and grade/year):</Label>
+            <Textarea id="occupation" placeholder="Describe your occupation..." />
+          </div>
+          
+          <div id="education">
+            <Label className="mb-2 block">Highest Level of Education Completed:</Label>
             <Select>
-              <SelectTrigger id="education">
+              <SelectTrigger>
                 <SelectValue placeholder="Select education level" />
               </SelectTrigger>
               <SelectContent>
-                {educationOptions.map(option => (
+                {educationOptions.map((option) => (
                   <SelectItem key={option} value={option}>{option}</SelectItem>
                 ))}
               </SelectContent>
@@ -886,16 +819,16 @@ const ClientHistoryTemplate: React.FC<ClientHistoryTemplateProps> = ({
           </div>
         </CardContent>
       </Card>
-
-      {/* SECTION: Relationship History */}
-      <Card>
+      
+      {/* Relationship History */}
+      <Card className="mb-8">
         <CardHeader>
           <CardTitle>Relationship History</CardTitle>
-          <CardDescription>Information about your past and current relationships</CardDescription>
+          <CardDescription>Information about your significant relationships</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <Label className="mb-2 block">Are you Married?</Label>
+            <Label className="mb-2 block">Are you currently married or in a committed relationship?</Label>
             <RadioGroup 
               defaultValue="no" 
               className="flex space-x-4"
@@ -913,60 +846,57 @@ const ClientHistoryTemplate: React.FC<ClientHistoryTemplateProps> = ({
           </div>
           
           {isMarried && (
-            <div className="p-4 border rounded-md bg-gray-50">
-              <h4 className="font-medium mb-3">Current Spouse</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="spouseName">Name</Label>
-                  <Input id="spouseName" placeholder="Enter name" />
-                </div>
-                <div>
-                  <Label htmlFor="spousePersonality">Their Personality</Label>
-                  <Input id="spousePersonality" placeholder="Describe their personality" />
-                </div>
-                <div>
-                  <Label htmlFor="spouseRelationship">How is Your Relationship?</Label>
-                  <Input id="spouseRelationship" placeholder="Describe your relationship" />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="spouseName">Spouse/Partner Name</Label>
+                <Input id="spouseName" placeholder="Enter name" />
+              </div>
+              <div>
+                <Label htmlFor="spousePersonality">Personality</Label>
+                <Input id="spousePersonality" placeholder="Describe personality" />
+              </div>
+              <div>
+                <Label htmlFor="spouseRelationship">Quality of Relationship</Label>
+                <Input id="spouseRelationship" placeholder="Describe relationship" />
               </div>
             </div>
           )}
           
           <div>
-            <Label className="mb-2 block">Have you ever been Married Before?</Label>
+            <Label className="mb-2 block">Have you had any previous marriages or significant relationships?</Label>
             <RadioGroup 
               defaultValue="no" 
               className="flex space-x-4"
               onValueChange={(value) => setShowPastSpouses(value === "yes")}
             >
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="yes" id="pastMarried-yes" />
-                <Label htmlFor="pastMarried-yes">Yes</Label>
+                <RadioGroupItem value="yes" id="pastSpouses-yes" />
+                <Label htmlFor="pastSpouses-yes">Yes</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="no" id="pastMarried-no" />
-                <Label htmlFor="pastMarried-no">No</Label>
+                <RadioGroupItem value="no" id="pastSpouses-no" />
+                <Label htmlFor="pastSpouses-no">No</Label>
               </div>
             </RadioGroup>
           </div>
           
           {showPastSpouses && (
             <div>
-              <Label className="mb-4 block">Past Spouse(s)</Label>
+              <Label className="mb-4 block">Previous Marriages/Significant Relationships</Label>
               {pastSpouses.map((spouse, index) => (
                 <div key={spouse.id} className="mb-6 p-4 border rounded-md bg-gray-50">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
                       <Label htmlFor={`pastSpouseName-${index}`}>Name</Label>
                       <Input id={`pastSpouseName-${index}`} placeholder="Enter name" />
                     </div>
                     <div>
-                      <Label htmlFor={`pastSpousePersonality-${index}`}>Their Personality</Label>
-                      <Input id={`pastSpousePersonality-${index}`} placeholder="Describe their personality" />
+                      <Label htmlFor={`pastSpousePersonality-${index}`}>Personality</Label>
+                      <Input id={`pastSpousePersonality-${index}`} placeholder="Describe personality" />
                     </div>
                     <div>
-                      <Label htmlFor={`pastSpouseRelationship-${index}`}>How was Your Relationship?</Label>
-                      <Input id={`pastSpouseRelationship-${index}`} placeholder="Describe your relationship" />
+                      <Label htmlFor={`pastSpouseRelationship-${index}`}>Reason for Ending</Label>
+                      <Input id={`pastSpouseRelationship-${index}`} placeholder="Describe reason" />
                     </div>
                   </div>
                   {pastSpouses.length > 1 && (
@@ -987,19 +917,19 @@ const ClientHistoryTemplate: React.FC<ClientHistoryTemplateProps> = ({
                 className="mt-2" 
                 onClick={handleAddSpouse}
               >
-                <Plus className="h-4 w-4 mr-1" /> Add Past Spouse
+                <Plus className="h-4 w-4 mr-1" /> Add Past Relationship
               </Button>
             </div>
           )}
           
           <div>
-            <Label htmlFor="relationshipProblems">Describe any typical problems experienced in past or current marriages or co-habitation relationships</Label>
+            <Label htmlFor="relationshipProblems">Please describe any current relationship problems:</Label>
             <Textarea id="relationshipProblems" placeholder="Describe any relationship problems..." className="min-h-[120px]" />
           </div>
         </CardContent>
       </Card>
-
-      {/* SECTION: Medical and Mental Health History */}
+      
+      {/* Medical and Mental Health History */}
       <Card>
         <CardHeader>
           <CardTitle>Medical and Mental Health History</CardTitle>
@@ -1194,11 +1124,15 @@ const ClientHistoryTemplate: React.FC<ClientHistoryTemplateProps> = ({
         </CardContent>
       </Card>
 
-      <div className="flex justify-end gap-4">
+      <div className="flex justify-end gap-4 mt-6">
         <Button type="button" variant="outline" onClick={handleCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button 
+          type="button" 
+          onClick={handleFormSubmit} 
+          disabled={isSubmitting}
+        >
           {isSubmitting ? (
             <>
               <span className="animate-spin mr-2">⏳</span>
