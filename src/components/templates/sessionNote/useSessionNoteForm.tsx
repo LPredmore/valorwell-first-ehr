@@ -1,4 +1,4 @@
-import { useState, useEffect, RefObject } from 'react';
+import React, { useState, useEffect, RefObject } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClientDetails } from '@/types/client';
@@ -436,73 +436,62 @@ export const useSessionNoteForm = ({
             variant: "default",
           });
         } else {
-          console.log(`Appointment ${appointment.id} marked as Documented`);
+          console.log(`Appointment ${appointment.id} status updated to Documented`);
         }
       }
 
-      // Step 5: Generate and save PDF using React-PDF
-      if (sessionDate) {
-        console.log("Generating PDF...");
-        const clientName = formState.patientName || 'Unknown Client';
-        
-        // Create a clean version of formState without privateNote for the PDF
-        const pdfFormData = { ...formState };
-        delete pdfFormData.privateNote; // Remove private note from PDF data
-        
-        const documentInfo = {
-          clientId: clientData.id,
-          documentType: 'session_note',
-          documentDate: sessionDate,
-          documentTitle: `Session Note - ${clientName} - ${sessionDate}`,
-          createdBy: clinician_id
-        };
-
+      // Step 5: Generate PDF if we have a content reference
+      if (contentRef?.current && sessionNoteId) {
+        console.log("Generating PDF for session note...");
         try {
-          // Pass the form data and document info to the PDF generator
-          const result = await generateAndSavePDF({ ...pdfFormData, phq9Data }, documentInfo);
+          const docDate = new Date();
+          const documentInfo = {
+            clientId: clientData.id,
+            documentType: 'session_note',
+            documentDate: docDate,
+            documentTitle: `Session Note - ${format(docDate, 'yyyy-MM-dd')}`,
+            createdBy: clinician_id
+          };
           
-          if (result.success && result.filePath && sessionNoteId) {
-            console.log("Updating session note with PDF path:", result.filePath);
-            await supabase
-              .from('session_notes')
-              .update({ pdf_path: result.filePath })
-              .eq('id', sessionNoteId);
+          // FIX: Pass the element ID as the first parameter, not the form data
+          const elementId = 'session-note-content';
+          const pdfResult = await generateAndSavePDF(elementId, documentInfo);
+          
+          if (pdfResult) {
+            console.log("PDF generated successfully:", pdfResult);
             
-            pdfPath = result.filePath;
-            console.log('PDF saved successfully:', pdfPath);
-            toast({
-              title: "Success",
-              description: "Session note saved and PDF generated successfully.",
-            });
+            // Update session note with PDF path
+            const { error: pdfUpdateError } = await supabase
+              .from('session_notes')
+              .update({ pdf_path: pdfResult })
+              .eq('id', sessionNoteId);
+              
+            if (pdfUpdateError) {
+              console.error('Error updating session note with PDF path:', pdfUpdateError);
+            } else {
+              console.log("Session note updated with PDF path");
+            }
           } else {
-            console.error('Failed to generate PDF:', result);
-            toast({
-              title: "Warning",
-              description: "Session note saved, but PDF generation failed.",
-              variant: "default",
-            });
+            console.error("PDF generation failed");
           }
         } catch (pdfError) {
           console.error('Error generating PDF:', pdfError);
-          toast({
-            title: "Warning",
-            description: "Session note saved, but PDF generation failed.",
-            variant: "default",
-          });
         }
       } else {
-        toast({
-          title: "Success",
-          description: "Session note saved successfully.",
-        });
+        console.warn("No content reference available for PDF generation");
       }
 
+      toast({
+        title: "Success",
+        description: "Session note saved successfully",
+      });
+      
       onClose();
     } catch (error) {
-      console.error('Error saving session note:', error);
+      console.error('Error in handleSave:', error);
       toast({
         title: "Error",
-        description: "Failed to save session note.",
+        description: "Failed to save session note",
         variant: "destructive",
       });
     } finally {
@@ -512,9 +501,22 @@ export const useSessionNoteForm = ({
 
   return {
     formState,
-    isSubmitting,
-    phq9Data,
     handleChange,
-    handleSave
+    handleSave,
+    isSubmitting,
+    phq9Data
   };
 };
+
+// Helper function for date formatting
+function format(date: Date, formatStr: string): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  
+  if (formatStr === 'yyyy-MM-dd') {
+    return `${year}-${month}-${day}`;
+  }
+  
+  return `${month}/${day}/${year}`;
+}
