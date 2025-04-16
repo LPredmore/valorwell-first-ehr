@@ -13,7 +13,7 @@ interface FormFieldWrapperProps {
   control: any;
   name: string;
   label: string;
-  type?: 'text' | 'email' | 'tel' | 'select';
+  type?: 'text' | 'email' | 'tel' | 'select' | 'date';
   options?: (string | SelectOption)[];
   readOnly?: boolean;
   valueMapper?: (label: string) => string;
@@ -39,11 +39,22 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
       control={control}
       name={name}
       render={({ field }) => {
-        console.log(`Field ${name} value:`, field.value);
+        // Removed console.log for performance improvement
         
         const handleSelectChange = (selectedValue: string) => {
           const valueToStore = valueMapper ? valueMapper(selectedValue) : selectedValue;
           field.onChange(valueToStore);
+        };
+
+        // Handle date field type conversion
+        const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+          if (e.target.value) {
+            // Convert string date to Date object for validation
+            const dateValue = new Date(e.target.value);
+            field.onChange(dateValue);
+          } else {
+            field.onChange(null);
+          }
         };
 
         const displayValue = labelMapper && field.value ? labelMapper(field.value) : field.value;
@@ -81,6 +92,16 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                     {options.map(renderSelectOption)}
                   </SelectContent>
                 </Select>
+              ) : type === 'date' ? (
+                <Input
+                  {...field}
+                  value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value || ''}
+                  onChange={handleDateChange}
+                  type="date"
+                  readOnly={readOnly}
+                  className={readOnly ? "bg-gray-100" : ""}
+                  required={required}
+                />
               ) : (
                 <Input
                   {...field}
