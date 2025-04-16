@@ -61,15 +61,18 @@ const App: React.FC = () => {
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   
-                  {/* Client accessible routes */}
-                  <Route path="/profile-setup" element={<ProfileSetup />} />
-                  
-                  {/* Added: Make Informed Consent accessible to clients */}
-                  <Route path="/informed-consent" element={
-                    <ProtectedRoute allowedRoles={['client']} blockNewClients={false}>
-                      <InformedConsent />
-                    </ProtectedRoute>
-                  } />
+                  {/* Profile Setup Route */}
+                  <Route 
+                    path="/profile-setup" 
+                    element={
+                      <ProtectedRoute 
+                        allowedRoles={['client']} 
+                        blockNewClients={false}
+                      >
+                        <ProfileSetup />
+                      </ProtectedRoute>
+                    } 
+                  />
                   
                   {/* Add this route to your existing routes (location may vary based on your router setup) */}
                   <Route path="/client-history-form" element={<ClientHistoryForm />} />
