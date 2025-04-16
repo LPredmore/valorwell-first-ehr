@@ -1,4 +1,14 @@
+
 import { z } from 'zod';
+
+// Helper function to handle dates that might be strings
+const dateSchema = z.union([
+  z.date(),
+  z.string().refine((value) => !isNaN(new Date(value).getTime()), {
+    message: "Invalid date format",
+    path: []
+  }).transform(value => new Date(value))
+]);
 
 export const profileSchemas = {
   step1Schema: z.object({
@@ -11,8 +21,11 @@ export const profileSchemas = {
   }),
 
   step2Schema: z.object({
-    client_date_of_birth: z.date({
-      required_error: "Date of birth is required",
+    client_date_of_birth: dateSchema.refine(date => {
+      const now = new Date();
+      return date <= now && date >= new Date('1900-01-01');
+    }, {
+      message: "Date of birth must be in the past and after 1900",
     }),
     client_gender: z.string().min(1, "Birth gender is required"),
     client_gender_identity: z.string().min(1, "Gender identity is required"),
@@ -32,7 +45,7 @@ export const profileSchemas = {
     client_relationship: z.string().min(1, "Relationship is required"),
     
     // Step 2 fields
-    client_date_of_birth: z.date().optional(),
+    client_date_of_birth: dateSchema.optional(),
     client_gender: z.string().optional(),
     client_gender_identity: z.string().optional(),
     client_state: z.string().optional(),
@@ -59,7 +72,7 @@ export const profileSchemas = {
     
     // Step 3 fields - Veteran
     client_branchOS: z.string().optional(),
-    client_recentdischarge: z.date().optional(),
+    client_recentdischarge: dateSchema.optional(),
     client_disabilityrating: z.string().optional(),
     
     // Step 3 fields - Not a Veteran
@@ -71,7 +84,7 @@ export const profileSchemas = {
     client_insurance_type_primary: z.string().optional(),
     client_subscriber_name_primary: z.string().optional(),
     client_subscriber_relationship_primary: z.string().optional(),
-    client_subscriber_dob_primary: z.date().optional(),
+    client_subscriber_dob_primary: dateSchema.optional(),
     client_group_number_primary: z.string().optional(),
     client_policy_number_primary: z.string().optional(),
     hasMoreInsurance: z.string().optional(),
@@ -81,7 +94,7 @@ export const profileSchemas = {
     client_insurance_type_secondary: z.string().optional(),
     client_subscriber_name_secondary: z.string().optional(),
     client_subscriber_relationship_secondary: z.string().optional(),
-    client_subscriber_dob_secondary: z.date().optional(),
+    client_subscriber_dob_secondary: dateSchema.optional(),
     client_group_number_secondary: z.string().optional(),
     client_policy_number_secondary: z.string().optional(),
     client_has_even_more_insurance: z.string().optional(),
