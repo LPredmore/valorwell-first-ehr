@@ -166,13 +166,11 @@ const ProfileSetup = () => {
   });
 
   useEffect(() => {
-    // Skip fetching user data if profile is already completed
     if (isProfileCompleted) {
       console.log("Profile is completed, skipping fetchUser");
       return;
     }
 
-    // Skip the initial mount if we're in the middle of completing the profile
     if (isInitialMount.current) {
       isInitialMount.current = false;
     } else if (isSubmitting) {
@@ -268,7 +266,6 @@ const ProfileSetup = () => {
           const data = clientData[0];
           console.log("Processing client data:", data);
           
-          // Check if profile is already complete
           if (data.client_status === 'Profile Complete' || data.client_is_profile_complete === 'true') {
             console.log("Profile is already complete, redirecting to therapist selection");
             setIsProfileCompleted(true);
@@ -487,8 +484,6 @@ const ProfileSetup = () => {
             .from('clients')
             .update({
               client_champva: values.client_champva,
-              client_other_insurance: values.client_other_insurance,
-              client_champva_agreement: values.client_champva_agreement,
               client_mental_health_referral: values.client_mental_health_referral
             })
             .eq('id', clientId);
@@ -593,6 +588,8 @@ const ProfileSetup = () => {
           });
         }
       }
+      
+      const otherInsurance = values.other_insurance;
       
       if (vaCoverage === "TRICARE" && otherInsurance === "No") {
         navigateToStep(6);
@@ -703,7 +700,6 @@ const ProfileSetup = () => {
 
   const handleSubmit = async () => {
     try {
-      // Prevent multiple submissions
       if (isSubmitting || isProfileCompleted) {
         console.log("Submission already in progress or profile already completed, skipping");
         return;
@@ -711,7 +707,7 @@ const ProfileSetup = () => {
       
       console.log("Starting profile completion process");
       setIsSubmitting(true);
-      setIsProfileCompleted(true); // Set this early to prevent race conditions
+      setIsProfileCompleted(true);
       
       const formValues = form.getValues();
       
@@ -774,7 +770,6 @@ const ProfileSetup = () => {
         description: "Your profile has been completed successfully."
       });
 
-      // Use window.location.href for immediate navigation
       console.log("Redirecting to therapist selection page");
       window.location.href = '/therapist-selection';
       
@@ -1119,7 +1114,6 @@ const ProfileSetup = () => {
     </Form>
   );
 
-  // If profile is already completed, show loading message while redirecting
   if (isProfileCompleted) {
     return (
       <Layout>
