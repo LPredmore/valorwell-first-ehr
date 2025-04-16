@@ -31,47 +31,50 @@ const ProfileStep3 = () => {
   // Render different form sections based on VA coverage
   const renderChampvaForm = () => (
     <div className="space-y-6">
-      <h3 className="text-lg font-medium">CHAMPVA Information</h3>
+      <h3 className="text-lg font-medium">CHAMPVA Coverage Details</h3>
+      <p className="text-gray-600 mb-4">Remember that CHAMPVA uses a separate policy for every client. This is the number for the client, not their parent/spouse.</p>
       
       <FormFieldWrapper
         control={form.control}
         name="client_champva"
-        label="CHAMPVA Status"
-        type="select"
-        options={[
-          "I am a spouse or dependent of a permanently and totally disabled Veteran",
-          "I am a surviving spouse or child of a Veteran who died from a service-connected disability",
-          "I am a surviving spouse or child of a Veteran who was rated permanently and totally disabled at the time of death",
-          "I am a surviving spouse or child of a military member who died in the line of duty"
-        ]}
+        label="CHAMPVA #"
+        type="text"
+        maxLength={9}
         required={true}
       />
+      
+      <p className="text-sm text-gray-500 italic mt-2 mb-4">
+        We understand that this is your SSN. And although we do not necessarily agree with them using this as their patient identifier, 
+        we do have to follow their process. The only way to verify your coverage is to have this.
+      </p>
       
       <FormFieldWrapper
         control={form.control}
         name="client_other_insurance"
-        label="Do you have other health insurance?"
+        label="Do you have any other insurance?"
         type="select"
         options={["Yes", "No"]}
         required={true}
       />
       
-      <FormFieldWrapper
-        control={form.control}
-        name="client_champva_agreement"
-        label="I understand that CHAMPVA is always secondary to other health insurance."
-        type="checkbox"
-        required={true}
-      />
-      
-      <FormFieldWrapper
-        control={form.control}
-        name="client_mental_health_referral"
-        label="Do you have a referral for mental health services?"
-        type="select"
-        options={["Yes", "No"]}
-        required={true}
-      />
+      {otherInsurance === "No" && (
+        <div className="bg-gray-50 p-4 rounded-md border border-gray-200 mt-2">
+          <p className="text-sm text-gray-700 mb-4">
+            I understand that if I have any other insurance, I have to include it here, even if it doesn't cover the services I will be receiving. 
+            CHAMPVA requires other insurances to be billed first, even if it is out of network or they don't cover the service. 
+            I understand that if I have other insurance and fail to provide it here, my claims will likely not be covered by CHAMPVA 
+            and I will be responsible for the entire cost.
+          </p>
+          
+          <FormFieldWrapper
+            control={form.control}
+            name="client_champva_agreement"
+            label="I agree"
+            type="checkbox"
+            required={true}
+          />
+        </div>
+      )}
     </div>
   );
   
