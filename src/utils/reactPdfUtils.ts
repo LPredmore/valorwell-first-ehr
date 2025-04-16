@@ -1,4 +1,5 @@
-// Re-export from pdfUtils.ts for backward compatibility
-import { generateAndSavePDF } from './pdfUtils';
 
-export { generateAndSavePDF };
+// Re-export from the enhanced version
+import { generateAndSavePDF, PdfGenerationResult } from './reactPdfUtils';
+
+export { generateAndSavePDF, PdfGenerationResult };
