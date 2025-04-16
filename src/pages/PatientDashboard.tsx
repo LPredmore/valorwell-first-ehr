@@ -6,6 +6,8 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById, formatDateForDB, supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { getUserTimeZoneById } from '@/hooks/useUserTimeZone';
+import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
 // Import the tab components
 import MyPortal from '@/components/patient/MyPortal';
@@ -128,8 +130,13 @@ const PatientDashboard: React.FC = () => {
         return;
       }
       console.log("Current user:", user);
+      
       const client = await getClientByUserId(user.id);
       console.log("Retrieved client data:", client);
+      
+      const profileTimeZone = await getUserTimeZoneById(user.id);
+      console.log("Retrieved profile time zone:", profileTimeZone);
+      
       if (client) {
         setClientData(client);
         if (client.client_assigned_therapist) {
@@ -153,6 +160,9 @@ const PatientDashboard: React.FC = () => {
             day: 'numeric'
           });
         }
+        
+        const timeZoneToUse = profileTimeZone || client.client_time_zone || 'America/Chicago';
+        
         form.reset({
           firstName: client.client_first_name || '',
           lastName: client.client_last_name || '',
@@ -164,28 +174,34 @@ const PatientDashboard: React.FC = () => {
           gender: client.client_gender || '',
           genderIdentity: client.client_gender_identity || '',
           state: client.client_state || '',
-          timeZone: client.client_time_zone || '',
+          timeZone: timeZoneToUse,
           client_insurance_company_primary: client.client_insurance_company_primary || '',
           client_insurance_type_primary: client.client_insurance_type_primary || '',
           client_policy_number_primary: client.client_policy_number_primary || '',
           client_group_number_primary: client.client_group_number_primary || '',
           client_subscriber_name_primary: client.client_subscriber_name_primary || '',
           client_subscriber_relationship_primary: client.client_subscriber_relationship_primary || '',
-          client_subscriber_dob_primary: client.client_subscriber_dob_primary || '',
+          client_subscriber_dob_primary: client.client_subscriber_dob_primary ? 
+            formatDateForDB(new Date(client.client_subscriber_dob_primary)) : null,
+          
           client_insurance_company_secondary: client.client_insurance_company_secondary || '',
           client_insurance_type_secondary: client.client_insurance_type_secondary || '',
           client_policy_number_secondary: client.client_policy_number_secondary || '',
           client_group_number_secondary: client.client_group_number_secondary || '',
           client_subscriber_name_secondary: client.client_subscriber_name_secondary || '',
           client_subscriber_relationship_secondary: client.client_subscriber_relationship_secondary || '',
-          client_subscriber_dob_secondary: client.client_subscriber_dob_secondary || '',
+          client_subscriber_dob_secondary: client.client_subscriber_dob_secondary ? 
+            formatDateForDB(new Date(client.client_subscriber_dob_secondary)) : null,
+          
           client_insurance_company_tertiary: client.client_insurance_company_tertiary || '',
           client_insurance_type_tertiary: client.client_insurance_type_tertiary || '',
           client_policy_number_tertiary: client.client_policy_number_tertiary || '',
           client_group_number_tertiary: client.client_group_number_tertiary || '',
           client_subscriber_name_tertiary: client.client_subscriber_name_tertiary || '',
           client_subscriber_relationship_tertiary: client.client_subscriber_relationship_tertiary || '',
-          client_subscriber_dob_tertiary: client.client_subscriber_dob_tertiary || '',
+          client_subscriber_dob_tertiary: client.client_subscriber_dob_tertiary ? 
+            formatDateForDB(new Date(client.client_subscriber_dob_tertiary)) : null,
+          
           client_champva: client.client_champva || '',
           client_tricare_beneficiary_category: client.client_tricare_beneficiary_category || '',
           client_tricare_sponsor_name: client.client_tricare_sponsor_name || '',

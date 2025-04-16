@@ -3,6 +3,7 @@ import React from 'react';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
 interface SelectOption {
   value: string;
@@ -34,14 +35,24 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
   maxLength,
   required = false
 }) => {
+  // Special handling for time zone selection
+  const isTimeZoneField = name === 'timeZone';
+  
   return (
     <FormField
       control={control}
       name={name}
       render={({ field }) => {
-        // Removed console.log for performance improvement
-        
         const handleSelectChange = (selectedValue: string) => {
+          // Handle time zone specific conversion
+          if (isTimeZoneField) {
+            // For time zones, ensure we're storing in IANA format
+            const ianaValue = ensureIANATimeZone(selectedValue);
+            field.onChange(ianaValue);
+            return;
+          }
+          
+          // For other fields, use the standard mapper if provided
           const valueToStore = valueMapper ? valueMapper(selectedValue) : selectedValue;
           field.onChange(valueToStore);
         };
@@ -57,7 +68,24 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
           }
         };
 
-        const displayValue = labelMapper && field.value ? labelMapper(field.value) : field.value;
+        // Determine what value to display in the field
+        let displayValue = field.value;
+        
+        // If it's a time zone field and we have a value, see if we need to convert from IANA to display format
+        if (isTimeZoneField && field.value && field.value.includes('/')) {
+          // Find the matching display name in the options array
+          const matchingOption = options.find((opt) => {
+            const optValue = typeof opt === 'string' ? opt : opt.value;
+            const ianaValue = ensureIANATimeZone(optValue);
+            return ianaValue === field.value;
+          });
+          
+          if (matchingOption) {
+            displayValue = typeof matchingOption === 'string' ? matchingOption : matchingOption.value;
+          }
+        } else if (labelMapper && field.value) {
+          displayValue = labelMapper(field.value);
+        }
 
         const renderSelectOption = (option: string | SelectOption) => {
           if (typeof option === 'string') {
