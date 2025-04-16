@@ -4,7 +4,7 @@ import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
 /**
  * Map of common timezone display names to IANA format
  */
-export const TIME_ZONE_MAP: Record<string, string> = {
+const TIME_ZONE_MAP: Record<string, string> = {
   'Eastern Time (ET)': 'America/New_York',
   'Central Time (CT)': 'America/Chicago',
   'Mountain Time (MT)': 'America/Denver',
@@ -19,27 +19,6 @@ export const TIME_ZONE_MAP: Record<string, string> = {
   'Alaska Standard Time (AKST)': 'America/Anchorage',
   'Hawaii-Aleutian Standard Time (HST)': 'Pacific/Honolulu',
   'Atlantic Standard Time (AST)': 'America/Puerto_Rico'
-};
-
-/**
- * Reverse mapping from IANA identifiers to display names
- */
-export const getDisplayNameFromIANA = (ianaIdentifier: string): string => {
-  // Create a reverse mapping
-  for (const [displayName, iana] of Object.entries(TIME_ZONE_MAP)) {
-    if (iana === ianaIdentifier) {
-      return displayName;
-    }
-  }
-  
-  // If no match found, return a formatted version of the IANA identifier
-  if (ianaIdentifier && ianaIdentifier.includes('/')) {
-    const parts = ianaIdentifier.split('/');
-    const location = parts[parts.length - 1].replace(/_/g, ' ');
-    return `${location} Time`;
-  }
-  
-  return ianaIdentifier || 'Central Standard Time (CST)';
 };
 
 /**
