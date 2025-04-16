@@ -36,13 +36,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     getCurrentUserId();
   }, [clinicianId, clientId]);
   
-  // Show loading state while checking authentication
   if (isLoading || isCheckingUser) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-valorwell-600"></div>
-      </div>
-    );
+    return <div className="flex h-screen w-full items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-valorwell-600"></div>
+    </div>;
   }
   
   // First check role-based access
@@ -51,8 +48,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     if (userRole === 'clinician') {
       return <Navigate to="/calendar" replace />;
     }
-    // Redirect clients to patient dashboard if they've completed profile setup
-    else if (userRole === 'client' && clientStatus !== 'New') {
+    // Redirect clients to patient dashboard
+    else if (userRole === 'client') {
       return <Navigate to="/patient-dashboard" replace />;
     }
     // Redirect everyone else to login
