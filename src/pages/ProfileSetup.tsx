@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -152,7 +153,7 @@ const formSchema = z.object({
   }),
 })
 
-export default function ProfileSetup() {
+const ProfileSetup = () => {
   const [isSaving, setIsSaving] = React.useState<boolean>(false);
   const [isAlertDialogOpen, setIsAlertDialogOpen] = React.useState<boolean>(false);
   const [progress, setProgress] = React.useState<number>(0);
@@ -1016,4 +1017,40 @@ export default function ProfileSetup() {
                         </>
                       )}
                       {showChampva && (
-                        <
+                        <FormField
+                          control={form.control}
+                          name="client_champva"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>CHAMPVA Number</FormLabel>
+                              <FormControl>
+                                <Input placeholder="CHAMPVA Number" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+              
+              {showProgress && (
+                <Progress value={progress} max={100} className="w-full" />
+              )}
+              
+              <div className="flex justify-end">
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? "Saving..." : "Submit"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default ProfileSetup;
