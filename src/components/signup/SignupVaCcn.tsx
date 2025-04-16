@@ -1,31 +1,17 @@
 
 import React from 'react';
-import { UseFormReturn } from 'react-hook-form';
-import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
+import { Form } from '@/components/ui/form';
 
-interface SignupVaCcnProps {
-  form: UseFormReturn<any>;
-}
-
-const SignupVaCcn: React.FC<SignupVaCcnProps> = ({ form }) => {
+export const SignupVaCcn = ({ form }: { form: any }) => {
   return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-medium">VA Community Care Network Details</h3>
-      <p className="text-gray-600 mb-4">
-        Please provide additional information about your VA Community Care coverage.
-      </p>
-      
-      <div className="grid grid-cols-1 gap-6">
-        <FormFieldWrapper
-          control={form.control}
-          name="mentalHealthReferral"
-          label="Have you requested a referral from Mental Health?"
-          type="select"
-          options={["Yes", "No"]}
-        />
+    <Form {...form}>
+      <div className="space-y-6">
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-blue-800">
+            Your VA Community Care Network information has been recorded. We'll contact you with next steps after your profile is complete.
+          </p>
+        </div>
       </div>
-    </div>
+    </Form>
   );
 };
-
-export default SignupVaCcn;

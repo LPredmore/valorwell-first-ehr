@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -41,7 +42,14 @@ import Analytics from '@/pages/Analytics';
 import NotFound from '@/pages/NotFound';
 
 // Create a client
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30000,
+    },
+  },
+});
 
 const App: React.FC = () => {
   return (
@@ -61,7 +69,7 @@ const App: React.FC = () => {
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   
-                  {/* Profile Setup Route */}
+                  {/* Profile Setup Route - accessible to client users but requires authentication */}
                   <Route 
                     path="/profile-setup" 
                     element={
@@ -84,14 +92,14 @@ const App: React.FC = () => {
                     </ProtectedRoute>
                   } />
                   
-                  {/* Restored: Patient Dashboard route */}
+                  {/* Patient Dashboard route */}
                   <Route path="/patient-dashboard" element={
                     <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
                       <PatientDashboard />
                     </ProtectedRoute>
                   } />
                   
-                  {/* Restored: Patient Documents route */}
+                  {/* Patient Documents route */}
                   <Route path="/patient-documents" element={
                     <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
                       <PatientDocuments />
