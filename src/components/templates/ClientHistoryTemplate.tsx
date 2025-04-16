@@ -683,8 +683,8 @@ const ClientHistoryTemplate: React.FC<ClientHistoryTemplateProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
                     <Label htmlFor={`familyType-${index}`}>Relationship Type</Label>
-                    <Select id={`familyType-${index}`}>
-                      <SelectTrigger>
+                    <Select>
+                      <SelectTrigger id={`familyType-${index}`}>
                         <SelectValue placeholder="Select relationship" />
                       </SelectTrigger>
                       <SelectContent>
@@ -751,8 +751,8 @@ const ClientHistoryTemplate: React.FC<ClientHistoryTemplateProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div>
                         <Label htmlFor={`householdType-${index}`}>Relationship Type</Label>
-                        <Select id={`householdType-${index}`}>
-                          <SelectTrigger>
+                        <Select>
+                          <SelectTrigger id={`householdType-${index}`}>
                             <SelectValue placeholder="Select relationship" />
                           </SelectTrigger>
                           <SelectContent>
