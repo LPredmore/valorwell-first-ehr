@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Check, ArrowLeft, ArrowRight } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, parseDateString, formatDateForDB } from '@/integrations/supabase/client';
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { useToast } from '@/hooks/use-toast';
 import { timezoneOptions } from '@/utils/timezoneOptions';
@@ -280,13 +280,15 @@ const ProfileSetup = () => {
           
           let dateOfBirth = undefined;
           if (data.client_date_of_birth) {
-            dateOfBirth = new Date(data.client_date_of_birth);
+            // Use the parseDateString utility instead of direct Date constructor
+            dateOfBirth = parseDateString(data.client_date_of_birth);
             console.log("Parsed date of birth:", dateOfBirth);
           }
           
           let dischargeDate = undefined;
           if (data.client_recentdischarge) {
-            dischargeDate = new Date(data.client_recentdischarge);
+            // Use the parseDateString utility instead of direct Date constructor
+            dischargeDate = parseDateString(data.client_recentdischarge);
             console.log("Parsed discharge date:", dischargeDate);
           }
           
@@ -435,8 +437,9 @@ const ProfileSetup = () => {
 
     if (currentStep === 2) {
       if (clientId) {
+        // Use formatDateForDB utility instead of format function
         const formattedDateOfBirth = values.client_date_of_birth 
-          ? format(values.client_date_of_birth, 'yyyy-MM-dd') 
+          ? formatDateForDB(values.client_date_of_birth) 
           : null;
           
         try {
@@ -558,8 +561,9 @@ const ProfileSetup = () => {
         try {
           console.log("Saving Veteran Information");
           
+          // Use formatDateForDB utility instead of format function
           const formattedDischargeDate = values.client_recentdischarge 
-            ? format(values.client_recentdischarge, 'yyyy-MM-dd') 
+            ? formatDateForDB(values.client_recentdischarge) 
             : null;
           
           const { error } = await supabase
@@ -606,8 +610,9 @@ const ProfileSetup = () => {
         try {
           console.log("Saving primary insurance data");
           
+          // Use formatDateForDB utility instead of format function
           const formattedSubscriberDob = values.client_subscriber_dob_primary 
-            ? format(values.client_subscriber_dob_primary, 'yyyy-MM-dd') 
+            ? formatDateForDB(values.client_subscriber_dob_primary) 
             : null;
             
           const { error } = await supabase
@@ -656,8 +661,9 @@ const ProfileSetup = () => {
         try {
           console.log("Saving secondary insurance data");
           
+          // Use formatDateForDB utility instead of format function
           const formattedSubscriberDobSecondary = values.client_subscriber_dob_secondary 
-            ? format(values.client_subscriber_dob_secondary, 'yyyy-MM-dd') 
+            ? formatDateForDB(values.client_subscriber_dob_secondary) 
             : null;
             
           const { error } = await supabase
