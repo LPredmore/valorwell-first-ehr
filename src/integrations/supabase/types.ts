@@ -2133,6 +2133,7 @@ export type Database = {
         | "consent_form"
         | "therapy_note"
         | "questionnaire"
+      states: "Alabama"
       user_role: "user" | "admin"
     }
     CompositeTypes: {
@@ -2266,6 +2267,7 @@ export const Constants = {
         "therapy_note",
         "questionnaire",
       ],
+      states: ["Alabama"],
       user_role: ["user", "admin"],
     },
   },

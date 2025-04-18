@@ -1,10 +1,14 @@
+
 import React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Form } from '@/components/ui/form';
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { useProfileSetup } from '@/contexts/ProfileSetupContext';
 import { ProfileFormValues } from '@/validations/profileSchemas';
+import { Database } from '@/integrations/supabase/types';
 import StepNavigation from '../StepNavigation';
+
+type StateType = Database['public']['Enums']['states'];
 
 const ProfileStep2 = () => {
   const { handleNext } = useProfileSetup();
@@ -52,17 +56,16 @@ const ProfileStep2 = () => {
             label="State of Residence"
             type="select"
             options={[
-              "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", 
-              "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", 
-              "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", 
-              "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", 
-              "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", 
-              "New Hampshire", "New Jersey", "New Mexico", "New York", 
-              "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", 
-              "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", 
-              "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", 
-              "West Virginia", "Wisconsin", "Wyoming", "District of Columbia"
-            ]}
+              "Alabama", "Alaska", "American Samoa", "Arizona", "Arkansas", "California", "Colorado", 
+              "Connecticut", "Delaware", "District of Columbia", "Florida", "Georgia", "Guam", "Hawaii", 
+              "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", 
+              "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", 
+              "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico", "New York", 
+              "North Carolina", "North Dakota", "Northern Mariana Islands", "Ohio", "Oklahoma", "Oregon", 
+              "Pennsylvania", "Puerto Rico", "Rhode Island", "South Carolina", "South Dakota", 
+              "Tennessee", "Texas", "U.S. Virgin Islands", "Utah", "Vermont", "Virginia", "Washington", 
+              "West Virginia", "Wisconsin", "Wyoming"
+            ] as StateType[]}
             required={true}
           />
           
