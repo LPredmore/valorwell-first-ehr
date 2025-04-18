@@ -88,7 +88,9 @@ const ProfileStep2 = () => {
             name="client_vacoverage"
             label="VA Coverage"
             type="select"
-            options={Object.values(Database['public']['Enums']['client_va_coverage_type'])}
+            options={[
+              "CHAMPVA", "TRICARE", "None - I am a veteran", "None - I am not a veteran"
+            ] as VACoverageType[]}
             required={true}
           />
         </div>
