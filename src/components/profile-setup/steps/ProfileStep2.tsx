@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Form } from '@/components/ui/form';
@@ -18,10 +19,33 @@ const ProfileStep2 = () => {
   const { formState } = form;
   const isStep2Valid = formState.isValid;
 
-  // Dynamically get enum values using Object.values()
+  // Define these as static arrays since Database is only a type and can't be accessed at runtime
   const genderTypes: GenderType[] = ["Male", "Female"];
   const genderIdentityTypes: GenderIdentityType[] = ["Male", "Female", "Other"];
-  const stateTypes: StateType[] = Object.values(Database['public']['Enums']['states']);
+  
+  // Manually define all US states and territories in alphabetical order
+  const stateTypes: StateType[] = [
+    "Alabama", "Alaska", "American Samoa", "Arizona", "Arkansas",
+    "California", "Colorado", "Connecticut",
+    "Delaware", "District of Columbia",
+    "Florida",
+    "Georgia", "Guam",
+    "Hawaii",
+    "Idaho", "Illinois", "Indiana", "Iowa",
+    "Kansas", "Kentucky",
+    "Louisiana",
+    "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana",
+    "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Northern Mariana Islands",
+    "Ohio", "Oklahoma", "Oregon",
+    "Pennsylvania", "Puerto Rico",
+    "Rhode Island",
+    "South Carolina", "South Dakota",
+    "Tennessee", "Texas",
+    "Utah",
+    "Vermont", "Virgin Islands", "Virginia",
+    "Washington", "West Virginia", "Wisconsin", "Wyoming"
+  ];
+  
   const vaCoverageTypes: VACoverageType[] = [
     "CHAMPVA", 
     "VA Community Care", 
