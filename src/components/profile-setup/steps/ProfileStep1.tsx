@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Form } from '@/components/ui/form';
@@ -6,6 +7,9 @@ import { Check } from 'lucide-react';
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { useProfileSetup } from '@/contexts/ProfileSetupContext';
 import { ProfileFormValues } from '@/validations/profileSchemas';
+import { Database } from '@/integrations/supabase/types';
+
+type RelationshipType = Database['public']['Enums']['client_relationship_type'];
 
 const ProfileStep1 = () => {
   const { handleConfirmIdentity } = useProfileSetup();
@@ -60,8 +64,11 @@ const ProfileStep1 = () => {
             label="What is your relationship with the patient?"
             type="select"
             options={[
-              "Self", "Parent/Guardian", "Spouse", "Child", "Other"
-            ]}
+              "Self",
+              "Parent/Guardian", 
+              "Spouse",
+              "Child"
+            ] as RelationshipType[]}
             required={true}
           />
         </div>
