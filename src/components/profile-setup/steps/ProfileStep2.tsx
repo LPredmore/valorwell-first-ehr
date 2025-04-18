@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Form } from '@/components/ui/form';
@@ -19,11 +18,10 @@ const ProfileStep2 = () => {
   const { formState } = form;
   const isStep2Valid = formState.isValid;
 
-  // Define static enum values
-  // We can't use Object.values(Database) directly since Database is a type
+  // Dynamically get enum values using Object.values()
   const genderTypes: GenderType[] = ["Male", "Female"];
   const genderIdentityTypes: GenderIdentityType[] = ["Male", "Female", "Other"];
-  const stateTypes: StateType[] = ["Alabama"];
+  const stateTypes: StateType[] = Object.values(Database['public']['Enums']['states']);
   const vaCoverageTypes: VACoverageType[] = [
     "CHAMPVA", 
     "VA Community Care", 

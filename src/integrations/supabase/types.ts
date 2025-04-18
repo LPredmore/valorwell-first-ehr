@@ -2133,7 +2133,63 @@ export type Database = {
         | "consent_form"
         | "therapy_note"
         | "questionnaire"
-      states: "Alabama"
+      states:
+        | "Alabama"
+        | "Alaska"
+        | "American Samoa"
+        | "Arizona"
+        | "Arkansas"
+        | "California"
+        | "Colorado"
+        | "Connecticut"
+        | "Delaware"
+        | "District of Columbia"
+        | "Florida"
+        | "Georgia"
+        | "Guam"
+        | "Hawaii"
+        | "Idaho"
+        | "Illinois"
+        | "Indiana"
+        | "Iowa"
+        | "Kansas"
+        | "Kentucky"
+        | "Louisiana"
+        | "Maine"
+        | "Maryland"
+        | "Massachusetts"
+        | "Michigan"
+        | "Minnesota"
+        | "Mississippi"
+        | "Missouri"
+        | "Montana"
+        | "Nebraska"
+        | "Nevada"
+        | "New Hampshire"
+        | "New Jersey"
+        | "New Mexico"
+        | "New York"
+        | "North Carolina"
+        | "North Dakota"
+        | "Northern Mariana Islands"
+        | "Ohio"
+        | "Oklahoma"
+        | "Oregon"
+        | "Pennsylvania"
+        | "Puerto Rico"
+        | "Rhode Island"
+        | "South Carolina"
+        | "South Dakota"
+        | "Tennessee"
+        | "Texas"
+        | "Utah"
+        | "Vermont"
+        | "Virgin Islands"
+        | "Virginia"
+        | "Washington"
+        | "West Virginia"
+        | "Wisconsin"
+        | "Wyoming"
       user_role: "user" | "admin"
     }
     CompositeTypes: {
@@ -2267,7 +2323,64 @@ export const Constants = {
         "therapy_note",
         "questionnaire",
       ],
-      states: ["Alabama"],
+      states: [
+        "Alabama",
+        "Alaska",
+        "American Samoa",
+        "Arizona",
+        "Arkansas",
+        "California",
+        "Colorado",
+        "Connecticut",
+        "Delaware",
+        "District of Columbia",
+        "Florida",
+        "Georgia",
+        "Guam",
+        "Hawaii",
+        "Idaho",
+        "Illinois",
+        "Indiana",
+        "Iowa",
+        "Kansas",
+        "Kentucky",
+        "Louisiana",
+        "Maine",
+        "Maryland",
+        "Massachusetts",
+        "Michigan",
+        "Minnesota",
+        "Mississippi",
+        "Missouri",
+        "Montana",
+        "Nebraska",
+        "Nevada",
+        "New Hampshire",
+        "New Jersey",
+        "New Mexico",
+        "New York",
+        "North Carolina",
+        "North Dakota",
+        "Northern Mariana Islands",
+        "Ohio",
+        "Oklahoma",
+        "Oregon",
+        "Pennsylvania",
+        "Puerto Rico",
+        "Rhode Island",
+        "South Carolina",
+        "South Dakota",
+        "Tennessee",
+        "Texas",
+        "Utah",
+        "Vermont",
+        "Virgin Islands",
+        "Virginia",
+        "Washington",
+        "West Virginia",
+        "Wisconsin",
+        "Wyoming",
+      ],
       user_role: ["user", "admin"],
     },
   },
