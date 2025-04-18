@@ -6,6 +6,7 @@ import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { useProfileSetup } from '@/contexts/ProfileSetupContext';
 import { ProfileFormValues } from '@/validations/profileSchemas';
 import { Database } from '@/integrations/supabase/types';
+import StepNavigation from '../StepNavigation';
 
 type GenderType = Database['public']['Enums']['client_gender_type'];
 type GenderIdentityType = Database['public']['Enums']['client_gender_identity_type'];
@@ -18,11 +19,18 @@ const ProfileStep2 = () => {
   const { formState } = form;
   const isStep2Valid = formState.isValid;
 
-  // Get enum values
-  const genderTypes: GenderType[] = Object.values(Database['public']['Enums']['client_gender_type']);
-  const genderIdentityTypes: GenderIdentityType[] = Object.values(Database['public']['Enums']['client_gender_identity_type']);
-  const stateTypes: StateType[] = Object.values(Database['public']['Enums']['states']);
-  const vaCoverageTypes: VACoverageType[] = Object.values(Database['public']['Enums']['client_va_coverage_type']);
+  // Define static enum values
+  // We can't use Object.values(Database) directly since Database is a type
+  const genderTypes: GenderType[] = ["Male", "Female"];
+  const genderIdentityTypes: GenderIdentityType[] = ["Male", "Female", "Other"];
+  const stateTypes: StateType[] = ["Alabama"];
+  const vaCoverageTypes: VACoverageType[] = [
+    "CHAMPVA", 
+    "VA Community Care", 
+    "TRICARE", 
+    "No Coverage - Veteran", 
+    "No Coverage - Not a Veteran"
+  ];
   
   return (
     <Form {...form}>
