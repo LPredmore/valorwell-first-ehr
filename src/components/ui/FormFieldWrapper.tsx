@@ -5,6 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 
 interface SelectOption {
   value: string;
@@ -15,7 +17,7 @@ interface FormFieldWrapperProps {
   control: any;
   name: string;
   label: string;
-  type?: 'text' | 'email' | 'tel' | 'select' | 'date' | 'checkbox' | 'textarea';
+  type?: 'text' | 'email' | 'tel' | 'select' | 'date' | 'checkbox' | 'textarea' | 'phone';
   options?: (string | SelectOption)[];
   readOnly?: boolean;
   valueMapper?: (label: string) => string;
@@ -38,7 +40,6 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
   required = false,
   helperText
 }) => {
-  // Special handling for time zone selection
   const isTimeZoneField = name === 'timeZone';
   
   return (
@@ -47,23 +48,18 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
       name={name}
       render={({ field }) => {
         const handleSelectChange = (selectedValue: string) => {
-          // Handle time zone specific conversion
           if (isTimeZoneField) {
-            // For time zones, ensure we're storing in IANA format
             const ianaValue = ensureIANATimeZone(selectedValue);
             field.onChange(ianaValue);
             return;
           }
           
-          // For other fields, use the standard mapper if provided
           const valueToStore = valueMapper ? valueMapper(selectedValue) : selectedValue;
           field.onChange(valueToStore);
         };
 
-        // Handle date field type conversion
         const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           if (e.target.value) {
-            // Convert string date to Date object for validation
             const dateValue = new Date(e.target.value);
             field.onChange(dateValue);
           } else {
@@ -71,12 +67,9 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
           }
         };
 
-        // Determine what value to display in the field
         let displayValue = field.value;
         
-        // If it's a time zone field and we have a value, see if we need to convert from IANA to display format
         if (isTimeZoneField && field.value && field.value.includes('/')) {
-          // Find the matching display name in the options array
           const matchingOption = options.find((opt) => {
             const optValue = typeof opt === 'string' ? opt : opt.value;
             const ianaValue = ensureIANATimeZone(optValue);
@@ -149,6 +142,13 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                   className={readOnly ? "bg-gray-100" : ""}
                   maxLength={maxLength}
                   required={required}
+                />
+              ) : type === 'phone' ? (
+                <PhoneInput
+                  {...field}
+                  disabled={readOnly}
+                  defaultCountry="US"
+                  className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${readOnly ? "bg-gray-100" : ""}`}
                 />
               ) : (
                 <Input

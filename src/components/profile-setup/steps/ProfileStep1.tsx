@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Form } from '@/components/ui/form';
@@ -54,7 +53,7 @@ const ProfileStep1 = () => {
             control={form.control}
             name="client_phone"
             label="Phone"
-            type="tel"
+            type="phone"
             required={true}
           />
           
