@@ -9,6 +9,9 @@ import { Database } from '@/integrations/supabase/types';
 import StepNavigation from '../StepNavigation';
 
 type StateType = Database['public']['Enums']['states'];
+type GenderType = Database['public']['Enums']['client_gender_type'];
+type GenderIdentityType = Database['public']['Enums']['client_gender_identity_type'];
+type VACoverageType = Database['public']['Enums']['client_va_coverage_type'];
 
 const ProfileStep2 = () => {
   const { handleNext } = useProfileSetup();
@@ -35,7 +38,7 @@ const ProfileStep2 = () => {
             type="select"
             options={[
               "Male", "Female", "Intersex", "Prefer not to say"
-            ]}
+            ] as GenderType[]}
             required={true}
           />
           
@@ -46,7 +49,7 @@ const ProfileStep2 = () => {
             type="select"
             options={[
               "Male", "Female", "Non-binary", "Transgender", "Other", "Prefer not to say"
-            ]}
+            ] as GenderIdentityType[]}
             required={true}
           />
           
@@ -87,7 +90,7 @@ const ProfileStep2 = () => {
             type="select"
             options={[
               "CHAMPVA", "TRICARE", "None - I am a veteran", "None - I am not a veteran"
-            ]}
+            ] as VACoverageType[]}
             required={true}
           />
         </div>
