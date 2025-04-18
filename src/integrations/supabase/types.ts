@@ -2119,6 +2119,15 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "client" | "clinician"
+      client_gender_identity_type: "Male" | "Female" | "Other"
+      client_gender_type: "Male" | "Female"
+      client_relationship_type: "Self" | "Parent/Guardian" | "Spouse" | "Child"
+      client_va_coverage_type:
+        | "CHAMPVA"
+        | "VA Community Care"
+        | "TRICARE"
+        | "No Coverage - Veteran"
+        | "No Coverage - Not a Veteran"
       document_category:
         | "medical_record"
         | "consent_form"
@@ -2241,6 +2250,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "client", "clinician"],
+      client_gender_identity_type: ["Male", "Female", "Other"],
+      client_gender_type: ["Male", "Female"],
+      client_relationship_type: ["Self", "Parent/Guardian", "Spouse", "Child"],
+      client_va_coverage_type: [
+        "CHAMPVA",
+        "VA Community Care",
+        "TRICARE",
+        "No Coverage - Veteran",
+        "No Coverage - Not a Veteran",
+      ],
       document_category: [
         "medical_record",
         "consent_form",

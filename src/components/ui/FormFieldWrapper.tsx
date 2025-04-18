@@ -1,8 +1,9 @@
-
 import React from 'react';
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
 interface SelectOption {
@@ -14,13 +15,14 @@ interface FormFieldWrapperProps {
   control: any;
   name: string;
   label: string;
-  type?: 'text' | 'email' | 'tel' | 'select' | 'date';
+  type?: 'text' | 'email' | 'tel' | 'select' | 'date' | 'checkbox' | 'textarea';
   options?: (string | SelectOption)[];
   readOnly?: boolean;
   valueMapper?: (label: string) => string;
   labelMapper?: (value: string) => string;
   maxLength?: number;
   required?: boolean;
+  helperText?: string;
 }
 
 const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
@@ -33,7 +35,8 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
   valueMapper,
   labelMapper,
   maxLength,
-  required = false
+  required = false,
+  helperText
 }) => {
   // Special handling for time zone selection
   const isTimeZoneField = name === 'timeZone';
@@ -130,6 +133,23 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                   className={readOnly ? "bg-gray-100" : ""}
                   required={required}
                 />
+              ) : type === 'checkbox' ? (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    disabled={readOnly}
+                  />
+                  {helperText && <span className="text-sm text-gray-500">{helperText}</span>}
+                </div>
+              ) : type === 'textarea' ? (
+                <Textarea
+                  {...field}
+                  readOnly={readOnly}
+                  className={readOnly ? "bg-gray-100" : ""}
+                  maxLength={maxLength}
+                  required={required}
+                />
               ) : (
                 <Input
                   {...field}
@@ -141,6 +161,9 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                 />
               )}
             </FormControl>
+            {helperText && type !== 'checkbox' && (
+              <FormDescription>{helperText}</FormDescription>
+            )}
             <FormMessage />
           </FormItem>
         );
