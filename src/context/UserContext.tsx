@@ -35,45 +35,36 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("[UserContext] Setting userId:", user.id);
           setUserId(user.id);
           
-          console.log("[UserContext] Fetching profile data for user:", user.id);
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('role')
+          console.log("[UserContext] Fetching client data for user:", user.id);
+          const { data: clientData, error: clientError } = await supabase
+            .from('clients')
+            .select('role, client_status')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
             
-          if (error) {
-            console.error("[UserContext] Error fetching profile:", error.message);
-            throw error;
+          if (clientError) {
+            console.error("[UserContext] Error fetching client:", clientError.message);
+            throw clientError;
           }
-          
-          const role = data?.role || null;
-          console.log("[UserContext] User role from profile:", role);
-          setUserRole(role);
-          
-          // If user is a client, fetch client status from clients table
-          if (role === 'client') {
-            console.log("[UserContext] User is a client, fetching client status");
-            const { data: clientData, error: clientError } = await supabase
-              .from('clients')
-              .select('client_status')
-              .eq('id', user.id)
-              .single();
-              
-            if (clientError) {
-              console.error("[UserContext] Error fetching client status:", clientError.message);
-            }
-            
-            if (!clientError && clientData) {
-              console.log("[UserContext] Client status:", clientData.client_status);
-              setClientStatus(clientData.client_status);
-            }
+
+          if (clientData) {
+            console.log("[UserContext] Client data:", clientData);
+            setUserRole(clientData.role);
+            setClientStatus(clientData.client_status);
+          } else {
+            console.log("[UserContext] No client data found");
+            setUserRole(null);
+            setClientStatus(null);
           }
         } else {
           console.log("[UserContext] No authenticated user found");
+          setUserRole(null);
+          setClientStatus(null);
         }
       } catch (error) {
         console.error("[UserContext] Error in fetchUserData:", error);
+        setUserRole(null);
+        setClientStatus(null);
       } finally {
         console.log("[UserContext] Setting isLoading to false");
         setIsLoading(false);

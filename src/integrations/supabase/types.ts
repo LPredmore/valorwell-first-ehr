@@ -685,6 +685,7 @@ export type Database = {
           client_vacoverage: string | null
           created_at: string
           id: string
+          role: Database["public"]["Enums"]["app_role"]
           updated_at: string
         }
         Insert: {
@@ -781,6 +782,7 @@ export type Database = {
           client_vacoverage?: string | null
           created_at?: string
           id: string
+          role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
         }
         Update: {
@@ -877,6 +879,7 @@ export type Database = {
           client_vacoverage?: string | null
           created_at?: string
           id?: string
+          role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
         }
         Relationships: []

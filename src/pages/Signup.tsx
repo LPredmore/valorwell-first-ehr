@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -20,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Define form schema with validation
 const signupSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
@@ -36,7 +34,6 @@ const Signup = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Initialize form
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -53,10 +50,8 @@ const Signup = () => {
     setIsSubmitting(true);
     
     try {
-      // Generate a random password (will be reset later)
       const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
       
-      // 1. Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: values.email,
         password: tempPassword,
@@ -66,7 +61,7 @@ const Signup = () => {
             last_name: values.lastName,
             phone: values.phone,
             role: "client",
-            temp_password: tempPassword // Include temp password in metadata so it gets stored in profiles table
+            temp_password: tempPassword
           }
         }
       });
@@ -77,32 +72,21 @@ const Signup = () => {
         throw new Error("Failed to create user account");
       }
       
-      // 2. Create client record
-      // Note: The profiles table will be created automatically via trigger
       const { error: clientError } = await supabase
         .from('clients')
-        .insert([
-          { 
-            id: authData.user.id,
-            client_first_name: values.firstName, 
-            client_last_name: values.lastName,
-            client_preferred_name: values.preferredName || values.firstName, // Use firstName as fallback
-            client_email: values.email,
-            client_phone: values.phone,
-            client_state: values.state,
-            client_status: 'New'
-          }
-        ]);
+        .update({ 
+          client_preferred_name: values.preferredName || values.firstName,
+          client_state: values.state
+        })
+        .eq('id', authData.user.id);
       
       if (clientError) throw clientError;
       
-      // Success
       toast({
         title: "Account created successfully",
         description: "You can now log in to access your patient portal.",
       });
       
-      // Redirect to login page
       navigate("/login");
       
     } catch (error: any) {
@@ -118,7 +102,6 @@ const Signup = () => {
     }
   };
 
-  // US states for dropdown
   const states = [
     "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", 
     "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", 
