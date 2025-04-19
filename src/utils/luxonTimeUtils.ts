@@ -1,3 +1,4 @@
+
 import { DateTime, IANAZone } from "luxon";
 import { ensureIANATimeZone } from "./timeZoneUtils";
 
@@ -128,11 +129,23 @@ export const isDSTTransitionTime = (
   timezone: string
 ): boolean => {
   const ianaZone = ensureIANATimeZone(timezone);
-  const zone = new IANAZone(ianaZone);
   const dateTime = createDateTime(date, time, timezone);
   
-  // Check if this time is ambiguous (happens twice during DST fallback)
-  return zone.isAmbiguous(dateTime.toMillis());
+  // Check for DST transition by comparing offsets around this time
+  // Instead of using isAmbiguous (which isn't available on IANAZone), we check if
+  // the offset changes in the hour before or after this time, which indicates a DST transition
+  
+  // Create DateTime objects for 1 hour before and 1 hour after
+  const oneHourBefore = dateTime.minus({ hours: 1 });
+  const oneHourAfter = dateTime.plus({ hours: 1 });
+  
+  // Get the offsets in minutes
+  const currentOffset = dateTime.offset;
+  const beforeOffset = oneHourBefore.offset;
+  const afterOffset = oneHourAfter.offset;
+  
+  // If either offset differs from the current offset, we're in a DST transition period
+  return currentOffset !== beforeOffset || currentOffset !== afterOffset;
 };
 
 /**

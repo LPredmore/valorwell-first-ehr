@@ -111,7 +111,9 @@ export const getAppointmentsInUserTimeZone = (
  * @param appointment The appointment to check
  * @returns Boolean indicating if the appointment has time zone information
  */
-export const hasTimeZoneInfo = (appointment: AppointmentType): boolean => {
+export const hasTimeZoneInfo = (
+  appointment: AppointmentType
+): boolean => {
   return !!(appointment.appointment_datetime && appointment.appointment_end_datetime);
 };
 
