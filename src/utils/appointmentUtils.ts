@@ -1,4 +1,3 @@
-
 import { format } from 'date-fns';
 import { fromUTCTimestamp, ensureIANATimeZone } from './timeZoneUtils';
 import { fromUTCToTimezone, formatDateTime } from './luxonTimeUtils';
@@ -177,4 +176,3 @@ export const formatAppointmentTimeWithLuxon = (
     return `${appointment.start_time} (${userTimeZone})`;
   }
 };
-

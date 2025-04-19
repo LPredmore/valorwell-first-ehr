@@ -1,3 +1,4 @@
+
 import { DateTime } from "luxon";
 
 export interface BaseAppointment {
@@ -15,16 +16,16 @@ export interface BaseAppointment {
   source_time_zone?: string;
   video_room_url?: string;
   recurring_group_id?: string;
-  _luxon_start?: DateTime;
-  _luxon_end?: DateTime;
-  client_name?: string;
-  clinician_name?: string;
 }
 
 export interface AppointmentType extends BaseAppointment {
+  client_name?: string;
+  clinician_name?: string;
+  // Display fields for time zone conversion
   display_date?: string;
   display_start_time?: string;
   display_end_time?: string;
+  // Luxon DateTime objects for better time handling
   _luxon_start?: DateTime;
   _luxon_end?: DateTime;
 }
@@ -37,35 +38,4 @@ export interface ProcessedAppointment extends AppointmentType {
   luxon_start?: DateTime;
   luxon_end?: DateTime;
   originalAppointment: AppointmentType;
-}
-
-export interface FullCalendarEvent {
-  id: string;
-  title: string;
-  start: string | Date;
-  end: string | Date;
-  allDay?: boolean;
-  backgroundColor?: string;
-  borderColor?: string;
-  textColor?: string;
-  classNames?: string[];
-  extendedProps?: {
-    clientId?: string;
-    clientName?: string;
-    clinicianId?: string;
-    clinicianName?: string;
-    appointmentType?: string;
-    status?: string;
-    notes?: string;
-    originalAppointment?: AppointmentType;
-  };
-}
-
-export interface FullCalendarAvailabilityEvent extends FullCalendarEvent {
-  rendering?: 'background';
-  display?: 'background';
-  extendedProps: {
-    isAvailability: true;
-    availabilityId: string;
-  };
 }

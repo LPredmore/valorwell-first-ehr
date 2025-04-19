@@ -1,12 +1,12 @@
-
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { useMonthViewData } from './useMonthViewData';
+import CalendarGrid from './CalendarGrid';
+import WeekView from './week-view';
 import { TimeBlock, AvailabilityBlock } from './week-view/types';
-import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import { fromUTCTimestamp, ensureIANATimeZone } from '@/utils/timeZoneUtils';
 import { Appointment } from '@/types/appointment';
-import FullCalendarWrapper from './FullCalendarWrapper';
 
 interface MonthViewProps {
   currentDate: Date;
@@ -40,6 +40,17 @@ const MonthView: React.FC<MonthViewProps> = ({
     currentDate: currentDate.toISOString()
   });
   
+  // Log the appointments with timestamps for debugging
+  if (appointments.length > 0) {
+    console.log(`[MonthView] First 3 appointments:`, appointments.slice(0, 3).map(apt => ({
+      id: apt.id,
+      date: apt.date,
+      start_time: apt.start_time,
+      timestamp: apt.appointment_datetime,
+      useTimestamp: !!apt.appointment_datetime
+    })));
+  }
+  
   const {
     loading,
     monthStart,
@@ -57,36 +68,34 @@ const MonthView: React.FC<MonthViewProps> = ({
     );
   }
 
-  // Convert availability to TimeBlock array for FullCalendarWrapper
-  const availabilityBlocks: TimeBlock[] = [];
-  Object.values(availabilityByDay).forEach(dayBlocks => {
-    dayBlocks.forEach(block => {
-      availabilityBlocks.push({
-        id: block.id,
-        day: new Date(block.day),
-        start: new Date(block.start),
-        end: new Date(block.end),
-        availabilityIds: [block.id],
-        type: 'block'
-      });
-    });
-  });
-
-  // Determine which FullCalendar view to use
-  const view = weekViewMode ? 'timeGridWeek' : 'dayGridMonth';
+  if (weekViewMode) {
+    return (
+      <WeekView 
+        currentDate={currentDate}
+        clinicianId={clinicianId}
+        refreshTrigger={refreshTrigger}
+        appointments={appointments}
+        getClientName={getClientName}
+        onAppointmentClick={onAppointmentClick}
+        onAvailabilityClick={onAvailabilityClick as (day: Date, block: TimeBlock) => void}
+        userTimeZone={validTimeZone}
+      />
+    );
+  }
 
   return (
     <Card className="p-4 rounded-lg shadow-md">
-      <FullCalendarWrapper
-        currentDate={currentDate}
-        clinicianId={clinicianId}
-        appointments={appointments}
-        availabilityBlocks={availabilityBlocks}
-        userTimeZone={validTimeZone}
-        view={view}
+      <CalendarGrid
+        days={days}
+        monthStart={monthStart}
+        dayAvailabilityMap={dayAvailabilityMap}
+        dayAppointmentsMap={dayAppointmentsMap}
+        availabilityByDay={availabilityByDay}
+        getClientName={getClientName}
         onAppointmentClick={onAppointmentClick}
         onAvailabilityClick={onAvailabilityClick}
-        height={650}
+        weekViewMode={weekViewMode}
+        userTimeZone={validTimeZone}
       />
     </Card>
   );

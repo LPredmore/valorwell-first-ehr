@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import MonthView from './MonthView';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
@@ -11,9 +12,6 @@ import AppointmentDetailsDialog from './AppointmentDetailsDialog';
 import AvailabilityEditDialog from './AvailabilityEditDialog';
 import AvailabilityPanel from './AvailabilityPanel';
 import { BaseAppointment } from '@/types/appointment';
-import FullCalendarWrapper from './FullCalendarWrapper';
-import { TimeBlock } from './week-view/types';
-import { useTimeZone } from '@/context/TimeZoneContext';
 
 interface CalendarViewProps {
   view: 'week' | 'month';
@@ -40,8 +38,6 @@ interface AvailabilityBlock {
   day_of_week: string;
   start_time: string;
   end_time: string;
-  clinician_id?: string;
-  is_active?: boolean;
   isException?: boolean;
 }
 
@@ -68,23 +64,19 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   const [currentDate, setCurrentDate] = useState(propCurrentDate || new Date());
   const [availabilityRefreshTrigger, setAvailabilityRefreshTrigger] = useState(0);
   const [appointments, setAppointments] = useState<BaseAppointment[]>([]);
-  const [availabilityBlocks, setAvailabilityBlocks] = useState<TimeBlock[]>([]);
   const [clientsMap, setClientsMap] = useState<Record<string, any>>({});
-  const [selectedAppointment, setSelectedAppointment] = useState<any | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment & {
+    clientName?: string;
+  } | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
-  const [selectedAvailability, setSelectedAvailability] = useState<any | null>(null);
+  const [selectedAvailability, setSelectedAvailability] = useState<AvailabilityBlock | null>(null);
   const [selectedAvailabilityDate, setSelectedAvailabilityDate] = useState<Date | null>(null);
   const [isAvailabilityDialogOpen, setIsAvailabilityDialogOpen] = useState(false);
   const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago');
   const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
-  const [isLoadingData, setIsLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const { userTimeZone: contextTimeZone } = useTimeZone();
-  
-  // Use provided userTimeZone, fall back to context time zone
-  const effectiveTimeZone = ensureIANATimeZone(propTimeZone || contextTimeZone);
   
   useEffect(() => {
     if (propCurrentDate) {
@@ -146,6 +138,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     
     fetchClinicianTimeZone();
   }, [clinicianId]);
+
+  const effectiveTimeZone = propTimeZone || (isLoadingTimeZone ? 'America/Chicago' : clinicianTimeZone);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -244,120 +238,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     fetchAppointments();
   }, [clinicianId, currentDate, monthViewMode, availabilityRefreshTrigger, appointmentRefreshTrigger, refreshTrigger]);
 
-  // Fetch clinician availability
-  useEffect(() => {
-    const fetchAvailabilityData = async () => {
-      if (!clinicianId) return;
-      
-      setIsLoadingData(true);
-      try {
-        // Fetch clinician data which includes availability
-        const { data: clinicianData, error: clinicianError } = await supabase
-          .from('clinicians')
-          .select(`
-            id,
-            clinician_mondaystart1, clinician_mondayend1,
-            clinician_mondaystart2, clinician_mondayend2,
-            clinician_mondaystart3, clinician_mondayend3,
-            clinician_tuesdaystart1, clinician_tuesdayend1,
-            clinician_tuesdaystart2, clinician_tuesdayend2,
-            clinician_tuesdaystart3, clinician_tuesdayend3,
-            clinician_wednesdaystart1, clinician_wednesdayend1,
-            clinician_wednesdaystart2, clinician_wednesdayend2,
-            clinician_wednesdaystart3, clinician_wednesdayend3,
-            clinician_thursdaystart1, clinician_thursdayend1,
-            clinician_thursdaystart2, clinician_thursdayend2,
-            clinician_thursdaystart3, clinician_thursdayend3,
-            clinician_fridaystart1, clinician_fridayend1,
-            clinician_fridaystart2, clinician_fridayend2,
-            clinician_fridaystart3, clinician_fridayend3,
-            clinician_saturdaystart1, clinician_saturdayend1,
-            clinician_saturdaystart2, clinician_saturdayend2,
-            clinician_saturdaystart3, clinician_saturdayend3,
-            clinician_sundaystart1, clinician_sundayend1,
-            clinician_sundaystart2, clinician_sundayend2,
-            clinician_sundaystart3, clinician_sundayend3
-          `)
-          .eq('id', clinicianId)
-          .single();
-
-        if (clinicianError) {
-          console.error('[CalendarView] Error fetching clinician data:', clinicianError);
-          return;
-        }
-
-        // Process availability data into time blocks
-        const startDate = monthViewMode === 'week' 
-          ? startOfWeek(currentDate) 
-          : startOfMonth(currentDate);
-        
-        const endDate = monthViewMode === 'week' 
-          ? endOfWeek(currentDate) 
-          : endOfMonth(currentDate);
-        
-        // Generate an array of dates between start and end
-        const dateArray: Date[] = [];
-        let currentDateInRange = new Date(startDate);
-        
-        while (currentDateInRange <= endDate) {
-          dateArray.push(new Date(currentDateInRange));
-          currentDateInRange.setDate(currentDateInRange.getDate() + 1);
-        }
-        
-        // Convert availability data to time blocks
-        const availabilityBlocks: TimeBlock[] = [];
-        
-        // For each day in our range
-        for (const day of dateArray) {
-          const dayOfWeek = format(day, 'EEEE').toLowerCase();
-          
-          // For each availability slot (1-3) for this day
-          for (let slot = 1; slot <= 3; slot++) {
-            const startKey = `clinician_${dayOfWeek}start${slot}`;
-            const endKey = `clinician_${dayOfWeek}end${slot}`;
-            
-            // If this slot has availability
-            if (clinicianData[startKey] && clinicianData[endKey]) {
-              try {
-                // Create Date objects for start and end times
-                const startDate = new Date(day);
-                const endDate = new Date(day);
-                
-                // Parse the time strings
-                const [startHour, startMinute] = clinicianData[startKey].split(':').map(Number);
-                const [endHour, endMinute] = clinicianData[endKey].split(':').map(Number);
-                
-                // Set the hours and minutes
-                startDate.setHours(startHour, startMinute, 0, 0);
-                endDate.setHours(endHour, endMinute, 0, 0);
-                
-                // Add the time block
-                availabilityBlocks.push({
-                  id: `${clinicianId}-${dayOfWeek}-${slot}`,
-                  day,
-                  start: startDate,
-                  end: endDate,
-                  availabilityIds: [`${clinicianId}-${dayOfWeek}-${slot}`],
-                  type: 'block'
-                });
-              } catch (error) {
-                console.error('[CalendarView] Error processing availability time:', error);
-              }
-            }
-          }
-        }
-        
-        setAvailabilityBlocks(availabilityBlocks);
-      } catch (error) {
-        console.error('[CalendarView] Error fetching availability:', error);
-      } finally {
-        setIsLoadingData(false);
-      }
-    };
-    
-    fetchAvailabilityData();
-  }, [clinicianId, currentDate, monthViewMode, availabilityRefreshTrigger]);
-
   const handleAvailabilityUpdated = () => {
     console.log("[CalendarView] Availability updated - refreshing calendar view");
     setAvailabilityRefreshTrigger(prev => prev + 1);
@@ -378,7 +258,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     return client?.client_time_zone || 'America/Chicago'; // Default timezone if not found
   };
 
-  const handleAppointmentClick = (appointment: any) => {
+  const handleAppointmentClick = (appointment: Appointment) => {
     const appointmentWithClientName = {
       ...appointment,
       clientName: getClientName(appointment.client_id)
@@ -391,14 +271,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
-  const handleAvailabilityClick = (date: Date, availabilityBlock: any) => {
+  const handleAvailabilityClick = (date: Date, availabilityBlock: AvailabilityBlock) => {
     setSelectedAvailability(availabilityBlock);
     setSelectedAvailabilityDate(date);
     setIsAvailabilityDialogOpen(true);
   };
-
-  // Function to get client name
-  const fullCalendarView = monthViewMode === 'week' ? 'timeGridWeek' : 'dayGridMonth';
   
   if (error && !clinicianId) {
     return (
@@ -421,19 +298,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     >
       <div className="flex gap-4">
         <div className={`flex-1 ${showAvailability ? "w-3/4" : "w-full"}`}>
-          <FullCalendarWrapper
-            currentDate={currentDate}
-            clinicianId={clinicianId}
-            appointments={appointments}
-            availabilityBlocks={availabilityBlocks}
-            userTimeZone={effectiveTimeZone}
-            view={fullCalendarView}
-            showAvailability={showAvailability}
-            isLoading={isLoadingData || isLoadingTimeZone}
-            onAppointmentClick={handleAppointmentClick}
+          <MonthView 
+            currentDate={currentDate} 
+            clinicianId={clinicianId} 
+            refreshTrigger={availabilityRefreshTrigger} 
+            appointments={appointments} 
+            getClientName={getClientName} 
+            onAppointmentClick={handleAppointmentClick} 
             onAvailabilityClick={handleAvailabilityClick}
-            onEventChange={handleAppointmentUpdated}
-            height={650}
+            userTimeZone={effectiveTimeZone}
+            weekViewMode={monthViewMode === 'week'} 
           />
         </div>
 
