@@ -2,7 +2,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
-// Set up CORS headers for browser requests
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -10,15 +9,11 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: corsHeaders,
-    });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Create a Supabase client with the service role key (has admin privileges)
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -30,10 +25,8 @@ serve(async (req) => {
       }
     );
 
-    // Parse request body
     const { firstName, lastName, email } = await req.json();
 
-    // Validate input
     if (!firstName || !lastName || !email) {
       return new Response(
         JSON.stringify({
@@ -46,7 +39,7 @@ serve(async (req) => {
       );
     }
 
-    // Generate a random password
+    // Generate a random temporary password
     const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
 
     // Create user metadata
@@ -85,7 +78,7 @@ serve(async (req) => {
       );
     }
 
-    // Create clinician entry
+    // Create clinician entry with temporary password
     const { error: clinicianError } = await supabaseClient
       .from("clinicians")
       .insert([
@@ -95,6 +88,7 @@ serve(async (req) => {
           clinician_last_name: lastName,
           clinician_email: email,
           clinician_status: "New",
+          clinician_temppassword: tempPassword,
         }
       ]);
 
@@ -109,11 +103,11 @@ serve(async (req) => {
       );
     }
 
-    // Return success response
+    // Return success response with temporary password
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: `Clinician ${firstName} ${lastName} has been added`,
+        message: `Clinician ${firstName} ${lastName} has been added. They will receive an email with their temporary password: ${tempPassword}`,
         user: data.user
       }),
       {

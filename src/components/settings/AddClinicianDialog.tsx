@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -55,7 +54,6 @@ export function AddClinicianDialog({
     setIsLoading(true);
 
     try {
-      // Call the Edge Function instead of directly using admin APIs
       const { data, error } = await supabase.functions.invoke('create-clinician', {
         body: {
           firstName,
@@ -74,7 +72,7 @@ export function AddClinicianDialog({
 
       toast({
         title: 'Success',
-        description: `Clinician ${firstName} ${lastName} has been added.`,
+        description: data.message,
       });
 
       // Reset form fields

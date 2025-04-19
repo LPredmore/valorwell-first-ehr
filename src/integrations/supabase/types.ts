@@ -1012,7 +1012,9 @@ export type Database = {
           clinician_saturdaystart2: string | null
           clinician_saturdaystart3: string | null
           clinician_state: string[] | null
-          clinician_status: string | null
+          clinician_status:
+            | Database["public"]["Enums"]["clinician_status_enum"]
+            | null
           clinician_sundayend1: string | null
           clinician_sundayend2: string | null
           clinician_sundayend3: string | null
@@ -1020,6 +1022,7 @@ export type Database = {
           clinician_sundaystart2: string | null
           clinician_sundaystart3: string | null
           clinician_taxonomy_code: string | null
+          clinician_temppassword: string | null
           clinician_thursdayend1: string | null
           clinician_thursdayend2: string | null
           clinician_thursdayend3: string | null
@@ -1077,7 +1080,9 @@ export type Database = {
           clinician_saturdaystart2?: string | null
           clinician_saturdaystart3?: string | null
           clinician_state?: string[] | null
-          clinician_status?: string | null
+          clinician_status?:
+            | Database["public"]["Enums"]["clinician_status_enum"]
+            | null
           clinician_sundayend1?: string | null
           clinician_sundayend2?: string | null
           clinician_sundayend3?: string | null
@@ -1085,6 +1090,7 @@ export type Database = {
           clinician_sundaystart2?: string | null
           clinician_sundaystart3?: string | null
           clinician_taxonomy_code?: string | null
+          clinician_temppassword?: string | null
           clinician_thursdayend1?: string | null
           clinician_thursdayend2?: string | null
           clinician_thursdayend3?: string | null
@@ -1142,7 +1148,9 @@ export type Database = {
           clinician_saturdaystart2?: string | null
           clinician_saturdaystart3?: string | null
           clinician_state?: string[] | null
-          clinician_status?: string | null
+          clinician_status?:
+            | Database["public"]["Enums"]["clinician_status_enum"]
+            | null
           clinician_sundayend1?: string | null
           clinician_sundayend2?: string | null
           clinician_sundayend3?: string | null
@@ -1150,6 +1158,7 @@ export type Database = {
           clinician_sundaystart2?: string | null
           clinician_sundaystart3?: string | null
           clinician_taxonomy_code?: string | null
+          clinician_temppassword?: string | null
           clinician_thursdayend1?: string | null
           clinician_thursdayend2?: string | null
           clinician_thursdayend3?: string | null
@@ -2128,12 +2137,33 @@ export type Database = {
       client_gender_identity_type: "Male" | "Female" | "Other"
       client_gender_type: "Male" | "Female"
       client_relationship_type: "Self" | "Parent/Guardian" | "Spouse" | "Child"
+      client_status_type:
+        | "New"
+        | "Profile Complete"
+        | "Signed"
+        | "No Clinician Availabile"
+        | "First Sessions"
+        | "Established"
+        | "At Risk"
+        | "Went Cold"
+        | "Re-Engaged"
+        | "Success"
+        | "Discharged"
+        | "Blacklist"
+        | "Do Not Contact"
       client_va_coverage_type:
         | "CHAMPVA"
         | "VA Community Care"
         | "TRICARE"
         | "No Coverage - Veteran"
         | "No Coverage - Not a Veteran"
+      clinician_status_enum:
+        | "New"
+        | "Active"
+        | "Available"
+        | "Unavailable"
+        | "Inactive"
+        | "Pending"
       document_category:
         | "medical_record"
         | "consent_form"
@@ -2316,12 +2346,35 @@ export const Constants = {
       client_gender_identity_type: ["Male", "Female", "Other"],
       client_gender_type: ["Male", "Female"],
       client_relationship_type: ["Self", "Parent/Guardian", "Spouse", "Child"],
+      client_status_type: [
+        "New",
+        "Profile Complete",
+        "Signed",
+        "No Clinician Availabile",
+        "First Sessions",
+        "Established",
+        "At Risk",
+        "Went Cold",
+        "Re-Engaged",
+        "Success",
+        "Discharged",
+        "Blacklist",
+        "Do Not Contact",
+      ],
       client_va_coverage_type: [
         "CHAMPVA",
         "VA Community Care",
         "TRICARE",
         "No Coverage - Veteran",
         "No Coverage - Not a Veteran",
+      ],
+      clinician_status_enum: [
+        "New",
+        "Active",
+        "Available",
+        "Unavailable",
+        "Inactive",
+        "Pending",
       ],
       document_category: [
         "medical_record",
