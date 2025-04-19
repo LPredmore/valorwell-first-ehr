@@ -42,4 +42,3 @@ export interface ProcessedAppointment extends AppointmentType {
   luxon_end?: DateTime;
   originalAppointment: AppointmentType;
 }
-
