@@ -1,5 +1,5 @@
 import { DateTime, IANAZone } from "luxon";
-import { ensureIANATimeZone, parseISO, toZonedTime } from "./timeZoneUtils";
+import { ensureIANATimeZone } from "./timeZoneUtils";
 
 /**
  * Convert a date and time to a Luxon DateTime object in a specific timezone
@@ -127,33 +127,12 @@ export const isDSTTransitionTime = (
   time: string,
   timezone: string
 ): boolean => {
-  try {
-    const ianaZone = ensureIANATimeZone(timezone);
-    const dateObj = typeof date === 'string' ? parseISO(date) : date;
-    const [hours, minutes] = time.split(':').map(Number);
-    
-    const baseDate = new Date(
-      dateObj.getFullYear(),
-      dateObj.getMonth(),
-      dateObj.getDate(),
-      hours,
-      minutes
-    );
-    
-    const oneHourLater = new Date(baseDate);
-    oneHourLater.setHours(oneHourLater.getHours() + 1);
-    
-    // Convert both to the specified timezone and compare the actual difference
-    const baseInZone = toZonedTime(baseDate, ianaZone);
-    const laterInZone = toZonedTime(oneHourLater, ianaZone);
-    
-    // If the difference is not 1 hour, we're in a DST transition
-    const diffInHours = (laterInZone.getTime() - baseInZone.getTime()) / (1000 * 60 * 60);
-    return Math.abs(diffInHours - 1) > 0.1;
-  } catch (error) {
-    console.error('Error checking DST transition:', error, { date, time, timezone });
-    return false;
-  }
+  const ianaZone = ensureIANATimeZone(timezone);
+  const zone = new IANAZone(ianaZone);
+  const dateTime = createDateTime(date, time, timezone);
+  
+  // Check if this time is ambiguous (happens twice during DST fallback)
+  return zone.isAmbiguous(dateTime.toMillis());
 };
 
 /**

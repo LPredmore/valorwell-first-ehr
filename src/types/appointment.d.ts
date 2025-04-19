@@ -16,6 +16,11 @@ export interface BaseAppointment {
   source_time_zone?: string;
   video_room_url?: string;
   recurring_group_id?: string;
+}
+
+export interface AppointmentType extends BaseAppointment {
+  client_name?: string;
+  clinician_name?: string;
   // Display fields for time zone conversion
   display_date?: string;
   display_start_time?: string;
@@ -23,14 +28,6 @@ export interface BaseAppointment {
   // Luxon DateTime objects for better time handling
   _luxon_start?: DateTime;
   _luxon_end?: DateTime;
-}
-
-// For backward compatibility
-export type Appointment = BaseAppointment;
-
-export interface AppointmentType extends BaseAppointment {
-  client_name?: string;
-  clinician_name?: string;
 }
 
 export interface ProcessedAppointment extends AppointmentType {
