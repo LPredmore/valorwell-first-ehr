@@ -2,6 +2,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { TimeBlock } from './types';
+import { DateTime } from 'luxon';
 
 interface WeekBodyProps {
   days: Date[];
@@ -53,6 +54,20 @@ const WeekBody: React.FC<WeekBodyProps> = ({
     const hour = parseInt(timeStr.split(':')[0]);
     
     return appointments.filter(appointment => {
+      // Check if we have a Luxon DateTime object (from our new utility)
+      if (appointment.luxon_start && appointment.luxon_start instanceof DateTime) {
+        const appointmentDayStr = appointment.luxon_start.toFormat('yyyy-MM-dd');
+        const appointmentStartHour = appointment.luxon_start.hour;
+        const appointmentEndHour = appointment.luxon_end.hour;
+        
+        // Check if this appointment is for the right day
+        if (appointmentDayStr !== dayStr) return false;
+        
+        // Check if this time slot is within the appointment's time range
+        return appointmentStartHour <= hour && hour < appointmentEndHour;
+      }
+      
+      // Fall back to old method if Luxon object isn't available
       const appointmentDayStr = format(appointment.day, 'yyyy-MM-dd');
       const appointmentStartHour = appointment.start.getHours();
       const appointmentEndHour = appointment.end.getHours();
@@ -99,23 +114,34 @@ const WeekBody: React.FC<WeekBodyProps> = ({
                   }
                 }}
               >
-                {hasAppointment && dayAppointments.map((appointment, appIndex) => (
-                  <div 
-                    key={appIndex}
-                    className="h-full w-full p-1 bg-blue-200 rounded text-xs overflow-hidden cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation(); // Stop propagation to parent
-                      if (onAppointmentClick) {
-                        onAppointmentClick(appointment);
-                      }
-                    }}
-                  >
-                    <div className="font-medium truncate">{appointment.clientName}</div>
-                    <div className="text-[10px] text-gray-600">
-                      {format(appointment.start, 'h:mm a')} - {format(appointment.end, 'h:mm a')}
+                {hasAppointment && dayAppointments.map((appointment, appIndex) => {
+                  // Get appointment time display format using Luxon if available
+                  const startTimeDisplay = appointment.luxon_start 
+                    ? appointment.luxon_start.toFormat('h:mm a')
+                    : format(appointment.start, 'h:mm a');
+                    
+                  const endTimeDisplay = appointment.luxon_end
+                    ? appointment.luxon_end.toFormat('h:mm a')
+                    : format(appointment.end, 'h:mm a');
+                  
+                  return (
+                    <div 
+                      key={appIndex}
+                      className="h-full w-full p-1 bg-blue-200 rounded text-xs overflow-hidden cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Stop propagation to parent
+                        if (onAppointmentClick) {
+                          onAppointmentClick(appointment);
+                        }
+                      }}
+                    >
+                      <div className="font-medium truncate">{appointment.clientName}</div>
+                      <div className="text-[10px] text-gray-600">
+                        {startTimeDisplay} - {endTimeDisplay}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             );
           })}

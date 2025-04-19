@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { addDays, format, startOfWeek, endOfWeek, isToday, parseISO } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -6,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { supabase } from '@/integrations/supabase/client';
 import { fromUTCTimestamp, ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import { processAppointmentsWithLuxon } from '@/utils/luxonTimeUtils';
 import WeekHeader from './WeekHeader';
 import WeekBody from './WeekBody';
 import { TimeBlock, AvailabilityBlock } from './types';
@@ -208,7 +208,7 @@ const WeekView: React.FC<WeekViewProps> = ({
     fetchAvailabilityData();
   }, [clinicianId, days, refreshTrigger, clinicianTimeZone, effectiveTimeZone]);
 
-  // Process appointments
+  // Process appointments with Luxon
   useEffect(() => {
     if (!appointments.length || !days.length) {
       setProcessedAppointments([]);
@@ -218,43 +218,15 @@ const WeekView: React.FC<WeekViewProps> = ({
     console.log(`[WeekView] Processing ${appointments.length} appointments with timezone: ${effectiveTimeZone}`);
     
     try {
-      const processed = appointments
-        .filter(appointment => {
-          // Only include appointments for days in this week
-          const appointmentDate = parseISO(appointment.display_date || appointment.date);
-          return days.some(day => format(day, 'yyyy-MM-dd') === format(appointmentDate, 'yyyy-MM-dd'));
-        })
-        .map(appointment => {
-          const dateToUse = appointment.display_date || appointment.date;
-          const startTimeToUse = appointment.display_start_time || appointment.start_time;
-          const endTimeToUse = appointment.display_end_time || appointment.end_time;
-          
-          const day = parseISO(dateToUse);
-          
-          // Create Date objects for start and end times
-          const start = new Date(day);
-          const end = new Date(day);
-          
-          // Parse the time strings (handle both HH:MM and HH:MM:SS formats)
-          const [startHour, startMinute] = startTimeToUse.split(':').map(Number);
-          const [endHour, endMinute] = endTimeToUse.split(':').map(Number);
-          
-          // Set the hours and minutes
-          start.setHours(startHour, startMinute, 0, 0);
-          end.setHours(endHour, endMinute, 0, 0);
-          
-          return {
-            id: appointment.id,
-            clientName: getClientName(appointment.client_id),
-            clientId: appointment.client_id,
-            day,
-            start,
-            end,
-            status: appointment.status,
-            originalAppointment: appointment
-          };
-        });
-        
+      // Filter appointments for the current week
+      const filteredAppointments = appointments.filter(appointment => {
+        const appointmentDate = parseISO(appointment.display_date || appointment.date);
+        return days.some(day => format(day, 'yyyy-MM-dd') === format(appointmentDate, 'yyyy-MM-dd'));
+      });
+      
+      // Use our new Luxon utility to process appointments
+      const processed = processAppointmentsWithLuxon(filteredAppointments, effectiveTimeZone);
+      
       console.log(`[WeekView] Processed ${processed.length} appointments for display`);
       setProcessedAppointments(processed);
     } catch (error) {
