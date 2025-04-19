@@ -667,6 +667,7 @@ export type Database = {
           client_subscriber_relationship_tertiary: string | null
           client_substanceabuserisk: string | null
           client_suicidalideation: string | null
+          client_temppassword: string | null
           client_tertiaryobjective: string | null
           client_thoughtprocess: string | null
           client_time_zone: string | null
@@ -764,6 +765,7 @@ export type Database = {
           client_subscriber_relationship_tertiary?: string | null
           client_substanceabuserisk?: string | null
           client_suicidalideation?: string | null
+          client_temppassword?: string | null
           client_tertiaryobjective?: string | null
           client_thoughtprocess?: string | null
           client_time_zone?: string | null
@@ -861,6 +863,7 @@ export type Database = {
           client_subscriber_relationship_tertiary?: string | null
           client_substanceabuserisk?: string | null
           client_suicidalideation?: string | null
+          client_temppassword?: string | null
           client_tertiaryobjective?: string | null
           client_thoughtprocess?: string | null
           client_time_zone?: string | null

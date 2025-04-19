@@ -76,7 +76,8 @@ const Signup = () => {
         .from('clients')
         .update({ 
           client_preferred_name: values.preferredName || values.firstName,
-          client_state: values.state
+          client_state: values.state,
+          client_temppassword: tempPassword
         })
         .eq('id', authData.user.id);
       
@@ -84,7 +85,7 @@ const Signup = () => {
       
       toast({
         title: "Account created successfully",
-        description: "You can now log in to access your patient portal.",
+        description: "Please check your email for your temporary password to log in.",
       });
       
       navigate("/login");
