@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Appointment } from '@/types/appointment';
 import { TimeBlock, AvailabilityBlock } from '@/components/calendar/week-view/types';
@@ -8,7 +9,6 @@ import { Loader2, Calendar as CalendarIcon, Plus } from 'lucide-react';
 import { addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { useCalendarState } from '../hooks/useCalendarState';
 import CalendarHeader from '../components/calendar/CalendarHeader';
-import CalendarViewControls from '../components/calendar/CalendarViewControls';
 import AppointmentDialog from '../components/calendar/AppointmentDialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -173,6 +173,10 @@ const CalendarPage: React.FC = () => {
   const handleAppointmentCreated = () => {
     console.log('[Calendar] Appointment created, triggering refresh');
     setAppointmentRefreshTrigger(prev => prev + 1);
+    toast({
+      title: "Success",
+      description: "Appointment was successfully created.",
+    });
   };
 
   const canSelectDifferentClinician = userRole !== 'clinician';

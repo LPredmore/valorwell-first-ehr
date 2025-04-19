@@ -1,8 +1,10 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
+/* Import FullCalendar styles */
+@import './styles/fullcalendar.css';
+
 @layer base {
   :root {
     --background: 0 0% 100%;

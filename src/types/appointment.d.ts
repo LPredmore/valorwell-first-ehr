@@ -39,3 +39,35 @@ export interface ProcessedAppointment extends AppointmentType {
   luxon_end?: DateTime;
   originalAppointment: AppointmentType;
 }
+
+// FullCalendar specific interfaces
+export interface FullCalendarEvent {
+  id: string;
+  title: string;
+  start: string | Date;
+  end: string | Date;
+  allDay?: boolean;
+  backgroundColor?: string;
+  borderColor?: string;
+  textColor?: string;
+  classNames?: string[];
+  extendedProps?: {
+    clientId?: string;
+    clientName?: string;
+    clinicianId?: string;
+    clinicianName?: string;
+    appointmentType?: string;
+    status?: string;
+    notes?: string;
+    originalAppointment?: AppointmentType;
+  };
+}
+
+export interface FullCalendarAvailabilityEvent extends FullCalendarEvent {
+  rendering?: 'background';
+  display?: 'background';
+  extendedProps: {
+    isAvailability: true;
+    availabilityId: string;
+  };
+}
