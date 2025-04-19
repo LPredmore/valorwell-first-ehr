@@ -16,8 +16,6 @@ export interface BaseAppointment {
   source_time_zone?: string;
   video_room_url?: string;
   recurring_group_id?: string;
-  _luxon_start?: DateTime;  // Added to BaseAppointment
-  _luxon_end?: DateTime;    // Added to BaseAppointment
 }
 
 export interface AppointmentType extends BaseAppointment {
@@ -27,7 +25,9 @@ export interface AppointmentType extends BaseAppointment {
   display_date?: string;
   display_start_time?: string;
   display_end_time?: string;
-  // Luxon DateTime objects for better time handling - now derived from BaseAppointment
+  // Luxon DateTime objects for better time handling
+  _luxon_start?: DateTime;
+  _luxon_end?: DateTime;
 }
 
 export interface ProcessedAppointment extends AppointmentType {
