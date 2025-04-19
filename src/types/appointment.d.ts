@@ -16,10 +16,12 @@ export interface BaseAppointment {
   source_time_zone?: string;
   video_room_url?: string;
   recurring_group_id?: string;
+  
   // Display fields for time zone conversion
   display_date?: string;
   display_start_time?: string;
   display_end_time?: string;
+  
   // Luxon DateTime objects for better time handling
   _luxon_start?: DateTime;
   _luxon_end?: DateTime;
