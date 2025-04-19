@@ -128,8 +128,8 @@ export const isDSTTransitionTime = (
   timezone: string
 ): boolean => {
   const ianaZone = ensureIANATimeZone(timezone);
-  const zone = new IANAZone(ianaZone);
-  const dateTime = createDateTime(date, time, timezone);
+  const zone = IANAZone.create(ianaZone);
+  const dateTime = createDateTime(date, time, ianaZone);
   
   // Check if this time is ambiguous (happens twice during DST fallback)
   return zone.isAmbiguous(dateTime.toMillis());

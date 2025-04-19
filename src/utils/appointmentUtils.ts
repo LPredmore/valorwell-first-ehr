@@ -27,7 +27,6 @@ export const getAppointmentInUserTimeZone = (
       });
       
       // Check if source time zone matches user time zone to prevent double conversion
-      // Only perform this check if source_time_zone is defined
       if (appointment.source_time_zone && 
           ensureIANATimeZone(appointment.source_time_zone) === validTimeZone) {
         console.log(`Source and target time zones match (${validTimeZone}), using original times`);
@@ -49,7 +48,6 @@ export const getAppointmentInUserTimeZone = (
           display_date: startDateTime.toFormat('yyyy-MM-dd'),
           display_start_time: startDateTime.toFormat('HH:mm'),
           display_end_time: endDateTime.toFormat('HH:mm'),
-          // Add Luxon DateTime objects for components that can use them
           _luxon_start: startDateTime,
           _luxon_end: endDateTime
         };
@@ -70,7 +68,6 @@ export const getAppointmentInUserTimeZone = (
     }
     
     // Fallback to original values if no UTC timestamps
-    console.log(`No UTC timestamps for appointment ${appointment.id}, using original values`);
     return {
       ...appointment,
       display_date: appointment.date,
@@ -78,12 +75,7 @@ export const getAppointmentInUserTimeZone = (
       display_end_time: appointment.end_time
     };
   } catch (error) {
-    console.error('Error converting appointment to user time zone:', error, {
-      appointmentId: appointment.id,
-      userTimeZone
-    });
-    
-    // Return original appointment with same display values as a fallback
+    console.error('Error converting appointment to user time zone:', error);
     return {
       ...appointment,
       display_date: appointment.date,
@@ -158,7 +150,7 @@ export const formatAppointmentTimeWithLuxon = (
     const displayTime = appointment.display_start_time || appointment.start_time;
     
     // If we have a Luxon DateTime from previous processing
-    if (appointment._luxon_start && appointment._luxon_start instanceof DateTime) {
+    if (appointment._luxon_start) {
       return appointment._luxon_start.toFormat('h:mm a ZZZZ');
     }
     
