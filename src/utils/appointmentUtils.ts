@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { fromUTCToTimezone, formatDateTime } from './luxonTimeUtils';
 import { DateTime } from 'luxon';
-import { AppointmentType } from '@/types/appointment';
+import { AppointmentType, AppointmentWithLuxon } from '@/types/appointment';
 import { ensureIANATimeZone } from './timeZoneUtils';
 
 /**
@@ -13,7 +13,7 @@ import { ensureIANATimeZone } from './timeZoneUtils';
 export const getAppointmentInUserTimeZone = (
   appointment: AppointmentType, 
   userTimeZone: string
-): AppointmentType => {
+): AppointmentWithLuxon => {
   try {
     const validTimeZone = ensureIANATimeZone(userTimeZone);
     
@@ -27,7 +27,6 @@ export const getAppointmentInUserTimeZone = (
       });
       
       // Check if source time zone matches user time zone to prevent double conversion
-      // Only perform this check if source_time_zone is defined
       if (appointment.source_time_zone && 
           ensureIANATimeZone(appointment.source_time_zone) === validTimeZone) {
         console.log(`Source and target time zones match (${validTimeZone}), using original times`);
@@ -127,7 +126,7 @@ export const formatAppointmentTimeWithTimeZone = (
  * @returns Formatted time string with time zone indicator
  */
 export const formatAppointmentTimeWithLuxon = (
-  appointment: AppointmentType,
+  appointment: AppointmentWithLuxon,
   userTimeZone: string
 ): string => {
   try {

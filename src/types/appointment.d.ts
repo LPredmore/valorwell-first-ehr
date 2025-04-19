@@ -21,16 +21,14 @@ export interface BaseAppointment {
   display_date?: string;
   display_start_time?: string;
   display_end_time?: string;
-  
-  // Luxon DateTime objects for better time handling
+}
+
+export interface AppointmentWithLuxon extends BaseAppointment {
   _luxon_start?: DateTime;
   _luxon_end?: DateTime;
 }
 
-export interface AppointmentType extends BaseAppointment {
-  client_name?: string;
-  clinician_name?: string;
-}
+export type AppointmentType = AppointmentWithLuxon;
 
 export interface ProcessedAppointment extends AppointmentType {
   clientName: string;
