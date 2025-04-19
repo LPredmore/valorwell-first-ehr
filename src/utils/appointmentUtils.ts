@@ -1,8 +1,8 @@
 import { format } from 'date-fns';
-import { fromUTCTimestamp, ensureIANATimeZone } from './timeZoneUtils';
 import { fromUTCToTimezone, formatDateTime } from './luxonTimeUtils';
 import { DateTime } from 'luxon';
 import { AppointmentType } from '@/types/appointment';
+import { ensureIANATimeZone } from './timeZoneUtils';
 
 /**
  * Convert an appointment to the user's time zone for display
@@ -41,36 +41,23 @@ export const getAppointmentInUserTimeZone = (
       
       // Use Luxon for better time zone conversion
       try {
-        const startDateTime = fromUTCToTimezone(appointment.appointment_datetime, validTimeZone);
-        const endDateTime = fromUTCToTimezone(appointment.appointment_end_datetime, validTimeZone);
+        const startDateTime = fromUTCToTimezone(appointment.appointment_datetime, userTimeZone);
+        const endDateTime = fromUTCToTimezone(appointment.appointment_end_datetime, userTimeZone);
         
         return {
           ...appointment,
           display_date: startDateTime.toFormat('yyyy-MM-dd'),
           display_start_time: startDateTime.toFormat('HH:mm'),
           display_end_time: endDateTime.toFormat('HH:mm'),
-          // Add Luxon DateTime objects for components that can use them
           _luxon_start: startDateTime,
           _luxon_end: endDateTime
         };
       } catch (error) {
         console.error('Error using Luxon for time conversion:', error);
-        
-        // Fall back to the original method if Luxon fails
-        const localStart = fromUTCTimestamp(appointment.appointment_datetime, validTimeZone);
-        const localEnd = fromUTCTimestamp(appointment.appointment_end_datetime, validTimeZone);
-        
-        return {
-          ...appointment,
-          display_date: format(localStart, 'yyyy-MM-dd'),
-          display_start_time: format(localStart, 'HH:mm'),
-          display_end_time: format(localEnd, 'HH:mm')
-        };
+        return appointment;
       }
     }
     
-    // Fallback to original values if no UTC timestamps
-    console.log(`No UTC timestamps for appointment ${appointment.id}, using original values`);
     return {
       ...appointment,
       display_date: appointment.date,
@@ -78,18 +65,8 @@ export const getAppointmentInUserTimeZone = (
       display_end_time: appointment.end_time
     };
   } catch (error) {
-    console.error('Error converting appointment to user time zone:', error, {
-      appointmentId: appointment.id,
-      userTimeZone
-    });
-    
-    // Return original appointment with same display values as a fallback
-    return {
-      ...appointment,
-      display_date: appointment.date,
-      display_start_time: appointment.start_time,
-      display_end_time: appointment.end_time
-    };
+    console.error('Error converting appointment to user time zone:', error);
+    return appointment;
   }
 };
 

@@ -128,11 +128,14 @@ export const isDSTTransitionTime = (
   timezone: string
 ): boolean => {
   const ianaZone = ensureIANATimeZone(timezone);
-  const zone = new IANAZone(ianaZone);
   const dateTime = createDateTime(date, time, timezone);
   
-  // Check if this time is ambiguous (happens twice during DST fallback)
-  return zone.isAmbiguous(dateTime.toMillis());
+  // Get times one hour before and after
+  const hourBefore = dateTime.minus({ hours: 1 });
+  const hourAfter = dateTime.plus({ hours: 1 });
+  
+  // If the offset changes within this window, we're in a DST transition
+  return hourBefore.offset !== hourAfter.offset;
 };
 
 /**
