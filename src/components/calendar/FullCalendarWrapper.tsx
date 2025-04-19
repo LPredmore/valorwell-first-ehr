@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -45,21 +44,17 @@ const FullCalendarWrapper: React.FC<FullCalendarWrapperProps> = ({
   const calendarRef = useRef<FullCalendar>(null);
   const [events, setEvents] = useState<FullCalendarEvent[]>([]);
 
-  // Convert appointments and availability blocks to FullCalendar events
   useEffect(() => {
     const timezone = ensureIANATimeZone(userTimeZone);
     
-    // Convert appointments to events
     const appointmentEvents = appointmentsToEvents(appointments, timezone);
     
-    // Add availability events if enabled
     const allEvents = showAvailability 
       ? [...appointmentEvents, ...availabilityToEvents(availabilityBlocks, timezone)]
       : appointmentEvents;
     
     setEvents(allEvents);
     
-    // Log events for debugging
     console.log(`[FullCalendarWrapper] Prepared ${allEvents.length} events for calendar`, {
       appointments: appointments.length,
       availability: showAvailability ? availabilityBlocks.length : 0,
@@ -68,28 +63,22 @@ const FullCalendarWrapper: React.FC<FullCalendarWrapperProps> = ({
     });
   }, [appointments, availabilityBlocks, showAvailability, userTimeZone]);
 
-  // Update calendar view when date or view changes
   useEffect(() => {
     const calendar = calendarRef.current;
     if (calendar) {
-      // Set the current date
       calendar.getApi().gotoDate(currentDate);
       
-      // Set the view if it doesn't match
       if (calendar.getApi().view.type !== view) {
         calendar.getApi().changeView(view);
       }
     }
   }, [currentDate, view]);
 
-  // Handle event click (appointment or availability)
   const handleEventClick = (info: any) => {
     const eventData = info.event;
     const extendedProps = eventData.extendedProps || {};
     
-    // Check if this is an availability block
     if (extendedProps.isAvailability && onAvailabilityClick) {
-      // Find the original availability block
       const availabilityBlock = availabilityBlocks.find(
         block => block.id === extendedProps.availabilityId
       );
@@ -100,25 +89,21 @@ const FullCalendarWrapper: React.FC<FullCalendarWrapperProps> = ({
       return;
     }
     
-    // Handle regular appointment click
     if (extendedProps.originalAppointment && onAppointmentClick) {
       onAppointmentClick(extendedProps.originalAppointment);
     }
   };
 
-  // Handle event drag & resize
   const handleEventChange = (info: any) => {
     if (!onEventChange) return;
     
     const eventData = info.event;
     const extendedProps = eventData.extendedProps || {};
     
-    // Only handle regular appointments, not availability
     if (extendedProps.isAvailability) return;
     
     if (extendedProps.originalAppointment) {
       try {
-        // Convert the updated event back to an appointment
         const updatedAppointment = eventToAppointment(
           {
             id: eventData.id,
@@ -137,7 +122,6 @@ const FullCalendarWrapper: React.FC<FullCalendarWrapperProps> = ({
     }
   };
 
-  // Handle date selection for creating new appointments
   const handleDateSelect = (info: any) => {
     if (!onDateSelect) return;
     onDateSelect(info.start, info.end);
@@ -157,7 +141,7 @@ const FullCalendarWrapper: React.FC<FullCalendarWrapperProps> = ({
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView={view}
-        headerToolbar={false} // We'll use our custom header
+        headerToolbar={false}
         events={events}
         eventClick={handleEventClick}
         eventDrop={handleEventChange}
@@ -167,12 +151,11 @@ const FullCalendarWrapper: React.FC<FullCalendarWrapperProps> = ({
         selectMirror={true}
         dayMaxEvents={true}
         nowIndicator={true}
-        allDaySlot={false}
+        expandRows={true}
+        slotEventOverlap={false}
         slotMinTime="06:00:00"
         slotMaxTime="21:00:00"
         height={height}
-        expandRows={true}
-        slotEventOverlap={false}
         eventTimeFormat={{
           hour: 'numeric',
           minute: '2-digit',

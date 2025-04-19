@@ -1,4 +1,3 @@
-
 import { DateTime } from "luxon";
 
 export interface BaseAppointment {
@@ -16,16 +15,16 @@ export interface BaseAppointment {
   source_time_zone?: string;
   video_room_url?: string;
   recurring_group_id?: string;
+  _luxon_start?: DateTime;
+  _luxon_end?: DateTime;
+  client_name?: string;
+  clinician_name?: string;
 }
 
 export interface AppointmentType extends BaseAppointment {
-  client_name?: string;
-  clinician_name?: string;
-  // Display fields for time zone conversion
   display_date?: string;
   display_start_time?: string;
   display_end_time?: string;
-  // Luxon DateTime objects for better time handling
   _luxon_start?: DateTime;
   _luxon_end?: DateTime;
 }
@@ -40,7 +39,6 @@ export interface ProcessedAppointment extends AppointmentType {
   originalAppointment: AppointmentType;
 }
 
-// FullCalendar specific interfaces
 export interface FullCalendarEvent {
   id: string;
   title: string;

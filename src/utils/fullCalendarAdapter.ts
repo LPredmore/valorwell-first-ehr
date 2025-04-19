@@ -1,4 +1,3 @@
-
 import { AppointmentType, FullCalendarEvent, FullCalendarAvailabilityEvent } from '@/types/appointment';
 import { TimeBlock } from '@/components/calendar/week-view/types';
 import { DateTime } from 'luxon';
@@ -123,20 +122,14 @@ export const eventToAppointment = (
   event: FullCalendarEvent,
   userTimeZone: string
 ): AppointmentType => {
-  const timezone = ensureIANATimeZone(userTimeZone);
   const originalAppointment = event.extendedProps?.originalAppointment;
-  
   if (!originalAppointment) {
     throw new Error('Cannot convert event to appointment: missing original appointment data');
   }
   
-  // Convert start and end to the format needed for appointment
+  const timezone = ensureIANATimeZone(userTimeZone);
   const startDt = DateTime.fromJSDate(event.start as Date, { zone: timezone });
   const endDt = DateTime.fromJSDate(event.end as Date, { zone: timezone });
-  
-  // Convert to UTC for storage
-  const startUtc = startDt.toUTC().toISO();
-  const endUtc = endDt.toUTC().toISO();
   
   return {
     ...originalAppointment,
@@ -146,8 +139,6 @@ export const eventToAppointment = (
     display_date: startDt.toFormat('yyyy-MM-dd'),
     display_start_time: startDt.toFormat('HH:mm'),
     display_end_time: endDt.toFormat('HH:mm'),
-    appointment_datetime: startUtc,
-    appointment_end_datetime: endUtc,
     _luxon_start: startDt,
     _luxon_end: endDt
   };
