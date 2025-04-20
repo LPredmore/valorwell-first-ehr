@@ -28,7 +28,7 @@ export interface AppointmentWithLuxon extends BaseAppointment {
   _luxon_end?: DateTime;
 }
 
-// Make AppointmentType use AppointmentWithLuxon as base
+// Canonical type to use throughout the application
 export type AppointmentType = AppointmentWithLuxon;
 
 export interface ProcessedAppointment extends AppointmentType {

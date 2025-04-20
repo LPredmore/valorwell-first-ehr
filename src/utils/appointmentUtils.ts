@@ -1,7 +1,8 @@
+
 import { format } from 'date-fns';
 import { fromUTCToTimezone, formatDateTime } from './luxonTimeUtils';
 import { DateTime } from 'luxon';
-import { AppointmentType, AppointmentWithLuxon } from '@/types/appointment';
+import { AppointmentType, AppointmentWithLuxon } from '../types/appointment';
 import { ensureIANATimeZone } from './timeZoneUtils';
 
 /**
