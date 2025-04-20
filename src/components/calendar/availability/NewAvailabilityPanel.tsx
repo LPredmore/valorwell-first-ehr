@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import WeeklyAvailability from './WeeklyAvailability';
 import { CalendarClock } from 'lucide-react';
 import { AvailabilityProvider } from './AvailabilityContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface NewAvailabilityPanelProps {
   clinicianId: string | null;
@@ -13,6 +14,21 @@ interface NewAvailabilityPanelProps {
 
 const NewAvailabilityPanel: React.FC<NewAvailabilityPanelProps> = ({ clinicianId }) => {
   const [activeTab, setActiveTab] = useState<string>('weekly');
+  const [enabledDays, setEnabledDays] = useState<boolean[]>([false, true, true, true, true, true, false]);
+  const { toast } = useToast();
+  
+  const handleToggleDay = (dayIndex: number, enabled: boolean) => {
+    const newEnabledDays = [...enabledDays];
+    newEnabledDays[dayIndex] = enabled;
+    setEnabledDays(newEnabledDays);
+  };
+  
+  const handleSaveChanges = () => {
+    toast({
+      title: "Changes Saved",
+      description: "Your availability settings have been updated.",
+    });
+  };
   
   return (
     <AvailabilityProvider clinicianId={clinicianId}>
@@ -20,7 +36,7 @@ const NewAvailabilityPanel: React.FC<NewAvailabilityPanelProps> = ({ clinicianId
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Availability</h2>
           <div className="flex items-center gap-2">
-            <Button variant="default">
+            <Button variant="default" onClick={handleSaveChanges}>
               Save Changes
             </Button>
           </div>
@@ -48,8 +64,8 @@ const NewAvailabilityPanel: React.FC<NewAvailabilityPanelProps> = ({ clinicianId
                     dayIndex={i}
                     dayName={dayNames[i]}
                     slots={[]}
-                    enabled={false}
-                    onToggleDay={() => {}}
+                    enabled={enabledDays[i]}
+                    onToggleDay={handleToggleDay}
                   />
                 );
               })}

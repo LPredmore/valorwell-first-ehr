@@ -1,109 +1,232 @@
 
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { TimeInput } from '@/components/ui/time-input';
-import { Trash2, PlusCircle } from 'lucide-react';
+import { PlusCircle, Trash2, Clock } from 'lucide-react';
 import { useAvailability } from './AvailabilityContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+
+interface TimeSlot {
+  id: string;
+  startTime: string;
+  endTime: string;
+}
 
 interface WeeklyAvailabilityProps {
   dayIndex: number;
   dayName: string;
-  slots: Array<{ id: string; startTime: string; endTime: string }>;
+  slots: TimeSlot[];
   enabled: boolean;
-  onToggleDay: (enabled: boolean) => void;
+  onToggleDay: (dayIndex: number, enabled: boolean) => void;
 }
 
 const WeeklyAvailability: React.FC<WeeklyAvailabilityProps> = ({
   dayIndex,
   dayName,
-  slots,
+  slots: initialSlots,
   enabled,
-  onToggleDay,
+  onToggleDay
 }) => {
-  const { addAvailabilitySlot, removeAvailabilitySlot, updateAvailabilitySlot } = useAvailability();
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newStartTime, setNewStartTime] = useState('09:00');
+  const [newEndTime, setNewEndTime] = useState('17:00');
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingSlot, setEditingSlot] = useState<TimeSlot | null>(null);
+  const [editStartTime, setEditStartTime] = useState('');
+  const [editEndTime, setEditEndTime] = useState('');
+  
+  const { addAvailabilitySlot, removeAvailabilitySlot, updateAvailabilitySlot, events, isLoading } = useAvailability();
+  
+  // Filter events to get slots for this specific day
+  const slots = events
+    .filter(event => 
+      event.extendedProps?.isAvailability && 
+      event.extendedProps.availabilityBlock?.type === 'weekly' &&
+      event.extendedProps.availabilityBlock.dayOfWeek === dayIndex.toString()
+    )
+    .map(event => ({
+      id: event.id,
+      startTime: event.extendedProps?.availabilityBlock?.startTime || '',
+      endTime: event.extendedProps?.availabilityBlock?.endTime || ''
+    }));
+  
+  const handleAddSlot = async () => {
+    try {
+      await addAvailabilitySlot(dayIndex, newStartTime, newEndTime);
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to add availability slot:', error);
+    }
+  };
 
-  const validateTimeSlot = (startTime: string, endTime: string): boolean => {
-    const start = new Date(`2000-01-01T${startTime}`);
-    const end = new Date(`2000-01-01T${endTime}`);
-    return start < end;
+  const handleEditClick = (slot: TimeSlot) => {
+    setEditingSlot(slot);
+    setEditStartTime(slot.startTime);
+    setEditEndTime(slot.endTime);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingSlot) return;
+    try {
+      await updateAvailabilitySlot(editingSlot.id, editStartTime, editEndTime);
+      setIsEditDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to update availability slot:', error);
+    }
+  };
+
+  const handleDeleteSlot = async (slotId: string) => {
+    try {
+      await removeAvailabilitySlot(slotId);
+    } catch (error) {
+      console.error('Failed to remove availability slot:', error);
+    }
   };
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        <div className="p-4 border-b flex justify-between items-center">
-          <div className="flex items-center">
-            <Switch
-              id={`day-${dayIndex}`}
-              checked={enabled}
-              onCheckedChange={onToggleDay}
-            />
-            <Label 
-              htmlFor={`day-${dayIndex}`} 
-              className={`ml-2 font-medium ${!enabled ? 'text-gray-500' : ''}`}
-            >
-              {dayName}
-            </Label>
-          </div>
+    <div className="border rounded-lg p-4">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center space-x-2">
+          <Switch 
+            checked={enabled}
+            onCheckedChange={(checked) => onToggleDay(dayIndex, checked)}
+            id={`day-toggle-${dayIndex}`}
+          />
+          <Label htmlFor={`day-toggle-${dayIndex}`} className="text-lg font-medium">{dayName}</Label>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsAddDialogOpen(true)}
+          disabled={isLoading || !enabled}
+        >
+          <PlusCircle className="h-4 w-4 mr-2" />
+          Add Time
+        </Button>
+      </div>
 
-        {enabled && (
-          <div className="p-4 space-y-4">
-            {slots.map((slot, slotIndex) => (
-              <div key={slot.id} className="flex items-center space-x-4">
-                <div className="flex-1 grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor={`start-${dayIndex}-${slotIndex}`} className="text-xs mb-1 block">
-                      Start Time
-                    </Label>
-                    <TimeInput
-                      id={`start-${dayIndex}-${slotIndex}`}
-                      value={slot.startTime}
-                      onChange={(value) => updateAvailabilitySlot(slot.id, value, slot.endTime)}
-                      className={!validateTimeSlot(slot.startTime, slot.endTime) ? 'border-red-500' : ''}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor={`end-${dayIndex}-${slotIndex}`} className="text-xs mb-1 block">
-                      End Time
-                    </Label>
-                    <TimeInput
-                      id={`end-${dayIndex}-${slotIndex}`}
-                      value={slot.endTime}
-                      onChange={(value) => updateAvailabilitySlot(slot.id, slot.startTime, value)}
-                      className={!validateTimeSlot(slot.startTime, slot.endTime) ? 'border-red-500' : ''}
-                    />
-                  </div>
-                </div>
+      {enabled && slots.length > 0 ? (
+        <div className="space-y-2">
+          {slots.map((slot) => (
+            <div key={slot.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex items-center">
+                <Clock className="h-4 w-4 mr-2 text-gray-500" />
+                <span>{slot.startTime} - {slot.endTime}</span>
+              </div>
+              <div className="flex space-x-2">
                 <Button
                   variant="ghost"
-                  size="icon"
-                  onClick={() => removeAvailabilitySlot(slot.id)}
-                  className="h-8 w-8"
+                  size="sm"
+                  onClick={() => handleEditClick(slot)}
+                  disabled={isLoading}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDeleteSlot(slot.id)}
+                  disabled={isLoading}
+                >
+                  <Trash2 className="h-4 w-4 text-red-500" />
                 </Button>
               </div>
-            ))}
+            </div>
+          ))}
+        </div>
+      ) : enabled ? (
+        <div className="text-center py-4 text-gray-500">No availability slots set for {dayName}</div>
+      ) : (
+        <div className="text-center py-4 text-gray-500">{dayName} is disabled</div>
+      )}
 
-            {slots.length < 3 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => addAvailabilitySlot(dayIndex, '09:00', '17:00')}
-                className="mt-2"
-              >
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Add Time Slot
-              </Button>
-            )}
+      {/* Add Time Slot Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Availability for {dayName}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="start-time">Start Time</Label>
+                <Input
+                  id="start-time"
+                  type="time"
+                  value={newStartTime}
+                  onChange={(e) => setNewStartTime(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="end-time">End Time</Label>
+                <Input
+                  id="end-time"
+                  type="time"
+                  value={newEndTime}
+                  onChange={(e) => setNewEndTime(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddSlot} disabled={isLoading}>
+              Add Slot
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Time Slot Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Availability for {dayName}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-start-time">Start Time</Label>
+                <Input
+                  id="edit-start-time"
+                  type="time"
+                  value={editStartTime}
+                  onChange={(e) => setEditStartTime(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-end-time">End Time</Label>
+                <Input
+                  id="edit-end-time"
+                  type="time"
+                  value={editEndTime}
+                  onChange={(e) => setEditEndTime(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={isLoading}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 
