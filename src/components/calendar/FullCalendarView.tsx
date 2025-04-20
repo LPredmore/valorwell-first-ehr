@@ -1,17 +1,14 @@
 
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { CalendarViewType } from '@/types/calendar';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { DateSelectArg, EventDropArg } from '@fullcalendar/core';
 import { CalendarEvent, FullCalendarProps } from '@/types/calendar';
-import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { convertAppointmentsToEvents } from '@/utils/calendarUtils';
-import CalendarToolbar from './full-calendar/CalendarToolbar';
 import CalendarEventHandler from './full-calendar/CalendarEventHandler';
 import LoadingState from './full-calendar/LoadingState';
 import './fullCalendar.css';
@@ -28,7 +25,6 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   showAvailability = false,
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
-  const [currentView, setCurrentView] = useState<CalendarViewType>(view);
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ['calendar-events', clinicianId, userTimeZone],
@@ -46,19 +42,12 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     enabled: !!clinicianId
   });
 
-  const validTimeZone = ensureIANATimeZone(userTimeZone);
-
   if (isLoading) {
     return <LoadingState />;
   }
 
   return (
     <div className="full-calendar-wrapper">
-      <CalendarToolbar 
-        onViewChange={setCurrentView}
-        currentView={currentView}
-      />
-      
       <CalendarEventHandler
         onEventClick={onEventClick}
         onDateSelect={onDateSelect}
@@ -69,14 +58,14 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView={currentView}
+        initialView={view}
         headerToolbar={{
           left: 'prev,next today',
           center: 'title',
           right: 'dayGridMonth,timeGridWeek,timeGridDay'
         }}
         events={events}
-        timeZone={validTimeZone}
+        timeZone={userTimeZone}
         editable={true}
         selectable={true}
         selectMirror={true}
