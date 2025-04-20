@@ -1,21 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import React from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, CalendarIcon, PlusCircle } from 'lucide-react';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import WeekView from '@/components/calendar/WeekView';
-import AppointmentBookingDialog from './AppointmentBookingDialog';
-import { supabase, getOrCreateVideoRoom, checkPHQ9ForAppointment } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { format, parseISO, startOfToday, isBefore, isToday } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
-import VideoChat from '@/components/video/VideoChat';
-import { getUserTimeZone, formatTimeZoneDisplay, formatTimeInUserTimeZone, formatTime12Hour, ensureIANATimeZone } from '@/utils/timeZoneUtils';
-import PHQ9Template from '@/components/templates/PHQ9Template';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CalendarIcon, ClipboardList, FileText } from 'lucide-react';
+import FullCalendarView from '../calendar/FullCalendarView';
+import { WeekViewProps } from '@/components/calendar/week-view';
 
 interface Appointment {
   id: number;
@@ -32,6 +21,21 @@ interface MyPortalProps {
   clinicianName: string | null;
   loading: boolean;
 }
+
+const PortalCalendar: React.FC<WeekViewProps> = (props) => {
+  return (
+    <FullCalendarView 
+      clinicianId={props.clinicianId}
+      userTimeZone="America/Chicago"
+      view="timeGridWeek"
+      showAvailability={false}
+      height="500px"
+      events={props.events || []}
+      onEventClick={props.onEventClick}
+      onDateSelect={props.onDateSelect}
+    />
+  );
+};
 
 const MyPortal: React.FC<MyPortalProps> = ({
   upcomingAppointments: initialAppointments,

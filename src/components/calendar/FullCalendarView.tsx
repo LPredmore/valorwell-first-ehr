@@ -25,13 +25,14 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   view = 'timeGridWeek',
   height = 'auto',
   showAvailability = false,
+  events: externalEvents = [],
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
   const { toast } = useToast();
   const [calendarOptions, setCalendarOptions] = useState({});
   const [initialized, setInitialized] = useState(false);
 
-  const { data: events = [], isLoading } = useQuery({
+  const { data: fetchedEvents = [], isLoading } = useQuery({
     queryKey: ['calendar-events', clinicianId, userTimeZone],
     queryFn: async () => {
       if (!clinicianId) return [];
@@ -46,6 +47,9 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     },
     enabled: !!clinicianId
   });
+
+  // Combine external events with fetched events
+  const events = [...externalEvents, ...fetchedEvents];
 
   useEffect(() => {
     const validTimeZone = ensureIANATimeZone(userTimeZone);

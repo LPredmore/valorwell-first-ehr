@@ -11,7 +11,7 @@ export interface CalendarEvent extends EventInput {
 }
 
 export interface FullCalendarProps {
-  events: CalendarEvent[];
+  events?: CalendarEvent[];
   clinicianId: string | null;
   onEventClick?: (info: any) => void;
   onDateSelect?: (info: any) => void;
