@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import AvailabilityPanel from '../components/calendar/AvailabilityPanel';
 import { CalendarService } from '@/services/calendarService';
+import NewAvailabilityPanel from '../components/calendar/availability/NewAvailabilityPanel';
 
 const CalendarPage: React.FC = () => {
   const {
