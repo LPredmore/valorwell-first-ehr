@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { CalendarViewType } from '@/types/calendar';
 import Layout from '../components/layout/Layout';
@@ -39,7 +38,6 @@ const CalendarPage: React.FC = () => {
   const [showAvailabilityPanel, setShowAvailabilityPanel] = useState<boolean>(false);
   const [dataMigrated, setDataMigrated] = useState(false);
   
-  // Migration function
   const migrateData = useCallback(async () => {
     try {
       await CalendarService.migrateData();
@@ -210,7 +208,7 @@ const CalendarPage: React.FC = () => {
           </div>
 
           {showAvailabilityPanel && selectedClinicianId && canManageAvailability ? (
-            <AvailabilityPanel />
+            <NewAvailabilityPanel clinicianId={selectedClinicianId} />
           ) : (
             <Card className="p-4">
               <FullCalendarView
