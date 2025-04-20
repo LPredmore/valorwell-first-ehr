@@ -1,20 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
-import { Appointment } from '@/types/appointment';
 import Layout from '../components/layout/Layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Calendar as CalendarIcon, Plus } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCalendarState } from '../hooks/useCalendarState';
-import CalendarHeader from '../components/calendar/CalendarHeader';
 import AppointmentDialog from '../components/calendar/AppointmentDialog';
 import { Card } from '@/components/ui/card';
 import FullCalendarView from '../components/calendar/FullCalendarView';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { addWeeks, subWeeks, addMonths, subMonths } from 'date-fns';
 
 const CalendarPage: React.FC = () => {
   const {
@@ -22,8 +17,6 @@ const CalendarPage: React.FC = () => {
     setSelectedClinicianId,
     clinicians,
     loadingClinicians,
-    currentDate,
-    setCurrentDate,
     clients,
     loadingClients,
     appointmentRefreshTrigger,
@@ -33,12 +26,11 @@ const CalendarPage: React.FC = () => {
   } = useCalendarState();
 
   const { userTimeZone, isLoading: isLoadingTimeZone } = useTimeZone();
-  const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week'>('week');
+  const [calendarViewMode, setCalendarViewMode] = useState<'timeGridMonth' | 'timeGridWeek'>('timeGridWeek');
   const [showAvailability, setShowAvailability] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
     console.log('[Calendar] Page initialized with timezone:', userTimeZone);
@@ -121,11 +113,9 @@ const CalendarPage: React.FC = () => {
     return (
       <Layout>
         <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
-          <div className="flex flex-col space-y-6">
-            <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold text-gray-800">Calendar</h1>
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-bold text-gray-800">Calendar</h1>
+            <Loader2 className="h-6 w-6 animate-spin" />
           </div>
         </div>
       </Layout>
@@ -135,23 +125,10 @@ const CalendarPage: React.FC = () => {
   return (
     <Layout>
       <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
-        <div className="flex flex-col space-y-6">
+        <div className="flex flex-col space-y-4">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-800">Calendar</h1>
             <div className="flex items-center gap-4">
-              <Tabs value={calendarViewMode} onValueChange={(value) => setCalendarViewMode(value as 'month' | 'week')}>
-                <TabsList>
-                  <TabsTrigger value="month">
-                    <CalendarIcon className="h-4 w-4 mr-2" />
-                    Monthly
-                  </TabsTrigger>
-                  <TabsTrigger value="week">
-                    <CalendarIcon className="h-4 w-4 mr-2" />
-                    Weekly
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-
               <Button onClick={() => setIsDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 New Appointment
@@ -186,38 +163,14 @@ const CalendarPage: React.FC = () => {
             </div>
           </div>
 
-          <CalendarHeader
-            currentDate={currentDate}
-            view={calendarViewMode}
-            userTimeZone={userTimeZone}
-            isLoadingTimeZone={isLoadingTimeZone}
-            onNavigatePrevious={() => {
-              if (calendarViewMode === 'week') {
-                setCurrentDate(subWeeks(currentDate, 1));
-              } else {
-                setCurrentDate(subMonths(currentDate, 1));
-              }
-            }}
-            onNavigateNext={() => {
-              if (calendarViewMode === 'week') {
-                setCurrentDate(addWeeks(currentDate, 1));
-              } else {
-                setCurrentDate(addMonths(currentDate, 1));
-              }
-            }}
-            onNavigateToday={() => {
-              setCurrentDate(new Date());
-            }}
-          />
-
           <Card className="p-4">
             <FullCalendarView
               clinicianId={selectedClinicianId}
               userTimeZone={userTimeZone}
-              view={calendarViewMode === 'week' ? 'timeGridWeek' : 'dayGridMonth'}
+              view={calendarViewMode}
               showAvailability={showAvailability}
               height="700px"
-              events={[]} // Add empty events array to satisfy the required prop
+              events={[]}
             />
           </Card>
         </div>
