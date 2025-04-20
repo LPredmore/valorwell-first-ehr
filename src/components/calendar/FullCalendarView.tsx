@@ -91,16 +91,17 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
           minute: '2-digit',
           meridiem: 'short'
         }}
-        eventClassNames={(info) => {
+        eventClassNames={(arg) => {
           const classes = [];
+          const eventType = arg.event.extendedProps?.eventType;
           
-          // Add custom classes for availability events
-          if (info.event.extendedProps?.isAvailability) {
+          if (eventType === 'availability') {
             classes.push('availability-event');
+          } else if (eventType === 'time_off') {
+            classes.push('time-off-event');
           }
           
-          // Add class for recurring events
-          if (info.event.extendedProps?.recurrenceRule) {
+          if (arg.event.extendedProps?.recurrenceRule) {
             classes.push('recurring-event');
           }
           
