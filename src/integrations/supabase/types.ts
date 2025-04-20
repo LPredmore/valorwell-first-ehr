@@ -237,6 +237,101 @@ export type Database = {
           },
         ]
       }
+      calendar_events: {
+        Row: {
+          all_day: boolean | null
+          clinician_id: string
+          created_at: string
+          description: string | null
+          end_time: string
+          event_type: string
+          id: string
+          recurrence_id: string | null
+          start_time: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          all_day?: boolean | null
+          clinician_id: string
+          created_at?: string
+          description?: string | null
+          end_time: string
+          event_type: string
+          id?: string
+          recurrence_id?: string | null
+          start_time: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          all_day?: boolean | null
+          clinician_id?: string
+          created_at?: string
+          description?: string | null
+          end_time?: string
+          event_type?: string
+          id?: string
+          recurrence_id?: string | null
+          start_time?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_recurrence_id_fkey"
+            columns: ["recurrence_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calendar_exceptions: {
+        Row: {
+          created_at: string
+          exception_date: string
+          id: string
+          is_cancelled: boolean | null
+          recurrence_event_id: string | null
+          replacement_event_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          exception_date: string
+          id?: string
+          is_cancelled?: boolean | null
+          recurrence_event_id?: string | null
+          replacement_event_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          exception_date?: string
+          id?: string
+          is_cancelled?: boolean | null
+          recurrence_event_id?: string | null
+          replacement_event_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_exceptions_recurrence_event_id_fkey"
+            columns: ["recurrence_event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_exceptions_replacement_event_id_fkey"
+            columns: ["replacement_event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_history: {
         Row: {
           additional_info: string | null
@@ -1546,6 +1641,38 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      recurrence_rules: {
+        Row: {
+          created_at: string
+          event_id: string | null
+          id: string
+          rrule: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          rrule: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          rrule?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurrence_rules_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       session_notes: {
         Row: {

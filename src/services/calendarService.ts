@@ -16,10 +16,6 @@ export class CalendarService {
   
   /**
    * Fetch calendar events for a clinician
-   * @param clinicianId The ID of the clinician
-   * @param userTimeZone The user's timezone
-   * @param start Optional start date
-   * @param end Optional end date
    */
   static async getEvents(
     clinicianId: string, 
@@ -79,8 +75,6 @@ export class CalendarService {
   
   /**
    * Create a new calendar event
-   * @param event The event to create
-   * @param userTimeZone The user's timezone
    */
   static async createEvent(event: ICalendarEvent, userTimeZone: string): Promise<ICalendarEvent> {
     try {
@@ -151,8 +145,6 @@ export class CalendarService {
   
   /**
    * Update an existing calendar event
-   * @param event The event to update
-   * @param userTimeZone The user's timezone
    */
   static async updateEvent(event: ICalendarEvent, userTimeZone: string): Promise<ICalendarEvent> {
     try {
@@ -246,7 +238,6 @@ export class CalendarService {
   
   /**
    * Delete a calendar event
-   * @param eventId The ID of the event to delete
    */
   static async deleteEvent(eventId: string): Promise<void> {
     try {
@@ -265,7 +256,6 @@ export class CalendarService {
   
   /**
    * Add an exception to a recurring event
-   * @param exception The exception to add
    */
   static async addException(exception: CalendarException): Promise<CalendarException> {
     try {
@@ -297,8 +287,6 @@ export class CalendarService {
   
   /**
    * Convert database events to FullCalendar events
-   * @param events The events from the database
-   * @param userTimeZone The user's timezone
    */
   private static convertToCalendarEvents(events: any[], userTimeZone: string): CalendarEvent[] {
     return events.map(event => {
