@@ -1,9 +1,8 @@
-
 import { EventInput } from '@fullcalendar/core';
 import { AppointmentType } from './appointment';
 
 // Centralized view type definition
-export type CalendarViewType = "timeGridDay" | "timeGridWeek" | "timeGridMonth";
+export type CalendarViewType = "dayGridMonth" | "timeGridWeek" | "timeGridDay";
 
 export interface CalendarEvent extends EventInput {
   extendedProps?: {

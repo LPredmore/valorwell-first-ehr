@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import { CalendarViewType } from '@/types/calendar';
 import FullCalendar from '@fullcalendar/react';
@@ -22,7 +23,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   onEventDrop,
   onEventResize,
   userTimeZone = 'America/Chicago',
-  view = 'timeGridWeek' as CalendarViewType,
+  view = 'dayGridMonth' as CalendarViewType,
   height = 'auto',
   showAvailability = false,
 }) => {
@@ -72,7 +73,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
         headerToolbar={{
           left: 'prev,next today',
           center: 'title',
-          right: 'timeGridDay,timeGridWeek,timeGridMonth'
+          right: 'dayGridMonth,timeGridWeek,timeGridDay'
         }}
         events={events}
         timeZone={validTimeZone}

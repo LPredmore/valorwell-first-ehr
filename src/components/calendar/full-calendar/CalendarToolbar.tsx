@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { CalendarViewType } from '@/types/calendar';
 import { Button } from '@/components/ui/button';
@@ -29,9 +30,9 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
         Week
       </Button>
       <Button
-        variant={currentView === 'timeGridMonth' ? 'default' : 'outline'}
+        variant={currentView === 'dayGridMonth' ? 'default' : 'outline'}
         size="sm"
-        onClick={() => onViewChange('timeGridMonth')}
+        onClick={() => onViewChange('dayGridMonth')}
       >
         Month
       </Button>
