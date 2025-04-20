@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Appointment } from '@/types/appointment';
 import Layout from '../components/layout/Layout';
@@ -12,9 +11,6 @@ import AppointmentDialog from '../components/calendar/AppointmentDialog';
 import { Card } from '@/components/ui/card';
 import FullCalendarView from '../components/calendar/FullCalendarView';
 import { useTimeZone } from '@/context/TimeZoneContext';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { addWeeks, addMonths, subWeeks, subMonths } from 'date-fns';
 
 const CalendarPage: React.FC = () => {
   const {
@@ -217,7 +213,6 @@ const CalendarPage: React.FC = () => {
               view={calendarViewMode === 'week' ? 'timeGridWeek' : 'dayGridMonth'}
               showAvailability={showAvailability}
               height="700px"
-              events={[]} // Add an empty events array to satisfy the type requirements
             />
           </Card>
         </div>
