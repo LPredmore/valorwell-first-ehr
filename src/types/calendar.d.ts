@@ -8,7 +8,15 @@ export interface CalendarEvent extends EventInput {
   extendedProps?: {
     appointment?: AppointmentType;
     isAvailability?: boolean;
-    availabilityBlock?: any;
+    availabilityBlock?: {
+      id: string;
+      type: 'weekly' | 'single_day' | 'time_block';
+      dayOfWeek?: string;
+      date?: string;
+      startTime: string;
+      endTime: string;
+      reason?: string;
+    };
   };
 }
 
