@@ -28,7 +28,7 @@ const CalendarPage: React.FC = () => {
 
   const { toast } = useToast();
   const { userTimeZone, isLoading: isLoadingTimeZone } = useTimeZone();
-  const [calendarViewMode, setCalendarViewMode] = useState<'dayGridMonth' | 'timeGridWeek' | 'timeGridDay'>('timeGridWeek');
+  const [calendarViewMode, setCalendarViewMode] = useState<'timeGridMonth'>('timeGridMonth');
   const [showAvailability, setShowAvailability] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
