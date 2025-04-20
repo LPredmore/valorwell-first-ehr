@@ -1,41 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Appointment } from '@/types/appointment';
-import { TimeBlock, AvailabilityBlock } from '@/components/calendar/week-view/types';
 import Layout from '../components/layout/Layout';
-import CalendarView from '../components/calendar/CalendarView';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Calendar as CalendarIcon, Plus } from 'lucide-react';
-import { addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCalendarState } from '../hooks/useCalendarState';
 import CalendarHeader from '../components/calendar/CalendarHeader';
-import CalendarViewControls from '../components/calendar/CalendarViewControls';
 import AppointmentDialog from '../components/calendar/AppointmentDialog';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Clock } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { Card } from '@/components/ui/card';
+import FullCalendarView from '../components/calendar/FullCalendarView';
 import { useTimeZone } from '@/context/TimeZoneContext';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-
-interface MonthViewProps {
-  currentDate: Date;
-  clinicianId: string | null;
-  refreshTrigger?: number;
-  appointments?: Appointment[];
-  getClientName?: (clientId: string) => string;
-  onAppointmentClick?: (appointment: Appointment) => void;
-  onAvailabilityClick?: (date: Date, availabilityBlock: AvailabilityBlock | TimeBlock) => void;
-  userTimeZone?: string;
-  weekViewMode?: boolean;
-}
 
 const CalendarPage: React.FC = () => {
   const {
-    showAvailability,
-    setShowAvailability,
     selectedClinicianId,
     setSelectedClinicianId,
     clinicians,
@@ -51,12 +29,11 @@ const CalendarPage: React.FC = () => {
   } = useCalendarState();
 
   const { userTimeZone, isLoading: isLoadingTimeZone } = useTimeZone();
-
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week'>('week');
+  const [showAvailability, setShowAvailability] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [useFullCalendar, setUseFullCalendar] = useState<boolean>(true);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -130,51 +107,7 @@ const CalendarPage: React.FC = () => {
     fetchCurrentUser();
   }, [userTimeZone]);
 
-  useEffect(() => {
-    console.log(`[Calendar] Selected clinicianId: "${selectedClinicianId}"`);
-  }, [selectedClinicianId]);
-
-  useEffect(() => {
-    console.log(`[Calendar] Calendar view mode changed to: ${calendarViewMode}`);
-  }, [calendarViewMode]);
-
-  useEffect(() => {
-    console.log(`[Calendar] Current date changed to: ${currentDate.toISOString()}`);
-  }, [currentDate]);
-
-  useEffect(() => {
-    console.log(`[Calendar] Available clinicians loaded: ${clinicians.length}`);
-    if (clinicians.length > 0) {
-      clinicians.forEach(c => console.log(`  - Clinician: ${c.clinician_professional_name} (ID: ${c.id})`));
-    }
-  }, [clinicians]);
-
-  const navigatePrevious = () => {
-    if (calendarViewMode === 'week') {
-      setCurrentDate(subWeeks(currentDate, 1));
-    } else {
-      setCurrentDate(subMonths(currentDate, 1));
-    }
-  };
-
-  const navigateNext = () => {
-    if (calendarViewMode === 'week') {
-      setCurrentDate(addWeeks(currentDate, 1));
-    } else {
-      setCurrentDate(addMonths(currentDate, 1));
-    }
-  };
-
-  const navigateToday = () => {
-    setCurrentDate(new Date());
-  };
-
-  const toggleAvailability = () => {
-    setShowAvailability(!showAvailability);
-  };
-
   const handleAppointmentCreated = () => {
-    console.log('[Calendar] Appointment created, triggering refresh');
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
@@ -187,10 +120,8 @@ const CalendarPage: React.FC = () => {
           <div className="flex flex-col space-y-6">
             <div className="flex justify-between items-center">
               <h1 className="text-2xl font-bold text-gray-800">Calendar</h1>
-              <Skeleton className="h-10 w-64" />
+              <Loader2 className="h-6 w-6 animate-spin" />
             </div>
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-[500px] w-full" />
           </div>
         </div>
       </Layout>
@@ -217,23 +148,6 @@ const CalendarPage: React.FC = () => {
                 </TabsList>
               </Tabs>
 
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="use-fullcalendar"
-                  checked={useFullCalendar}
-                  onCheckedChange={setUseFullCalendar}
-                />
-                <Label htmlFor="use-fullcalendar">Enhanced View</Label>
-              </div>
-
-              <Button
-                variant={showAvailability ? "default" : "outline"}
-                onClick={toggleAvailability}
-              >
-                <Clock className="mr-2 h-4 w-4" />
-                Availability
-              </Button>
-
               <Button onClick={() => setIsDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 New Appointment
@@ -243,10 +157,7 @@ const CalendarPage: React.FC = () => {
                 <div className="min-w-[200px]">
                   <Select
                     value={selectedClinicianId || undefined}
-                    onValueChange={(value) => {
-                      console.log(`[Calendar] Selected clinician changed to: ${value}`);
-                      setSelectedClinicianId(value);
-                    }}
+                    onValueChange={setSelectedClinicianId}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a clinician" />
@@ -276,21 +187,34 @@ const CalendarPage: React.FC = () => {
             view={calendarViewMode}
             userTimeZone={userTimeZone}
             isLoadingTimeZone={isLoadingTimeZone}
-            onNavigatePrevious={navigatePrevious}
-            onNavigateNext={navigateNext}
-            onNavigateToday={navigateToday}
+            onNavigatePrevious={() => {
+              if (calendarViewMode === 'week') {
+                setCurrentDate(subWeeks(currentDate, 1));
+              } else {
+                setCurrentDate(subMonths(currentDate, 1));
+              }
+            }}
+            onNavigateNext={() => {
+              if (calendarViewMode === 'week') {
+                setCurrentDate(addWeeks(currentDate, 1));
+              } else {
+                setCurrentDate(addMonths(currentDate, 1));
+              }
+            }}
+            onNavigateToday={() => {
+              setCurrentDate(new Date());
+            }}
           />
 
-          <CalendarView
-            view="month"
-            showAvailability={showAvailability}
-            clinicianId={selectedClinicianId}
-            userTimeZone={userTimeZone}
-            refreshTrigger={appointmentRefreshTrigger}
-            monthViewMode={calendarViewMode}
-            currentDate={currentDate}
-            useFullCalendar={useFullCalendar}
-          />
+          <Card className="p-4">
+            <FullCalendarView
+              clinicianId={selectedClinicianId}
+              userTimeZone={userTimeZone}
+              view={calendarViewMode === 'week' ? 'timeGridWeek' : 'dayGridMonth'}
+              showAvailability={showAvailability}
+              height="700px"
+            />
+          </Card>
         </div>
       </div>
 

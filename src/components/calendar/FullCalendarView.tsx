@@ -7,15 +7,15 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { EventClickArg, DateSelectArg, EventDropArg } from '@fullcalendar/core';
 import { useToast } from '@/hooks/use-toast';
 import { CalendarEvent, FullCalendarProps } from '@/types/calendar';
-import { AppointmentType } from '@/types/appointment';
 import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import './fullCalendar.css'; // Import the CSS
+import { Card } from '@/components/ui/card';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { convertAppointmentsToEvents } from '@/utils/calendarUtils';
+import './fullCalendar.css';
 
 const FullCalendarView: React.FC<FullCalendarProps> = ({
-  events,
   clinicianId,
   onEventClick,
   onDateSelect,
@@ -28,9 +28,24 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
   const [calendarOptions, setCalendarOptions] = useState({});
   const [initialized, setInitialized] = useState(false);
+
+  const { data: events = [], isLoading } = useQuery({
+    queryKey: ['calendar-events', clinicianId, userTimeZone],
+    queryFn: async () => {
+      if (!clinicianId) return [];
+      
+      const { data: appointments, error } = await supabase
+        .from('appointments')
+        .select('*, clients(client_first_name, client_last_name)')
+        .eq('clinician_id', clinicianId);
+
+      if (error) throw error;
+      return convertAppointmentsToEvents(appointments, userTimeZone);
+    },
+    enabled: !!clinicianId
+  });
 
   useEffect(() => {
     const validTimeZone = ensureIANATimeZone(userTimeZone);
@@ -108,14 +123,10 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     setInitialized(true);
   }, [view, userTimeZone, onEventClick, onDateSelect, onEventDrop, onEventResize, height, toast]);
 
-  useEffect(() => {
-    console.log(`[FullCalendarView] Rendering with ${events?.length || 0} events`);
-  }, [events]);
-
-  if (!initialized) {
+  if (!initialized || isLoading) {
     return (
       <Card className="p-4 flex justify-center items-center h-[300px]">
-        <Loader2 className="h-6 w-6 animate-spin text-valorwell-500" />
+        <Loader2 className="h-6 w-6 animate-spin" />
       </Card>
     );
   }
