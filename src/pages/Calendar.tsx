@@ -17,6 +17,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface MonthViewProps {
   currentDate: Date;
@@ -54,6 +56,7 @@ const CalendarPage: React.FC = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [useFullCalendar, setUseFullCalendar] = useState<boolean>(true);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -214,6 +217,15 @@ const CalendarPage: React.FC = () => {
                 </TabsList>
               </Tabs>
 
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="use-fullcalendar"
+                  checked={useFullCalendar}
+                  onCheckedChange={setUseFullCalendar}
+                />
+                <Label htmlFor="use-fullcalendar">Enhanced View</Label>
+              </div>
+
               <Button
                 variant={showAvailability ? "default" : "outline"}
                 onClick={toggleAvailability}
@@ -277,6 +289,7 @@ const CalendarPage: React.FC = () => {
             refreshTrigger={appointmentRefreshTrigger}
             monthViewMode={calendarViewMode}
             currentDate={currentDate}
+            useFullCalendar={useFullCalendar}
           />
         </div>
       </div>

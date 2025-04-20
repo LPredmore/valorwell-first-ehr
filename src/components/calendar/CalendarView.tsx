@@ -12,6 +12,8 @@ import AppointmentDetailsDialog from './AppointmentDetailsDialog';
 import AvailabilityEditDialog from './AvailabilityEditDialog';
 import AvailabilityPanel from './AvailabilityPanel';
 import { BaseAppointment } from '@/types/appointment';
+import FullCalendarView from './FullCalendarView';
+import { convertAppointmentsToEvents, convertAvailabilityToEvents } from '@/utils/calendarUtils';
 
 interface CalendarViewProps {
   view: 'week' | 'month';
@@ -21,6 +23,7 @@ interface CalendarViewProps {
   refreshTrigger?: number;
   monthViewMode?: 'month' | 'week';
   currentDate?: Date;
+  useFullCalendar?: boolean;
 }
 
 interface Appointment {
@@ -59,7 +62,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   userTimeZone: propTimeZone,
   refreshTrigger = 0,
   monthViewMode = 'month',
-  currentDate: propCurrentDate
+  currentDate: propCurrentDate,
+  useFullCalendar = true
 }) => {
   const [currentDate, setCurrentDate] = useState(propCurrentDate || new Date());
   const [availabilityRefreshTrigger, setAvailabilityRefreshTrigger] = useState(0);
@@ -76,6 +80,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago');
   const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -238,6 +243,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     fetchAppointments();
   }, [clinicianId, currentDate, monthViewMode, availabilityRefreshTrigger, appointmentRefreshTrigger, refreshTrigger]);
 
+  useEffect(() => {
+    if (appointments.length > 0) {
+      const events = convertAppointmentsToEvents(appointments, effectiveTimeZone);
+      console.log(`[CalendarView] Converted ${events.length} appointments to calendar events`);
+      setCalendarEvents(events);
+    } else {
+      setCalendarEvents([]);
+    }
+  }, [appointments, effectiveTimeZone]);
+
   const handleAvailabilityUpdated = () => {
     console.log("[CalendarView] Availability updated - refreshing calendar view");
     setAvailabilityRefreshTrigger(prev => prev + 1);
@@ -276,6 +291,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     setSelectedAvailabilityDate(date);
     setIsAvailabilityDialogOpen(true);
   };
+
+  const handleDateSelect = (info: any) => {
+    console.log(`[CalendarView] Date selected: ${info.startStr} to ${info.endStr}`);
+    // This would typically open a dialog to create a new appointment
+  };
   
   if (error && !clinicianId) {
     return (
@@ -298,17 +318,32 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     >
       <div className="flex gap-4">
         <div className={`flex-1 ${showAvailability ? "w-3/4" : "w-full"}`}>
-          <MonthView 
-            currentDate={currentDate} 
-            clinicianId={clinicianId} 
-            refreshTrigger={availabilityRefreshTrigger} 
-            appointments={appointments} 
-            getClientName={getClientName} 
-            onAppointmentClick={handleAppointmentClick} 
-            onAvailabilityClick={handleAvailabilityClick}
-            userTimeZone={effectiveTimeZone}
-            weekViewMode={monthViewMode === 'week'} 
-          />
+          {useFullCalendar ? (
+            <Card className="p-4">
+              <FullCalendarView 
+                events={calendarEvents}
+                clinicianId={clinicianId}
+                onEventClick={handleAppointmentClick}
+                onDateSelect={handleDateSelect}
+                userTimeZone={effectiveTimeZone}
+                view={monthViewMode === 'week' ? 'timeGridWeek' : 'dayGridMonth'}
+                height="700px"
+                showAvailability={showAvailability}
+              />
+            </Card>
+          ) : (
+            <MonthView 
+              currentDate={currentDate} 
+              clinicianId={clinicianId} 
+              refreshTrigger={availabilityRefreshTrigger} 
+              appointments={appointments} 
+              getClientName={getClientName} 
+              onAppointmentClick={handleAppointmentClick} 
+              onAvailabilityClick={handleAvailabilityClick}
+              userTimeZone={effectiveTimeZone}
+              weekViewMode={monthViewMode === 'week'} 
+            />
+          )}
         </div>
 
         {showAvailability && (
