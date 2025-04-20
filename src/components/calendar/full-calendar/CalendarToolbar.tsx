@@ -1,11 +1,11 @@
-
 import React from 'react';
+import { CalendarViewType } from '@/types/calendar';
 import { Button } from '@/components/ui/button';
 import { Calendar } from 'lucide-react';
 
 interface CalendarToolbarProps {
-  onViewChange: (view: 'timeGridDay' | 'timeGridWeek' | 'timeGridMonth') => void;
-  currentView: string;
+  onViewChange: (view: CalendarViewType) => void;
+  currentView: CalendarViewType;
 }
 
 const CalendarToolbar: React.FC<CalendarToolbarProps> = ({

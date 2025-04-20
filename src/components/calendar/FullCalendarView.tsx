@@ -1,5 +1,5 @@
-
 import React, { useRef, useState } from 'react';
+import { CalendarViewType } from '@/types/calendar';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -22,12 +22,12 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   onEventDrop,
   onEventResize,
   userTimeZone = 'America/Chicago',
-  view = 'timeGridWeek',
+  view = 'timeGridWeek' as CalendarViewType,
   height = 'auto',
   showAvailability = false,
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
-  const [currentView, setCurrentView] = useState(view);
+  const [currentView, setCurrentView] = useState<CalendarViewType>(view);
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ['calendar-events', clinicianId, userTimeZone],
