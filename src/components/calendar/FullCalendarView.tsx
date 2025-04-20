@@ -1,18 +1,18 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { EventClickArg, DateSelectArg, EventDropArg } from '@fullcalendar/core';
-import { useToast } from '@/hooks/use-toast';
+import { DateSelectArg, EventDropArg } from '@fullcalendar/core';
 import { CalendarEvent, FullCalendarProps } from '@/types/calendar';
 import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
-import { Loader2 } from 'lucide-react';
-import { Card } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { convertAppointmentsToEvents } from '@/utils/calendarUtils';
+import CalendarToolbar from './full-calendar/CalendarToolbar';
+import CalendarEventHandler from './full-calendar/CalendarEventHandler';
+import LoadingState from './full-calendar/LoadingState';
 import './fullCalendar.css';
 
 const FullCalendarView: React.FC<FullCalendarProps> = ({
@@ -27,7 +27,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   showAvailability = false,
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
-  const { toast } = useToast();
+  const [currentView, setCurrentView] = useState(view);
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ['calendar-events', clinicianId, userTimeZone],
@@ -48,19 +48,27 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   const validTimeZone = ensureIANATimeZone(userTimeZone);
 
   if (isLoading) {
-    return (
-      <Card className="p-4 flex justify-center items-center h-[300px]">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </Card>
-    );
+    return <LoadingState />;
   }
 
   return (
     <div className="full-calendar-wrapper">
+      <CalendarToolbar 
+        onViewChange={setCurrentView}
+        currentView={currentView}
+      />
+      
+      <CalendarEventHandler
+        onEventClick={onEventClick}
+        onDateSelect={onDateSelect}
+        onEventDrop={onEventDrop}
+        onEventResize={onEventResize}
+      />
+
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView={view}
+        initialView={currentView}
         headerToolbar={{
           left: 'prev,next today',
           center: 'title',
@@ -86,43 +94,6 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
           hour: 'numeric',
           minute: '2-digit',
           meridiem: 'short'
-        }}
-        eventClick={(info: EventClickArg) => {
-          if (onEventClick) {
-            const appointment = info.event.extendedProps?.appointment;
-            if (appointment) {
-              onEventClick(appointment);
-            } else {
-              console.warn('Event clicked but no appointment data found:', info.event);
-            }
-          }
-        }}
-        select={(info: DateSelectArg) => {
-          if (onDateSelect) {
-            onDateSelect(info);
-          }
-        }}
-        eventDrop={(info: EventDropArg) => {
-          if (onEventDrop) {
-            onEventDrop(info);
-          } else {
-            toast({
-              title: 'Appointment moved',
-              description: 'Please note that changes are not saved automatically.',
-              variant: 'default'
-            });
-          }
-        }}
-        eventResize={(info) => {
-          if (onEventResize) {
-            onEventResize(info);
-          } else {
-            toast({
-              title: 'Appointment resized',
-              description: 'Please note that changes are not saved automatically.',
-              variant: 'default'
-            });
-          }
         }}
       />
     </div>
