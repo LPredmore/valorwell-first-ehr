@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { CalendarViewType } from '@/types/calendar';
 import Layout from '../components/layout/Layout';
@@ -12,6 +13,7 @@ import { useTimeZone } from '@/context/TimeZoneContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import AvailabilityPanel from '../components/calendar/AvailabilityPanel';
+import { CalendarService } from '@/services/calendarService';
 
 const CalendarPage: React.FC = () => {
   const {
@@ -35,6 +37,26 @@ const CalendarPage: React.FC = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [showAvailabilityPanel, setShowAvailabilityPanel] = useState<boolean>(false);
+  const [dataMigrated, setDataMigrated] = useState(false);
+  
+  // Migration function
+  const migrateData = useCallback(async () => {
+    try {
+      await CalendarService.migrateData();
+      setDataMigrated(true);
+      toast({
+        title: "Data Migration Complete",
+        description: "Your availability data has been successfully migrated to the new format.",
+      });
+    } catch (error) {
+      console.error("Error migrating data:", error);
+      toast({
+        title: "Migration Error",
+        description: "There was an error migrating your availability data. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
 
   useEffect(() => {
     console.log('[Calendar] Page initialized with timezone:', userTimeZone);
@@ -149,6 +171,15 @@ const CalendarPage: React.FC = () => {
                 </Button>
               )}
 
+              {!dataMigrated && canManageAvailability && (
+                <Button 
+                  variant="outline"
+                  onClick={migrateData}
+                >
+                  Migrate Availability Data
+                </Button>
+              )}
+
               {clinicians.length > 1 && canSelectDifferentClinician && (
                 <div className="min-w-[200px]">
                   <Select
@@ -188,7 +219,6 @@ const CalendarPage: React.FC = () => {
                 view={calendarViewMode}
                 showAvailability={true}
                 height="700px"
-                events={[]}
               />
             </Card>
           )}

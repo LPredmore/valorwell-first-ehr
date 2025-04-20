@@ -1,3 +1,4 @@
+
 /* FullCalendar Custom Styles */
 
 /* Calendar container */
@@ -125,6 +126,26 @@
 .availability-event:hover {
   opacity: 1;
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Recurring event styling */
+.recurring-event {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 5px,
+    rgba(255, 255, 255, 0.2) 5px,
+    rgba(255, 255, 255, 0.2) 10px
+  );
+}
+
+.recurring-event::before {
+  content: "↺";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  font-size: 0.7rem;
+  opacity: 0.8;
 }
 
 /* Mobile optimizations */

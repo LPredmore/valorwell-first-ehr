@@ -1,13 +1,52 @@
+
 import { EventInput } from '@fullcalendar/core';
 import { AppointmentType } from './appointment';
 
 // Centralized view type definition
 export type CalendarViewType = "dayGridMonth" | "timeGridWeek" | "timeGridDay";
 
+// iCalendar event types
+export type CalendarEventType = 'availability' | 'appointment' | 'time_off';
+
+// Recurring rule format (iCalendar RRULE)
+export interface RecurrenceRule {
+  id?: string;
+  eventId: string;
+  rrule: string; // Standard iCalendar RRULE format
+}
+
+// Exception to a recurring event
+export interface CalendarException {
+  id?: string;
+  recurrenceEventId: string;
+  exceptionDate: string; // ISO date format
+  isCancelled: boolean;
+  replacementEventId?: string;
+}
+
+// Base calendar event format following iCalendar standards
+export interface ICalendarEvent {
+  id: string;
+  clinicianId: string;
+  title: string;
+  description?: string;
+  startTime: string; // ISO datetime
+  endTime: string; // ISO datetime
+  allDay: boolean;
+  eventType: CalendarEventType;
+  recurrenceId?: string; // Reference to parent event for instances
+  recurrenceRule?: RecurrenceRule; // For recurring events
+  exceptions?: CalendarException[]; // List of exceptions
+}
+
+// Extended properties for FullCalendar compatibility
 export interface CalendarEvent extends EventInput {
   extendedProps?: {
     appointment?: AppointmentType;
     isAvailability?: boolean;
+    eventType?: CalendarEventType;
+    recurrenceRule?: RecurrenceRule;
+    isException?: boolean;
     availabilityBlock?: {
       id: string;
       type: 'weekly' | 'single_day' | 'time_block';
