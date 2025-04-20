@@ -2,7 +2,7 @@
 import { format } from 'date-fns';
 import { fromUTCToTimezone, formatDateTime } from './luxonTimeUtils';
 import { DateTime } from 'luxon';
-import { AppointmentType, BaseAppointment, AppointmentWithLuxon } from '../types/appointment.d';
+import { AppointmentType, BaseAppointment, AppointmentWithLuxon } from '../types/appointment';
 import { ensureIANATimeZone } from './timeZoneUtils';
 
 /**
