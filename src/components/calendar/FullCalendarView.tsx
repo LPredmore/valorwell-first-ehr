@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { EventClickArg, DateSelectArg, EventDropArg, EventResizeDoneArg } from '@fullcalendar/core';
+import { EventClickArg, DateSelectArg, EventDropArg } from '@fullcalendar/core';
 import { useToast } from '@/hooks/use-toast';
 import { CalendarEvent, FullCalendarProps } from '@/types/calendar';
 import { AppointmentType } from '@/types/appointment';
@@ -90,7 +91,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
           });
         }
       },
-      eventResize: (info: EventResizeDoneArg) => {
+      eventResize: (info: any) => {  // Changed to use 'any' type instead of EventResizeDoneArg
         if (onEventResize) {
           onEventResize(info);
         } else {

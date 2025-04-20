@@ -4,7 +4,9 @@ import { AppointmentType } from './appointment';
 
 export interface CalendarEvent extends EventInput {
   extendedProps?: {
-    appointment: AppointmentType;
+    appointment?: AppointmentType;
+    isAvailability?: boolean;
+    availabilityBlock?: any;
   };
 }
 
