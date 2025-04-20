@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { CalendarViewType } from '@/types/calendar';
 import Layout from '../components/layout/Layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,8 +12,6 @@ import FullCalendarView from '../components/calendar/FullCalendarView';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import AvailabilityPanel from '../components/calendar/AvailabilityPanel';
-import { CalendarService } from '@/services/calendarService';
 import NewAvailabilityPanel from '../components/calendar/availability/NewAvailabilityPanel';
 
 const CalendarPage: React.FC = () => {
@@ -32,31 +31,11 @@ const CalendarPage: React.FC = () => {
   const { toast } = useToast();
   const { userTimeZone, isLoading: isLoadingTimeZone } = useTimeZone();
   const [calendarViewMode, setCalendarViewMode] = useState<CalendarViewType>('dayGridMonth');
-  const [showAvailability, setShowAvailability] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [showAvailabilityPanel, setShowAvailabilityPanel] = useState<boolean>(false);
-  const [dataMigrated, setDataMigrated] = useState(false);
   
-  const migrateData = useCallback(async () => {
-    try {
-      await CalendarService.migrateData();
-      setDataMigrated(true);
-      toast({
-        title: "Data Migration Complete",
-        description: "Your availability data has been successfully migrated to the new format.",
-      });
-    } catch (error) {
-      console.error("Error migrating data:", error);
-      toast({
-        title: "Migration Error",
-        description: "There was an error migrating your availability data. Please try again.",
-        variant: "destructive"
-      });
-    }
-  }, [toast]);
-
   useEffect(() => {
     console.log('[Calendar] Page initialized with timezone:', userTimeZone);
     const fetchCurrentUser = async () => {
@@ -126,7 +105,7 @@ const CalendarPage: React.FC = () => {
     };
     
     fetchCurrentUser();
-  }, [userTimeZone]);
+  }, [userTimeZone, selectedClinicianId, toast]);
 
   const handleAppointmentCreated = () => {
     setAppointmentRefreshTrigger(prev => prev + 1);
@@ -167,15 +146,6 @@ const CalendarPage: React.FC = () => {
                 >
                   <CalendarClock className="h-4 w-4 mr-2" />
                   {showAvailabilityPanel ? "Hide Availability" : "Manage Availability"}
-                </Button>
-              )}
-
-              {!dataMigrated && canManageAvailability && (
-                <Button 
-                  variant="outline"
-                  onClick={migrateData}
-                >
-                  Migrate Availability Data
                 </Button>
               )}
 

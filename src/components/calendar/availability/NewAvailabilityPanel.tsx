@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,6 +7,7 @@ import WeeklyAvailability from './WeeklyAvailability';
 import { CalendarClock } from 'lucide-react';
 import { AvailabilityProvider } from './AvailabilityContext';
 import { useToast } from '@/hooks/use-toast';
+import { CalendarService } from '@/services/calendarService';
 
 interface NewAvailabilityPanelProps {
   clinicianId: string | null;
@@ -16,6 +17,13 @@ const NewAvailabilityPanel: React.FC<NewAvailabilityPanelProps> = ({ clinicianId
   const [activeTab, setActiveTab] = useState<string>('weekly');
   const [enabledDays, setEnabledDays] = useState<boolean[]>([false, true, true, true, true, true, false]);
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isMigrated, setIsMigrated] = useState(true);
+  
+  useEffect(() => {
+    // Check for migration status - simplified version: just assume we need to run migration
+    setIsMigrated(false);
+  }, [clinicianId]);
   
   const handleToggleDay = (dayIndex: number, enabled: boolean) => {
     const newEnabledDays = [...enabledDays];
@@ -23,11 +31,29 @@ const NewAvailabilityPanel: React.FC<NewAvailabilityPanelProps> = ({ clinicianId
     setEnabledDays(newEnabledDays);
   };
   
-  const handleSaveChanges = () => {
-    toast({
-      title: "Changes Saved",
-      description: "Your availability settings have been updated.",
-    });
+  const handleMigrateData = async () => {
+    if (!clinicianId) return;
+    
+    setIsLoading(true);
+    try {
+      await CalendarService.migrateData();
+      
+      toast({
+        title: "Migration Complete",
+        description: "Your availability data has been successfully migrated to the new calendar system.",
+      });
+      
+      setIsMigrated(true);
+    } catch (error) {
+      console.error("Error migrating data:", error);
+      toast({
+        title: "Migration Error",
+        description: "There was a problem migrating your availability data. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -36,9 +62,15 @@ const NewAvailabilityPanel: React.FC<NewAvailabilityPanelProps> = ({ clinicianId
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Availability</h2>
           <div className="flex items-center gap-2">
-            <Button variant="default" onClick={handleSaveChanges}>
-              Save Changes
-            </Button>
+            {!isMigrated && (
+              <Button 
+                variant="outline"
+                onClick={handleMigrateData}
+                disabled={isLoading}
+              >
+                {isLoading ? "Migrating..." : "Migrate Legacy Data"}
+              </Button>
+            )}
           </div>
         </div>
 
