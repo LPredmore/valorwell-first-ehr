@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,8 +26,9 @@ const CalendarPage: React.FC = () => {
     setIsDialogOpen,
   } = useCalendarState();
 
+  const { toast } = useToast();
   const { userTimeZone, isLoading: isLoadingTimeZone } = useTimeZone();
-  const [calendarViewMode, setCalendarViewMode] = useState<'timeGridMonth' | 'timeGridWeek'>('timeGridWeek');
+  const [calendarViewMode, setCalendarViewMode] = useState<'dayGridMonth' | 'timeGridWeek' | 'timeGridDay'>('timeGridWeek');
   const [showAvailability, setShowAvailability] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -189,3 +191,4 @@ const CalendarPage: React.FC = () => {
 };
 
 export default CalendarPage;
+
