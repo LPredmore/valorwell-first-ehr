@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CalendarViewType } from '@/types/calendar';
 import Layout from '../components/layout/Layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCalendarState } from '../hooks/useCalendarState';
 import AppointmentDialog from '../components/calendar/AppointmentDialog';
@@ -11,6 +11,7 @@ import FullCalendarView from '../components/calendar/FullCalendarView';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import AvailabilityPanel from '../components/calendar/AvailabilityPanel';
 
 const CalendarPage: React.FC = () => {
   const {
@@ -33,6 +34,7 @@ const CalendarPage: React.FC = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [showAvailabilityPanel, setShowAvailabilityPanel] = useState<boolean>(false);
 
   useEffect(() => {
     console.log('[Calendar] Page initialized with timezone:', userTimeZone);
@@ -110,6 +112,7 @@ const CalendarPage: React.FC = () => {
   };
 
   const canSelectDifferentClinician = userRole !== 'clinician';
+  const canManageAvailability = userRole === 'clinician' || userRole === 'admin';
 
   if (isLoadingTimeZone) {
     return (
@@ -135,6 +138,16 @@ const CalendarPage: React.FC = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 New Appointment
               </Button>
+
+              {canManageAvailability && (
+                <Button 
+                  variant={showAvailabilityPanel ? "secondary" : "outline"}
+                  onClick={() => setShowAvailabilityPanel(prev => !prev)}
+                >
+                  <CalendarClock className="h-4 w-4 mr-2" />
+                  {showAvailabilityPanel ? "Hide Availability" : "Manage Availability"}
+                </Button>
+              )}
 
               {clinicians.length > 1 && canSelectDifferentClinician && (
                 <div className="min-w-[200px]">
@@ -165,16 +178,20 @@ const CalendarPage: React.FC = () => {
             </div>
           </div>
 
-          <Card className="p-4">
-            <FullCalendarView
-              clinicianId={selectedClinicianId}
-              userTimeZone={userTimeZone}
-              view={calendarViewMode}
-              showAvailability={showAvailability}
-              height="700px"
-              events={[]}
-            />
-          </Card>
+          {showAvailabilityPanel && selectedClinicianId && canManageAvailability ? (
+            <AvailabilityPanel />
+          ) : (
+            <Card className="p-4">
+              <FullCalendarView
+                clinicianId={selectedClinicianId}
+                userTimeZone={userTimeZone}
+                view={calendarViewMode}
+                showAvailability={true}
+                height="700px"
+                events={[]}
+              />
+            </Card>
+          )}
         </div>
       </div>
 
