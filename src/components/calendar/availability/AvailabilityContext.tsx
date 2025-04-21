@@ -85,10 +85,12 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
       }
       
       // Create a date string from the event's start date
-      // Fix: Use toString() instead of toISOString() for DateInput type
+      // Fix for TypeScript error - proper type checking for start property
       const dateStr = typeof event.start === 'string' 
         ? event.start.split('T')[0] 
-        : event.start.toISOString().split('T')[0];
+        : event.start instanceof Date 
+          ? event.start.toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0]; // Fallback
       
       // Create ISO datetime strings
       const startISO = `${dateStr}T${startTime}:00`;
