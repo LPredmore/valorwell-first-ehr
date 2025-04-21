@@ -24,6 +24,13 @@ export class CalendarService {
     end?: Date
   ): Promise<CalendarEvent[]> {
     try {
+      if (!clinicianId) {
+        console.error("No clinician ID provided");
+        return [];
+      }
+
+      console.log(`Fetching events for clinician: ${clinicianId}, timezone: ${userTimeZone}`);
+      
       // Fetch base events
       const { data: events, error } = await supabase
         .from('calendar_events')
@@ -33,7 +40,12 @@ export class CalendarService {
         `)
         .eq('clinician_id', clinicianId);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching calendar events:", error);
+        throw error;
+      }
+
+      console.log(`Fetched ${events?.length || 0} events`);
       
       // Fetch exceptions if needed
       const eventsWithRecurrence = events.filter(event => event.recurrence_rules && event.recurrence_rules.length > 0);
@@ -78,24 +90,18 @@ export class CalendarService {
    */
   static async createEvent(event: ICalendarEvent, userTimeZone: string): Promise<ICalendarEvent> {
     try {
-      console.log('Creating calendar event:', event);
+      console.log('Creating calendar event:', JSON.stringify(event, null, 2));
       
       // Convert times to UTC format for storage and match DB schema
       const utcEvent = {
-        ...event,
+        title: event.title,
+        description: event.description,
         start_time: new Date(event.startTime).toISOString(),
         end_time: new Date(event.endTime).toISOString(),
         clinician_id: event.clinicianId,
         event_type: event.eventType,
         all_day: event.allDay // Match DB column name
       };
-      
-      // Remove properties not in DB schema
-      delete utcEvent.startTime;
-      delete utcEvent.endTime;
-      delete utcEvent.clinicianId;
-      delete utcEvent.eventType;
-      delete utcEvent.recurrenceRule;
       
       console.log('Formatted DB event:', utcEvent);
       
@@ -107,7 +113,7 @@ export class CalendarService {
         .single();
       
       if (error) {
-        console.error('Error insert:', error);
+        console.error('Error inserting event:', error);
         throw error;
       }
       

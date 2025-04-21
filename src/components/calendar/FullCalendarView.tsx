@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { CalendarViewType } from '@/types/calendar';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -10,6 +10,7 @@ import { FullCalendarProps } from '@/types/calendar';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import CalendarEventHandler from './full-calendar/CalendarEventHandler';
 import LoadingState from './full-calendar/LoadingState';
+import { useToast } from '@/hooks/use-toast';
 import './fullCalendar.css';
 
 const FullCalendarView: React.FC<FullCalendarProps> = ({
@@ -25,6 +26,8 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   events = []
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
+  const { toast } = useToast();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Use the hook to fetch events if not provided directly
   const {
@@ -37,6 +40,21 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     showAvailability: showAvailability
   });
   
+  // Handle errors with more detail
+  useEffect(() => {
+    if (error) {
+      console.error("Calendar error:", error);
+      setErrorMessage(error.message || "Failed to load calendar data");
+      toast({
+        title: "Calendar Error",
+        description: "There was a problem loading your calendar data. Please try again.",
+        variant: "destructive",
+      });
+    } else {
+      setErrorMessage(null);
+    }
+  }, [error, toast]);
+  
   // Use provided events or fetched events
   const displayEvents = events.length > 0 ? events : fetchedEvents;
 
@@ -44,10 +62,16 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     return <LoadingState />;
   }
   
-  if (error) {
+  if (errorMessage) {
     return (
       <div className="p-4 text-center">
-        <p className="text-red-500">Error loading calendar events. Please try again.</p>
+        <p className="text-red-500">Error loading calendar events: {errorMessage}</p>
+        <button 
+          className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600" 
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </button>
       </div>
     );
   }
