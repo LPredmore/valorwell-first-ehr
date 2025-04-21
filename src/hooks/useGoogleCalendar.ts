@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -104,8 +105,33 @@ export function useGoogleCalendar({
       }
     };
     
-    checkAuthStatus();
+    if (googleApiCalendar && clinicianId) {
+      checkAuthStatus();
+    }
   }, [clinicianId, googleApiCalendar]);
+
+  // Also check for the last sync time
+  useEffect(() => {
+    const fetchLastSyncTime = async () => {
+      if (!clinicianId || !isGoogleLinked) return;
+      
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('google_calendar_last_sync')
+          .eq('id', clinicianId)
+          .single();
+          
+        if (data?.google_calendar_last_sync) {
+          setLastSyncTime(new Date(data.google_calendar_last_sync));
+        }
+      } catch (err) {
+        console.error('Error fetching last sync time:', err);
+      }
+    };
+    
+    fetchLastSyncTime();
+  }, [clinicianId, isGoogleLinked]);
 
   const signIn = useCallback(async () => {
     if (!clinicianId) {
@@ -485,7 +511,7 @@ export function useGoogleCalendar({
           description: localEvent.description,
           startTime: localEvent.start_time,
           endTime: localEvent.end_time,
-          allDay: localEvent.allDay,
+          allDay: localEvent.all_day,
           eventType: localEvent.event_type,
         }, userTimeZone);
         

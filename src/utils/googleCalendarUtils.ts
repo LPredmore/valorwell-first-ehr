@@ -1,3 +1,4 @@
+
 import { ICalendarEvent, CalendarEvent, CalendarEventType } from '@/types/calendar';
 
 // Update TimeCalendarType to make timeZone required when using dateTime
