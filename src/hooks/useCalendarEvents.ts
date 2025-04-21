@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { CalendarService } from '@/services/calendarService';
 import { CalendarEvent, ICalendarEvent } from '@/types/calendar';
 import { useToast } from '@/hooks/use-toast';
@@ -27,9 +26,7 @@ export function useCalendarEvents({
   const fetchInProgress = useRef(false);
   const maxRetries = 3;
 
-  // Function to fetch events with retry mechanism
   const fetchEvents = useCallback(async (retry: boolean = false) => {
-    // Check for null clinicianId or fetch in progress
     if (!clinicianId || fetchInProgress.current) {
       if (!clinicianId) setEvents([]);
       return;
@@ -47,7 +44,6 @@ export function useCalendarEvents({
         endDate
       );
 
-      // Filter events based on showAvailability flag
       const filteredEvents = showAvailability
         ? fetchedEvents
         : fetchedEvents.filter(event => 
@@ -56,18 +52,15 @@ export function useCalendarEvents({
 
       setEvents(filteredEvents);
       
-      // Reset retry count on successful fetch
       if (retryCount > 0) setRetryCount(0);
     } catch (err) {
       console.error("Error fetching calendar events:", err);
       const fetchError = err instanceof Error ? err : new Error(String(err));
       setError(fetchError);
       
-      // Implement retry mechanism
       if (retry && retryCount < maxRetries) {
         setRetryCount(prev => prev + 1);
         
-        // Exponential backoff for retries
         const backoffTime = Math.pow(2, retryCount) * 1000;
         
         toast({
@@ -98,7 +91,6 @@ export function useCalendarEvents({
     }
   }, [clinicianId, userTimeZone, showAvailability, startDate, endDate, toast, retryCount]);
 
-  // Function to create an event with error handling and retry
   const createEvent = async (event: ICalendarEvent): Promise<ICalendarEvent | null> => {
     let retries = 0;
     const maxCreateRetries = 2;
@@ -106,7 +98,7 @@ export function useCalendarEvents({
     while (retries <= maxCreateRetries) {
       try {
         const createdEvent = await CalendarService.createEvent(event, userTimeZone);
-        fetchEvents(); // Refresh the events on success
+        fetchEvents();
         return createdEvent;
       } catch (err) {
         console.error(`Error creating calendar event (attempt ${retries + 1}/${maxCreateRetries + 1}):`, err);
@@ -120,7 +112,6 @@ export function useCalendarEvents({
           return null;
         }
         
-        // Wait before retrying
         await new Promise(resolve => setTimeout(resolve, 1000 * (retries + 1)));
         retries++;
       }
@@ -129,11 +120,10 @@ export function useCalendarEvents({
     return null;
   };
 
-  // Function to update an event with error handling
   const updateEvent = async (event: ICalendarEvent): Promise<ICalendarEvent | null> => {
     try {
       const updatedEvent = await CalendarService.updateEvent(event, userTimeZone);
-      fetchEvents(); // Refresh the events
+      fetchEvents();
       return updatedEvent;
     } catch (err) {
       console.error("Error updating calendar event:", err);
@@ -146,11 +136,10 @@ export function useCalendarEvents({
     }
   };
 
-  // Function to delete an event with error handling
   const deleteEvent = async (eventId: string): Promise<boolean> => {
     try {
       await CalendarService.deleteEvent(eventId);
-      fetchEvents(); // Refresh the events
+      fetchEvents();
       return true;
     } catch (err) {
       console.error("Error deleting calendar event:", err);
@@ -163,19 +152,16 @@ export function useCalendarEvents({
     }
   };
 
-  // Fetch events when dependencies change
   useEffect(() => {
     fetchEvents();
     
-    // Cleanup function
     return () => {
       fetchInProgress.current = false;
     };
   }, [clinicianId, userTimeZone, showAvailability, startDate, endDate]);
 
-  // Manual refetch function that can trigger retry
   const refetch = () => {
-    setRetryCount(0); // Reset retry count on manual refetch
+    setRetryCount(0);
     fetchEvents(true);
   };
 

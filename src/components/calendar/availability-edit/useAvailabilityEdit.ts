@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,10 +17,10 @@ const [isLoading, setIsLoading] = useState(false);
 const [startTime, setStartTime] = useState('09:00');
 const [endTime, setEndTime] = useState('17:00');
 const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+const [error, setError] = useState<Error | null>(null);
 const { toast } = useToast();
 const timeOptions = generateTimeOptions();
 
-// Initialize state when props change
 useEffect(() => {
   try {
     if (!availabilityBlock || !isOpen) {
@@ -40,22 +39,17 @@ useEffect(() => {
       block_end_time: availabilityBlock.end_time,
     });
 
-    // Safely extract time values with proper validation
     let formattedStartTime = '09:00';
     let formattedEndTime = '17:00';
     
     if (availabilityBlock.start_time) {
-      // Handle both Date objects and strings
       if (typeof availabilityBlock.start_time === 'string') {
-        // Extract HH:MM from any string format (HH:MM or HH:MM:SS)
         formattedStartTime = availabilityBlock.start_time.split(':').slice(0, 2).join(':');
       }
     }
     
     if (availabilityBlock.end_time) {
-      // Handle both Date objects and strings
       if (typeof availabilityBlock.end_time === 'string') {
-        // Extract HH:MM from any string format (HH:MM or HH:MM:SS)
         formattedEndTime = availabilityBlock.end_time.split(':').slice(0, 2).join(':');
       }
     }
@@ -83,7 +77,6 @@ useEffect(() => {
   }
 }, [availabilityBlock, isOpen, toast]);
 
-// Helper function to find existing exception - centralizes the logic
 const findExistingException = async (blockId: string, isException: boolean, isStandalone: boolean, formattedDate: string) => {
   try {
     console.log('Finding existing exception with params:', {
@@ -99,7 +92,6 @@ const findExistingException = async (blockId: string, isException: boolean, isSt
       return { data: null, error: new Error('Missing clinician ID') };
     }
     
-    // For standalone exceptions or existing exceptions - find directly by ID
     if (isException) {
       console.log('Looking up existing exception by ID:', blockId);
       const result = await supabase
@@ -112,7 +104,6 @@ const findExistingException = async (blockId: string, isException: boolean, isSt
       return result;
     }
     
-    // For regular availability slots - find by original_availability_id
     console.log('Looking up exception by original_availability_id:', blockId);
     const result = await supabase
       .from('availability_exceptions')
@@ -131,9 +122,9 @@ const findExistingException = async (blockId: string, isException: boolean, isSt
 };
 
 const handleSaveClick = async () => {
-  // Validate all required inputs
   if (!clinicianId) {
     console.error('Save failed: Missing clinician ID');
+    setError(new Error('Missing clinician ID'));
     toast({
       title: "Missing Information",
       description: "Unable to save availability exception. No clinician ID provided.",
@@ -162,7 +153,6 @@ const handleSaveClick = async () => {
     return;
   }
 
-  // Input validation for times
   if (!startTime || !endTime) {
     console.error('Save failed: Missing start or end time', { startTime, endTime });
     toast({
@@ -174,13 +164,12 @@ const handleSaveClick = async () => {
   }
 
   setIsLoading(true);
+  setError(null);
 
   try {
     const formattedDate = format(specificDate, 'yyyy-MM-dd');
     const isException = !!availabilityBlock.isException;
     const isStandalone = !!availabilityBlock.isStandalone;
-    // For regular availability, use the block ID
-    // For exceptions, check if we have originalAvailabilityId, otherwise use block ID
     const referenceId = isException && availabilityBlock.originalAvailabilityId ? 
                          availabilityBlock.originalAvailabilityId : 
                          availabilityBlock.id;
@@ -197,11 +186,10 @@ const handleSaveClick = async () => {
       endTime
     });
 
-    // Use our helper function to find existing exception
     const { data: existingException, error: checkError } = 
       await findExistingException(referenceId, isException, isStandalone, formattedDate);
 
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is 'not found' error
+    if (checkError && checkError.code !== 'PGRST116') {
       console.error('Error checking for existing exception:', checkError);
       throw checkError;
     }
@@ -209,7 +197,6 @@ const handleSaveClick = async () => {
     let updateResult;
 
     if (existingException) {
-      // Update existing exception
       console.log('Updating existing exception:', existingException.id);
       updateResult = await supabase
         .from('availability_exceptions')
@@ -228,8 +215,6 @@ const handleSaveClick = async () => {
 
       console.log('Successfully updated exception:', existingException.id);
     } else {
-      // Create new exception
-      console.log('Creating new exception');
       const insertData: any = {
         clinician_id: clinicianId,
         specific_date: formattedDate,
@@ -238,19 +223,15 @@ const handleSaveClick = async () => {
         is_deleted: false
       };
 
-      // Handle different exception types
       if (isException && isStandalone) {
-        // For standalone exceptions, don't set original_availability_id
         console.log('This is a standalone exception, not setting original_availability_id');
       } else if (isException) {
-        // For existing exceptions, use the originalAvailabilityId if available
         if (availabilityBlock.originalAvailabilityId) {
           insertData.original_availability_id = availabilityBlock.originalAvailabilityId;
           console.log('Setting original_availability_id for exception:', 
             availabilityBlock.originalAvailabilityId);
         }
       } else {
-        // For regular availability
         insertData.original_availability_id = availabilityBlock.id;
         console.log('Adding original_availability_id reference for regular availability:', 
           availabilityBlock.id);
@@ -270,22 +251,20 @@ const handleSaveClick = async () => {
       console.log('Successfully created new exception');
     }
 
-    // Wait a brief moment to ensure the database transaction completes
     await new Promise(resolve => setTimeout(resolve, 300));
 
-    // Only show success toast if no errors
     toast({
       title: "Success",
       description: `Availability for ${format(specificDate, 'PPP')} has been updated.`,
     });
 
-    // Explicitly call onAvailabilityUpdated to refresh the calendar view
     onAvailabilityUpdated();
     onClose();
   } catch (error: any) {
     console.error('Error updating availability exception:', error);
     
-    // More descriptive error messages based on error type
+    setError(error instanceof Error ? error : new Error(String(error)));
+    
     let errorMessage = "Failed to update availability. Please try again.";
     
     if (error?.code === '23505') {
@@ -329,7 +308,6 @@ const handleDeleteClick = () => {
 };
 
 const confirmDelete = async () => {
-  // Validate all required inputs
   if (!clinicianId) {
     console.error('Delete failed: Missing clinician ID');
     toast({
@@ -380,11 +358,10 @@ const confirmDelete = async () => {
       originalAvailabilityId: availabilityBlock.originalAvailabilityId
     });
 
-    // Use our helper function to find existing exception
     const { data: existingException, error: checkError } = 
       await findExistingException(referenceId, isException, isStandalone, formattedDate);
 
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is 'not found' error
+    if (checkError && checkError.code !== 'PGRST116') {
       console.error('Error checking for existing exception for deletion:', checkError);
       throw checkError;
     }
@@ -392,7 +369,6 @@ const confirmDelete = async () => {
     let updateResult;
 
     if (existingException) {
-      // Update existing exception to mark as deleted
       console.log('Updating existing exception to deleted:', existingException.id);
       updateResult = await supabase
         .from('availability_exceptions')
@@ -409,26 +385,21 @@ const confirmDelete = async () => {
 
       console.log('Successfully marked exception as deleted');
     } else {
-      // Create new exception marked as deleted
       const insertData: any = {
         clinician_id: clinicianId,
         specific_date: formattedDate,
         is_deleted: true
       };
 
-      // Handle different exception types
       if (isException && isStandalone) {
-        // For standalone exceptions, don't set original_availability_id
         console.log('This is a standalone exception, not setting original_availability_id for deletion');
       } else if (isException) {
-        // For existing exceptions, use the originalAvailabilityId if available
         if (availabilityBlock.originalAvailabilityId) {
           insertData.original_availability_id = availabilityBlock.originalAvailabilityId;
           console.log('Setting original_availability_id for exception deletion:', 
             availabilityBlock.originalAvailabilityId);
         }
       } else {
-        // For regular availability
         insertData.original_availability_id = availabilityBlock.id;
         console.log('Adding original_availability_id reference for deletion:', availabilityBlock.id);
       }
@@ -446,7 +417,6 @@ const confirmDelete = async () => {
       console.log('Successfully created new deleted exception');
     }
 
-    // Wait a brief moment to ensure the database transaction completes
     await new Promise(resolve => setTimeout(resolve, 300));
 
     toast({
@@ -454,14 +424,12 @@ const confirmDelete = async () => {
       description: `Availability for ${format(specificDate, 'PPP')} has been cancelled.`,
     });
 
-    // Explicitly refresh the parent component
     setIsDeleteDialogOpen(false);
     onAvailabilityUpdated();
     onClose();
   } catch (error: any) {
     console.error('Error cancelling availability:', error);
     
-    // More descriptive error messages based on error type
     let errorMessage = "Failed to cancel availability. Please try again.";
     
     if (error?.code === '23503') {
@@ -491,6 +459,7 @@ return {
   timeOptions,
   handleSaveClick,
   handleDeleteClick,
-  confirmDelete
+  confirmDelete,
+  error
 };
 };
