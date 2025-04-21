@@ -1,132 +1,125 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
-import { TimeInput } from '@/components/ui/time-input';
-import { Trash2, Globe } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card } from '@/components/ui/card';
+import { Clock, Trash2 } from 'lucide-react';
+import { useAvailabilityTimeSlot } from '@/hooks/useAvailabilityTimeSlot';
+import { TimeSlotValidation } from '@/utils/timeSlotValidation';
 import { useAvailability } from './AvailabilityContext';
-import { Badge } from '@/components/ui/badge';
 
 interface WeeklyAvailabilitySlotProps {
-  eventId?: string;
   dayIndex: number;
   dayName: string;
-  startTime: string;
-  endTime: string;
-  isEditable?: boolean;
+  eventId?: string;
+  startTime?: string;
+  endTime?: string;
+  isReadOnly?: boolean;
   isGoogleEvent?: boolean;
 }
 
 const WeeklyAvailabilitySlot: React.FC<WeeklyAvailabilitySlotProps> = ({
-  eventId,
   dayIndex,
   dayName,
-  startTime,
-  endTime,
-  isEditable = true,
+  eventId,
+  startTime: initialStartTime = '09:00',
+  endTime: initialEndTime = '17:00',
+  isReadOnly = false,
   isGoogleEvent = false
 }) => {
-  const { addAvailabilitySlot, updateAvailabilitySlot, removeAvailabilitySlot } = useAvailability();
-  const [isLoading, setIsLoading] = useState(false);
-  const [start, setStart] = useState(startTime || '09:00');
-  const [end, setEnd] = useState(endTime || '17:00');
-  const [isEditing, setIsEditing] = useState(!eventId);
-  
-  const handleSave = async () => {
-    if (!isEditing) return;
-    
-    setIsLoading(true);
-    try {
+  const { updateAvailabilitySlot, removeAvailabilitySlot } = useAvailability();
+  const timeOptions = TimeSlotValidation.getTimeOptions();
+
+  const {
+    startTime,
+    setStartTime,
+    endTime,
+    setEndTime,
+    isAdding,
+    handleTimeSlotAdd
+  } = useAvailabilityTimeSlot({
+    dayIndex,
+    onTimeSlotAdded: async () => {
       if (eventId) {
-        await updateAvailabilitySlot(eventId, start, end);
-      } else {
-        await addAvailabilitySlot(dayIndex, start, end);
+        await updateAvailabilitySlot(eventId, startTime, endTime);
       }
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Error saving availability slot:', error);
-    } finally {
-      setIsLoading(false);
     }
-  };
-  
+  });
+
   const handleDelete = async () => {
-    if (!eventId) return;
-    
-    setIsLoading(true);
-    try {
+    if (eventId) {
       await removeAvailabilitySlot(eventId);
-    } catch (error) {
-      console.error('Error removing availability slot:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
-  
+
   return (
-    <div className="flex items-center space-x-4 p-2 bg-white rounded-md border border-gray-200">
-      <div className="flex-1 grid grid-cols-2 gap-4">
-        <div>
-          <div className="flex items-center justify-between">
-            <label className="text-xs mb-1 block">Start Time</label>
-            {isGoogleEvent && (
-              <Badge variant="outline" className="text-xs flex items-center px-1 py-0 h-4">
-                <Globe className="h-3 w-3 mr-1" />
-                Google
-              </Badge>
-            )}
-          </div>
-          <TimeInput 
-            value={start} 
-            onChange={setStart} 
-            disabled={!isEditable || !isEditing || isLoading}
-          />
+    <Card className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium">{dayName}</span>
         </div>
-        <div>
-          <label className="text-xs mb-1 block">End Time</label>
-          <TimeInput 
-            value={end} 
-            onChange={setEnd} 
-            disabled={!isEditable || !isEditing || isLoading}
-          />
-        </div>
-      </div>
-      
-      <div className="flex space-x-2">
-        {isEditable && (
-          <>
-            {isEditing ? (
-              <Button 
-                size="sm" 
-                onClick={handleSave}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Saving...' : 'Save'}
-              </Button>
-            ) : (
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={() => setIsEditing(true)}
-                disabled={isLoading}
-              >
-                Edit
-              </Button>
-            )}
-            
-            {eventId && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleDelete}
-                disabled={isLoading}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </>
+        {isGoogleEvent && (
+          <span className="text-sm text-muted-foreground">Google Calendar</span>
         )}
       </div>
-    </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <label className="text-sm text-muted-foreground">Start Time</label>
+          <Select
+            value={startTime}
+            onValueChange={setStartTime}
+            disabled={isReadOnly}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select start time" />
+            </SelectTrigger>
+            <SelectContent>
+              {timeOptions.map(time => (
+                <SelectItem key={time} value={time}>
+                  {time}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm text-muted-foreground">End Time</label>
+          <Select
+            value={endTime}
+            onValueChange={setEndTime}
+            disabled={isReadOnly}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select end time" />
+            </SelectTrigger>
+            <SelectContent>
+              {timeOptions.map(time => (
+                <SelectItem key={time} value={time}>
+                  {time}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {!isReadOnly && (
+        <div className="flex justify-end space-x-2">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleDelete}
+            disabled={isAdding}
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Remove
+          </Button>
+        </div>
+      )}
+    </Card>
   );
 };
 
