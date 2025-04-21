@@ -1,18 +1,15 @@
-// Fixed TimeCalendarType to always have required timeZone for all use cases
-export type TimeCalendarType = { dateTime: string; timeZone: string } | { date: string; timeZone: string };
-
 import { ICalendarEvent, CalendarEvent, CalendarEventType } from '@/types/calendar';
 
-// Google Calendar API scopes required for our application
+// Update Google Calendar API scopes
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/calendar.events'
 ];
 
-// Google Calendar API configuration
+// Update Google Calendar API configuration
 export const GOOGLE_API_CONFIG = {
-  clientId: '', // Will be set from environment variable
-  apiKey: '', // Will be set from environment variable
+  clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
+  apiKey: import.meta.env.VITE_GOOGLE_API_KEY || '',
   scope: GOOGLE_SCOPES.join(' '),
   discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
 };

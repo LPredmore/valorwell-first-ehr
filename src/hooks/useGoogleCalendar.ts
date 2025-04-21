@@ -40,19 +40,36 @@ export interface UseGoogleCalendarReturn {
   error: Error | null;
 }
 
-export const googleApiCalendar = new ApiCalendar({
-  clientId: GOOGLE_API_CONFIG.clientId,
-  apiKey: GOOGLE_API_CONFIG.apiKey,
-  scope: GOOGLE_API_CONFIG.scope,
-  discoveryDocs: GOOGLE_API_CONFIG.discoveryDocs,
-});
+// Modify the existing export to include proper initialization
+export const initializeGoogleApiClient = () => {
+  try {
+    if (!GOOGLE_API_CONFIG.clientId) {
+      console.error('Google Client ID is missing');
+      return false;
+    }
 
+    const apiCalendar = new ApiCalendar({
+      clientId: GOOGLE_API_CONFIG.clientId,
+      apiKey: GOOGLE_API_CONFIG.apiKey,
+      scope: GOOGLE_API_CONFIG.scope,
+      discoveryDocs: GOOGLE_API_CONFIG.discoveryDocs
+    });
+
+    return apiCalendar;
+  } catch (error) {
+    console.error('Error initializing Google Calendar API:', error);
+    return false;
+  }
+};
+
+// Modify the existing hook to use the new initialization
 export function useGoogleCalendar({
   clinicianId,
   userTimeZone,
   onSyncComplete,
   onSyncError
 }: UseGoogleCalendarProps): UseGoogleCalendarReturn {
+  const [googleApiCalendar, setGoogleApiCalendar] = useState<ApiCalendar | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -62,10 +79,17 @@ export function useGoogleCalendar({
   const { toast } = useToast();
 
   useEffect(() => {
+    const initClient = initializeGoogleApiClient();
+    if (initClient) {
+      setGoogleApiCalendar(initClient);
+    }
+  }, []);
+
+  useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        const isSignedIn = googleApiCalendar.sign;
-        setIsAuthenticated(isSignedIn);
+        const isSignedIn = googleApiCalendar?.sign;
+        setIsAuthenticated(!!isSignedIn);
         
         if (isSignedIn && clinicianId) {
           const { data } = await supabase
@@ -83,7 +107,7 @@ export function useGoogleCalendar({
     };
     
     checkAuthStatus();
-  }, [clinicianId]);
+  }, [clinicianId, googleApiCalendar]);
 
   const signIn = useCallback(async () => {
     if (!clinicianId) {
@@ -95,7 +119,7 @@ export function useGoogleCalendar({
     setError(null);
     
     try {
-      await googleApiCalendar.handleAuthClick();
+      await googleApiCalendar?.handleAuthClick();
       setIsAuthenticated(true);
       
       await supabase
@@ -121,7 +145,7 @@ export function useGoogleCalendar({
     } finally {
       setIsAuthenticating(false);
     }
-  }, [clinicianId, toast]);
+  }, [clinicianId, googleApiCalendar, toast]);
 
   const signOut = useCallback(async () => {
     if (!clinicianId) {
@@ -133,7 +157,7 @@ export function useGoogleCalendar({
     setError(null);
     
     try {
-      await googleApiCalendar.handleSignoutClick();
+      await googleApiCalendar?.handleSignoutClick();
       setIsAuthenticated(false);
       
       await supabase
@@ -159,7 +183,7 @@ export function useGoogleCalendar({
     } finally {
       setIsAuthenticating(false);
     }
-  }, [clinicianId, toast]);
+  }, [clinicianId, googleApiCalendar, toast]);
 
   const fetchGoogleEvents = useCallback(async (
     startDate: Date = new Date(),
@@ -170,14 +194,14 @@ export function useGoogleCalendar({
     }
     
     try {
-      const googleEvents = await googleApiCalendar.listEvents({
+      const googleEvents = await googleApiCalendar?.listEvents({
         timeMin: startDate.toISOString(),
         timeMax: endDate.toISOString(),
         showDeleted: false,
         singleEvents: true,
       });
       
-      return googleEvents.result.items.map(googleEvent => {
+      return googleEvents?.result.items.map(googleEvent => {
         const localEvent = convertFromGoogleEvent(googleEvent, clinicianId, userTimeZone);
         
         return {
@@ -196,13 +220,13 @@ export function useGoogleCalendar({
             recurrenceRule: localEvent.recurrenceRule
           }
         };
-      });
+      }) || [];
     } catch (err) {
       console.error('Error fetching Google Calendar events:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
       return [];
     }
-  }, [isAuthenticated, clinicianId, userTimeZone]);
+  }, [isAuthenticated, clinicianId, googleApiCalendar, userTimeZone]);
 
   const addEvent = useCallback(async (event: ICalendarEvent): Promise<ICalendarEvent | null> => {
     if (!clinicianId) {
@@ -248,12 +272,12 @@ export function useGoogleCalendar({
         userTimeZone
       );
 
-      const googleResponse = await googleApiCalendar.createEvent(googleEvent);
+      const googleResponse = await googleApiCalendar?.createEvent(googleEvent);
 
       await supabase
         .from('calendar_events')
         .update({
-          google_event_id: googleResponse.result.id
+          google_event_id: googleResponse?.result.id
         })
         .eq('id', localEvent.id);
         
@@ -279,7 +303,7 @@ export function useGoogleCalendar({
       
       return null;
     }
-  }, [clinicianId, isAuthenticated, isGoogleLinked, toast, userTimeZone]);
+  }, [clinicianId, isAuthenticated, isGoogleLinked, toast, userTimeZone, googleApiCalendar]);
 
   const updateEvent = useCallback(async (event: ICalendarEvent): Promise<ICalendarEvent | null> => {
     if (!clinicianId) {
@@ -322,7 +346,7 @@ export function useGoogleCalendar({
         id: localEvent.id
       }, userTimeZone);
 
-      await googleApiCalendar.updateEvent(googleEvent, localEvent.google_event_id);
+      await googleApiCalendar?.updateEvent(googleEvent, localEvent.google_event_id);
       
       return {
         id: localEvent.id,
@@ -346,7 +370,7 @@ export function useGoogleCalendar({
       
       return null;
     }
-  }, [clinicianId, isAuthenticated, isGoogleLinked, toast, userTimeZone]);
+  }, [clinicianId, isAuthenticated, isGoogleLinked, toast, userTimeZone, googleApiCalendar]);
 
   const deleteEvent = useCallback(async (eventId: string): Promise<boolean> => {
     if (!clinicianId) {
@@ -374,7 +398,7 @@ export function useGoogleCalendar({
         return true;
       }
       
-      await googleApiCalendar.deleteEvent(event.google_event_id);
+      await googleApiCalendar?.deleteEvent(event.google_event_id);
       
       return true;
     } catch (err) {
@@ -389,7 +413,7 @@ export function useGoogleCalendar({
       
       return false;
     }
-  }, [clinicianId, isAuthenticated, isGoogleLinked, toast]);
+  }, [clinicianId, isAuthenticated, isGoogleLinked, toast, googleApiCalendar]);
 
   const syncCalendar = useCallback(async (): Promise<void> => {
     if (!clinicianId || !isAuthenticated || !isGoogleLinked) {
@@ -404,7 +428,7 @@ export function useGoogleCalendar({
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + 180);
       
-      const googleEvents = await googleApiCalendar.listEvents({
+      const googleEvents = await googleApiCalendar?.listEvents({
         timeMin: startDate.toISOString(),
         timeMax: endDate.toISOString(),
         showDeleted: false,
@@ -421,7 +445,7 @@ export function useGoogleCalendar({
       if (localError) throw localError;
       
       const googleEventsMap = new Map();
-      googleEvents.result.items.forEach(event => {
+      googleEvents?.result.items.forEach(event => {
         googleEventsMap.set(event.id, event);
       });
       
@@ -467,12 +491,12 @@ export function useGoogleCalendar({
           eventType: localEvent.event_type,
         }, userTimeZone);
         
-        const googleResponse = await googleApiCalendar.createEvent(googleEvent);
+        const googleResponse = await googleApiCalendar?.createEvent(googleEvent);
         
         await supabase
           .from('calendar_events')
           .update({
-            google_event_id: googleResponse.result.id
+            google_event_id: googleResponse?.result.id
           })
           .eq('id', localEvent.id);
       }
@@ -512,7 +536,7 @@ export function useGoogleCalendar({
     } finally {
       setIsSyncing(false);
     }
-  }, [clinicianId, isAuthenticated, isGoogleLinked, onSyncComplete, onSyncError, toast, userTimeZone]);
+  }, [clinicianId, isAuthenticated, isGoogleLinked, onSyncComplete, onSyncError, toast, userTimeZone, googleApiCalendar]);
 
   return {
     isGoogleLinked,
