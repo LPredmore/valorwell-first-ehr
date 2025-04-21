@@ -381,47 +381,6 @@ export class CalendarService {
         };
       }
       
-      // Add legacy format for backward compatibility
-      if (event.event_type === 'availability') {
-        calendarEvent.extendedProps!.availabilityBlock = {
-          id: event.id,
-          type: event.recurrence_rules && event.recurrence_rules.length > 0 ? 'weekly' : 'single_day',
-          startTime: format(startTime, 'HH:mm'),
-          endTime: format(endTime, 'HH:mm')
-        };
-        
-        // Add day of week for weekly recurrence
-        if (event.recurrence_rules && event.recurrence_rules.length > 0) {
-          const rrule = event.recurrence_rules[0].rrule;
-          const match = rrule.match(/BYDAY=([A-Z]{2})/);
-          if (match) {
-            const dayCode = match[1];
-            const days: Record<string, string> = {
-              'SU': '0',
-              'MO': '1',
-              'TU': '2',
-              'WE': '3',
-              'TH': '4',
-              'FR': '5',
-              'SA': '6'
-            };
-            calendarEvent.extendedProps!.availabilityBlock.dayOfWeek = days[dayCode] || '0';
-          }
-        } else {
-          // For single day
-          calendarEvent.extendedProps!.availabilityBlock.date = format(startTime, 'yyyy-MM-dd');
-        }
-      } else if (event.event_type === 'time_off') {
-        calendarEvent.extendedProps!.availabilityBlock = {
-          id: event.id,
-          type: 'time_block',
-          date: format(startTime, 'yyyy-MM-dd'),
-          startTime: format(startTime, 'HH:mm'),
-          endTime: format(endTime, 'HH:mm'),
-          reason: event.description
-        };
-      }
-      
       return calendarEvent;
     });
   }
@@ -650,8 +609,6 @@ export class CalendarService {
           console.error(`Error processing single day availability record ${record.id}:`, recordError);
         }
       }
-      
-      console.log("Completed single day availability migration");
     } catch (error) {
       console.error('Error in migrateSingleDayAvailability:', error);
       throw error;
@@ -718,8 +675,8 @@ export class CalendarService {
           
           // Create the calendar event
           const eventData = {
-            title: record.reason || 'Time Off',
-            description: record.reason,
+            title: `Time Off${record.reason ? `: ${record.reason}` : ''}`,
+            description: record.reason || 'Time off block',
             start_time: startDateTime,
             end_time: endDateTime,
             all_day: false,
@@ -742,8 +699,6 @@ export class CalendarService {
           console.error(`Error processing time block record ${record.id}:`, recordError);
         }
       }
-      
-      console.log("Completed time blocks migration");
     } catch (error) {
       console.error('Error in migrateTimeBlocks:', error);
       throw error;

@@ -6,17 +6,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CalendarClock, Plus } from 'lucide-react';
 import { AvailabilityProvider, useAvailability } from './AvailabilityContext';
 import { useToast } from '@/hooks/use-toast';
-import { CalendarService } from '@/services/calendarService';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import WeeklyAvailabilitySlot from './WeeklyAvailabilitySlot';
+import { extractDayCodes, dayCodeToNumber } from '@/utils/rruleUtils';
 
 interface NewAvailabilityPanelProps {
   clinicianId: string | null;
 }
 
 const WeeklyAvailabilityContent = () => {
-  const { events, isLoading } = useAvailability();
+  const { events, isLoading, addAvailabilitySlot } = useAvailability();
   const [weeklySlots, setWeeklySlots] = useState<Record<number, any[]>>({
     0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: []
   });
@@ -33,24 +33,26 @@ const WeeklyAvailabilityContent = () => {
     events.forEach(event => {
       if (event.extendedProps?.eventType === 'availability' && 
           event.extendedProps?.recurrenceRule?.rrule?.includes('FREQ=WEEKLY')) {
-        const dayCode = event.extendedProps.recurrenceRule.rrule.match(/BYDAY=([A-Z]{2})/)?.[1];
-        if (dayCode) {
-          const dayIndex = {'SU': 0, 'MO': 1, 'TU': 2, 'WE': 3, 'TH': 4, 'FR': 5, 'SA': 6}[dayCode];
-          if (dayIndex !== undefined) {
-            const startTime = new Date(event.start).toTimeString().substring(0, 5);
-            const endTime = new Date(event.end).toTimeString().substring(0, 5);
-            
-            weeklySlotsByDay[dayIndex].push({
-              id: event.id,
-              startTime,
-              endTime
-            });
-            
-            // Ensure this day is enabled
-            const newEnabledDays = [...enabledDays];
-            newEnabledDays[dayIndex] = true;
-            setEnabledDays(newEnabledDays);
-          }
+        const dayCodes = extractDayCodes(event.extendedProps.recurrenceRule.rrule);
+        if (dayCodes && dayCodes.length > 0) {
+          dayCodes.forEach(dayCode => {
+            const dayIndex = dayCodeToNumber(dayCode);
+            if (dayIndex !== undefined) {
+              const startTime = new Date(event.start).toTimeString().substring(0, 5);
+              const endTime = new Date(event.end).toTimeString().substring(0, 5);
+              
+              weeklySlotsByDay[dayIndex].push({
+                id: event.id,
+                startTime,
+                endTime
+              });
+              
+              // Ensure this day is enabled
+              const newEnabledDays = [...enabledDays];
+              newEnabledDays[dayIndex] = true;
+              setEnabledDays(newEnabledDays);
+            }
+          });
         }
       }
     });
@@ -62,6 +64,15 @@ const WeeklyAvailabilityContent = () => {
     const newEnabledDays = [...enabledDays];
     newEnabledDays[dayIndex] = enabled;
     setEnabledDays(newEnabledDays);
+  };
+  
+  const handleAddTimeSlot = (dayIndex: number) => {
+    // Default values
+    const startTime = '09:00';
+    const endTime = '17:00';
+    
+    // Create a new weekly slot through the context
+    addAvailabilitySlot(dayIndex, startTime, endTime);
   };
   
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -104,7 +115,7 @@ const WeeklyAvailabilityContent = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {}}
+                onClick={() => handleAddTimeSlot(i)}
                 className="w-full"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -120,56 +131,12 @@ const WeeklyAvailabilityContent = () => {
 
 const NewAvailabilityPanel: React.FC<NewAvailabilityPanelProps> = ({ clinicianId }) => {
   const [activeTab, setActiveTab] = useState<string>('weekly');
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isMigrated, setIsMigrated] = useState(true);
-  
-  useEffect(() => {
-    // Check for migration status - simplified version: just assume we need to run migration
-    setIsMigrated(false);
-  }, [clinicianId]);
-  
-  const handleMigrateData = async () => {
-    if (!clinicianId) return;
-    
-    setIsLoading(true);
-    try {
-      await CalendarService.migrateData();
-      
-      toast({
-        title: "Migration Complete",
-        description: "Your availability data has been successfully migrated to the new calendar system.",
-      });
-      
-      setIsMigrated(true);
-    } catch (error) {
-      console.error("Error migrating data:", error);
-      toast({
-        title: "Migration Error",
-        description: "There was a problem migrating your availability data. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
   
   return (
     <AvailabilityProvider clinicianId={clinicianId}>
       <div className="p-4 bg-white rounded-lg shadow">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Availability</h2>
-          <div className="flex items-center gap-2">
-            {!isMigrated && (
-              <Button 
-                variant="outline"
-                onClick={handleMigrateData}
-                disabled={isLoading}
-              >
-                {isLoading ? "Migrating..." : "Migrate Legacy Data"}
-              </Button>
-            )}
-          </div>
         </div>
 
         <div className="mb-4 flex justify-between items-center">
