@@ -78,20 +78,26 @@ export class CalendarService {
    */
   static async createEvent(event: ICalendarEvent, userTimeZone: string): Promise<ICalendarEvent> {
     try {
-      // Convert times to UTC format for storage
+      console.log('Creating calendar event:', event);
+      
+      // Convert times to UTC format for storage and match DB schema
       const utcEvent = {
         ...event,
         start_time: new Date(event.startTime).toISOString(),
         end_time: new Date(event.endTime).toISOString(),
         clinician_id: event.clinicianId,
-        event_type: event.eventType
+        event_type: event.eventType,
+        all_day: event.allDay // Match DB column name
       };
       
+      // Remove properties not in DB schema
       delete utcEvent.startTime;
       delete utcEvent.endTime;
       delete utcEvent.clinicianId;
       delete utcEvent.eventType;
       delete utcEvent.recurrenceRule;
+      
+      console.log('Formatted DB event:', utcEvent);
       
       // Insert the event
       const { data: createdEvent, error } = await supabase
@@ -100,7 +106,12 @@ export class CalendarService {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error insert:', error);
+        throw error;
+      }
+      
+      console.log('Created event in DB:', createdEvent);
       
       // If there's a recurrence rule, create it
       if (event.recurrenceRule) {

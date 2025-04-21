@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CalendarClock, Plus } from 'lucide-react';
+import { CalendarClock, Plus, Loader2 } from 'lucide-react';
 import { AvailabilityProvider, useAvailability } from './AvailabilityContext';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
@@ -18,12 +18,15 @@ interface NewAvailabilityPanelProps {
 }
 
 const WeeklyAvailabilityContent = () => {
-  const { events, isLoading, addAvailabilitySlot } = useAvailability();
+  const { events, isLoading, addAvailabilitySlot, refreshEvents } = useAvailability();
   const { toast } = useToast();
   const [weeklySlots, setWeeklySlots] = useState<Record<number, any[]>>({
     0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: []
   });
   const [enabledDays, setEnabledDays] = useState<boolean[]>([false, true, true, true, true, true, false]);
+  const [isAddingNew, setIsAddingNew] = useState<Record<number, boolean>>({
+    0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false
+  });
   
   // Process events into weekly slots
   useEffect(() => {
@@ -82,20 +85,33 @@ const WeeklyAvailabilityContent = () => {
   
   const handleAddTimeSlot = async (dayIndex: number) => {
     try {
-      // Default values
+      setIsAddingNew(prev => ({ ...prev, [dayIndex]: true }));
+      
+      // Default values for a new slot
       const startTime = '09:00';
       const endTime = '17:00';
       
       console.log(`Adding new time slot for day ${dayIndex}: ${startTime}-${endTime}`);
       
-      // Create a new weekly slot through the context
-      await addAvailabilitySlot(dayIndex, startTime, endTime);
+      // Create a temporary ID for immediate UI feedback
+      const tempId = `temp-${uuidv4()}`;
       
-      // Success toast
-      toast({
-        title: "Time Slot Added",
-        description: `Added availability for ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayIndex]}`,
-      });
+      // Update UI immediately
+      setWeeklySlots(prev => ({
+        ...prev,
+        [dayIndex]: [...prev[dayIndex], { 
+          id: tempId,
+          startTime, 
+          endTime,
+          isNew: true 
+        }]
+      }));
+      
+      // Add a small delay to prevent UI flickering
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Refresh events after adding
+      await refreshEvents();
     } catch (error) {
       console.error("Error adding time slot:", error);
       toast({
@@ -103,13 +119,20 @@ const WeeklyAvailabilityContent = () => {
         description: error instanceof Error ? error.message : "Failed to add time slot",
         variant: "destructive",
       });
+    } finally {
+      setIsAddingNew(prev => ({ ...prev, [dayIndex]: false }));
     }
   };
   
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   
   if (isLoading) {
-    return <div className="py-4 text-center">Loading availability schedule...</div>;
+    return (
+      <div className="py-8 text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+        <p>Loading availability schedule...</p>
+      </div>
+    );
   }
   
   return (
@@ -138,7 +161,7 @@ const WeeklyAvailabilityContent = () => {
               {weeklySlots[i]?.map((slot) => (
                 <WeeklyAvailabilitySlot
                   key={slot.id}
-                  eventId={slot.id}
+                  eventId={slot.id.startsWith('temp-') ? undefined : slot.id}
                   dayIndex={i}
                   dayName={dayNames[i]}
                   startTime={slot.startTime}
@@ -147,16 +170,36 @@ const WeeklyAvailabilityContent = () => {
                 />
               ))}
               
+              {/* Show new slot being added (when there are no slots) */}
+              {weeklySlots[i]?.length === 0 && (
+                <WeeklyAvailabilitySlot
+                  dayIndex={i}
+                  dayName={dayNames[i]}
+                />
+              )}
+              
               {/* Add new slot button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleAddTimeSlot(i)}
-                className="w-full"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Time Slot
-              </Button>
+              {weeklySlots[i]?.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAddTimeSlot(i)}
+                  disabled={isAddingNew[i]}
+                  className="w-full"
+                >
+                  {isAddingNew[i] ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Time Slot
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           )}
         </div>

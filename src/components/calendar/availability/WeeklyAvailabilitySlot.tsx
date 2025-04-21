@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
-import { Clock, Trash2 } from 'lucide-react';
+import { Clock, Trash2, Loader2 } from 'lucide-react';
 import { useAvailabilityTimeSlot } from '@/hooks/useAvailabilityTimeSlot';
 import { TimeSlotValidation } from '@/utils/timeSlotValidation';
 import { useAvailability } from './AvailabilityContext';
@@ -27,7 +27,7 @@ const WeeklyAvailabilitySlot: React.FC<WeeklyAvailabilitySlotProps> = ({
   isReadOnly = false,
   isGoogleEvent = false
 }) => {
-  const { updateAvailabilitySlot, removeAvailabilitySlot } = useAvailability();
+  const { updateAvailabilitySlot, removeAvailabilitySlot, addAvailabilitySlot } = useAvailability();
   const timeOptions = TimeSlotValidation.getTimeOptions();
 
   const {
@@ -44,8 +44,12 @@ const WeeklyAvailabilitySlot: React.FC<WeeklyAvailabilitySlotProps> = ({
         console.log(`Updating availability slot for day ${dayIndex}, eventId: ${eventId}`);
         await updateAvailabilitySlot(eventId, startTime, endTime);
       } else {
-        console.log(`No eventId provided - this should be handled by parent component`);
+        console.log(`Creating new availability slot for day ${dayIndex}`);
+        await addAvailabilitySlot(dayIndex, startTime, endTime);
       }
+    },
+    onTimeSlotError: (error) => {
+      console.error(`Error with time slot on day ${dayIndex}:`, error);
     }
   });
   
@@ -58,7 +62,11 @@ const WeeklyAvailabilitySlot: React.FC<WeeklyAvailabilitySlotProps> = ({
   const handleDelete = async () => {
     if (eventId) {
       console.log(`Removing availability slot: ${eventId}`);
-      await removeAvailabilitySlot(eventId);
+      try {
+        await removeAvailabilitySlot(eventId);
+      } catch (error) {
+        console.error("Error removing slot:", error);
+      }
     }
   };
 
@@ -83,10 +91,12 @@ const WeeklyAvailabilitySlot: React.FC<WeeklyAvailabilitySlotProps> = ({
               setStartTime(value);
               // Update in real-time if we have an eventId
               if (eventId && !isReadOnly) {
-                updateAvailabilitySlot(eventId, value, endTime);
+                updateAvailabilitySlot(eventId, value, endTime).catch(err => {
+                  console.error("Failed to update start time:", err);
+                });
               }
             }}
-            disabled={isReadOnly}
+            disabled={isReadOnly || isAdding}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select start time" />
@@ -109,10 +119,12 @@ const WeeklyAvailabilitySlot: React.FC<WeeklyAvailabilitySlotProps> = ({
               setEndTime(value);
               // Update in real-time if we have an eventId
               if (eventId && !isReadOnly) {
-                updateAvailabilitySlot(eventId, startTime, value);
+                updateAvailabilitySlot(eventId, startTime, value).catch(err => {
+                  console.error("Failed to update end time:", err);
+                });
               }
             }}
-            disabled={isReadOnly}
+            disabled={isReadOnly || isAdding}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select end time" />
@@ -128,8 +140,24 @@ const WeeklyAvailabilitySlot: React.FC<WeeklyAvailabilitySlotProps> = ({
         </div>
       </div>
 
-      {!isReadOnly && (
-        <div className="flex justify-end space-x-2">
+      <div className="flex justify-end space-x-2">
+        {!eventId && !isReadOnly && (
+          <Button 
+            onClick={handleTimeSlotAdd} 
+            disabled={isAdding}
+          >
+            {isAdding ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Adding...
+              </>
+            ) : (
+              <>Add</>
+            )}
+          </Button>
+        )}
+        
+        {eventId && !isReadOnly && (
           <Button
             variant="destructive"
             size="sm"
@@ -139,8 +167,8 @@ const WeeklyAvailabilitySlot: React.FC<WeeklyAvailabilitySlotProps> = ({
             <Trash2 className="h-4 w-4 mr-1" />
             Remove
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </Card>
   );
 };

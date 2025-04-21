@@ -19,22 +19,54 @@ export const useAvailabilityTimeSlot = ({
   const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
 
-  const validateTimeSlot = () => {
-    // Validate time range
-    if (!TimeSlotValidation.isValidTimeRange(startTime, endTime)) {
-      throw new Error('End time must be after start time');
-    }
+  const validateTimeSlot = (): boolean => {
+    try {
+      // Validate time range
+      if (!TimeSlotValidation.isValidTimeRange(startTime, endTime)) {
+        toast({
+          title: "Invalid Time Range",
+          description: "End time must be after start time",
+          variant: "destructive",
+        });
+        return false;
+      }
 
-    // Validate time format
-    if (!startTime.match(/^\d{2}:\d{2}$/) || !endTime.match(/^\d{2}:\d{2}$/)) {
-      throw new Error('Invalid time format');
+      // Validate time format
+      if (!startTime.match(/^\d{2}:\d{2}$/) || !endTime.match(/^\d{2}:\d{2}$/)) {
+        toast({
+          title: "Invalid Format",
+          description: "Time must be in HH:MM format",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Time slot validation error:", error);
+      toast({
+        title: "Validation Error",
+        description: error instanceof Error ? error.message : "Invalid time format",
+        variant: "destructive",
+      });
+      return false;
     }
   };
 
   const handleTimeSlotAdd = async () => {
+    if (isAdding) {
+      console.log("Already processing a request, please wait");
+      return;
+    }
+    
     try {
       setIsAdding(true);
-      validateTimeSlot();
+      
+      // First validate the input
+      if (!validateTimeSlot()) {
+        setIsAdding(false);
+        return;
+      }
       
       // Format time values for consistent storage
       const formattedStartTime = TimeSlotValidation.formatTimeString(startTime);
@@ -43,7 +75,7 @@ export const useAvailabilityTimeSlot = ({
       console.log(`Time slot validated for day ${dayIndex}: ${formattedStartTime}-${formattedEndTime}`);
       
       // Notify parent of successful validation and time values
-      onTimeSlotAdded?.();
+      await onTimeSlotAdded?.();
       
       toast({
         title: "Time Slot Added",

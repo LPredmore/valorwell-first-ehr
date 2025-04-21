@@ -1,5 +1,4 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
@@ -73,7 +72,7 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
     }
   });
   
-  const addAvailabilitySlot = async (dayIndex: number, startTime: string, endTime: string) => {
+  const addAvailabilitySlot = useCallback(async (dayIndex: number, startTime: string, endTime: string) => {
     if (!clinicianId) {
       console.error("No clinician selected");
       toast({
@@ -125,6 +124,10 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
       
       console.log("Created event:", createdEvent);
       
+      if (!createdEvent) {
+        throw new Error("Failed to create availability event");
+      }
+      
       toast({
         title: "Availability Added",
         description: "Weekly availability slot has been added",
@@ -139,8 +142,9 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
         description: "Failed to add availability slot: " + (error instanceof Error ? error.message : String(error)),
         variant: "destructive",
       });
+      throw error; // Re-throw to be handled by the caller
     }
-  };
+  }, [clinicianId, createEvent, refreshEvents, toast, isGoogleLinked, isGoogleAuthenticated, addGoogleEvent]);
   
   const updateAvailabilitySlot = async (eventId: string, startTime: string, endTime: string) => {
     if (!clinicianId) {
@@ -245,6 +249,13 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
       });
     }
   };
+
+  // Refresh events when the clinician changes
+  useEffect(() => {
+    if (clinicianId) {
+      refreshEvents();
+    }
+  }, [clinicianId, refreshEvents]);
 
   return (
     <AvailabilityContext.Provider
