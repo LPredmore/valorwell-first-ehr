@@ -110,7 +110,7 @@ export function useGoogleCalendar({
     }
   }, [clinicianId, googleApiCalendar]);
 
-  // Also check for the last sync time
+  // Check for last sync time
   useEffect(() => {
     const fetchLastSyncTime = async () => {
       if (!clinicianId || !isGoogleLinked) return;
@@ -120,7 +120,7 @@ export function useGoogleCalendar({
           .from('profiles')
           .select('google_calendar_last_sync')
           .eq('id', clinicianId)
-          .single();
+          .maybeSingle();
           
         if (data?.google_calendar_last_sync) {
           setLastSyncTime(new Date(data.google_calendar_last_sync));
