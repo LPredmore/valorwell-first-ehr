@@ -1,5 +1,12 @@
 import { ICalendarEvent, CalendarEvent, CalendarEventType } from '@/types/calendar';
 
+// Add type definition for TimeCalendarType at the top of the file
+export type TimeCalendarType = {
+  date?: string;
+  dateTime?: string;
+  timeZone?: string;
+};
+
 // Update Google Calendar API scopes
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/calendar',

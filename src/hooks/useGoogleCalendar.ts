@@ -40,7 +40,6 @@ export interface UseGoogleCalendarReturn {
   error: Error | null;
 }
 
-// Modify the existing export to include proper initialization
 export const initializeGoogleApiClient = () => {
   try {
     if (!GOOGLE_API_CONFIG.clientId) {
@@ -62,7 +61,6 @@ export const initializeGoogleApiClient = () => {
   }
 };
 
-// Modify the existing hook to use the new initialization
 export function useGoogleCalendar({
   clinicianId,
   userTimeZone,
@@ -487,7 +485,7 @@ export function useGoogleCalendar({
           description: localEvent.description,
           startTime: localEvent.start_time,
           endTime: localEvent.end_time,
-          allDay: localEvent.all_day,
+          allDay: localEvent.allDay,
           eventType: localEvent.event_type,
         }, userTimeZone);
         
