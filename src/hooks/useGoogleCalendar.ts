@@ -248,14 +248,7 @@ export function useGoogleCalendar({
         userTimeZone
       );
 
-      const googleResponse = await googleApiCalendar.createEvent({
-        start: googleEvent.start,
-        end: googleEvent.end,
-        summary: googleEvent.summary,
-        description: googleEvent.description,
-        recurrence: googleEvent.recurrence,
-        extendedProperties: googleEvent.extendedProperties,
-      });
+      const googleResponse = await googleApiCalendar.createEvent(googleEvent);
 
       await supabase
         .from('calendar_events')
@@ -329,14 +322,7 @@ export function useGoogleCalendar({
         id: localEvent.id
       }, userTimeZone);
 
-      await googleApiCalendar.updateEvent({
-        start: googleEvent.start,
-        end: googleEvent.end,
-        summary: googleEvent.summary,
-        description: googleEvent.description,
-        recurrence: googleEvent.recurrence,
-        extendedProperties: googleEvent.extendedProperties,
-      }, localEvent.google_event_id);
+      await googleApiCalendar.updateEvent(googleEvent, localEvent.google_event_id);
       
       return {
         id: localEvent.id,
@@ -481,14 +467,7 @@ export function useGoogleCalendar({
           eventType: localEvent.event_type,
         }, userTimeZone);
         
-        const googleResponse = await googleApiCalendar.createEvent({
-          start: googleEvent.start,
-          end: googleEvent.end,
-          summary: googleEvent.summary,
-          description: googleEvent.description,
-          recurrence: googleEvent.recurrence,
-          extendedProperties: googleEvent.extendedProperties,
-        });
+        const googleResponse = await googleApiCalendar.createEvent(googleEvent);
         
         await supabase
           .from('calendar_events')
