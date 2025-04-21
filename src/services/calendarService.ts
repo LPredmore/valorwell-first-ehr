@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { 
   ICalendarEvent, 
@@ -31,6 +32,33 @@ export class CalendarService {
         endDate: end?.toISOString()
       });
 
+      // Validate UUID format to avoid database errors
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const isUuid = uuidRegex.test(clinicianId);
+      
+      console.log(`[CalendarService] Clinician ID validation: ${clinicianId} is ${isUuid ? 'valid UUID' : 'not a valid UUID'}`);
+      
+      if (!isUuid) {
+        console.warn(`[CalendarService] Clinician ID is not in UUID format: ${clinicianId}`);
+        
+        // Try to fetch clinician by email if it looks like an email
+        if (clinicianId.includes('@')) {
+          console.log(`[CalendarService] Attempting to resolve clinician ID from email: ${clinicianId}`);
+          const { data: clinician, error: emailLookupError } = await supabase
+            .from('clinicians')
+            .select('id')
+            .eq('clinician_email', clinicianId)
+            .maybeSingle();
+            
+          if (emailLookupError) {
+            console.error("[CalendarService] Error looking up clinician by email:", emailLookupError);
+          } else if (clinician) {
+            console.log(`[CalendarService] Resolved clinician ID from email: ${clinician.id}`);
+            clinicianId = clinician.id;
+          }
+        }
+      }
+
       // Check if clinician exists first
       const { data: clinician, error: clinicianError } = await supabase
         .from('clinicians')
@@ -40,12 +68,73 @@ export class CalendarService {
         
       if (clinicianError) {
         console.error("[CalendarService] Error checking clinician:", clinicianError);
-        throw clinicianError;
+        
+        // Fallback: Try to check if this is a profile ID rather than clinician ID
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .eq('id', clinicianId)
+          .maybeSingle();
+          
+        if (!profileError && profile) {
+          console.log(`[CalendarService] Found profile with ID ${clinicianId}, checking for clinician with email ${profile.email}`);
+          
+          const { data: clinicianByEmail, error: emailError } = await supabase
+            .from('clinicians')
+            .select('id')
+            .eq('clinician_email', profile.email)
+            .maybeSingle();
+            
+          if (!emailError && clinicianByEmail) {
+            console.log(`[CalendarService] Found clinician by email: ${clinicianByEmail.id}`);
+            clinicianId = clinicianByEmail.id;
+          } else {
+            console.error("[CalendarService] No clinician found for profile ID:", clinicianId);
+            return [];
+          }
+        } else {
+          console.error("[CalendarService] Clinician not found with ID:", clinicianId);
+          return [];
+        }
       }
       
-      if (!clinician) {
-        console.error("[CalendarService] Clinician not found:", clinicianId);
-        return [];
+      if (!clinician && clinicianId) {
+        console.error("[CalendarService] Clinician not found with direct lookup:", clinicianId);
+      }
+      
+      // Check if there are any events in the calendar_events table
+      const { count, error: countError } = await supabase
+        .from('calendar_events')
+        .select('*', { count: 'exact', head: true });
+        
+      if (countError) {
+        console.error("[CalendarService] Error checking calendar_events count:", countError);
+      } else {
+        console.log(`[CalendarService] Total calendar_events in database: ${count}`);
+        
+        // If no events exist at all, perhaps the migration hasn't happened
+        if (count === 0) {
+          console.warn("[CalendarService] No calendar events found in database. Migration may not have run successfully.");
+          
+          // Check if old availability data exists to migrate
+          const { count: oldAvailCount, error: oldAvailError } = await supabase
+            .from('availability')
+            .select('*', { count: 'exact', head: true });
+            
+          if (!oldAvailError) {
+            console.log(`[CalendarService] Found ${oldAvailCount} records in old availability table.`);
+            
+            if (oldAvailCount > 0) {
+              console.log("[CalendarService] Attempting to run migration of availability data.");
+              try {
+                await CalendarService.migrateData();
+                console.log("[CalendarService] Migration completed, attempting to fetch events again.");
+              } catch (migrationError) {
+                console.error("[CalendarService] Migration failed:", migrationError);
+              }
+            }
+          }
+        }
       }
       
       // Add date range filters if provided
@@ -110,6 +199,14 @@ export class CalendarService {
         });
         
         console.log('[CalendarService] Added exceptions to events:', events);
+      }
+      
+      // If still no events, check if we should create default availability
+      if (!events || events.length === 0) {
+        console.warn("[CalendarService] No events found for clinician:", clinicianId);
+        
+        // This would be a good place to add default availability if needed
+        // For now, just return empty array
       }
       
       // Convert to CalendarEvent format

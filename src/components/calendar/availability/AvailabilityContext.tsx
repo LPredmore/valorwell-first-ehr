@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
@@ -23,6 +24,10 @@ interface AvailabilityContextType {
   syncWithGoogleCalendar: () => Promise<void>;
   isSyncing: boolean;
   lastSyncTime: Date | null;
+  
+  // Added properties
+  hasNoEvents: boolean;
+  error: Error | null;
 }
 
 const AvailabilityContext = createContext<AvailabilityContextType | undefined>(undefined);
@@ -32,11 +37,13 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
   children 
 }) => {
   const [userTimeZone, setUserTimeZone] = useState(getUserTimeZone());
+  const [hasNoEvents, setHasNoEvents] = useState(false);
   const { toast } = useToast();
   
   const {
     events,
     isLoading,
+    error,
     refetch: refreshEvents,
     createEvent,
     updateEvent,
@@ -46,6 +53,16 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
     userTimeZone,
     showAvailability: true
   });
+  
+  // Set hasNoEvents flag when events are loaded and array is empty
+  useEffect(() => {
+    if (!isLoading && Array.isArray(events) && events.length === 0) {
+      setHasNoEvents(true);
+      console.log('[AvailabilityContext] No events found, setting hasNoEvents flag');
+    } else {
+      setHasNoEvents(false);
+    }
+  }, [events, isLoading]);
   
   // Initialize Google Calendar integration
   const {
@@ -132,6 +149,9 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
         title: "Availability Added",
         description: "Weekly availability slot has been added",
       });
+      
+      // Reset hasNoEvents flag since we just added an event
+      setHasNoEvents(false);
       
       // Refresh events to show the new slot
       await refreshEvents();
@@ -272,7 +292,9 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
         disconnectGoogleCalendar,
         syncWithGoogleCalendar,
         isSyncing,
-        lastSyncTime
+        lastSyncTime,
+        hasNoEvents, // Add this flag
+        error // Add error state
       }}
     >
       {children}
