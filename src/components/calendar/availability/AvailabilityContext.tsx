@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { CalendarService } from '@/services/calendarService';
@@ -84,7 +85,10 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
       }
       
       // Create a date string from the event's start date
-      const dateStr = event.start.toISOString().split('T')[0];
+      // Fix: Use toString() instead of toISOString() for DateInput type
+      const dateStr = typeof event.start === 'string' 
+        ? event.start.split('T')[0] 
+        : event.start.toISOString().split('T')[0];
       
       // Create ISO datetime strings
       const startISO = `${dateStr}T${startTime}:00`;

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { 
   ICalendarEvent, 
@@ -7,8 +6,7 @@ import {
   RecurrenceRule,
   CalendarException 
 } from '@/types/calendar';
-import { toZonedTime, fromZonedTime } from 'date-fns-tz';
-import { parseISO, format } from 'date-fns';
+import { format } from 'date-fns';
 import { dayNumberToCode } from '@/utils/rruleUtils';
 
 /**
@@ -80,11 +78,11 @@ export class CalendarService {
    */
   static async createEvent(event: ICalendarEvent, userTimeZone: string): Promise<ICalendarEvent> {
     try {
-      // Convert times from user timezone to UTC
+      // Convert times to UTC format for storage
       const utcEvent = {
         ...event,
-        start_time: fromZonedTime(parseISO(event.startTime), userTimeZone).toISOString(),
-        end_time: fromZonedTime(parseISO(event.endTime), userTimeZone).toISOString(),
+        start_time: new Date(event.startTime).toISOString(),
+        end_time: new Date(event.endTime).toISOString(),
         clinician_id: event.clinicianId,
         event_type: event.eventType
       };
@@ -128,8 +126,8 @@ export class CalendarService {
         clinicianId: createdEvent.clinician_id,
         title: createdEvent.title,
         description: createdEvent.description,
-        startTime: toZonedTime(createdEvent.start_time, userTimeZone).toISOString(),
-        endTime: toZonedTime(createdEvent.end_time, userTimeZone).toISOString(),
+        startTime: new Date(createdEvent.start_time).toISOString(),
+        endTime: new Date(createdEvent.end_time).toISOString(),
         allDay: createdEvent.all_day,
         eventType: createdEvent.event_type as CalendarEventType,
         recurrenceId: createdEvent.recurrence_id,
@@ -150,11 +148,11 @@ export class CalendarService {
    */
   static async updateEvent(event: ICalendarEvent, userTimeZone: string): Promise<ICalendarEvent> {
     try {
-      // Convert times from user timezone to UTC
+      // Convert times to UTC format for storage
       const utcEvent = {
         ...event,
-        start_time: fromZonedTime(parseISO(event.startTime), userTimeZone).toISOString(),
-        end_time: fromZonedTime(parseISO(event.endTime), userTimeZone).toISOString(),
+        start_time: new Date(event.startTime).toISOString(),
+        end_time: new Date(event.endTime).toISOString(),
         clinician_id: event.clinicianId,
         event_type: event.eventType
       };
@@ -221,8 +219,8 @@ export class CalendarService {
         clinicianId: updatedEvent.clinician_id,
         title: updatedEvent.title,
         description: updatedEvent.description,
-        startTime: toZonedTime(updatedEvent.start_time, userTimeZone).toISOString(),
-        endTime: toZonedTime(updatedEvent.end_time, userTimeZone).toISOString(),
+        startTime: new Date(updatedEvent.start_time).toISOString(),
+        endTime: new Date(updatedEvent.end_time).toISOString(),
         allDay: updatedEvent.all_day,
         eventType: updatedEvent.event_type as CalendarEventType,
         recurrenceId: updatedEvent.recurrence_id,
@@ -289,12 +287,6 @@ export class CalendarService {
 
   /**
    * Add weekly availability for a clinician
-   * @param clinicianId Clinician ID
-   * @param dayIndex Day of week (0-6 for Sunday-Saturday)
-   * @param startTime Start time (HH:MM format)
-   * @param endTime End time (HH:MM format)
-   * @param userTimeZone User's timezone
-   * @returns Created calendar event
    */
   static async addWeeklyAvailability(
     clinicianId: string, 
@@ -341,9 +333,9 @@ export class CalendarService {
    */
   private static convertToCalendarEvents(events: any[], userTimeZone: string): CalendarEvent[] {
     return events.map(event => {
-      // Convert times from UTC to user timezone
-      const startTime = toZonedTime(event.start_time, userTimeZone);
-      const endTime = toZonedTime(event.end_time, userTimeZone);
+      // Convert times to Date objects
+      const startTime = new Date(event.start_time);
+      const endTime = new Date(event.end_time);
       
       // Create the base calendar event
       const calendarEvent: CalendarEvent = {
@@ -582,110 +574,80 @@ export class CalendarService {
       console.log("Starting single day availability migration");
       
       // Check if the single_day_availability table exists
+      const { count, error: checkError } = await supabase
+        .from('information_schema.tables')
+        .select('table_name', { count: 'exact', head: true })
+        .eq('table_schema', 'public')
+        .eq('table_name', 'single_day_availability');
+      
+      if (checkError) {
+        console.error('Error checking for single_day_availability table:', checkError);
+        return;
+      }
+      
+      if (count === 0) {
+        console.log('single_day_availability table does not exist, skipping migration');
+        return;
+      }
+      
+      // Get single day availability records
       const { data: singleDayAvail, error } = await supabase
         .from('single_day_availability')
         .select('*');
       
-      if (!error && singleDayAvail && singleDayAvail.length > 0) {
-        console.log(`Found ${singleDayAvail.length} single day availability records to migrate`);
-        
-        // Process each record
-        for (const record of singleDayAvail) {
-          try {
-            // Format date and times
-            const dateStr = record.availability_date;
-            const startTime = record.start_time;
-            const endTime = record.end_time;
-            
-            if (!dateStr || !startTime || !endTime) {
-              console.warn(`Missing date or time data for record: ${record.id}, skipping`);
-              continue;
-            }
-            
-            // Create ISO datetime strings
-            const startDateTime = `${dateStr}T${startTime}`;
-            const endDateTime = `${dateStr}T${endTime}`;
-            
-            // Create the calendar event
-            const eventData = {
-              title: `Available - ${dateStr}`,
-              description: `Single day availability`,
-              start_time: startDateTime,
-              end_time: endDateTime,
-              all_day: false,
-              event_type: 'availability',
-              clinician_id: record.clinician_id
-            };
-            
-            // Insert the event
-            const { error: eventError } = await supabase
-              .from('calendar_events')
-              .insert(eventData);
-            
-            if (eventError) {
-              console.error(`Error creating calendar event from single day record ${record.id}:`, eventError);
-              continue;
-            }
-            
-            console.log(`Migrated single day availability for ${dateStr}`);
-          } catch (recordError) {
-            console.error(`Error processing single day record ${record.id}:`, recordError);
-          }
-        }
-      } else {
-        console.log("No single day availability records found or table doesn't exist");
+      if (error) {
+        console.error('Error fetching single day availability:', error);
+        return;
       }
       
-      // Check alternate table name
-      const { data: altData, error: altError } = await supabase
-        .from('availability_single_date')
-        .select('*');
-        
-      if (!altError && altData && altData.length > 0) {
-        console.log(`Found ${altData.length} alternate single day records to migrate`);
-        
-        // Process each record
-        for (const record of altData) {
-          try {
-            // Format date and times
-            const dateStr = record.date;
-            const startTime = record.start_time;
-            const endTime = record.end_time;
-            
-            if (!dateStr || !startTime || !endTime) {
-              console.warn(`Missing date or time data for alternate record: ${record.id}, skipping`);
-              continue;
-            }
-            
-            // Create ISO datetime strings
-            const startDateTime = `${dateStr}T${startTime}`;
-            const endDateTime = `${dateStr}T${endTime}`;
-            
-            // Create the calendar event
-            const eventData = {
-              title: `Available - ${dateStr}`,
-              description: `Single day availability`,
-              start_time: startDateTime,
-              end_time: endDateTime,
-              all_day: false,
-              event_type: 'availability',
-              clinician_id: record.clinician_id
-            };
-            
-            // Insert the event
-            const { error: eventError } = await supabase
-              .from('calendar_events')
-              .insert(eventData);
-            
-            if (eventError) {
-              console.error(`Error creating calendar event from alt record ${record.id}:`, eventError);
-              continue;
-            }
-            
-            console.log(`Migrated alt single day availability for ${dateStr}`);
-          } catch (recordError) {
-            console.error(`Error processing alt single day record ${record.id}:`, recordError);
+      if (!singleDayAvail || singleDayAvail.length === 0) {
+        console.log("No single day availability records to migrate");
+        return;
+      }
+      
+      console.log(`Found ${singleDayAvail.length} single day availability records to migrate`);
+      
+      // Process each record
+      for (const record of singleDayAvail) {
+        try {
+          // Format date and times
+          const dateStr = record.availability_date || record.date;
+          const startTime = record.start_time;
+          const endTime = record.end_time;
+          
+          if (!dateStr || !startTime || !endTime) {
+            console.warn(`Missing date or time data for record: ${record.id}, skipping`);
+            continue;
           }
+          
+          // Create ISO datetime strings
+          const startDateTime = `${dateStr}T${startTime}`;
+          const endDateTime = `${dateStr}T${endTime}`;
+          
+          // Create the calendar event
+          const eventData = {
+            title: `Available - ${dateStr}`,
+            description: `Single day availability`,
+            start_time: startDateTime,
+            end_time: endDateTime,
+            all_day: false,
+            event_type: 'availability',
+            clinician_id: record.clinician_id
+          };
+          
+          // Insert the event
+          const { error: eventError } = await supabase
+            .from('calendar_events')
+            .insert(eventData);
+          
+          if (eventError) {
+            console.error(`Error creating calendar event from single day record ${record.id}:`, eventError);
+            continue;
+          }
+          
+          console.log(`Migrated single day availability for ${dateStr}`);
+        } catch (recordError) {
+          console.error(`Error processing single day availability record ${record.id}:`, recordError);
         }
       }
       
@@ -697,39 +659,56 @@ export class CalendarService {
   }
   
   /**
-   * Migrate time blocks to calendar_events table as time_off events
+   * Migrate time blocks to calendar_events table
    */
   private static async migrateTimeBlocks(): Promise<void> {
     try {
       console.log("Starting time blocks migration");
       
-      // Get all time blocks
+      // Check if the time_blocks table exists
+      const { count, error: checkError } = await supabase
+        .from('information_schema.tables')
+        .select('table_name', { count: 'exact', head: true })
+        .eq('table_schema', 'public')
+        .eq('table_name', 'time_blocks');
+      
+      if (checkError) {
+        console.error('Error checking for time_blocks table:', checkError);
+        return;
+      }
+      
+      if (count === 0) {
+        console.log('time_blocks table does not exist, skipping migration');
+        return;
+      }
+      
+      // Get time block records
       const { data: timeBlocks, error } = await supabase
         .from('time_blocks')
         .select('*');
       
       if (error) {
-        console.log("Error fetching time blocks or table doesn't exist:", error);
+        console.error('Error fetching time blocks:', error);
         return;
       }
       
       if (!timeBlocks || timeBlocks.length === 0) {
-        console.log("No time blocks to migrate");
+        console.log("No time block records to migrate");
         return;
       }
       
-      console.log(`Found ${timeBlocks.length} time blocks to migrate`);
+      console.log(`Found ${timeBlocks.length} time block records to migrate`);
       
-      // Process each time block
-      for (const block of timeBlocks) {
+      // Process each record
+      for (const record of timeBlocks) {
         try {
           // Format date and times
-          const dateStr = block.block_date;
-          const startTime = block.start_time;
-          const endTime = block.end_time;
+          const dateStr = record.block_date;
+          const startTime = record.start_time;
+          const endTime = record.end_time;
           
           if (!dateStr || !startTime || !endTime) {
-            console.warn(`Missing date or time data for time block: ${block.id}, skipping`);
+            console.warn(`Missing date or time data for record: ${record.id}, skipping`);
             continue;
           }
           
@@ -739,13 +718,13 @@ export class CalendarService {
           
           // Create the calendar event
           const eventData = {
-            title: block.reason || `Time Off - ${dateStr}`,
-            description: block.reason || 'Time off',
+            title: record.reason || 'Time Off',
+            description: record.reason,
             start_time: startDateTime,
             end_time: endDateTime,
             all_day: false,
             event_type: 'time_off',
-            clinician_id: block.clinician_id
+            clinician_id: record.clinician_id
           };
           
           // Insert the event
@@ -754,13 +733,13 @@ export class CalendarService {
             .insert(eventData);
           
           if (eventError) {
-            console.error(`Error creating calendar event from time block ${block.id}:`, eventError);
+            console.error(`Error creating calendar event from time block record ${record.id}:`, eventError);
             continue;
           }
           
           console.log(`Migrated time block for ${dateStr}`);
-        } catch (blockError) {
-          console.error(`Error processing time block ${block.id}:`, blockError);
+        } catch (recordError) {
+          console.error(`Error processing time block record ${record.id}:`, recordError);
         }
       }
       
