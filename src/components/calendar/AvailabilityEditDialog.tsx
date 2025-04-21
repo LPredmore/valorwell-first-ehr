@@ -28,7 +28,8 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
     timeOptions,
     handleSaveClick,
     handleDeleteClick,
-    confirmDelete
+    confirmDelete,
+    error
   } = useAvailabilityEdit(
     isOpen,
     onClose,
@@ -77,6 +78,31 @@ const AvailabilityEditDialog: React.FC<AvailabilityEditDialogProps> = ({
           <div className="py-4">
             <p className="text-amber-600">
               Some required information is missing. Please close this dialog and try again.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Show any error messages
+  if (error) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => {
+        if (!open) onClose();
+      }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Error</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-red-600">
+              {error.message || "An error occurred while managing availability."}
             </p>
           </div>
           <DialogFooter>

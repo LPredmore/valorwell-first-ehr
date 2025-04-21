@@ -47,9 +47,11 @@ export interface CalendarEvent extends EventInput {
     isAvailability?: boolean;
     eventType?: CalendarEventType;
     recurrenceRule?: RecurrenceRule;
+    exceptions?: CalendarException[];
     isException?: boolean;
     googleEventId?: string; // ID of the corresponding Google Calendar event
     isGoogleEvent?: boolean; // Whether this event is from Google Calendar
+    description?: string;
     availabilityBlock?: {
       id: string;
       type: 'weekly' | 'single_day' | 'time_block';

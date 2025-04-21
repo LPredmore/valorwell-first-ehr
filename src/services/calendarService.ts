@@ -8,6 +8,7 @@ import {
 } from '@/types/calendar';
 import { format } from 'date-fns';
 import { dayNumberToCode } from '@/utils/rruleUtils';
+import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
 /**
  * Service for handling calendar operations with iCalendar format
@@ -29,16 +30,28 @@ export class CalendarService {
         return [];
       }
 
+      userTimeZone = ensureIANATimeZone(userTimeZone);
       console.log(`Fetching events for clinician: ${clinicianId}, timezone: ${userTimeZone}`);
       
-      // Fetch base events
-      const { data: events, error } = await supabase
+      // Add date range filters if provided
+      let query = supabase
         .from('calendar_events')
         .select(`
           *,
           recurrence_rules (*)
         `)
         .eq('clinician_id', clinicianId);
+        
+      if (start) {
+        query = query.gte('start_time', start.toISOString());
+      }
+      
+      if (end) {
+        query = query.lte('start_time', end.toISOString());
+      }
+      
+      // Execute the query
+      const { data: events, error } = await query;
       
       if (error) {
         console.error("Error fetching calendar events:", error);
@@ -58,7 +71,10 @@ export class CalendarService {
           .select('*')
           .in('recurrence_event_id', recurrenceIds);
           
-        if (exceptionsError) throw exceptionsError;
+        if (exceptionsError) {
+          console.error("Error fetching calendar exceptions:", exceptionsError);
+          throw exceptionsError;
+        }
         
         // Map exceptions to their events
         const exceptionsMap = new Map();
@@ -91,6 +107,7 @@ export class CalendarService {
   static async createEvent(event: ICalendarEvent, userTimeZone: string): Promise<ICalendarEvent> {
     try {
       console.log('Creating calendar event:', JSON.stringify(event, null, 2));
+      userTimeZone = ensureIANATimeZone(userTimeZone);
       
       // Convert times to UTC format for storage and match DB schema
       const utcEvent = {
@@ -132,7 +149,10 @@ export class CalendarService {
           .select()
           .single();
           
-        if (ruleError) throw ruleError;
+        if (ruleError) {
+          console.error('Error creating recurrence rule:', ruleError);
+          throw ruleError;
+        }
         
         createdEvent.recurrence_rule = createdRule;
       }
@@ -165,30 +185,31 @@ export class CalendarService {
    */
   static async updateEvent(event: ICalendarEvent, userTimeZone: string): Promise<ICalendarEvent> {
     try {
+      userTimeZone = ensureIANATimeZone(userTimeZone);
+      console.log('Updating calendar event:', JSON.stringify(event, null, 2));
+      
       // Convert times to UTC format for storage
       const utcEvent = {
-        ...event,
+        title: event.title,
+        description: event.description,
         start_time: new Date(event.startTime).toISOString(),
         end_time: new Date(event.endTime).toISOString(),
-        clinician_id: event.clinicianId,
-        event_type: event.eventType
+        event_type: event.eventType,
+        all_day: event.allDay
       };
-      
-      delete utcEvent.startTime;
-      delete utcEvent.endTime;
-      delete utcEvent.clinicianId;
-      delete utcEvent.eventType;
-      delete utcEvent.recurrenceRule;
       
       // Update the event
       const { data: updatedEvent, error } = await supabase
         .from('calendar_events')
         .update(utcEvent)
         .eq('id', event.id)
-        .select()
+        .select(`*, recurrence_rules(*)`)
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating event:', error);
+        throw error;
+      }
       
       // If there's a recurrence rule, update or create it
       if (event.recurrenceRule) {
@@ -213,9 +234,12 @@ export class CalendarService {
             .select()
             .single();
             
-          if (ruleError) throw ruleError;
+          if (ruleError) {
+            console.error('Error updating recurrence rule:', ruleError);
+            throw ruleError;
+          }
           
-          updatedEvent.recurrence_rule = updatedRule;
+          updatedEvent.recurrence_rules = [updatedRule];
         } else {
           // Create new rule
           const { data: createdRule, error: ruleError } = await supabase
@@ -224,9 +248,12 @@ export class CalendarService {
             .select()
             .single();
             
-          if (ruleError) throw ruleError;
+          if (ruleError) {
+            console.error('Error creating recurrence rule:', ruleError);
+            throw ruleError;
+          }
           
-          updatedEvent.recurrence_rule = createdRule;
+          updatedEvent.recurrence_rules = [createdRule];
         }
       }
       
@@ -241,10 +268,10 @@ export class CalendarService {
         allDay: updatedEvent.all_day,
         eventType: updatedEvent.event_type as CalendarEventType,
         recurrenceId: updatedEvent.recurrence_id,
-        recurrenceRule: updatedEvent.recurrence_rule ? {
-          id: updatedEvent.recurrence_rule.id,
-          eventId: updatedEvent.recurrence_rule.event_id,
-          rrule: updatedEvent.recurrence_rule.rrule
+        recurrenceRule: updatedEvent.recurrence_rules && updatedEvent.recurrence_rules.length > 0 ? {
+          id: updatedEvent.recurrence_rules[0].id,
+          eventId: updatedEvent.recurrence_rules[0].event_id,
+          rrule: updatedEvent.recurrence_rules[0].rrule
         } : undefined
       };
     } catch (error) {
@@ -258,13 +285,20 @@ export class CalendarService {
    */
   static async deleteEvent(eventId: string): Promise<void> {
     try {
+      console.log(`Deleting calendar event with ID: ${eventId}`);
+      
       // Delete the event (cascade will handle recurrence rules)
       const { error } = await supabase
         .from('calendar_events')
         .delete()
         .eq('id', eventId);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error deleting calendar event:', error);
+        throw error;
+      }
+      
+      console.log(`Successfully deleted event: ${eventId}`);
     } catch (error) {
       console.error('Error deleting calendar event:', error);
       throw error;
@@ -287,7 +321,10 @@ export class CalendarService {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error adding calendar exception:', error);
+        throw error;
+      }
       
       return {
         id: data.id,
@@ -349,6 +386,7 @@ export class CalendarService {
    * Convert database events to FullCalendar events
    */
   private static convertToCalendarEvents(events: any[], userTimeZone: string): CalendarEvent[] {
+    userTimeZone = ensureIANATimeZone(userTimeZone);
     return events.map(event => {
       // Convert times to Date objects
       const startTime = new Date(event.start_time);
@@ -363,7 +401,8 @@ export class CalendarService {
         allDay: event.all_day,
         extendedProps: {
           eventType: event.event_type,
-          isAvailability: event.event_type === 'availability'
+          isAvailability: event.event_type === 'availability',
+          description: event.description
         }
       };
       
@@ -396,6 +435,17 @@ export class CalendarService {
           eventId: rule.event_id,
           rrule: rule.rrule
         };
+      }
+      
+      // Add exceptions if available
+      if (event.exceptions && event.exceptions.length > 0) {
+        calendarEvent.extendedProps!.exceptions = event.exceptions.map((exception: any) => ({
+          id: exception.id,
+          recurrenceEventId: exception.recurrence_event_id,
+          exceptionDate: exception.exception_date,
+          isCancelled: exception.is_cancelled,
+          replacementEventId: exception.replacement_event_id
+        }));
       }
       
       return calendarEvent;

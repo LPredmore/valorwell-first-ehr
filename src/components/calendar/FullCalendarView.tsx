@@ -33,7 +33,8 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   const {
     events: fetchedEvents,
     isLoading,
-    error
+    error,
+    refetch
   } = useCalendarEvents({
     clinicianId,
     userTimeZone,
@@ -68,7 +69,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
         <p className="text-red-500">Error loading calendar events: {errorMessage}</p>
         <button 
           className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600" 
-          onClick={() => window.location.reload()}
+          onClick={() => refetch()}
         >
           Retry
         </button>
