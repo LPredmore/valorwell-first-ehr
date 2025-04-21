@@ -20,8 +20,14 @@ export const useAvailabilityTimeSlot = ({
   const { toast } = useToast();
 
   const validateTimeSlot = () => {
+    // Validate time range
     if (!TimeSlotValidation.isValidTimeRange(startTime, endTime)) {
       throw new Error('End time must be after start time');
+    }
+
+    // Validate time format
+    if (!startTime.match(/^\d{2}:\d{2}$/) || !endTime.match(/^\d{2}:\d{2}$/)) {
+      throw new Error('Invalid time format');
     }
   };
 
@@ -34,6 +40,7 @@ export const useAvailabilityTimeSlot = ({
       const formattedStartTime = TimeSlotValidation.formatTimeString(startTime);
       const formattedEndTime = TimeSlotValidation.formatTimeString(endTime);
       
+      // Notify parent of successful validation and time values
       onTimeSlotAdded?.();
       
       toast({
@@ -41,7 +48,7 @@ export const useAvailabilityTimeSlot = ({
         description: `Added availability for ${TimeSlotValidation.getDayName(dayIndex)}`,
       });
 
-      // Reset form
+      // Reset form to default values
       setStartTime('09:00');
       setEndTime('17:00');
     } catch (error) {

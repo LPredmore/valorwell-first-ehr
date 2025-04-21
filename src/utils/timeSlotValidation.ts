@@ -1,12 +1,18 @@
 
 export class TimeSlotValidation {
   static isValidTimeRange(startTime: string, endTime: string): boolean {
-    const start = new Date(`1970-01-01T${startTime}`);
-    const end = new Date(`1970-01-01T${endTime}`);
-    return start < end;
+    try {
+      const start = new Date(`1970-01-01T${startTime}`);
+      const end = new Date(`1970-01-01T${endTime}`);
+      return start < end;
+    } catch (error) {
+      console.error('Error validating time range:', error);
+      return false;
+    }
   }
 
   static formatTimeString(time: string): string {
+    if (!time) return '00:00';
     return time.length === 5 ? time : `${time}:00`;
   }
 
@@ -25,5 +31,10 @@ export class TimeSlotValidation {
       }
     }
     return options;
+  }
+
+  static parseTimeString(time: string): { hours: number; minutes: number } {
+    const [hours, minutes] = time.split(':').map(Number);
+    return { hours: hours || 0, minutes: minutes || 0 };
   }
 }
