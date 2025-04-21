@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +9,6 @@ import {
 } from '@/utils/googleCalendarUtils';
 import ApiCalendar from 'react-google-calendar-api';
 
-// Define interface for Google Calendar hook
 export interface UseGoogleCalendarProps {
   clinicianId: string | null;
   userTimeZone: string;
@@ -19,34 +17,28 @@ export interface UseGoogleCalendarProps {
 }
 
 export interface UseGoogleCalendarReturn {
-  // Authentication state and functions
   isGoogleLinked: boolean;
   isAuthenticated: boolean;
   isAuthenticating: boolean;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
   
-  // Sync state and functions
   isSyncing: boolean;
   lastSyncTime: Date | null;
   syncCalendar: () => Promise<void>;
   
-  // CRUD operations that also update Google Calendar
   addEvent: (event: ICalendarEvent) => Promise<ICalendarEvent | null>;
   updateEvent: (event: ICalendarEvent) => Promise<ICalendarEvent | null>;
   deleteEvent: (eventId: string) => Promise<boolean>;
   
-  // Google Calendar specific functions
   fetchGoogleEvents: (
     startDate?: Date, 
     endDate?: Date
   ) => Promise<CalendarEvent[]>;
   
-  // Error state
   error: Error | null;
 }
 
-// Create a singleton instance of the ApiCalendar
 export const googleApiCalendar = new ApiCalendar({
   clientId: GOOGLE_API_CONFIG.clientId,
   apiKey: GOOGLE_API_CONFIG.apiKey,
@@ -54,7 +46,6 @@ export const googleApiCalendar = new ApiCalendar({
   discoveryDocs: GOOGLE_API_CONFIG.discoveryDocs,
 });
 
-// The main Google Calendar hook
 export function useGoogleCalendar({
   clinicianId,
   userTimeZone,
@@ -69,7 +60,6 @@ export function useGoogleCalendar({
   const [isGoogleLinked, setIsGoogleLinked] = useState<boolean>(false);
   const { toast } = useToast();
 
-  // Check initial authentication status
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
@@ -77,7 +67,6 @@ export function useGoogleCalendar({
         setIsAuthenticated(isSignedIn);
         
         if (isSignedIn && clinicianId) {
-          // Check if we have stored tokens/linked status in the database
           const { data } = await supabase
             .from('profiles')
             .select('google_calendar_linked')
@@ -95,7 +84,6 @@ export function useGoogleCalendar({
     checkAuthStatus();
   }, [clinicianId]);
 
-  // Sign in to Google Calendar
   const signIn = useCallback(async () => {
     if (!clinicianId) {
       setError(new Error('No clinician ID provided'));
@@ -109,7 +97,6 @@ export function useGoogleCalendar({
       await googleApiCalendar.handleAuthClick();
       setIsAuthenticated(true);
       
-      // Update the database to store the linked status
       await supabase
         .from('profiles')
         .update({ google_calendar_linked: true })
@@ -135,7 +122,6 @@ export function useGoogleCalendar({
     }
   }, [clinicianId, toast]);
 
-  // Sign out of Google Calendar
   const signOut = useCallback(async () => {
     if (!clinicianId) {
       setError(new Error('No clinician ID provided'));
@@ -149,7 +135,6 @@ export function useGoogleCalendar({
       await googleApiCalendar.handleSignoutClick();
       setIsAuthenticated(false);
       
-      // Update the database to remove the linked status
       await supabase
         .from('profiles')
         .update({ google_calendar_linked: false })
@@ -175,10 +160,9 @@ export function useGoogleCalendar({
     }
   }, [clinicianId, toast]);
 
-  // Fetch events from Google Calendar
   const fetchGoogleEvents = useCallback(async (
     startDate: Date = new Date(),
-    endDate: Date = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Default: 30 days from now
+    endDate: Date = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
   ): Promise<CalendarEvent[]> => {
     if (!isAuthenticated || !clinicianId) {
       return [];
@@ -192,18 +176,16 @@ export function useGoogleCalendar({
         singleEvents: true,
       });
       
-      // Convert Google events to our format
       return googleEvents.result.items.map(googleEvent => {
         const localEvent = convertFromGoogleEvent(googleEvent, clinicianId, userTimeZone);
         
-        // Format it as a CalendarEvent for FullCalendar
         return {
           id: localEvent.id,
           title: localEvent.title,
           start: localEvent.startTime,
           end: localEvent.endTime,
           allDay: localEvent.allDay,
-          backgroundColor: '#039be5', // Google blue color
+          backgroundColor: '#039be5',
           borderColor: '#039be5',
           textColor: '#ffffff',
           extendedProps: {
@@ -221,7 +203,6 @@ export function useGoogleCalendar({
     }
   }, [isAuthenticated, clinicianId, userTimeZone]);
 
-  // Add an event to both local storage and Google Calendar
   const addEvent = useCallback(async (event: ICalendarEvent): Promise<ICalendarEvent | null> => {
     if (!clinicianId) {
       setError(new Error('No clinician ID provided'));
@@ -229,7 +210,6 @@ export function useGoogleCalendar({
     }
     
     try {
-      // First add to local database
       const { data: localEvent, error: localError } = await supabase
         .from('calendar_events')
         .insert({
@@ -246,7 +226,6 @@ export function useGoogleCalendar({
         
       if (localError) throw localError;
       
-      // If we're not authenticated with Google, just return the local event
       if (!isAuthenticated || !isGoogleLinked) {
         return {
           id: localEvent.id,
@@ -260,7 +239,6 @@ export function useGoogleCalendar({
         };
       }
       
-      // Add to Google Calendar
       const googleEvent = convertToGoogleEvent(
         {
           ...event,
@@ -268,11 +246,16 @@ export function useGoogleCalendar({
         },
         userTimeZone
       );
-      
-      // Add to Google Calendar
-      const googleResponse = await googleApiCalendar.createEvent(googleEvent);
-      
-      // Update local event with Google Calendar ID
+
+      const googleResponse = await googleApiCalendar.createEvent({
+        start: googleEvent.start,
+        end: googleEvent.end,
+        summary: googleEvent.summary,
+        description: googleEvent.description,
+        recurrence: googleEvent.recurrence,
+        extendedProperties: googleEvent.extendedProperties,
+      });
+
       await supabase
         .from('calendar_events')
         .update({
@@ -280,7 +263,6 @@ export function useGoogleCalendar({
         })
         .eq('id', localEvent.id);
         
-      // Return the newly created event
       return {
         id: localEvent.id,
         clinicianId: localEvent.clinician_id,
@@ -305,7 +287,6 @@ export function useGoogleCalendar({
     }
   }, [clinicianId, isAuthenticated, isGoogleLinked, toast, userTimeZone]);
 
-  // Update an event in both local storage and Google Calendar
   const updateEvent = useCallback(async (event: ICalendarEvent): Promise<ICalendarEvent | null> => {
     if (!clinicianId) {
       setError(new Error('No clinician ID provided'));
@@ -313,7 +294,6 @@ export function useGoogleCalendar({
     }
     
     try {
-      // First update local database
       const { data: localEvent, error: localError } = await supabase
         .from('calendar_events')
         .update({
@@ -330,7 +310,6 @@ export function useGoogleCalendar({
         
       if (localError) throw localError;
       
-      // If we're not authenticated with Google or the event doesn't have a Google ID, just return
       if (!isAuthenticated || !isGoogleLinked || !localEvent.google_event_id) {
         return {
           id: localEvent.id,
@@ -344,18 +323,20 @@ export function useGoogleCalendar({
         };
       }
       
-      // Update in Google Calendar
       const googleEvent = convertToGoogleEvent({
         ...event,
         id: localEvent.id
       }, userTimeZone);
+
+      await googleApiCalendar.updateEvent({
+        start: googleEvent.start,
+        end: googleEvent.end,
+        summary: googleEvent.summary,
+        description: googleEvent.description,
+        recurrence: googleEvent.recurrence,
+        extendedProperties: googleEvent.extendedProperties,
+      }, localEvent.google_event_id);
       
-      await googleApiCalendar.updateEvent(
-        googleEvent,
-        localEvent.google_event_id
-      );
-      
-      // Return the updated event
       return {
         id: localEvent.id,
         clinicianId: localEvent.clinician_id,
@@ -380,7 +361,6 @@ export function useGoogleCalendar({
     }
   }, [clinicianId, isAuthenticated, isGoogleLinked, toast, userTimeZone]);
 
-  // Delete an event from both local storage and Google Calendar
   const deleteEvent = useCallback(async (eventId: string): Promise<boolean> => {
     if (!clinicianId) {
       setError(new Error('No clinician ID provided'));
@@ -388,7 +368,6 @@ export function useGoogleCalendar({
     }
     
     try {
-      // First get the event to check if it has a Google Calendar ID
       const { data: event, error: fetchError } = await supabase
         .from('calendar_events')
         .select('google_event_id')
@@ -397,7 +376,6 @@ export function useGoogleCalendar({
         
       if (fetchError) throw fetchError;
       
-      // Delete from local database
       const { error: deleteError } = await supabase
         .from('calendar_events')
         .delete()
@@ -405,12 +383,10 @@ export function useGoogleCalendar({
         
       if (deleteError) throw deleteError;
       
-      // If we're not authenticated with Google or the event doesn't have a Google ID, just return
       if (!isAuthenticated || !isGoogleLinked || !event?.google_event_id) {
         return true;
       }
       
-      // Delete from Google Calendar
       await googleApiCalendar.deleteEvent(event.google_event_id);
       
       return true;
@@ -428,7 +404,6 @@ export function useGoogleCalendar({
     }
   }, [clinicianId, isAuthenticated, isGoogleLinked, toast]);
 
-  // Sync calendar data between local database and Google Calendar
   const syncCalendar = useCallback(async (): Promise<void> => {
     if (!clinicianId || !isAuthenticated || !isGoogleLinked) {
       return;
@@ -438,10 +413,9 @@ export function useGoogleCalendar({
     setError(null);
     
     try {
-      // 1. Fetch events from Google Calendar
       const startDate = new Date();
       const endDate = new Date();
-      endDate.setDate(endDate.getDate() + 180); // Look 6 months ahead
+      endDate.setDate(endDate.getDate() + 180);
       
       const googleEvents = await googleApiCalendar.listEvents({
         timeMin: startDate.toISOString(),
@@ -450,7 +424,6 @@ export function useGoogleCalendar({
         singleEvents: true,
       });
       
-      // 2. Fetch events from local database
       const { data: localEvents, error: localError } = await supabase
         .from('calendar_events')
         .select('*, google_event_id')
@@ -460,13 +433,11 @@ export function useGoogleCalendar({
         
       if (localError) throw localError;
       
-      // 3. Map Google events by ID for quick lookup
       const googleEventsMap = new Map();
       googleEvents.result.items.forEach(event => {
         googleEventsMap.set(event.id, event);
       });
       
-      // 4. Map local events by Google ID for quick lookup
       const localEventsWithGoogleId = new Map();
       const localEventsWithoutGoogleId = [];
       
@@ -478,13 +449,10 @@ export function useGoogleCalendar({
         }
       });
       
-      // 5. Process events that exist in Google but not locally
       for (const [googleId, googleEvent] of googleEventsMap) {
         if (!localEventsWithGoogleId.has(googleId)) {
-          // Convert Google event to our format
           const localEvent = convertFromGoogleEvent(googleEvent, clinicianId, userTimeZone);
           
-          // Add to local database
           await supabase
             .from('calendar_events')
             .insert({
@@ -500,9 +468,7 @@ export function useGoogleCalendar({
         }
       }
       
-      // 6. Process local events that need to be added to Google
       for (const localEvent of localEventsWithoutGoogleId) {
-        // Add to Google Calendar
         const googleEvent = convertToGoogleEvent({
           id: localEvent.id,
           clinicianId: localEvent.clinician_id,
@@ -514,9 +480,15 @@ export function useGoogleCalendar({
           eventType: localEvent.event_type,
         }, userTimeZone);
         
-        const googleResponse = await googleApiCalendar.createEvent(googleEvent);
+        const googleResponse = await googleApiCalendar.createEvent({
+          start: googleEvent.start,
+          end: googleEvent.end,
+          summary: googleEvent.summary,
+          description: googleEvent.description,
+          recurrence: googleEvent.recurrence,
+          extendedProperties: googleEvent.extendedProperties,
+        });
         
-        // Update local event with Google Calendar ID
         await supabase
           .from('calendar_events')
           .update({
@@ -525,11 +497,9 @@ export function useGoogleCalendar({
           .eq('id', localEvent.id);
       }
       
-      // 7. Update last sync time
       const now = new Date();
       setLastSyncTime(now);
       
-      // Update the database with the last sync time
       await supabase
         .from('profiles')
         .update({ 
@@ -538,7 +508,6 @@ export function useGoogleCalendar({
         })
         .eq('id', clinicianId);
         
-      // 8. Call the onSyncComplete callback if provided
       if (onSyncComplete) {
         onSyncComplete();
       }
@@ -551,7 +520,6 @@ export function useGoogleCalendar({
       console.error('Error syncing calendar:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
       
-      // Call the onSyncError callback if provided
       if (onSyncError) {
         onSyncError(err instanceof Error ? err : new Error(String(err)));
       }
