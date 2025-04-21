@@ -5,7 +5,8 @@ import { ICalendarEvent, CalendarEvent } from '@/types/calendar';
 import { 
   GOOGLE_API_CONFIG, 
   convertToGoogleEvent, 
-  convertFromGoogleEvent 
+  convertFromGoogleEvent,
+  TimeCalendarType
 } from '@/utils/googleCalendarUtils';
 import ApiCalendar from 'react-google-calendar-api';
 

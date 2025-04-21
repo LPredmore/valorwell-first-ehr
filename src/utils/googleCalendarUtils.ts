@@ -1,6 +1,5 @@
-
-// Fixed TimeCalendarType to always have optional timeZone for all use cases
-export type TimeCalendarType = { dateTime: string; timeZone: string } | { date: string; timeZone?: string };
+// Fixed TimeCalendarType to always have required timeZone for all use cases
+export type TimeCalendarType = { dateTime: string; timeZone: string } | { date: string; timeZone: string };
 
 import { ICalendarEvent, CalendarEvent, CalendarEventType } from '@/types/calendar';
 
@@ -55,7 +54,7 @@ export function convertToGoogleEvent(event: ICalendarEvent, userTimeZone: string
   };
 
   if (isAllDay) {
-    // For all day events, only send 'date', but add timeZone to satisfy required argument shape
+    // For all day events, use 'date' format with required timeZone
     const startDate = event.startTime.split('T')[0];
     const endDate = event.endTime.split('T')[0];
     googleEvent.start = { date: startDate, timeZone: userTimeZone };
