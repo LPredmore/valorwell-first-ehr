@@ -10,14 +10,7 @@ import { format } from 'date-fns';
 import { dayNumberToCode } from '@/utils/rruleUtils';
 import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
-/**
- * Service for handling calendar operations with iCalendar format
- */
 export class CalendarService {
-  
-  /**
-   * Fetch calendar events for a clinician
-   */
   static async getEvents(
     clinicianId: string, 
     userTimeZone: string,
@@ -26,12 +19,34 @@ export class CalendarService {
   ): Promise<CalendarEvent[]> {
     try {
       if (!clinicianId) {
-        console.error("No clinician ID provided");
+        console.error("[CalendarService] No clinician ID provided");
         return [];
       }
 
       userTimeZone = ensureIANATimeZone(userTimeZone);
-      console.log(`Fetching events for clinician: ${clinicianId}, timezone: ${userTimeZone}`);
+      console.log(`[CalendarService] Fetching events with params:`, {
+        clinicianId,
+        userTimeZone,
+        startDate: start?.toISOString(),
+        endDate: end?.toISOString()
+      });
+
+      // Check if clinician exists first
+      const { data: clinician, error: clinicianError } = await supabase
+        .from('clinicians')
+        .select('id')
+        .eq('id', clinicianId)
+        .single();
+        
+      if (clinicianError) {
+        console.error("[CalendarService] Error checking clinician:", clinicianError);
+        throw clinicianError;
+      }
+      
+      if (!clinician) {
+        console.error("[CalendarService] Clinician not found:", clinicianId);
+        return [];
+      }
       
       // Add date range filters if provided
       let query = supabase
@@ -54,16 +69,18 @@ export class CalendarService {
       const { data: events, error } = await query;
       
       if (error) {
-        console.error("Error fetching calendar events:", error);
+        console.error("[CalendarService] Error fetching calendar events:", error);
         throw error;
       }
 
-      console.log(`Fetched ${events?.length || 0} events`);
+      console.log(`[CalendarService] Raw events fetched:`, events);
       
       // Fetch exceptions if needed
-      const eventsWithRecurrence = events.filter(event => event.recurrence_rules && event.recurrence_rules.length > 0);
+      const eventsWithRecurrence = events?.filter(event => event.recurrence_rules && event.recurrence_rules.length > 0);
       
-      if (eventsWithRecurrence.length > 0) {
+      if (eventsWithRecurrence && eventsWithRecurrence.length > 0) {
+        console.log(`[CalendarService] Found ${eventsWithRecurrence.length} recurring events`);
+        
         const recurrenceIds = eventsWithRecurrence.map(event => event.id);
         
         const { data: exceptions, error: exceptionsError } = await supabase
@@ -72,7 +89,7 @@ export class CalendarService {
           .in('recurrence_event_id', recurrenceIds);
           
         if (exceptionsError) {
-          console.error("Error fetching calendar exceptions:", exceptionsError);
+          console.error("[CalendarService] Error fetching calendar exceptions:", exceptionsError);
           throw exceptionsError;
         }
         
@@ -86,24 +103,26 @@ export class CalendarService {
         });
         
         // Add exceptions to events
-        events.forEach(event => {
+        events?.forEach(event => {
           if (exceptionsMap.has(event.id)) {
             event.exceptions = exceptionsMap.get(event.id);
           }
         });
+        
+        console.log('[CalendarService] Added exceptions to events:', events);
       }
       
       // Convert to CalendarEvent format
-      return this.convertToCalendarEvents(events, userTimeZone);
+      const calendarEvents = this.convertToCalendarEvents(events || [], userTimeZone);
+      console.log(`[CalendarService] Converted ${calendarEvents.length} calendar events`);
+      
+      return calendarEvents;
     } catch (error) {
-      console.error('Error fetching calendar events:', error);
+      console.error('[CalendarService] Error in getEvents:', error);
       throw error;
     }
   }
-  
-  /**
-   * Create a new calendar event
-   */
+
   static async createEvent(event: ICalendarEvent, userTimeZone: string): Promise<ICalendarEvent> {
     try {
       console.log('Creating calendar event:', JSON.stringify(event, null, 2));
@@ -179,10 +198,7 @@ export class CalendarService {
       throw error;
     }
   }
-  
-  /**
-   * Update an existing calendar event
-   */
+
   static async updateEvent(event: ICalendarEvent, userTimeZone: string): Promise<ICalendarEvent> {
     try {
       userTimeZone = ensureIANATimeZone(userTimeZone);
@@ -279,10 +295,7 @@ export class CalendarService {
       throw error;
     }
   }
-  
-  /**
-   * Delete a calendar event
-   */
+
   static async deleteEvent(eventId: string): Promise<void> {
     try {
       console.log(`Deleting calendar event with ID: ${eventId}`);
@@ -304,10 +317,7 @@ export class CalendarService {
       throw error;
     }
   }
-  
-  /**
-   * Add an exception to a recurring event
-   */
+
   static async addException(exception: CalendarException): Promise<CalendarException> {
     try {
       const { data, error } = await supabase
@@ -339,9 +349,6 @@ export class CalendarService {
     }
   }
 
-  /**
-   * Add weekly availability for a clinician
-   */
   static async addWeeklyAvailability(
     clinicianId: string, 
     dayIndex: number, 
@@ -381,80 +388,86 @@ export class CalendarService {
       throw error;
     }
   }
-  
-  /**
-   * Convert database events to FullCalendar events
-   */
+
   private static convertToCalendarEvents(events: any[], userTimeZone: string): CalendarEvent[] {
-    userTimeZone = ensureIANATimeZone(userTimeZone);
-    return events.map(event => {
-      // Convert times to Date objects
-      const startTime = new Date(event.start_time);
-      const endTime = new Date(event.end_time);
+    try {
+      userTimeZone = ensureIANATimeZone(userTimeZone);
+      console.log('[CalendarService] Converting events with timezone:', userTimeZone);
       
-      // Create the base calendar event
-      const calendarEvent: CalendarEvent = {
-        id: event.id,
-        title: event.title,
-        start: startTime,
-        end: endTime,
-        allDay: event.all_day,
-        extendedProps: {
-          eventType: event.event_type,
-          isAvailability: event.event_type === 'availability',
-          description: event.description
-        }
-      };
-      
-      // Set color based on event type
-      switch (event.event_type) {
-        case 'availability':
-          calendarEvent.backgroundColor = 'rgba(76, 175, 80, 0.3)';
-          calendarEvent.borderColor = '#4CAF50';
-          calendarEvent.textColor = '#1B5E20';
-          calendarEvent.display = 'block';
-          break;
-        case 'time_off':
-          calendarEvent.backgroundColor = 'rgba(244, 67, 54, 0.3)';
-          calendarEvent.borderColor = '#F44336';
-          calendarEvent.textColor = '#B71C1C';
-          calendarEvent.display = 'block';
-          break;
-        case 'appointment':
-          // Keep default colors
-          break;
-      }
-      
-      // Add recurrence information if available
-      if (event.recurrence_rules && event.recurrence_rules.length > 0) {
-        const rule = event.recurrence_rules[0];
-        calendarEvent.rrule = rule.rrule;
+      return events.map(event => {
+        console.log('[CalendarService] Converting event:', event);
         
-        calendarEvent.extendedProps!.recurrenceRule = {
-          id: rule.id,
-          eventId: rule.event_id,
-          rrule: rule.rrule
+        // Convert times to Date objects
+        const startTime = new Date(event.start_time);
+        const endTime = new Date(event.end_time);
+        
+        // Create the base calendar event
+        const calendarEvent: CalendarEvent = {
+          id: event.id,
+          title: event.title,
+          start: startTime,
+          end: endTime,
+          allDay: event.all_day,
+          extendedProps: {
+            eventType: event.event_type,
+            isAvailability: event.event_type === 'availability',
+            description: event.description
+          }
         };
-      }
-      
-      // Add exceptions if available
-      if (event.exceptions && event.exceptions.length > 0) {
-        calendarEvent.extendedProps!.exceptions = event.exceptions.map((exception: any) => ({
-          id: exception.id,
-          recurrenceEventId: exception.recurrence_event_id,
-          exceptionDate: exception.exception_date,
-          isCancelled: exception.is_cancelled,
-          replacementEventId: exception.replacement_event_id
-        }));
-      }
-      
-      return calendarEvent;
-    });
+        
+        // Set color based on event type
+        switch (event.event_type) {
+          case 'availability':
+            calendarEvent.backgroundColor = 'rgba(76, 175, 80, 0.3)';
+            calendarEvent.borderColor = '#4CAF50';
+            calendarEvent.textColor = '#1B5E20';
+            calendarEvent.display = 'block';
+            break;
+          case 'time_off':
+            calendarEvent.backgroundColor = 'rgba(244, 67, 54, 0.3)';
+            calendarEvent.borderColor = '#F44336';
+            calendarEvent.textColor = '#B71C1C';
+            calendarEvent.display = 'block';
+            break;
+          case 'appointment':
+            // Keep default colors
+            break;
+        }
+        
+        // Add recurrence information if available
+        if (event.recurrence_rules && event.recurrence_rules.length > 0) {
+          console.log('[CalendarService] Adding recurrence rule:', event.recurrence_rules[0]);
+          const rule = event.recurrence_rules[0];
+          calendarEvent.rrule = rule.rrule;
+          
+          calendarEvent.extendedProps!.recurrenceRule = {
+            id: rule.id,
+            eventId: rule.event_id,
+            rrule: rule.rrule
+          };
+        }
+        
+        // Add exceptions if available
+        if (event.exceptions && event.exceptions.length > 0) {
+          console.log('[CalendarService] Adding exceptions:', event.exceptions);
+          calendarEvent.extendedProps!.exceptions = event.exceptions.map((exception: any) => ({
+            id: exception.id,
+            recurrenceEventId: exception.recurrence_event_id,
+            exceptionDate: exception.exception_date,
+            isCancelled: exception.is_cancelled,
+            replacementEventId: exception.replacement_event_id
+          }));
+        }
+        
+        console.log('[CalendarService] Converted calendar event:', calendarEvent);
+        return calendarEvent;
+      });
+    } catch (error) {
+      console.error('[CalendarService] Error converting events:', error);
+      throw error;
+    }
   }
-  
-  /**
-   * Run the migration from old format to new format
-   */
+
   static async migrateData(): Promise<void> {
     try {
       // First migrate from the availability table
@@ -472,10 +485,7 @@ export class CalendarService {
       throw error;
     }
   }
-  
-  /**
-   * Migrate weekly availability from the old table to the calendar_events table
-   */
+
   private static async migrateWeeklyAvailability(): Promise<void> {
     try {
       console.log("Starting weekly availability migration");
@@ -591,10 +601,7 @@ export class CalendarService {
       throw error;
     }
   }
-  
-  /**
-   * Migrate single day availability to calendar_events table
-   */
+
   private static async migrateSingleDayAvailability(): Promise<void> {
     try {
       console.log("Starting single day availability migration");
@@ -681,10 +688,7 @@ export class CalendarService {
       throw error;
     }
   }
-  
-  /**
-   * Migrate time blocks to calendar_events table
-   */
+
   private static async migrateTimeBlocks(): Promise<void> {
     try {
       console.log("Starting time blocks migration");

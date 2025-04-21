@@ -25,14 +25,29 @@ export function useCalendarEvents({
   const { toast } = useToast();
   const fetchInProgress = useRef(false);
   const maxRetries = 3;
-
+  
   const fetchEvents = useCallback(async (retry: boolean = false) => {
     if (!clinicianId || fetchInProgress.current) {
+      console.log('[useCalendarEvents] Skipping fetch:', { 
+        reason: !clinicianId ? 'No clinicianId' : 'Fetch in progress',
+        clinicianId,
+        fetchInProgress: fetchInProgress.current
+      });
+      
       if (!clinicianId) setEvents([]);
       return;
     }
 
     try {
+      console.log('[useCalendarEvents] Starting fetch:', {
+        clinicianId,
+        userTimeZone,
+        startDate,
+        endDate,
+        showAvailability,
+        retryCount
+      });
+      
       setIsLoading(true);
       setError(null);
       fetchInProgress.current = true;
@@ -44,17 +59,25 @@ export function useCalendarEvents({
         endDate
       );
 
+      console.log('[useCalendarEvents] Events fetched:', fetchedEvents);
+
       const filteredEvents = showAvailability
         ? fetchedEvents
         : fetchedEvents.filter(event => 
             event.extendedProps?.eventType !== 'availability'
           );
+      
+      console.log('[useCalendarEvents] Filtered events:', {
+        total: fetchedEvents.length,
+        filtered: filteredEvents.length,
+        showAvailability
+      });
 
       setEvents(filteredEvents);
       
       if (retryCount > 0) setRetryCount(0);
     } catch (err) {
-      console.error("Error fetching calendar events:", err);
+      console.error("[useCalendarEvents] Error fetching calendar events:", err);
       const fetchError = err instanceof Error ? err : new Error(String(err));
       setError(fetchError);
       
@@ -151,8 +174,16 @@ export function useCalendarEvents({
       return false;
     }
   };
-
+  
   useEffect(() => {
+    console.log('[useCalendarEvents] Effect triggered:', {
+      clinicianId,
+      userTimeZone,
+      showAvailability,
+      startDate,
+      endDate
+    });
+    
     fetchEvents();
     
     return () => {
@@ -161,6 +192,7 @@ export function useCalendarEvents({
   }, [clinicianId, userTimeZone, showAvailability, startDate, endDate]);
 
   const refetch = () => {
+    console.log('[useCalendarEvents] Manual refetch triggered');
     setRetryCount(0);
     fetchEvents(true);
   };
