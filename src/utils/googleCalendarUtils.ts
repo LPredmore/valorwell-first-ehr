@@ -1,10 +1,10 @@
 import { ICalendarEvent, CalendarEvent, CalendarEventType } from '@/types/calendar';
 
-// Add type definition for TimeCalendarType at the top of the file
+// Update TimeCalendarType to make timeZone required when using dateTime
 export type TimeCalendarType = {
   date?: string;
   dateTime?: string;
-  timeZone?: string;
+  timeZone: string; // Now required for all cases
 };
 
 // Update Google Calendar API scopes
@@ -58,7 +58,7 @@ export function convertToGoogleEvent(event: ICalendarEvent, userTimeZone: string
   };
 
   if (isAllDay) {
-    // For all day events, use 'date' format with required timeZone
+    // For all day events, use 'date' format and always include timeZone
     const startDate = event.startTime.split('T')[0];
     const endDate = event.endTime.split('T')[0];
     googleEvent.start = { date: startDate, timeZone: userTimeZone };
