@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
@@ -41,13 +41,23 @@ const WeeklyAvailabilitySlot: React.FC<WeeklyAvailabilitySlotProps> = ({
     dayIndex,
     onTimeSlotAdded: async () => {
       if (eventId) {
+        console.log(`Updating availability slot for day ${dayIndex}, eventId: ${eventId}`);
         await updateAvailabilitySlot(eventId, startTime, endTime);
+      } else {
+        console.log(`No eventId provided - this should be handled by parent component`);
       }
     }
   });
+  
+  // Initialize the form with the provided values
+  useEffect(() => {
+    setStartTime(initialStartTime);
+    setEndTime(initialEndTime);
+  }, [initialStartTime, initialEndTime, setStartTime, setEndTime]);
 
   const handleDelete = async () => {
     if (eventId) {
+      console.log(`Removing availability slot: ${eventId}`);
       await removeAvailabilitySlot(eventId);
     }
   };
@@ -69,7 +79,13 @@ const WeeklyAvailabilitySlot: React.FC<WeeklyAvailabilitySlotProps> = ({
           <label className="text-sm text-muted-foreground">Start Time</label>
           <Select
             value={startTime}
-            onValueChange={setStartTime}
+            onValueChange={(value) => {
+              setStartTime(value);
+              // Update in real-time if we have an eventId
+              if (eventId && !isReadOnly) {
+                updateAvailabilitySlot(eventId, value, endTime);
+              }
+            }}
             disabled={isReadOnly}
           >
             <SelectTrigger>
@@ -89,7 +105,13 @@ const WeeklyAvailabilitySlot: React.FC<WeeklyAvailabilitySlotProps> = ({
           <label className="text-sm text-muted-foreground">End Time</label>
           <Select
             value={endTime}
-            onValueChange={setEndTime}
+            onValueChange={(value) => {
+              setEndTime(value);
+              // Update in real-time if we have an eventId
+              if (eventId && !isReadOnly) {
+                updateAvailabilitySlot(eventId, startTime, value);
+              }
+            }}
             disabled={isReadOnly}
           >
             <SelectTrigger>

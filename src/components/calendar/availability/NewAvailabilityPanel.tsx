@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import WeeklyAvailabilitySlot from './WeeklyAvailabilitySlot';
 import { extractDayCodes, dayCodeToNumber } from '@/utils/rruleUtils';
 import GoogleCalendarConnect from './GoogleCalendarConnect';
+import { v4 as uuidv4 } from 'uuid';
 
 interface NewAvailabilityPanelProps {
   clinicianId: string | null;
@@ -18,6 +19,7 @@ interface NewAvailabilityPanelProps {
 
 const WeeklyAvailabilityContent = () => {
   const { events, isLoading, addAvailabilitySlot } = useAvailability();
+  const { toast } = useToast();
   const [weeklySlots, setWeeklySlots] = useState<Record<number, any[]>>({
     0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: []
   });
@@ -25,6 +27,7 @@ const WeeklyAvailabilityContent = () => {
   
   // Process events into weekly slots
   useEffect(() => {
+    console.log("Processing events for weekly slots:", events.length);
     if (!events.length) return;
     
     const weeklySlotsByDay: Record<number, any[]> = {
@@ -34,13 +37,21 @@ const WeeklyAvailabilityContent = () => {
     events.forEach(event => {
       if (event.extendedProps?.eventType === 'availability' && 
           event.extendedProps?.recurrenceRule?.rrule?.includes('FREQ=WEEKLY')) {
+        console.log("Found weekly availability event:", event);
         const dayCodes = extractDayCodes(event.extendedProps.recurrenceRule.rrule);
         if (dayCodes && dayCodes.length > 0) {
           dayCodes.forEach(dayCode => {
             const dayIndex = dayCodeToNumber(dayCode);
             if (dayIndex !== undefined) {
-              const startTime = new Date(event.start).toTimeString().substring(0, 5);
-              const endTime = new Date(event.end).toTimeString().substring(0, 5);
+              // Convert dates to time strings
+              const startDate = new Date(event.start);
+              const endDate = new Date(event.end);
+              const startTime = startDate.getHours().toString().padStart(2, '0') + ':' + 
+                                startDate.getMinutes().toString().padStart(2, '0');
+              const endTime = endDate.getHours().toString().padStart(2, '0') + ':' + 
+                              endDate.getMinutes().toString().padStart(2, '0');
+              
+              console.log(`Adding slot for day ${dayIndex}: ${startTime}-${endTime}, id: ${event.id}`);
               
               weeklySlotsByDay[dayIndex].push({
                 id: event.id,
@@ -59,6 +70,7 @@ const WeeklyAvailabilityContent = () => {
       }
     });
     
+    console.log("Processed weekly slots:", weeklySlotsByDay);
     setWeeklySlots(weeklySlotsByDay);
   }, [events]);
   
@@ -68,16 +80,37 @@ const WeeklyAvailabilityContent = () => {
     setEnabledDays(newEnabledDays);
   };
   
-  const handleAddTimeSlot = (dayIndex: number) => {
-    // Default values
-    const startTime = '09:00';
-    const endTime = '17:00';
-    
-    // Create a new weekly slot through the context
-    addAvailabilitySlot(dayIndex, startTime, endTime);
+  const handleAddTimeSlot = async (dayIndex: number) => {
+    try {
+      // Default values
+      const startTime = '09:00';
+      const endTime = '17:00';
+      
+      console.log(`Adding new time slot for day ${dayIndex}: ${startTime}-${endTime}`);
+      
+      // Create a new weekly slot through the context
+      await addAvailabilitySlot(dayIndex, startTime, endTime);
+      
+      // Success toast
+      toast({
+        title: "Time Slot Added",
+        description: `Added availability for ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayIndex]}`,
+      });
+    } catch (error) {
+      console.error("Error adding time slot:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to add time slot",
+        variant: "destructive",
+      });
+    }
   };
   
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  
+  if (isLoading) {
+    return <div className="py-4 text-center">Loading availability schedule...</div>;
+  }
   
   return (
     <div className="space-y-6">
@@ -134,6 +167,14 @@ const WeeklyAvailabilityContent = () => {
 
 const NewAvailabilityPanel: React.FC<NewAvailabilityPanelProps> = ({ clinicianId }) => {
   const [activeTab, setActiveTab] = useState<string>('weekly');
+  
+  if (!clinicianId) {
+    return (
+      <div className="p-4 bg-white rounded-lg shadow text-center">
+        <p>No clinician selected. Please select a clinician to manage availability.</p>
+      </div>
+    );
+  }
   
   return (
     <AvailabilityProvider clinicianId={clinicianId}>

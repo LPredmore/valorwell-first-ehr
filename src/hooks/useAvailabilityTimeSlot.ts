@@ -40,6 +40,8 @@ export const useAvailabilityTimeSlot = ({
       const formattedStartTime = TimeSlotValidation.formatTimeString(startTime);
       const formattedEndTime = TimeSlotValidation.formatTimeString(endTime);
       
+      console.log(`Time slot validated for day ${dayIndex}: ${formattedStartTime}-${formattedEndTime}`);
+      
       // Notify parent of successful validation and time values
       onTimeSlotAdded?.();
       

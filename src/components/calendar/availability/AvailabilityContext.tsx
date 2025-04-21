@@ -75,6 +75,7 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
   
   const addAvailabilitySlot = async (dayIndex: number, startTime: string, endTime: string) => {
     if (!clinicianId) {
+      console.error("No clinician selected");
       toast({
         title: "Error",
         description: "No clinician selected",
@@ -84,6 +85,8 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
     }
     
     try {
+      console.log(`Creating availability slot for clinician ${clinicianId} on day ${dayIndex}`);
+      
       // Create a new weekly availability event
       const today = new Date();
       const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayIndex];
@@ -91,6 +94,8 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
       // Create start and end times for today as reference points
       const startISO = `${format(today, 'yyyy-MM-dd')}T${startTime}:00`;
       const endISO = `${format(today, 'yyyy-MM-dd')}T${endTime}:00`;
+      
+      console.log(`Creating event with start time ${startISO} and end time ${endISO}`);
       
       // Create the event
       const availabilityEvent: ICalendarEvent = {
@@ -108,33 +113,44 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
         }
       };
       
+      console.log("Creating availability event:", availabilityEvent);
+      
       // Add to local and Google calendar if linked
+      let createdEvent;
       if (isGoogleLinked && isGoogleAuthenticated) {
-        await addGoogleEvent(availabilityEvent);
+        createdEvent = await addGoogleEvent(availabilityEvent);
       } else {
-        await createEvent(availabilityEvent);
+        createdEvent = await createEvent(availabilityEvent);
       }
+      
+      console.log("Created event:", createdEvent);
       
       toast({
         title: "Availability Added",
         description: "Weekly availability slot has been added",
       });
       
-      refreshEvents();
+      // Refresh events to show the new slot
+      await refreshEvents();
     } catch (error) {
       console.error("Error adding availability slot:", error);
       toast({
         title: "Error",
-        description: "Failed to add availability slot",
+        description: "Failed to add availability slot: " + (error instanceof Error ? error.message : String(error)),
         variant: "destructive",
       });
     }
   };
   
   const updateAvailabilitySlot = async (eventId: string, startTime: string, endTime: string) => {
-    if (!clinicianId) return;
+    if (!clinicianId) {
+      console.error("No clinician selected");
+      return;
+    }
     
     try {
+      console.log(`Updating availability slot ${eventId}`);
+      
       // Find the event to update
       const event = events.find(e => e.id === eventId);
       if (!event) {
@@ -143,16 +159,20 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
       }
       
       // Create a date string from the event's start date
-      // Fix for TypeScript error - proper type checking for start property
-      const dateStr = typeof event.start === 'string' 
-        ? event.start.split('T')[0] 
-        : event.start instanceof Date 
-          ? event.start.toISOString().split('T')[0]
-          : new Date().toISOString().split('T')[0]; // Fallback
+      let dateStr: string;
+      if (typeof event.start === 'string') {
+        dateStr = event.start.split('T')[0];
+      } else if (event.start instanceof Date) {
+        dateStr = format(event.start, 'yyyy-MM-dd');
+      } else {
+        dateStr = format(new Date(), 'yyyy-MM-dd');
+      }
       
       // Create ISO datetime strings
       const startISO = `${dateStr}T${startTime}:00`;
       const endISO = `${dateStr}T${endTime}:00`;
+      
+      console.log(`Updating event with start time ${startISO} and end time ${endISO}`);
       
       // Create an updated event object
       const updatedEvent: ICalendarEvent = {
@@ -170,8 +190,10 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
         updatedEvent.recurrenceRule = event.extendedProps.recurrenceRule;
       }
       
+      console.log("Updating event:", updatedEvent);
+      
       // Update the event - in Google if linked, otherwise just locally
-      if (isGoogleLinked && isGoogleAuthenticated) {
+      if (isGoogleLinked && isGoogleAuthenticated && event.extendedProps?.googleEventId) {
         await updateGoogleEvent(updatedEvent);
       } else {
         await updateEvent(updatedEvent);
@@ -182,12 +204,13 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
         description: "Availability slot has been updated",
       });
       
-      refreshEvents();
+      // Refresh to show updated availability
+      await refreshEvents();
     } catch (error) {
       console.error("Error updating availability slot:", error);
       toast({
         title: "Error",
-        description: "Failed to update availability slot",
+        description: "Failed to update availability slot: " + (error instanceof Error ? error.message : String(error)),
         variant: "destructive",
       });
     }
@@ -195,8 +218,12 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
   
   const removeAvailabilitySlot = async (eventId: string) => {
     try {
+      console.log(`Removing availability slot ${eventId}`);
+      
+      const event = events.find(e => e.id === eventId);
+      
       // Delete from Google if linked, otherwise just locally
-      if (isGoogleLinked && isGoogleAuthenticated) {
+      if (isGoogleLinked && isGoogleAuthenticated && event?.extendedProps?.googleEventId) {
         await deleteGoogleEvent(eventId);
       } else {
         await deleteEvent(eventId);
@@ -207,12 +234,13 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
         description: "Availability slot has been removed",
       });
       
-      refreshEvents();
+      // Refresh to show updated availability
+      await refreshEvents();
     } catch (error) {
       console.error("Error removing availability slot:", error);
       toast({
         title: "Error",
-        description: "Failed to remove availability slot",
+        description: "Failed to remove availability slot: " + (error instanceof Error ? error.message : String(error)),
         variant: "destructive",
       });
     }
