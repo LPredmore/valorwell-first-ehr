@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import WeeklyAvailabilitySlot from './WeeklyAvailabilitySlot';
 import { extractDayCodes, dayCodeToNumber } from '@/utils/rruleUtils';
+import GoogleCalendarConnect from './GoogleCalendarConnect';
 
 interface NewAvailabilityPanelProps {
   clinicianId: string | null;
@@ -44,7 +45,8 @@ const WeeklyAvailabilityContent = () => {
               weeklySlotsByDay[dayIndex].push({
                 id: event.id,
                 startTime,
-                endTime
+                endTime,
+                isGoogleEvent: !!event.extendedProps?.googleEventId
               });
               
               // Ensure this day is enabled
@@ -108,6 +110,7 @@ const WeeklyAvailabilityContent = () => {
                   dayName={dayNames[i]}
                   startTime={slot.startTime}
                   endTime={slot.endTime}
+                  isGoogleEvent={slot.isGoogleEvent}
                 />
               ))}
               
@@ -144,6 +147,8 @@ const NewAvailabilityPanel: React.FC<NewAvailabilityPanelProps> = ({ clinicianId
             Manage Your Availability
           </Badge>
         </div>
+
+        <GoogleCalendarConnect className="mb-6" />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-4">

@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { TimeInput } from '@/components/ui/time-input';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Globe } from 'lucide-react';
 import { useAvailability } from './AvailabilityContext';
+import { Badge } from '@/components/ui/badge';
 
 interface WeeklyAvailabilitySlotProps {
   eventId?: string;
@@ -12,6 +13,7 @@ interface WeeklyAvailabilitySlotProps {
   startTime: string;
   endTime: string;
   isEditable?: boolean;
+  isGoogleEvent?: boolean;
 }
 
 const WeeklyAvailabilitySlot: React.FC<WeeklyAvailabilitySlotProps> = ({
@@ -20,7 +22,8 @@ const WeeklyAvailabilitySlot: React.FC<WeeklyAvailabilitySlotProps> = ({
   dayName,
   startTime,
   endTime,
-  isEditable = true
+  isEditable = true,
+  isGoogleEvent = false
 }) => {
   const { addAvailabilitySlot, updateAvailabilitySlot, removeAvailabilitySlot } = useAvailability();
   const [isLoading, setIsLoading] = useState(false);
@@ -63,7 +66,15 @@ const WeeklyAvailabilitySlot: React.FC<WeeklyAvailabilitySlotProps> = ({
     <div className="flex items-center space-x-4 p-2 bg-white rounded-md border border-gray-200">
       <div className="flex-1 grid grid-cols-2 gap-4">
         <div>
-          <label className="text-xs mb-1 block">Start Time</label>
+          <div className="flex items-center justify-between">
+            <label className="text-xs mb-1 block">Start Time</label>
+            {isGoogleEvent && (
+              <Badge variant="outline" className="text-xs flex items-center px-1 py-0 h-4">
+                <Globe className="h-3 w-3 mr-1" />
+                Google
+              </Badge>
+            )}
+          </div>
           <TimeInput 
             value={start} 
             onChange={setStart} 

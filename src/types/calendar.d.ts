@@ -37,6 +37,7 @@ export interface ICalendarEvent {
   recurrenceId?: string; // Reference to parent event for instances
   recurrenceRule?: RecurrenceRule; // For recurring events
   exceptions?: CalendarException[]; // List of exceptions
+  googleEventId?: string; // ID of the corresponding Google Calendar event
 }
 
 // Extended properties for FullCalendar compatibility
@@ -47,6 +48,8 @@ export interface CalendarEvent extends EventInput {
     eventType?: CalendarEventType;
     recurrenceRule?: RecurrenceRule;
     isException?: boolean;
+    googleEventId?: string; // ID of the corresponding Google Calendar event
+    isGoogleEvent?: boolean; // Whether this event is from Google Calendar
     availabilityBlock?: {
       id: string;
       type: 'weekly' | 'single_day' | 'time_block';
@@ -70,4 +73,19 @@ export interface FullCalendarProps {
   view?: CalendarViewType;
   height?: string | number;
   showAvailability?: boolean;
+  showGoogleEvents?: boolean; // Whether to show Google Calendar events
+}
+
+// Google Calendar specific types
+export interface GoogleCalendarConfig {
+  clientId: string;
+  apiKey: string;
+  scope: string;
+  discoveryDocs: string[];
+}
+
+export interface GoogleCalendarAuth {
+  isAuthenticated: boolean;
+  isAuthenticating: boolean;
+  error: Error | null;
 }

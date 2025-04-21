@@ -6,7 +6,7 @@ import { getUserTimeZone } from '@/utils/timeZoneUtils';
 import { createWeeklyRule } from '@/utils/rruleUtils';
 import { ICalendarEvent } from '@/types/calendar';
 import { format } from 'date-fns';
-import { CalendarService } from '@/services/calendarService';
+import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 
 interface AvailabilityContextType {
   events: any[];
@@ -15,6 +15,15 @@ interface AvailabilityContextType {
   addAvailabilitySlot: (dayIndex: number, startTime: string, endTime: string) => Promise<void>;
   updateAvailabilitySlot: (eventId: string, startTime: string, endTime: string) => Promise<void>;
   removeAvailabilitySlot: (eventId: string) => Promise<void>;
+  
+  // Google Calendar integration
+  isGoogleLinked: boolean;
+  isGoogleAuthenticated: boolean;
+  connectGoogleCalendar: () => Promise<void>;
+  disconnectGoogleCalendar: () => Promise<void>;
+  syncWithGoogleCalendar: () => Promise<void>;
+  isSyncing: boolean;
+  lastSyncTime: Date | null;
 }
 
 const AvailabilityContext = createContext<AvailabilityContextType | undefined>(undefined);
@@ -37,6 +46,31 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
     clinicianId,
     userTimeZone,
     showAvailability: true
+  });
+  
+  // Initialize Google Calendar integration
+  const {
+    isGoogleLinked,
+    isAuthenticated: isGoogleAuthenticated,
+    isSyncing,
+    lastSyncTime,
+    signIn: connectGoogleCalendar,
+    signOut: disconnectGoogleCalendar,
+    syncCalendar: syncWithGoogleCalendar,
+    addEvent: addGoogleEvent,
+    updateEvent: updateGoogleEvent,
+    deleteEvent: deleteGoogleEvent,
+  } = useGoogleCalendar({
+    clinicianId,
+    userTimeZone,
+    onSyncComplete: refreshEvents,
+    onSyncError: (error) => {
+      toast({
+        title: "Sync Error",
+        description: "Failed to sync with Google Calendar: " + error.message,
+        variant: "destructive",
+      });
+    }
   });
   
   const addAvailabilitySlot = async (dayIndex: number, startTime: string, endTime: string) => {
@@ -74,7 +108,12 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
         }
       };
       
-      await createEvent(availabilityEvent);
+      // Add to local and Google calendar if linked
+      if (isGoogleLinked && isGoogleAuthenticated) {
+        await addGoogleEvent(availabilityEvent);
+      } else {
+        await createEvent(availabilityEvent);
+      }
       
       toast({
         title: "Availability Added",
@@ -131,8 +170,12 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
         updatedEvent.recurrenceRule = event.extendedProps.recurrenceRule;
       }
       
-      // Update the event
-      await updateEvent(updatedEvent);
+      // Update the event - in Google if linked, otherwise just locally
+      if (isGoogleLinked && isGoogleAuthenticated) {
+        await updateGoogleEvent(updatedEvent);
+      } else {
+        await updateEvent(updatedEvent);
+      }
       
       toast({
         title: "Availability Updated",
@@ -152,7 +195,12 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
   
   const removeAvailabilitySlot = async (eventId: string) => {
     try {
-      await deleteEvent(eventId);
+      // Delete from Google if linked, otherwise just locally
+      if (isGoogleLinked && isGoogleAuthenticated) {
+        await deleteGoogleEvent(eventId);
+      } else {
+        await deleteEvent(eventId);
+      }
       
       toast({
         title: "Availability Removed",
@@ -178,7 +226,14 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
         refreshEvents,
         addAvailabilitySlot,
         updateAvailabilitySlot,
-        removeAvailabilitySlot
+        removeAvailabilitySlot,
+        isGoogleLinked,
+        isGoogleAuthenticated,
+        connectGoogleCalendar,
+        disconnectGoogleCalendar,
+        syncWithGoogleCalendar,
+        isSyncing,
+        lastSyncTime
       }}
     >
       {children}
