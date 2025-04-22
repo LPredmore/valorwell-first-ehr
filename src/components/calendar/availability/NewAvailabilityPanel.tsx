@@ -7,12 +7,52 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAvailability } from './AvailabilityContext';
 import { CalendarClock, RefreshCw, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import WeeklyAvailabilitySlot from './WeeklyAvailabilitySlot';
+import WeeklyAvailabilitySlot, { WeeklyAvailabilitySlotProps } from './WeeklyAvailabilitySlot';
 import GoogleCalendarConnect from './GoogleCalendarConnect';
 
 interface NewAvailabilityPanelProps {
   clinicianId: string;
 }
+
+const dayIndexToName = (dayIndex: number): string => {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return days[dayIndex];
+};
+
+const extractAvailabilityProps = (event: any): WeeklyAvailabilitySlotProps | null => {
+  if (!event || !event.extendedProps || event.extendedProps.eventType !== 'availability') {
+    return null;
+  }
+
+  try {
+    const availabilityBlock = event.extendedProps?.availabilityBlock;
+    if (!availabilityBlock) return null;
+
+    // Extract day index from the event
+    let dayIndex = 0;
+    
+    if (availabilityBlock.dayOfWeek) {
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      dayIndex = dayNames.indexOf(availabilityBlock.dayOfWeek.toLowerCase());
+    } else if (event.start && event.start instanceof Date) {
+      dayIndex = event.start.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    }
+    
+    if (dayIndex < 0) dayIndex = 0; // Fallback to Sunday if invalid
+
+    return {
+      dayIndex,
+      dayName: dayIndexToName(dayIndex),
+      eventId: event.id,
+      startTime: availabilityBlock.startTime,
+      endTime: availabilityBlock.endTime,
+      isGoogleEvent: !!event.extendedProps?.isGoogleEvent || !!event.extendedProps?.googleEventId
+    };
+  } catch (error) {
+    console.error('Error extracting availability props:', error, event);
+    return null;
+  }
+};
 
 const NewAvailabilityPanel: React.FC<NewAvailabilityPanelProps> = ({ clinicianId }) => {
   const [selectedDay, setSelectedDay] = useState<string>('1'); // Default to Monday
@@ -203,9 +243,15 @@ const NewAvailabilityPanel: React.FC<NewAvailabilityPanelProps> = ({ clinicianId
             </div>
           ) : (
             <div className="space-y-2">
-              {availabilityEvents.map(event => (
-                <WeeklyAvailabilitySlot key={event.id} event={event} />
-              ))}
+              {availabilityEvents.map(event => {
+                const slotProps = extractAvailabilityProps(event);
+                if (!slotProps) return null;
+                
+                return <WeeklyAvailabilitySlot 
+                  key={event.id} 
+                  {...slotProps}
+                />;
+              })}
             </div>
           )}
         </div>

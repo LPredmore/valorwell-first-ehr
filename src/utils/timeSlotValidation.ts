@@ -1,73 +1,61 @@
 
 /**
- * Utility class for validating and formatting time slots
+ * Utility functions for validating and working with time slots
  */
 export class TimeSlotValidation {
   /**
-   * Checks if end time is after start time
-   */
-  static isValidTimeRange(startTime: string, endTime: string): boolean {
-    // Convert to 24-hour format for comparison
-    const start = this.parseTimeString(startTime);
-    const end = this.parseTimeString(endTime);
-    
-    if (!start || !end) return false;
-    
-    // Compare hours and minutes
-    if (start.hours > end.hours) return false;
-    if (start.hours === end.hours && start.minutes >= end.minutes) return false;
-    
-    return true;
-  }
-  
-  /**
-   * Parse a time string into hours and minutes
-   */
-  static parseTimeString(timeStr: string): { hours: number, minutes: number } | null {
-    const match = timeStr.match(/^(\d{1,2}):(\d{2})$/);
-    if (!match) return null;
-    
-    const hours = parseInt(match[1], 10);
-    const minutes = parseInt(match[2], 10);
-    
-    if (isNaN(hours) || isNaN(minutes)) return null;
-    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-    
-    return { hours, minutes };
-  }
-  
-  /**
-   * Formats a time string to HH:MM format
-   */
-  static formatTimeString(timeStr: string): string {
-    const parsed = this.parseTimeString(timeStr);
-    if (!parsed) return timeStr;
-    
-    const { hours, minutes } = parsed;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-  }
-  
-  /**
-   * Gets a list of time options for selection
+   * Generate time options in 30-minute increments for dropdowns
    */
   static getTimeOptions(): string[] {
-    const options: string[] = [];
-    
-    // Generate times from 00:00 to 23:30 in 30 minute increments
+    const options = [];
     for (let hour = 0; hour < 24; hour++) {
       for (let minute = 0; minute < 60; minute += 30) {
-        options.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+        const hourStr = hour.toString().padStart(2, '0');
+        const minuteStr = minute.toString().padStart(2, '0');
+        options.push(`${hourStr}:${minuteStr}`);
       }
     }
-    
     return options;
+  }
+
+  /**
+   * Validate that end time is after start time
+   */
+  static isValidTimeRange(startTime: string, endTime: string): boolean {
+    return startTime < endTime;
   }
   
   /**
-   * Get a readable day name from day index
+   * Convert day index to name
    */
   static getDayName(dayIndex: number): string {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     return days[dayIndex] || 'Unknown';
+  }
+  
+  /**
+   * Convert day name to index
+   */
+  static getDayIndex(dayName: string): number {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days.findIndex(day => day.toLowerCase() === dayName.toLowerCase());
+  }
+  
+  /**
+   * Format a time string to display format (e.g., 09:00 -> 9:00 AM)
+   */
+  static formatTimeForDisplay(time: string): string {
+    if (!time) return '';
+    
+    try {
+      const [hours, minutes] = time.split(':');
+      const hour = parseInt(hours, 10);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const formattedHour = hour % 12 || 12;
+      return `${formattedHour}:${minutes} ${ampm}`;
+    } catch (error) {
+      console.error('Error formatting time:', error, time);
+      return time;
+    }
   }
 }

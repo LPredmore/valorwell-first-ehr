@@ -8,7 +8,7 @@ import { useAvailabilityTimeSlot } from '@/hooks/useAvailabilityTimeSlot';
 import { TimeSlotValidation } from '@/utils/timeSlotValidation';
 import { useAvailability } from './AvailabilityContext';
 
-interface WeeklyAvailabilitySlotProps {
+export interface WeeklyAvailabilitySlotProps {
   dayIndex: number;
   dayName: string;
   eventId?: string;
