@@ -18,10 +18,11 @@ export const GOOGLE_SCOPES = [
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
 
-// Only log whether credentials are available, not their values
-console.log('Google Client ID available:', !!GOOGLE_CLIENT_ID);
-console.log('Google API Key available:', !!GOOGLE_API_KEY);
+// Better debugging for API credentials
+console.log('Google Client ID available:', GOOGLE_CLIENT_ID ? 'Yes (length: ' + GOOGLE_CLIENT_ID.length + ')' : 'No');
+console.log('Google API Key available:', GOOGLE_API_KEY ? 'Yes (length: ' + GOOGLE_API_KEY.length + ')' : 'No');
 
+// Export configuration for better error handling in components
 export const GOOGLE_API_CONFIG = {
   clientId: GOOGLE_CLIENT_ID || '',
   apiKey: GOOGLE_API_KEY || '',

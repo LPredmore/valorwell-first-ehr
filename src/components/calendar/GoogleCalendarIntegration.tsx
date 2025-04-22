@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -80,6 +79,7 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
   useEffect(() => {
     // Set config error from API initialization errors
     if (apiInitError) {
+      console.error('Google Calendar API initialization error:', apiInitError);
       setConfigError(apiInitError);
     } else {
       setConfigError(null);
@@ -276,15 +276,17 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
           </Alert>
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              Please ensure that Google API credentials are properly set up in the environment:
+              To fix this issue, please ensure that Google API credentials are properly set up:
             </p>
             <ul className="list-disc pl-5 text-sm text-gray-600">
-              <li>Check that GOOGLE_CLIENT_ID is set in environment variables</li>
-              <li>Check that GOOGLE_API_KEY is set in environment variables</li>
-              <li>Ensure these values are correctly configured in Google Cloud Console</li>
+              <li>Check that VITE_GOOGLE_CLIENT_ID is set correctly in environment variables</li>
+              <li>Check that VITE_GOOGLE_API_KEY is set correctly in environment variables</li>
+              <li>Ensure the Client ID and API Key are from the same Google Cloud project</li>
+              <li>Verify that the Google Calendar API is enabled in your Google Cloud project</li>
+              <li>Confirm that the redirect URIs are configured in your Google Cloud Console</li>
             </ul>
             <p className="text-sm font-medium mt-4">
-              Need help? Contact your administrator or refer to the documentation.
+              If you've recently updated the credentials, you may need to refresh the page or clear your browser cache.
             </p>
           </div>
         </CardContent>

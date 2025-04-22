@@ -40,14 +40,21 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
     try {
       await loadGoogleApi();
       
-      console.log('Initializing Google API with:', { 
-        clientId: GOOGLE_API_CONFIG.clientId ? 'present' : 'missing', 
-        apiKey: GOOGLE_API_CONFIG.apiKey ? 'present' : 'missing'
+      console.log('Google API Config:', { 
+        clientId: GOOGLE_API_CONFIG.clientId ? `present (length: ${GOOGLE_API_CONFIG.clientId.length})` : 'missing', 
+        apiKey: GOOGLE_API_CONFIG.apiKey ? `present (length: ${GOOGLE_API_CONFIG.apiKey.length})` : 'missing',
+        scope: GOOGLE_API_CONFIG.scope
       });
       
       if (!GOOGLE_API_CONFIG.clientId) {
         console.error('Google Client ID is missing or undefined');
         setApiInitError('Google Client ID is missing. Please check your environment variables.');
+        return;
+      }
+
+      if (!GOOGLE_API_CONFIG.apiKey) {
+        console.error('Google API Key is missing or undefined');
+        setApiInitError('Google API Key is missing. Please check your environment variables.');
         return;
       }
 
@@ -59,6 +66,7 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
       };
 
       try {
+        console.log('Initializing Google client with params', googleApiParams);
         await window.google?.client.init(googleApiParams);
         const authInstance = window.google?.auth2.getAuthInstance();
         
@@ -78,7 +86,7 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
 
       } catch (err: any) {
         console.error('Error initializing Google API client:', err);
-        setApiInitError(err.message || 'Error initializing Google API');
+        setApiInitError(`Error initializing Google API: ${err.message || 'Unknown error'}`);
         toast({
           title: 'Error initializing Google API',
           description: err.message || 'Could not initialize Google Calendar API',
@@ -98,6 +106,7 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
 
   useEffect(() => {
     if (clinicianId) {
+      console.log('Initializing Google API for clinician:', clinicianId);
       initializeGoogleApi();
     }
 
