@@ -68,8 +68,19 @@ export function useCalendarEvents({
       setError(null);
       fetchInProgress.current = true;
 
+      const validClinicianId = clinicianId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+        ? clinicianId
+        : null;
+
+      if (!validClinicianId) {
+        console.warn('[useCalendarEvents] Invalid UUID format for clinicianId:', clinicianId);
+        setEvents([]);
+        setError(new Error('Invalid clinician ID format'));
+        return;
+      }
+
       const fetchedEvents = await CalendarService.getEvents(
-        clinicianId,
+        validClinicianId,
         userTimeZone,
         startDate,
         endDate

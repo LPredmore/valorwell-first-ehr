@@ -1977,6 +1977,36 @@ export type Database = {
         }
         Relationships: []
       }
+      single_day_availability_backup: {
+        Row: {
+          availability_date: string | null
+          clinician_id: string | null
+          created_at: string | null
+          end_time: string | null
+          id: string | null
+          start_time: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          availability_date?: string | null
+          clinician_id?: string | null
+          created_at?: string | null
+          end_time?: string | null
+          id?: string | null
+          start_time?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          availability_date?: string | null
+          clinician_id?: string | null
+          created_at?: string | null
+          end_time?: string | null
+          id?: string | null
+          start_time?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       staff_licenses: {
         Row: {
           created_at: string | null
@@ -2034,6 +2064,36 @@ export type Database = {
           license_type?: string | null
           profile_id?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      temp_policy_backup: {
+        Row: {
+          cmd: string | null
+          policyname: unknown | null
+          qual: string | null
+          roles: unknown[] | null
+          schemaname: unknown | null
+          tablename: unknown | null
+          with_check: string | null
+        }
+        Insert: {
+          cmd?: string | null
+          policyname?: unknown | null
+          qual?: string | null
+          roles?: unknown[] | null
+          schemaname?: unknown | null
+          tablename?: unknown | null
+          with_check?: string | null
+        }
+        Update: {
+          cmd?: string | null
+          policyname?: unknown | null
+          qual?: string | null
+          roles?: unknown[] | null
+          schemaname?: unknown | null
+          tablename?: unknown | null
+          with_check?: string | null
         }
         Relationships: []
       }
