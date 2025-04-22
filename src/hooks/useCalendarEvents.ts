@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { CalendarService } from '@/services/calendarService';
-import { CalendarEvent, ICalendarEvent } from '@/types/calendar';
+import { CalendarEvent } from '@/types/calendar';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/context/UserContext';
 
@@ -9,7 +9,6 @@ interface UseCalendarEventsProps {
   userTimeZone: string;
   startDate?: Date;
   endDate?: Date;
-  showAvailability?: boolean;
 }
 
 export function useCalendarEvents({
@@ -17,7 +16,6 @@ export function useCalendarEvents({
   userTimeZone,
   startDate,
   endDate,
-  showAvailability = true
 }: UseCalendarEventsProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,8 +57,6 @@ export function useCalendarEvents({
         userTimeZone,
         startDate,
         endDate,
-        showAvailability,
-        retryCount,
         userId
       });
       
@@ -87,22 +83,10 @@ export function useCalendarEvents({
       );
 
       console.log('[useCalendarEvents] Events fetched:', fetchedEvents);
-
-      const filteredEvents = showAvailability
-        ? fetchedEvents
-        : fetchedEvents.filter(event => 
-            event.extendedProps?.eventType !== 'availability'
-          );
       
-      console.log('[useCalendarEvents] Filtered events:', {
-        total: fetchedEvents.length,
-        filtered: filteredEvents.length,
-        showAvailability
-      });
-
-      setEvents(filteredEvents);
-      
+      setEvents(fetchedEvents);
       if (retryCount > 0) setRetryCount(0);
+      
     } catch (err) {
       console.error("[useCalendarEvents] Error fetching calendar events:", err);
       const fetchError = err instanceof Error ? err : new Error(String(err));
@@ -139,7 +123,7 @@ export function useCalendarEvents({
       setIsLoading(false);
       fetchInProgress.current = false;
     }
-  }, [clinicianId, userTimeZone, showAvailability, startDate, endDate, toast, retryCount, userId, isUserLoading]);
+  }, [clinicianId, userTimeZone, startDate, endDate, toast, retryCount, userId, isUserLoading]);
 
   const createEvent = async (event: ICalendarEvent): Promise<ICalendarEvent | null> => {
     let retries = 0;
@@ -206,7 +190,6 @@ export function useCalendarEvents({
     console.log('[useCalendarEvents] Effect triggered:', {
       clinicianId,
       userTimeZone,
-      showAvailability,
       startDate,
       endDate,
       isUserLoading,
@@ -220,7 +203,7 @@ export function useCalendarEvents({
     return () => {
       fetchInProgress.current = false;
     };
-  }, [clinicianId, userTimeZone, showAvailability, startDate, endDate, fetchEvents, isUserLoading, userId]);
+  }, [clinicianId, userTimeZone, startDate, endDate, fetchEvents, isUserLoading, userId]);
 
   const refetch = () => {
     console.log('[useCalendarEvents] Manual refetch triggered');
