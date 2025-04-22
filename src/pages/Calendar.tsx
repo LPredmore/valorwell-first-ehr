@@ -340,6 +340,30 @@ const CalendarPage: React.FC = () => {
           />
         </>
       )}
+
+      {selectedClinicianId && (
+        <div className="mt-4">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowGoogleCalendarSettings(!showGoogleCalendarSettings)}
+            className="mb-4"
+          >
+            {showGoogleCalendarSettings ? 'Hide' : 'Show'} Google Calendar Settings
+          </Button>
+
+          {showGoogleCalendarSettings && (
+            <Card className="p-4 mt-4">
+              <GoogleCalendarIntegration
+                clinicianId={selectedClinicianId}
+                userTimeZone={userTimeZone}
+                onSyncComplete={() => {
+                  setShowGoogleCalendarSettings(false);
+                }}
+              />
+            </Card>
+          )}
+        </div>
+      )}
     </Layout>
   );
 };
