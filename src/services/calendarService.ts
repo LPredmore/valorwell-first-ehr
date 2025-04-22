@@ -1,874 +1,332 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import { 
-  ICalendarEvent, 
-  CalendarEvent, 
-  CalendarEventType,
-  RecurrenceRule,
-  CalendarException 
-} from '@/types/calendar';
-import { format } from 'date-fns';
-import { dayNumberToCode } from '@/utils/rruleUtils';
-import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import { CalendarEvent, CalendarEventType } from '@/types/calendar';
+import { AppointmentType } from '@/types/appointment';
+import { DateTime } from 'luxon';
+import { parseISO } from 'date-fns';
 
 export class CalendarService {
   static async getEvents(
-    clinicianId: string, 
+    clinicianId: string,
     userTimeZone: string,
-    start?: Date,
-    end?: Date
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<CalendarEvent[]> {
+    console.log('[CalendarService] Fetching events:', { 
+      clinicianId, 
+      userTimeZone,
+      startDate,
+      endDate
+    });
+    
+    try {
+      const appointmentEvents = await this.getAppointments(clinicianId, startDate, endDate);
+      const timeOffEvents = await this.getTimeOffEvents(clinicianId, startDate, endDate);
+      
+      return [
+        ...appointmentEvents,
+        ...timeOffEvents
+      ];
+    } catch (error) {
+      console.error('[CalendarService] Error getting events:', error);
+      throw error;
+    }
+  }
+
+  private static async getAppointments(
+    clinicianId: string,
+    startDate?: Date,
+    endDate?: Date
   ): Promise<CalendarEvent[]> {
     try {
-      if (!clinicianId) {
-        console.error("[CalendarService] No clinician ID provided");
-        return [];
-      }
-
-      userTimeZone = ensureIANATimeZone(userTimeZone);
-      console.log(`[CalendarService] Fetching events with params:`, {
-        clinicianId,
-        userTimeZone,
-        startDate: start?.toISOString(),
-        endDate: end?.toISOString()
-      });
-
-      // Validate UUID format to avoid database errors
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      const isUuid = uuidRegex.test(clinicianId);
-      
-      console.log(`[CalendarService] Clinician ID validation: ${clinicianId} is ${isUuid ? 'valid UUID' : 'not a valid UUID'}`);
-      
-      if (!isUuid) {
-        console.warn(`[CalendarService] Clinician ID is not in UUID format: ${clinicianId}`);
-        
-        // Try to fetch clinician by email if it looks like an email
-        if (clinicianId.includes('@')) {
-          console.log(`[CalendarService] Attempting to resolve clinician ID from email: ${clinicianId}`);
-          const { data: clinician, error: emailLookupError } = await supabase
-            .from('clinicians')
-            .select('id')
-            .eq('clinician_email', clinicianId)
-            .maybeSingle();
-            
-          if (emailLookupError) {
-            console.error("[CalendarService] Error looking up clinician by email:", emailLookupError);
-          } else if (clinician) {
-            console.log(`[CalendarService] Resolved clinician ID from email: ${clinician.id}`);
-            clinicianId = clinician.id;
-          }
-        }
-      }
-
-      // Check if clinician exists first
-      const { data: clinician, error: clinicianError } = await supabase
-        .from('clinicians')
-        .select('id')
-        .eq('id', clinicianId)
-        .single();
-        
-      if (clinicianError) {
-        console.error("[CalendarService] Error checking clinician:", clinicianError);
-        
-        // Fallback: Try to check if this is a profile ID rather than clinician ID
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, email')
-          .eq('id', clinicianId)
-          .maybeSingle();
-          
-        if (!profileError && profile) {
-          console.log(`[CalendarService] Found profile with ID ${clinicianId}, checking for clinician with email ${profile.email}`);
-          
-          const { data: clinicianByEmail, error: emailError } = await supabase
-            .from('clinicians')
-            .select('id')
-            .eq('clinician_email', profile.email)
-            .maybeSingle();
-            
-          if (!emailError && clinicianByEmail) {
-            console.log(`[CalendarService] Found clinician by email: ${clinicianByEmail.id}`);
-            clinicianId = clinicianByEmail.id;
-          } else {
-            console.error("[CalendarService] No clinician found for profile ID:", clinicianId);
-            return [];
-          }
-        } else {
-          console.error("[CalendarService] Clinician not found with ID:", clinicianId);
-          return [];
-        }
-      }
-      
-      if (!clinician && clinicianId) {
-        console.error("[CalendarService] Clinician not found with direct lookup:", clinicianId);
-      }
-      
-      // Check if there are any events in the calendar_events table
-      const { count, error: countError } = await supabase
-        .from('calendar_events')
-        .select('*', { count: 'exact', head: true });
-        
-      if (countError) {
-        console.error("[CalendarService] Error checking calendar_events count:", countError);
-      } else {
-        console.log(`[CalendarService] Total calendar_events in database: ${count}`);
-        
-        // If no events exist at all, perhaps the migration hasn't happened
-        if (count === 0) {
-          console.warn("[CalendarService] No calendar events found in database. Migration may not have run successfully.");
-          
-          // Check if old availability data exists to migrate
-          const { count: oldAvailCount, error: oldAvailError } = await supabase
-            .from('availability')
-            .select('*', { count: 'exact', head: true });
-            
-          if (!oldAvailError) {
-            console.log(`[CalendarService] Found ${oldAvailCount} records in old availability table.`);
-            
-            if (oldAvailCount > 0) {
-              console.log("[CalendarService] Attempting to run migration of availability data.");
-              try {
-                await CalendarService.migrateData();
-                console.log("[CalendarService] Migration completed, attempting to fetch events again.");
-              } catch (migrationError) {
-                console.error("[CalendarService] Migration failed:", migrationError);
-              }
-            }
-          }
-        }
-      }
-      
-      // Add date range filters if provided
       let query = supabase
-        .from('calendar_events')
+        .from('appointments')
         .select(`
-          *,
-          recurrence_rules (*)
+          id,
+          client_id,
+          date,
+          start_time,
+          end_time,
+          type,
+          status,
+          notes,
+          appointment_datetime,
+          appointment_end_datetime,
+          source_time_zone,
+          client:client_id (
+            client_first_name,
+            client_last_name
+          )
         `)
         .eq('clinician_id', clinicianId);
-        
-      if (start) {
-        query = query.gte('start_time', start.toISOString());
+      
+      if (startDate && endDate) {
+        const startDateString = startDate.toISOString().split('T')[0];
+        const endDateString = endDate.toISOString().split('T')[0];
+        query = query.gte('date', startDateString).lte('date', endDateString);
       }
       
-      if (end) {
-        query = query.lte('start_time', end.toISOString());
-      }
-      
-      // Execute the query
-      const { data: events, error } = await query;
+      const { data: appointments, error } = await query;
       
       if (error) {
-        console.error("[CalendarService] Error fetching calendar events:", error);
+        console.error('Error fetching appointments:', error);
         throw error;
       }
-
-      console.log(`[CalendarService] Raw events fetched:`, events);
       
-      // Fetch exceptions if needed
-      const eventsWithRecurrence = events?.filter(event => event.recurrence_rules && event.recurrence_rules.length > 0);
-      
-      if (eventsWithRecurrence && eventsWithRecurrence.length > 0) {
-        console.log(`[CalendarService] Found ${eventsWithRecurrence.length} recurring events`);
-        
-        const recurrenceIds = eventsWithRecurrence.map(event => event.id);
-        
-        const { data: exceptions, error: exceptionsError } = await supabase
-          .from('calendar_exceptions')
-          .select('*')
-          .in('recurrence_event_id', recurrenceIds);
-          
-        if (exceptionsError) {
-          console.error("[CalendarService] Error fetching calendar exceptions:", exceptionsError);
-          throw exceptionsError;
+      return appointments.map((appointment: AppointmentType) => ({
+        id: appointment.id,
+        title: `${appointment.client?.client_first_name} ${appointment.client?.client_last_name} - ${appointment.type}`,
+        start: appointment.appointment_datetime || `${appointment.date}T${appointment.start_time}`,
+        end: appointment.appointment_end_datetime || `${appointment.date}T${appointment.end_time}`,
+        extendedProps: {
+          appointment: appointment,
+          eventType: 'appointment' as CalendarEventType
         }
-        
-        // Map exceptions to their events
-        const exceptionsMap = new Map();
-        exceptions?.forEach(exception => {
-          if (!exceptionsMap.has(exception.recurrence_event_id)) {
-            exceptionsMap.set(exception.recurrence_event_id, []);
-          }
-          exceptionsMap.get(exception.recurrence_event_id).push(exception);
-        });
-        
-        // Add exceptions to events
-        events?.forEach(event => {
-          if (exceptionsMap.has(event.id)) {
-            event.exceptions = exceptionsMap.get(event.id);
-          }
-        });
-        
-        console.log('[CalendarService] Added exceptions to events:', events);
-      }
-      
-      // If still no events, check if we should create default availability
-      if (!events || events.length === 0) {
-        console.warn("[CalendarService] No events found for clinician:", clinicianId);
-        
-        // This would be a good place to add default availability if needed
-        // For now, just return empty array
-      }
-      
-      // Convert to CalendarEvent format
-      const calendarEvents = this.convertToCalendarEvents(events || [], userTimeZone);
-      console.log(`[CalendarService] Converted ${calendarEvents.length} calendar events`);
-      
-      return calendarEvents;
+      }));
     } catch (error) {
-      console.error('[CalendarService] Error in getEvents:', error);
-      throw error;
+      console.error('Error fetching appointments:', error);
+      return [];
     }
   }
 
-  static async createEvent(event: ICalendarEvent, userTimeZone: string): Promise<ICalendarEvent> {
+  private static async getTimeOffEvents(
+    clinicianId: string,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<CalendarEvent[]> {
     try {
-      console.log('Creating calendar event:', JSON.stringify(event, null, 2));
-      userTimeZone = ensureIANATimeZone(userTimeZone);
+      let query = supabase
+        .from('time_off')
+        .select('*')
+        .eq('clinician_id', clinicianId);
       
-      // Convert times to UTC format for storage and match DB schema
-      const utcEvent = {
-        title: event.title,
-        description: event.description,
-        start_time: new Date(event.startTime).toISOString(),
-        end_time: new Date(event.endTime).toISOString(),
-        clinician_id: event.clinicianId,
-        event_type: event.eventType,
-        all_day: event.allDay // Match DB column name
-      };
+      if (startDate && endDate) {
+        const startDateString = startDate.toISOString().split('T')[0];
+        const endDateString = endDate.toISOString().split('T')[0];
+        query = query.gte('date', startDateString).lte('date', endDateString);
+      }
       
-      console.log('Formatted DB event:', utcEvent);
-      
-      // Insert the event
-      const { data: createdEvent, error } = await supabase
-        .from('calendar_events')
-        .insert(utcEvent)
-        .select()
-        .single();
+      const { data: timeOffEvents, error } = await query;
       
       if (error) {
-        console.error('Error inserting event:', error);
+        console.error('Error fetching time off events:', error);
         throw error;
       }
       
-      console.log('Created event in DB:', createdEvent);
-      
-      // If there's a recurrence rule, create it
-      if (event.recurrenceRule) {
-        const recurrenceData = {
-          event_id: createdEvent.id,
-          rrule: event.recurrenceRule.rrule
-        };
+      return timeOffEvents.map(timeOff => ({
+        id: timeOff.id,
+        title: 'Time Off',
+        start: `${timeOff.date}T${timeOff.start_time}`,
+        end: `${timeOff.date}T${timeOff.end_time}`,
+        allDay: timeOff.all_day,
+        extendedProps: {
+          eventType: 'time_off' as CalendarEventType,
+          description: timeOff.reason
+        }
+      }));
+    } catch (error) {
+      console.error('Error fetching time off events:', error);
+      return [];
+    }
+  }
+
+  static async createEvent(event: CalendarEvent, userTimeZone: string): Promise<CalendarEvent | null> {
+    try {
+      if (event.extendedProps?.eventType === 'appointment') {
+        const appointment = event.extendedProps.appointment;
         
-        const { data: createdRule, error: ruleError } = await supabase
-          .from('recurrence_rules')
-          .insert(recurrenceData)
+        if (!appointment) {
+          console.error('Appointment data is missing.');
+          return null;
+        }
+        
+        const { data, error } = await supabase
+          .from('appointments')
+          .insert([
+            {
+              client_id: appointment.client_id,
+              clinician_id: appointment.clinician_id,
+              date: appointment.date,
+              start_time: appointment.start,
+              end_time: appointment.end,
+              type: appointment.type,
+              status: appointment.status,
+              notes: appointment.notes
+            }
+          ])
           .select()
           .single();
-          
-        if (ruleError) {
-          console.error('Error creating recurrence rule:', ruleError);
-          throw ruleError;
+        
+        if (error) {
+          console.error('Error creating appointment:', error);
+          return null;
         }
         
-        createdEvent.recurrence_rule = createdRule;
+        return {
+          id: data.id,
+          title: `${data.client_id} - ${data.type}`,
+          start: data.start_time,
+          end: data.end_time,
+          extendedProps: {
+            appointment: data,
+            eventType: 'appointment' as CalendarEventType
+          }
+        };
+      } else if (event.extendedProps?.eventType === 'time_off') {
+        const { data, error } = await supabase
+          .from('time_off')
+          .insert([
+            {
+              clinician_id: event.clinicianId,
+              date: event.start,
+              start_time: event.start,
+              end_time: event.end,
+              all_day: event.allDay,
+              reason: event.extendedProps.description
+            }
+          ])
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('Error creating time off event:', error);
+          return null;
+        }
+        
+        return {
+          id: data.id,
+          title: 'Time Off',
+          start: data.start_time,
+          end: data.end_time,
+          allDay: data.all_day,
+          extendedProps: {
+            eventType: 'time_off' as CalendarEventType,
+            description: data.reason
+          }
+        };
+      } else {
+        console.warn('Unknown event type:', event);
+        return null;
       }
-      
-      // Convert back to ICalendarEvent format
-      return {
-        id: createdEvent.id,
-        clinicianId: createdEvent.clinician_id,
-        title: createdEvent.title,
-        description: createdEvent.description,
-        startTime: new Date(createdEvent.start_time).toISOString(),
-        endTime: new Date(createdEvent.end_time).toISOString(),
-        allDay: createdEvent.all_day,
-        eventType: createdEvent.event_type as CalendarEventType,
-        recurrenceId: createdEvent.recurrence_id,
-        recurrenceRule: createdEvent.recurrence_rule ? {
-          id: createdEvent.recurrence_rule.id,
-          eventId: createdEvent.recurrence_rule.event_id,
-          rrule: createdEvent.recurrence_rule.rrule
-        } : undefined
-      };
     } catch (error) {
-      console.error('Error creating calendar event:', error);
-      throw error;
+      console.error('Error creating event:', error);
+      return null;
     }
   }
 
-  static async updateEvent(event: ICalendarEvent, userTimeZone: string): Promise<ICalendarEvent> {
+  static async updateEvent(event: CalendarEvent, userTimeZone: string): Promise<CalendarEvent | null> {
     try {
-      userTimeZone = ensureIANATimeZone(userTimeZone);
-      console.log('Updating calendar event:', JSON.stringify(event, null, 2));
-      
-      // Convert times to UTC format for storage
-      const utcEvent = {
-        title: event.title,
-        description: event.description,
-        start_time: new Date(event.startTime).toISOString(),
-        end_time: new Date(event.endTime).toISOString(),
-        event_type: event.eventType,
-        all_day: event.allDay
-      };
-      
-      // Update the event
-      const { data: updatedEvent, error } = await supabase
-        .from('calendar_events')
-        .update(utcEvent)
-        .eq('id', event.id)
-        .select(`*, recurrence_rules(*)`)
-        .single();
-      
-      if (error) {
-        console.error('Error updating event:', error);
-        throw error;
-      }
-      
-      // If there's a recurrence rule, update or create it
-      if (event.recurrenceRule) {
-        const recurrenceData = {
-          event_id: event.id,
-          rrule: event.recurrenceRule.rrule
-        };
+      if (event.extendedProps?.eventType === 'appointment') {
+        const appointment = event.extendedProps.appointment;
         
-        // Check if rule exists
-        const { data: existingRule } = await supabase
-          .from('recurrence_rules')
-          .select()
-          .eq('event_id', event.id)
-          .maybeSingle();
-          
-        if (existingRule) {
-          // Update existing rule
-          const { data: updatedRule, error: ruleError } = await supabase
-            .from('recurrence_rules')
-            .update({ rrule: event.recurrenceRule.rrule })
-            .eq('id', existingRule.id)
-            .select()
-            .single();
-            
-          if (ruleError) {
-            console.error('Error updating recurrence rule:', ruleError);
-            throw ruleError;
-          }
-          
-          updatedEvent.recurrence_rules = [updatedRule];
-        } else {
-          // Create new rule
-          const { data: createdRule, error: ruleError } = await supabase
-            .from('recurrence_rules')
-            .insert(recurrenceData)
-            .select()
-            .single();
-            
-          if (ruleError) {
-            console.error('Error creating recurrence rule:', ruleError);
-            throw ruleError;
-          }
-          
-          updatedEvent.recurrence_rules = [createdRule];
+        if (!appointment) {
+          console.error('Appointment data is missing.');
+          return null;
         }
+        
+        const { data, error } = await supabase
+          .from('appointments')
+          .update({
+            client_id: appointment.client_id,
+            clinician_id: appointment.clinician_id,
+            date: appointment.date,
+            start_time: appointment.start,
+            end_time: appointment.end,
+            type: appointment.type,
+            status: appointment.status,
+            notes: appointment.notes
+          })
+          .eq('id', event.id)
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('Error updating appointment:', error);
+          return null;
+        }
+        
+        return {
+          id: data.id,
+          title: `${data.client_id} - ${data.type}`,
+          start: data.start_time,
+          end: data.end_time,
+          extendedProps: {
+            appointment: data,
+            eventType: 'appointment' as CalendarEventType
+          }
+        };
+      } else if (event.extendedProps?.eventType === 'time_off') {
+        const { data, error } = await supabase
+          .from('time_off')
+          .update({
+            clinician_id: event.clinicianId,
+            date: event.start,
+            start_time: event.start,
+            end_time: event.end,
+            all_day: event.allDay,
+            reason: event.extendedProps.description
+          })
+          .eq('id', event.id)
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('Error updating time off event:', error);
+          return null;
+        }
+        
+        return {
+          id: data.id,
+          title: 'Time Off',
+          start: data.start_time,
+          end: data.end_time,
+          allDay: data.all_day,
+          extendedProps: {
+            eventType: 'time_off' as CalendarEventType,
+            description: data.reason
+          }
+        };
+      } else {
+        console.warn('Unknown event type:', event);
+        return null;
       }
-      
-      // Convert back to ICalendarEvent format
-      return {
-        id: updatedEvent.id,
-        clinicianId: updatedEvent.clinician_id,
-        title: updatedEvent.title,
-        description: updatedEvent.description,
-        startTime: new Date(updatedEvent.start_time).toISOString(),
-        endTime: new Date(updatedEvent.end_time).toISOString(),
-        allDay: updatedEvent.all_day,
-        eventType: updatedEvent.event_type as CalendarEventType,
-        recurrenceId: updatedEvent.recurrence_id,
-        recurrenceRule: updatedEvent.recurrence_rules && updatedEvent.recurrence_rules.length > 0 ? {
-          id: updatedEvent.recurrence_rules[0].id,
-          eventId: updatedEvent.recurrence_rules[0].event_id,
-          rrule: updatedEvent.recurrence_rules[0].rrule
-        } : undefined
-      };
     } catch (error) {
-      console.error('Error updating calendar event:', error);
-      throw error;
+      console.error('Error updating event:', error);
+      return null;
     }
   }
 
   static async deleteEvent(eventId: string): Promise<void> {
     try {
-      console.log(`Deleting calendar event with ID: ${eventId}`);
-      
-      // Delete the event (cascade will handle recurrence rules)
-      const { error } = await supabase
-        .from('calendar_events')
+      const { data: appointmentData, error: appointmentError } = await supabase
+        .from('appointments')
         .delete()
-        .eq('id', eventId);
+        .eq('id', eventId)
+        .select();
       
-      if (error) {
-        console.error('Error deleting calendar event:', error);
-        throw error;
-      }
-      
-      console.log(`Successfully deleted event: ${eventId}`);
-    } catch (error) {
-      console.error('Error deleting calendar event:', error);
-      throw error;
-    }
-  }
-
-  static async addException(exception: CalendarException): Promise<CalendarException> {
-    try {
-      const { data, error } = await supabase
-        .from('calendar_exceptions')
-        .insert({
-          recurrence_event_id: exception.recurrenceEventId,
-          exception_date: exception.exceptionDate,
-          is_cancelled: exception.isCancelled,
-          replacement_event_id: exception.replacementEventId
-        })
-        .select()
-        .single();
-      
-      if (error) {
-        console.error('Error adding calendar exception:', error);
-        throw error;
-      }
-      
-      return {
-        id: data.id,
-        recurrenceEventId: data.recurrence_event_id,
-        exceptionDate: data.exception_date,
-        isCancelled: data.is_cancelled,
-        replacementEventId: data.replacement_event_id
-      };
-    } catch (error) {
-      console.error('Error adding calendar exception:', error);
-      throw error;
-    }
-  }
-
-  static async addWeeklyAvailability(
-    clinicianId: string, 
-    dayIndex: number, 
-    startTime: string, 
-    endTime: string,
-    userTimeZone: string
-  ): Promise<ICalendarEvent> {
-    try {
-      // Create a new event for today with the specified times
-      const today = new Date();
-      const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayIndex];
-      
-      // Create start and end times for today as reference points
-      const startISO = `${format(today, 'yyyy-MM-dd')}T${startTime}:00`;
-      const endISO = `${format(today, 'yyyy-MM-dd')}T${endTime}:00`;
-      
-      // Create the event
-      const event: ICalendarEvent = {
-        id: '', // Will be generated
-        clinicianId,
-        title: `Available - ${dayName}`,
-        startTime: startISO,
-        endTime: endISO,
-        allDay: false,
-        eventType: 'availability',
-        recurrenceRule: {
-          id: '', // Will be generated
-          eventId: '', // Will be set after event creation
-          rrule: `FREQ=WEEKLY;BYDAY=${dayNumberToCode(dayIndex)}`
-        }
-      };
-      
-      // Create the event
-      return await this.createEvent(event, userTimeZone);
-    } catch (error) {
-      console.error('Error adding weekly availability:', error);
-      throw error;
-    }
-  }
-
-  private static convertToCalendarEvents(events: any[], userTimeZone: string): CalendarEvent[] {
-    try {
-      userTimeZone = ensureIANATimeZone(userTimeZone);
-      console.log('[CalendarService] Converting events with timezone:', userTimeZone);
-      
-      return events.map(event => {
-        console.log('[CalendarService] Converting event:', event);
+      if (appointmentError) {
+        console.error('Error deleting appointment:', appointmentError);
         
-        // Convert times to Date objects
-        const startTime = new Date(event.start_time);
-        const endTime = new Date(event.end_time);
+        const { data: timeOffData, error: timeOffError } = await supabase
+          .from('time_off')
+          .delete()
+          .eq('id', eventId)
+          .select();
         
-        // Create the base calendar event
-        const calendarEvent: CalendarEvent = {
-          id: event.id,
-          title: event.title,
-          start: startTime,
-          end: endTime,
-          allDay: event.all_day,
-          extendedProps: {
-            eventType: event.event_type,
-            isAvailability: event.event_type === 'availability',
-            description: event.description
-          }
-        };
-        
-        // Set color based on event type
-        switch (event.event_type) {
-          case 'availability':
-            calendarEvent.backgroundColor = 'rgba(76, 175, 80, 0.3)';
-            calendarEvent.borderColor = '#4CAF50';
-            calendarEvent.textColor = '#1B5E20';
-            calendarEvent.display = 'block';
-            break;
-          case 'time_off':
-            calendarEvent.backgroundColor = 'rgba(244, 67, 54, 0.3)';
-            calendarEvent.borderColor = '#F44336';
-            calendarEvent.textColor = '#B71C1C';
-            calendarEvent.display = 'block';
-            break;
-          case 'appointment':
-            // Keep default colors
-            break;
+        if (timeOffError) {
+          console.error('Error deleting time off event:', timeOffError);
+          throw timeOffError;
         }
         
-        // Add recurrence information if available
-        if (event.recurrence_rules && event.recurrence_rules.length > 0) {
-          console.log('[CalendarService] Adding recurrence rule:', event.recurrence_rules[0]);
-          const rule = event.recurrence_rules[0];
-          calendarEvent.rrule = rule.rrule;
-          
-          calendarEvent.extendedProps!.recurrenceRule = {
-            id: rule.id,
-            eventId: rule.event_id,
-            rrule: rule.rrule
-          };
-        }
-        
-        // Add exceptions if available
-        if (event.exceptions && event.exceptions.length > 0) {
-          console.log('[CalendarService] Adding exceptions:', event.exceptions);
-          calendarEvent.extendedProps!.exceptions = event.exceptions.map((exception: any) => ({
-            id: exception.id,
-            recurrenceEventId: exception.recurrence_event_id,
-            exceptionDate: exception.exception_date,
-            isCancelled: exception.is_cancelled,
-            replacementEventId: exception.replacement_event_id
-          }));
-        }
-        
-        console.log('[CalendarService] Converted calendar event:', calendarEvent);
-        return calendarEvent;
-      });
-    } catch (error) {
-      console.error('[CalendarService] Error converting events:', error);
-      throw error;
-    }
-  }
-
-  static async migrateData(): Promise<void> {
-    try {
-      // First migrate from the availability table
-      await this.migrateWeeklyAvailability();
-      
-      // Then migrate from single day availability
-      await this.migrateSingleDayAvailability();
-      
-      // Finally migrate time blocks
-      await this.migrateTimeBlocks();
-      
-      console.log("Successfully completed all availability migrations");
-    } catch (error) {
-      console.error('Error migrating availability data:', error);
-      throw error;
-    }
-  }
-
-  private static async migrateWeeklyAvailability(): Promise<void> {
-    try {
-      console.log("Starting weekly availability migration");
-      // Get all weekly availability records
-      const { data: availability, error } = await supabase
-        .from('availability')
-        .select('*')
-        .eq('is_active', true);
-      
-      if (error) throw error;
-      
-      if (!availability || availability.length === 0) {
-        console.log("No weekly availability records to migrate");
-        return;
-      }
-      
-      console.log(`Found ${availability.length} weekly availability records to migrate`);
-      
-      // Default timezone for conversion
-      const defaultTimeZone = 'America/Chicago';
-      
-      // Process each availability record
-      for (const record of availability) {
-        try {
-          // Convert day_of_week to number if needed
-          let dayIndex: number;
-          if (typeof record.day_of_week === 'string') {
-            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            dayIndex = dayNames.indexOf(record.day_of_week.toLowerCase());
-            if (dayIndex < 0) {
-              // Try numeric string
-              dayIndex = parseInt(record.day_of_week, 10);
-              if (isNaN(dayIndex) || dayIndex < 0 || dayIndex > 6) {
-                console.warn(`Invalid day_of_week: ${record.day_of_week}, skipping record`);
-                continue;
-              }
-            }
-          } else {
-            dayIndex = record.day_of_week;
-          }
-          
-          // Create a daycode from the day index
-          const dayCode = dayNumberToCode(dayIndex);
-          
-          // Basic validation for time formats
-          if (!record.start_time || !record.end_time) {
-            console.warn(`Missing start or end time for record: ${record.id}, skipping`);
-            continue;
-          }
-          
-          // Format start and end times
-          let startTime = record.start_time;
-          let endTime = record.end_time;
-          
-          if (typeof startTime === 'string' && !startTime.includes(':')) {
-            startTime = `${startTime}:00`;
-          }
-          if (typeof endTime === 'string' && !endTime.includes(':')) {
-            endTime = `${endTime}:00`;
-          }
-          
-          // Create a reference date for today
-          const today = new Date();
-          const startDateTime = `${format(today, 'yyyy-MM-dd')}T${startTime}`;
-          const endDateTime = `${format(today, 'yyyy-MM-dd')}T${endTime}`;
-          
-          // Create the calendar event
-          const eventData = {
-            title: `Available - ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayIndex]}`,
-            description: `Weekly availability`,
-            start_time: startDateTime,
-            end_time: endDateTime,
-            all_day: false,
-            event_type: 'availability',
-            clinician_id: record.clinician_id
-          };
-          
-          // Insert the event
-          const { data: newEvent, error: eventError } = await supabase
-            .from('calendar_events')
-            .insert(eventData)
-            .select()
-            .single();
-          
-          if (eventError) {
-            console.error(`Error creating calendar event from availability record ${record.id}:`, eventError);
-            continue;
-          }
-          
-          // Create the recurrence rule
-          const recurrenceData = {
-            event_id: newEvent.id,
-            rrule: `FREQ=WEEKLY;BYDAY=${dayCode}`
-          };
-          
-          const { error: ruleError } = await supabase
-            .from('recurrence_rules')
-            .insert(recurrenceData);
-            
-          if (ruleError) {
-            console.error(`Error creating recurrence rule for event ${newEvent.id}:`, ruleError);
-          }
-          
-          console.log(`Migrated weekly availability for ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayIndex]}`);
-        } catch (recordError) {
-          console.error(`Error processing availability record ${record.id}:`, recordError);
+        if (!timeOffData) {
+          console.warn('Event not found as appointment or time off:', eventId);
         }
       }
       
-      console.log("Completed weekly availability migration");
-    } catch (error) {
-      console.error('Error in migrateWeeklyAvailability:', error);
-      throw error;
-    }
-  }
-
-  private static async migrateSingleDayAvailability(): Promise<void> {
-    try {
-      console.log("Starting single day availability migration");
-      
-      // Check if the single_day_availability table exists
-      const { count, error: checkError } = await supabase
-        .from('information_schema.tables')
-        .select('table_name', { count: 'exact', head: true })
-        .eq('table_schema', 'public')
-        .eq('table_name', 'single_day_availability');
-      
-      if (checkError) {
-        console.error('Error checking for single_day_availability table:', checkError);
-        return;
-      }
-      
-      if (count === 0) {
-        console.log('single_day_availability table does not exist, skipping migration');
-        return;
-      }
-      
-      // Get single day availability records
-      const { data: singleDayAvail, error } = await supabase
-        .from('single_day_availability')
-        .select('*');
-      
-      if (error) {
-        console.error('Error fetching single day availability:', error);
-        return;
-      }
-      
-      if (!singleDayAvail || singleDayAvail.length === 0) {
-        console.log("No single day availability records to migrate");
-        return;
-      }
-      
-      console.log(`Found ${singleDayAvail.length} single day availability records to migrate`);
-      
-      // Process each record
-      for (const record of singleDayAvail) {
-        try {
-          // Format date and times
-          const dateStr = record.availability_date || record.date;
-          const startTime = record.start_time;
-          const endTime = record.end_time;
-          
-          if (!dateStr || !startTime || !endTime) {
-            console.warn(`Missing date or time data for record: ${record.id}, skipping`);
-            continue;
-          }
-          
-          // Create ISO datetime strings
-          const startDateTime = `${dateStr}T${startTime}`;
-          const endDateTime = `${dateStr}T${endTime}`;
-          
-          // Create the calendar event
-          const eventData = {
-            title: `Available - ${dateStr}`,
-            description: `Single day availability`,
-            start_time: startDateTime,
-            end_time: endDateTime,
-            all_day: false,
-            event_type: 'availability',
-            clinician_id: record.clinician_id
-          };
-          
-          // Insert the event
-          const { error: eventError } = await supabase
-            .from('calendar_events')
-            .insert(eventData);
-          
-          if (eventError) {
-            console.error(`Error creating calendar event from single day record ${record.id}:`, eventError);
-            continue;
-          }
-          
-          console.log(`Migrated single day availability for ${dateStr}`);
-        } catch (recordError) {
-          console.error(`Error processing single day availability record ${record.id}:`, recordError);
-        }
+      if (!appointmentData) {
+        console.warn('Event not found as appointment:', eventId);
       }
     } catch (error) {
-      console.error('Error in migrateSingleDayAvailability:', error);
-      throw error;
-    }
-  }
-
-  private static async migrateTimeBlocks(): Promise<void> {
-    try {
-      console.log("Starting time blocks migration");
-      
-      // Check if the time_blocks table exists
-      const { count, error: checkError } = await supabase
-        .from('information_schema.tables')
-        .select('table_name', { count: 'exact', head: true })
-        .eq('table_schema', 'public')
-        .eq('table_name', 'time_blocks');
-      
-      if (checkError) {
-        console.error('Error checking for time_blocks table:', checkError);
-        return;
-      }
-      
-      if (count === 0) {
-        console.log('time_blocks table does not exist, skipping migration');
-        return;
-      }
-      
-      // Get time block records
-      const { data: timeBlocks, error } = await supabase
-        .from('time_blocks')
-        .select('*');
-      
-      if (error) {
-        console.error('Error fetching time blocks:', error);
-        return;
-      }
-      
-      if (!timeBlocks || timeBlocks.length === 0) {
-        console.log("No time block records to migrate");
-        return;
-      }
-      
-      console.log(`Found ${timeBlocks.length} time block records to migrate`);
-      
-      // Process each record
-      for (const record of timeBlocks) {
-        try {
-          // Format date and times
-          const dateStr = record.block_date;
-          const startTime = record.start_time;
-          const endTime = record.end_time;
-          
-          if (!dateStr || !startTime || !endTime) {
-            console.warn(`Missing date or time data for record: ${record.id}, skipping`);
-            continue;
-          }
-          
-          // Create ISO datetime strings
-          const startDateTime = `${dateStr}T${startTime}`;
-          const endDateTime = `${dateStr}T${endTime}`;
-          
-          // Create the calendar event
-          const eventData = {
-            title: `Time Off${record.reason ? `: ${record.reason}` : ''}`,
-            description: record.reason || 'Time off block',
-            start_time: startDateTime,
-            end_time: endDateTime,
-            all_day: false,
-            event_type: 'time_off',
-            clinician_id: record.clinician_id
-          };
-          
-          // Insert the event
-          const { error: eventError } = await supabase
-            .from('calendar_events')
-            .insert(eventData);
-          
-          if (eventError) {
-            console.error(`Error creating calendar event from time block record ${record.id}:`, eventError);
-            continue;
-          }
-          
-          console.log(`Migrated time block for ${dateStr}`);
-        } catch (recordError) {
-          console.error(`Error processing time block record ${record.id}:`, recordError);
-        }
-      }
-    } catch (error) {
-      console.error('Error in migrateTimeBlocks:', error);
+      console.error('Error deleting event:', error);
       throw error;
     }
   }

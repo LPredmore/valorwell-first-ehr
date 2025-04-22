@@ -1,20 +1,17 @@
-
 import React, { useState, useEffect } from 'react';
 import { CalendarViewType } from '@/types/calendar';
 import Layout from '../components/layout/Layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Plus, CalendarClock, RefreshCcw, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, RefreshCcw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCalendarState } from '../hooks/useCalendarState';
 import AppointmentDialog from '../components/calendar/AppointmentDialog';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import FullCalendarView from '../components/calendar/FullCalendarView';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import NewAvailabilityPanel from '../components/calendar/availability/NewAvailabilityPanel';
 import CalendarErrorBoundary from '../components/calendar/CalendarErrorBoundary';
-import { AvailabilityProvider } from '../components/calendar/availability/AvailabilityContext';
 import { useUser } from '@/context/UserContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
@@ -43,9 +40,7 @@ const CalendarPage: React.FC = () => {
   const [showAvailabilityPanel, setShowAvailabilityPanel] = useState<boolean>(false);
   const [calendarKey, setCalendarKey] = useState<number>(0); // For forcing re-render
   
-  // Check authentication status before proceeding
   useEffect(() => {
-    // If user data is loaded and user is not authenticated, redirect to login
     if (!isUserLoading && !userId) {
       console.log('[Calendar] User not authenticated, redirecting to login');
       toast({
@@ -59,7 +54,6 @@ const CalendarPage: React.FC = () => {
   useEffect(() => {
     console.log('[Calendar] Page initialized with timezone:', userTimeZone);
     
-    // Only proceed if user is authenticated
     if (isUserLoading || !userId) {
       return;
     }
@@ -149,7 +143,6 @@ const CalendarPage: React.FC = () => {
   const canSelectDifferentClinician = userRole !== 'clinician';
   const canManageAvailability = userRole === 'clinician' || userRole === 'admin';
 
-  // Show loading state if anything is still initializing
   if (isUserLoading || isLoadingTimeZone) {
     return (
       <Layout>
@@ -169,7 +162,6 @@ const CalendarPage: React.FC = () => {
     );
   }
 
-  // Show authentication warning if not authenticated
   if (!userId) {
     return (
       <Layout>
@@ -211,16 +203,6 @@ const CalendarPage: React.FC = () => {
                   New Appointment
                 </Button>
 
-                {canManageAvailability && (
-                  <Button 
-                    variant={showAvailabilityPanel ? "secondary" : "outline"}
-                    onClick={() => setShowAvailabilityPanel(prev => !prev)}
-                  >
-                    <CalendarClock className="h-4 w-4 mr-2" />
-                    {showAvailabilityPanel ? "Hide Availability" : "Manage Availability"}
-                  </Button>
-                )}
-
                 <Button
                   variant="ghost"
                   onClick={handleCalendarRefresh}
@@ -259,38 +241,29 @@ const CalendarPage: React.FC = () => {
             </div>
 
             {selectedClinicianId ? (
-              <AvailabilityProvider clinicianId={selectedClinicianId}>
-                {showAvailabilityPanel && canManageAvailability ? (
-                  <NewAvailabilityPanel clinicianId={selectedClinicianId} />
-                ) : (
-                  <Card className="p-4">
-                    <FullCalendarView
-                      key={calendarKey}
-                      clinicianId={selectedClinicianId}
-                      userTimeZone={userTimeZone}
-                      view={calendarViewMode}
-                      showAvailability={true}
-                      height="700px"
-                    />
-                  </Card>
-                )}
-              </AvailabilityProvider>
+              <Card className="p-4">
+                <FullCalendarView
+                  key={calendarKey}
+                  clinicianId={selectedClinicianId}
+                  userTimeZone={userTimeZone}
+                  view={calendarViewMode}
+                  height="700px"
+                />
+              </Card>
             ) : (
               <Card className="p-8 text-center">
-                <CardContent>
-                  <p className="text-gray-500">
-                    {loadingClinicians ? (
-                      <span className="flex items-center justify-center">
-                        <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                        Loading clinicians...
-                      </span>
-                    ) : clinicians.length === 0 ? (
-                      "No clinicians available. Please add clinicians first."
-                    ) : (
-                      "Please select a clinician to view their calendar."
-                    )}
-                  </p>
-                </CardContent>
+                <p className="text-gray-500">
+                  {loadingClinicians ? (
+                    <span className="flex items-center justify-center">
+                      <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                      Loading clinicians...
+                    </span>
+                  ) : clinicians.length === 0 ? (
+                    "No clinicians available. Please add clinicians first."
+                  ) : (
+                    "Please select a clinician to view their calendar."
+                  )}
+                </p>
               </Card>
             )}
           </div>

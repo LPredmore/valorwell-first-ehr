@@ -22,7 +22,6 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   userTimeZone = 'America/Chicago',
   view = 'dayGridMonth' as CalendarViewType,
   height = 'auto',
-  showAvailability = false,
   events = []
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
@@ -37,8 +36,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     refetch
   } = useCalendarEvents({
     clinicianId,
-    userTimeZone,
-    showAvailability: showAvailability
+    userTimeZone
   });
   
   // Handle errors with more detail
@@ -120,9 +118,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
           const classes = [];
           const eventType = arg.event.extendedProps?.eventType;
           
-          if (eventType === 'availability') {
-            classes.push('availability-event');
-          } else if (eventType === 'time_off') {
+          if (eventType === 'time_off') {
             classes.push('time-off-event');
           }
           

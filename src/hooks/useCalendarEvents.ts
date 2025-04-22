@@ -125,7 +125,7 @@ export function useCalendarEvents({
     }
   }, [clinicianId, userTimeZone, startDate, endDate, toast, retryCount, userId, isUserLoading]);
 
-  const createEvent = async (event: ICalendarEvent): Promise<ICalendarEvent | null> => {
+  const createEvent = async (event: CalendarEvent): Promise<CalendarEvent | null> => {
     let retries = 0;
     const maxCreateRetries = 2;
     
@@ -154,7 +154,7 @@ export function useCalendarEvents({
     return null;
   };
 
-  const updateEvent = async (event: ICalendarEvent): Promise<ICalendarEvent | null> => {
+  const updateEvent = async (event: CalendarEvent): Promise<CalendarEvent | null> => {
     try {
       const updatedEvent = await CalendarService.updateEvent(event, userTimeZone);
       fetchEvents();

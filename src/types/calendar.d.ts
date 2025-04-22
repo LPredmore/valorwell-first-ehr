@@ -25,22 +25,6 @@ export interface CalendarException {
 }
 
 // Base calendar event format
-export interface ICalendarEvent {
-  id: string;
-  clinicianId: string;
-  title: string;
-  description?: string;
-  startTime: string;
-  endTime: string;
-  allDay: boolean;
-  eventType: CalendarEventType;
-  recurrenceId?: string;
-  recurrenceRule?: RecurrenceRule;
-  exceptions?: CalendarException[];
-  googleEventId?: string;
-}
-
-// Extended properties for FullCalendar compatibility
 export interface CalendarEvent extends EventInput {
   extendedProps?: {
     appointment?: AppointmentType;
