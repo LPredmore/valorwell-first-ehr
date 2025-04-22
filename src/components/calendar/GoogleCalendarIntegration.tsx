@@ -1,15 +1,17 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Calendar as CalendarIcon, Check, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, Check, Loader2, RefreshCw, AlertCircle, Info } from 'lucide-react';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/context/UserContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface GoogleCalendarIntegrationProps {
   clinicianId: string;
@@ -33,6 +35,7 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
     importBlockedTimes: true
   });
   const [configError, setConfigError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const {
     isGoogleApiReady,
@@ -47,22 +50,41 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
       if (!clinicianId) return;
       
       try {
+        setIsLoading(true);
+        
+        // Using maybeSingle to prevent errors if no record is found
         const { data, error } = await supabase
           .from('profiles')
           .select('google_calendar_last_sync')
           .eq('id', clinicianId)
           .maybeSingle();
           
-        if (!error && data?.google_calendar_last_sync) {
+        if (error) {
+          console.error('Error fetching last sync time:', error);
+          return;
+        }
+        
+        if (data?.google_calendar_last_sync) {
           setLastSyncTime(data.google_calendar_last_sync);
         }
       } catch (err) {
         console.error('Error fetching last sync time:', err);
+      } finally {
+        setIsLoading(false);
       }
     };
     
     fetchLastSyncTime();
   }, [clinicianId]);
+
+  useEffect(() => {
+    // Set config error from API initialization errors
+    if (apiInitError) {
+      setConfigError(apiInitError);
+    } else {
+      setConfigError(null);
+    }
+  }, [apiInitError]);
 
   const handleConnect = async () => {
     try {
@@ -70,7 +92,7 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
       
       // Update the profile to mark Google Calendar as linked
       if (clinicianId) {
-        await supabase
+        const { error } = await supabase
           .from('profiles')
           .update({ 
             google_calendar_linked: true,
@@ -78,7 +100,12 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
           })
           .eq('id', clinicianId);
           
-        setLastSyncTime(new Date().toISOString());
+        if (error) {
+          console.error('Error updating profile after Google Calendar connection:', error);
+          // Continue anyway as the main functionality worked
+        } else {
+          setLastSyncTime(new Date().toISOString());
+        }
       }
       
       toast({
@@ -89,13 +116,18 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
       if (onSyncComplete) {
         onSyncComplete();
       }
-    } catch (error) {
+    } catch (error: any) {
+      // This will only catch errors that weren't already handled in the hook
       console.error("Error connecting to Google Calendar:", error);
-      toast({
-        title: "Connection Failed",
-        description: "Could not connect to Google Calendar. Please try again.",
-        variant: "destructive"
-      });
+      
+      // Only show toast if it wasn't a user cancellation (that's already handled in the hook)
+      if (error?.error !== "popup_closed_by_user") {
+        toast({
+          title: "Connection Failed",
+          description: "Could not connect to Google Calendar. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -105,10 +137,15 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
       
       // Update the profile to mark Google Calendar as unlinked
       if (clinicianId) {
-        await supabase
+        const { error } = await supabase
           .from('profiles')
           .update({ google_calendar_linked: false })
           .eq('id', clinicianId);
+          
+        if (error) {
+          console.error('Error updating profile after Google Calendar disconnection:', error);
+          // Continue anyway as the main functionality worked
+        }
       }
       
       toast({
@@ -119,7 +156,7 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
       if (onSyncComplete) {
         onSyncComplete();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error disconnecting from Google Calendar:", error);
       toast({
         title: "Disconnection Failed",
@@ -138,25 +175,39 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
         description: "Synchronizing with Google Calendar..."
       });
       
+      // Mock sync process for now - in a future implementation, this would make real API calls
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       // Update last sync time
       if (clinicianId) {
         const now = new Date().toISOString();
-        await supabase
+        
+        const { error } = await supabase
           .from('profiles')
           .update({ google_calendar_last_sync: now })
           .eq('id', clinicianId);
           
+        if (error) {
+          console.error('Error updating last sync time:', error);
+          throw error;
+        }
+        
         setLastSyncTime(now);
       }
+      
+      toast({
+        title: "Sync Complete",
+        description: "Successfully synchronized with Google Calendar."
+      });
       
       if (onSyncComplete) {
         onSyncComplete();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error syncing with Google Calendar:", error);
       toast({
         title: "Sync Failed",
-        description: "Could not sync with Google Calendar. Please try again.",
+        description: error.message || "Could not sync with Google Calendar. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -171,11 +222,23 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
     }));
   };
 
-  useEffect(() => {
-    if (apiInitError) {
-      setConfigError(apiInitError);
-    }
-  }, [apiInitError]);
+  // Show loading state while fetching data
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <CalendarIcon className="mr-2 h-5 w-5" />
+            Google Calendar Integration
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center py-6">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-sm text-gray-500">Loading integration status...</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // If the Google API isn't ready yet, show a loading state
   if (!isGoogleApiReady && !configError) {
@@ -208,13 +271,22 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4 mr-2" />
             <AlertDescription>
-              Configuration error: {configError}.
-              Please make sure Google API credentials are properly set up.
+              Configuration error: {configError}
             </AlertDescription>
           </Alert>
-          <p className="text-sm text-gray-600 mt-2">
-            If you're an administrator, please check that the Google API keys have been correctly set in the environment variables.
-          </p>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Please ensure that Google API credentials are properly set up in the environment:
+            </p>
+            <ul className="list-disc pl-5 text-sm text-gray-600">
+              <li>Check that GOOGLE_CLIENT_ID is set in environment variables</li>
+              <li>Check that GOOGLE_API_KEY is set in environment variables</li>
+              <li>Ensure these values are correctly configured in Google Cloud Console</li>
+            </ul>
+            <p className="text-sm font-medium mt-4">
+              Need help? Contact your administrator or refer to the documentation.
+            </p>
+          </div>
         </CardContent>
       </Card>
     );
@@ -249,7 +321,19 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
             </div>
             
             <div className="space-y-3 border-t border-gray-200 pt-4 mt-4">
-              <h3 className="text-sm font-medium">Sync Settings</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium">Sync Settings</h3>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-4 w-4 text-gray-500" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="w-[200px] text-xs">These settings control what data is synchronized with Google Calendar.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">

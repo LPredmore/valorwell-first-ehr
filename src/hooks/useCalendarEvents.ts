@@ -82,9 +82,9 @@ export function useCalendarEvents({
         endDate
       );
 
-      console.log('[useCalendarEvents] Events fetched:', fetchedEvents);
+      console.log('[useCalendarEvents] Events fetched:', fetchedEvents?.length || 0);
       
-      setEvents(fetchedEvents);
+      setEvents(fetchedEvents || []);
       if (retryCount > 0) setRetryCount(0);
       
     } catch (err) {
@@ -205,11 +205,11 @@ export function useCalendarEvents({
     };
   }, [clinicianId, userTimeZone, startDate, endDate, fetchEvents, isUserLoading, userId]);
 
-  const refetch = () => {
+  const refetch = useCallback(() => {
     console.log('[useCalendarEvents] Manual refetch triggered');
     setRetryCount(0);
     fetchEvents(true);
-  };
+  }, [fetchEvents]);
 
   return {
     events,

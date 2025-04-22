@@ -1,7 +1,9 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from './use-toast';
 import { CalendarEvent } from '@/types/calendar';
 import { GOOGLE_API_CONFIG, convertFromGoogleEvent, convertToGoogleEvent } from '@/utils/googleCalendarUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 // Define the type for the Google Calendar API object
 declare global {
@@ -10,26 +12,7 @@ declare global {
   }
 }
 
-interface GoogleApiParams {
-  apiKey: string | undefined;
-  clientId: string | undefined;
-  clientSecret: string | undefined;
-  discoveryDocs: string[];
-  scope: string | undefined;
-}
-
-interface UseGoogleCalendarReturn {
-  isGoogleApiReady: boolean;
-  isGoogleCalendarConnected: boolean;
-  connectGoogleCalendar: () => Promise<void>;
-  disconnectGoogleCalendar: () => void;
-  createGoogleCalendarEvent: (event: CalendarEvent) => Promise<string | null>;
-  updateGoogleCalendarEvent: (event: CalendarEvent) => Promise<string | null>;
-  deleteGoogleCalendarEvent: (eventId: string) => Promise<boolean>;
-  apiInitError: string | null;
-}
-
-export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: string): UseGoogleCalendarReturn => {
+export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: string) => {
   const [isGoogleApiReady, setIsGoogleApiReady] = useState(false);
   const [isGoogleCalendarConnected, setIsGoogleCalendarConnected] = useState(false);
   const [googleAuthInstance, setGoogleAuthInstance] = useState<any>(null);
@@ -59,26 +42,18 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
       
       console.log('Initializing Google API with:', { 
         clientId: GOOGLE_API_CONFIG.clientId ? 'present' : 'missing', 
-        clientSecret: GOOGLE_API_CONFIG.clientSecret ? 'present' : 'missing',
         apiKey: GOOGLE_API_CONFIG.apiKey ? 'present' : 'missing'
       });
       
       if (!GOOGLE_API_CONFIG.clientId) {
         console.error('Google Client ID is missing or undefined');
-        setApiInitError('Google Client ID is missing');
+        setApiInitError('Google Client ID is missing. Please check your environment variables.');
         return;
       }
 
-      if (!GOOGLE_API_CONFIG.clientSecret) {
-        console.error('Google Client Secret is missing or undefined');
-        setApiInitError('Google Client Secret is missing');
-        return;
-      }
-
-      const googleApiParams: GoogleApiParams = {
+      const googleApiParams = {
         apiKey: GOOGLE_API_CONFIG.apiKey,
         clientId: GOOGLE_API_CONFIG.clientId,
-        clientSecret: GOOGLE_API_CONFIG.clientSecret,
         discoveryDocs: GOOGLE_API_CONFIG.discoveryDocs,
         scope: GOOGLE_API_CONFIG.scope
       };
@@ -95,6 +70,12 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
         setIsGoogleApiReady(true);
         setIsGoogleCalendarConnected(authInstance.isSignedIn.get());
         setApiInitError(null);
+
+        // Set up listener for sign-in state changes
+        authInstance.isSignedIn.listen((isSignedIn: boolean) => {
+          setIsGoogleCalendarConnected(isSignedIn);
+        });
+
       } catch (err: any) {
         console.error('Error initializing Google API client:', err);
         setApiInitError(err.message || 'Error initializing Google API');
@@ -119,6 +100,10 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
     if (clinicianId) {
       initializeGoogleApi();
     }
+
+    return () => {
+      // Clean up any listeners if needed
+    };
   }, [clinicianId, initializeGoogleApi]);
 
   const connectGoogleCalendar = async () => {
@@ -133,7 +118,11 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
         return;
       }
       
-      await googleAuthInstance.signIn();
+      await googleAuthInstance.signIn({
+        prompt: 'consent',  // Always ask for consent to ensure fresh tokens
+        ux_mode: 'popup'    // Use popup to avoid page redirects
+      });
+      
       setIsGoogleCalendarConnected(true);
       toast({
         title: 'Google Calendar Connected',
@@ -141,6 +130,17 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
         duration: 3000
       });
     } catch (error: any) {
+      // Special handling for user cancellation which is not really an error
+      if (error.error === "popup_closed_by_user") {
+        console.log('User closed the Google sign-in popup');
+        toast({
+          title: 'Connection Cancelled',
+          description: 'Google Calendar connection was cancelled.',
+          duration: 3000
+        });
+        return;
+      }
+
       console.error('Error connecting to Google Calendar', error);
       toast({
         title: 'Error connecting to Google Calendar',
@@ -177,6 +177,10 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
 
   const createGoogleCalendarEvent = async (event: CalendarEvent): Promise<string | null> => {
     try {
+      if (!isGoogleCalendarConnected) {
+        throw new Error('Not connected to Google Calendar');
+      }
+
       const googleEvent = convertToGoogleEvent(event, userTimeZone);
 
       const request = window.google?.client.calendar.events.insert({
@@ -184,26 +188,25 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
         resource: googleEvent
       });
 
-      const response = await request.execute((googleEvent: any) => {
-        if (googleEvent.error) {
-          console.error('Error creating Google Calendar event', googleEvent.error);
-          toast({
-            title: 'Error creating Google Calendar event',
-            description: googleEvent.error.message,
-            variant: 'destructive'
-          });
-          return null;
-        } else {
-          toast({
-            title: 'Google Calendar Event Created',
-            description: 'Event created successfully in Google Calendar.',
-            duration: 3000
-          });
-          return googleEvent.id;
-        }
-      });
+      const response = await request.execute();
+      
+      if (response.error) {
+        console.error('Error creating Google Calendar event', response.error);
+        toast({
+          title: 'Error creating Google Calendar event',
+          description: response.error.message,
+          variant: 'destructive'
+        });
+        return null;
+      } 
 
-      return response?.result?.id || null;
+      toast({
+        title: 'Google Calendar Event Created',
+        description: 'Event created successfully in Google Calendar.',
+        duration: 3000
+      });
+      
+      return response.id;
     } catch (error: any) {
       console.error('Error creating Google Calendar event', error);
       toast({
@@ -217,6 +220,10 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
 
   const updateGoogleCalendarEvent = async (event: CalendarEvent): Promise<string | null> => {
     try {
+      if (!isGoogleCalendarConnected) {
+        throw new Error('Not connected to Google Calendar');
+      }
+
       if (!event.extendedProps?.googleEventId) {
         throw new Error('Google Event ID is missing');
       }
@@ -229,26 +236,25 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
         resource: googleEvent
       });
 
-      const response = await request.execute((googleEvent: any) => {
-        if (googleEvent.error) {
-          console.error('Error updating Google Calendar event', googleEvent.error);
-          toast({
-            title: 'Error updating Google Calendar event',
-            description: googleEvent.error.message,
-            variant: 'destructive'
-          });
-          return null;
-        } else {
-          toast({
-            title: 'Google Calendar Event Updated',
-            description: 'Event updated successfully in Google Calendar.',
-            duration: 3000
-          });
-          return googleEvent.id;
-        }
-      });
+      const response = await request.execute();
+      
+      if (response.error) {
+        console.error('Error updating Google Calendar event', response.error);
+        toast({
+          title: 'Error updating Google Calendar event',
+          description: response.error.message,
+          variant: 'destructive'
+        });
+        return null;
+      }
 
-      return response?.result?.id || null;
+      toast({
+        title: 'Google Calendar Event Updated',
+        description: 'Event updated successfully in Google Calendar.',
+        duration: 3000
+      });
+      
+      return response.id;
     } catch (error: any) {
       console.error('Error updating Google Calendar event', error);
       toast({
@@ -262,6 +268,10 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
 
   const deleteGoogleCalendarEvent = async (eventId: string): Promise<boolean> => {
     try {
+      if (!isGoogleCalendarConnected) {
+        throw new Error('Not connected to Google Calendar');
+      }
+
       const request = window.google?.client.calendar.events.delete({
         calendarId: 'primary',
         eventId: eventId
