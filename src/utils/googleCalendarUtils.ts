@@ -1,5 +1,6 @@
 
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
+import { supabase } from '@/integrations/supabase/client';
 
 // Update TimeCalendarType to make timeZone required when using dateTime
 export type TimeCalendarType = {
@@ -14,21 +15,64 @@ export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/calendar.events'
 ];
 
-// Get environment variables for Google Calendar API
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
+// Define interface for Google API credentials
+export interface GoogleApiCredentials {
+  clientId: string;
+  apiKey: string;
+}
 
-// Better debugging for API credentials
-console.log('Google Client ID available:', GOOGLE_CLIENT_ID ? 'Yes (length: ' + GOOGLE_CLIENT_ID.length + ')' : 'No');
-console.log('Google API Key available:', GOOGLE_API_KEY ? 'Yes (length: ' + GOOGLE_API_KEY.length + ')' : 'No');
+// Cache for credentials to avoid unnecessary function calls
+let cachedCredentials: GoogleApiCredentials | null = null;
+let lastFetchTime = 0;
+const CACHE_DURATION = 3600000; // 1 hour in milliseconds
 
-// Export configuration for better error handling in components
-export const GOOGLE_API_CONFIG = {
-  clientId: GOOGLE_CLIENT_ID || '',
-  apiKey: GOOGLE_API_KEY || '',
-  scope: GOOGLE_SCOPES.join(' '),
-  discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
-};
+// Function to fetch Google API credentials from Edge Function
+export async function fetchGoogleCredentials(): Promise<GoogleApiCredentials> {
+  // Check if we have valid cached credentials
+  const now = Date.now();
+  if (cachedCredentials && now - lastFetchTime < CACHE_DURATION) {
+    return cachedCredentials;
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('get-google-credentials', {
+      method: 'GET',
+    });
+
+    if (error) {
+      console.error('Error fetching Google credentials:', error);
+      throw new Error(`Failed to fetch Google credentials: ${error.message}`);
+    }
+
+    if (!data || !data.clientId || !data.apiKey) {
+      throw new Error('Received invalid Google credentials from server');
+    }
+
+    // Update cache
+    cachedCredentials = {
+      clientId: data.clientId,
+      apiKey: data.apiKey,
+    };
+    lastFetchTime = now;
+
+    return cachedCredentials;
+  } catch (error) {
+    console.error('Error in fetchGoogleCredentials:', error);
+    throw error;
+  }
+}
+
+// Export configuration builder function for better error handling in components
+export async function getGoogleApiConfig() {
+  const credentials = await fetchGoogleCredentials();
+  
+  return {
+    clientId: credentials.clientId,
+    apiKey: credentials.apiKey,
+    scope: GOOGLE_SCOPES.join(' '),
+    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
+  };
+}
 
 // Note: Client secret is intentionally not included here as it should never be used in the browser
 

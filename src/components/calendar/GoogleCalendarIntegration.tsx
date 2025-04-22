@@ -41,7 +41,8 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
     isGoogleCalendarConnected,
     connectGoogleCalendar,
     disconnectGoogleCalendar,
-    apiInitError
+    apiInitError,
+    isLoadingCredentials
   } = useGoogleCalendar(clinicianId, userTimeZone);
 
   useEffect(() => {
@@ -51,7 +52,6 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
       try {
         setIsLoading(true);
         
-        // Using maybeSingle to prevent errors if no record is found
         const { data, error } = await supabase
           .from('profiles')
           .select('google_calendar_last_sync')
@@ -77,7 +77,6 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
   }, [clinicianId]);
 
   useEffect(() => {
-    // Set config error from API initialization errors
     if (apiInitError) {
       console.error('Google Calendar API initialization error:', apiInitError);
       setConfigError(apiInitError);
@@ -90,7 +89,6 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
     try {
       await connectGoogleCalendar();
       
-      // Update the profile to mark Google Calendar as linked
       if (clinicianId) {
         const { error } = await supabase
           .from('profiles')
@@ -117,10 +115,8 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
         onSyncComplete();
       }
     } catch (error: any) {
-      // This will only catch errors that weren't already handled in the hook
       console.error("Error connecting to Google Calendar:", error);
       
-      // Only show toast if it wasn't a user cancellation (that's already handled in the hook)
       if (error?.error !== "popup_closed_by_user") {
         toast({
           title: "Connection Failed",
@@ -135,7 +131,6 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
     try {
       disconnectGoogleCalendar();
       
-      // Update the profile to mark Google Calendar as unlinked
       if (clinicianId) {
         const { error } = await supabase
           .from('profiles')
@@ -169,16 +164,13 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
   const handleSync = async () => {
     setIsSyncing(true);
     try {
-      // This would be implemented in a future step to actually sync events
       toast({
         title: "Sync Started",
         description: "Synchronizing with Google Calendar..."
       });
       
-      // Mock sync process for now - in a future implementation, this would make real API calls
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Update last sync time
       if (clinicianId) {
         const now = new Date().toISOString();
         
@@ -222,8 +214,7 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
     }));
   };
 
-  // Show loading state while fetching data
-  if (isLoading) {
+  if (isLoading || isLoadingCredentials) {
     return (
       <Card>
         <CardHeader>
@@ -234,13 +225,16 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center py-6">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-sm text-gray-500">Loading integration status...</p>
+          <p className="text-sm text-gray-500">
+            {isLoadingCredentials 
+              ? "Loading Google Calendar credentials..." 
+              : "Loading integration status..."}
+          </p>
         </CardContent>
       </Card>
     );
   }
 
-  // If the Google API isn't ready yet, show a loading state
   if (!isGoogleApiReady && !configError) {
     return (
       <Card>
@@ -276,18 +270,25 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
           </Alert>
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              To fix this issue, please ensure that Google API credentials are properly set up:
+              To fix this issue, please ensure that Google API credentials are properly set up in Supabase:
             </p>
             <ul className="list-disc pl-5 text-sm text-gray-600">
-              <li>Check that VITE_GOOGLE_CLIENT_ID is set correctly in environment variables</li>
-              <li>Check that VITE_GOOGLE_API_KEY is set correctly in environment variables</li>
+              <li>Check that VITE_GOOGLE_CLIENT_ID is set correctly in Supabase secrets</li>
+              <li>Check that VITE_GOOGLE_API_KEY is set correctly in Supabase secrets</li>
               <li>Ensure the Client ID and API Key are from the same Google Cloud project</li>
               <li>Verify that the Google Calendar API is enabled in your Google Cloud project</li>
               <li>Confirm that the redirect URIs are configured in your Google Cloud Console</li>
             </ul>
             <p className="text-sm font-medium mt-4">
-              If you've recently updated the credentials, you may need to refresh the page or clear your browser cache.
+              If you've recently updated the credentials, you may need to refresh the page.
             </p>
+            <Button 
+              onClick={() => window.location.reload()}
+              variant="outline"
+              className="mt-4"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" /> Refresh Page
+            </Button>
           </div>
         </CardContent>
       </Card>

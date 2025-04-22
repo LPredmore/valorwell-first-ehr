@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from './use-toast';
 import { CalendarEvent } from '@/types/calendar';
-import { GOOGLE_API_CONFIG, convertFromGoogleEvent, convertToGoogleEvent } from '@/utils/googleCalendarUtils';
+import { GOOGLE_SCOPES, convertFromGoogleEvent, convertToGoogleEvent, getGoogleApiConfig } from '@/utils/googleCalendarUtils';
 import { supabase } from '@/integrations/supabase/client';
 
 // Define the type for the Google Calendar API object
@@ -17,6 +17,7 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
   const [isGoogleCalendarConnected, setIsGoogleCalendarConnected] = useState(false);
   const [googleAuthInstance, setGoogleAuthInstance] = useState<any>(null);
   const [apiInitError, setApiInitError] = useState<string | null>(null);
+  const [isLoadingCredentials, setIsLoadingCredentials] = useState(false);
   const { toast } = useToast();
 
   const loadGoogleApi = useCallback(() => {
@@ -38,36 +39,33 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
 
   const initializeGoogleApi = useCallback(async () => {
     try {
+      setIsLoadingCredentials(true);
       await loadGoogleApi();
       
+      // Fetch credentials from Edge Function
+      const googleApiConfig = await getGoogleApiConfig();
+      
       console.log('Google API Config:', { 
-        clientId: GOOGLE_API_CONFIG.clientId ? `present (length: ${GOOGLE_API_CONFIG.clientId.length})` : 'missing', 
-        apiKey: GOOGLE_API_CONFIG.apiKey ? `present (length: ${GOOGLE_API_CONFIG.apiKey.length})` : 'missing',
-        scope: GOOGLE_API_CONFIG.scope
+        clientId: googleApiConfig.clientId ? `present (length: ${googleApiConfig.clientId.length})` : 'missing', 
+        apiKey: googleApiConfig.apiKey ? `present (length: ${googleApiConfig.apiKey.length})` : 'missing',
+        scope: googleApiConfig.scope
       });
       
-      if (!GOOGLE_API_CONFIG.clientId) {
+      if (!googleApiConfig.clientId) {
         console.error('Google Client ID is missing or undefined');
-        setApiInitError('Google Client ID is missing. Please check your environment variables.');
+        setApiInitError('Google Client ID is missing. Please check your Supabase secrets configuration.');
         return;
       }
 
-      if (!GOOGLE_API_CONFIG.apiKey) {
+      if (!googleApiConfig.apiKey) {
         console.error('Google API Key is missing or undefined');
-        setApiInitError('Google API Key is missing. Please check your environment variables.');
+        setApiInitError('Google API Key is missing. Please check your Supabase secrets configuration.');
         return;
       }
-
-      const googleApiParams = {
-        apiKey: GOOGLE_API_CONFIG.apiKey,
-        clientId: GOOGLE_API_CONFIG.clientId,
-        discoveryDocs: GOOGLE_API_CONFIG.discoveryDocs,
-        scope: GOOGLE_API_CONFIG.scope
-      };
 
       try {
-        console.log('Initializing Google client with params', googleApiParams);
-        await window.google?.client.init(googleApiParams);
+        console.log('Initializing Google client with params');
+        await window.google?.client.init(googleApiConfig);
         const authInstance = window.google?.auth2.getAuthInstance();
         
         if (!authInstance) {
@@ -101,6 +99,8 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
         description: error.message || 'Could not load Google Calendar API',
         variant: 'destructive'
       });
+    } finally {
+      setIsLoadingCredentials(false);
     }
   }, [clinicianId, toast, loadGoogleApi]);
 
@@ -314,6 +314,7 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
     createGoogleCalendarEvent,
     updateGoogleCalendarEvent,
     deleteGoogleCalendarEvent,
-    apiInitError
+    apiInitError,
+    isLoadingCredentials
   };
 };
