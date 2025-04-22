@@ -22,7 +22,8 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   userTimeZone = 'America/Chicago',
   view = 'dayGridMonth' as CalendarViewType,
   height = 'auto',
-  events = []
+  events = [],
+  showAvailability = true
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
   const { toast } = useToast();
@@ -55,7 +56,12 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   }, [error, toast]);
   
   // Use provided events or fetched events
-  const displayEvents = events.length > 0 ? events : fetchedEvents;
+  const allEvents = events.length > 0 ? events : fetchedEvents;
+  
+  // Filter events based on showAvailability setting
+  const displayEvents = showAvailability 
+    ? allEvents 
+    : allEvents.filter(event => event.extendedProps?.eventType !== 'availability');
 
   if (isLoading) {
     return <LoadingState />;
@@ -120,6 +126,10 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
           
           if (eventType === 'time_off') {
             classes.push('time-off-event');
+          }
+          
+          if (eventType === 'availability') {
+            classes.push('availability-event');
           }
           
           if (arg.event.extendedProps?.recurrenceRule) {

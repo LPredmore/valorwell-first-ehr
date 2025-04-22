@@ -1,3 +1,4 @@
+
 import { EventInput } from '@fullcalendar/core';
 import { AppointmentType } from './appointment';
 
@@ -40,4 +41,5 @@ export interface FullCalendarProps {
   userTimeZone: string;
   view?: CalendarViewType;
   height?: string | number;
+  showAvailability?: boolean;
 }

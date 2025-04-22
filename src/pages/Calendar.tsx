@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { CalendarViewType } from '@/types/calendar';
 import Layout from '../components/layout/Layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Plus, RefreshCcw, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, RefreshCcw, AlertCircle, Calendar as CalendarIcon, Settings, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCalendarState } from '../hooks/useCalendarState';
 import AppointmentDialog from '../components/calendar/AppointmentDialog';
@@ -15,6 +16,8 @@ import CalendarErrorBoundary from '../components/calendar/CalendarErrorBoundary'
 import { useUser } from '@/context/UserContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
+import AvailabilitySettingsDialog from '../components/calendar/AvailabilitySettingsDialog';
+import WeeklyAvailabilityDialog from '../components/calendar/WeeklyAvailabilityDialog';
 
 const CalendarPage: React.FC = () => {
   const navigate = useNavigate();
@@ -29,6 +32,8 @@ const CalendarPage: React.FC = () => {
     setAppointmentRefreshTrigger,
     isDialogOpen,
     setIsDialogOpen,
+    showAvailability,
+    setShowAvailability,
   } = useCalendarState();
 
   const { toast } = useToast();
@@ -37,8 +42,9 @@ const CalendarPage: React.FC = () => {
   const [calendarViewMode, setCalendarViewMode] = useState<CalendarViewType>('dayGridMonth');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [showAvailabilityPanel, setShowAvailabilityPanel] = useState<boolean>(false);
   const [calendarKey, setCalendarKey] = useState<number>(0); // For forcing re-render
+  const [isAvailabilitySettingsOpen, setIsAvailabilitySettingsOpen] = useState(false);
+  const [isWeeklyAvailabilityOpen, setIsWeeklyAvailabilityOpen] = useState(false);
   
   useEffect(() => {
     if (!isUserLoading && !userId) {
@@ -197,7 +203,43 @@ const CalendarPage: React.FC = () => {
           <div className="flex flex-col space-y-4">
             <div className="flex justify-between items-center">
               <h1 className="text-2xl font-bold text-gray-800">Calendar</h1>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                {canManageAvailability && selectedClinicianId && (
+                  <div className="flex items-center gap-2 mr-2">
+                    <Button 
+                      variant="outline"
+                      onClick={() => setIsAvailabilitySettingsOpen(true)}
+                      className="flex items-center gap-2"
+                      title="Availability Settings"
+                    >
+                      <Settings className="h-4 w-4" />
+                      <span className="hidden md:inline">Settings</span>
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsWeeklyAvailabilityOpen(true)}
+                      className="flex items-center gap-2"
+                      title="Manage Weekly Availability"
+                    >
+                      <Clock className="h-4 w-4" />
+                      <span className="hidden md:inline">Weekly</span>
+                    </Button>
+                    
+                    <Button
+                      variant={showAvailability ? "default" : "outline"}
+                      onClick={() => setShowAvailability(!showAvailability)}
+                      className="flex items-center gap-2"
+                      title={showAvailability ? "Hide Availability" : "Show Availability"}
+                    >
+                      <CalendarIcon className="h-4 w-4" />
+                      <span className="hidden md:inline">
+                        {showAvailability ? "Hide" : "Show"} Availability
+                      </span>
+                    </Button>
+                  </div>
+                )}
+
                 <Button onClick={() => setIsDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   New Appointment
@@ -278,6 +320,24 @@ const CalendarPage: React.FC = () => {
         selectedClinicianId={selectedClinicianId}
         onAppointmentCreated={handleAppointmentCreated}
       />
+
+      {canManageAvailability && selectedClinicianId && (
+        <>
+          <AvailabilitySettingsDialog
+            isOpen={isAvailabilitySettingsOpen}
+            onClose={() => setIsAvailabilitySettingsOpen(false)}
+            clinicianId={selectedClinicianId}
+            onSettingsSaved={handleCalendarRefresh}
+          />
+
+          <WeeklyAvailabilityDialog
+            isOpen={isWeeklyAvailabilityOpen}
+            onClose={() => setIsWeeklyAvailabilityOpen(false)}
+            clinicianId={selectedClinicianId}
+            onAvailabilityUpdated={handleCalendarRefresh}
+          />
+        </>
+      )}
     </Layout>
   );
 };

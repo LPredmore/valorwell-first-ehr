@@ -21,10 +21,12 @@ export class CalendarService {
     try {
       const appointmentEvents = await this.getAppointments(clinicianId, startDate, endDate);
       const timeOffEvents = await this.getTimeOffEvents(clinicianId, startDate, endDate);
+      const availabilityEvents = await this.getAvailabilityEvents(clinicianId, startDate, endDate);
       
       return [
         ...appointmentEvents,
-        ...timeOffEvents
+        ...timeOffEvents,
+        ...availabilityEvents
       ];
     } catch (error) {
       console.error('[CalendarService] Error getting events:', error);
@@ -135,6 +137,67 @@ export class CalendarService {
       return [];
     }
   }
+  
+  private static async getAvailabilityEvents(
+    clinicianId: string,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<CalendarEvent[]> {
+    try {
+      let query = supabase
+        .from('calendar_events')
+        .select(`
+          id,
+          title,
+          start_time,
+          end_time,
+          description,
+          recurrence_id,
+          recurrence_rules:recurrence_id(rrule)
+        `)
+        .eq('clinician_id', clinicianId)
+        .eq('event_type', 'availability');
+      
+      if (startDate && endDate) {
+        const startDateString = startDate.toISOString();
+        const endDateString = endDate.toISOString();
+        query = query.gte('start_time', startDateString).lte('start_time', endDateString);
+      }
+      
+      const { data: events, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching availability events:', error);
+        throw error;
+      }
+      
+      return events.map(event => {
+        const recurrenceRule = event.recurrence_rules ? {
+          id: event.recurrence_id,
+          eventId: event.id,
+          rrule: event.recurrence_rules.rrule
+        } : undefined;
+        
+        return {
+          id: event.id,
+          title: event.title || 'Available',
+          start: event.start_time,
+          end: event.end_time,
+          backgroundColor: '#4ade80', // Green color for availability
+          borderColor: '#16a34a',
+          textColor: '#052e16',
+          extendedProps: {
+            eventType: 'availability' as CalendarEventType,
+            description: event.description || 'Available for appointments',
+            recurrenceRule
+          }
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching availability events:', error);
+      return [];
+    }
+  }
 
   static async createEvent(event: CalendarEvent, userTimeZone: string): Promise<CalendarEvent | null> {
     try {
@@ -208,6 +271,65 @@ export class CalendarService {
           extendedProps: {
             eventType: 'time_off' as CalendarEventType,
             description: data.reason
+          }
+        };
+      } else if (event.extendedProps?.eventType === 'availability') {
+        const { data, error } = await supabase
+          .from('calendar_events')
+          .insert([
+            {
+              clinician_id: event.clinicianId,
+              event_type: 'availability',
+              title: event.title || 'Available',
+              start_time: event.start,
+              end_time: event.end,
+              all_day: event.allDay || false,
+              description: event.extendedProps?.description
+            }
+          ])
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('Error creating availability event:', error);
+          return null;
+        }
+        
+        // Handle recurrence if applicable
+        if (event.extendedProps?.recurrenceRule?.rrule && data.id) {
+          const { data: recurrenceData, error: recurrenceError } = await supabase
+            .from('recurrence_rules')
+            .insert([{
+              event_id: data.id,
+              rrule: event.extendedProps.recurrenceRule.rrule
+            }])
+            .select()
+            .single();
+            
+          if (recurrenceError) {
+            console.error('Error creating recurrence rule:', recurrenceError);
+            // Continue anyway as the event is created
+          } else if (recurrenceData) {
+            // Update the event with the recurrence ID
+            await supabase
+              .from('calendar_events')
+              .update({ recurrence_id: recurrenceData.id })
+              .eq('id', data.id);
+          }
+        }
+        
+        return {
+          id: data.id,
+          title: data.title,
+          start: data.start_time,
+          end: data.end_time,
+          allDay: data.all_day,
+          backgroundColor: '#4ade80',
+          borderColor: '#16a34a',
+          textColor: '#052e16',
+          extendedProps: {
+            eventType: 'availability' as CalendarEventType,
+            description: data.description
           }
         };
       } else {
@@ -292,6 +414,56 @@ export class CalendarService {
             description: data.reason
           }
         };
+      } else if (event.extendedProps?.eventType === 'availability') {
+        const { data, error } = await supabase
+          .from('calendar_events')
+          .update({
+            title: event.title || 'Available',
+            start_time: event.start,
+            end_time: event.end,
+            all_day: event.allDay || false,
+            description: event.extendedProps?.description
+          })
+          .eq('id', event.id)
+          .eq('event_type', 'availability')
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('Error updating availability event:', error);
+          return null;
+        }
+        
+        // Update recurrence rule if applicable
+        if (event.extendedProps?.recurrenceRule?.rrule) {
+          const { data: eventData, error: eventError } = await supabase
+            .from('calendar_events')
+            .select('recurrence_id')
+            .eq('id', event.id)
+            .single();
+            
+          if (!eventError && eventData?.recurrence_id) {
+            await supabase
+              .from('recurrence_rules')
+              .update({ rrule: event.extendedProps.recurrenceRule.rrule })
+              .eq('id', eventData.recurrence_id);
+          }
+        }
+        
+        return {
+          id: data.id,
+          title: data.title,
+          start: data.start_time,
+          end: data.end_time,
+          allDay: data.all_day,
+          backgroundColor: '#4ade80',
+          borderColor: '#16a34a',
+          textColor: '#052e16',
+          extendedProps: {
+            eventType: 'availability' as CalendarEventType,
+            description: data.description
+          }
+        };
       } else {
         console.warn('Unknown event type:', event);
         return null;
@@ -304,33 +476,37 @@ export class CalendarService {
 
   static async deleteEvent(eventId: string): Promise<void> {
     try {
+      // First check if this is a recurrence parent
+      const { data: recurrenceData, error: recurrenceError } = await supabase
+        .from('recurrence_rules')
+        .select('id')
+        .eq('event_id', eventId)
+        .maybeSingle();
+        
+      if (!recurrenceError && recurrenceData?.id) {
+        // Delete all events in the series
+        await supabase
+          .from('calendar_events')
+          .delete()
+          .eq('recurrence_id', recurrenceData.id);
+          
+        // Delete the recurrence rule
+        await supabase
+          .from('recurrence_rules')
+          .delete()
+          .eq('id', recurrenceData.id);
+      }
+      
+      // Delete the specific event
       const { data: appointmentData, error: appointmentError } = await supabase
-        .from('appointments')
+        .from('calendar_events')
         .delete()
         .eq('id', eventId)
         .select();
       
       if (appointmentError) {
-        console.error('Error deleting appointment:', appointmentError);
-        
-        const { data: timeOffData, error: timeOffError } = await supabase
-          .from('time_off')
-          .delete()
-          .eq('id', eventId)
-          .select();
-        
-        if (timeOffError) {
-          console.error('Error deleting time off event:', timeOffError);
-          throw timeOffError;
-        }
-        
-        if (!timeOffData) {
-          console.warn('Event not found as appointment or time off:', eventId);
-        }
-      }
-      
-      if (!appointmentData) {
-        console.warn('Event not found as appointment:', eventId);
+        console.error('Error deleting calendar event:', appointmentError);
+        throw appointmentError;
       }
     } catch (error) {
       console.error('Error deleting event:', error);

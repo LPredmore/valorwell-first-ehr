@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySettings, AvailabilitySlot, WeeklyAvailability } from '@/types/appointment';
+import { CalendarEvent, CalendarEventType } from '@/types/calendar';
 import { DateTime } from 'luxon';
 
 export class AvailabilityService {
@@ -85,5 +86,230 @@ export class AvailabilityService {
       dayOfWeek: DateTime.fromISO(event.start_time).toFormat('EEEE').toLowerCase(),
       isRecurring: !!event.recurrence_id
     }));
+  }
+
+  static async createAvailabilitySlot(
+    clinicianId: string,
+    slot: {
+      startTime: string;
+      endTime: string;
+      title?: string;
+      recurring?: boolean;
+      recurrenceRule?: string;
+    }
+  ): Promise<string | null> {
+    try {
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .insert({
+          clinician_id: clinicianId,
+          event_type: 'availability',
+          title: slot.title || 'Available',
+          start_time: slot.startTime,
+          end_time: slot.endTime,
+          all_day: false
+        })
+        .select('id')
+        .single();
+
+      if (error) {
+        console.error('Error creating availability slot:', error);
+        return null;
+      }
+
+      if (slot.recurring && slot.recurrenceRule && data?.id) {
+        const { error: recurrenceError } = await supabase
+          .from('recurrence_rules')
+          .insert({
+            event_id: data.id,
+            rrule: slot.recurrenceRule
+          });
+
+        if (recurrenceError) {
+          console.error('Error creating recurrence rule:', recurrenceError);
+        }
+      }
+
+      return data?.id || null;
+    } catch (error) {
+      console.error('Error in createAvailabilitySlot:', error);
+      return null;
+    }
+  }
+
+  static async updateAvailabilitySlot(
+    slotId: string,
+    updates: {
+      startTime?: string;
+      endTime?: string;
+      title?: string;
+    },
+    updateRecurrence: boolean = false
+  ): Promise<boolean> {
+    try {
+      const updateData: any = {};
+      if (updates.startTime) updateData.start_time = updates.startTime;
+      if (updates.endTime) updateData.end_time = updates.endTime;
+      if (updates.title) updateData.title = updates.title;
+
+      const { error } = await supabase
+        .from('calendar_events')
+        .update(updateData)
+        .eq('id', slotId)
+        .eq('event_type', 'availability');
+
+      if (error) {
+        console.error('Error updating availability slot:', error);
+        return false;
+      }
+
+      // If we need to update all instances in a recurring series
+      if (updateRecurrence) {
+        // First check if this is part of a recurring series
+        const { data: eventData, error: eventError } = await supabase
+          .from('calendar_events')
+          .select('recurrence_id')
+          .eq('id', slotId)
+          .single();
+
+        if (eventError || !eventData?.recurrence_id) {
+          console.log('Not a recurring event or error fetching recurrence:', eventError);
+          return !eventError;
+        }
+
+        // Update all events in the series
+        const { error: recurrenceUpdateError } = await supabase
+          .from('calendar_events')
+          .update(updateData)
+          .eq('recurrence_id', eventData.recurrence_id);
+
+        if (recurrenceUpdateError) {
+          console.error('Error updating recurring availability slots:', recurrenceUpdateError);
+          return false;
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in updateAvailabilitySlot:', error);
+      return false;
+    }
+  }
+
+  static async deleteAvailabilitySlot(
+    slotId: string,
+    deleteRecurrence: boolean = false
+  ): Promise<boolean> {
+    try {
+      if (deleteRecurrence) {
+        // First check if this is part of a recurring series
+        const { data: eventData, error: eventError } = await supabase
+          .from('calendar_events')
+          .select('recurrence_id')
+          .eq('id', slotId)
+          .single();
+
+        if (eventError) {
+          console.error('Error checking recurrence:', eventError);
+          return false;
+        }
+
+        if (eventData?.recurrence_id) {
+          // Delete all events in the series
+          const { error: recurrenceDeleteError } = await supabase
+            .from('calendar_events')
+            .delete()
+            .eq('recurrence_id', eventData.recurrence_id);
+
+          if (recurrenceDeleteError) {
+            console.error('Error deleting recurring availability slots:', recurrenceDeleteError);
+            return false;
+          }
+
+          // Delete the recurrence rule
+          const { error: ruleDeleteError } = await supabase
+            .from('recurrence_rules')
+            .delete()
+            .eq('id', eventData.recurrence_id);
+
+          if (ruleDeleteError) {
+            console.error('Error deleting recurrence rule:', ruleDeleteError);
+            // Continue anyway as the events are deleted
+          }
+
+          return true;
+        }
+      }
+
+      // Delete a single availability slot
+      const { error } = await supabase
+        .from('calendar_events')
+        .delete()
+        .eq('id', slotId)
+        .eq('event_type', 'availability');
+
+      if (error) {
+        console.error('Error deleting availability slot:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in deleteAvailabilitySlot:', error);
+      return false;
+    }
+  }
+
+  static async getWeeklyAvailability(clinicianId: string): Promise<WeeklyAvailability> {
+    try {
+      // Get all availability events for this clinician
+      const { data: events, error } = await supabase
+        .from('calendar_events')
+        .select(`
+          id, 
+          start_time, 
+          end_time, 
+          recurrence_id,
+          recurrence_rules:recurrence_id(rrule)
+        `)
+        .eq('clinician_id', clinicianId)
+        .eq('event_type', 'availability');
+
+      if (error) {
+        console.error('Error fetching weekly availability:', error);
+        return {};
+      }
+
+      // Initialize weekly availability structure
+      const weeklyAvailability: WeeklyAvailability = {
+        monday: [],
+        tuesday: [],
+        wednesday: [],
+        thursday: [],
+        friday: [],
+        saturday: [],
+        sunday: []
+      };
+
+      // Process events
+      events.forEach(event => {
+        const startDateTime = DateTime.fromISO(event.start_time);
+        const dayOfWeek = startDateTime.toFormat('EEEE').toLowerCase();
+        
+        if (dayOfWeek in weeklyAvailability) {
+          weeklyAvailability[dayOfWeek].push({
+            startTime: startDateTime.toFormat('HH:mm'),
+            endTime: DateTime.fromISO(event.end_time).toFormat('HH:mm'),
+            dayOfWeek,
+            isRecurring: !!event.recurrence_id
+          });
+        }
+      });
+
+      return weeklyAvailability;
+    } catch (error) {
+      console.error('Error getting weekly availability:', error);
+      return {};
+    }
   }
 }
