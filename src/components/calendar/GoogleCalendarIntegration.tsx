@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -40,7 +40,7 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
     disconnectGoogleCalendar,
   } = useGoogleCalendar(clinicianId, userTimeZone);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchLastSyncTime = async () => {
       if (!clinicianId) return;
       

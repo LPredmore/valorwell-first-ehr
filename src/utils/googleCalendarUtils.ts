@@ -14,9 +14,16 @@ export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/calendar.events'
 ];
 
+// Get environment variables for Google Calendar API
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
+
+// Log for debugging
+console.log('Google Client ID available:', !!GOOGLE_CLIENT_ID);
+
 export const GOOGLE_API_CONFIG = {
-  clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
-  apiKey: import.meta.env.VITE_GOOGLE_API_KEY || '',
+  clientId: GOOGLE_CLIENT_ID || '',
+  apiKey: GOOGLE_API_KEY || '',
   scope: GOOGLE_SCOPES.join(' '),
   discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
 };

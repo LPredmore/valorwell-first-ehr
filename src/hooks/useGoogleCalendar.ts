@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from './use-toast';
 import { CalendarEvent } from '@/types/calendar';
@@ -50,6 +51,13 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
   const initializeGoogleApi = useCallback(async () => {
     try {
       await loadGoogleApi();
+      
+      console.log('Initializing Google API with clientId:', GOOGLE_API_CONFIG.clientId);
+      
+      // Just to debug
+      if (!GOOGLE_API_CONFIG.clientId) {
+        console.error('Google Client ID is missing or undefined');
+      }
 
       const googleApiParams: GoogleApiParams = {
         apiKey: GOOGLE_API_CONFIG.apiKey,
@@ -58,19 +66,21 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
         scope: GOOGLE_API_CONFIG.scope
       };
 
-      window.google?.client.init(googleApiParams).then(() => {
-        const authInstance = window.google?.auth2.getAuthInstance();
-        setGoogleAuthInstance(authInstance);
-        setIsGoogleApiReady(true);
-        setIsGoogleCalendarConnected(authInstance?.isSignedIn.get());
-      }).catch((error: any) => {
-        console.error('Error initializing Google API', error);
-        toast({
-          title: 'Error initializing Google API',
-          description: error.message,
-          variant: 'destructive'
+      window.google?.client.init(googleApiParams)
+        .then(() => {
+          const authInstance = window.google?.auth2.getAuthInstance();
+          setGoogleAuthInstance(authInstance);
+          setIsGoogleApiReady(true);
+          setIsGoogleCalendarConnected(authInstance?.isSignedIn.get());
+        })
+        .catch((error: any) => {
+          console.error('Error initializing Google API', error);
+          toast({
+            title: 'Error initializing Google API',
+            description: error.message,
+            variant: 'destructive'
+          });
         });
-      });
     } catch (error: any) {
       console.error('Error loading Google API', error);
       toast({
@@ -89,6 +99,16 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
 
   const connectGoogleCalendar = async () => {
     try {
+      if (!googleAuthInstance) {
+        console.error('Google Auth instance not initialized');
+        toast({
+          title: 'Google Calendar Error',
+          description: 'Google authentication is not initialized. Please refresh the page and try again.',
+          variant: 'destructive'
+        });
+        return;
+      }
+      
       await googleAuthInstance.signIn();
       setIsGoogleCalendarConnected(true);
       toast({
@@ -108,6 +128,11 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
 
   const disconnectGoogleCalendar = () => {
     try {
+      if (!googleAuthInstance) {
+        console.error('Google Auth instance not initialized');
+        return;
+      }
+      
       googleAuthInstance.signOut();
       setIsGoogleCalendarConnected(false);
       toast({
