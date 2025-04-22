@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,7 +51,7 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
           .from('profiles')
           .select('google_calendar_last_sync')
           .eq('id', clinicianId)
-          .single();
+          .maybeSingle();
           
         if (!error && data?.google_calendar_last_sync) {
           setLastSyncTime(data.google_calendar_last_sync);

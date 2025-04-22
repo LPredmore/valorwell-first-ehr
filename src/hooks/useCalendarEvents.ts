@@ -195,11 +195,11 @@ export function useCalendarEvents({
       isUserLoading,
       userId
     });
-    
+
     if (!isUserLoading) {
       fetchEvents();
     }
-    
+
     return () => {
       fetchInProgress.current = false;
     };

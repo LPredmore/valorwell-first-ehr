@@ -126,6 +126,7 @@ export type Database = {
           description: string | null
           end_time: string
           event_type: string
+          google_event_id: string | null
           id: string
           is_active: boolean
           recurrence_id: string | null
@@ -140,6 +141,7 @@ export type Database = {
           description?: string | null
           end_time: string
           event_type: string
+          google_event_id?: string | null
           id?: string
           is_active?: boolean
           recurrence_id?: string | null
@@ -154,6 +156,7 @@ export type Database = {
           description?: string | null
           end_time?: string
           event_type?: string
+          google_event_id?: string | null
           id?: string
           is_active?: boolean
           recurrence_id?: string | null
@@ -1363,6 +1366,8 @@ export type Database = {
           created_at: string
           email: string
           first_name: string | null
+          google_calendar_last_sync: string | null
+          google_calendar_linked: boolean | null
           id: string
           last_name: string | null
           phone: string | null
@@ -1376,6 +1381,8 @@ export type Database = {
           created_at?: string
           email: string
           first_name?: string | null
+          google_calendar_last_sync?: string | null
+          google_calendar_linked?: boolean | null
           id: string
           last_name?: string | null
           phone?: string | null
@@ -1389,6 +1396,8 @@ export type Database = {
           created_at?: string
           email?: string
           first_name?: string | null
+          google_calendar_last_sync?: string | null
+          google_calendar_linked?: boolean | null
           id?: string
           last_name?: string | null
           phone?: string | null
@@ -1403,21 +1412,21 @@ export type Database = {
       recurrence_rules: {
         Row: {
           created_at: string
-          event_id: string | null
+          event_id: string
           id: string
           rrule: string
           updated_at: string
         }
         Insert: {
           created_at?: string
-          event_id?: string | null
+          event_id: string
           id?: string
           rrule: string
           updated_at?: string
         }
         Update: {
           created_at?: string
-          event_id?: string | null
+          event_id?: string
           id?: string
           rrule?: string
           updated_at?: string
@@ -1822,6 +1831,42 @@ export type Database = {
           template_name?: string
           template_type?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      time_off: {
+        Row: {
+          all_day: boolean | null
+          clinician_id: string
+          created_at: string | null
+          date: string
+          end_time: string
+          id: string
+          reason: string | null
+          start_time: string
+          updated_at: string | null
+        }
+        Insert: {
+          all_day?: boolean | null
+          clinician_id: string
+          created_at?: string | null
+          date: string
+          end_time: string
+          id?: string
+          reason?: string | null
+          start_time: string
+          updated_at?: string | null
+        }
+        Update: {
+          all_day?: boolean | null
+          clinician_id?: string
+          created_at?: string | null
+          date?: string
+          end_time?: string
+          id?: string
+          reason?: string | null
+          start_time?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
