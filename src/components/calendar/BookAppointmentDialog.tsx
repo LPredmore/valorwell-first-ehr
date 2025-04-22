@@ -43,6 +43,7 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
 
   const [minNoticeHours, setMinNoticeHours] = useState<number>(24);
   const [maxAdvanceDays, setMaxAdvanceDays] = useState<number>(90);
+  const [isAvailabilityActive, setIsAvailabilityActive] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchAvailabilitySettingsAndDates = async () => {
@@ -54,8 +55,15 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
         if (settings) {
           setMinNoticeHours(settings.minNoticeHours);
           setMaxAdvanceDays(settings.maxAdvanceDays);
+          setIsAvailabilityActive((settings as any).is_active !== false);
+        } else {
+          setIsAvailabilityActive(false);
         }
 
+        if ((settings as any)?.is_active === false) {
+          setAvailableDates([]);
+          return;
+        }
         const today = startOfToday();
         const maxDate = addDays(today, settings?.maxAdvanceDays ?? 90);
         const candidateDates: Date[] = [];
@@ -191,6 +199,12 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
           <div className="flex justify-center items-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
+        ) : !isAvailabilityActive ? (
+          <div className="flex flex-col items-center justify-center py-8">
+            <span className="text-red-500 font-medium">
+              This clinician is not accepting appointments at this time.
+            </span>
+          </div>
         ) : (
           <div className="grid gap-6">
             <div className="space-y-1">
@@ -288,7 +302,7 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
           <Button 
             type="button" 
             onClick={handleBookAppointment}
-            disabled={!selectedDate || !selectedTimeSlot || isBooking || isLoading}
+            disabled={!isAvailabilityActive || !selectedDate || !selectedTimeSlot || isBooking || isLoading}
           >
             {isBooking ? (
               <>

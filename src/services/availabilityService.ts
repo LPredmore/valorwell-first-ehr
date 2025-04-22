@@ -315,8 +315,9 @@ export class AvailabilityService {
 
   /**
    * Calculate all bookable slots for a given day, using clinician config and current appointments.
-   * This respects active availability, global toggle, and booking rules.
-   * 
+   * Enforces active availability, global toggle, and booking rules.
+   * Prevents overlapping slots via DB trigger (see prevent_overlapping_availability).
+   *
    * @param clinicianId The clinician's UUID
    * @param date The day for which to calculate (ISO string, e.g. '2025-05-16')
    * @returns Array of available time slots (with start/end as ISO strings, in clinician's time zone)
@@ -324,10 +325,10 @@ export class AvailabilityService {
   static async calculateAvailableSlots(clinicianId: string, date: string): Promise<Array<{
     start: string;
     end: string;
-    slotId?: string; // Ref to the availability slot (calendar_events.id)
+    slotId?: string;
     isRecurring?: boolean;
   }>> {
-    // 1. Fetch availability settings for min advance/max notice, slot duration, and toggle
+    // 1. Fetch settings for min advance/max notice, slot duration, and toggle
     const { data: settings, error: settingsError } = await supabase
       .from('availability_settings')
       .select('*')
@@ -376,7 +377,7 @@ export class AvailabilityService {
       return [];
     }
 
-    // 4. For each slot, break into bookable intervals (by default slot duration)
+    // 4. For each slot, break into bookable intervals by duration
     let availableSlots: Array<{ start: string; end: string; slotId?: string; isRecurring?: boolean }> = [];
     for (const slot of slots) {
       const slotStartDT = DateTime.fromISO(slot.start_time, { zone: timezone });
