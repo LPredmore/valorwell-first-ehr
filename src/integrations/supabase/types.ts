@@ -77,6 +77,47 @@ export type Database = {
           },
         ]
       }
+      availability_settings: {
+        Row: {
+          clinician_id: string
+          created_at: string
+          default_slot_duration: number
+          id: string
+          max_advance_days: number
+          min_notice_hours: number
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          clinician_id: string
+          created_at?: string
+          default_slot_duration?: number
+          id?: string
+          max_advance_days?: number
+          min_notice_hours?: number
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          clinician_id?: string
+          created_at?: string
+          default_slot_duration?: number
+          id?: string
+          max_advance_days?: number
+          min_notice_hours?: number
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_settings_clinician_id_fkey"
+            columns: ["clinician_id"]
+            isOneToOne: false
+            referencedRelation: "clinicians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_events: {
         Row: {
           all_day: boolean | null
@@ -1940,6 +1981,7 @@ export type Database = {
         | "consent_form"
         | "therapy_note"
         | "questionnaire"
+      event_type: "appointment" | "time_off" | "availability"
       states:
         | "Alabama"
         | "Alaska"
@@ -2153,6 +2195,7 @@ export const Constants = {
         "therapy_note",
         "questionnaire",
       ],
+      event_type: ["appointment", "time_off", "availability"],
       states: [
         "Alabama",
         "Alaska",

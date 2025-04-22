@@ -1,4 +1,3 @@
-
 export interface AppointmentType {
   id: string;
   client_id: string;
@@ -23,6 +22,8 @@ export interface AppointmentType {
   video_room_url?: string;
 }
 
+export type Appointment = AppointmentType;
+
 export interface AppointmentWithLuxon extends AppointmentType {
   start_time: string;
   end_time: string;
@@ -32,3 +33,26 @@ export interface AppointmentWithLuxon extends AppointmentType {
 }
 
 export type BaseAppointment = AppointmentType;
+
+export interface AvailabilitySettings {
+  id: string;
+  clinicianId: string;
+  timezone: string;
+  defaultSlotDuration: number;
+  minNoticeHours: number;
+  maxAdvanceDays: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AvailabilitySlot {
+  startTime: string;
+  endTime: string;
+  dayOfWeek: string;
+  isRecurring?: boolean;
+  excludeDates?: string[];
+}
+
+export interface WeeklyAvailability {
+  [key: string]: AvailabilitySlot[];
+}

@@ -1,9 +1,8 @@
-
 import { EventInput } from '@fullcalendar/core';
 import { AppointmentType } from './appointment';
 
 export type CalendarViewType = "dayGridMonth" | "timeGridWeek" | "timeGridDay";
-export type CalendarEventType = 'appointment' | 'time_off';
+export type CalendarEventType = 'appointment' | 'time_off' | 'availability';
 
 export interface RecurrenceRule {
   id?: string;
