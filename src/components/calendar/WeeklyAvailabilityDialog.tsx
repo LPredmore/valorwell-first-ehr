@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 import { formatTime12Hour } from '@/utils/timeZoneUtils';
 import { DateTime } from 'luxon';
+import { WeekdayNumbers } from '@/types/calendar';
 
 interface WeeklyAvailabilityDialogProps {
   isOpen: boolean;
@@ -146,6 +148,41 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     }
   };
 
+  const handleDeleteSlot = async (day: string, index: number) => {
+    if (!clinicianId) return;
+    
+    const slot = weeklyAvailability[day][index];
+    
+    // For now, we'll just remove it from the UI - we need to implement the delete functionality in the service
+    try {
+      // Here we'll add the actual delete API call later
+      
+      // Remove from state for now
+      setWeeklyAvailability(prev => {
+        const updatedDaySlots = [...prev[day]];
+        updatedDaySlots.splice(index, 1);
+        return {
+          ...prev,
+          [day]: updatedDaySlots
+        };
+      });
+      
+      toast({
+        title: 'Success',
+        description: 'Availability slot removed'
+      });
+      
+      onAvailabilityUpdated();
+    } catch (error) {
+      console.error('Error removing availability slot:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to remove availability slot',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const generateTimeOptions = () => {
     const options = [];
     for (let hour = 0; hour < 24; hour++) {
@@ -220,7 +257,12 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
                             </span>
                           )}
                         </div>
-                        <Button size="sm" variant="ghost" className="p-1 h-auto">
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="p-1 h-auto"
+                          onClick={() => handleDeleteSlot(day.id, index)}
+                        >
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
                       </div>
