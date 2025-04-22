@@ -278,20 +278,13 @@ export class AvailabilityService {
 
       if (error) {
         console.error('Error fetching weekly availability:', error);
-        return {};
+        return createEmptyWeeklyAvailability();
       }
 
-      const weeklyAvailability: WeeklyAvailability = {
-        monday: [],
-        tuesday: [],
-        wednesday: [],
-        thursday: [],
-        friday: [],
-        saturday: [],
-        sunday: []
-      };
+      // Initialize with empty arrays for all days
+      const weeklyAvailability: WeeklyAvailability = createEmptyWeeklyAvailability();
 
-      events.forEach(event => {
+      events?.forEach(event => {
         const startDateTime = DateTime.fromISO(event.start_time);
         const dayOfWeek = startDateTime.toFormat('EEEE').toLowerCase();
         
@@ -309,26 +302,16 @@ export class AvailabilityService {
       return weeklyAvailability;
     } catch (error) {
       console.error('Error getting weekly availability:', error);
-      return {};
+      return createEmptyWeeklyAvailability();
     }
   }
 
-  /**
-   * Calculate all bookable slots for a given day, using clinician config and current appointments.
-   * Enforces active availability, global toggle, and booking rules.
-   * Prevents overlapping slots via DB trigger (see prevent_overlapping_availability).
-   *
-   * @param clinicianId The clinician's UUID
-   * @param date The day for which to calculate (ISO string, e.g. '2025-05-16')
-   * @returns Array of available time slots (with start/end as ISO strings, in clinician's time zone)
-   */
   static async calculateAvailableSlots(clinicianId: string, date: string): Promise<Array<{
     start: string;
     end: string;
     slotId?: string;
     isRecurring?: boolean;
   }>> {
-    // 1. Fetch settings for min advance/max notice, slot duration, and toggle
     const { data: settings, error: settingsError } = await supabase
       .from('availability_settings')
       .select('*')
@@ -340,7 +323,6 @@ export class AvailabilityService {
       return [];
     }
     if (settings.is_active === false) {
-      // Availability globally off
       return [];
     }
     const { timezone, default_slot_duration, min_notice_hours, max_advance_days } = settings;
@@ -348,7 +330,6 @@ export class AvailabilityService {
     const startOfDay = DateTime.fromISO(date, { zone: timezone }).startOf('day');
     const endOfDay = DateTime.fromISO(date, { zone: timezone }).endOf('day');
 
-    // 2. Fetch all active availability slots for that day
     const { data: slots, error: slotsError } = await supabase
       .from('calendar_events')
       .select('*')
@@ -363,7 +344,6 @@ export class AvailabilityService {
       return [];
     }
 
-    // 3. Fetch appointments blocking the time
     const { data: appointments, error: apptError } = await supabase
       .from('appointments')
       .select('appointment_datetime, appointment_end_datetime, status')
@@ -377,7 +357,6 @@ export class AvailabilityService {
       return [];
     }
 
-    // 4. For each slot, break into bookable intervals by duration
     let availableSlots: Array<{ start: string; end: string; slotId?: string; isRecurring?: boolean }> = [];
     for (const slot of slots) {
       const slotStartDT = DateTime.fromISO(slot.start_time, { zone: timezone });
@@ -386,12 +365,9 @@ export class AvailabilityService {
       for (let t = slotStartDT; t.plus({ minutes: durationMin }) <= slotEndDT; t = t.plus({ minutes: durationMin })) {
         const slotBegin = t;
         const slotFinish = t.plus({ minutes: durationMin });
-        // Check against min_notice_hours
         const now = DateTime.now().setZone(timezone);
         if (slotBegin.diff(now, 'hours').hours < (min_notice_hours || 0)) continue;
-        // Check against max_advance_days
         if (slotBegin.diff(now, 'days').days > (max_advance_days || 90)) continue;
-        // Check against appointments (conflict)
         const overlaps = appointments.some(a => {
           return (
             (slotBegin < DateTime.fromISO(a.appointment_end_datetime, { zone: timezone })) &&
@@ -412,12 +388,6 @@ export class AvailabilityService {
     return availableSlots;
   }
 
-  /**
-   * Globally enable or disable clinician availability (for all slots)
-   * @param clinicianId The clinician's UUID
-   * @param isActive Boolean, true for available, false for off
-   * @returns true if success; false otherwise
-   */
   static async toggleAvailabilityActive(clinicianId: string, isActive: boolean): Promise<boolean> {
     const { error } = await supabase
       .from('availability_settings')
@@ -429,4 +399,16 @@ export class AvailabilityService {
     }
     return true;
   }
+}
+
+function createEmptyWeeklyAvailability(): WeeklyAvailability {
+  return {
+    monday: [],
+    tuesday: [],
+    wednesday: [],
+    thursday: [],
+    friday: [],
+    saturday: [],
+    sunday: []
+  };
 }

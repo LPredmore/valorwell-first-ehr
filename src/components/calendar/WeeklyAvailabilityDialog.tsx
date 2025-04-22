@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Trash2, Calendar } from 'lucide-react';
+import { Loader2, Plus, Trash2, Calendar, AlertCircle } from 'lucide-react';
 import { AvailabilityService } from '@/services/availabilityService';
 import { WeeklyAvailability, AvailabilitySlot } from '@/types/appointment';
 import { formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
@@ -12,6 +12,7 @@ import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 import { formatTime12Hour } from '@/utils/timeZoneUtils';
 import { DateTime } from 'luxon';
 import { WeekdayNumbers } from '@/types/calendar';
+import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
 
 interface WeeklyAvailabilityDialogProps {
   isOpen: boolean;
@@ -45,15 +46,10 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   const { timeZone } = useUserTimeZone(clinicianId);
   const [activeTab, setActiveTab] = useState('monday');
   const [isLoading, setIsLoading] = useState(false);
-  const [weeklyAvailability, setWeeklyAvailability] = useState<Record<string, DatabaseAvailabilitySlot[]>>({
-    monday: [],
-    tuesday: [],
-    wednesday: [],
-    thursday: [],
-    friday: [],
-    saturday: [],
-    sunday: []
-  });
+  const [error, setError] = useState<Error | null>(null);
+  const [weeklyAvailability, setWeeklyAvailability] = useState<Record<string, DatabaseAvailabilitySlot[]>>(
+    createEmptyWeeklyAvailability()
+  );
   
   const [newSlotStartTime, setNewSlotStartTime] = useState('09:00');
   const [newSlotEndTime, setNewSlotEndTime] = useState('10:00');
@@ -63,11 +59,13 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   const reloadWeeklyAvailability = async () => {
     if (!clinicianId) return;
     setIsLoading(true);
+    setError(null);
     try {
       const availability = await AvailabilityService.getWeeklyAvailability(clinicianId);
       setWeeklyAvailability(availability);
     } catch (error) {
       console.error('Error fetching weekly availability:', error);
+      setError(error instanceof Error ? error : new Error('Failed to load availability settings'));
       toast({
         title: 'Error',
         description: 'Failed to load availability settings',
@@ -86,6 +84,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   const handleAddSlot = async () => {
     if (!clinicianId) return;
     setIsAddingSlot(true);
+    setError(null);
     try {
       const today = DateTime.now();
       const dayIndex = dayTabs.findIndex(day => day.id === activeTab);
@@ -127,6 +126,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       }
     } catch (error) {
       console.error('Error adding availability slot:', error);
+      setError(error instanceof Error ? error : new Error('Failed to add availability slot'));
       toast({
         title: 'Error',
         description: 'Failed to add availability slot',
@@ -140,9 +140,12 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   // Change: Soft delete slots using service instead of removing from state
   const handleDeleteSlot = async (day: string, index: number) => {
     if (!clinicianId) return;
-    const slot = weeklyAvailability[day][index];
     
-    // Check if the slot has an ID (should be present in DatabaseAvailabilitySlot)
+    // Safely access the slot with defensive coding
+    const daySlots = weeklyAvailability[day] || [];
+    const slot = daySlots[index];
+    
+    // Check if the slot exists and has an ID
     if (!slot || !slot.id) {
       toast({
         title: 'Error',
@@ -153,6 +156,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     }
     
     setIsLoading(true);
+    setError(null);
     try {
       // Call service to soft-delete (set is_active=false) using the slot ID
       const deleted = await AvailabilityService.updateAvailabilitySlot(slot.id, { }, false);
@@ -168,6 +172,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       }
     } catch (error) {
       console.error('Error removing availability slot:', error);
+      setError(error instanceof Error ? error : new Error('Failed to remove availability slot'));
       toast({
         title: 'Error',
         description: 'Failed to remove availability slot',
@@ -192,6 +197,9 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
 
   const timeOptions = generateTimeOptions();
 
+  // Ensure the selected day's availability array exists
+  const currentDaySlots = weeklyAvailability[activeTab] || [];
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px]">
@@ -210,6 +218,22 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
         {isLoading ? (
           <div className="flex justify-center items-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 border border-red-200 rounded p-4 mb-4 text-red-800">
+            <div className="flex items-center mb-2">
+              <AlertCircle className="h-5 w-5 mr-2" />
+              <span className="font-medium">Error loading availability</span>
+            </div>
+            <p className="text-sm">{error.message}</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-2" 
+              onClick={reloadWeeklyAvailability}
+            >
+              Try Again
+            </Button>
           </div>
         ) : (
           <Tabs
@@ -232,7 +256,8 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  {weeklyAvailability[day.id].length === 0 ? (
+                  {/* Defensive check that currentDaySlots exists and has length */}
+                  {!weeklyAvailability[day.id] || weeklyAvailability[day.id].length === 0 ? (
                     <div className="text-center py-4 text-gray-500">
                       No availability set for {day.label}
                     </div>
