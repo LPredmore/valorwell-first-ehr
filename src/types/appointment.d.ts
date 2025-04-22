@@ -1,4 +1,3 @@
-
 export interface AppointmentType {
   id: string;
   client_id: string;
