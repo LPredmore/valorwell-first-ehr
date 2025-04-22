@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -84,7 +83,10 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     try {
       const today = DateTime.now();
       const dayIndex = dayTabs.findIndex(day => day.id === activeTab);
-      const targetDate = today.set({ weekday: ((dayIndex + 1) % 7 || 7) as WeekdayNumbers });
+      
+      const targetDate = today.set({ 
+        weekday: dayIndex + 1 as WeekdayNumbers 
+      });
       
       const startDateTime = targetDate.set({
         hour: parseInt(newSlotStartTime.split(':')[0]),
@@ -153,11 +155,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     
     const slot = weeklyAvailability[day][index];
     
-    // For now, we'll just remove it from the UI - we need to implement the delete functionality in the service
     try {
-      // Here we'll add the actual delete API call later
-      
-      // Remove from state for now
       setWeeklyAvailability(prev => {
         const updatedDaySlots = [...prev[day]];
         updatedDaySlots.splice(index, 1);
