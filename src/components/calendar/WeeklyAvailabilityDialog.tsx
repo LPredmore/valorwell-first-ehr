@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,11 @@ interface WeeklyAvailabilityDialogProps {
   onClose: () => void;
   clinicianId: string | null;
   onAvailabilityUpdated: () => void;
+}
+
+// Extended interface to include id for database operations
+interface DatabaseAvailabilitySlot extends AvailabilitySlot {
+  id?: string;
 }
 
 const dayTabs = [
@@ -39,7 +45,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   const { timeZone } = useUserTimeZone(clinicianId);
   const [activeTab, setActiveTab] = useState('monday');
   const [isLoading, setIsLoading] = useState(false);
-  const [weeklyAvailability, setWeeklyAvailability] = useState<WeeklyAvailability>({
+  const [weeklyAvailability, setWeeklyAvailability] = useState<Record<string, DatabaseAvailabilitySlot[]>>({
     monday: [],
     tuesday: [],
     wednesday: [],
@@ -135,6 +141,8 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   const handleDeleteSlot = async (day: string, index: number) => {
     if (!clinicianId) return;
     const slot = weeklyAvailability[day][index];
+    
+    // Check if the slot has an ID (should be present in DatabaseAvailabilitySlot)
     if (!slot || !slot.id) {
       toast({
         title: 'Error',
@@ -143,9 +151,10 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       });
       return;
     }
+    
     setIsLoading(true);
     try {
-      // Call service to soft-delete (set is_active=false)
+      // Call service to soft-delete (set is_active=false) using the slot ID
       const deleted = await AvailabilityService.updateAvailabilitySlot(slot.id, { }, false);
       if (deleted) {
         toast({

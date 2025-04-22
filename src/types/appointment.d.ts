@@ -1,3 +1,4 @@
+
 export interface AppointmentType {
   id: string;
   client_id: string;
@@ -51,6 +52,7 @@ export interface AvailabilitySettings {
 }
 
 export interface AvailabilitySlot {
+  id?: string;  // Add the id property
   startTime: string;
   endTime: string;
   dayOfWeek: string;

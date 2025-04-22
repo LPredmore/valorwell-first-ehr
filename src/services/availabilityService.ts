@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySettings, AvailabilitySlot, WeeklyAvailability } from '@/types/appointment';
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
@@ -153,6 +154,12 @@ export class AvailabilityService {
       if (updates.endTime) updateData.end_time = updates.endTime;
       if (updates.title) updateData.title = updates.title;
 
+      // Set is_active to false when updateRecurrence is false and no updates are provided
+      // This allows us to use this method for soft-deletes
+      if (Object.keys(updates).length === 0 && updateRecurrence === false) {
+        updateData.is_active = false;
+      }
+
       const { error } = await supabase
         .from('calendar_events')
         .update(updateData)
@@ -291,6 +298,7 @@ export class AvailabilityService {
         
         if (dayOfWeek in weeklyAvailability) {
           weeklyAvailability[dayOfWeek].push({
+            id: event.id,  // Include the id field
             startTime: startDateTime.toFormat('HH:mm'),
             endTime: DateTime.fromISO(event.end_time).toFormat('HH:mm'),
             dayOfWeek,
