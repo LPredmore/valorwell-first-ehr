@@ -221,6 +221,19 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
     }
   };
 
+  // Helper function to get client name
+  const getClientName = (): string => {
+    if (appointment?.clientName) {
+      return appointment.clientName;
+    }
+    
+    if (appointment?.client) {
+      return `${appointment.client.client_first_name} ${appointment.client.client_last_name}`;
+    }
+    
+    return 'Unknown Client';
+  };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -233,7 +246,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
             <div className="grid gap-2">
               <Label htmlFor="client">Client</Label>
               <div className="p-2 bg-gray-50 rounded border">
-                {appointment?.clientName || 'Unknown Client'}
+                {getClientName()}
               </div>
             </div>
 

@@ -1,3 +1,4 @@
+
 export interface AppointmentType {
   id: string;
   client_id: string;
@@ -20,6 +21,11 @@ export interface AppointmentType {
   display_start_time?: string;
   display_end_time?: string;
   video_room_url?: string;
+  // Add recurring appointment fields
+  recurring_group_id?: string;
+  appointment_recurring?: string;
+  // Add clientName convenience property
+  clientName?: string;
 }
 
 export type Appointment = AppointmentType;
