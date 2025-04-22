@@ -53,55 +53,51 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   const [newSlotEndTime, setNewSlotEndTime] = useState('10:00');
   const [isAddingSlot, setIsAddingSlot] = useState(false);
 
-  useEffect(() => {
-    const fetchWeeklyAvailability = async () => {
-      if (!clinicianId || !isOpen) return;
-      
-      setIsLoading(true);
-      try {
-        const availability = await AvailabilityService.getWeeklyAvailability(clinicianId);
-        setWeeklyAvailability(availability);
-      } catch (error) {
-        console.error('Error fetching weekly availability:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load availability settings',
-          variant: 'destructive'
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // New: Force reload function for weekly availability from backend
+  const reloadWeeklyAvailability = async () => {
+    if (!clinicianId) return;
+    setIsLoading(true);
+    try {
+      const availability = await AvailabilityService.getWeeklyAvailability(clinicianId);
+      setWeeklyAvailability(availability);
+    } catch (error) {
+      console.error('Error fetching weekly availability:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load availability settings',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    fetchWeeklyAvailability();
+  useEffect(() => {
+    if (isOpen) reloadWeeklyAvailability();
+    // eslint-disable-next-line
   }, [clinicianId, isOpen, toast]);
 
   const handleAddSlot = async () => {
     if (!clinicianId) return;
-    
     setIsAddingSlot(true);
     try {
       const today = DateTime.now();
       const dayIndex = dayTabs.findIndex(day => day.id === activeTab);
-      
       const targetDate = today.set({ 
-        weekday: dayIndex + 1 as WeekdayNumbers 
+        weekday: dayIndex + 1 as WeekdayNumbers
       });
-      
       const startDateTime = targetDate.set({
         hour: parseInt(newSlotStartTime.split(':')[0]),
         minute: parseInt(newSlotStartTime.split(':')[1]),
         second: 0,
         millisecond: 0
       });
-      
       const endDateTime = targetDate.set({
         hour: parseInt(newSlotEndTime.split(':')[0]),
         minute: parseInt(newSlotEndTime.split(':')[1]),
         second: 0,
         millisecond: 0
       });
-      
       const slotId = await AvailabilityService.createAvailabilitySlot(
         clinicianId,
         {
@@ -111,29 +107,14 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
           recurring: false
         }
       );
-
       if (slotId) {
         toast({
           title: 'Success',
           description: 'Availability slot added successfully'
         });
-        
-        setWeeklyAvailability(prev => ({
-          ...prev,
-          [activeTab]: [
-            ...prev[activeTab],
-            {
-              startTime: newSlotStartTime,
-              endTime: newSlotEndTime,
-              dayOfWeek: activeTab,
-              isRecurring: false
-            }
-          ]
-        }));
-        
+        await reloadWeeklyAvailability();
         setNewSlotStartTime('09:00');
         setNewSlotEndTime('10:00');
-        
         onAvailabilityUpdated();
       } else {
         throw new Error('Failed to add availability slot');
@@ -150,27 +131,32 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     }
   };
 
+  // Change: Soft delete slots using service instead of removing from state
   const handleDeleteSlot = async (day: string, index: number) => {
     if (!clinicianId) return;
-    
     const slot = weeklyAvailability[day][index];
-    
-    try {
-      setWeeklyAvailability(prev => {
-        const updatedDaySlots = [...prev[day]];
-        updatedDaySlots.splice(index, 1);
-        return {
-          ...prev,
-          [day]: updatedDaySlots
-        };
-      });
-      
+    if (!slot || !slot.id) {
       toast({
-        title: 'Success',
-        description: 'Availability slot removed'
+        title: 'Error',
+        description: 'Could not find associated slot id',
+        variant: 'destructive'
       });
-      
-      onAvailabilityUpdated();
+      return;
+    }
+    setIsLoading(true);
+    try {
+      // Call service to soft-delete (set is_active=false)
+      const deleted = await AvailabilityService.updateAvailabilitySlot(slot.id, { }, false);
+      if (deleted) {
+        toast({
+          title: 'Success',
+          description: 'Availability slot removed'
+        });
+        await reloadWeeklyAvailability();
+        onAvailabilityUpdated();
+      } else {
+        throw new Error('Error updating availability (soft-delete)');
+      }
     } catch (error) {
       console.error('Error removing availability slot:', error);
       toast({
@@ -178,6 +164,8 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
         description: 'Failed to remove availability slot',
         variant: 'destructive'
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
