@@ -2,20 +2,15 @@
 import { EventInput } from '@fullcalendar/core';
 import { AppointmentType } from './appointment';
 
-// Centralized view type definition
 export type CalendarViewType = "dayGridMonth" | "timeGridWeek" | "timeGridDay";
-
-// Event types
 export type CalendarEventType = 'appointment' | 'time_off';
 
-// Recurring rule format (iCalendar RRULE)
 export interface RecurrenceRule {
   id?: string;
   eventId: string;
   rrule: string;
 }
 
-// Exception to a recurring event
 export interface CalendarException {
   id?: string;
   recurrenceEventId: string;
@@ -24,7 +19,6 @@ export interface CalendarException {
   replacementEventId?: string;
 }
 
-// Base calendar event format
 export interface CalendarEvent extends EventInput {
   extendedProps?: {
     appointment?: AppointmentType;
