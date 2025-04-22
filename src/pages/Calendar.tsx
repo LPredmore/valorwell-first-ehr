@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { CalendarViewType } from '@/types/calendar';
 import Layout from '../components/layout/Layout';
@@ -18,6 +17,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
 import AvailabilitySettingsDialog from '../components/calendar/AvailabilitySettingsDialog';
 import WeeklyAvailabilityDialog from '../components/calendar/WeeklyAvailabilityDialog';
+import GoogleCalendarIntegration from '../components/calendar/GoogleCalendarIntegration';
 
 const CalendarPage: React.FC = () => {
   const navigate = useNavigate();
@@ -42,10 +42,11 @@ const CalendarPage: React.FC = () => {
   const [calendarViewMode, setCalendarViewMode] = useState<CalendarViewType>('dayGridMonth');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [calendarKey, setCalendarKey] = useState<number>(0); // For forcing re-render
+  const [calendarKey, setCalendarKey] = useState<number>(0);
   const [isAvailabilitySettingsOpen, setIsAvailabilitySettingsOpen] = useState(false);
   const [isWeeklyAvailabilityOpen, setIsWeeklyAvailabilityOpen] = useState(false);
-  
+  const [showGoogleCalendarSettings, setShowGoogleCalendarSettings] = useState(false);
+
   useEffect(() => {
     if (!isUserLoading && !userId) {
       console.log('[Calendar] User not authenticated, redirecting to login');
@@ -290,6 +291,7 @@ const CalendarPage: React.FC = () => {
                   userTimeZone={userTimeZone}
                   view={calendarViewMode}
                   height="700px"
+                  showAvailability={showAvailability}
                 />
               </Card>
             ) : (
