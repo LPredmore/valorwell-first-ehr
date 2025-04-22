@@ -72,16 +72,23 @@ export class CalendarService {
         throw error;
       }
       
-      return appointments.map((appointment: AppointmentType) => ({
-        id: appointment.id,
-        title: `${appointment.client?.client_first_name} ${appointment.client?.client_last_name} - ${appointment.type}`,
-        start: appointment.appointment_datetime || `${appointment.date}T${appointment.start_time}`,
-        end: appointment.appointment_end_datetime || `${appointment.date}T${appointment.end_time}`,
-        extendedProps: {
-          appointment: appointment,
-          eventType: 'appointment' as CalendarEventType
-        }
-      }));
+      return appointments.map((appointment: any) => {
+        const appointmentData: AppointmentType = {
+          ...appointment,
+          clinician_id: clinicianId
+        };
+        
+        return {
+          id: appointmentData.id,
+          title: `${appointmentData.client?.client_first_name} ${appointmentData.client?.client_last_name} - ${appointmentData.type}`,
+          start: appointmentData.appointment_datetime || `${appointmentData.date}T${appointmentData.start_time}`,
+          end: appointmentData.appointment_end_datetime || `${appointmentData.date}T${appointmentData.end_time}`,
+          extendedProps: {
+            appointment: appointmentData,
+            eventType: 'appointment' as CalendarEventType
+          }
+        };
+      });
     } catch (error) {
       console.error('Error fetching appointments:', error);
       return [];
@@ -146,8 +153,8 @@ export class CalendarService {
               client_id: appointment.client_id,
               clinician_id: appointment.clinician_id,
               date: appointment.date,
-              start_time: appointment.start,
-              end_time: appointment.end,
+              start_time: event.start?.toString().split('T')[1].substring(0, 8),
+              end_time: event.end?.toString().split('T')[1].substring(0, 8),
               type: appointment.type,
               status: appointment.status,
               notes: appointment.notes
@@ -229,8 +236,8 @@ export class CalendarService {
             client_id: appointment.client_id,
             clinician_id: appointment.clinician_id,
             date: appointment.date,
-            start_time: appointment.start,
-            end_time: appointment.end,
+            start_time: event.start?.toString().split('T')[1].substring(0, 8),
+            end_time: event.end?.toString().split('T')[1].substring(0, 8),
             type: appointment.type,
             status: appointment.status,
             notes: appointment.notes

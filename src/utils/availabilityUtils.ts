@@ -13,7 +13,7 @@ export const getClinicianAvailabilityFieldsQuery = () => {
   `;
 };
 
-// Simplified availability block conversion since we're removing the old system
+// Simplified function returning empty array since we're removing the old system
 export const convertClinicianDataToAvailabilityBlocks = (clinicianData: any) => {
   return [];
 };
