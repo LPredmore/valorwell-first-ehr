@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from './use-toast';
 import { CalendarEvent } from '@/types/calendar';
@@ -14,6 +13,7 @@ declare global {
 interface GoogleApiParams {
   apiKey: string | undefined;
   clientId: string | undefined;
+  clientSecret: string | undefined;
   discoveryDocs: string[];
   scope: string | undefined;
 }
@@ -26,12 +26,14 @@ interface UseGoogleCalendarReturn {
   createGoogleCalendarEvent: (event: CalendarEvent) => Promise<string | null>;
   updateGoogleCalendarEvent: (event: CalendarEvent) => Promise<string | null>;
   deleteGoogleCalendarEvent: (eventId: string) => Promise<boolean>;
+  apiInitError: string | null;
 }
 
 export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: string): UseGoogleCalendarReturn => {
   const [isGoogleApiReady, setIsGoogleApiReady] = useState(false);
   const [isGoogleCalendarConnected, setIsGoogleCalendarConnected] = useState(false);
   const [googleAuthInstance, setGoogleAuthInstance] = useState<any>(null);
+  const [apiInitError, setApiInitError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const loadGoogleApi = useCallback(() => {
@@ -43,7 +45,10 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
           resolve();
         });
       };
-      script.onerror = reject;
+      script.onerror = (err) => {
+        console.error('Error loading Google API script:', err);
+        reject(new Error('Failed to load Google API'));
+      };
       document.head.appendChild(script);
     });
   }, []);
@@ -52,40 +57,59 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
     try {
       await loadGoogleApi();
       
-      console.log('Initializing Google API with clientId:', GOOGLE_API_CONFIG.clientId);
+      console.log('Initializing Google API with:', { 
+        clientId: GOOGLE_API_CONFIG.clientId ? 'present' : 'missing', 
+        clientSecret: GOOGLE_API_CONFIG.clientSecret ? 'present' : 'missing',
+        apiKey: GOOGLE_API_CONFIG.apiKey ? 'present' : 'missing'
+      });
       
-      // Just to debug
       if (!GOOGLE_API_CONFIG.clientId) {
         console.error('Google Client ID is missing or undefined');
+        setApiInitError('Google Client ID is missing');
+        return;
+      }
+
+      if (!GOOGLE_API_CONFIG.clientSecret) {
+        console.error('Google Client Secret is missing or undefined');
+        setApiInitError('Google Client Secret is missing');
+        return;
       }
 
       const googleApiParams: GoogleApiParams = {
         apiKey: GOOGLE_API_CONFIG.apiKey,
         clientId: GOOGLE_API_CONFIG.clientId,
+        clientSecret: GOOGLE_API_CONFIG.clientSecret,
         discoveryDocs: GOOGLE_API_CONFIG.discoveryDocs,
         scope: GOOGLE_API_CONFIG.scope
       };
 
-      window.google?.client.init(googleApiParams)
-        .then(() => {
-          const authInstance = window.google?.auth2.getAuthInstance();
-          setGoogleAuthInstance(authInstance);
-          setIsGoogleApiReady(true);
-          setIsGoogleCalendarConnected(authInstance?.isSignedIn.get());
-        })
-        .catch((error: any) => {
-          console.error('Error initializing Google API', error);
-          toast({
-            title: 'Error initializing Google API',
-            description: error.message,
-            variant: 'destructive'
-          });
+      try {
+        await window.google?.client.init(googleApiParams);
+        const authInstance = window.google?.auth2.getAuthInstance();
+        
+        if (!authInstance) {
+          throw new Error('Failed to initialize Google Auth instance');
+        }
+        
+        setGoogleAuthInstance(authInstance);
+        setIsGoogleApiReady(true);
+        setIsGoogleCalendarConnected(authInstance.isSignedIn.get());
+        setApiInitError(null);
+      } catch (err: any) {
+        console.error('Error initializing Google API client:', err);
+        setApiInitError(err.message || 'Error initializing Google API');
+        toast({
+          title: 'Error initializing Google API',
+          description: err.message || 'Could not initialize Google Calendar API',
+          variant: 'destructive'
         });
+      }
     } catch (error: any) {
-      console.error('Error loading Google API', error);
+      console.error('Error in Google API initialization process:', error);
+      setApiInitError(error.message || 'Failed to load Google API');
       toast({
         title: 'Error loading Google API',
-        description: error.message,
+        description: error.message || 'Could not load Google Calendar API',
         variant: 'destructive'
       });
     }
@@ -120,9 +144,10 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
       console.error('Error connecting to Google Calendar', error);
       toast({
         title: 'Error connecting to Google Calendar',
-        description: error.message,
+        description: error.message || 'Connection failed. Please try again.',
         variant: 'destructive'
       });
+      throw error;
     }
   };
 
@@ -144,7 +169,7 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
       console.error('Error disconnecting Google Calendar', error);
       toast({
         title: 'Error disconnecting Google Calendar',
-        description: error.message,
+        description: error.message || 'Failed to disconnect. Please try again.',
         variant: 'destructive'
       });
     }
@@ -269,6 +294,7 @@ export const useGoogleCalendar = (clinicianId: string | null, userTimeZone: stri
     disconnectGoogleCalendar,
     createGoogleCalendarEvent,
     updateGoogleCalendarEvent,
-    deleteGoogleCalendarEvent
+    deleteGoogleCalendarEvent,
+    apiInitError
   };
 };

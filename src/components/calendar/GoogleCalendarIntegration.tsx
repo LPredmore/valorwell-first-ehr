@@ -4,12 +4,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Calendar as CalendarIcon, Check, Loader2, RefreshCw } from 'lucide-react';
+import { Calendar as CalendarIcon, Check, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/context/UserContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface GoogleCalendarIntegrationProps {
   clinicianId: string;
@@ -32,26 +33,32 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
     syncAvailability: true,
     importBlockedTimes: true
   });
+  const [configError, setConfigError] = useState<string | null>(null);
 
   const {
     isGoogleApiReady,
     isGoogleCalendarConnected,
     connectGoogleCalendar,
     disconnectGoogleCalendar,
+    apiInitError
   } = useGoogleCalendar(clinicianId, userTimeZone);
 
   useEffect(() => {
     const fetchLastSyncTime = async () => {
       if (!clinicianId) return;
       
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('google_calendar_last_sync')
-        .eq('id', clinicianId)
-        .single();
-        
-      if (!error && data?.google_calendar_last_sync) {
-        setLastSyncTime(data.google_calendar_last_sync);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('google_calendar_last_sync')
+          .eq('id', clinicianId)
+          .single();
+          
+        if (!error && data?.google_calendar_last_sync) {
+          setLastSyncTime(data.google_calendar_last_sync);
+        }
+      } catch (err) {
+        console.error('Error fetching last sync time:', err);
       }
     };
     
@@ -165,8 +172,14 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
     }));
   };
 
+  useEffect(() => {
+    if (apiInitError) {
+      setConfigError(apiInitError);
+    }
+  }, [apiInitError]);
+
   // If the Google API isn't ready yet, show a loading state
-  if (!isGoogleApiReady) {
+  if (!isGoogleApiReady && !configError) {
     return (
       <Card>
         <CardHeader>
@@ -178,6 +191,31 @@ const GoogleCalendarIntegration: React.FC<GoogleCalendarIntegrationProps> = ({
         <CardContent className="flex flex-col items-center justify-center py-6">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
           <p className="text-sm text-gray-500">Loading Google Calendar API...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (configError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <CalendarIcon className="mr-2 h-5 w-5" />
+            Google Calendar Integration
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4 mr-2" />
+            <AlertDescription>
+              Configuration error: {configError}.
+              Please make sure Google API credentials are properly set up.
+            </AlertDescription>
+          </Alert>
+          <p className="text-sm text-gray-600 mt-2">
+            If you're an administrator, please check that the Google API keys have been correctly set in the environment variables.
+          </p>
         </CardContent>
       </Card>
     );
