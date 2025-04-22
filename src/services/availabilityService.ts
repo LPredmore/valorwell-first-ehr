@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySettings, AvailabilitySlot, WeeklyAvailability } from '@/types/appointment';
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
@@ -73,7 +72,8 @@ export class AvailabilityService {
       .eq('clinician_id', clinicianId)
       .eq('event_type', 'availability')
       .gte('start_time', startDate)
-      .lte('end_time', endDate);
+      .lte('end_time', endDate)
+      .eq('is_active', true);
 
     if (error) {
       console.error('Error fetching availability slots:', error);
@@ -107,7 +107,8 @@ export class AvailabilityService {
           title: slot.title || 'Available',
           start_time: slot.startTime,
           end_time: slot.endTime,
-          all_day: false
+          all_day: false,
+          is_active: true
         })
         .select('id')
         .single();
@@ -163,9 +164,7 @@ export class AvailabilityService {
         return false;
       }
 
-      // If we need to update all instances in a recurring series
       if (updateRecurrence) {
-        // First check if this is part of a recurring series
         const { data: eventData, error: eventError } = await supabase
           .from('calendar_events')
           .select('recurrence_id')
@@ -177,7 +176,6 @@ export class AvailabilityService {
           return !eventError;
         }
 
-        // Update all events in the series
         const { error: recurrenceUpdateError } = await supabase
           .from('calendar_events')
           .update(updateData)
@@ -202,7 +200,6 @@ export class AvailabilityService {
   ): Promise<boolean> {
     try {
       if (deleteRecurrence) {
-        // First check if this is part of a recurring series
         const { data: eventData, error: eventError } = await supabase
           .from('calendar_events')
           .select('recurrence_id')
@@ -215,7 +212,6 @@ export class AvailabilityService {
         }
 
         if (eventData?.recurrence_id) {
-          // Delete all events in the series
           const { error: recurrenceDeleteError } = await supabase
             .from('calendar_events')
             .delete()
@@ -226,7 +222,6 @@ export class AvailabilityService {
             return false;
           }
 
-          // Delete the recurrence rule
           const { error: ruleDeleteError } = await supabase
             .from('recurrence_rules')
             .delete()
@@ -234,14 +229,13 @@ export class AvailabilityService {
 
           if (ruleDeleteError) {
             console.error('Error deleting recurrence rule:', ruleDeleteError);
-            // Continue anyway as the events are deleted
+            return false;
           }
 
           return true;
         }
       }
 
-      // Delete a single availability slot
       const { error } = await supabase
         .from('calendar_events')
         .delete()
@@ -262,7 +256,6 @@ export class AvailabilityService {
 
   static async getWeeklyAvailability(clinicianId: string): Promise<WeeklyAvailability> {
     try {
-      // Get all availability events for this clinician
       const { data: events, error } = await supabase
         .from('calendar_events')
         .select(`
@@ -270,17 +263,18 @@ export class AvailabilityService {
           start_time, 
           end_time, 
           recurrence_id,
-          recurrence_rules:recurrence_id(rrule)
+          recurrence_rules:recurrence_id(rrule),
+          is_active
         `)
         .eq('clinician_id', clinicianId)
-        .eq('event_type', 'availability');
+        .eq('event_type', 'availability')
+        .eq('is_active', true);
 
       if (error) {
         console.error('Error fetching weekly availability:', error);
         return {};
       }
 
-      // Initialize weekly availability structure
       const weeklyAvailability: WeeklyAvailability = {
         monday: [],
         tuesday: [],
@@ -291,7 +285,6 @@ export class AvailabilityService {
         sunday: []
       };
 
-      // Process events
       events.forEach(event => {
         const startDateTime = DateTime.fromISO(event.start_time);
         const dayOfWeek = startDateTime.toFormat('EEEE').toLowerCase();

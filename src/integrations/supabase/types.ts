@@ -127,6 +127,7 @@ export type Database = {
           end_time: string
           event_type: string
           id: string
+          is_active: boolean
           recurrence_id: string | null
           start_time: string
           title: string
@@ -140,6 +141,7 @@ export type Database = {
           end_time: string
           event_type: string
           id?: string
+          is_active?: boolean
           recurrence_id?: string | null
           start_time: string
           title: string
@@ -153,6 +155,7 @@ export type Database = {
           end_time?: string
           event_type?: string
           id?: string
+          is_active?: boolean
           recurrence_id?: string | null
           start_time?: string
           title?: string

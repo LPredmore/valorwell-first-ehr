@@ -39,6 +39,8 @@ export interface CalendarEvent extends EventInput {
     isException?: boolean;
     googleEventId?: string;
     description?: string;
+    // Add is_active for availability (not needed for appointments, but type-safe)
+    is_active?: boolean;
   };
 }
 
