@@ -6,10 +6,13 @@ import { createWeeklyRule } from '@/utils/rruleUtils';
 import { ICalendarEvent } from '@/types/calendar';
 import { format } from 'date-fns';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
+import { useUser } from '@/context/UserContext';
+import { useTimeZone } from '@/context/TimeZoneContext';
 
 interface AvailabilityContextType {
   events: any[];
   isLoading: boolean;
+  isInitialized: boolean;
   refreshEvents: () => void;
   addAvailabilitySlot: (dayIndex: number, startTime: string, endTime: string) => Promise<void>;
   updateAvailabilitySlot: (eventId: string, startTime: string, endTime: string) => Promise<void>;
@@ -37,7 +40,19 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
 }) => {
   const [userTimeZone, setUserTimeZone] = useState(getUserTimeZone());
   const [hasNoEvents, setHasNoEvents] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
+  const { isLoading: isUserLoading, userId } = useUser();
+  const { userTimeZone: contextTimeZone, isLoading: isTimeZoneLoading, isAuthenticated } = useTimeZone();
+  
+  // Wait for user and timezone data to be ready
+  useEffect(() => {
+    if (!isUserLoading && !isTimeZoneLoading && contextTimeZone) {
+      setUserTimeZone(contextTimeZone);
+      setIsInitialized(true);
+      console.log('[AvailabilityContext] Initialized with timezone:', contextTimeZone);
+    }
+  }, [isUserLoading, isTimeZoneLoading, contextTimeZone]);
   
   const {
     events,
@@ -58,7 +73,7 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
     if (!isLoading && Array.isArray(events) && events.length === 0) {
       setHasNoEvents(true);
       console.log('[AvailabilityContext] No events found, setting hasNoEvents flag');
-    } else {
+    } else if (Array.isArray(events) && events.length > 0) {
       setHasNoEvents(false);
     }
   }, [events, isLoading]);
@@ -90,10 +105,20 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
   
   const addAvailabilitySlot = useCallback(async (dayIndex: number, startTime: string, endTime: string) => {
     if (!clinicianId) {
-      console.error("No clinician selected");
+      console.error("[AvailabilityContext] No clinician selected");
       toast({
         title: "Error",
         description: "No clinician selected",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!isInitialized || !isAuthenticated) {
+      console.error("[AvailabilityContext] Not initialized or not authenticated");
+      toast({
+        title: "Error",
+        description: "Please wait until authentication is complete",
         variant: "destructive",
       });
       return;
@@ -163,7 +188,7 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
       });
       throw error; // Re-throw to be handled by the caller
     }
-  }, [clinicianId, createEvent, refreshEvents, toast, isGoogleLinked, isGoogleAuthenticated, addGoogleEvent]);
+  }, [clinicianId, createEvent, refreshEvents, toast, isGoogleLinked, isGoogleAuthenticated, addGoogleEvent, isInitialized, isAuthenticated]);
   
   const updateAvailabilitySlot = async (eventId: string, startTime: string, endTime: string) => {
     if (!clinicianId) {
@@ -269,33 +294,36 @@ export const AvailabilityProvider: React.FC<{ clinicianId: string | null; childr
     }
   };
 
-  // Refresh events when the clinician changes
+  // Refresh events when the clinician changes or initialization completes
   useEffect(() => {
-    if (clinicianId) {
+    if (clinicianId && isInitialized && isAuthenticated) {
+      console.log('[AvailabilityContext] Clinician or initialization changed, refreshing events');
       refreshEvents();
     }
-  }, [clinicianId, refreshEvents]);
+  }, [clinicianId, refreshEvents, isInitialized, isAuthenticated]);
+
+  // Provide a value object with authentication and initialization state
+  const value = {
+    events,
+    isLoading: isLoading || !isInitialized || isUserLoading || isTimeZoneLoading,
+    isInitialized,
+    refreshEvents,
+    addAvailabilitySlot,
+    updateAvailabilitySlot,
+    removeAvailabilitySlot,
+    isGoogleLinked,
+    isGoogleAuthenticated,
+    connectGoogleCalendar,
+    disconnectGoogleCalendar,
+    syncWithGoogleCalendar,
+    isSyncing,
+    lastSyncTime,
+    hasNoEvents,
+    error
+  };
 
   return (
-    <AvailabilityContext.Provider
-      value={{
-        events,
-        isLoading,
-        refreshEvents,
-        addAvailabilitySlot,
-        updateAvailabilitySlot,
-        removeAvailabilitySlot,
-        isGoogleLinked,
-        isGoogleAuthenticated,
-        connectGoogleCalendar,
-        disconnectGoogleCalendar,
-        syncWithGoogleCalendar,
-        isSyncing,
-        lastSyncTime,
-        hasNoEvents, // Add this flag
-        error // Add error state
-      }}
-    >
+    <AvailabilityContext.Provider value={value}>
       {children}
     </AvailabilityContext.Provider>
   );

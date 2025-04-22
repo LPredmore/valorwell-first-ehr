@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { CalendarService } from '@/services/calendarService';
 import { CalendarEvent, ICalendarEvent } from '@/types/calendar';
 import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/context/UserContext';
 
 interface UseCalendarEventsProps {
   clinicianId: string | null;
@@ -23,10 +24,24 @@ export function useCalendarEvents({
   const [error, setError] = useState<Error | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const { toast } = useToast();
+  const { isLoading: isUserLoading, userId } = useUser();
   const fetchInProgress = useRef(false);
   const maxRetries = 3;
   
   const fetchEvents = useCallback(async (retry: boolean = false) => {
+    if (isUserLoading) {
+      console.log('[useCalendarEvents] User authentication still loading, deferring fetch');
+      return;
+    }
+    
+    if (!userId) {
+      console.log('[useCalendarEvents] No authenticated user, skipping fetch');
+      setEvents([]);
+      setError(new Error('Authentication required'));
+      setIsLoading(false);
+      return;
+    }
+    
     if (!clinicianId || fetchInProgress.current) {
       console.log('[useCalendarEvents] Skipping fetch:', { 
         reason: !clinicianId ? 'No clinicianId' : 'Fetch in progress',
@@ -45,7 +60,8 @@ export function useCalendarEvents({
         startDate,
         endDate,
         showAvailability,
-        retryCount
+        retryCount,
+        userId
       });
       
       setIsLoading(true);
@@ -112,7 +128,7 @@ export function useCalendarEvents({
       setIsLoading(false);
       fetchInProgress.current = false;
     }
-  }, [clinicianId, userTimeZone, showAvailability, startDate, endDate, toast, retryCount]);
+  }, [clinicianId, userTimeZone, showAvailability, startDate, endDate, toast, retryCount, userId, isUserLoading]);
 
   const createEvent = async (event: ICalendarEvent): Promise<ICalendarEvent | null> => {
     let retries = 0;
@@ -181,15 +197,19 @@ export function useCalendarEvents({
       userTimeZone,
       showAvailability,
       startDate,
-      endDate
+      endDate,
+      isUserLoading,
+      userId
     });
     
-    fetchEvents();
+    if (!isUserLoading) {
+      fetchEvents();
+    }
     
     return () => {
       fetchInProgress.current = false;
     };
-  }, [clinicianId, userTimeZone, showAvailability, startDate, endDate]);
+  }, [clinicianId, userTimeZone, showAvailability, startDate, endDate, fetchEvents, isUserLoading, userId]);
 
   const refetch = () => {
     console.log('[useCalendarEvents] Manual refetch triggered');
@@ -199,7 +219,7 @@ export function useCalendarEvents({
 
   return {
     events,
-    isLoading,
+    isLoading: isLoading || isUserLoading,
     error,
     refetch,
     createEvent,

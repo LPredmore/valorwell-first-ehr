@@ -7,6 +7,7 @@ interface TimeZoneContextType {
   userTimeZone: string;
   isLoading: boolean;
   error: Error | null;
+  isAuthenticated: boolean;
 }
 
 const defaultTimeZone = "America/Chicago";
@@ -15,6 +16,7 @@ const TimeZoneContext = createContext<TimeZoneContextType>({
   userTimeZone: defaultTimeZone,
   isLoading: true,
   error: null,
+  isAuthenticated: false
 });
 
 export const useTimeZone = () => useContext(TimeZoneContext);
@@ -23,6 +25,7 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [userTimeZone, setUserTimeZone] = useState<string>(defaultTimeZone);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchTimeZone = async () => {
@@ -32,10 +35,17 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const { data: authData, error: authError } = await supabase.auth.getUser();
         
         if (authError) {
-          throw authError;
+          console.log('[TimeZoneContext] Not authenticated:', authError.message);
+          setIsAuthenticated(false);
+          // Still use browser time zone for unauthenticated users
+          const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          setUserTimeZone(browserTimeZone);
+          setIsLoading(false);
+          return;
         }
         
         if (authData?.user) {
+          setIsAuthenticated(true);
           console.log(`[TimeZoneContext] User authenticated: ${authData.user.id}`);
           // Fetch user's time zone from profiles
           const { data, error: profileError } = await supabase
@@ -59,19 +69,10 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             console.log(`[TimeZoneContext] No time zone in profile. Using browser time zone: ${browserTimeZone}`);
             setUserTimeZone(browserTimeZone);
-            
-            // Log browser's detected time zone information for debugging
-            console.log('[TimeZoneContext] Browser time zone details:', {
-              resolvedTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-              resolvedCalendar: Intl.DateTimeFormat().resolvedOptions().calendar,
-              resolvedLocale: Intl.DateTimeFormat().resolvedOptions().locale,
-              currentTime: new Date().toString(),
-              currentTimeISO: new Date().toISOString(),
-              timezoneOffset: new Date().getTimezoneOffset()
-            });
           }
         } else {
           // No authenticated user, use browser's time zone
+          setIsAuthenticated(false);
           const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           console.log(`[TimeZoneContext] No authenticated user. Using browser time zone: ${browserTimeZone}`);
           setUserTimeZone(browserTimeZone);
@@ -79,6 +80,7 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } catch (err) {
         console.error("[TimeZoneContext] Error in time zone initialization:", err);
         setError(err as Error);
+        setIsAuthenticated(false);
         
         // Fallback to browser time zone on error
         const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -96,6 +98,7 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     userTimeZone,
     isLoading,
     error,
+    isAuthenticated
   };
 
   return (
