@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -29,12 +28,12 @@ const dayTabs = [
   { id: 'sunday', label: 'Sunday' }
 ];
 
-export default function WeeklyAvailabilityDialog({
+const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   isOpen,
   onClose,
   clinicianId,
   onAvailabilityUpdated
-}: WeeklyAvailabilityDialogProps) {
+}) => {
   const { toast } = useToast();
   const { timeZone } = useUserTimeZone(clinicianId);
   const [activeTab, setActiveTab] = useState('monday');
@@ -49,12 +48,10 @@ export default function WeeklyAvailabilityDialog({
     sunday: []
   });
   
-  // Add new fields for time selection
   const [newSlotStartTime, setNewSlotStartTime] = useState('09:00');
   const [newSlotEndTime, setNewSlotEndTime] = useState('10:00');
   const [isAddingSlot, setIsAddingSlot] = useState(false);
 
-  // Fetch weekly availability when dialog opens
   useEffect(() => {
     const fetchWeeklyAvailability = async () => {
       if (!clinicianId || !isOpen) return;
@@ -83,10 +80,9 @@ export default function WeeklyAvailabilityDialog({
     
     setIsAddingSlot(true);
     try {
-      // We need to create a date for this weekday to create the slot
       const today = DateTime.now();
       const dayIndex = dayTabs.findIndex(day => day.id === activeTab);
-      const targetDate = today.set({ weekday: ((dayIndex + 1) % 7) || 7 }); // 1-7, where 1 is Monday
+      const targetDate = today.set({ weekday: ((dayIndex + 1) % 7 || 7) as WeekdayNumbers });
       
       const startDateTime = targetDate.set({
         hour: parseInt(newSlotStartTime.split(':')[0]),
@@ -102,14 +98,12 @@ export default function WeeklyAvailabilityDialog({
         millisecond: 0
       });
       
-      // Create the slot
       const slotId = await AvailabilityService.createAvailabilitySlot(
         clinicianId,
         {
           startTime: startDateTime.toISO(),
           endTime: endDateTime.toISO(),
           title: 'Available',
-          // We could add recurrence here
           recurring: false
         }
       );
@@ -120,7 +114,6 @@ export default function WeeklyAvailabilityDialog({
           description: 'Availability slot added successfully'
         });
         
-        // Update the weekly availability state
         setWeeklyAvailability(prev => ({
           ...prev,
           [activeTab]: [
@@ -134,11 +127,9 @@ export default function WeeklyAvailabilityDialog({
           ]
         }));
         
-        // Reset the form
         setNewSlotStartTime('09:00');
         setNewSlotEndTime('10:00');
         
-        // Notify parent component
         onAvailabilityUpdated();
       } else {
         throw new Error('Failed to add availability slot');
@@ -155,7 +146,6 @@ export default function WeeklyAvailabilityDialog({
     }
   };
 
-  // Generate time options for the time selector
   const generateTimeOptions = () => {
     const options = [];
     for (let hour = 0; hour < 24; hour++) {
@@ -238,7 +228,6 @@ export default function WeeklyAvailabilityDialog({
                   )}
                 </div>
 
-                {/* Add new slot form */}
                 <div className="border p-4 rounded-md">
                   <h4 className="text-sm font-medium mb-3">Add Availability Slot</h4>
                   <div className="grid grid-cols-2 gap-4">
@@ -306,4 +295,6 @@ export default function WeeklyAvailabilityDialog({
       </DialogContent>
     </Dialog>
   );
-}
+};
+
+export default WeeklyAvailabilityDialog;

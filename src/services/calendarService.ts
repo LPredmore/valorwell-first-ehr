@@ -172,18 +172,20 @@ export class CalendarService {
       }
       
       return events.map(event => {
-        const recurrenceRule = event.recurrence_rules ? {
-          id: event.recurrence_id,
-          eventId: event.id,
-          rrule: event.recurrence_rules.rrule
-        } : undefined;
+        const recurrenceRule = event.recurrence_rules?.length > 0 
+          ? {
+              id: event.recurrence_id,
+              eventId: event.id,
+              rrule: event.recurrence_rules[0].rrule
+            } 
+          : undefined;
         
         return {
           id: event.id,
           title: event.title || 'Available',
           start: event.start_time,
           end: event.end_time,
-          backgroundColor: '#4ade80', // Green color for availability
+          backgroundColor: '#4ade80',
           borderColor: '#16a34a',
           textColor: '#052e16',
           extendedProps: {
