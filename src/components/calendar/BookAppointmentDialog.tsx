@@ -41,11 +41,9 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
 
-  // Settings from the clinician's availability
   const [minNoticeHours, setMinNoticeHours] = useState<number>(24);
   const [maxAdvanceDays, setMaxAdvanceDays] = useState<number>(90);
 
-  // Fetch availability settings and available dates when dialog opens
   useEffect(() => {
     const fetchAvailabilitySettingsAndDates = async () => {
       if (!isOpen || !clinicianId) return;
@@ -58,7 +56,6 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
           setMaxAdvanceDays(settings.maxAdvanceDays);
         }
 
-        // We'll try all days in the allowed window and see if any slots are returned.
         const today = startOfToday();
         const maxDate = addDays(today, settings?.maxAdvanceDays ?? 90);
         const candidateDates: Date[] = [];
@@ -66,7 +63,6 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
           candidateDates.push(d);
         }
 
-        // Fetch available dates in parallel (can be optimized further)
         const results = await Promise.all(
           candidateDates.map(async (date) => {
             const isoDate = DateTime.fromJSDate(date).toISODate() ?? '';
@@ -97,7 +93,6 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clinicianId, isOpen]);
 
-  // When user selects a date, fetch available time slots for that date
   const handleDateSelect: SelectSingleEventHandler = (day) => {
     if (!day) return;
 
@@ -111,20 +106,17 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
 
     setIsLoading(true);
     try {
-      // FIX: Make sure to pass a Date to DateTime.fromJSDate,
-      // instead of accidentally passing a DateTime.
       const isoDate = DateTime.fromJSDate(date).toISODate() ?? '';
       const slots = await AvailabilityService.calculateAvailableSlots(clinicianId, isoDate);
 
-      // Format slots for display
       const formatted: TimeSlot[] = slots.map((slot) => {
         const startDt = DateTime.fromISO(slot.start, { zone: timeZone });
         const endDt = DateTime.fromISO(slot.end, { zone: timeZone });
         return {
           start: slot.start,
           end: slot.end,
-          startFormatted: formatTime12Hour(startDt),
-          endFormatted: formatTime12Hour(endDt)
+          startFormatted: formatTime12Hour(startDt.toFormat("HH:mm")),
+          endFormatted: formatTime12Hour(endDt.toFormat("HH:mm")),
         };
       });
       setTimeSlots(formatted);
@@ -150,8 +142,6 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
 
     setIsBooking(true);
     try {
-      // Actual booking logic should insert an appointment in the DB using selected values.
-      // This placeholder just waits and shows a toast.
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       toast({
@@ -176,11 +166,9 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
     }
   };
 
-  // Earliest/latest dates based on clinic rules
   const earliestBookableDate = DateTime.now().plus({ hours: minNoticeHours }).toJSDate();
   const latestBookableDate = DateTime.now().plus({ days: maxAdvanceDays }).toJSDate();
 
-  // Helper: is a date available?
   const isDateAvailable = (date: Date) =>
     availableDates.some(d => d.getFullYear() === date.getFullYear() && d.getMonth() === date.getMonth() && d.getDate() === date.getDate());
 
