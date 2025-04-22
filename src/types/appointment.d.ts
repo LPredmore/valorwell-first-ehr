@@ -1,4 +1,3 @@
-
 export interface AppointmentType {
   id: string;
   client_id: string;
@@ -62,4 +61,12 @@ export interface AvailabilitySlot {
 
 export interface WeeklyAvailability {
   [key: string]: AvailabilitySlot[];
+}
+
+// Add: Slot calculation result interface
+export interface CalculatedAvailableSlot {
+  start: string;       // ISO date-time of slot start (in clinician's tz)
+  end: string;         // ISO date-time of slot end (in clinician's tz)
+  slotId?: string;
+  isRecurring?: boolean;
 }
