@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 
 // We'll make the validation more specific and add custom error messages
@@ -48,8 +47,8 @@ export const sessionNoteSchema = z.object({
   functioning: nonEmptyString,
   prognosis: nonEmptyString,
   progress: nonEmptyString,
-  problemNarrative: nonEmptyString,
-  treatmentGoalNarrative: nonEmptyString,
+  problemNarrative: z.string().optional(),
+  treatmentGoalNarrative: z.string().optional(),
   sessionNarrative: nonEmptyString,
   nextTreatmentPlanUpdate: nonEmptyString,
   signature: nonEmptyString,

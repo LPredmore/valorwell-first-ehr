@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Input } from "@/components/ui/input";
 import { DiagnosisSelector } from "@/components/DiagnosisSelector";
@@ -121,6 +120,8 @@ export const ClientInfoSection: React.FC<ClientInfoSectionProps> = ({
             placeholder="Enter session type"
             value={formState.sessionType}
             onChange={(e) => handleChange('sessionType', e.target.value)}
+            readOnly
+            className="bg-gray-100"
           />
         </div>
       </div>
