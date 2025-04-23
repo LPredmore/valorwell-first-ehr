@@ -1,6 +1,4 @@
-
 import React, { useState, useEffect, RefObject } from 'react';
-import { z } from 'zod';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClientDetails } from '@/types/client';
@@ -79,29 +77,20 @@ export const useSessionNoteForm = ({
 
   useEffect(() => {
     const fetchClinicianInsuranceName = async () => {
-      if (!clientData) return;
+      if (!clientData?.client_assigned_therapist) return;
       
       try {
-        const clinicianId = clientData.client_assigned_therapist;
-        
-        if (clinicianId) {
-          const { data, error } = await supabase
-            .from('clinicians')
-            .select('clinician_nameinsurance')
-            .eq('id', clinicianId)
-            .single();
+        const { data, error } = await supabase
+          .from('clinicians')
+          .select('clinician_nameinsurance')
+          .eq('id', clientData.client_assigned_therapist)
+          .single();
             
-          if (error) {
-            console.error('Error fetching clinician insurance name:', error);
-            return;
-          }
-          
-          if (data && data.clinician_nameinsurance) {
-            setFormState(prevState => ({
-              ...prevState,
-              clinicianName: data.clinician_nameinsurance
-            }));
-          }
+        if (!error && data?.clinician_nameinsurance) {
+          setFormState(prev => ({
+            ...prev,
+            clinicianName: data.clinician_nameinsurance
+          }));
         }
       } catch (error) {
         console.error('Error in fetchClinicianInsuranceName:', error);
@@ -113,9 +102,11 @@ export const useSessionNoteForm = ({
 
   useEffect(() => {
     if (clientData) {
-      setFormState(prevState => ({
-        ...prevState,
-        patientName: `${clientData.client_first_name || ''} ${clientData.client_last_name || ''}`,
+      setFormState(prev => ({
+        ...prev,
+        patientName: clientData.client_first_name && clientData.client_last_name 
+          ? `${clientData.client_first_name} ${clientData.client_last_name}`.trim()
+          : '',
         patientDOB: clientData.client_date_of_birth || '',
         diagnosis: Array.isArray(clientData.client_diagnosis) ? clientData.client_diagnosis : [],
         planType: clientData.client_planlength || '',
@@ -161,16 +152,15 @@ export const useSessionNoteForm = ({
   }, [clientData, clinicianName]);
 
   useEffect(() => {
-    if (appointment && appointment.client) {
-      const appointmentDate = appointment.date ? new Date(appointment.date).toISOString().split('T')[0] : '';
+    if (appointment?.client) {
+      const appointmentDate = appointment.date 
+        ? new Date(appointment.date).toISOString().split('T')[0] 
+        : '';
       
-      setFormState(prevState => ({
-        ...prevState,
+      setFormState(prev => ({
+        ...prev,
         sessionDate: appointmentDate,
         sessionType: appointment.type || '',
-        patientName: appointment.client.client_first_name && appointment.client.client_last_name 
-          ? `${appointment.client.client_first_name} ${appointment.client.client_last_name}`
-          : prevState.patientName
       }));
 
       if (clientData?.id && appointmentDate) {
@@ -180,102 +170,39 @@ export const useSessionNoteForm = ({
   }, [appointment, clientData]);
 
   const fetchPHQ9Assessment = async (clientId: string, assessmentDate: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('phq9_assessments')
-        .select('*')
-        .eq('client_id', clientId)
-        .eq('assessment_date', assessmentDate)
-        .maybeSingle();
+    const { data, error } = await supabase
+      .from('phq9_assessments')
+      .select('*')
+      .eq('client_id', clientId)
+      .eq('assessment_date', assessmentDate)
+      .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching PHQ-9 assessment:', error);
-        return;
-      }
-
-      setPhq9Data(data);
-    } catch (error) {
-      console.error('Error in fetchPHQ9Assessment:', error);
-    }
-  };
-
-  const handleChange = (field: string, value: string | string[]) => {
-    if (field === 'diagnosis') {
-      setFormState(prevState => ({
-        ...prevState,
-        [field]: Array.isArray(value) ? value : [value]
-      }));
-    } else {
-      setFormState(prevState => ({
-        ...prevState,
-        [field]: value
-      }));
-    }
-  };
-
-  useEffect(() => {
-    try {
-      const validationResult = sessionNoteSchema.safeParse(formState);
-      setIsFormValid(validationResult.success);
-      if (!validationResult.success) {
-        const errors = validationResult.error.errors.map(err => 
-          `${err.path.join('.')}: ${err.message}`
-        );
-        setValidationErrors(errors);
-      } else {
-        setValidationErrors([]);
-      }
-    } catch (error) {
-      setIsFormValid(false);
-      if (error instanceof Error) {
-        setValidationErrors([error.message]);
-      }
-    }
-  }, [formState]);
-
-  const validateForm = () => {
-    try {
-      const validationResult = sessionNoteSchema.safeParse(formState);
-      if (!validationResult.success) {
-        const errors = validationResult.error.errors.map(err => 
-          `${err.path.join('.')}: ${err.message}`
-        );
-        setValidationErrors(errors);
-        
-        if (errors.length > 0) {
-          const firstErrorField = validationResult.error.errors[0].path[0];
-          const element = document.querySelector(`[name="${firstErrorField}"]`);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            element.classList.add('border-red-500', 'focus:ring-red-500');
-            setTimeout(() => {
-              element.classList.remove('border-red-500', 'focus:ring-red-500');
-            }, 3000);
-          }
-        }
-        
-        return false;
-      }
-      setValidationErrors([]);
-      return true;
-    } catch (error) {
-      if (error instanceof Error) {
-        setValidationErrors([error.message]);
-      }
-      return false;
-    }
-  };
-
-  const handleSave = async () => {
-    if (!validateForm()) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields marked with an asterisk (*)",
-        variant: "destructive",
-      });
+    if (error) {
+      console.error('Error fetching PHQ-9 assessment:', error);
       return;
     }
 
+    setPhq9Data(data);
+  };
+
+  const handleChange = (field: string, value: string | string[]) => {
+    setFormState(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  useEffect(() => {
+    const validationResult = sessionNoteSchema.safeParse(formState);
+    setIsFormValid(validationResult.success);
+    setValidationErrors(
+      validationResult.success 
+        ? [] 
+        : validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`)
+    );
+  }, [formState]);
+
+  const handleSave = async () => {
     if (!clientData?.id) {
       toast({
         title: "Error",
@@ -285,21 +212,18 @@ export const useSessionNoteForm = ({
       return;
     }
 
+    if (!isFormValid) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields marked with an asterisk (*)",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Fix: Handle diagnosis properly as an array
-      let client_diagnosis: string[] = [];
-      
-      // Ensure diagnosis is always handled as an array
-      if (Array.isArray(formState.diagnosis)) {
-        client_diagnosis = formState.diagnosis;
-      } else {
-        // If somehow it's not an array (which shouldn't happen now), convert safely
-        client_diagnosis = [];
-        console.error("Diagnosis was not an array as expected", formState.diagnosis);
-      }
-
       const clientUpdates = {
         client_appearance: formState.appearance,
         client_attitude: formState.attitude,
@@ -332,66 +256,39 @@ export const useSessionNoteForm = ({
         client_sessionnarrative: formState.sessionNarrative,
         client_medications: formState.medications,
         client_personsinattendance: formState.personsInAttendance,
-        client_diagnosis: client_diagnosis,
+        client_diagnosis: formState.diagnosis,
         client_privatenote: formState.privateNote,
         client_nexttreatmentplanupdate: formState.nextTreatmentPlanUpdate,
       };
 
-      const { error } = await supabase
+      const { error: clientError } = await supabase
         .from('clients')
         .update(clientUpdates)
         .eq('id', clientData.id);
 
-      if (error) {
-        throw error;
-      }
+      if (clientError) throw clientError;
       
-      console.log("Client data updated successfully");
-
-      let pdfPath = null;
-      let sessionDate = null;
-      
-      if (appointment?.date) {
-        sessionDate = new Date(appointment.date).toISOString().split('T')[0];
-      } else {
-        sessionDate = new Date().toISOString().split('T')[0];
-      }
-      
-      const { data: existingNote, error: fetchError } = await supabase
-        .from('session_notes')
-        .select('id')
-        .eq('client_id', clientData.id)
-        .eq('appointment_id', appointment?.id || null)
-        .maybeSingle();
-        
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error('Error checking for existing session note:', fetchError);
-      }
+      const sessionDate = appointment?.date 
+        ? new Date(appointment.date).toISOString().split('T')[0] 
+        : new Date().toISOString().split('T')[0];
       
       const clinician_id = appointment?.clinician_id || 
                           clientData.client_assigned_therapist || 
                           (await supabase.auth.getUser()).data.user?.id;
 
       if (!clinician_id) {
-        console.error('No clinician_id available for session note');
-        toast({
-          title: "Error",
-          description: "Could not determine clinician ID. Session note not saved.",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
+        throw new Error('No clinician_id available for session note');
       }
       
       const sessionNoteData = {
         client_id: clientData.id,
-        clinician_id: clinician_id,
+        clinician_id,
         appointment_id: appointment?.id || null,
         session_date: sessionDate,
         patient_name: formState.patientName,
         patient_dob: formState.patientDOB,
         clinician_name: formState.clinicianName,
-        diagnosis: client_diagnosis,
+        diagnosis: formState.diagnosis,
         plan_type: formState.planType,
         treatment_frequency: formState.treatmentFrequency,
         medications: formState.medications,
@@ -434,58 +331,34 @@ export const useSessionNoteForm = ({
         phq9_score: phq9Data?.total_score || null
       };
 
+      const { data: existingNote } = await supabase
+        .from('session_notes')
+        .select('id')
+        .eq('client_id', clientData.id)
+        .eq('appointment_id', appointment?.id || null)
+        .maybeSingle();
+
       let sessionNoteId;
-      console.log("Saving session note data...");
-      try {
-        if (existingNote?.id) {
-          console.log("Updating existing session note:", existingNote.id);
-          const { error: updateError } = await supabase
-            .from('session_notes')
-            .update(sessionNoteData)
-            .eq('id', existingNote.id);
-            
-          if (updateError) {
-            console.error('Error updating session note:', updateError);
-            toast({
-              title: "Warning",
-              description: "Updated client data but failed to update session note.",
-              variant: "default",
-            });
-          } else {
-            sessionNoteId = existingNote.id;
-            console.log("Session note updated successfully");
-          }
-        } else {
-          console.log("Creating new session note");
-          const { data: newNote, error: insertError } = await supabase
-            .from('session_notes')
-            .insert(sessionNoteData)
-            .select('id')
-            .single();
-            
-          if (insertError) {
-            console.error('Error creating session note:', insertError);
-            toast({
-              title: "Warning",
-              description: "Updated client data but failed to create session note record.",
-              variant: "default",
-            });
-          } else if (newNote) {
-            sessionNoteId = newNote.id;
-            console.log("Session note created successfully with ID:", sessionNoteId);
-          }
-        }
-      } catch (error) {
-        console.error('Error saving session note:', error);
-        toast({
-          title: "Warning",
-          description: "Error when saving session note data",
-          variant: "default",
-        });
+      if (existingNote?.id) {
+        const { error: updateError } = await supabase
+          .from('session_notes')
+          .update(sessionNoteData)
+          .eq('id', existingNote.id);
+          
+        if (updateError) throw updateError;
+        sessionNoteId = existingNote.id;
+      } else {
+        const { data: newNote, error: insertError } = await supabase
+          .from('session_notes')
+          .insert(sessionNoteData)
+          .select('id')
+          .single();
+          
+        if (insertError) throw insertError;
+        sessionNoteId = newNote?.id;
       }
 
       if (appointment?.id) {
-        console.log("Updating appointment status to Documented");
         const { error: appointmentError } = await supabase
           .from('appointments')
           .update({ status: 'Documented' })
@@ -493,52 +366,27 @@ export const useSessionNoteForm = ({
 
         if (appointmentError) {
           console.error('Error updating appointment status:', appointmentError);
-          toast({
-            title: "Warning",
-            description: "Session note saved, but couldn't update appointment status.",
-            variant: "default",
-          });
-        } else {
-          console.log(`Appointment ${appointment.id} status updated to Documented`);
         }
       }
 
       if (contentRef?.current && sessionNoteId) {
-        console.log("Generating PDF for session note...");
-        try {
-          const docDate = new Date();
-          const documentInfo = {
-            clientId: clientData.id,
-            documentType: 'session_note',
-            documentDate: docDate,
-            documentTitle: `Session Note - ${format(docDate, 'yyyy-MM-dd')}`,
-            createdBy: clinician_id
-          };
-          
-          const elementId = 'session-note-content';
-          const pdfResult = await generateAndSavePDF(elementId, documentInfo);
-          
-          if (pdfResult) {
-            console.log("PDF generated successfully:", pdfResult);
-            
-            const { error: pdfUpdateError } = await supabase
-              .from('session_notes')
-              .update({ pdf_path: pdfResult })
-              .eq('id', sessionNoteId);
-              
-            if (pdfUpdateError) {
-              console.error('Error updating session note with PDF path:', pdfUpdateError);
-            } else {
-              console.log("Session note updated with PDF path");
-            }
-          } else {
-            console.error("PDF generation failed");
-          }
-        } catch (pdfError) {
-          console.error('Error generating PDF:', pdfError);
+        const docDate = new Date();
+        const documentInfo = {
+          clientId: clientData.id,
+          documentType: 'session_note',
+          documentDate: docDate,
+          documentTitle: `Session Note - ${formatDate(docDate)}`,
+          createdBy: clinician_id
+        };
+        
+        const pdfResult = await generateAndSavePDF('session-note-content', documentInfo);
+        
+        if (pdfResult) {
+          await supabase
+            .from('session_notes')
+            .update({ pdf_path: pdfResult })
+            .eq('id', sessionNoteId);
         }
-      } else {
-        console.warn("No content reference available for PDF generation");
       }
 
       toast({
@@ -570,14 +418,6 @@ export const useSessionNoteForm = ({
   };
 };
 
-function format(date: Date, formatStr: string): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  
-  if (formatStr === 'yyyy-MM-dd') {
-    return `${year}-${month}-${day}`;
-  }
-  
-  return `${month}/${day}/${year}`;
+function formatDate(date: Date): string {
+  return date.toISOString().split('T')[0];
 }
