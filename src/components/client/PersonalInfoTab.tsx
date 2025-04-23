@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DatePicker } from "@/components/ui/calendar";
+import { DatePicker } from "@/packages/ui/components/date-picker";
 import { ClientDetails } from '@/packages/core/types/client/details';
 import { DiagnosisSelector } from '@/components/DiagnosisSelector';
 import { contactMethodOptions, ContactMethodType } from '@/packages/core/types/common/constants';
@@ -62,9 +61,8 @@ const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
         <div>
           <Label htmlFor="client_date_of_birth">Date of Birth</Label>
           <DatePicker
-            id="client_date_of_birth"
-            selectedDate={formData.client_date_of_birth ? new Date(formData.client_date_of_birth) : undefined}
-            onChange={(date: Date | undefined) => {
+            value={formData.client_date_of_birth ? new Date(formData.client_date_of_birth) : undefined}
+            onChange={(date) => {
               if (date) {
                 handleInputChange('client_date_of_birth', date.toISOString());
               }
