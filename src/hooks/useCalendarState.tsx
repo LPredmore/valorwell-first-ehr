@@ -67,16 +67,20 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
       console.log('[useCalendarState] Fetching clients for clinician:', selectedClinicianId);
 
       try {
+        // Convert UUID to string for comparison with TEXT column
         const { data, error } = await supabase
           .from('clients')
           .select('id, client_preferred_name, client_last_name')
-          .eq('client_assigned_therapist', selectedClinicianId)
+          .eq('client_assigned_therapist', selectedClinicianId.toString())
           .order('client_last_name');
 
         if (error) {
-          console.error('Error fetching clients:', error);
-        } else {
-          const formattedClients = (data || []).map(client => ({
+          console.error('[useCalendarState] Error fetching clients:', error);
+          throw error;
+        }
+
+        if (data) {
+          const formattedClients = data.map(client => ({
             id: client.id,
             displayName: `${client.client_preferred_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
           }));
@@ -84,7 +88,12 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
           console.log('[useCalendarState] Loaded clients:', formattedClients);
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('[useCalendarState] Error in fetchClientsForClinician:', error);
+        toast({
+          title: "Error loading clients",
+          description: "Unable to load client list. Please try again.",
+          variant: "destructive"
+        });
       } finally {
         setLoadingClients(false);
       }
