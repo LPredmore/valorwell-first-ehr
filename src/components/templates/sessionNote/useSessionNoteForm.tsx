@@ -290,11 +290,14 @@ export const useSessionNoteForm = ({
     try {
       // Fix: Handle diagnosis properly as an array
       let client_diagnosis: string[] = [];
+      
+      // Ensure diagnosis is always handled as an array
       if (Array.isArray(formState.diagnosis)) {
         client_diagnosis = formState.diagnosis;
-      } else if (typeof formState.diagnosis === 'string') {
-        // Fallback for string type (though we should now always have array)
-        client_diagnosis = formState.diagnosis.split(',').map(d => d.trim()).filter(Boolean);
+      } else {
+        // If somehow it's not an array (which shouldn't happen now), convert safely
+        client_diagnosis = [];
+        console.error("Diagnosis was not an array as expected", formState.diagnosis);
       }
 
       const clientUpdates = {
