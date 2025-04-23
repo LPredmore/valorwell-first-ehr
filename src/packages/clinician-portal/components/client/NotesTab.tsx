@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { Textarea } from '@/packages/ui/textarea';
-import { Label } from '@/packages/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/packages/ui/card';
+import { Textarea } from '@/packages/ui';
+import { Label } from '@/packages/ui';
+import { Card, CardContent, CardHeader, CardTitle } from '@/packages/ui';
 import { ClientDetails } from '@/packages/core/types/client';
 
 interface NotesTabProps {

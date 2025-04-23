@@ -1,714 +1,395 @@
-import { useState, useEffect } from 'react';
+import React from 'react';
+import Layout from '@/components/layout/Layout';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Input,
+  Button,
+  Textarea,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Label
+} from '@/components/ui';
+import { timezoneList } from '@/utils/timeZoneUtils';
 import { useParams, useNavigate } from 'react-router-dom';
-import Layout from '@/packages/ui/layout/Layout';
-import { supabase } from '@/packages/api/client';
-import { useToast } from "@/packages/ui/toast";
-import { Pencil, Save, X, Upload, Camera, User } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/packages/ui/card";
-import { Input } from '@/packages/ui/input';
-import { Button } from '@/packages/ui/button';
-import { Textarea } from '@/packages/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/packages/ui/select";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/packages/ui/dropdown-menu";
-import { Label } from "@/packages/ui/label";
-import { timezoneOptions } from '@/packages/core/utils/time';
-import type { ClinicianDetailsProps } from '../types';
-
-interface Clinician {
-  id: string;
-  clinician_first_name: string | null;
-  clinician_last_name: string | null;
-  clinician_email: string | null;
-  clinician_phone: string | null;
-  clinician_bio: string | null;
-  clinician_professional_name: string | null;
-  clinician_nameinsurance: string | null;
-  clinician_npi_number: string | null;
-  clinician_taxonomy_code: string | null;
-  clinician_license_type: string | null;
-  clinician_status: string | null;
-  clinician_type: string | null;
-  clinician_licensed_states: string[] | null;
-  clinician_image_url: string | null;
-  clinician_min_client_age: number | null;
-}
-
-interface Profile {
-  time_zone: string | null;
-}
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
+import { TimeInput } from '@/components/ui/time-input';
 
 const ClinicianDetails = () => {
-  const {
-    clinicianId
-  } = useParams();
+  const { clinicianId } = useParams();
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
-  const [clinician, setClinician] = useState<Clinician | null>(null);
-  const [editedClinician, setEditedClinician] = useState<Clinician | null>(null);
-  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago');
-  const [isEditing, setIsEditing] = useState(false);
+  const { toast } = useToast();
+
+  const [clinicianData, setClinicianData] = useState({
+    clinician_first_name: '',
+    clinician_last_name: '',
+    clinician_professional_name: '',
+    clinician_email: '',
+    clinician_phone: '',
+    clinician_address: '',
+    clinician_city: '',
+    clinician_state: '',
+    clinician_zip: '',
+    clinician_license_number: '',
+    clinician_license_type: '',
+    clinician_license_issue_date: '',
+    clinician_license_expiration_date: '',
+    clinician_NPI_number: '',
+    clinician_DEA_number: '',
+    clinician_supervising_doctor: '',
+    clinician_notes: '',
+    time_zone: ''
+  });
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedStates, setSelectedStates] = useState<string[]>([]);
-  const [profileImage, setProfileImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const licenseTypes = ["LPC", "LMHC", "LCPC", "LPC-MH", "LPCC", "LCSW", "LMFT", "PsyD"];
-  const clinicianTypeOptions = ["Mental Health", "Speech Therapy"];
-  const states = [{
-    code: "Alabama",
-    name: "Alabama"
-  }, {
-    code: "Alaska",
-    name: "Alaska"
-  }, {
-    code: "Arizona",
-    name: "Arizona"
-  }, {
-    code: "Arkansas",
-    name: "Arkansas"
-  }, {
-    code: "California",
-    name: "California"
-  }, {
-    code: "Colorado",
-    name: "Colorado"
-  }, {
-    code: "Connecticut",
-    name: "Connecticut"
-  }, {
-    code: "Delaware",
-    name: "Delaware"
-  }, {
-    code: "Florida",
-    name: "Florida"
-  }, {
-    code: "Georgia",
-    name: "Georgia"
-  }, {
-    code: "Hawaii",
-    name: "Hawaii"
-  }, {
-    code: "Idaho",
-    name: "Idaho"
-  }, {
-    code: "Illinois",
-    name: "Illinois"
-  }, {
-    code: "Indiana",
-    name: "Indiana"
-  }, {
-    code: "Iowa",
-    name: "Iowa"
-  }, {
-    code: "Kansas",
-    name: "Kansas"
-  }, {
-    code: "Kentucky",
-    name: "Kentucky"
-  }, {
-    code: "Louisiana",
-    name: "Louisiana"
-  }, {
-    code: "Maine",
-    name: "Maine"
-  }, {
-    code: "Maryland",
-    name: "Maryland"
-  }, {
-    code: "Massachusetts",
-    name: "Massachusetts"
-  }, {
-    code: "Michigan",
-    name: "Michigan"
-  }, {
-    code: "Minnesota",
-    name: "Minnesota"
-  }, {
-    code: "Mississippi",
-    name: "Mississippi"
-  }, {
-    code: "Missouri",
-    name: "Missouri"
-  }, {
-    code: "Montana",
-    name: "Montana"
-  }, {
-    code: "Nebraska",
-    name: "Nebraska"
-  }, {
-    code: "Nevada",
-    name: "Nevada"
-  }, {
-    code: "New Hampshire",
-    name: "New Hampshire"
-  }, {
-    code: "New Jersey",
-    name: "New Jersey"
-  }, {
-    code: "New Mexico",
-    name: "New Mexico"
-  }, {
-    code: "New York",
-    name: "New York"
-  }, {
-    code: "North Carolina",
-    name: "North Carolina"
-  }, {
-    code: "North Dakota",
-    name: "North Dakota"
-  }, {
-    code: "Ohio",
-    name: "Ohio"
-  }, {
-    code: "Oklahoma",
-    name: "Oklahoma"
-  }, {
-    code: "Oregon",
-    name: "Oregon"
-  }, {
-    code: "Pennsylvania",
-    name: "Pennsylvania"
-  }, {
-    code: "Rhode Island",
-    name: "Rhode Island"
-  }, {
-    code: "South Carolina",
-    name: "South Carolina"
-  }, {
-    code: "South Dakota",
-    name: "South Dakota"
-  }, {
-    code: "Tennessee",
-    name: "Tennessee"
-  }, {
-    code: "Texas",
-    name: "Texas"
-  }, {
-    code: "Utah",
-    name: "Utah"
-  }, {
-    code: "Vermont",
-    name: "Vermont"
-  }, {
-    code: "Virginia",
-    name: "Virginia"
-  }, {
-    code: "Washington",
-    name: "Washington"
-  }, {
-    code: "West Virginia",
-    name: "West Virginia"
-  }, {
-    code: "Wisconsin",
-    name: "Wisconsin"
-  }, {
-    code: "Wyoming",
-    name: "Wyoming"
-  }];
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (clinicianId) {
-      fetchClinicianData();
-    }
-  }, [clinicianId]);
+    const fetchClinicianData = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('clinicians')
+          .select('*')
+          .eq('id', clinicianId)
+          .single();
 
-  useEffect(() => {
-    if (clinician?.clinician_licensed_states) {
-      const fullStateNames = clinician.clinician_licensed_states.map(state => {
-        if (states.some(s => s.name === state)) {
-          return state;
+        if (error) {
+          console.error('Error fetching clinician data:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to load clinician details.',
+            variant: 'destructive',
+          });
         }
-        const stateObj = states.find(s => s.code === state);
-        return stateObj ? stateObj.name : state;
-      });
-      setSelectedStates(fullStateNames);
-    }
-  }, [clinician]);
 
-  useEffect(() => {
-    if (clinician?.clinician_image_url) {
-      setImagePreview(clinician.clinician_image_url);
-    }
-  }, [clinician]);
+        if (data) {
+          setClinicianData(data);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  useEffect(() => {
-    if (profileImage) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(profileImage);
-    }
-  }, [profileImage]);
+    fetchClinicianData();
+  }, [clinicianId, toast]);
 
-  const fetchClinicianData = async () => {
-    setIsLoading(true);
-    try {
-      const { data: clinicianData, error: clinicianError } = await supabase
-        .from('clinicians')
-        .select('*')
-        .eq('id', clinicianId)
-        .single();
-        
-      if (clinicianError) {
-        throw clinicianError;
-      }
-      
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('time_zone')
-        .eq('id', clinicianId)
-        .single();
-        
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error fetching timezone:', profileError);
-      }
-      
-      console.log("Fetched clinician data:", clinicianData);
-      console.log("Fetched profile timezone:", profileData?.time_zone);
-      
-      setClinician(clinicianData);
-      setEditedClinician(clinicianData);
-      
-      setClinicianTimeZone(profileData?.time_zone || 'America/Chicago');
-      
-      if (clinicianData.clinician_licensed_states) {
-        const fullStateNames = clinicianData.clinician_licensed_states.map(state => {
-          if (states.some(s => s.name === state)) {
-            return state;
-          }
-          const stateObj = states.find(s => s.code === state);
-          return stateObj ? stateObj.name : state;
-        });
-        setSelectedStates(fullStateNames);
-      }
-      
-      if (clinicianData.clinician_image_url) {
-        setImagePreview(clinicianData.clinician_image_url);
-      }
-    } catch (error) {
-      console.error('Error fetching clinician:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch clinician details.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleInputChange = (field: keyof Clinician, value: string) => {
-    if (editedClinician) {
-      console.log(`Updating ${field} to ${value}`);
-      setEditedClinician({
-        ...editedClinician,
-        [field]: value
-      });
-    }
-  };
-
-  const handleTimeZoneChange = (value: string) => {
-    console.log(`Updating timezone to ${value}`);
-    setClinicianTimeZone(value);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files && e.target.files[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        toast({
-          title: "Invalid file type",
-          description: "Please select an image file.",
-          variant: "destructive"
-        });
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "File too large",
-          description: "Image size should be less than 5MB.",
-          variant: "destructive"
-        });
-        return;
-      }
-      setProfileImage(file);
-    }
-  };
-
-  const uploadProfileImage = async (): Promise<string | null> => {
-    if (!profileImage || !clinicianId) return null;
-    setIsUploading(true);
-    try {
-      const fileExt = profileImage.name.split('.').pop();
-      const fileName = `${clinicianId}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
-      console.log("Attempting to upload file to storage bucket:", filePath);
-      const {
-        error: uploadError,
-        data
-      } = await supabase.storage.from('clinician-images').upload(filePath, profileImage, {
-        cacheControl: '3600',
-        upsert: true
-      });
-      if (uploadError) {
-        console.error("Error uploading file:", uploadError);
-        throw uploadError;
-      }
-      console.log("Upload successful, data:", data);
-      const {
-        data: publicUrlData
-      } = supabase.storage.from('clinician-images').getPublicUrl(filePath);
-      console.log("Image uploaded successfully:", publicUrlData.publicUrl);
-      return publicUrlData.publicUrl;
-    } catch (error) {
-      console.error('Error uploading profile image:', error);
-      toast({
-        title: "Error",
-        description: `Failed to upload profile image: ${error.message || "Unknown error"}`,
-        variant: "destructive"
-      });
-      return null;
-    } finally {
-      setIsUploading(false);
-    }
+  const handleInputChange = (field: string, value: string) => {
+    setClinicianData(prevData => ({
+      ...prevData,
+      [field]: value,
+    }));
   };
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
-      if (!editedClinician) return;
-      let imageUrl = clinician?.clinician_image_url;
-      if (profileImage) {
-        console.log("Uploading profile image...");
-        const uploadedUrl = await uploadProfileImage();
-        if (uploadedUrl) {
-          console.log("Profile image uploaded, URL:", uploadedUrl);
-          imageUrl = uploadedUrl;
-        } else {
-          console.error("Failed to upload profile image");
-        }
-      }
-      
-      const updatedClinicianData = {
-        ...editedClinician,
-        clinician_licensed_states: selectedStates,
-        clinician_type: editedClinician.clinician_type,
-        clinician_license_type: editedClinician.clinician_license_type,
-        clinician_image_url: imageUrl,
-        clinician_min_client_age: editedClinician.clinician_min_client_age
-      };
-      
-      console.log("Saving clinician data:", updatedClinicianData);
-      
-      const { error: clinicianError } = await supabase
+      const { error } = await supabase
         .from('clinicians')
-        .update(updatedClinicianData)
+        .update(clinicianData)
         .eq('id', clinicianId);
-        
-      if (clinicianError) {
-        console.error("Error updating clinician:", clinicianError);
-        throw clinicianError;
+
+      if (error) {
+        console.error('Error updating clinician data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to save clinician details.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Success',
+          description: 'Clinician details saved successfully.',
+        });
+        setIsEditing(false);
       }
-      
-      console.log("Updating timezone in profiles table:", clinicianTimeZone);
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ time_zone: clinicianTimeZone })
-        .eq('id', clinicianId);
-        
-      if (profileError) {
-        console.error("Error updating timezone:", profileError);
-        throw profileError;
-      }
-      
-      setClinician({
-        ...editedClinician,
-        clinician_licensed_states: selectedStates,
-        clinician_image_url: imageUrl
-      });
-      
-      setIsEditing(false);
-      setProfileImage(null);
-      
-      toast({
-        title: "Success",
-        description: "Clinician details updated successfully."
-      });
-      
-      fetchClinicianData();
-    } catch (error) {
-      console.error('Error updating clinician:', error);
-      toast({
-        title: "Error",
-        description: `Failed to update clinician details: ${error.message || "Unknown error"}`,
-        variant: "destructive"
-      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleCancel = () => {
-    setEditedClinician(clinician);
-    if (clinician?.clinician_licensed_states) {
-      setSelectedStates(clinician.clinician_licensed_states);
-    } else {
-      setSelectedStates([]);
-    }
-    setIsEditing(false);
-    setProfileImage(null);
-    setImagePreview(clinician?.clinician_image_url || null);
-  };
+  const handleDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this clinician?')) {
+      try {
+        const { error } = await supabase
+          .from('clinicians')
+          .delete()
+          .eq('id', clinicianId);
 
-  const toggleState = (stateName: string) => {
-    setSelectedStates(current => current.includes(stateName) ? current.filter(s => s !== stateName) : [...current, stateName]);
+        if (error) {
+          console.error('Error deleting clinician:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to delete clinician.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Success',
+            description: 'Clinician deleted successfully.',
+          });
+          navigate('/clinicians');
+        }
+      } catch (error) {
+        console.error('Error during deletion:', error);
+        toast({
+          title: 'Error',
+          description: 'An unexpected error occurred during deletion.',
+          variant: 'destructive',
+        });
+      }
+    }
   };
 
   if (isLoading) {
-    return <Layout>
-        <div className="flex justify-center items-center h-full">
-          <p>Loading clinician details...</p>
-        </div>
-      </Layout>;
+    return <Layout><div>Loading clinician details...</div></Layout>;
   }
 
-  if (!clinician) {
-    return <Layout>
-        <div className="flex justify-center items-center h-full">
-          <p>Clinician not found.</p>
-        </div>
-      </Layout>;
-  }
-
-  return <Layout>
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">
-            {clinician.clinician_first_name} {clinician.clinician_last_name}
-          </h1>
-          <p className="text-gray-500">{clinician.clinician_email}</p>
-        </div>
-        <div className="flex gap-2">
-          {isEditing ? <>
-              <Button variant="outline" onClick={handleCancel} className="flex items-center gap-1">
-                <X size={16} /> Cancel
-              </Button>
-              <Button onClick={handleSave} className="flex items-center gap-1 bg-valorwell-700 hover:bg-valorwell-800" disabled={isUploading}>
-                <Save size={16} /> Save Changes
-              </Button>
-            </> : <Button onClick={() => setIsEditing(true)} className="flex items-center gap-1">
-              <Pencil size={16} /> Edit
-            </Button>}
-        </div>
-      </div>
-
-      <div className="grid gap-6">
+  return (
+    <Layout>
+      <div className="container mx-auto mt-8">
         <Card>
           <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
+            <CardTitle>Clinician Details</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="md:w-1/3">
-                <Label className="block text-sm font-medium text-gray-700 mb-2">
-                  Profile Picture
-                </Label>
-                <div className="flex flex-col items-center">
-                  <div className="relative w-48 h-48 mb-4 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                    {imagePreview ? <img src={imagePreview} alt="Profile" className="w-full h-full object-cover" /> : <User size={64} className="text-gray-400" />}
-                    
-                    {isEditing && <label htmlFor="profile-image" className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white cursor-pointer opacity-0 hover:opacity-100 transition-opacity rounded-full">
-                        <div className="flex flex-col items-center">
-                          <Camera size={32} />
-                          <span className="text-sm mt-2">Upload Photo</span>
-                        </div>
-                        <input id="profile-image" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-                      </label>}
-                  </div>
-                  
-                  {isEditing && <Button variant="ghost" size="sm" type="button" className="text-sm font-medium text-gray-700 mb-2" onClick={() => document.getElementById('profile-image')?.click()}>
-                      <Upload size={16} className="mr-1" />
-                      Upload Image
-                    </Button>}
-                  
-                  {isEditing && profileImage && <p className="text-sm text-gray-500 text-center">
-                      {profileImage.name} ({Math.round(profileImage.size / 1024)} KB)
-                    </p>}
-                </div>
+          <CardContent className="grid gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="clinician_first_name">First Name</Label>
+                <Input
+                  id="clinician_first_name"
+                  value={clinicianData.clinician_first_name}
+                  onChange={(e) => handleInputChange('clinician_first_name', e.target.value)}
+                  disabled={!isEditing}
+                />
               </div>
-              
-              <div className="md:w-2/3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      First Name
-                    </label>
-                    {isEditing ? <Input type="text" value={editedClinician?.clinician_first_name || ''} onChange={e => handleInputChange('clinician_first_name', e.target.value)} /> : <p className="p-2 border rounded-md bg-gray-50">
-                        {clinician.clinician_first_name || '—'}
-                      </p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Last Name
-                    </label>
-                    {isEditing ? <Input type="text" value={editedClinician?.clinician_last_name || ''} onChange={e => handleInputChange('clinician_last_name', e.target.value)} /> : <p className="p-2 border rounded-md bg-gray-50">
-                        {clinician.clinician_last_name || '—'}
-                      </p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Name for Insurance
-                    </label>
-                    {isEditing ? <Input type="text" value={editedClinician?.clinician_nameinsurance || ''} onChange={e => handleInputChange('clinician_nameinsurance', e.target.value)} /> : <p className="p-2 border rounded-md bg-gray-50">
-                        {clinician.clinician_nameinsurance || (clinician.clinician_first_name && clinician.clinician_last_name ? `${clinician.clinician_first_name} ${clinician.clinician_last_name}` : '—')}
-                      </p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Professional Name
-                    </label>
-                    {isEditing ? <Input type="text" value={editedClinician?.clinician_professional_name || ''} onChange={e => handleInputChange('clinician_professional_name', e.target.value)} /> : <p className="p-2 border rounded-md bg-gray-50">
-                        {clinician.clinician_professional_name || '—'}
-                      </p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email
-                    </label>
-                    {isEditing ? <Input type="email" value={editedClinician?.clinician_email || ''} onChange={e => handleInputChange('clinician_email', e.target.value)} /> : <p className="p-2 border rounded-md bg-gray-50">
-                        {clinician.clinician_email || '—'}
-                      </p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Time Zone
-                    </label>
-                    {isEditing ? <Select 
-                        value={clinicianTimeZone || 'America/Chicago'} 
-                        onValueChange={handleTimeZoneChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select time zone" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {timezoneOptions.map(zone => <SelectItem key={zone.value} value={zone.value}>
-                              {zone.label}
-                            </SelectItem>)}
-                        </SelectContent>
-                      </Select> : <p className="p-2 border rounded-md bg-gray-50">
-                        {timezoneOptions.find(tz => tz.value === clinicianTimeZone)?.label || clinicianTimeZone || 'Central Time (CT)'}
-                      </p>}
-                  </div>
-                </div>
+              <div>
+                <Label htmlFor="clinician_last_name">Last Name</Label>
+                <Input
+                  id="clinician_last_name"
+                  value={clinicianData.clinician_last_name}
+                  onChange={(e) => handleInputChange('clinician_last_name', e.target.value)}
+                  disabled={!isEditing}
+                />
               </div>
+            </div>
+
+            <div>
+              <Label htmlFor="clinician_professional_name">Professional Name</Label>
+              <Input
+                id="clinician_professional_name"
+                value={clinicianData.clinician_professional_name}
+                onChange={(e) => handleInputChange('clinician_professional_name', e.target.value)}
+                disabled={!isEditing}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="clinician_email">Email</Label>
+                <Input
+                  id="clinician_email"
+                  type="email"
+                  value={clinicianData.clinician_email}
+                  onChange={(e) => handleInputChange('clinician_email', e.target.value)}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div>
+                <Label htmlFor="clinician_phone">Phone</Label>
+                <Input
+                  id="clinician_phone"
+                  value={clinicianData.clinician_phone}
+                  onChange={(e) => handleInputChange('clinician_phone', e.target.value)}
+                  disabled={!isEditing}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="clinician_address">Address</Label>
+              <Input
+                id="clinician_address"
+                value={clinicianData.clinician_address}
+                onChange={(e) => handleInputChange('clinician_address', e.target.value)}
+                disabled={!isEditing}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="clinician_city">City</Label>
+                <Input
+                  id="clinician_city"
+                  value={clinicianData.clinician_city}
+                  onChange={(e) => handleInputChange('clinician_city', e.target.value)}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div>
+                <Label htmlFor="clinician_state">State</Label>
+                <Input
+                  id="clinician_state"
+                  value={clinicianData.clinician_state}
+                  onChange={(e) => handleInputChange('clinician_state', e.target.value)}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div>
+                <Label htmlFor="clinician_zip">Zip</Label>
+                <Input
+                  id="clinician_zip"
+                  value={clinicianData.clinician_zip}
+                  onChange={(e) => handleInputChange('clinician_zip', e.target.value)}
+                  disabled={!isEditing}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="clinician_license_number">License Number</Label>
+                <Input
+                  id="clinician_license_number"
+                  value={clinicianData.clinician_license_number}
+                  onChange={(e) => handleInputChange('clinician_license_number', e.target.value)}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div>
+                <Label htmlFor="clinician_license_type">License Type</Label>
+                <Input
+                  id="clinician_license_type"
+                  value={clinicianData.clinician_license_type}
+                  onChange={(e) => handleInputChange('clinician_license_type', e.target.value)}
+                  disabled={!isEditing}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="clinician_license_issue_date">License Issue Date</Label>
+                <Input
+                  id="clinician_license_issue_date"
+                  type="date"
+                  value={clinicianData.clinician_license_issue_date ? format(new Date(clinicianData.clinician_license_issue_date), 'yyyy-MM-dd') : ''}
+                  onChange={(e) => handleInputChange('clinician_license_issue_date', e.target.value)}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div>
+                <Label htmlFor="clinician_license_expiration_date">License Expiration Date</Label>
+                <Input
+                  id="clinician_license_expiration_date"
+                  type="date"
+                  value={clinicianData.clinician_license_expiration_date ? format(new Date(clinicianData.clinician_license_expiration_date), 'yyyy-MM-dd') : ''}
+                  onChange={(e) => handleInputChange('clinician_license_expiration_date', e.target.value)}
+                  disabled={!isEditing}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="clinician_NPI_number">NPI Number</Label>
+                <Input
+                  id="clinician_NPI_number"
+                  value={clinicianData.clinician_NPI_number}
+                  onChange={(e) => handleInputChange('clinician_NPI_number', e.target.value)}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div>
+                <Label htmlFor="clinician_DEA_number">DEA Number</Label>
+                <Input
+                  id="clinician_DEA_number"
+                  value={clinicianData.clinician_DEA_number}
+                  onChange={(e) => handleInputChange('clinician_DEA_number', e.target.value)}
+                  disabled={!isEditing}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="clinician_supervising_doctor">Supervising Doctor</Label>
+              <Input
+                id="clinician_supervising_doctor"
+                value={clinicianData.clinician_supervising_doctor}
+                onChange={(e) => handleInputChange('clinician_supervising_doctor', e.target.value)}
+                disabled={!isEditing}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="clinician_notes">Notes</Label>
+              <Textarea
+                id="clinician_notes"
+                value={clinicianData.clinician_notes}
+                onChange={(e) => handleInputChange('clinician_notes', e.target.value)}
+                disabled={!isEditing}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="time_zone">Time Zone</Label>
+              <Select value={clinicianData.time_zone} onValueChange={(value) => handleInputChange('time_zone', value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a time zone" />
+                </SelectTrigger>
+                <SelectContent>
+                  {timezoneList.map((timezone) => (
+                    <SelectItem key={timezone.value} value={timezone.value}>
+                      {timezone.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-between">
+              {isEditing ? (
+                <div className="flex gap-2">
+                  <Button variant="secondary" onClick={() => setIsEditing(false)}>
+                    Cancel
+                  </Button>
+                  <Button isLoading={isSaving} onClick={handleSave}>
+                    Save
+                  </Button>
+                </div>
+              ) : (
+                <Button onClick={() => setIsEditing(true)}>Edit</Button>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost">
+                    Actions
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleDelete}>
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Biography</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Biography
-            </label>
-            {isEditing ? <Textarea value={editedClinician?.clinician_bio || ''} onChange={e => handleInputChange('clinician_bio', e.target.value)} className="min-h-[100px]" /> : <p className="p-2 border rounded-md bg-gray-50 min-h-[100px] whitespace-pre-wrap">
-                {clinician.clinician_bio || '—'}
-              </p>}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Clinical Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  NPI Number
-                </label>
-                {isEditing ? <Input type="text" value={editedClinician?.clinician_npi_number || ''} onChange={e => handleInputChange('clinician_npi_number', e.target.value)} placeholder="NPI number" /> : <p className="p-2 border rounded-md bg-gray-50">
-                    {clinician.clinician_npi_number || '—'}
-                  </p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Taxonomy Code
-                </label>
-                {isEditing ? <Input type="text" value={editedClinician?.clinician_taxonomy_code || ''} onChange={e => handleInputChange('clinician_taxonomy_code', e.target.value)} placeholder="Taxonomy code" /> : <p className="p-2 border rounded-md bg-gray-50">
-                    {clinician.clinician_taxonomy_code || '—'}
-                  </p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Clinician License Type
-                </label>
-                {isEditing ? <Select value={editedClinician?.clinician_license_type || ''} onValueChange={value => handleInputChange('clinician_license_type', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select license type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {licenseTypes.map(type => <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select> : <p className="p-2 border rounded-md bg-gray-50">
-                    {clinician.clinician_license_type || '—'}
-                  </p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Minimum Client Age
-                </label>
-                {isEditing ? (
-                  <Input 
-                    type="number" 
-                    value={editedClinician?.clinician_min_client_age?.toString() || '18'} 
-                    onChange={e => handleInputChange('clinician_min_client_age', e.target.value)} 
-                    min="0"
-                    max="100"
-                    placeholder="Minimum client age"
-                  />
-                ) : (
-                  <p className="p-2 border rounded-md bg-gray-50">
-                    {clinician.clinician_min_client_age || '18'}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Licensed States
-                </label>
-                {isEditing ? <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start">
-                        {selectedStates.length > 0 ? `${selectedStates.length} state${selectedStates.length > 1 ? 's' : ''} selected` : 'Select states'}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56 max-h-[300px] overflow-y-auto">
-                      {states.map(state => <DropdownMenuCheckboxItem key={state.name} checked={selectedStates.includes(state.name)} onCheckedChange={() => toggleState(state.name)}>
-                          {state.name}
-                        </DropdownMenuCheckboxItem>)}
-                    </DropdownMenuContent>
-                  </DropdownMenu> : <p className="p-2 border rounded-md bg-gray-50">
-                    {clinician.clinician_licensed_states && clinician.clinician_licensed_states.length > 0 ? clinician.clinician_licensed_states.join(', ') : '—'}
-                  </p>}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {isEditing && <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={handleCancel}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} className="bg-valorwell-700 hover:bg-valorwell-800" disabled={isUploading}>
-              Save Changes
-            </Button>
-          </div>}
       </div>
-    </Layout>;
+    </Layout>
+  );
 };
 
 export default ClinicianDetails;

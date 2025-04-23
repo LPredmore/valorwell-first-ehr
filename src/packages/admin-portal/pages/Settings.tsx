@@ -1,62 +1,81 @@
-
 import React from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/packages/ui/tabs";
-import Layout from "@/components/layout/Layout";
-import {
-  UsersTab,
-  CliniciansTab,
-  PracticeTab,
-  LicensesTab,
-  TemplatesTab,
-  SecurityTab,
-  BillingTab
-} from '../components/settings';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/packages/ui';
+import { PracticeTab } from '../components/settings/PracticeTab';
+import { CliniciansTab } from '../components/settings/CliniciansTab';
+import { UsersTab } from '../components/settings/UsersTab';
+import { BillingTab } from '../components/settings/BillingTab';
+import { TemplatesTab } from '../components/settings/TemplatesTab';
+import { SecurityTab } from '../components/settings/SecurityTab';
+import { LicensesTab } from '../components/settings/LicensesTab';
+
+const SettingsTabs = {
+  PRACTICE: 'practice',
+  CLINICIANS: 'clinicians',
+  USERS: 'users',
+  BILLING: 'billing',
+  TEMPLATES: 'templates',
+  SECURITY: 'security',
+  LICENSES: 'clinician_licenses'
+};
 
 const Settings = () => {
+  const [activeTab, setActiveTab] = useState(SettingsTabs.PRACTICE);
+  
   return (
     <Layout>
-      <div className="container mx-auto py-6">
-        <h1 className="text-2xl font-bold mb-6">Settings</h1>
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="flex flex-wrap border-b overflow-x-auto">
+          <button 
+            className={`settings-tab px-4 py-3 font-medium border-b-2 transition-all ${activeTab === SettingsTabs.PRACTICE ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            onClick={() => setActiveTab(SettingsTabs.PRACTICE)}
+          >
+            Practice
+          </button>
+          <button 
+            className={`settings-tab px-4 py-3 font-medium border-b-2 transition-all ${activeTab === SettingsTabs.CLINICIANS ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            onClick={() => setActiveTab(SettingsTabs.CLINICIANS)}
+          >
+            Clinicians
+          </button>
+          <button 
+            className={`settings-tab px-4 py-3 font-medium border-b-2 transition-all ${activeTab === SettingsTabs.USERS ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            onClick={() => setActiveTab(SettingsTabs.USERS)}
+          >
+            Users
+          </button>
+          <button 
+            className={`settings-tab px-4 py-3 font-medium border-b-2 transition-all ${activeTab === SettingsTabs.BILLING ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            onClick={() => setActiveTab(SettingsTabs.BILLING)}
+          >
+            Billing
+          </button>
+          <button 
+            className={`settings-tab px-4 py-3 font-medium border-b-2 transition-all ${activeTab === SettingsTabs.TEMPLATES ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            onClick={() => setActiveTab(SettingsTabs.TEMPLATES)}
+          >
+            Templates
+          </button>
+          <button 
+            className={`settings-tab px-4 py-3 font-medium border-b-2 transition-all ${activeTab === SettingsTabs.SECURITY ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            onClick={() => setActiveTab(SettingsTabs.SECURITY)}
+          >
+            Security
+          </button>
+          <button 
+            className={`settings-tab px-4 py-3 font-medium border-b-2 transition-all ${activeTab === SettingsTabs.LICENSES ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            onClick={() => setActiveTab(SettingsTabs.LICENSES)}
+          >
+            Licenses
+          </button>
+        </div>
         
-        <Tabs defaultValue="users" className="w-full">
-          <TabsList className="w-full border-b mb-4">
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="clinicians">Clinicians</TabsTrigger>
-            <TabsTrigger value="practice">Practice</TabsTrigger>
-            <TabsTrigger value="licenses">Licenses</TabsTrigger>
-            <TabsTrigger value="templates">Templates</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
-            <TabsTrigger value="billing">Billing</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="users">
-            <UsersTab />
-          </TabsContent>
-          
-          <TabsContent value="clinicians">
-            <CliniciansTab />
-          </TabsContent>
-          
-          <TabsContent value="practice">
-            <PracticeTab />
-          </TabsContent>
-          
-          <TabsContent value="licenses">
-            <LicensesTab />
-          </TabsContent>
-          
-          <TabsContent value="templates">
-            <TemplatesTab />
-          </TabsContent>
-          
-          <TabsContent value="security">
-            <SecurityTab />
-          </TabsContent>
-          
-          <TabsContent value="billing">
-            <BillingTab />
-          </TabsContent>
-        </Tabs>
+        {activeTab === SettingsTabs.PRACTICE && <PracticeTab />}
+        {activeTab === SettingsTabs.CLINICIANS && <CliniciansTab />}
+        {activeTab === SettingsTabs.USERS && <UsersTab />}
+        {activeTab === SettingsTabs.BILLING && <BillingTab />}
+        {activeTab === SettingsTabs.TEMPLATES && <TemplatesTab />}
+        {activeTab === SettingsTabs.SECURITY && <SecurityTab />}
+        {activeTab === SettingsTabs.LICENSES && <LicensesTab />}
       </div>
     </Layout>
   );
