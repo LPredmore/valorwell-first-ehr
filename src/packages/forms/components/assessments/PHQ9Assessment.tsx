@@ -11,7 +11,7 @@ interface PHQ9AssessmentProps {
   readOnly?: boolean;
 }
 
-export const PHQ9Assessment: React.FC<PHQ9AssessmentProps> = ({
+const PHQ9AssessmentComponent: React.FC<PHQ9AssessmentProps> = ({
   form,
   readOnly = false
 }) => {
@@ -25,8 +25,42 @@ export const PHQ9Assessment: React.FC<PHQ9AssessmentProps> = ({
       id: 2,
       text: "Feeling down, depressed, or hopeless",
       field: "phq9_feeling_down"
+    },
+    {
+      id: 3,
+      text: "Trouble falling or staying asleep, or sleeping too much",
+      field: "phq9_sleep"
+    },
+    {
+      id: 4,
+      text: "Feeling tired or having little energy",
+      field: "phq9_energy"
+    },
+    {
+      id: 5,
+      text: "Poor appetite or overeating",
+      field: "phq9_appetite"
+    },
+    {
+      id: 6,
+      text: "Feeling bad about yourself - or that you are a failure or have let yourself or your family down",
+      field: "phq9_feeling_bad"
+    },
+    {
+      id: 7,
+      text: "Trouble concentrating on things, such as reading the newspaper or watching television",
+      field: "phq9_concentration"
+    },
+    {
+      id: 8,
+      text: "Moving or speaking so slowly that other people could have noticed. Or the opposite - being so fidgety or restless that you have been moving around a lot more than usual",
+      field: "phq9_movement"
+    },
+    {
+      id: 9,
+      text: "Thoughts that you would be better off dead, or of hurting yourself in some way",
+      field: "phq9_thoughts"
     }
-    // ... We'll add the rest of the questions later
   ];
 
   return (
@@ -69,3 +103,5 @@ export const PHQ9Assessment: React.FC<PHQ9AssessmentProps> = ({
     </div>
   );
 };
+
+export { PHQ9AssessmentComponent as PHQ9Assessment };
