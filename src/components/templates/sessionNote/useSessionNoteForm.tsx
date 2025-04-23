@@ -1,10 +1,8 @@
-
 import { RefObject } from 'react';
 import { ClientDetails } from '@/types/client';
-import { useSessionNoteState } from '@/hooks/useSessionNoteState';
-import { useSessionNoteValidation } from '@/hooks/useSessionNoteValidation';
+import { useSessionNoteState, useSessionNoteValidation } from '@/packages/core/hooks/useSessionNote';
 import { usePHQ9Data } from '@/hooks/usePHQ9Data';
-import { useSessionNoteSave } from '@/hooks/useSessionNoteSave';
+import { useSessionNoteSave } from '@/packages/core/hooks/useSessionNote';
 
 interface UseSessionNoteFormProps {
   clientData: ClientDetails | null;
