@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,9 +20,13 @@ interface WeeklyAvailabilityDialogProps {
   onAvailabilityUpdated: () => void;
 }
 
-// Extended interface to include id for database operations
 interface DatabaseAvailabilitySlot extends AvailabilitySlot {
   id?: string;
+}
+
+interface TimeOption {
+  value: string;
+  display: string;
 }
 
 const dayTabs = [
@@ -54,7 +58,6 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   const [newSlotEndTime, setNewSlotEndTime] = useState('10:00');
   const [isAddingSlot, setIsAddingSlot] = useState(false);
 
-  // New: Force reload function for weekly availability from backend
   const reloadWeeklyAvailability = async () => {
     if (!clinicianId) return;
     setIsLoading(true);
@@ -136,15 +139,12 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     }
   };
 
-  // Change: Soft delete slots using service instead of removing from state
   const handleDeleteSlot = async (day: string, index: number) => {
     if (!clinicianId) return;
     
-    // Safely access the slot with defensive coding
     const daySlots = weeklyAvailability[day] || [];
     const slot = daySlots[index];
     
-    // Check if the slot exists and has an ID
     if (!slot || !slot.id) {
       toast({
         title: 'Error',
@@ -157,7 +157,6 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     setIsLoading(true);
     setError(null);
     try {
-      // Call service to soft-delete (set is_active=false) using the slot ID
       const deleted = await AvailabilityService.updateAvailabilitySlot(slot.id, { }, false);
       if (deleted) {
         toast({
@@ -182,26 +181,27 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     }
   };
 
-  // Generate time options from 12:00 AM (00:00) to 11:30 PM (23:30) in 30-minute increments, NO repeats.
-  const generateTimeOptions = () => {
-    const options: string[] = [];
+  const timeOptions = useMemo(() => {
+    const options: TimeOption[] = [];
     for (let hour = 0; hour < 24; hour++) {
       for (let minute of [0, 30]) {
         const formattedHour = hour.toString().padStart(2, '0');
         const formattedMinute = minute.toString().padStart(2, '0');
-        options.push(`${formattedHour}:${formattedMinute}`);
+        const timeValue = `${formattedHour}:${formattedMinute}`;
+        
+        const displayValue = formatTime12Hour(timeValue);
+        
+        options.push({
+          value: timeValue,
+          display: displayValue
+        });
       }
     }
-    // Remove any accidental repeats (shouldn't be necessary, but for safety):
-    const uniqueOptions = Array.from(new Set(options));
-    // Log to check in runtime what is rendered:
-    console.log("[generateTimeOptions] values:", uniqueOptions);
-    return uniqueOptions;
-  };
+    
+    console.log("[generateTimeOptions] values:", options.map(opt => opt.value));
+    return options;
+  }, []);
 
-  const timeOptions = generateTimeOptions();
-
-  // Ensure the selected day's availability array exists
   const currentDaySlots = weeklyAvailability[activeTab] || [];
 
   return (
@@ -260,7 +260,6 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  {/* Defensive check that currentDaySlots exists and has length */}
                   {!weeklyAvailability[day.id] || weeklyAvailability[day.id].length === 0 ? (
                     <div className="text-center py-4 text-gray-500">
                       No availability set for {day.label}
@@ -273,7 +272,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
                       >
                         <div>
                           <span className="font-medium">
-                            {formatTime12Hour(`2000-01-01T${slot.startTime}`)} - {formatTime12Hour(`2000-01-01T${slot.endTime}`)}
+                            {formatTime12Hour(slot.startTime)} - {formatTime12Hour(slot.endTime)}
                           </span>
                           {slot.isRecurring && (
                             <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
@@ -304,9 +303,9 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
                         value={newSlotStartTime}
                         onChange={(e) => setNewSlotStartTime(e.target.value)}
                       >
-                        {timeOptions.map(time => (
-                          <option key={`start-${time}`} value={time}>
-                            {formatTime12Hour(`2000-01-01T${time}`)}
+                        {timeOptions.map(option => (
+                          <option key={`start-${option.value}`} value={option.value}>
+                            {option.display}
                           </option>
                         ))}
                       </select>
@@ -318,9 +317,9 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
                         value={newSlotEndTime}
                         onChange={(e) => setNewSlotEndTime(e.target.value)}
                       >
-                        {timeOptions.map(time => (
-                          <option key={`end-${time}`} value={time}>
-                            {formatTime12Hour(`2000-01-01T${time}`)}
+                        {timeOptions.map(option => (
+                          <option key={`end-${option.value}`} value={option.value}>
+                            {option.display}
                           </option>
                         ))}
                       </select>

@@ -279,12 +279,22 @@ export const getUserTimeZone = (userTimeZone?: string | null): string => {
 /**
  * Format a time string to 12-hour AM/PM format
  * For use when displaying raw time values (e.g. from database)
+ * Now handles ISO-formatted time strings like '2000-01-01T20:00'
  */
 export const formatTime12Hour = (timeString: string): string => {
   if (!timeString) return '';
   
   try {
-    const [hours, minutes] = timeString.split(':');
+    // Handle ISO datetime strings (e.g. "2000-01-01T20:00")
+    let timePart = timeString;
+    if (timeString.includes('T')) {
+      timePart = timeString.split('T')[1];
+    }
+    
+    // Now split the actual time part on colon
+    const [hours, minutes] = timePart.split(':');
+    
+    // Convert to number and format with AM/PM
     const hour = parseInt(hours, 10);
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const formattedHour = hour % 12 || 12;
