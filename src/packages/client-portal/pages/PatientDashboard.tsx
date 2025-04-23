@@ -17,6 +17,11 @@ const PatientDashboard: React.FC = () => {
     return <Layout><div>Error: {error.message}</div></Layout>;
   }
 
+  // Create a clinician name from available data
+  const clinicianName = clientData?.client_assigned_therapist 
+    ? `${clientData?.clinician_first_name || ''} ${clientData?.clinician_last_name || ''}`.trim() || 'Your Therapist' 
+    : 'Your Therapist';
+
   return (
     <Layout>
       <div className="flex flex-col gap-6">
@@ -25,7 +30,7 @@ const PatientDashboard: React.FC = () => {
         </div>
         <MyPortal 
           clientData={clientData} 
-          clinicianName={clientData?.client_clinician_professional_name || null} 
+          clinicianName={clinicianName} 
           loading={isLoading}
           upcomingAppointments={[]}
         />

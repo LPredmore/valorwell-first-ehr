@@ -1,3 +1,4 @@
+
 // Types for calendar functionality
 
 import { EventInput } from '@fullcalendar/core';
@@ -41,6 +42,7 @@ export interface CalendarEvent extends EventInput {
     description?: string;
     // Add is_active for availability (not needed for appointments, but type-safe)
     is_active?: boolean;
+    clinicianId?: string; // Add clinicianId property to fix TS errors
   };
 }
 

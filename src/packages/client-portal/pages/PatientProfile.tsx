@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, getClientByUserId, updateClientProfile } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import MyProfile from '../components/MyProfile';
 import { useUser } from '@/packages/auth/contexts/UserContext';
 import { useClientData } from '@/packages/core/hooks/useClientData';
@@ -13,7 +14,6 @@ const PatientProfile: React.FC = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [clientData, setClientData] = useState<any>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
-  const { toast } = useToast();
   const navigate = useNavigate();
   const { userId } = useUser();
 
@@ -57,11 +57,8 @@ const PatientProfile: React.FC = () => {
       const user = await getCurrentUser();
 
       if (!user) {
-        toast({
-          title: "Authentication required",
-          description: "Please sign in to view your profile",
-          variant: "destructive"
-        });
+        // Use Sonner toast directly
+        toast.error("Please sign in to view your profile");
         navigate('/login');
         return;
       }
@@ -104,19 +101,11 @@ const PatientProfile: React.FC = () => {
           timeZone: client.client_time_zone || ''
         });
       } else {
-        toast({
-          title: "Profile not found",
-          description: "We couldn't find your client profile",
-          variant: "destructive"
-        });
+        toast.error("We couldn't find your client profile");
       }
     } catch (error) {
       console.error("Error fetching client data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load your profile data",
-        variant: "destructive"
-      });
+      toast.error("Failed to load your profile data");
     } finally {
       setLoading(false);
     }
@@ -125,11 +114,7 @@ const PatientProfile: React.FC = () => {
   const handleSaveProfile = async () => {
     if (!clientData) {
       console.error("Cannot save: No client data available");
-      toast({
-        title: "Error",
-        description: "Unable to save profile: No client data available",
-        variant: "destructive"
-      });
+      toast.error("Unable to save profile: No client data available");
       return;
     }
 
@@ -154,10 +139,7 @@ const PatientProfile: React.FC = () => {
 
       if (result.success) {
         console.log("Profile update successful");
-        toast({
-          title: "Success",
-          description: "Your profile has been updated successfully",
-        });
+        toast.success("Your profile has been updated successfully");
         setIsEditing(false);
         fetchClientData();
       } else {
@@ -166,11 +148,7 @@ const PatientProfile: React.FC = () => {
       }
     } catch (error) {
       console.error("Error saving profile:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save your profile",
-        variant: "destructive"
-      });
+      toast.error("Failed to save your profile");
     } finally {
       setIsSaving(false);
     }

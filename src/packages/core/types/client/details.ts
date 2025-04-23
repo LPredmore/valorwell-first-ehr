@@ -58,4 +58,19 @@ export interface ClientDetails {
   client_homicidalideation?: string;
   client_privatenote?: string;
   client_assigned_therapist?: string;
+  client_treatmentgoal?: string;
+  client_problem?: string;
+  client_prognosis?: string;
+  client_nexttreatmentplanupdate?: string;
+  client_primaryobjective?: string;
+  client_secondaryobjective?: string;
+  client_tertiaryobjective?: string;
+  client_intervention1?: string;
+  client_intervention2?: string;
+  client_intervention3?: string;
+  client_intervention4?: string;
+  client_intervention5?: string;
+  client_intervention6?: string;
+  client_currentsymptoms?: string;
+  client_treatmentplan_startdate?: string;
 }
