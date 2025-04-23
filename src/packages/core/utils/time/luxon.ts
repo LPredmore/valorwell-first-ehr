@@ -1,5 +1,4 @@
-
-import { DateTime, IANAZone } from 'luxon';
+import { DateTime } from 'luxon';
 import { ensureIANATimeZone } from './timeZone';
 
 /**

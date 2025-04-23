@@ -10,4 +10,7 @@ export {
   formatEventTime,
   convertEventToUserTimeZone
 } from './calendar';
+export {
+  formatTimeZoneDisplay
+} from './formatting';
 export * from './validation';

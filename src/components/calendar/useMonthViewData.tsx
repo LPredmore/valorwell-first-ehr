@@ -1,14 +1,5 @@
-
 import { useState, useEffect, useMemo } from 'react';
-import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
-  startOfWeek,
-  endOfWeek,
-  parseISO,
-} from 'date-fns';
+import { DateTime } from 'luxon';
 import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -72,26 +63,40 @@ export const useMonthViewData = (
 
   const { monthStart, monthEnd, startDate, endDate, days } = useMemo(() => {
     if (weekViewMode) {
-      const startDate = startOfWeek(currentDate, { weekStartsOn: 0 });
-      const endDate = endOfWeek(currentDate, { weekStartsOn: 0 });
-      const days = eachDayOfInterval({ start: startDate, end: endDate });
+      const now = DateTime.fromJSDate(currentDate);
+      const startDate = now.startOf('week');
+      const endDate = now.endOf('week');
+      const days = [];
+      
+      let day = startDate;
+      while (day <= endDate) {
+        days.push(day.toJSDate());
+        day = day.plus({ days: 1 });
+      }
       
       return { 
-        monthStart: startDate,
-        monthEnd: endDate,
-        startDate, 
-        endDate, 
+        monthStart: startDate.toJSDate(),
+        monthEnd: endDate.toJSDate(),
+        startDate: startDate.toJSDate(), 
+        endDate: endDate.toJSDate(), 
         days 
       };
     }
     
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
-    const startDate = startOfWeek(monthStart, { weekStartsOn: 0 });
-    const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
-    const days = eachDayOfInterval({ start: startDate, end: endDate });
+    const now = DateTime.fromJSDate(currentDate);
+    const monthStart = now.startOf('month');
+    const monthEnd = now.endOf('month');
+    const startDate = monthStart.startOf('week');
+    const endDate = monthEnd.endOf('week');
+    const days = [];
     
-    return { monthStart, monthEnd, startDate, endDate, days };
+    let day = startDate;
+    while (day <= endDate) {
+      days.push(day.toJSDate());
+      day = day.plus({ days: 1 });
+    }
+    
+    return { monthStart: monthStart.toJSDate(), monthEnd: monthEnd.toJSDate(), startDate: startDate.toJSDate(), endDate: endDate.toJSDate(), days };
   }, [currentDate, weekViewMode]);
 
   // Fetch availability settings and schedule data
@@ -146,8 +151,8 @@ export const useMonthViewData = (
       }
 
       try {
-        const startDateStr = format(startDate, 'yyyy-MM-dd');
-        const endDateStr = format(endDate, 'yyyy-MM-dd');
+        const startDateStr = DateTime.fromJSDate(startDate).toFormat('yyyy-MM-dd');
+        const endDateStr = DateTime.fromJSDate(endDate).toFormat('yyyy-MM-dd');
         
         console.log(`[MonthView] Fetching time blocks for date range: ${startDateStr} to ${endDateStr}`);
         
@@ -191,8 +196,8 @@ export const useMonthViewData = (
       }
 
       try {
-        const startDateStr = format(startDate, 'yyyy-MM-dd');
-        const endDateStr = format(endDate, 'yyyy-MM-dd');
+        const startDateStr = DateTime.fromJSDate(startDate).toFormat('yyyy-MM-dd');
+        const endDateStr = DateTime.fromJSDate(endDate).toFormat('yyyy-MM-dd');
         
         console.log(`[MonthView] Fetching single-day availability for date range: ${startDateStr} to ${endDateStr}`);
         
@@ -263,8 +268,8 @@ export const useMonthViewData = (
     }
     
     days.forEach(day => {
-      const dateStr = format(day, 'yyyy-MM-dd');
-      const dayOfWeek = format(day, 'EEEE').toLowerCase();
+      const dateStr = DateTime.fromJSDate(day).toFormat('yyyy-MM-dd');
+      const dayOfWeek = DateTime.fromJSDate(day).toFormat('cccc').toLowerCase();
       
       // Get regular availability for this day of the week
       const regularAvailability = clinicianSchedule.weekly_schedule?.[dayOfWeek] || [];
@@ -289,10 +294,10 @@ export const useMonthViewData = (
         hasAvailability = true;
         isModified = true;
         
-        const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${singleDayRecord.start_time}`));
-        const endHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${singleDayRecord.end_time}`));
+        const startTime = DateTime.fromISO(`2000-01-01T${singleDayRecord.start_time}`);
+        const endTime = DateTime.fromISO(`2000-01-01T${singleDayRecord.end_time}`);
         
-        displayHours = `${startHourFormatted}-${endHourFormatted}`;
+        displayHours = `${startTime.toFormat('h:mm a')}-${endTime.toFormat('h:mm a')}`;
       } else if (hasAvailability) {
         // Use regular availability if no single-day record
         // But also check if time blocks affect this day
@@ -315,8 +320,8 @@ export const useMonthViewData = (
         });
         
         // Format times for display
-        const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${earliestStart}`));
-        const endHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${latestEnd}`));
+        const startHourFormatted = formatDateToTime12Hour(DateTime.fromISO(`2000-01-01T${earliestStart}`).toJSDate());
+        const endHourFormatted = formatDateToTime12Hour(DateTime.fromISO(`2000-01-01T${latestEnd}`).toJSDate());
         
         displayHours = `${startHourFormatted}-${endHourFormatted}`;
       }
@@ -335,8 +340,8 @@ export const useMonthViewData = (
     }
     
     days.forEach(day => {
-      const dayOfWeek = format(day, 'EEEE').toLowerCase();
-      const dateStr = format(day, 'yyyy-MM-dd');
+      const dayOfWeek = DateTime.fromJSDate(day).toFormat('EEEE').toLowerCase();
+      const dateStr = DateTime.fromJSDate(day).toFormat('yyyy-MM-dd');
       
       // Check for single-day availability first
       const singleDayRecord = singleDayAvailability.find(item => item.availability_date === dateStr);
@@ -345,7 +350,7 @@ export const useMonthViewData = (
         // Single-day availability overrides regular schedule
         const block: AvailabilityBlock = {
           id: singleDayRecord.id,
-          day_of_week: format(day, 'EEEE'), // Use the full day name
+          day_of_week: DateTime.fromJSDate(day).toFormat('EEEE'), // Use the full day name
           start_time: singleDayRecord.start_time,
           end_time: singleDayRecord.end_time,
           clinician_id: singleDayRecord.clinician_id,
@@ -362,7 +367,7 @@ export const useMonthViewData = (
           const firstSlot = daySchedule[0];
           const block: AvailabilityBlock = {
             id: `${clinicianId}-${dayOfWeek}-${firstSlot.start_time}`,
-            day_of_week: format(day, 'EEEE'),
+            day_of_week: DateTime.fromJSDate(day).toFormat('EEEE'),
             start_time: firstSlot.start_time,
             end_time: firstSlot.end_time,
             clinician_id: clinicianId || undefined,
@@ -381,7 +386,7 @@ export const useMonthViewData = (
     const result = new Map<string, Appointment[]>();
     
     days.forEach(day => {
-      const dayStr = format(day, 'yyyy-MM-dd');
+      const dayStr = DateTime.fromJSDate(day).toFormat('yyyy-MM-dd');
       const dayAppointments = appointments.filter(appointment => appointment.date === dayStr);
       result.set(dayStr, dayAppointments);
     });
