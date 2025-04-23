@@ -9,7 +9,6 @@ export interface ClientDetails {
   client_status?: string;
   client_assigned_therapist?: string;
   client_preferred_name?: string;
-  client_additional_notes?: string;
   client_minor?: string;
   client_address?: string;
   client_city?: string;
@@ -20,6 +19,7 @@ export interface ClientDetails {
   client_emergency_contact_phone?: string;
   client_preferred_contact_method?: string;
   client_is_profile_complete?: string;
+  client_additional_notes?: string;
   client_medications?: string;
   client_personsinattendance?: string;
   client_appearance?: string;
@@ -30,4 +30,26 @@ export interface ClientDetails {
   client_thoughtprocess?: string;
   client_perception?: string;
   client_orientation?: string;
+  client_memoryconcentration?: string;
+  client_insightjudgement?: string;
+  client_mood?: string;
+  client_substanceabuserisk?: string;
+  client_suicidalideation?: string;
+  client_homicidalideation?: string;
+  client_primaryobjective?: string;
+  client_secondaryobjective?: string;
+  client_tertiaryobjective?: string;
+  client_intervention1?: string;
+  client_intervention2?: string;
+  client_intervention3?: string;
+  client_intervention4?: string;
+  client_intervention5?: string;
+  client_intervention6?: string;
+  client_planlength?: string;
+  client_treatmentfrequency?: string;
+  client_diagnosis?: string[];
+  client_problem?: string;
+  client_treatmentgoal?: string;
+  client_nexttreatmentplanupdate?: string;
+  client_privatenote?: string;
 }
