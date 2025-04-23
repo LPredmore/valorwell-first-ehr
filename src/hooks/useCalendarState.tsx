@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
+import { toast } from '@/components/ui/use-toast';  // Added toast import
 
 interface Client {
   id: string;
