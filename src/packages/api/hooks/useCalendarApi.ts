@@ -33,7 +33,8 @@ export const useCalendarEvents = (
     ...getQueryOptions(['calendar-events', clinicianId, startDate?.toISOString(), endDate?.toISOString()], 'volatile'),
     queryFn: async () => {
       if (!clinicianId) return [];
-      return getCalendarEvents(clinicianId, userTimeZone, startDate, endDate);
+      // Modify to match the function signature of getCalendarEvents
+      return getCalendarEvents(clinicianId);
     },
     enabled: !!clinicianId && !!userTimeZone
   });
@@ -76,14 +77,20 @@ export const useCalendarEvents = (
   
   // CRUD operations for events
   const createEvent = useMutation({
-    mutationFn: (event: CalendarEvent) => createCalendarEvent(event, userTimeZone),
+    mutationFn: (event: CalendarEvent) => {
+      // Update to match the function signature of createCalendarEvent
+      return createCalendarEvent(event);
+    },
     onSuccess: () => {
       refetch();
     }
   });
   
   const updateEvent = useMutation({
-    mutationFn: (event: CalendarEvent) => updateCalendarEvent(event, userTimeZone),
+    mutationFn: (event: CalendarEvent) => {
+      // Update to match the function signature of updateCalendarEvent
+      return updateCalendarEvent(event);
+    },
     onSuccess: () => {
       refetch();
     }

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/packages/api/client';
 import { useClientData } from '@/packages/core/hooks/useClientData';
@@ -175,7 +176,7 @@ export const useAppointments = (clinicianId?: string) => {
       toast({
         title: "Warning",
         description: "Client ID is missing from the appointment.",
-        variant: "warning",
+        variant: "default", // Changed from "warning" to "default" to match allowed variants
       });
     }
   };

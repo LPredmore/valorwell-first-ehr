@@ -1,4 +1,3 @@
-
 export { default as NotesTab } from './NotesTab';
 export { default as PersonalInfoTab } from './PersonalInfoTab';
 export { default as DocumentationTab } from './DocumentationTab';

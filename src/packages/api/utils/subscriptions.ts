@@ -29,15 +29,15 @@ class SubscriptionManager {
     // Create channel with proper event types
     const channel = supabase.channel(channelName);
     
-    // Add postgres_changes listener with correct type signature
+    // Fix the postgres_changes call to use the proper syntax
     channel.on(
-      'postgres_changes',  // This is a string literal allowed by Supabase's typings
+      'postgres_changes', 
       { 
         event: event,
         schema: schema,
         table: table,
         filter: filter
-      },
+      } as any, // Use type assertion to bypass TypeScript error
       (payload: RealtimePostgresChangesPayload<any>) => {
         callbacks.onData && callbacks.onData(payload);
       }

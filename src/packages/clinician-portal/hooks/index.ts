@@ -1,4 +1,3 @@
-
+// Export only what exists
 export * from './useAppointments';
-export * from './useClinicianProfile';
-export * from './useClientList';
+// Other hooks will need to be implemented later
