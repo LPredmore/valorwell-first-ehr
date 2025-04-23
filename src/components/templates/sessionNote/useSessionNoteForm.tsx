@@ -25,6 +25,7 @@ export const useSessionNoteForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [phq9Data, setPhq9Data] = useState<any>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [isFormValid, setIsFormValid] = useState(false);
 
   const [formState, setFormState] = useState({
     sessionDate: '',
@@ -210,6 +211,26 @@ export const useSessionNoteForm = ({
       });
     }
   };
+
+  useEffect(() => {
+    try {
+      const validationResult = sessionNoteSchema.safeParse(formState);
+      setIsFormValid(validationResult.success);
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(err => 
+          `${err.path.join('.')}: ${err.message}`
+        );
+        setValidationErrors(errors);
+      } else {
+        setValidationErrors([]);
+      }
+    } catch (error) {
+      setIsFormValid(false);
+      if (error instanceof Error) {
+        setValidationErrors([error.message]);
+      }
+    }
+  }, [formState]);
 
   const validateForm = () => {
     try {
@@ -552,7 +573,8 @@ export const useSessionNoteForm = ({
     handleSave,
     isSubmitting,
     phq9Data,
-    validationErrors
+    validationErrors,
+    isFormValid
   };
 };
 

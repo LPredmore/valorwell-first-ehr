@@ -25,7 +25,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     phq9Data,
     handleChange,
     handleSave,
-    validationErrors
+    validationErrors,
+    isFormValid
   } = useSessionNoteForm({
     clientData,
     clinicianName,
@@ -135,7 +136,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <Button
           className="bg-valorwell-700 hover:bg-valorwell-800"
           onClick={handleSave}
-          disabled={isSubmitting || validationErrors.length > 0}
+          disabled={isSubmitting || !isFormValid}
         >
           {isSubmitting ? 'Saving...' : 'Save Session Note'}
         </Button>
