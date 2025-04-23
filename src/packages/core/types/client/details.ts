@@ -1,8 +1,6 @@
 
 /**
- * Client details interface - Core definition
- * This includes all fields from the clients table that are used
- * across different parts of the application
+ * Core client details interface - Complete definition of client fields
  */
 export interface ClientDetails {
   id: string;
@@ -16,14 +14,25 @@ export interface ClientDetails {
   client_phone: string | null;
   client_gender: string | null;
   client_gender_identity: string | null;
+  client_address: string | null;
+  client_city: string | null;
   client_state: string | null;
+  client_zip: string | null;
+  client_country: string | null;
   client_status: string | null;
   client_assigned_therapist: string | null;
   client_time_zone: string | null;
   client_minor: boolean | null;
   client_age: number | null;
-  client_is_profile_complete: string | null;
+  client_is_profile_complete: boolean;
   client_relationship: string | null;
+  
+  // Emergency contact fields
+  client_emergency_contact_name: string | null;
+  client_emergency_contact_relationship: string | null;
+  client_emergency_contact_phone: string | null;
+  client_preferred_contact_method: string | null;
+  client_additional_notes: string | null;
   
   // Treatment related fields
   client_diagnosis: string[] | null;
@@ -39,44 +48,6 @@ export interface ClientDetails {
   client_treatmentplan_startdate: string | null;
   client_nexttreatmentplanupdate: string | null;
   
-  // Insurance fields
-  client_insurance_company_primary: string | null;
-  client_insurance_type_primary: string | null;
-  client_policy_number_primary: string | null;
-  client_group_number_primary: string | null;
-  client_subscriber_name_primary: string | null;
-  client_subscriber_dob_primary: string | null;
-  client_subscriber_relationship_primary: string | null;
-  
-  client_insurance_company_secondary: string | null;
-  client_insurance_type_secondary: string | null;
-  client_policy_number_secondary: string | null;
-  client_group_number_secondary: string | null;
-  client_subscriber_name_secondary: string | null;
-  client_subscriber_dob_secondary: string | null;
-  client_subscriber_relationship_secondary: string | null;
-  
-  client_insurance_company_tertiary: string | null;
-  client_insurance_type_tertiary: string | null;
-  client_policy_number_tertiary: string | null;
-  client_group_number_tertiary: string | null;
-  client_subscriber_name_tertiary: string | null;
-  client_subscriber_dob_tertiary: string | null;
-  client_subscriber_relationship_tertiary: string | null;
-  
-  // Military/VA coverage fields
-  client_vacoverage: string | null;
-  client_champva: string | null;
-  client_tricare_plan: string | null;
-  client_tricare_region: string | null;
-  client_tricare_beneficiary_category: string | null;
-  client_tricare_sponsor_name: string | null;
-  client_tricare_sponsor_branch: string | null;
-  client_tricare_sponsor_id: string | null;
-  client_tricare_policy_id: string | null;
-  client_tricare_has_referral: string | null;
-  client_tricare_referral_number: string | null;
-  
   // Mental status fields
   client_appearance: string | null;
   client_attitude: string | null;
@@ -89,8 +60,6 @@ export interface ClientDetails {
   client_memoryconcentration: string | null;
   client_insightjudgement: string | null;
   client_mood: string | null;
-  
-  // Assessment fields
   client_substanceabuserisk: string | null;
   client_suicidalideation: string | null;
   client_homicidalideation: string | null;
