@@ -10,7 +10,7 @@
 export * from './client';
 
 // Supabase client instance (re-exported for convenience)
-export { supabase } from '@/integrations/supabase/client';
+export { supabase } from './client';
 
 // Common data fetching utilities
 export * from './utils/queryHelpers';

@@ -4,7 +4,12 @@ export interface PaginationRequest {
   limit: number;
 }
 
-export interface ClientFilterRequest extends PaginationRequest {
+export interface FilterRequest extends PaginationRequest {
   status?: string;
   searchTerm?: string;
+}
+
+export interface DateRangeRequest {
+  startDate: Date;
+  endDate: Date;
 }

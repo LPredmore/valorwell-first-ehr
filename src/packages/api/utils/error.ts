@@ -1,12 +1,23 @@
 
-import { ErrorResponse } from '@/packages/core/types';
+export class APIError extends Error {
+  code?: string;
+  details?: any;
 
-export const handleApiError = (error: any): ErrorResponse => {
+  constructor(message: string, code?: string, details?: any) {
+    super(message);
+    this.name = 'APIError';
+    this.code = code;
+    this.details = details;
+  }
+}
+
+export const handleApiError = (error: any): never => {
   console.error('API Error:', error);
   
-  return {
-    message: error.message || 'An unexpected error occurred',
-    code: error.code || 'UNKNOWN_ERROR',
-    details: error.details || null
-  };
+  if (error?.code === 'PGRST301') {
+    throw new APIError('Authentication required', 'AUTH_REQUIRED');
+  }
+
+  const message = error?.message || error?.error_description || 'An unknown error occurred';
+  throw new APIError(message, error?.code, error?.details);
 };

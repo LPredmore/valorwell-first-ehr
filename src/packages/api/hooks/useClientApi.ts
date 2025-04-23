@@ -1,7 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { ClientDetails } from '@/packages/core/types';
+import { supabase } from '../client';
+import { ClientDetails } from '@/packages/core/types/client';
 import { handleApiError } from '../utils/error';
 import { getDefaultQueryOptions } from '../utils/queryHelpers';
 
