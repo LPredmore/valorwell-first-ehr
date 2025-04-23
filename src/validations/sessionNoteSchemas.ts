@@ -1,7 +1,8 @@
 
 import { z } from 'zod';
 
-const nonEmptyString = z.string().min(1, "This field is required").transform(val => val.trim());
+// We'll make the validation more specific and add custom error messages
+const nonEmptyString = z.string().min(1, "This field cannot be empty").transform(val => val.trim());
 
 export const sessionNoteSchema = z.object({
   sessionDate: z.string().min(1, "Session date is required"),
@@ -15,7 +16,7 @@ export const sessionNoteSchema = z.object({
   sessionType: nonEmptyString,
   personsInAttendance: nonEmptyString,
   
-  // Mental Status
+  // Mental Status - all fields required
   appearance: nonEmptyString,
   attitude: nonEmptyString,
   behavior: nonEmptyString,
@@ -31,7 +32,7 @@ export const sessionNoteSchema = z.object({
   suicidalIdeation: nonEmptyString,
   homicidalIdeation: nonEmptyString,
   
-  // Objectives
+  // Objectives - all fields required
   primaryObjective: nonEmptyString,
   intervention1: nonEmptyString,
   intervention2: nonEmptyString,
@@ -42,7 +43,7 @@ export const sessionNoteSchema = z.object({
   intervention5: nonEmptyString,
   intervention6: nonEmptyString,
   
-  // Assessment
+  // Assessment - all fields required
   currentSymptoms: nonEmptyString,
   functioning: nonEmptyString,
   prognosis: nonEmptyString,
@@ -53,7 +54,7 @@ export const sessionNoteSchema = z.object({
   nextTreatmentPlanUpdate: nonEmptyString,
   signature: nonEmptyString,
   
-  // Optional
+  // Optional field
   privateNote: z.string().optional(),
 });
 
