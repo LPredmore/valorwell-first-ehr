@@ -1,13 +1,16 @@
 import React from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/packages/ui/toaster";
+import { Toaster as Sonner } from "@/packages/ui/sonner";
+import { TooltipProvider } from "@/packages/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { TimeZoneProvider } from "./context/TimeZoneContext";
+import { TimeZoneProvider } from "@/packages/core/contexts/TimeZoneContext";
 import { UserProvider } from "@/packages/auth/contexts/UserContext";
-import { ProtectedRoute } from "@/packages/auth/components";
-import { PatientDashboard, PatientProfile, PatientDocuments, ClientHistoryForm, InformedConsent } from '@/packages/client-portal/pages';
+import { ProtectedRoute } from "@/packages/auth/components/ProtectedRoute";
+
+// Import from packages
+import { ClinicianDashboard, ClinicianDetails, MyClients } from '@/packages/clinician-portal/pages';
+import { PatientDashboard, PatientProfile } from '@/packages/client-portal/pages';
 
 // Pages
 import Index from '@/pages/Index';
