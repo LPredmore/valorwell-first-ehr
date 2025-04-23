@@ -28,3 +28,6 @@ export interface ClinicianLicense {
   expiration_date?: Date;
   status?: string;
 }
+
+// Re-export the Clinician type for backward compatibility
+export type { Clinician } from './client/clinician';

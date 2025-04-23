@@ -1,6 +1,7 @@
 
 // Re-export client types from core package
 export * from '@/packages/core/types/client';
+export * from '@/packages/core/types/client/options';
 
 export interface TabProps {
   formData: any;

@@ -1,4 +1,3 @@
-
 /**
  * Represents detailed client information
  */
