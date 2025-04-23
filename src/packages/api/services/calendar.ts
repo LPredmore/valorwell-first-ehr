@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { CalendarEvent, RecurrenceRule } from '@/types/calendar';
 import { toast } from 'sonner';
@@ -225,5 +224,74 @@ export const getClinicianEvents = async (clinicianId: string, start?: string, en
   } catch (error) {
     console.error('Error in getClinicianEvents:', error);
     return { success: false, error };
+  }
+};
+
+export const getCalendarEvents = async (clinicianId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('clinician_id', clinicianId)
+      .order('start_time', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching calendar events:', error);
+    return [];
+  }
+};
+
+export const getClinicianAvailability = async (clinicianId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('clinician_id', clinicianId)
+      .eq('event_type', 'availability')
+      .eq('is_active', true);
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching clinician availability:', error);
+    return [];
+  }
+};
+
+export const getAvailabilitySettings = async (clinicianId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('availability_settings')
+      .select('*')
+      .eq('clinician_id', clinicianId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching availability settings:', error);
+    return null;
+  }
+};
+
+export const createCalendarException = async (eventId: string, date: string, isCancelled: boolean = true) => {
+  try {
+    const { data, error } = await supabase
+      .from('calendar_exceptions')
+      .insert({
+        recurrence_event_id: eventId,
+        exception_date: date,
+        is_cancelled: isCancelled
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error creating calendar exception:', error);
+    throw error;
   }
 };

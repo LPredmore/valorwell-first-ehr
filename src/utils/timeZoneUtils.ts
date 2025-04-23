@@ -1,4 +1,3 @@
-
 // Helper functions for handling time zones
 
 /**
@@ -97,3 +96,42 @@ export function formatTime12Hour(timeStr: string): string | null {
     return timeStr;
   }
 }
+
+import { format, parse, addDays } from 'date-fns';
+import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
+
+export const toUTCTimestamp = (date: Date | string, timeStr: string, timeZone: string): string => {
+  const dateStr = typeof date === 'string' ? date : format(date, 'yyyy-MM-dd');
+  const fullDateTimeStr = `${dateStr}T${timeStr}`;
+  const zonedTime = zonedTimeToUtc(new Date(fullDateTimeStr), timeZone);
+  return zonedTime.toISOString();
+};
+
+export const fromUTCTimestamp = (timestamp: string, timeZone: string): Date => {
+  return utcToZonedTime(new Date(timestamp), timeZone);
+};
+
+export const formatUTCTimeForUser = (utcTimestamp: string, timeZone: string, formatPattern = 'h:mm a'): string => {
+  const zonedTime = utcToZonedTime(new Date(utcTimestamp), timeZone);
+  return format(zonedTime, formatPattern);
+};
+
+export const formatWithTimeZone = (date: Date, timeZone: string, formatPattern = 'h:mm a'): string => {
+  const zonedTime = utcToZonedTime(date, timeZone);
+  return format(zonedTime, formatPattern);
+};
+
+export const toUTC = (date: Date, timeZone: string): Date => {
+  return zonedTimeToUtc(date, timeZone);
+};
+
+export const fromUTC = (date: Date, timeZone: string): Date => {
+  return utcToZonedTime(date, timeZone);
+};
+
+export const createISODateTimeString = (date: Date, timeStr: string): string => {
+  const dateStr = format(date, 'yyyy-MM-dd');
+  return `${dateStr}T${timeStr}`;
+};
+
+export const formatDateToTime12Hour = formatTime12Hour; // Alias for backward compatibility

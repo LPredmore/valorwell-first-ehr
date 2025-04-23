@@ -1,6 +1,6 @@
 
 // Client
-export * from './client';
+export { supabase } from './client';
 
 // Services
 export { 

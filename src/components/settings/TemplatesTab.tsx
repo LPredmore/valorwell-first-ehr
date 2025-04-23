@@ -19,14 +19,12 @@ import GAD7Template from '@/components/templates/GAD7Template';
 import PCL5Template from '@/components/templates/PCL5Template';
 import InformedConsentTemplate from '@/components/templates/InformedConsentTemplate';
 
-// Define template types for tracking assignable status
 interface Template {
   id: string;
   name: string;
   isAssignable: boolean;
 }
 
-// Template settings from database
 interface TemplateSettings {
   id: string;
   template_id: string;
@@ -44,27 +42,24 @@ const TemplatesTab = () => {
   const [showGAD7Template, setShowGAD7Template] = useState(false);
   const [showPCL5Template, setShowPCL5Template] = useState(false);
   const [showInformedConsentTemplate, setShowInformedConsentTemplate] = useState(false);
+  const [showPHQ9Preview, setShowPHQ9Preview] = useState(false);
 
-  // Initial state for chart templates
   const [chartTemplates, setChartTemplates] = useState<Template[]>([
     { id: 'treatment_plan', name: 'Treatment Plan', isAssignable: false },
     { id: 'session_note', name: 'Session Note', isAssignable: false },
   ]);
 
-  // Initial state for assessment form templates
   const [assessmentTemplates, setAssessmentTemplates] = useState<Template[]>([
     { id: 'phq9', name: 'PHQ-9', isAssignable: false },
     { id: 'gad7', name: 'GAD-7', isAssignable: false },
     { id: 'pcl5', name: 'PCL-5', isAssignable: false },
   ]);
 
-  // Initial state for online form templates
   const [onlineTemplates, setOnlineTemplates] = useState<Template[]>([
     { id: 'client_intake', name: 'Client Intake Form', isAssignable: false },
     { id: 'informed_consent', name: 'Informed Consent', isAssignable: false },
   ]);
 
-  // Fetch template settings from the database
   useEffect(() => {
     const fetchTemplateSettings = async () => {
       try {
@@ -78,7 +73,6 @@ const TemplatesTab = () => {
         }
 
         if (templateSettings) {
-          // Update chart templates
           setChartTemplates(prev => 
             prev.map(template => {
               const dbSetting = templateSettings.find(
@@ -90,7 +84,6 @@ const TemplatesTab = () => {
             })
           );
 
-          // Update assessment templates
           setAssessmentTemplates(prev => 
             prev.map(template => {
               const dbSetting = templateSettings.find(
@@ -100,7 +93,6 @@ const TemplatesTab = () => {
             })
           );
 
-          // Update online templates
           setOnlineTemplates(prev => 
             prev.map(template => {
               const dbSetting = templateSettings.find(
@@ -149,7 +141,6 @@ const TemplatesTab = () => {
     setShowInformedConsentTemplate(false);
   };
 
-  // Update template assignable status in database
   const updateTemplateAssignable = async (
     templateId: string, 
     isAssignable: boolean, 
@@ -188,7 +179,6 @@ const TemplatesTab = () => {
     }
   };
 
-  // Handle toggle change for chart templates
   const toggleChartTemplateAssignable = (id: string) => {
     setChartTemplates(prev => {
       const updatedTemplates = prev.map(template => 
@@ -197,7 +187,6 @@ const TemplatesTab = () => {
           : template
       );
       
-      // Find the updated template to get name and new isAssignable value
       const updatedTemplate = updatedTemplates.find(t => t.id === id);
       if (updatedTemplate) {
         updateTemplateAssignable(id, updatedTemplate.isAssignable, updatedTemplate.name, 'clinical');
@@ -207,7 +196,6 @@ const TemplatesTab = () => {
     });
   };
 
-  // Handle toggle change for assessment templates
   const toggleAssessmentTemplateAssignable = (id: string) => {
     setAssessmentTemplates(prev => {
       const updatedTemplates = prev.map(template => 
@@ -216,7 +204,6 @@ const TemplatesTab = () => {
           : template
       );
       
-      // Find the updated template to get name and new isAssignable value
       const updatedTemplate = updatedTemplates.find(t => t.id === id);
       if (updatedTemplate) {
         updateTemplateAssignable(id, updatedTemplate.isAssignable, updatedTemplate.name, 'assessment');
@@ -226,7 +213,6 @@ const TemplatesTab = () => {
     });
   };
 
-  // Handle toggle change for online templates
   const toggleOnlineTemplateAssignable = (id: string) => {
     setOnlineTemplates(prev => {
       const updatedTemplates = prev.map(template => 
@@ -235,7 +221,6 @@ const TemplatesTab = () => {
           : template
       );
       
-      // Find the updated template to get name and new isAssignable value
       const updatedTemplate = updatedTemplates.find(t => t.id === id);
       if (updatedTemplate) {
         updateTemplateAssignable(id, updatedTemplate.isAssignable, updatedTemplate.name, 'online');
@@ -259,6 +244,14 @@ const TemplatesTab = () => {
         <PCL5Template onClose={() => setShowPCL5Template(false)} clinicianName="" />
       ) : showInformedConsentTemplate ? (
         <InformedConsentTemplate onClose={() => setShowInformedConsentTemplate(false)} />
+      ) : showPHQ9Preview && (
+        <PHQ9Template
+          onClose={() => setShowPHQ9Preview(false)}
+          clinicianName={clinicianName}
+          clientData={null}
+          appointmentId={null}
+          onComplete={() => setShowPHQ9Preview(false)}
+        />
       ) : (
         <>
           <div className="mb-8">
