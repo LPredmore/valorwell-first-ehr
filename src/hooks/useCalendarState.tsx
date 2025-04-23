@@ -33,9 +33,6 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
           console.error('Error fetching clinicians:', error);
         } else {
           setClinicians(data || []);
-          if (data && data.length > 0 && !selectedClinicianId) {
-            setSelectedClinicianId(data[0].id);
-          }
         }
       } catch (error) {
         console.error('Error:', error);
@@ -47,29 +44,44 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     fetchClinicians();
   }, []);
 
+  // If clinicians change and no clinician is selected, set the first one
+  useEffect(() => {
+    if (clinicians.length > 0 && !selectedClinicianId) {
+      setSelectedClinicianId(clinicians[0].id);
+      console.log('[useCalendarState] Auto-selected clinician:', clinicians[0].id, clinicians[0].clinician_professional_name);
+    }
+  }, [clinicians, selectedClinicianId]);
+
   // Load clients for selected clinician
   useEffect(() => {
     const fetchClientsForClinician = async () => {
-      if (!selectedClinicianId) return;
-      
+      if (!selectedClinicianId) {
+        setClients([]);
+        setLoadingClients(false);
+        console.log('[useCalendarState] No clinician selected, skipping client load.');
+        return;
+      }
+
       setLoadingClients(true);
       setClients([]);
-      
+      console.log('[useCalendarState] Fetching clients for clinician:', selectedClinicianId);
+
       try {
         const { data, error } = await supabase
           .from('clients')
           .select('id, client_preferred_name, client_last_name')
           .eq('client_assigned_therapist', selectedClinicianId)
           .order('client_last_name');
-          
+
         if (error) {
           console.error('Error fetching clients:', error);
         } else {
-          const formattedClients = data.map(client => ({
+          const formattedClients = (data || []).map(client => ({
             id: client.id,
             displayName: `${client.client_preferred_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
           }));
           setClients(formattedClients);
+          console.log('[useCalendarState] Loaded clients:', formattedClients);
         }
       } catch (error) {
         console.error('Error:', error);
