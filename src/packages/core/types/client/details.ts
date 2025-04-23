@@ -1,3 +1,4 @@
+
 export interface ClientDetails {
   // Base fields
   id: string;

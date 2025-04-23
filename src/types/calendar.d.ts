@@ -1,4 +1,3 @@
-
 // Types for calendar functionality
 
 import { EventInput } from '@fullcalendar/core';
@@ -31,6 +30,7 @@ export interface CalendarException {
 
 // The type for events returned from the backend and passed to FullCalendar
 export interface CalendarEvent extends EventInput {
+  clinicianId?: string;
   extendedProps?: {
     appointment?: AppointmentType;
     eventType?: CalendarEventType;
@@ -57,4 +57,3 @@ export interface FullCalendarProps {
   height?: string | number;
   showAvailability?: boolean;
 }
-

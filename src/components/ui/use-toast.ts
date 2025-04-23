@@ -1,6 +1,11 @@
 
-// This is now the single source of truth for toast functionality
-import { useToast as useToastHook, toast as toastFunction } from "sonner";
+import { toast } from "sonner";
 
-export const useToast = useToastHook;
-export const toast = toastFunction;
+// Creating our own hook to maintain API compatibility
+const useToast = () => {
+  return {
+    toast,
+  };
+};
+
+export { useToast, toast };
