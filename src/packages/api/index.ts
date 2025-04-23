@@ -1,22 +1,20 @@
 
-/**
- * API Package
- * 
- * This package provides a centralized API layer for interacting with the Supabase backend.
- * It includes data access patterns, error handling, and caching strategies.
- */
-
 // Client
 export * from './client';
 
-// Supabase client instance (re-exported for convenience)
-export { supabase } from './client';
-
-// Common data fetching utilities
-export * from './utils/queryHelpers';
+// Services
+export * from './services/auth';
+export * from './services/clients';
+export * from './services/appointments';
+export * from './services/assessments';
 
 // Hooks
 export * from './hooks/useClientApi';
+export * from './hooks/useAssessments';
+
+// Utils
+export * from './utils/queryHelpers';
+export * from './utils/error';
 
 // Types
 export * from './types';
