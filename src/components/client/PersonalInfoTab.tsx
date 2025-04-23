@@ -1,29 +1,29 @@
+
 import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DatePicker } from "@/components/ui/date-picker";
-import { InsuranceSection } from "@/components/ui/InsuranceSection";
+import { DatePicker } from "@/components/ui/calendar";
 import { ClientDetails } from '@/packages/core/types/client/details';
-import { relationshipOptions, InsuranceType, insuranceTypeOptions } from '@/packages/core/types/client/options';
 import { DiagnosisSelector } from '@/components/DiagnosisSelector';
+import { contactMethodOptions, ContactMethodType } from '@/packages/core/types/common/constants';
 
 interface PersonalInfoTabProps {
   formData: ClientDetails;
-  handleInputChange: (field: string, value: string | string[]) => void;
-  isProfileComplete: boolean;
+  handleInputChange: (field: string, value: string | string[] | boolean) => void;
+  isProfileComplete?: boolean;
 }
 
 const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({ 
   formData, 
   handleInputChange,
-  isProfileComplete
+  isProfileComplete = false
 }) => {
-  const [minorStatus, setMinorStatus] = useState(formData.client_minor === 'true');
+  const [minorStatus, setMinorStatus] = useState<boolean>(formData.client_minor === true);
 
   useEffect(() => {
-    handleInputChange('client_minor', String(minorStatus));
+    handleInputChange('client_minor', minorStatus);
   }, [minorStatus, handleInputChange]);
 
   const handleRemoveDiagnosis = (diagnosisToRemove: string) => (event: React.MouseEvent) => {
@@ -145,12 +145,6 @@ const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
         </div>
       </div>
 
-      {/* Insurance Information */}
-      <InsuranceSection
-        formData={formData}
-        handleInputChange={handleInputChange}
-      />
-
       {/* Emergency Contact Information */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -185,12 +179,19 @@ const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
         </div>
         <div>
           <Label htmlFor="client_preferred_contact_method">Preferred Contact Method</Label>
-          <Input
-            type="text"
+          <select
             id="client_preferred_contact_method"
             value={formData.client_preferred_contact_method || ''}
             onChange={(e) => handleInputChange('client_preferred_contact_method', e.target.value)}
-          />
+            className="w-full border border-gray-300 rounded-md p-2"
+          >
+            <option value="">Select contact method</option>
+            {contactMethodOptions.map((method) => (
+              <option key={method} value={method}>
+                {method}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -247,9 +248,9 @@ const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
         <Label className="inline-flex items-center space-x-2">
           <Checkbox
             id="client_is_profile_complete"
-            checked={isProfileComplete}
+            checked={formData.client_is_profile_complete || false}
             onCheckedChange={(checked) => {
-              handleInputChange('client_is_profile_complete', String(checked));
+              handleInputChange('client_is_profile_complete', !!checked);
             }}
           />
           <span>Is profile complete?</span>

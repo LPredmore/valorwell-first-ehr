@@ -10,7 +10,7 @@ import SessionNoteTemplate from "@/components/templates/SessionNoteTemplate";
 import PHQ9Template from "@/components/templates/PHQ9Template";
 import PCL5Template from "@/components/templates/PCL5Template";
 import { useClinicianData } from "@/hooks/useClinicianData";
-import { ClientDetails } from "@/types/client";
+import { ClientDetails } from "@/packages/core/types/client/details";
 import { fetchClinicalDocuments, getDocumentDownloadURL, supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -70,12 +70,8 @@ const DocumentationTab: React.FC<DocumentationTabProps> = ({
   const [assignableTemplates, setAssignableTemplates] = useState<AssignableTemplate[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 
-  const {
-    clinicianData
-  } = useClinicianData();
-  const {
-    toast
-  } = useToast();
+  const { clinicianData } = useClinicianData();
+  const { toast } = useToast();
   const { userRole, userId } = useUser();
 
   useEffect(() => {
