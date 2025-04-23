@@ -2,17 +2,20 @@ import { z } from 'zod';
 
 export interface ClientDetails {
   id: string;
-  client_first_name?: string;
-  client_last_name?: string;
-  client_preferred_name?: string;
-  client_date_of_birth?: string;
-  client_diagnosis?: string[];
-  client_email?: string;
-  client_phone?: string;
-  client_gender?: string;
-  client_gender_identity?: string;
-  client_state?: string;
-  client_time_zone?: string;
+  client_first_name: string | null;
+  client_last_name: string | null;
+  client_preferred_name: string | null;
+  client_email: string | null;
+  client_phone: string | null;
+  client_date_of_birth: string | null;
+  client_age: number | null;
+  client_gender: string | null;
+  client_gender_identity: string | null;
+  client_state: string | null;
+  client_time_zone: string | null;
+  client_minor: string | null;
+  client_status: string | null;
+  client_assigned_therapist: string | null;
   client_planlength?: string;
   client_treatmentfrequency?: string;
   client_medications?: string;
@@ -48,7 +51,6 @@ export interface ClientDetails {
   client_sessionnarrative?: string;
   client_nexttreatmentplanupdate?: string;
   client_privatenote?: string;
-  client_assigned_therapist?: string;
 }
 
 export const clientSchema = z.object({
@@ -56,3 +58,15 @@ export const clientSchema = z.object({
   client_last_name: z.string().min(1, "Last name is required"),
   client_date_of_birth: z.string().min(1, "Date of birth is required")
 });
+
+export const relationshipOptions = ["Self", "Spouse", "Child", "Other"];
+export const insuranceTypeOptions = ["Commercial", "Medicaid", "Medicare", "TRICARE", "Other"];
+
+export interface Clinician {
+  id: string;
+  clinician_professional_name: string | null;
+  clinician_first_name: string | null;
+  clinician_last_name: string | null;
+  clinician_timezone: string | null;
+  clinician_nameinsurance: string | null;
+}
