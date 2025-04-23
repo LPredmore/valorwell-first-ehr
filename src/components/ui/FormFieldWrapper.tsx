@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -46,7 +47,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
     <FormField
       control={control}
       name={name}
-      render={({ field, fieldState: { error } }) => {
+      render={({ field }) => {
         const handleSelectChange = (selectedValue: string) => {
           if (isTimeZoneField) {
             const ianaValue = ensureIANATimeZone(selectedValue);
@@ -99,10 +100,10 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
         };
         
         return (
-          <FormItem className={error ? 'animate-shake' : ''}>
-            <FormLabel className={error ? 'text-destructive' : ''}>
+          <FormItem>
+            <FormLabel>
               {label}
-              {required && (<span className="ml-1 text-destructive">*</span>)}
+              {required && (<span className="ml-1 text-[#ea384c]">*</span>)}
             </FormLabel>
             <FormControl>
               {type === 'select' ? (
@@ -165,14 +166,11 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                 />
               )}
             </FormControl>
+            {/* Show helperText only if not about required-asterisk */}
             {helperText && type !== 'checkbox' && (
               <FormDescription>{helperText}</FormDescription>
             )}
-            {error?.message && (
-              <FormMessage className="text-destructive">
-                {error.message}
-              </FormMessage>
-            )}
+            <FormMessage />
           </FormItem>
         );
       }}
@@ -181,3 +179,4 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
 };
 
 export default FormFieldWrapper;
+

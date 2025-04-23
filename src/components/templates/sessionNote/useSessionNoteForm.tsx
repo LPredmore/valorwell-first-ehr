@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, RefObject } from 'react';
 import { z } from 'zod';  // Add Zod import
 import { supabase } from "@/integrations/supabase/client";
@@ -213,34 +214,14 @@ export const useSessionNoteForm = ({
 
   const validateForm = () => {
     try {
-      const validationResult = sessionNoteSchema.safeParse(formState);
-      if (!validationResult.success) {
-        const errors = validationResult.error.errors.map(err => 
-          `${err.path.join('.')}: ${err.message}`
-        );
-        setValidationErrors(errors);
-        
-        // Find the first field with an error and scroll to it
-        if (errors.length > 0) {
-          const firstErrorField = validationResult.error.errors[0].path[0];
-          const element = document.querySelector(`[name="${firstErrorField}"]`);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Add a visual highlight
-            element.classList.add('border-red-500', 'focus:ring-red-500');
-            setTimeout(() => {
-              element.classList.remove('border-red-500', 'focus:ring-red-500');
-            }, 3000);
-          }
-        }
-        
-        return false;
-      }
+      sessionNoteSchema.parse(formState);
       setValidationErrors([]);
       return true;
     } catch (error) {
-      if (error instanceof Error) {
-        setValidationErrors([error.message]);
+      if (error instanceof z.ZodError) {
+        const errors = error.errors.map(err => `${err.message}`);
+        setValidationErrors(errors);
+        return false;
       }
       return false;
     }
@@ -250,7 +231,7 @@ export const useSessionNoteForm = ({
     if (!validateForm()) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields marked with an asterisk (*)",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
