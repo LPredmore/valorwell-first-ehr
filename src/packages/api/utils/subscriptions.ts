@@ -31,7 +31,7 @@ class SubscriptionManager {
     
     // Add postgres_changes listener with correct type signature
     channel.on(
-      'postgres_changes', 
+      'postgres_changes',  // This is a string literal allowed by Supabase's typings
       { 
         event: event,
         schema: schema,

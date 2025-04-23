@@ -3,11 +3,14 @@ import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { getCurrentUser, getClientByUserId, updateClientProfile } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import MyProfile from '../components/MyProfile';
 import { useUser } from '@/packages/auth/contexts/UserContext';
 import { useClientData } from '@/packages/core/hooks/useClientData';
+
+// Import client API functions
+import { getCurrentUser, getClientByUserId, updateClientProfile } from '@/packages/api/client';
 
 const PatientProfile: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
@@ -57,7 +60,6 @@ const PatientProfile: React.FC = () => {
       const user = await getCurrentUser();
 
       if (!user) {
-        // Use Sonner toast directly
         toast.error("Please sign in to view your profile");
         navigate('/login');
         return;

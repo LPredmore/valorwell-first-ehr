@@ -38,6 +38,8 @@ export interface ClientDetails {
   client_sessionnarrative?: string;
   client_diagnosis?: string[];
   client_clinician_professional_name?: string;
+  clinician_first_name?: string;
+  clinician_last_name?: string;
   client_planlength?: string;
   client_treatmentfrequency?: string;
   client_medications?: string;

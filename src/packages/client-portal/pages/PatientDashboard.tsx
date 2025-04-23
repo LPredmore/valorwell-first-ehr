@@ -19,7 +19,7 @@ const PatientDashboard: React.FC = () => {
 
   // Create a clinician name from available data
   const clinicianName = clientData?.client_assigned_therapist 
-    ? `${clientData?.clinician_first_name || ''} ${clientData?.clinician_last_name || ''}`.trim() || 'Your Therapist' 
+    ? `${clientData?.client_first_name || ''} ${clientData?.client_last_name || ''}`.trim() || 'Your Therapist' 
     : 'Your Therapist';
 
   return (

@@ -1,69 +1,46 @@
 
-import { supabase } from '../client';
-import { handleApiError } from '../utils/error';
-import { CalendarEvent } from '@/types/calendar';
+import { supabase } from '@/integrations/supabase/client';
+import { CalendarEvent, RecurrenceRule } from '@/types/calendar';
+import { toast } from 'sonner';
+import { AppointmentType } from '@/types/appointment';
 
-// Calendar events CRUD operations
-export const getCalendarEvents = async (clinicianId: string, userTimeZone: string, startDate?: Date, endDate?: Date) => {
-  try {
-    let query = supabase
-      .from('calendar_events')
-      .select(`
-        *,
-        recurrence_rules(*),
-        calendar_exceptions(*)
-      `)
-      .eq('clinician_id', clinicianId)
-      .eq('is_active', true);
-
-    // Apply date range filter if provided
-    if (startDate && endDate) {
-      query = query.or(`start_time.gte.${startDate.toISOString()},end_time.lte.${endDate.toISOString()}`);
-    }
-
-    const { data, error } = await query;
-    
-    if (error) throw error;
-    
-    // Format events for calendar display
-    const formattedEvents = data?.map(event => formatCalendarEvent(event, userTimeZone)) || [];
-    return formattedEvents;
-  } catch (error) {
-    throw handleApiError(error);
-  }
-};
-
-export const createCalendarEvent = async (event: CalendarEvent, userTimeZone: string): Promise<CalendarEvent> => {
+// Create a new calendar event
+export const createCalendarEvent = async (event: CalendarEvent) => {
   try {
     const { data, error } = await supabase
       .from('calendar_events')
       .insert({
-        clinician_id: event.extendedProps?.clinicianId,
         title: event.title,
         start_time: event.start,
         end_time: event.end,
-        all_day: event.allDay || false,
-        event_type: event.extendedProps?.eventType || 'appointment',
+        all_day: event.allDay,
         description: event.extendedProps?.description,
-        is_active: true
+        event_type: event.extendedProps?.eventType,
+        is_active: event.extendedProps?.is_active ?? true,
+        clinician_id: event.clinicianId || event.extendedProps?.clinicianId
       })
-      .select()
+      .select('*')
       .single();
 
-    if (error) throw error;
-
-    // Handle recurrence rules if present
-    if (event.extendedProps?.recurrenceRule?.rrule) {
-      await createRecurrenceRule(data.id, event.extendedProps.recurrenceRule.rrule);
+    if (error) {
+      console.error('Error creating calendar event:', error);
+      return { success: false, error };
     }
 
-    return formatCalendarEvent(data, userTimeZone);
+    return { success: true, data };
   } catch (error) {
-    throw handleApiError(error);
+    console.error('Error in createCalendarEvent:', error);
+    return { success: false, error };
   }
 };
 
-export const updateCalendarEvent = async (event: CalendarEvent, userTimeZone: string): Promise<CalendarEvent> => {
+// Update an existing calendar event
+export const updateCalendarEvent = async (event: CalendarEvent) => {
+  if (!event.id) {
+    console.error('Event ID is required to update');
+    return { success: false, error: 'Event ID is required' };
+  }
+
   try {
     const { data, error } = await supabase
       .from('calendar_events')
@@ -71,80 +48,47 @@ export const updateCalendarEvent = async (event: CalendarEvent, userTimeZone: st
         title: event.title,
         start_time: event.start,
         end_time: event.end,
-        all_day: event.allDay || false,
-        description: event.extendedProps?.description
+        all_day: event.allDay,
+        description: event.extendedProps?.description,
+        is_active: event.extendedProps?.is_active ?? true
       })
       .eq('id', event.id)
-      .select()
+      .select('*')
       .single();
 
-    if (error) throw error;
-
-    // Update recurrence rule if present
-    if (event.extendedProps?.recurrenceRule?.rrule) {
-      await updateRecurrenceRule(data.id, event.extendedProps.recurrenceRule.rrule);
+    if (error) {
+      console.error('Error updating calendar event:', error);
+      return { success: false, error };
     }
 
-    return formatCalendarEvent(data, userTimeZone);
+    return { success: true, data };
   } catch (error) {
-    throw handleApiError(error);
+    console.error('Error in updateCalendarEvent:', error);
+    return { success: false, error };
   }
 };
 
-export const deleteCalendarEvent = async (eventId: string): Promise<boolean> => {
+// Delete a calendar event
+export const deleteCalendarEvent = async (eventId: string) => {
   try {
-    // First delete any recurrence rules
-    await supabase
-      .from('recurrence_rules')
-      .delete()
-      .eq('event_id', eventId);
-    
-    // Then delete the event
     const { error } = await supabase
       .from('calendar_events')
       .delete()
       .eq('id', eventId);
 
-    if (error) throw error;
-    return true;
+    if (error) {
+      console.error('Error deleting calendar event:', error);
+      return { success: false, error };
+    }
+
+    return { success: true };
   } catch (error) {
-    throw handleApiError(error);
+    console.error('Error in deleteCalendarEvent:', error);
+    return { success: false, error };
   }
 };
 
-// Availability management
-export const getClinicianAvailability = async (clinicianId: string) => {
-  try {
-    const { data, error } = await supabase
-      .from('calendar_events')
-      .select('*')
-      .eq('clinician_id', clinicianId)
-      .eq('event_type', 'availability')
-      .eq('is_active', true);
-
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    throw handleApiError(error);
-  }
-};
-
-export const getAvailabilitySettings = async (clinicianId: string) => {
-  try {
-    const { data, error } = await supabase
-      .from('availability_settings')
-      .select('*')
-      .eq('clinician_id', clinicianId)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    throw handleApiError(error);
-  }
-};
-
-// Recurrence rule management
+// Create a recurrence rule for an event
 export const createRecurrenceRule = async (eventId: string, rrule: string) => {
   try {
     const { data, error } = await supabase
@@ -153,81 +97,133 @@ export const createRecurrenceRule = async (eventId: string, rrule: string) => {
         event_id: eventId,
         rrule
       })
-      .select();
-
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    throw handleApiError(error);
-  }
-};
-
-export const updateRecurrenceRule = async (eventId: string, rrule: string) => {
-  try {
-    // Check if rule exists
-    const { data: existingRule, error: checkError } = await supabase
-      .from('recurrence_rules')
       .select('*')
-      .eq('event_id', eventId)
-      .maybeSingle();
+      .single();
 
-    if (checkError) throw checkError;
-
-    if (existingRule) {
-      // Update existing rule
-      const { data, error } = await supabase
-        .from('recurrence_rules')
-        .update({ rrule })
-        .eq('event_id', eventId)
-        .select();
-
-      if (error) throw error;
-      return data;
-    } else {
-      // Create new rule
-      return await createRecurrenceRule(eventId, rrule);
+    if (error) {
+      console.error('Error creating recurrence rule:', error);
+      return { success: false, error };
     }
+
+    return { success: true, data };
   } catch (error) {
-    throw handleApiError(error);
+    console.error('Error in createRecurrenceRule:', error);
+    return { success: false, error };
   }
 };
 
-// Exception management for recurring events
-export const createCalendarException = async (recurrenceEventId: string, exceptionDate: string, isCancelled: boolean = true) => {
+// Create availability slots for a clinician
+export const createAvailabilitySlots = async (clinicianId: string, slots: Array<{ start: Date, end: Date }>) => {
+  try {
+    const events = slots.map((slot) => ({
+      title: 'Available',
+      start_time: slot.start.toISOString(),
+      end_time: slot.end.toISOString(),
+      event_type: 'availability',
+      all_day: false,
+      clinician_id: clinicianId,
+      is_active: true
+    }));
+
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .insert(events)
+      .select('*');
+
+    if (error) {
+      console.error('Error creating availability slots:', error);
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error in createAvailabilitySlots:', error);
+    return { success: false, error };
+  }
+};
+
+// Create an appointment
+export const createAppointment = async (
+  clinicianId: string,
+  clientId: string,
+  date: string,
+  startTime: string,
+  endTime: string,
+  appointmentType: string
+) => {
   try {
     const { data, error } = await supabase
-      .from('calendar_exceptions')
+      .from('appointments')
       .insert({
-        recurrence_event_id: recurrenceEventId,
-        exception_date: exceptionDate,
-        is_cancelled: isCancelled
+        clinician_id: clinicianId,
+        client_id: clientId,
+        date,
+        start_time: startTime,
+        end_time: endTime,
+        type: appointmentType,
+        status: 'scheduled'
       })
-      .select();
+      .select('*')
+      .single();
 
-    if (error) throw error;
-    return data;
+    if (error) {
+      console.error('Error creating appointment:', error);
+      return { success: false, error };
+    }
+
+    // Create corresponding calendar event
+    const calendarEvent: CalendarEvent = {
+      title: `Appointment: ${appointmentType}`,
+      start: `${date}T${startTime}`,
+      end: `${date}T${endTime}`,
+      allDay: false,
+      extendedProps: {
+        eventType: 'appointment',
+        appointment: data as unknown as AppointmentType,
+        clinicianId
+      }
+    };
+
+    const calendarResult = await createCalendarEvent(calendarEvent);
+    if (!calendarResult.success) {
+      console.error('Error creating calendar event for appointment:', calendarResult.error);
+      // Don't fail the whole operation if calendar event creation fails
+      toast.error('Created appointment but failed to add it to the calendar.');
+    }
+
+    return { success: true, data };
   } catch (error) {
-    throw handleApiError(error);
+    console.error('Error in createAppointment:', error);
+    return { success: false, error };
   }
 };
 
-// Helper function to format calendar events
-const formatCalendarEvent = (event: any, userTimeZone: string): CalendarEvent => {
-  // Transform database event to CalendarEvent type
-  return {
-    id: event.id,
-    title: event.title,
-    start: event.start_time,
-    end: event.end_time,
-    allDay: event.all_day,
-    extendedProps: {
-      eventType: event.event_type,
-      description: event.description,
-      clinicianId: event.clinician_id,
-      recurrenceRule: event.recurrence_rules,
-      exceptions: event.calendar_exceptions,
-      googleEventId: event.google_event_id,
-      is_active: event.is_active
+// Get all calendar events for a clinician
+export const getClinicianEvents = async (clinicianId: string, start?: string, end?: string) => {
+  try {
+    let query = supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('clinician_id', clinicianId);
+    
+    if (start) {
+      query = query.gte('start_time', start);
     }
-  };
+    
+    if (end) {
+      query = query.lte('end_time', end);
+    }
+    
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching clinician events:', error);
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error in getClinicianEvents:', error);
+    return { success: false, error };
+  }
 };

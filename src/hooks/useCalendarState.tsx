@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
-import { toast } from 'sonner';  // Use direct import from sonner
+import { toast } from 'sonner';  
 
 interface Client {
   id: string;
@@ -90,7 +90,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
         }
       } catch (error) {
         console.error('[useCalendarState] Error in fetchClientsForClinician:', error);
-        // Using Sonner toast directly with message as first param
+        // Using Sonner toast directly
         toast.error("Unable to load client list. Please try again.");
       } finally {
         setLoadingClients(false);
