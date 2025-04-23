@@ -4,9 +4,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { UserProvider } from "./context/UserContext";
 import { TimeZoneProvider } from "./context/TimeZoneContext";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
+import { UserProvider } from "@/packages/auth/contexts/UserContext";
+import { ProtectedRoute } from "@/packages/auth/components";
 
 // Pages
 import Index from '@/pages/Index';
