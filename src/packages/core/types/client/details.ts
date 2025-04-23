@@ -15,9 +15,22 @@ export interface ClientDetails {
   client_gender?: string;
   client_gender_identity?: string;
   client_preferred_name?: string;
+  client_minor?: string;
   client_status?: string;
   client_state?: string;
+  client_city?: string;
+  client_zip?: string;
+  client_country?: string;
+  client_address?: string;
   client_time_zone?: string;
+  client_additional_notes?: string;
+  client_is_profile_complete?: string;
+  
+  // Emergency Contact
+  client_emergency_contact_name?: string;
+  client_emergency_contact_relationship?: string;
+  client_emergency_contact_phone?: string;
+  client_preferred_contact_method?: string;
   
   // Clinical Information
   client_diagnosis?: string[];

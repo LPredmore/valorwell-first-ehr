@@ -1,14 +1,15 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from "@/integrations/supabase/client";
-import { AuthState } from '../types';
+import { supabase } from "@/packages/api/client";
+import { AuthState, AppRole } from '../types';
 
 const UserContext = createContext<AuthState>({ 
   userRole: null, 
   isLoading: true,
   userId: null,
   user: null,
-  session: null
+  session: null,
+  isAuthenticated: false
 });
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
@@ -17,6 +18,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [userId, setUserId] = useState<string | null>(null);
   const [user, setUser] = useState<AuthState['user']>(null);
   const [session, setSession] = useState<AuthState['session']>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     console.log("[UserContext] Initializing user context");
@@ -30,6 +32,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         if (user) {
           console.log("[UserContext] Setting userId:", user.id);
           setUserId(user.id);
+          setIsAuthenticated(true);
           
           console.log("[UserContext] Fetching client data for user:", user.id);
           const { data: clientData, error: clientError } = await supabase
@@ -45,25 +48,29 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
           if (clientData) {
             console.log("[UserContext] Client data:", clientData);
-            setUserRole(clientData.role);
+            setUserRole(clientData.role as AppRole);
             setUser({
               id: user.id,
               email: user.email!,
-              role: clientData.role
+              role: clientData.role as AppRole
             });
           } else {
             console.log("[UserContext] No client data found");
             setUserRole(null);
+            setUser(null);
+            setIsAuthenticated(false);
           }
         } else {
           console.log("[UserContext] No authenticated user found");
           setUserRole(null);
           setUser(null);
+          setIsAuthenticated(false);
         }
       } catch (error) {
         console.error("[UserContext] Error in fetchUserData:", error);
         setUserRole(null);
         setUser(null);
+        setIsAuthenticated(false);
       } finally {
         console.log("[UserContext] Setting isLoading to false");
         setIsLoading(false);
@@ -75,6 +82,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("[UserContext] Auth state changed:", event, session ? "Session exists" : "No session");
       setSession(session);
+      setIsAuthenticated(!!session);
       fetchUserData();
     });
 
@@ -89,7 +97,14 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <UserContext.Provider value={{ userRole, isLoading, userId, user, session }}>
+    <UserContext.Provider value={{ 
+      userRole, 
+      isLoading, 
+      userId, 
+      user, 
+      session,
+      isAuthenticated 
+    }}>
       {children}
     </UserContext.Provider>
   );
