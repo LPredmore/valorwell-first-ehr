@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { ClientDetails } from '@/types/client';
 
@@ -9,12 +10,12 @@ interface SessionNoteState {
 }
 
 export function useSessionNoteState(clientData: ClientDetails | null) {
-  // Update property names to match the ClientDetails type
+  // Map client data to session note fields, handling possibly undefined properties
   const initialState: SessionNoteState = {
-    functioning: clientData?.functioning || '',
-    prognosis: clientData?.diagnosis || '', // Changed from client_prognosis to diagnosis
-    progress: clientData?.progress || '',
-    sessionNarrative: clientData?.sessionNarrative || ''
+    functioning: clientData?.client_functioning || '',
+    prognosis: clientData?.client_diagnosis ? clientData.client_diagnosis.join(', ') : '',
+    progress: clientData?.client_progress || '',
+    sessionNarrative: clientData?.client_sessionnarrative || ''
   };
 
   const [sessionNote, setSessionNote] = useState<SessionNoteState>(initialState);
