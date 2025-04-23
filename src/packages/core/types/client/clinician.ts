@@ -20,3 +20,6 @@ export interface Clinician {
   clinician_min_client_age?: number;
   clinician_treatment_approaches?: string[];
 }
+
+// Re-export for backward compatibility
+export type { Clinician as ClinicianType } from '@/packages/core/types/clinician';

@@ -1,68 +1,76 @@
-
 import React from 'react';
 import { UseFormReturn } from 'react-hook-form';
-import { FormField } from '@/components/ui/form';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { PHQ9Question } from '../../types';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { PHQ9Question } from '@/packages/core/types/forms/assessments';
 
 interface PHQ9AssessmentProps {
   form: UseFormReturn<any>;
   readOnly?: boolean;
 }
 
+const questions: PHQ9Question[] = [
+  {
+    id: 1,
+    text: "Little interest or pleasure in doing things",
+    field: "phq9_interest",
+    score: 0
+  },
+  {
+    id: 2,
+    text: "Feeling down, depressed, or hopeless",
+    field: "phq9_depressed",
+    score: 0
+  },
+  {
+    id: 3,
+    text: "Trouble falling or staying asleep, or sleeping too much",
+    field: "phq9_sleep",
+    score: 0
+  },
+  {
+    id: 4,
+    text: "Feeling tired or having little energy",
+    field: "phq9_tired",
+    score: 0
+  },
+  {
+    id: 5,
+    text: "Poor appetite or overeating",
+    field: "phq9_appetite",
+    score: 0
+  },
+  {
+    id: 6,
+    text: "Feeling bad about yourself or that you are a failure",
+    field: "phq9_feelings",
+    score: 0
+  },
+  {
+    id: 7,
+    text: "Trouble concentrating on things",
+    field: "phq9_concentration",
+    score: 0
+  },
+  {
+    id: 8,
+    text: "Moving or speaking slowly or being fidgety/restless",
+    field: "phq9_moving",
+    score: 0
+  },
+  {
+    id: 9,
+    text: "Thoughts that you would be better off dead or of hurting yourself",
+    field: "phq9_thoughts",
+    score: 0
+  }
+];
+
 const PHQ9AssessmentComponent: React.FC<PHQ9AssessmentProps> = ({
   form,
   readOnly = false
 }) => {
-  const questions: PHQ9Question[] = [
-    {
-      id: 1,
-      text: "Little interest or pleasure in doing things",
-      field: "phq9_interest"
-    },
-    {
-      id: 2,
-      text: "Feeling down, depressed, or hopeless",
-      field: "phq9_feeling_down"
-    },
-    {
-      id: 3,
-      text: "Trouble falling or staying asleep, or sleeping too much",
-      field: "phq9_sleep"
-    },
-    {
-      id: 4,
-      text: "Feeling tired or having little energy",
-      field: "phq9_energy"
-    },
-    {
-      id: 5,
-      text: "Poor appetite or overeating",
-      field: "phq9_appetite"
-    },
-    {
-      id: 6,
-      text: "Feeling bad about yourself - or that you are a failure or have let yourself or your family down",
-      field: "phq9_feeling_bad"
-    },
-    {
-      id: 7,
-      text: "Trouble concentrating on things, such as reading the newspaper or watching television",
-      field: "phq9_concentration"
-    },
-    {
-      id: 8,
-      text: "Moving or speaking so slowly that other people could have noticed. Or the opposite - being so fidgety or restless that you have been moving around a lot more than usual",
-      field: "phq9_movement"
-    },
-    {
-      id: 9,
-      text: "Thoughts that you would be better off dead, or of hurting yourself in some way",
-      field: "phq9_thoughts"
-    }
-  ];
-
   return (
     <div className="space-y-6">
       {questions.map((question) => (
