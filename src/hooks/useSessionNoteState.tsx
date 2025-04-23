@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { ClientDetails } from '@/types/client';
-import { SessionNoteFormData } from '@/validations/sessionNoteSchemas';
+import { ClientDetails } from '@/packages/core/types/client';
+import { SessionNoteFormData } from '@/packages/core/types/sessionNote';
 
 interface UseSessionNoteStateProps {
   clientData: ClientDetails | null;

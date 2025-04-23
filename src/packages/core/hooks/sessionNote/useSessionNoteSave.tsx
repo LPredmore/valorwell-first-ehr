@@ -4,10 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { generateAndSavePDF } from '@/utils/reactPdfUtils';
 import { RefObject } from 'react';
+import { ClientDetails } from '../../types/client';
+import { SessionNoteFormData } from '../../types/sessionNote';
 
 interface UseSessionNoteSaveProps {
-  clientData: any;
-  formState: any;
+  clientData: ClientDetails | null;
+  formState: SessionNoteFormData;
   isFormValid: boolean;
   appointment?: any;
   contentRef?: RefObject<HTMLDivElement>;
@@ -152,6 +154,7 @@ export const useSessionNoteSave = ({
         private_note: formState.privateNote,
       };
 
+      // Check for existing note
       const { data: existingNote } = await supabase
         .from('session_notes')
         .select('id')

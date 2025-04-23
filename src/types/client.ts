@@ -7,6 +7,9 @@ export interface TabProps {
   isEditing: boolean;
   form: any;
   clinicians?: any[];
+  clientData?: any;
+  handleAddDiagnosis?: (diagnosis: string) => void;
+  handleRemoveDiagnosis?: (index: number) => void;
 }
 
 export interface SessionNoteTemplateProps {

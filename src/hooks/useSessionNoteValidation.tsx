@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { sessionNoteSchema } from '@/validations/sessionNoteSchemas';
+import { sessionNoteSchema } from '@/packages/core/types/sessionNote';
 
 export const useSessionNoteValidation = (formState: any) => {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
