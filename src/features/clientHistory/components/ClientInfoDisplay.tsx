@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { ClientData } from '@/hooks/useClientData';
+import { ClientDetails } from '@/packages/core/types/client';
 
 interface ClientInfoDisplayProps {
-  clientData?: ClientData | null;
+  clientData?: ClientDetails | null;
 }
 
 export const ClientInfoDisplay: React.FC<ClientInfoDisplayProps> = ({ clientData }) => {

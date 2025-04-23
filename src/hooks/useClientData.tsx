@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ClientDetails } from '@/packages/core/types/client';
 
-export const useClientData = (clientId: string | undefined) => {
+export const useClientData = (clientId?: string) => {
   const [clientData, setClientData] = useState<ClientDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
