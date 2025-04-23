@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -233,21 +233,27 @@ const TemplatesTab = () => {
   return (
     <div className="p-6 animate-fade-in">
       {showTreatmentPlanTemplate ? (
-        <TreatmentPlanTemplate onClose={() => setShowTreatmentPlanTemplate(false)} />
+        <TreatmentPlanTemplate onClose={handleCloseTreatmentPlan} />
       ) : showSessionNoteTemplate ? (
         <SessionNoteTemplate onClose={() => setShowSessionNoteTemplate(false)} />
       ) : showPHQ9Template ? (
-        <PHQ9Template onClose={() => setShowPHQ9Template(false)} clinicianName="" />
+        <PHQ9Template 
+          onClose={() => setShowPHQ9Template(false)} 
+          clinicianName=""
+          clientData={null}
+          appointmentId={null}
+          onComplete={() => setShowPHQ9Template(false)}
+        />
       ) : showGAD7Template ? (
         <GAD7Template onClose={() => setShowGAD7Template(false)} clinicianName="" />
       ) : showPCL5Template ? (
         <PCL5Template onClose={() => setShowPCL5Template(false)} clinicianName="" />
       ) : showInformedConsentTemplate ? (
         <InformedConsentTemplate onClose={() => setShowInformedConsentTemplate(false)} />
-      ) : showPHQ9Preview && (
+      ) : showPHQ9Preview ? (
         <PHQ9Template
           onClose={() => setShowPHQ9Preview(false)}
-          clinicianName={clinicianName}
+          clinicianName=""
           clientData={null}
           appointmentId={null}
           onComplete={() => setShowPHQ9Preview(false)}
