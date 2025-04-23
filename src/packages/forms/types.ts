@@ -1,35 +1,36 @@
+import { z } from 'zod';
 
-// Assessment Types
-export interface PHQ9Question {
-  id: number;
-  text: string;
-  field: string;
+// Re-export all form-related types
+export * from '@/packages/core/types/sessionNote';
+
+export interface FormData {
+  // Base form data interface
+  id?: string;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: any;
 }
 
-export interface PHQ9Assessment {
-  phq9_interest: string;
-  phq9_feeling_down: string;
-  phq9_sleep: string;
-  phq9_energy: string;
-  phq9_appetite: string;
-  phq9_feeling_bad: string;
-  phq9_concentration: string;
-  phq9_movement: string;
-  phq9_thoughts: string;
+export interface FormValidation {
+  schema?: z.ZodSchema;
+  validate?: (data: any) => boolean;
+  errors?: string[];
 }
 
-export interface GAD7Question {
-  id: number;
-  text: string;
-  field: string;
+export interface TabProps {
+  formData: any;
+  handleInputChange: (field: string, value: string | string[] | boolean) => void;
+  isEditing: boolean;
+  form?: any;
+  clinicians?: any[];
+  clientData?: any;
+  handleAddDiagnosis?: (diagnosis: string) => void;
+  handleRemoveDiagnosis?: (index: number) => void;
 }
 
-export interface GAD7Assessment {
-  gad7_nervous: string;
-  gad7_control: string;
-  gad7_worrying: string;
-  gad7_relaxing: string;
-  gad7_restless: string;
-  gad7_irritable: string;
-  gad7_afraid: string;
+export interface SessionNoteTemplateProps {
+  onClose: () => void;
+  appointment?: any;
+  clinicianName?: string;
+  clientData?: any;
 }

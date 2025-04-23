@@ -1,6 +1,5 @@
 
-// Re-export all form components and types
+export * from './components/assessments';
 export * from './types';
 export * from './validation';
-export { PHQ9Assessment } from './components/assessments/PHQ9Assessment';
-export { GAD7Assessment } from './components/assessments/GAD7Assessment';
+export * from './hooks/useAssessmentSubmission';

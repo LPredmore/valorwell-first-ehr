@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Clinician } from "@/types/client";
+import { Clinician } from "@/packages/core/types/client";
 import { getUserTimeZoneById } from "./useUserTimeZone";
 
 export const useClinicianData = () => {
