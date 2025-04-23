@@ -31,7 +31,6 @@ export interface CalendarException {
 
 // The type for events returned from the backend and passed to FullCalendar
 export interface CalendarEvent extends EventInput {
-  clinicianId?: string;
   extendedProps?: {
     appointment?: AppointmentType;
     eventType?: CalendarEventType;
@@ -42,7 +41,6 @@ export interface CalendarEvent extends EventInput {
     description?: string;
     // Add is_active for availability (not needed for appointments, but type-safe)
     is_active?: boolean;
-    clinicianId?: string;
   };
 }
 
@@ -59,3 +57,4 @@ export interface FullCalendarProps {
   height?: string | number;
   showAvailability?: boolean;
 }
+

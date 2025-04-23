@@ -1,15 +1,19 @@
+
 import React, { useRef } from 'react';
 import { useUser } from '@/context/UserContext';
 import { useClientData } from '@/hooks/useClientData';
 import { useClientHistorySubmission } from '@/features/clientHistory/hooks/useClientHistorySubmission';
-import { ClientHistoryFormData } from '@/features/clientHistory/types';
 import ClientHistoryForm from '@/features/clientHistory/components/ClientHistoryForm';
+import { ClientHistoryFormData } from '@/features/clientHistory/types';
 
 const ClientHistoryFormPage: React.FC = () => {
   const { userId } = useUser();
   const formRef = useRef<HTMLDivElement>(null);
   
-  const { clientData, isLoading, error } = useClientData(userId);
+  // Fetch client data using our custom hook
+  const { clientData, loading } = useClientData(userId);
+  
+  // Use our submission hook for form handling
   const { isSubmitting, submitClientHistory } = useClientHistorySubmission({ userId });
   
   const handleSubmit = async (formData: ClientHistoryFormData) => {
@@ -21,7 +25,7 @@ const ClientHistoryFormPage: React.FC = () => {
     await submitClientHistory(formData);
   };
   
-  if (isLoading) {
+  if (loading) {
     return <div className="flex justify-center items-center h-screen">Loading client information...</div>;
   }
   

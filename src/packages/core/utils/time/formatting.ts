@@ -1,3 +1,4 @@
+
 import { DateTime } from 'luxon';
 import { ensureIANATimeZone } from './timeZone';
 
@@ -24,26 +25,5 @@ export const getTimezoneDisplayName = (timezone: string): string => {
   } catch (error) {
     console.error("Error formatting timezone name:", error);
     return ianaZone;
-  }
-};
-
-export const formatTimeWithTimeZone = (
-  time: string,
-  timeZone: string,
-  includeTimeZone: boolean = true
-): string => {
-  try {
-    const [hours, minutes] = time.split(':').map(Number);
-    const hour = hours % 12 || 12;
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const timeStr = `${hour}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-    
-    if (!includeTimeZone) return timeStr;
-    
-    const timeZoneName = timeZone.split('/').pop()?.replace('_', ' ') || timeZone;
-    return `${timeStr} (${timeZoneName})`;
-  } catch (error) {
-    console.error('Error formatting time with timezone:', error);
-    return time;
   }
 };

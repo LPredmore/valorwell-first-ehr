@@ -1,10 +1,9 @@
 
 import { useState, useEffect } from 'react';
 import { SessionNoteFormData } from '../../types/sessionNote';
-import { ClientDetails } from '../../types/client';
 
 interface UseSessionNoteStateProps {
-  clientData: ClientDetails | null;
+  clientData: any;
   clinicianName: string;
   appointment?: any;
 }

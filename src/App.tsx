@@ -1,49 +1,47 @@
-
 import React from "react";
-import { Toaster } from "@/packages/ui/toaster";
-import { Toaster as Sonner } from "@/packages/ui/sonner";
-import { TooltipProvider } from "@/packages/ui/tooltip";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { TimeZoneProvider } from "@/packages/core/contexts/TimeZoneContext";
-import { UserProvider } from "@/packages/auth/contexts/UserContext";
-import ProtectedRoute from "@/packages/auth/components/ProtectedRoute";
+import { UserProvider } from "./context/UserContext";
+import { TimeZoneProvider } from "./context/TimeZoneContext";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
-// Import pages from packages
-import { 
-  ClinicianDashboard as ClinicianPortalDashboard, 
-  ClinicianDetails as ClinicianPortalDetails, 
-  MyClients as ClinicianPortalClients 
-} from '@/packages/clinician-portal/pages';
-
-import { 
-  PatientDashboard, 
-  PatientProfile 
-} from '@/packages/client-portal/pages';
-
-// Local pages
+// Pages
 import Index from '@/pages/Index';
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
+
+// Core pages
 import Calendar from '@/pages/Calendar';
+import Clients from '@/pages/Clients';
 import ClientDetails from '@/pages/ClientDetails';
 import Activity from '@/pages/Activity';
 import Messages from '@/pages/Messages';
 import Settings from '@/pages/Settings';
+import ClinicianDetails from '@/pages/ClinicianDetails';
+
+// Client pages
+import TherapistSelection from '@/pages/TherapistSelection';
+import PatientDashboard from '@/pages/PatientDashboard';
+import PatientProfile from '@/pages/PatientProfile';
+import ClientHistoryForm from '@/pages/ClientHistoryForm';
+import InformedConsent from '@/pages/InformedConsent';
+import PatientDocuments from '@/pages/PatientDocuments';
+import Reminders from '@/pages/Reminders';
+import ProfileSetup from '@/pages/ProfileSetup';
+
+// Missing component imports
+import ClinicianDashboard from '@/pages/ClinicianDashboard';
+import MyClients from '@/pages/MyClients';
 import Analytics from '@/pages/Analytics';
 import NotFound from '@/pages/NotFound';
 
 // Create a client
 const queryClient = new QueryClient();
-
-import {
-  Settings as AdminSettings,
-  Activity as AdminActivity,
-  Analytics as AdminAnalytics,
-  Messages as AdminMessages
-} from '@/packages/admin-portal/pages';
 
 const App: React.FC = () => {
   return (
@@ -63,22 +61,64 @@ const App: React.FC = () => {
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   
-                  {/* Clinician routes */}
+                  {/* Client accessible routes */}
+                  <Route path="/profile-setup" element={<ProfileSetup />} />
+                  
+                  {/* Added: Make Informed Consent accessible to clients */}
+                  <Route path="/informed-consent" element={
+                    <ProtectedRoute allowedRoles={['client']} blockNewClients={false}>
+                      <InformedConsent />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Add this route to your existing routes (location may vary based on your router setup) */}
+                  <Route path="/client-history-form" element={<ClientHistoryForm />} />
+                  
+                  {/* Routes that block "New" clients */}
+                  <Route path="/therapist-selection" element={
+                    <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
+                      <TherapistSelection />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Restored: Patient Dashboard route */}
+                  <Route path="/patient-dashboard" element={
+                    <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
+                      <PatientDashboard />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Restored: Patient Documents route */}
+                  <Route path="/patient-documents" element={
+                    <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
+                      <PatientDocuments />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Modified: Allow clinicians to view client details */}
+                  <Route path="/clients/:clientId" element={
+                    <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician', 'client']} blockNewClients={true}>
+                      <ClientDetails />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Modified route: Clinicians can view their own profile */}
+                  <Route path="/clinicians/:clinicianId" element={
+                    <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
+                      <ClinicianDetails />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Protected routes - clinician, admin, moderator */}
                   <Route path="/clinician-dashboard" element={
                     <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
-                      <ClinicianPortalDashboard />
+                      <ClinicianDashboard />
                     </ProtectedRoute>
                   } />
                   
                   <Route path="/my-clients" element={
                     <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
-                      <ClinicianPortalClients />
-                    </ProtectedRoute>
-                  } />
-                  
-                  <Route path="/clinicians/:clinicianId" element={
-                    <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
-                      <ClinicianPortalDetails />
+                      <MyClients />
                     </ProtectedRoute>
                   } />
                   
@@ -87,42 +127,36 @@ const App: React.FC = () => {
                       <Calendar />
                     </ProtectedRoute>
                   } />
-
-                  {/* Client routes */}
-                  <Route path="/patient-dashboard" element={
-                    <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
-                      <PatientDashboard />
-                    </ProtectedRoute>
-                  } />
-
-                  <Route path="/patient-profile" element={
-                    <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
-                      <PatientProfile />
-                    </ProtectedRoute>
-                  } />
                   
-                  {/* Admin routes */}
-                  <Route path="/settings" element={
+                  <Route path="/clients" element={
                     <ProtectedRoute allowedRoles={['admin', 'moderator']}>
-                      <AdminSettings />
-                    </ProtectedRoute>
-                  } />
-                  
-                  <Route path="/activity" element={
-                    <ProtectedRoute allowedRoles={['admin', 'moderator']}>
-                      <AdminActivity />
+                      <Clients />
                     </ProtectedRoute>
                   } />
                   
                   <Route path="/analytics" element={
                     <ProtectedRoute allowedRoles={['admin', 'moderator']}>
-                      <AdminAnalytics />
+                      <Analytics />
                     </ProtectedRoute>
                   } />
-                  
+                  <Route path="/activity" element={
+                    <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                      <Activity />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/settings" element={
+                    <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                      <Settings />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/reminders" element={
+                    <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                      <Reminders />
+                    </ProtectedRoute>
+                  } />
                   <Route path="/messages" element={
                     <ProtectedRoute allowedRoles={['admin', 'moderator']}>
-                      <AdminMessages />
+                      <Messages />
                     </ProtectedRoute>
                   } />
                   

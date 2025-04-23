@@ -1,6 +1,5 @@
 
-export * from './schema';
 export * from './mentalStatus';
-export * from './mentalStatusEnums';
 export * from './assessment';
-export { type SessionNoteFormData } from './formData';
+
+// Note: Removed schema import since it's not needed

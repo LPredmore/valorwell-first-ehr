@@ -1,6 +1,6 @@
 
 import { RefObject } from 'react';
-import { ClientDetails } from '@/packages/core/types/client';
+import { ClientDetails } from '@/types/client';
 import { 
   useSessionNoteState, 
   useSessionNoteValidation,
