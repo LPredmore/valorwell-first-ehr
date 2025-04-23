@@ -39,7 +39,6 @@ export interface CalendarEvent extends EventInput {
     isException?: boolean;
     googleEventId?: string;
     description?: string;
-    clinicianId?: string;
     // Add is_active for availability (not needed for appointments, but type-safe)
     is_active?: boolean;
   };
@@ -58,3 +57,4 @@ export interface FullCalendarProps {
   height?: string | number;
   showAvailability?: boolean;
 }
+

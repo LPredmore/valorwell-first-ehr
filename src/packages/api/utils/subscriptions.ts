@@ -26,29 +26,27 @@ class SubscriptionManager {
   ): () => void {
     const { table, schema = 'public', event = '*', filter } = options;
 
-    const channel = supabase.channel(channelName);
-    
-    channel.on(
-      'postgres_changes' as any, // Type cast to bypass type checking
-      {
-        event: event,
-        schema: schema,
-        table: table,
-        filter: filter
-      },
-      (payload: RealtimePostgresChangesPayload<any>) => {
-        callbacks.onData(payload);
-      }
-    )
-    .subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        callbacks.onReconnect && callbacks.onReconnect();
-      } else if (status === 'CHANNEL_ERROR') {
-        callbacks.onChannelError && callbacks.onChannelError(new Error('Channel error'));
-      } else if (status === 'CLOSED') {
-        this.channels.delete(channelName);
-      }
-    });
+    const channel = supabase.channel(channelName)
+      .on('postgres_changes', 
+        {
+          event: event,
+          schema: schema,
+          table: table,
+          filter: filter
+        },
+        (payload: RealtimePostgresChangesPayload<any>) => {
+          callbacks.onError && callbacks.onError(payload);
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          callbacks.onReconnect && callbacks.onReconnect();
+        } else if (status === 'CHANNEL_ERROR') {
+          callbacks.onChannelError && callbacks.onChannelError(new Error('Channel error'));
+        } else if (status === 'CLOSED') {
+          this.channels.delete(channelName);
+        }
+      });
 
     this.channels.set(channelName, channel);
 

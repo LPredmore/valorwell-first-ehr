@@ -1,3 +1,3 @@
 
 export * from "@/components/ui/toast";
-export * from "@/hooks/use-toast";
+export * from "./use-toast";

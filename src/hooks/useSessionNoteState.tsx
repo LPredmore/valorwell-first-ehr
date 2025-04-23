@@ -11,10 +11,10 @@ interface SessionNoteState {
 
 export function useSessionNoteState(clientData: ClientDetails | null) {
   const initialState: SessionNoteState = {
-    functioning: clientData?.client_functioning ?? '',
+    functioning: clientData?.client_functioning || '',
     prognosis: clientData?.client_diagnosis ? clientData.client_diagnosis.join(', ') : '',
-    progress: clientData?.client_progress ?? '',
-    sessionNarrative: clientData?.client_sessionnarrative ?? ''
+    progress: clientData?.client_progress || '',
+    sessionNarrative: clientData?.client_sessionnarrative || ''
   };
 
   const [sessionNote, setSessionNote] = useState<SessionNoteState>(initialState);

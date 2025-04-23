@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import PracticeTab from '../components/settings/PracticeTab';
@@ -9,16 +8,7 @@ import TemplatesTab from '../components/settings/TemplatesTab';
 import SecurityTab from '../components/settings/SecurityTab';
 import LicensesTab from '../components/settings/LicensesTab';
 
-type SettingsTabType = 
-  | 'practice' 
-  | 'clinicians' 
-  | 'users' 
-  | 'billing' 
-  | 'templates' 
-  | 'security' 
-  | 'clinician_licenses';
-
-const SettingsTabs: Record<string, SettingsTabType> = {
+const SettingsTabs = {
   PRACTICE: 'practice',
   CLINICIANS: 'clinicians',
   USERS: 'users',
@@ -26,10 +16,10 @@ const SettingsTabs: Record<string, SettingsTabType> = {
   TEMPLATES: 'templates',
   SECURITY: 'security',
   LICENSES: 'clinician_licenses'
-};
+} as const;
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState<SettingsTabType>(SettingsTabs.PRACTICE);
+  const [activeTab, setActiveTab] = useState(SettingsTabs.PRACTICE);
   
   return (
     <Layout>
