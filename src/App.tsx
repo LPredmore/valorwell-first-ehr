@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Toaster } from "@/packages/ui/toaster";
 import { Toaster as Sonner } from "@/packages/ui/sonner";
@@ -39,9 +40,9 @@ const queryClient = new QueryClient();
 
 import {
   Settings as AdminSettings,
-  Activity,
-  Analytics,
-  Messages
+  Activity as AdminActivity,
+  Analytics as AdminAnalytics,
+  Messages as AdminMessages
 } from '@/packages/admin-portal/pages';
 
 const App: React.FC = () => {
@@ -109,19 +110,19 @@ const App: React.FC = () => {
                   
                   <Route path="/activity" element={
                     <ProtectedRoute allowedRoles={['admin', 'moderator']}>
-                      <Activity />
+                      <AdminActivity />
                     </ProtectedRoute>
                   } />
                   
                   <Route path="/analytics" element={
                     <ProtectedRoute allowedRoles={['admin', 'moderator']}>
-                      <Analytics />
+                      <AdminAnalytics />
                     </ProtectedRoute>
                   } />
                   
                   <Route path="/messages" element={
                     <ProtectedRoute allowedRoles={['admin', 'moderator']}>
-                      <Messages />
+                      <AdminMessages />
                     </ProtectedRoute>
                   } />
                   
