@@ -1,4 +1,3 @@
-
 export interface ClientDetails {
   // Base fields
   id: string;
@@ -15,7 +14,7 @@ export interface ClientDetails {
   client_gender?: string;
   client_gender_identity?: string;
   client_preferred_name?: string;
-  client_minor?: string;
+  client_minor?: boolean;
   client_status?: string;
   client_state?: string;
   client_city?: string;
@@ -24,7 +23,7 @@ export interface ClientDetails {
   client_address?: string;
   client_time_zone?: string;
   client_additional_notes?: string;
-  client_is_profile_complete?: string;
+  client_is_profile_complete?: boolean;
   
   // Emergency Contact
   client_emergency_contact_name?: string;

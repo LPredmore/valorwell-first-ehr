@@ -1,4 +1,3 @@
-
 // Core time utilities
 export * from './timeZone';
 export * from './validation';
@@ -6,6 +5,9 @@ export * from './formatting';
 export * from './calendar';
 export * from './conversion';
 export * from './luxon';
+
+// Ensure formatTimeZoneDisplay is exported
+export { formatTimeZoneDisplay } from './formatting';
 
 // Ensure all exported names are unique to avoid conflicts
 export {

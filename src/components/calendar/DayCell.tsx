@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { format, isSameDay, isSameMonth, parseISO } from 'date-fns';
+import { format, isSameDay, isSameMonth } from 'date-fns';
 import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
 
 interface Appointment {
@@ -58,6 +57,7 @@ const DayCell: React.FC<DayCellProps> = ({
     }
   };
 
+  const formattedDate = format(day, 'yyyy-MM-dd');
   const isToday = isSameDay(day, new Date());
   const isCurrentMonth = isSameMonth(day, monthStart);
   
@@ -116,7 +116,6 @@ const DayCell: React.FC<DayCellProps> = ({
     );
   }
 
-  // Monthly view cell
   return (
     <div
       className={`

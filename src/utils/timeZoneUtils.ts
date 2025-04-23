@@ -97,6 +97,16 @@ export function formatTime12Hour(timeStr: string): string | null {
   }
 }
 
+export const timezoneList = [
+  { value: 'America/New_York', label: 'Eastern Time (ET)' },
+  { value: 'America/Chicago', label: 'Central Time (CT)' },
+  { value: 'America/Denver', label: 'Mountain Time (MT)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+  { value: 'America/Anchorage', label: 'Alaska Time (AKT)' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii-Aleutian Time (HST)' },
+  { value: 'America/Puerto_Rico', label: 'Atlantic Time (AST)' }
+];
+
 import { format, parse, addDays } from 'date-fns';
 import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
 
