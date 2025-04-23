@@ -14,3 +14,9 @@ export * from './generators';
 
 // Document templates
 export * from './templates';
+
+// Document utilities
+export * from './utils/documentUtils';
+
+// Document components
+export * from './components';

@@ -5,7 +5,7 @@
  * This module contains functions for generating various documents.
  */
 
-import { generateAndSavePDF } from '@/utils/reactPdfUtils';
+import { generateAndSavePDF } from '@/utils/pdfUtils';
 import { DocumentInfo } from '../types';
 
 /**
@@ -27,4 +27,4 @@ export const generateDocument = async (
 };
 
 // Re-export the utility functions
-export { generateAndSavePDF } from '@/utils/reactPdfUtils';
+export { generateAndSavePDF } from '@/utils/pdfUtils';

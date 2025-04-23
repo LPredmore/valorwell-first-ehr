@@ -34,3 +34,37 @@ export interface DocumentInfo {
   documentTitle: string;
   createdBy?: string;
 }
+
+// Types for specific document data
+export interface InformedConsentData {
+  clientName: string;
+  signature: string;
+  signatureDate: string;
+}
+
+export interface TreatmentPlanData {
+  clientName: string;
+  clientDob?: string;
+  clinicianName?: string;
+  startDate: Date;
+  planLength: string;
+  treatmentFrequency: string;
+  diagnosisCodes: string[];
+  problemNarrative: string;
+  treatmentGoalNarrative: string;
+  primaryObjective: string;
+  secondaryObjective?: string;
+  tertiaryObjective?: string;
+  interventions: string[];
+  nextUpdate: string;
+  privateNote?: string;
+}
+
+// Types for document status
+export enum DocumentStatus {
+  Draft = 'draft',
+  Pending = 'pending',
+  Signed = 'signed',
+  Completed = 'completed',
+  Archived = 'archived'
+}
