@@ -8,18 +8,18 @@ export {
   createDateTime,
   convertToTimezone,
   formatDateTime,
-  fromUTCToTimezone,
-  getTimezoneDisplayName,
-  processAppointmentsWithLuxon
+  fromUTCToTimezone
 } from './luxon';
 
 export {
   formatEventTime,
-  convertEventToUserTimeZone
+  convertEventToUserTimeZone,
+  processAppointmentsWithLuxon
 } from './calendar';
 
 export {
-  getTimezoneDisplayName as getTimezoneDisplay
+  getTimezoneDisplayName,
+  formatTimeWithTimeZone
 } from './formatting';
 
 export {
