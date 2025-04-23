@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { SessionNoteFormData } from '../types/sessionNote';
+import { SessionNoteFormData, sessionNoteSchema } from '../types/sessionNote';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { generateAndSavePDF } from '@/utils/reactPdfUtils';
@@ -80,7 +80,6 @@ export const useSessionNoteState = ({
     privateNote: ''
   });
 
-  // Update form with client data
   useEffect(() => {
     if (clientData) {
       setFormState(prev => ({
@@ -129,7 +128,6 @@ export const useSessionNoteState = ({
     }
   }, [clientData]);
 
-  // Update clinician name
   useEffect(() => {
     setFormState(prev => ({
       ...prev,
@@ -137,7 +135,6 @@ export const useSessionNoteState = ({
     }));
   }, [clinicianName]);
 
-  // Update appointment related fields
   useEffect(() => {
     if (appointment?.client) {
       const appointmentDate = appointment.date 
