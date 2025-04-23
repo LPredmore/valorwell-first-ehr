@@ -3,12 +3,22 @@ import { z } from 'zod';
 
 const nonEmptyString = z.string().min(1, "This field is required").transform(val => val.trim());
 
+// Helper function to convert a comma-separated string to an array
+const stringToArray = (value: string): string[] => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  return value.split(',').map(item => item.trim()).filter(Boolean);
+};
+
 export const sessionNoteSchema = z.object({
   sessionDate: z.string().min(1, "Session date is required"),
   patientName: nonEmptyString,
   patientDOB: nonEmptyString,
   clinicianName: nonEmptyString,
-  diagnosis: z.array(z.string()).min(1, "At least one diagnosis is required"),
+  diagnosis: z.union([
+    z.array(z.string()).min(1, "At least one diagnosis is required"),
+    z.string().min(1, "At least one diagnosis is required").transform(stringToArray)
+  ]),
   planType: nonEmptyString,
   treatmentFrequency: nonEmptyString,
   medications: nonEmptyString,

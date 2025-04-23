@@ -26,6 +26,7 @@ interface FormFieldWrapperProps {
   maxLength?: number;
   required?: boolean;
   helperText?: string;
+  error?: string;
 }
 
 const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
@@ -39,7 +40,8 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
   labelMapper,
   maxLength,
   required = false,
-  helperText
+  helperText,
+  error
 }) => {
   const isTimeZoneField = name === 'timeZone';
   
@@ -99,6 +101,9 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
           );
         };
         
+        const hasError = !!error;
+        const errorClass = hasError ? "border-red-500 focus-visible:ring-red-500" : "";
+        
         return (
           <FormItem>
             <FormLabel>
@@ -113,7 +118,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                   disabled={readOnly}
                   required={required}
                 >
-                  <SelectTrigger className={readOnly ? "bg-gray-100" : ""}>
+                  <SelectTrigger className={`${readOnly ? "bg-gray-100" : ""} ${errorClass}`}>
                     <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
                   </SelectTrigger>
                   <SelectContent>
@@ -127,8 +132,9 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                   onChange={handleDateChange}
                   type="date"
                   readOnly={readOnly}
-                  className={readOnly ? "bg-gray-100" : ""}
+                  className={`${readOnly ? "bg-gray-100" : ""} ${errorClass}`}
                   required={required}
+                  id={name}
                 />
               ) : type === 'checkbox' ? (
                 <div className="flex items-center space-x-2">
@@ -136,6 +142,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                     checked={field.value}
                     onCheckedChange={field.onChange}
                     disabled={readOnly}
+                    id={name}
                   />
                   {/* Intentionally no helperText here for required/asterisk */}
                   {helperText && <span className="text-sm text-gray-500">{helperText}</span>}
@@ -144,25 +151,28 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                 <Textarea
                   {...field}
                   readOnly={readOnly}
-                  className={readOnly ? "bg-gray-100" : ""}
+                  className={`${readOnly ? "bg-gray-100" : ""} ${errorClass}`}
                   maxLength={maxLength}
                   required={required}
+                  id={name}
                 />
               ) : type === 'phone' ? (
                 <PhoneInput
                   {...field}
                   disabled={readOnly}
                   defaultCountry="US"
-                  className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${readOnly ? "bg-gray-100" : ""}`}
+                  className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${readOnly ? "bg-gray-100" : ""} ${errorClass}`}
+                  id={name}
                 />
               ) : (
                 <Input
                   {...field}
                   type={type}
                   readOnly={readOnly}
-                  className={readOnly ? "bg-gray-100" : ""}
+                  className={`${readOnly ? "bg-gray-100" : ""} ${errorClass}`}
                   maxLength={maxLength}
                   required={required}
+                  id={name}
                 />
               )}
             </FormControl>
@@ -170,7 +180,9 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
             {helperText && type !== 'checkbox' && (
               <FormDescription>{helperText}</FormDescription>
             )}
-            <FormMessage />
+            {hasError && (
+              <p className="text-sm font-medium text-red-500 mt-1">{error}</p>
+            )}
           </FormItem>
         );
       }}
@@ -179,4 +191,3 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
 };
 
 export default FormFieldWrapper;
-
