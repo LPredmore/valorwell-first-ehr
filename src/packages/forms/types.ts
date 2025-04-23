@@ -28,6 +28,7 @@ export interface GAD7Question {
   id: number;
   text: string;
   score: number;
+  field: string;
 }
 
 export interface TabProps {

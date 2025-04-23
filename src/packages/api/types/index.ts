@@ -1,4 +1,4 @@
 
 export * from './requests';
-export * from './responses';
-export * from '@/packages/core/types';
+export type { ErrorResponse } from './responses';
+export type { ClientResponse, ClinicianResponse, SessionNoteResponse } from './responses';

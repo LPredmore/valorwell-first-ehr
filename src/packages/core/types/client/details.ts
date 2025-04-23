@@ -110,4 +110,15 @@ export interface ClientDetails {
   client_currentsymptoms?: string;
   client_treatmentplan_startdate?: string;
   client_relationship?: string;
+
+  // Additional fields
+  client_address?: string;
+  client_city?: string;
+  client_zip?: string;
+  client_country?: string;
+  client_emergency_contact_name?: string;
+  client_emergency_contact_relationship?: string;
+  client_emergency_contact_phone?: string;
+  client_preferred_contact_method?: string;
+  client_additional_notes?: string;
 }
