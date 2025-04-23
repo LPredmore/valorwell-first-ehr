@@ -1,6 +1,6 @@
 
-// Re-export all types
-export * from './appointment';
+// Re-export all type definitions
+export * from './auth';
 export * from './client';
-export * from './sessionNote';
-export * from './common/constants';
+export * from './clinician';
+export * from './common';
