@@ -1,6 +1,3 @@
 
-export * from './PatientDashboard';
-export * from './PatientProfile';
-export * from './PatientDocuments';
-export * from './ClientHistoryForm';
-export * from './InformedConsent';
+export { default as PatientDashboard } from './PatientDashboard';
+export { default as PatientProfile } from './PatientProfile';

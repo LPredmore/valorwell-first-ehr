@@ -1,9 +1,8 @@
+
 import React from 'react';
 import Layout from '@/components/layout/Layout';
-import MyPortal from '../components/MyPortal';
-import MyDocuments from '../components/MyDocuments';
-import MyAppointments from '../components/MyAppointments';
-import { useClientData } from '@/hooks/useClientData';
+import { MyPortal } from '../components';
+import { useClientData } from '@/packages/core/hooks/useClientData';
 import { useUser } from '@/packages/auth/contexts/UserContext';
 
 const PatientDashboard: React.FC = () => {
@@ -24,9 +23,12 @@ const PatientDashboard: React.FC = () => {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         </div>
-        <MyPortal clientData={clientData} clinicianName={clientData?.clinician_professional_name} loading={isLoading} />
-        <MyDocuments />
-        <MyAppointments />
+        <MyPortal 
+          clientData={clientData} 
+          clinicianName={clientData?.client_clinician_professional_name || null} 
+          loading={isLoading}
+          upcomingAppointments={[]}
+        />
       </div>
     </Layout>
   );
