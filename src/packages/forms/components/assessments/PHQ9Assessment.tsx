@@ -1,9 +1,11 @@
+
 import React from 'react';
-import { UseFormReturn } from 'react-hook-form';
+import { UseFormReturn, Controller } from 'react-hook-form';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { PHQ9Question } from '@/packages/core/types/forms/assessments';
+import { FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
 
 interface PHQ9AssessmentProps {
   form: UseFormReturn<any>;
@@ -79,32 +81,34 @@ const PHQ9AssessmentComponent: React.FC<PHQ9AssessmentProps> = ({
           control={form.control}
           name={question.field}
           render={({ field }) => (
-            <div className="space-y-2">
-              <Label>{question.text}</Label>
-              <RadioGroup
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-                disabled={readOnly}
-                className="flex space-x-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="0" id={`${question.field}-0`} />
-                  <Label htmlFor={`${question.field}-0`}>Not at all</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="1" id={`${question.field}-1`} />
-                  <Label htmlFor={`${question.field}-1`}>Several days</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="2" id={`${question.field}-2`} />
-                  <Label htmlFor={`${question.field}-2`}>More than half the days</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="3" id={`${question.field}-3`} />
-                  <Label htmlFor={`${question.field}-3`}>Nearly every day</Label>
-                </div>
-              </RadioGroup>
-            </div>
+            <FormItem className="space-y-2">
+              <FormLabel>{question.text}</FormLabel>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  value={field.value}
+                  disabled={readOnly}
+                  className="flex space-x-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="0" id={`${question.field}-0`} />
+                    <Label htmlFor={`${question.field}-0`}>Not at all</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="1" id={`${question.field}-1`} />
+                    <Label htmlFor={`${question.field}-1`}>Several days</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="2" id={`${question.field}-2`} />
+                    <Label htmlFor={`${question.field}-2`}>More than half the days</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="3" id={`${question.field}-3`} />
+                    <Label htmlFor={`${question.field}-3`}>Nearly every day</Label>
+                  </div>
+                </RadioGroup>
+              </FormControl>
+            </FormItem>
           )}
         />
       ))}

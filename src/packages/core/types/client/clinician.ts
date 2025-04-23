@@ -22,4 +22,4 @@ export interface Clinician {
 }
 
 // Re-export for backward compatibility
-export type { Clinician as ClinicianType } from '@/packages/core/types/clinician';
+export type { Clinician as ClinicianType };

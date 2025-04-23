@@ -82,4 +82,47 @@ export interface ClientDetails {
   client_intervention5?: string;
   client_intervention6?: string;
   client_privatenote?: string;
+
+  // Insurance Related
+  client_disabilityrating?: string;
+  client_tricare_sponsor_name?: string;
+  client_tricare_sponsor_branch?: string;
+  client_tricare_beneficiary_category?: string;
+  client_tricare_plan?: string;
+  client_tricare_region?: string;
+  client_tricare_has_referral?: string;
+  client_tricare_referral_number?: string;
+  client_tricare_policy_id?: string;
+  client_tricare_sponsor_id?: string;
+  client_vacoverage?: string;
+  client_recentdischarge?: string;
+  client_branchOS?: string;
+  client_champva?: string;
+  
+  // Insurance Primary
+  client_insurance_type_primary?: string;
+  client_insurance_company_primary?: string;
+  client_policy_number_primary?: string;
+  client_group_number_primary?: string;
+  client_subscriber_name_primary?: string;
+  client_subscriber_dob_primary?: Date;
+  client_subscriber_relationship_primary?: string;
+  
+  // Insurance Secondary
+  client_insurance_type_secondary?: string;
+  client_insurance_company_secondary?: string;
+  client_policy_number_secondary?: string;
+  client_group_number_secondary?: string;
+  client_subscriber_name_secondary?: string;
+  client_subscriber_dob_secondary?: Date;
+  client_subscriber_relationship_secondary?: string;
+  
+  // Insurance Tertiary
+  client_insurance_type_tertiary?: string;
+  client_insurance_company_tertiary?: string;
+  client_policy_number_tertiary?: string;
+  client_group_number_tertiary?: string;
+  client_subscriber_name_tertiary?: string;
+  client_subscriber_dob_tertiary?: Date;
+  client_subscriber_relationship_tertiary?: string;
 }
