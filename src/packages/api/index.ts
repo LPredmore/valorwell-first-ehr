@@ -14,3 +14,9 @@ export { supabase } from '@/integrations/supabase/client';
 
 // Common data fetching utilities
 export * from './utils/queryHelpers';
+
+// Hooks
+export * from './hooks/useClientApi';
+
+// Types
+export * from './types';

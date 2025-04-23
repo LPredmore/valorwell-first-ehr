@@ -7,11 +7,10 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { ClientDetails } from '@/packages/core/types/client';
+import { handleApiError } from './utils/error';
 
 /**
  * Fetch client details by ID
- * @param clientId The ID of the client to fetch
- * @returns The client details or null if not found
  */
 export const fetchClientById = async (clientId: string): Promise<ClientDetails | null> => {
   try {
@@ -21,46 +20,15 @@ export const fetchClientById = async (clientId: string): Promise<ClientDetails |
       .eq('id', clientId)
       .maybeSingle();
     
-    if (error) {
-      console.error('Error fetching client:', error);
-      return null;
-    }
-    
+    if (error) throw error;
     return data as ClientDetails;
   } catch (error) {
-    console.error('Exception fetching client:', error);
-    return null;
-  }
-};
-
-/**
- * Fetch all clients
- * @returns An array of client details
- */
-export const fetchAllClients = async (): Promise<ClientDetails[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .order('client_last_name', { ascending: true });
-    
-    if (error) {
-      console.error('Error fetching clients:', error);
-      return [];
-    }
-    
-    return data as ClientDetails[];
-  } catch (error) {
-    console.error('Exception fetching clients:', error);
-    return [];
+    throw handleApiError(error);
   }
 };
 
 /**
  * Update client details
- * @param clientId The ID of the client to update
- * @param updates The updates to apply
- * @returns True if the update was successful, false otherwise
  */
 export const updateClient = async (
   clientId: string, 
@@ -72,14 +40,9 @@ export const updateClient = async (
       .update(updates)
       .eq('id', clientId);
     
-    if (error) {
-      console.error('Error updating client:', error);
-      return false;
-    }
-    
+    if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Exception updating client:', error);
-    return false;
+    throw handleApiError(error);
   }
 };
