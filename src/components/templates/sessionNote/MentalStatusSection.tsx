@@ -22,7 +22,7 @@ import {
   SubstanceAbuseRiskEnum,
   SuicidalIdeationEnum,
   HomicidalIdeationEnum
-} from "@/types/sessionNoteEnums";
+} from "@/packages/core/types/sessionNote/mentalStatus";
 
 interface MentalStatusSectionProps {
   formState: any;
