@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -100,7 +101,10 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
         
         return (
           <FormItem>
-            <FormLabel>{label}{required && <span className="text-red-500 ml-1">*</span>}</FormLabel>
+            <FormLabel>
+              {label}
+              {required && (<span className="ml-1 text-[#ea384c]">*</span>)}
+            </FormLabel>
             <FormControl>
               {type === 'select' ? (
                 <Select
@@ -133,6 +137,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                     onCheckedChange={field.onChange}
                     disabled={readOnly}
                   />
+                  {/* Intentionally no helperText here for required/asterisk */}
                   {helperText && <span className="text-sm text-gray-500">{helperText}</span>}
                 </div>
               ) : type === 'textarea' ? (
@@ -161,6 +166,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                 />
               )}
             </FormControl>
+            {/* Show helperText only if not about required-asterisk */}
             {helperText && type !== 'checkbox' && (
               <FormDescription>{helperText}</FormDescription>
             )}
@@ -173,3 +179,4 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
 };
 
 export default FormFieldWrapper;
+
