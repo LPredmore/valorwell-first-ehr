@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Dialog,
@@ -16,7 +15,7 @@ import {
   SelectValue
 } from '@/packages/ui';
 
-const AddClinicianDialog = () => {
+export default function AddClinicianDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -30,6 +29,4 @@ const AddClinicianDialog = () => {
       </DialogContent>
     </Dialog>
   );
-};
-
-export default AddClinicianDialog;
+}

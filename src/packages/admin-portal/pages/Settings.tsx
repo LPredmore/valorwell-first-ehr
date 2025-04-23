@@ -1,4 +1,6 @@
 import React from 'react';
+import { useState } from 'react';
+import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/packages/ui';
 import { PracticeTab } from '../components/settings/PracticeTab';
 import { CliniciansTab } from '../components/settings/CliniciansTab';

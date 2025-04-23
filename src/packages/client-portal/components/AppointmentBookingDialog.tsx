@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Dialog,
@@ -9,7 +8,7 @@ import {
   Button
 } from '@/packages/ui';
 
-const AppointmentBookingDialog = () => {
+export default function AppointmentBookingDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -23,6 +22,4 @@ const AppointmentBookingDialog = () => {
       </DialogContent>
     </Dialog>
   );
-};
-
-export default AppointmentBookingDialog;
+}
