@@ -19,7 +19,12 @@ const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
   handleInputChange,
   isProfileComplete = false
 }) => {
-  const [minorStatus, setMinorStatus] = useState<boolean>(formData.client_minor === true);
+  const [minorStatus, setMinorStatus] = useState<boolean>(() => {
+    if (typeof formData.client_minor === 'boolean') {
+      return formData.client_minor;
+    }
+    return formData.client_minor === 'true'; 
+  });
 
   useEffect(() => {
     handleInputChange('client_minor', minorStatus);
@@ -234,7 +239,7 @@ const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
             id="client_minor"
             checked={minorStatus}
             onCheckedChange={(checked) => {
-              setMinorStatus(!!checked);
+              setMinorStatus(checked === true);
             }}
           />
           <span>Is this client a minor?</span>
@@ -246,9 +251,11 @@ const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
         <Label className="inline-flex items-center space-x-2">
           <Checkbox
             id="client_is_profile_complete"
-            checked={formData.client_is_profile_complete || false}
+            checked={typeof formData.client_is_profile_complete === 'boolean' 
+              ? formData.client_is_profile_complete 
+              : formData.client_is_profile_complete === 'true'}
             onCheckedChange={(checked) => {
-              handleInputChange('client_is_profile_complete', !!checked);
+              handleInputChange('client_is_profile_complete', checked === true);
             }}
           />
           <span>Is profile complete?</span>

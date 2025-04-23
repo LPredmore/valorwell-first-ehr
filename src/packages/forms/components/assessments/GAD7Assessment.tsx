@@ -19,37 +19,44 @@ const GAD7AssessmentComponent: React.FC<GAD7AssessmentProps> = ({
     {
       id: 1,
       text: "Feeling nervous, anxious, or on edge",
-      field: "gad7_nervous"
+      field: "gad7_nervous",
+      score: 0
     },
     {
       id: 2,
       text: "Not being able to stop or control worrying",
-      field: "gad7_control"
+      field: "gad7_control",
+      score: 0
     },
     {
       id: 3,
       text: "Worrying too much about different things",
-      field: "gad7_worrying"
+      field: "gad7_worrying",
+      score: 0
     },
     {
       id: 4,
       text: "Trouble relaxing",
-      field: "gad7_relaxing"
+      field: "gad7_relaxing",
+      score: 0
     },
     {
       id: 5,
       text: "Being so restless that it's hard to sit still",
-      field: "gad7_restless"
+      field: "gad7_restless",
+      score: 0
     },
     {
       id: 6,
       text: "Becoming easily annoyed or irritable",
-      field: "gad7_irritable"
+      field: "gad7_irritable",
+      score: 0
     },
     {
       id: 7,
       text: "Feeling afraid, as if something awful might happen",
-      field: "gad7_afraid"
+      field: "gad7_afraid",
+      score: 0
     }
   ];
 

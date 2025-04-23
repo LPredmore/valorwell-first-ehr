@@ -1,3 +1,4 @@
+
 /**
  * Represents detailed client information
  */
@@ -13,14 +14,14 @@ export interface ClientDetails {
   client_gender_identity?: string;
   client_state?: string;
   client_assigned_therapist?: string;
-  client_minor?: string;
+  client_minor?: boolean | string;
   client_referral_source?: string;
   client_time_zone?: string;
   client_self_goal?: string;
   client_planlength?: string;
   client_treatmentfrequency?: string;
   client_diagnosis?: string[];
-  client_is_profile_complete?: string;
+  client_is_profile_complete?: boolean | string;
   client_status?: string;
   role?: string;
   created_at?: string;
