@@ -1,9 +1,10 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Mail, Phone } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { AddClinicianDialog } from './AddClinicianDialog';
+import AddClinicianDialog from './AddClinicianDialog';
 import {
   Table,
   TableBody,

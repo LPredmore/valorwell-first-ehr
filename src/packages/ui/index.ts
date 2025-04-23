@@ -1,4 +1,5 @@
 
+// Re-export UI components from shadcn
 export * from "@/components/ui/dialog";
 export * from "@/components/ui/input";
 export * from "@/components/ui/label";
@@ -16,3 +17,4 @@ export * from "@/components/ui/toast";
 export * from "./components/date-picker";
 export * from "./components/toast";
 export * from "./components/time-input";
+export * from "./toaster";
