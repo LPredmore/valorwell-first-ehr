@@ -11,3 +11,22 @@ export interface SessionAssessment {
   personsInAttendance: string | null;
   currentSymptoms: string | null;
 }
+
+export enum SubstanceAbuseRiskEnum {
+  None = "None",
+  Low = "Low",
+  Medium = "Medium",
+  High = "High"
+}
+
+export enum SuicidalIdeationEnum {
+  None = "None",
+  Passive = "Passive",
+  Active = "Active"
+}
+
+export enum HomicidalIdeationEnum {
+  None = "None",
+  Passive = "Passive",
+  Active = "Active"
+}
