@@ -1,4 +1,3 @@
-
 import { DateTime } from 'luxon';
 import { ensureIANATimeZone } from './timeZone';
 import { fromUTCToTimezone } from './luxon';
@@ -50,4 +49,22 @@ export const convertEventToUserTimeZone = (event: CalendarEventBase, userTimeZon
     start: startInZone.toJSDate(),
     end: endInZone.toJSDate(),
   };
+};
+
+// Add processAppointmentsWithLuxon export
+export const processAppointmentsWithLuxon = (event: CalendarEventBase, userTimeZone: string): string => {
+  const ianaZone = ensureIANATimeZone(userTimeZone);
+  
+  const startDateTime = typeof event.start === 'string' 
+    ? DateTime.fromISO(event.start)
+    : DateTime.fromJSDate(event.start);
+    
+  const endDateTime = typeof event.end === 'string'
+    ? DateTime.fromISO(event.end)
+    : DateTime.fromJSDate(event.end);
+    
+  const startInZone = startDateTime.setZone(ianaZone);
+  const endInZone = endDateTime.setZone(ianaZone);
+  
+  return `${startInZone.toFormat('h:mm a')} - ${endInZone.toFormat('h:mm a')}`;
 };
