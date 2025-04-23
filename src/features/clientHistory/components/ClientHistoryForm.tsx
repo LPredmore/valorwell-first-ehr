@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useForm } from 'react-hook-form';
 import { ClientDetails } from '@/packages/core/types/client';
 import { ClientHistoryFormData } from '../types';
 import { EmergencyContactSection } from './EmergencyContactSection';
