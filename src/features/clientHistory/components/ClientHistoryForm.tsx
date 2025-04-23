@@ -1,41 +1,39 @@
-import React, { useRef } from 'react';
-import { useUser } from '@/context/UserContext';
-import { useClientData } from '@/hooks/useClientData';
-import { useClientHistorySubmission } from '@/features/clientHistory/hooks/useClientHistorySubmission';
-import ClientHistoryForm from '@/features/clientHistory/components/ClientHistoryForm';
-import { ClientHistoryFormData } from '@/features/clientHistory/types';
 
-const ClientHistoryFormPage: React.FC = () => {
-  const { userId } = useUser();
-  const formRef = useRef<HTMLDivElement>(null);
-  
-  // Fixed to use isLoading instead of loading
-  const { clientData, isLoading, error } = useClientData(userId);
-  
-  const { isSubmitting, submitClientHistory } = useClientHistorySubmission({ userId });
-  
-  const handleSubmit = async (formData: ClientHistoryFormData) => {
-    if (!formRef.current) {
-      console.error("Form reference not available");
-      return;
+import React from 'react';
+import { ClientDetails } from '@/packages/core/types/client';
+import { ClientHistoryFormData } from '../types';
+import { EmergencyContactSection } from './EmergencyContactSection';
+import { PersonalSection } from './PersonalSection';
+import { ChildhoodSection } from './ChildhoodSection';
+
+interface ClientHistoryFormProps {
+  onSubmit: (formData: ClientHistoryFormData) => Promise<void>;
+  isSubmitting: boolean;
+  clientData: ClientDetails | null;
+}
+
+const ClientHistoryForm: React.FC<ClientHistoryFormProps> = ({
+  onSubmit,
+  isSubmitting,
+  clientData
+}) => {
+  const form = useForm<ClientHistoryFormData>({
+    defaultValues: {
+      emergencyContact: {
+        name: '',
+        relationship: '',
+        phone: ''
+      }
     }
-    
-    await submitClientHistory(formData);
-  };
-  
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-screen">Loading client information...</div>;
-  }
-  
+  });
+
   return (
-    <div ref={formRef} id="client-history-form">
-      <ClientHistoryForm 
-        onSubmit={handleSubmit}
-        isSubmitting={isSubmitting}
-        clientData={clientData}
-      />
-    </div>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <EmergencyContactSection form={form} />
+      <ChildhoodSection form={form} />
+      <PersonalSection form={form} />
+    </form>
   );
 };
 
-export default ClientHistoryFormPage;
+export default ClientHistoryForm;

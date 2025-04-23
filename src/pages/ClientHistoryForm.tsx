@@ -1,18 +1,15 @@
-
 import React, { useRef } from 'react';
 import { useUser } from '@/context/UserContext';
 import { useClientData } from '@/hooks/useClientData';
 import { useClientHistorySubmission } from '@/features/clientHistory/hooks/useClientHistorySubmission';
-import ClientHistoryForm from '@/features/clientHistory/components/ClientHistoryForm';
 import { ClientHistoryFormData } from '@/features/clientHistory/types';
+import ClientHistoryForm from '@/features/clientHistory/components/ClientHistoryForm';
 
 const ClientHistoryFormPage: React.FC = () => {
   const { userId } = useUser();
   const formRef = useRef<HTMLDivElement>(null);
   
-  // Fixed to use isLoading instead of loading
   const { clientData, isLoading, error } = useClientData(userId);
-  
   const { isSubmitting, submitClientHistory } = useClientHistorySubmission({ userId });
   
   const handleSubmit = async (formData: ClientHistoryFormData) => {
