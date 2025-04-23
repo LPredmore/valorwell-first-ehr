@@ -1,0 +1,12 @@
+
+{
+  "name": "@valorwell/core",
+  "version": "0.1.0",
+  "main": "index.ts",
+  "types": "index.ts",
+  "private": true,
+  "dependencies": {
+    "luxon": "^3.4.0",
+    "zod": "^3.22.0"
+  }
+}
