@@ -2,7 +2,7 @@
 import React from 'react';
 import { Textarea } from '@/packages/ui';
 import { Label } from '@/packages/ui';
-import { Card, CardContent, CardHeader, CardTitle } from '@/packages/ui';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClientDetails } from '@/packages/core/types/client';
 
 interface NotesTabProps {

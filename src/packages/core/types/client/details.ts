@@ -32,10 +32,11 @@ export interface ClientDetails {
   client_preferred_contact_method?: string;
   
   // Clinical Information
-  client_diagnosis?: string[];
   client_functioning?: string;
   client_progress?: string;
   client_sessionnarrative?: string;
+  client_diagnosis?: string[];
+  client_clinician_professional_name?: string;
   client_planlength?: string;
   client_treatmentfrequency?: string;
   client_medications?: string;
@@ -55,6 +56,5 @@ export interface ClientDetails {
   client_suicidalideation?: string;
   client_homicidalideation?: string;
   client_privatenote?: string;
-  client_clinician_professional_name?: string;
   client_assigned_therapist?: string;
 }

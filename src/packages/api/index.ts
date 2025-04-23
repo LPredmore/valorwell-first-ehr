@@ -1,9 +1,16 @@
-
 // Client
 export * from './client';
 
 // Services
-export * from './services/auth';
+export { 
+  signIn,
+  signUp,
+  resetPassword,
+  requestPasswordReset,
+  signOut,
+} from './services/auth';
+
+// Re-export other services
 export * from './services/clients';
 export * from './services/appointments';
 export * from './services/assessments';
