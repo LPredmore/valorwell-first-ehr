@@ -1,14 +1,12 @@
-import React from 'react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/packages/ui';
-import { PracticeTab } from '../components/settings/PracticeTab';
-import { CliniciansTab } from '../components/settings/CliniciansTab';
-import { UsersTab } from '../components/settings/UsersTab';
-import { BillingTab } from '../components/settings/BillingTab';
-import { TemplatesTab } from '../components/settings/TemplatesTab';
-import { SecurityTab } from '../components/settings/SecurityTab';
-import { LicensesTab } from '../components/settings/LicensesTab';
+import PracticeTab from '../components/settings/PracticeTab';
+import CliniciansTab from '../components/settings/CliniciansTab';
+import UsersTab from '../components/settings/UsersTab';
+import BillingTab from '../components/settings/BillingTab';
+import TemplatesTab from '../components/settings/TemplatesTab';
+import SecurityTab from '../components/settings/SecurityTab';
+import LicensesTab from '../components/settings/LicensesTab';
 
 const SettingsTabs = {
   PRACTICE: 'practice',
@@ -18,7 +16,7 @@ const SettingsTabs = {
   TEMPLATES: 'templates',
   SECURITY: 'security',
   LICENSES: 'clinician_licenses'
-};
+} as const;
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState(SettingsTabs.PRACTICE);

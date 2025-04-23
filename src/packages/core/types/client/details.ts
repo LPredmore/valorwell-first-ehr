@@ -1,4 +1,3 @@
-
 export interface ClientDetails {
   // Base fields
   id: string;
@@ -34,6 +33,9 @@ export interface ClientDetails {
   
   // Clinical Information
   client_diagnosis?: string[];
+  client_functioning?: string;
+  client_progress?: string;
+  client_sessionnarrative?: string;
   client_planlength?: string;
   client_treatmentfrequency?: string;
   client_medications?: string;
@@ -52,10 +54,6 @@ export interface ClientDetails {
   client_substanceabuserisk?: string;
   client_suicidalideation?: string;
   client_homicidalideation?: string;
-  client_functioning?: string;
-  client_prognosis?: string;
-  client_progress?: string;
-  client_sessionnarrative?: string;
   client_privatenote?: string;
   client_clinician_professional_name?: string;
   client_assigned_therapist?: string;

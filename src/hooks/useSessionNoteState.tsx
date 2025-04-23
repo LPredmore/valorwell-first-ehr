@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { ClientDetails } from '@/types/client';
+import { ClientDetails } from '@/packages/core/types/client';
 
 interface SessionNoteState {
   functioning: string;
@@ -10,7 +10,6 @@ interface SessionNoteState {
 }
 
 export function useSessionNoteState(clientData: ClientDetails | null) {
-  // Map client data to session note fields, handling possibly undefined properties
   const initialState: SessionNoteState = {
     functioning: clientData?.client_functioning || '',
     prognosis: clientData?.client_diagnosis ? clientData.client_diagnosis.join(', ') : '',
