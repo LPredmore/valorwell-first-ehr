@@ -1,16 +1,24 @@
 
-import { 
-  ClientDetails, 
-  Clinician, 
-  PaginatedResponse, 
-  ErrorResponse 
-} from '@/packages/core/types';
+import { ClientDetails } from '@/packages/core/types/client';
+import { SessionNoteFormData } from '@/packages/core/types/sessionNote';
+import { Clinician } from '@/packages/core/types/client/clinician';
 
-export interface ApiResponse<T> {
-  data: T | null;
-  error: ErrorResponse | null;
+export interface ClientResponse {
+  client: ClientDetails;
 }
 
-export interface ClientResponse extends ApiResponse<ClientDetails> {}
-export interface ClinicianResponse extends ApiResponse<Clinician> {}
-export interface ClientListResponse extends ApiResponse<PaginatedResponse<ClientDetails>> {}
+export interface ClinicianResponse {
+  clinician: Clinician;
+}
+
+export interface SessionNoteResponse {
+  sessionNote: SessionNoteFormData;
+}
+
+export interface ErrorResponse {
+  error: {
+    message: string;
+    code?: string;
+    details?: any;
+  };
+}

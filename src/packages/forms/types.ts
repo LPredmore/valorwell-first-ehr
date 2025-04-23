@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 
 // Re-export all form-related types
@@ -15,6 +16,18 @@ export interface FormValidation {
   schema?: z.ZodSchema;
   validate?: (data: any) => boolean;
   errors?: string[];
+}
+
+export interface PHQ9Question {
+  id: number;
+  text: string;
+  score: number;
+}
+
+export interface GAD7Question {
+  id: number;
+  text: string;
+  score: number;
 }
 
 export interface TabProps {
