@@ -11,13 +11,8 @@ export const ClientInfoSection: React.FC<ClientInfoSectionProps> = ({
   formState,
   handleChange
 }) => {
-  // Convert string diagnosis to array if needed for DiagnosisSelector
-  const diagnosisArray = formState.diagnosis ? 
-    (typeof formState.diagnosis === 'string' ? 
-      formState.diagnosis.split(',').map(d => d.trim()).filter(Boolean) : 
-      formState.diagnosis) : 
-    [];
-  
+  // Handle diagnosis directly as array
+  const diagnosisArray = Array.isArray(formState.diagnosis) ? formState.diagnosis : [];
   const isDiagnosisEmpty = !diagnosisArray.length;
 
   return (
@@ -66,7 +61,7 @@ export const ClientInfoSection: React.FC<ClientInfoSectionProps> = ({
           ) : (
             <Input
               placeholder="Select diagnosis code"
-              value={formState.diagnosis}
+              value={diagnosisArray.join(', ')}
               readOnly
               className="bg-gray-100"
             />
