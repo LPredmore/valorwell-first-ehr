@@ -1,0 +1,10 @@
+
+{
+  "name": "@valorwell/auth",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "dependencies": {
+    "@valorwell/core": "workspace:*"
+  }
+}
