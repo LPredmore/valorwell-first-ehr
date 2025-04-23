@@ -18,6 +18,18 @@ export interface ClientDetails {
   client_status?: string;
   client_state?: string;
   client_time_zone?: string;
+  client_address?: string;
+  client_city?: string;
+  client_zip?: string;
+  client_country?: string;
+  client_minor?: boolean;
+  client_is_profile_complete?: boolean;
+  
+  // Emergency Contact Information
+  client_emergency_contact_name?: string;
+  client_emergency_contact_phone?: string;
+  client_emergency_contact_relationship?: string;
+  client_preferred_contact_method?: string;
   
   // Clinical Information
   client_diagnosis?: string[];
@@ -44,6 +56,9 @@ export interface ClientDetails {
   client_progress?: string;
   client_sessionnarrative?: string;
   client_privatenote?: string;
+  client_additional_notes?: string;
+  
+  // Clinician Information
   client_clinician_professional_name?: string;
   client_assigned_therapist?: string;
 }

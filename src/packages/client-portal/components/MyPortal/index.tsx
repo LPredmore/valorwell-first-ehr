@@ -1,36 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/packages/api/client';
-import { format, parseISO, startOfToday, isToday } from 'date-fns';
-import { formatTimeZoneDisplay, ensureIANATimeZone, getUserTimeZone } from '@/utils/timeZoneUtils';
-import AppointmentBookingDialog from '@/components/patient/AppointmentBookingDialog';
-import PHQ9Template from '@/packages/forms/components/templates/PHQ9Template';
 import VideoChat from '@/components/video/VideoChat';
+import PHQ9Template from '@/packages/forms/components/templates/PHQ9Template';
+import { format, parseISO, startOfToday, isToday } from 'date-fns';
+import AppointmentBookingDialog from '@/components/patient/AppointmentBookingDialog';
+import { formatTimeInUserTimeZone, formatTime12Hour, ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import { getUserTimeZone, formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
 import { getOrCreateVideoRoom, checkPHQ9ForAppointment } from '@/packages/api/client';
 import TodayAppointments from './TodayAppointments';
 import TherapistCard from './TherapistCard';
 import UpcomingAppointments from './UpcomingAppointments';
-import { 
-  formatTimeInUserTimeZone, 
-  formatTime12Hour, 
-  ensureIANATimeZone as ensureIANATimeZoneCore 
-} from '@/utils/timeZoneUtils';
-
-interface Appointment {
-  id: number;
-  date: string;
-  time: string;
-  type: string;
-  therapist: string;
-  rawDate?: string;
-}
-
-interface MyPortalProps {
-  upcomingAppointments: Appointment[];
-  clientData: any | null;
-  clinicianName: string | null;
-  loading: boolean;
-}
+import { MyPortalProps, Appointment } from './types';
 
 const MyPortal: React.FC<MyPortalProps> = ({
   upcomingAppointments: initialAppointments,

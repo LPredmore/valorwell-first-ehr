@@ -1,16 +1,9 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from 'lucide-react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-
-interface UpcomingAppointmentsProps {
-  appointments: any[];
-  timeZoneDisplay: string;
-  showBookingButtons: boolean;
-  onBookAppointment: () => void;
-}
+import { UpcomingAppointmentsProps } from './types';
 
 const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({
   appointments,

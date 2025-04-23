@@ -1,16 +1,9 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar, CalendarIcon } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-
-interface TherapistCardProps {
-  clinicianData: any;
-  clinicianName: string | null;
-  showBookingButtons: boolean;
-  onBookAppointment: () => void;
-}
+import { TherapistCardProps } from './types';
 
 const TherapistCard: React.FC<TherapistCardProps> = ({
   clinicianData,

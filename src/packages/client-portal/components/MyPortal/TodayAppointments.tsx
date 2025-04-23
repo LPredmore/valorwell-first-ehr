@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,17 +5,8 @@ import { Calendar, CalendarIcon } from 'lucide-react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { TodayAppointmentsProps } from './types';
 import { formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
-
-interface TodayAppointmentsProps {
-  appointments: any[];
-  timeZoneDisplay: string;
-  showBookingButtons: boolean;
-  hasAssignedDocuments: boolean;
-  isLoadingVideoSession: boolean;
-  onStartSession: (appointmentId: number) => void;
-  onBookAppointment: () => void;
-}
 
 const TodayAppointments: React.FC<TodayAppointmentsProps> = ({
   appointments,
