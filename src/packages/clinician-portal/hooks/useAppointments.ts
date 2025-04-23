@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/packages/api/client';
 import { useClientData } from '@/packages/core/hooks/useClientData';
-import { useToast } from '@/packages/ui/toast';
+import { useToast } from '@/hooks/use-toast';
 
 export const useAppointments = (clinicianId?: string) => {
   const [todayAppointments, setTodayAppointments] = useState<any[]>([]);

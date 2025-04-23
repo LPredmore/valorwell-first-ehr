@@ -1,6 +1,6 @@
-
-import { format } from 'date-fns';
-import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
+import { format, parseISO } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 
 // Ensure we have a valid IANA timezone
 export const ensureIANATimeZone = (timeZone: string): string => {
@@ -53,8 +53,8 @@ export const formatTimeInUserTimeZone = (
     }
     
     const ianaTz = ensureIANATimeZone(userTimeZone);
-    const utcDate = zonedTimeToUtc(new Date(timeString), 'UTC');
-    const userTzDate = utcToZonedTime(utcDate, ianaTz);
+    const utcDate = parseISO(timeString);
+    const userTzDate = toZonedTime(utcDate, ianaTz);
     return format(userTzDate, formatString);
   } catch (error) {
     console.error('Error formatting time in user timezone:', error);
@@ -98,4 +98,14 @@ export const formatTimeZoneDisplay = (timeZone: string): string => {
   };
   
   return displayNames[ianaTz] || ianaTz;
+};
+
+// Update functions that use the renamed functions
+export const convertToTimeZone = (dateStr: string, timeZone: string) => {
+  const date = parseISO(dateStr);
+  return toZonedTime(date, timeZone);
+};
+
+export const convertFromTimeZone = (date: Date, timeZone: string) => {
+  return fromZonedTime(date, timeZone);
 };

@@ -375,33 +375,17 @@ export const useMonthViewData = (
     });
     
     return result;
-  }, [days, clinicianSchedule, singleDayAvailability, clinicianId]);
-
-  const dayAppointmentsMap = useMemo(() => {
-    const result = new Map<string, Appointment[]>();
-    
-    days.forEach(day => {
-      const dayStr = format(day, 'yyyy-MM-dd');
-      const dayAppointments = appointments.filter(appointment => appointment.date === dayStr);
-      result.set(dayStr, dayAppointments);
-    });
-    
-    return result;
-  }, [days, appointments]);
+  }, [days, clinicianSchedule, clinicianId, singleDayAvailability]);
 
   return {
     loading,
     error,
+    days,
     monthStart,
     monthEnd,
-    days,
     dayAvailabilityMap,
-    dayAppointmentsMap,
     availabilityByDay,
-    clinicianSchedule,
     timeBlocks,
-    singleDayAvailability,
-    supportsSingleDateAvailability,
-    supportsTimeBlocks
+    singleDayAvailability
   };
 };

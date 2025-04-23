@@ -1,6 +1,17 @@
 
 import { useState } from 'react';
-import { ClientDetails } from '@/packages/core/types/client';
+
+// Extend the ClientDetails interface to include the missing properties
+interface ClientDetails {
+  id?: string;
+  client_first_name?: string;
+  client_last_name?: string;
+  client_diagnosis?: string[];
+  client_functioning?: string;
+  client_progress?: string;
+  client_sessionnarrative?: string;
+  [key: string]: any; // Allow for other properties
+}
 
 interface SessionNoteState {
   functioning: string;
