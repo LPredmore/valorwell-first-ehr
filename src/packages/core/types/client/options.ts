@@ -16,3 +16,6 @@ export const insuranceTypeOptions = [
   'Tertiary',
   'None'
 ] as const;
+
+export type RelationshipType = typeof relationshipOptions[number];
+export type InsuranceType = typeof insuranceTypeOptions[number];
