@@ -31,18 +31,18 @@ export const sessionNoteSchema = z.object({
   suicidalIdeation: nonEmptyString,
   homicidalIdeation: nonEmptyString,
   
-  // Objectives - all fields required
-  primaryObjective: nonEmptyString,
-  intervention1: nonEmptyString,
-  intervention2: nonEmptyString,
-  secondaryObjective: nonEmptyString,
-  intervention3: nonEmptyString,
-  intervention4: nonEmptyString,
-  tertiaryObjective: nonEmptyString,
-  intervention5: nonEmptyString,
-  intervention6: nonEmptyString,
+  // Objectives - making all treatment goal fields optional
+  primaryObjective: z.string().optional(),
+  intervention1: z.string().optional(),
+  intervention2: z.string().optional(),
+  secondaryObjective: z.string().optional(),
+  intervention3: z.string().optional(),
+  intervention4: z.string().optional(),
+  tertiaryObjective: z.string().optional(),
+  intervention5: z.string().optional(),
+  intervention6: z.string().optional(),
   
-  // Assessment - all fields required
+  // Assessment - keeping required fields
   currentSymptoms: nonEmptyString,
   functioning: nonEmptyString,
   prognosis: nonEmptyString,
