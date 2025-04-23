@@ -37,6 +37,13 @@ import NotFound from '@/pages/NotFound';
 // Create a client
 const queryClient = new QueryClient();
 
+import {
+  Settings as AdminSettings,
+  Activity,
+  Analytics,
+  Messages
+} from '@/packages/admin-portal/pages';
+
 const App: React.FC = () => {
   return (
     <React.StrictMode>
@@ -96,7 +103,7 @@ const App: React.FC = () => {
                   {/* Admin routes */}
                   <Route path="/settings" element={
                     <ProtectedRoute allowedRoles={['admin', 'moderator']}>
-                      <Settings />
+                      <AdminSettings />
                     </ProtectedRoute>
                   } />
                   
