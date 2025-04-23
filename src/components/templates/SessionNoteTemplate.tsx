@@ -1,7 +1,13 @@
+
 import React, { useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { X, FileText } from 'lucide-react';
 import { Alert } from "@/components/ui/alert";
+import { Textarea } from "@/components/ui/textarea";
+import { ClientInfoSection } from './sessionNote/ClientInfoSection';
+import { MentalStatusSection } from './sessionNote/MentalStatusSection';
+import { TreatmentObjectivesSection } from './sessionNote/TreatmentObjectivesSection';
+import { SessionAssessmentSection } from './sessionNote/SessionAssessmentSection';
 import { ClientDetails, SessionNoteTemplateProps } from '@/types/client';
 import { useSessionNoteForm } from './sessionNote/useSessionNoteForm';
 

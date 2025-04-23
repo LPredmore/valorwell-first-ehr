@@ -1,4 +1,6 @@
+
 import React, { useState, useEffect, RefObject } from 'react';
+import { z } from 'zod';  // Add Zod import
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClientDetails } from '@/types/client';
