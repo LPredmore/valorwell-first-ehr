@@ -182,9 +182,9 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     }
   };
 
-  // Fixed: Properly generate time options from 12:00 AM to 11:30 PM in 30-minute increments
+  // Generate time options from 12:00 AM (00:00) to 11:30 PM (23:30) in 30-minute increments, NO repeats.
   const generateTimeOptions = () => {
-    const options = [];
+    const options: string[] = [];
     for (let hour = 0; hour < 24; hour++) {
       for (let minute of [0, 30]) {
         const formattedHour = hour.toString().padStart(2, '0');
@@ -192,7 +192,11 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
         options.push(`${formattedHour}:${formattedMinute}`);
       }
     }
-    return options;
+    // Remove any accidental repeats (shouldn't be necessary, but for safety):
+    const uniqueOptions = Array.from(new Set(options));
+    // Log to check in runtime what is rendered:
+    console.log("[generateTimeOptions] values:", uniqueOptions);
+    return uniqueOptions;
   };
 
   const timeOptions = generateTimeOptions();
