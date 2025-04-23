@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, RefObject } from 'react';
 import { z } from 'zod';
 import { supabase } from "@/integrations/supabase/client";
@@ -287,8 +288,12 @@ export const useSessionNoteForm = ({
     setIsSubmitting(true);
 
     try {
+      // Fix: Handle diagnosis properly as an array
       let client_diagnosis: string[] = [];
-      if (typeof formState.diagnosis === 'string' && formState.diagnosis.trim()) {
+      if (Array.isArray(formState.diagnosis)) {
+        client_diagnosis = formState.diagnosis;
+      } else if (typeof formState.diagnosis === 'string') {
+        // Fallback for string type (though we should now always have array)
         client_diagnosis = formState.diagnosis.split(',').map(d => d.trim()).filter(Boolean);
       }
 
