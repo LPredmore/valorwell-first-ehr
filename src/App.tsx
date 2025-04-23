@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { TimeZoneProvider } from "./context/TimeZoneContext";
 import { UserProvider } from "@/packages/auth/contexts/UserContext";
 import { ProtectedRoute } from "@/packages/auth/components";
+import { PatientDashboard, PatientProfile, PatientDocuments, ClientHistoryForm, InformedConsent } from '@/packages/client-portal/pages';
 
 // Pages
 import Index from '@/pages/Index';
@@ -26,11 +27,6 @@ import ClinicianDetails from '@/pages/ClinicianDetails';
 
 // Client pages
 import TherapistSelection from '@/pages/TherapistSelection';
-import PatientDashboard from '@/pages/PatientDashboard';
-import PatientProfile from '@/pages/PatientProfile';
-import ClientHistoryForm from '@/pages/ClientHistoryForm';
-import InformedConsent from '@/pages/InformedConsent';
-import PatientDocuments from '@/pages/PatientDocuments';
 import Reminders from '@/pages/Reminders';
 import ProfileSetup from '@/pages/ProfileSetup';
 
@@ -92,6 +88,12 @@ const App: React.FC = () => {
                   <Route path="/patient-documents" element={
                     <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
                       <PatientDocuments />
+                    </ProtectedRoute>
+                  } />
+
+                  <Route path="/patient-profile" element={
+                    <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
+                      <PatientProfile />
                     </ProtectedRoute>
                   } />
                   
