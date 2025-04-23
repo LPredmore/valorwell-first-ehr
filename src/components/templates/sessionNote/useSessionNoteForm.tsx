@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClientDetails } from '@/types/client';
 import { generateAndSavePDF } from '@/utils/reactPdfUtils';
+import { sessionNoteSchema } from '@/validations/sessionNoteSchemas';
 
 interface UseSessionNoteFormProps {
   clientData: ClientDetails | null;
@@ -22,6 +23,7 @@ export const useSessionNoteForm = ({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [phq9Data, setPhq9Data] = useState<any>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const [formState, setFormState] = useState({
     sessionDate: '',
@@ -208,7 +210,31 @@ export const useSessionNoteForm = ({
     }
   };
 
+  const validateForm = () => {
+    try {
+      sessionNoteSchema.parse(formState);
+      setValidationErrors([]);
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const errors = error.errors.map(err => `${err.message}`);
+        setValidationErrors(errors);
+        return false;
+      }
+      return false;
+    }
+  };
+
   const handleSave = async () => {
+    if (!validateForm()) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!clientData?.id) {
       toast({
         title: "Error",
@@ -504,7 +530,8 @@ export const useSessionNoteForm = ({
     handleChange,
     handleSave,
     isSubmitting,
-    phq9Data
+    phq9Data,
+    validationErrors
   };
 };
 

@@ -1,14 +1,9 @@
-
 import React, { useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { X, FileText } from 'lucide-react';
+import { Alert } from "@/components/ui/alert";
 import { ClientDetails, SessionNoteTemplateProps } from '@/types/client';
 import { useSessionNoteForm } from './sessionNote/useSessionNoteForm';
-import { ClientInfoSection } from './sessionNote/ClientInfoSection';
-import { MentalStatusSection } from './sessionNote/MentalStatusSection';
-import { TreatmentObjectivesSection } from './sessionNote/TreatmentObjectivesSection';
-import { SessionAssessmentSection } from './sessionNote/SessionAssessmentSection';
-import { Textarea } from "@/components/ui/textarea";
 
 const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   onClose,
@@ -23,7 +18,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     isSubmitting,
     phq9Data,
     handleChange,
-    handleSave
+    handleSave,
+    validationErrors
   } = useSessionNoteForm({
     clientData,
     clinicianName,
@@ -32,7 +28,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     contentRef
   });
 
-  // Check if problem and treatment goal narratives have values
   const hasProblemNarrative = !!formState.problemNarrative?.trim();
   const hasTreatmentGoalNarrative = !!formState.treatmentGoalNarrative?.trim();
   const showProblemTreatmentSection = hasProblemNarrative || hasTreatmentGoalNarrative;
@@ -55,7 +50,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           <h3 className="text-lg font-medium">Therapy Session Note</h3>
         </div>
 
-        {/* Client Information Section */}
         <div>
           <ClientInfoSection 
             formState={formState} 
@@ -63,7 +57,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           />
         </div>
 
-        {/* Mental Status Examination */}
         <div>
           <MentalStatusSection 
             formState={formState} 
@@ -71,7 +64,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           />
         </div>
         
-        {/* Problem Narrative and Treatment Goal - Only show if they have values */}
         {showProblemTreatmentSection && (
           <div className="mb-6 mt-6">
             <h4 className="text-md font-medium text-gray-800 mb-4">Problem & Treatment Goals</h4>
@@ -104,7 +96,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           </div>
         )}
 
-        {/* Treatment Objectives & Interventions */}
         <div>
           <TreatmentObjectivesSection 
             formState={formState} 
@@ -112,7 +103,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           />
         </div>
 
-        {/* Session Assessment Section - Now includes PHQ-9 assessment before Plan & Signature */}
         <div>
           <SessionAssessmentSection 
             formState={formState} 
@@ -122,12 +112,24 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         </div>
       </div>
 
+      {validationErrors.length > 0 && (
+        <Alert variant="destructive" className="mt-4">
+          <ul className="list-disc pl-4">
+            {validationErrors.map((error, index) => (
+              <li key={index}>{error}</li>
+            ))}
+          </ul>
+        </Alert>
+      )}
+
       <div className="flex justify-end gap-2 mt-6">
-        <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Close</Button>
+        <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+          Close
+        </Button>
         <Button
           className="bg-valorwell-700 hover:bg-valorwell-800"
           onClick={handleSave}
-          disabled={isSubmitting}
+          disabled={isSubmitting || validationErrors.length > 0}
         >
           {isSubmitting ? 'Saving...' : 'Save Session Note'}
         </Button>
