@@ -8,7 +8,6 @@ import { ClientInfoSection } from './sessionNote/ClientInfoSection';
 import { MentalStatusSection } from './sessionNote/MentalStatusSection';
 import { TreatmentObjectivesSection } from './sessionNote/TreatmentObjectivesSection';
 import { SessionAssessmentSection } from './sessionNote/SessionAssessmentSection';
-import { PHQ9AssessmentSection } from './sessionNote/PHQ9AssessmentSection';
 import { ClientDetails, SessionNoteTemplateProps } from '@/types/client';
 import { useSessionNoteForm } from './sessionNote/useSessionNoteForm';
 
@@ -26,8 +25,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
     phq9Data,
     handleChange,
     handleSave,
-    validationErrors,
-    fieldErrors
+    validationErrors
   } = useSessionNoteForm({
     clientData,
     clinicianName,
@@ -52,30 +50,6 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         </Button>
       </div>
 
-      <style jsx global>{`
-        .error-shake {
-          animation: error-shake 0.5s;
-        }
-        
-        @keyframes error-shake {
-          0%, 100% { transform: translateX(0); }
-          20%, 60% { transform: translateX(-5px); }
-          40%, 80% { transform: translateX(5px); }
-        }
-        
-        .required-field {
-          position: relative;
-        }
-        
-        .required-field::after {
-          content: '*';
-          color: red;
-          position: absolute;
-          right: -8px;
-          top: 0;
-        }
-      `}</style>
-
       <div id="session-note-content" ref={contentRef} className="bg-white p-6 border rounded-md mt-4">
         <div className="flex items-center gap-2 mb-6 border-b pb-4">
           <FileText className="h-5 w-5 text-gray-700" />
@@ -85,16 +59,14 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <div>
           <ClientInfoSection 
             formState={formState} 
-            handleChange={handleChange}
-            fieldErrors={fieldErrors}
+            handleChange={handleChange} 
           />
         </div>
 
         <div>
           <MentalStatusSection 
             formState={formState} 
-            handleChange={handleChange}
-            fieldErrors={fieldErrors}
+            handleChange={handleChange} 
           />
         </div>
         
@@ -104,41 +76,27 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             
             {hasProblemNarrative && (
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Problem Narrative
-                  {fieldErrors?.problemNarrative && <span className="text-red-500">*</span>}
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Problem Narrative</label>
                 <Textarea
-                  id="problemNarrative"
                   placeholder="Describe the problem narrative"
-                  className={`min-h-[100px] bg-gray-100 resize-y ${fieldErrors?.problemNarrative ? 'border-red-500' : ''}`}
+                  className="min-h-[100px] bg-gray-100 resize-y"
                   value={formState.problemNarrative}
                   onChange={(e) => handleChange('problemNarrative', e.target.value)}
                   readOnly
                 />
-                {fieldErrors?.problemNarrative && (
-                  <p className="text-sm font-medium text-red-500 mt-1">{fieldErrors.problemNarrative}</p>
-                )}
               </div>
             )}
 
             {hasTreatmentGoalNarrative && (
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Treatment Goal Narrative
-                  {fieldErrors?.treatmentGoalNarrative && <span className="text-red-500">*</span>}
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Treatment Goal Narrative</label>
                 <Textarea
-                  id="treatmentGoalNarrative"
                   placeholder="Describe the treatment goals"
-                  className={`min-h-[100px] bg-gray-100 resize-y ${fieldErrors?.treatmentGoalNarrative ? 'border-red-500' : ''}`}
+                  className="min-h-[100px] bg-gray-100 resize-y"
                   value={formState.treatmentGoalNarrative}
                   onChange={(e) => handleChange('treatmentGoalNarrative', e.target.value)}
                   readOnly
                 />
-                {fieldErrors?.treatmentGoalNarrative && (
-                  <p className="text-sm font-medium text-red-500 mt-1">{fieldErrors.treatmentGoalNarrative}</p>
-                )}
               </div>
             )}
           </div>
@@ -147,8 +105,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <div>
           <TreatmentObjectivesSection 
             formState={formState} 
-            handleChange={handleChange}
-            fieldErrors={fieldErrors}
+            handleChange={handleChange} 
           />
         </div>
 
@@ -157,13 +114,8 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
             formState={formState} 
             handleChange={handleChange}
             phq9Data={phq9Data}
-            fieldErrors={fieldErrors}
           />
         </div>
-
-        {phq9Data && (
-          <PHQ9AssessmentSection phq9Data={phq9Data} />
-        )}
       </div>
 
       {validationErrors.length > 0 && (
@@ -183,7 +135,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         <Button
           className="bg-valorwell-700 hover:bg-valorwell-800"
           onClick={handleSave}
-          disabled={isSubmitting}
+          disabled={isSubmitting || validationErrors.length > 0}
         >
           {isSubmitting ? 'Saving...' : 'Save Session Note'}
         </Button>

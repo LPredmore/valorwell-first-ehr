@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -26,7 +25,6 @@ interface FormFieldWrapperProps {
   maxLength?: number;
   required?: boolean;
   helperText?: string;
-  error?: string;
 }
 
 const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
@@ -40,8 +38,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
   labelMapper,
   maxLength,
   required = false,
-  helperText,
-  error
+  helperText
 }) => {
   const isTimeZoneField = name === 'timeZone';
   
@@ -49,7 +46,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
     <FormField
       control={control}
       name={name}
-      render={({ field }) => {
+      render={({ field, fieldState: { error } }) => {
         const handleSelectChange = (selectedValue: string) => {
           if (isTimeZoneField) {
             const ianaValue = ensureIANATimeZone(selectedValue);
@@ -101,14 +98,11 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
           );
         };
         
-        const hasError = !!error;
-        const errorClass = hasError ? "border-red-500 focus-visible:ring-red-500" : "";
-        
         return (
-          <FormItem>
-            <FormLabel>
+          <FormItem className={error ? 'animate-shake' : ''}>
+            <FormLabel className={error ? 'text-destructive' : ''}>
               {label}
-              {required && (<span className="ml-1 text-[#ea384c]">*</span>)}
+              {required && (<span className="ml-1 text-destructive">*</span>)}
             </FormLabel>
             <FormControl>
               {type === 'select' ? (
@@ -118,7 +112,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                   disabled={readOnly}
                   required={required}
                 >
-                  <SelectTrigger className={`${readOnly ? "bg-gray-100" : ""} ${errorClass}`}>
+                  <SelectTrigger className={readOnly ? "bg-gray-100" : ""}>
                     <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
                   </SelectTrigger>
                   <SelectContent>
@@ -132,9 +126,8 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                   onChange={handleDateChange}
                   type="date"
                   readOnly={readOnly}
-                  className={`${readOnly ? "bg-gray-100" : ""} ${errorClass}`}
+                  className={readOnly ? "bg-gray-100" : ""}
                   required={required}
-                  id={name}
                 />
               ) : type === 'checkbox' ? (
                 <div className="flex items-center space-x-2">
@@ -142,7 +135,6 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                     checked={field.value}
                     onCheckedChange={field.onChange}
                     disabled={readOnly}
-                    id={name}
                   />
                   {/* Intentionally no helperText here for required/asterisk */}
                   {helperText && <span className="text-sm text-gray-500">{helperText}</span>}
@@ -151,37 +143,35 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                 <Textarea
                   {...field}
                   readOnly={readOnly}
-                  className={`${readOnly ? "bg-gray-100" : ""} ${errorClass}`}
+                  className={readOnly ? "bg-gray-100" : ""}
                   maxLength={maxLength}
                   required={required}
-                  id={name}
                 />
               ) : type === 'phone' ? (
                 <PhoneInput
                   {...field}
                   disabled={readOnly}
                   defaultCountry="US"
-                  className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${readOnly ? "bg-gray-100" : ""} ${errorClass}`}
-                  id={name}
+                  className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${readOnly ? "bg-gray-100" : ""}`}
                 />
               ) : (
                 <Input
                   {...field}
                   type={type}
                   readOnly={readOnly}
-                  className={`${readOnly ? "bg-gray-100" : ""} ${errorClass}`}
+                  className={readOnly ? "bg-gray-100" : ""}
                   maxLength={maxLength}
                   required={required}
-                  id={name}
                 />
               )}
             </FormControl>
-            {/* Show helperText only if not about required-asterisk */}
             {helperText && type !== 'checkbox' && (
               <FormDescription>{helperText}</FormDescription>
             )}
-            {hasError && (
-              <p className="text-sm font-medium text-red-500 mt-1">{error}</p>
+            {error?.message && (
+              <FormMessage className="text-destructive">
+                {error.message}
+              </FormMessage>
             )}
           </FormItem>
         );

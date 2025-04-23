@@ -1,5 +1,5 @@
 import React, { useState, useEffect, RefObject } from 'react';
-import { z } from 'zod';
+import { z } from 'zod';  // Add Zod import
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ClientDetails } from '@/types/client';
@@ -25,7 +25,6 @@ export const useSessionNoteForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [phq9Data, setPhq9Data] = useState<any>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const [formState, setFormState] = useState({
     sessionDate: '',
@@ -210,51 +209,38 @@ export const useSessionNoteForm = ({
         [field]: value
       });
     }
-    
-    if (fieldErrors[field]) {
-      setFieldErrors(prev => {
-        const updated = { ...prev };
-        delete updated[field];
-        return updated;
-      });
-    }
   };
 
   const validateForm = () => {
     try {
-      sessionNoteSchema.parse(formState);
-      setValidationErrors([]);
-      setFieldErrors({});
-      return true;
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const errors = error.errors.map(err => `${err.message}`);
+      const validationResult = sessionNoteSchema.safeParse(formState);
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(err => 
+          `${err.path.join('.')}: ${err.message}`
+        );
         setValidationErrors(errors);
         
-        const fieldErrorMap: Record<string, string> = {};
-        error.errors.forEach(err => {
-          if (err.path && err.path.length > 0) {
-            fieldErrorMap[err.path[0]] = err.message;
-          }
-        });
-        setFieldErrors(fieldErrorMap);
-        
-        if (error.errors.length > 0 && error.errors[0].path.length > 0) {
-          const firstErrorField = error.errors[0].path[0].toString();
-          const errorElement = document.getElementById(firstErrorField) || 
-                               document.querySelector(`[name="${firstErrorField}"]`);
-          if (errorElement) {
-            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Find the first field with an error and scroll to it
+        if (errors.length > 0) {
+          const firstErrorField = validationResult.error.errors[0].path[0];
+          const element = document.querySelector(`[name="${firstErrorField}"]`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Add a visual highlight
+            element.classList.add('border-red-500', 'focus:ring-red-500');
             setTimeout(() => {
-              errorElement.classList.add('error-shake');
-              setTimeout(() => {
-                errorElement.classList.remove('error-shake');
-              }, 500);
-            }, 200);
+              element.classList.remove('border-red-500', 'focus:ring-red-500');
+            }, 3000);
           }
         }
-
+        
         return false;
+      }
+      setValidationErrors([]);
+      return true;
+    } catch (error) {
+      if (error instanceof Error) {
+        setValidationErrors([error.message]);
       }
       return false;
     }
@@ -264,7 +250,7 @@ export const useSessionNoteForm = ({
     if (!validateForm()) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields marked with an asterisk (*)",
         variant: "destructive",
       });
       return;
@@ -282,49 +268,54 @@ export const useSessionNoteForm = ({
     setIsSubmitting(true);
 
     try {
+      // Format diagnosis from string to array if needed
       let client_diagnosis: string[] = [];
       if (typeof formState.diagnosis === 'string' && formState.diagnosis.trim()) {
         client_diagnosis = formState.diagnosis.split(',').map(d => d.trim()).filter(Boolean);
       }
 
+      // Step 1: Update client data in clients table
+      console.log("Updating client data...");
+      const clientUpdates = {
+        client_appearance: formState.appearance,
+        client_attitude: formState.attitude,
+        client_behavior: formState.behavior,
+        client_speech: formState.speech,
+        client_affect: formState.affect,
+        client_thoughtprocess: formState.thoughtProcess,
+        client_perception: formState.perception,
+        client_orientation: formState.orientation,
+        client_memoryconcentration: formState.memoryConcentration,
+        client_insightjudgement: formState.insightJudgement,
+        client_mood: formState.mood,
+        client_substanceabuserisk: formState.substanceAbuseRisk,
+        client_suicidalideation: formState.suicidalIdeation,
+        client_homicidalideation: formState.homicidalIdeation,
+        client_primaryobjective: formState.primaryObjective,
+        client_secondaryobjective: formState.secondaryObjective,
+        client_tertiaryobjective: formState.tertiaryObjective,
+        client_intervention1: formState.intervention1,
+        client_intervention2: formState.intervention2,
+        client_intervention3: formState.intervention3,
+        client_intervention4: formState.intervention4,
+        client_intervention5: formState.intervention5,
+        client_intervention6: formState.intervention6,
+        client_functioning: formState.functioning,
+        client_prognosis: formState.prognosis,
+        client_progress: formState.progress,
+        client_problem: formState.problemNarrative,
+        client_treatmentgoal: formState.treatmentGoalNarrative,
+        client_sessionnarrative: formState.sessionNarrative,
+        client_medications: formState.medications,
+        client_personsinattendance: formState.personsInAttendance,
+        client_diagnosis: client_diagnosis,
+        client_privatenote: formState.privateNote,
+        client_nexttreatmentplanupdate: formState.nextTreatmentPlanUpdate,
+      };
+
       const { error } = await supabase
         .from('clients')
-        .update({
-          client_appearance: formState.appearance,
-          client_attitude: formState.attitude,
-          client_behavior: formState.behavior,
-          client_speech: formState.speech,
-          client_affect: formState.affect,
-          client_thoughtprocess: formState.thoughtProcess,
-          client_perception: formState.perception,
-          client_orientation: formState.orientation,
-          client_memoryconcentration: formState.memoryConcentration,
-          client_insightjudgement: formState.insightJudgement,
-          client_mood: formState.mood,
-          client_substanceabuserisk: formState.substanceAbuseRisk,
-          client_suicidalideation: formState.suicidalIdeation,
-          client_homicidalideation: formState.homicidalIdeation,
-          client_primaryobjective: formState.primaryObjective,
-          client_secondaryobjective: formState.secondaryObjective,
-          client_tertiaryobjective: formState.tertiaryObjective,
-          client_intervention1: formState.intervention1,
-          client_intervention2: formState.intervention2,
-          client_intervention3: formState.intervention3,
-          client_intervention4: formState.intervention4,
-          client_intervention5: formState.intervention5,
-          client_intervention6: formState.intervention6,
-          client_functioning: formState.functioning,
-          client_prognosis: formState.prognosis,
-          client_progress: formState.progress,
-          client_problem: formState.problemNarrative,
-          client_treatmentgoal: formState.treatmentGoalNarrative,
-          client_sessionnarrative: formState.sessionNarrative,
-          client_medications: formState.medications,
-          client_personsinattendance: formState.personsInAttendance,
-          client_diagnosis: client_diagnosis,
-          client_privatenote: formState.privateNote,
-          client_nexttreatmentplanupdate: formState.nextTreatmentPlanUpdate,
-        })
+        .update(clientUpdates)
         .eq('id', clientData.id);
 
       if (error) {
@@ -333,6 +324,7 @@ export const useSessionNoteForm = ({
       
       console.log("Client data updated successfully");
 
+      // Step 2: Handle session_notes table update or creation
       let pdfPath = null;
       let sessionDate = null;
       
@@ -342,6 +334,8 @@ export const useSessionNoteForm = ({
         sessionDate = new Date().toISOString().split('T')[0];
       }
       
+      // Check if a session note already exists for this appointment
+      console.log("Checking for existing session note...");
       const { data: existingNote, error: fetchError } = await supabase
         .from('session_notes')
         .select('id')
@@ -353,10 +347,12 @@ export const useSessionNoteForm = ({
         console.error('Error checking for existing session note:', fetchError);
       }
       
+      // Get clinician ID
       const clinician_id = appointment?.clinician_id || 
                           clientData.client_assigned_therapist || 
                           (await supabase.auth.getUser()).data.user?.id;
 
+      // Ensure we have a clinician_id before proceeding
       if (!clinician_id) {
         console.error('No clinician_id available for session note');
         toast({
@@ -368,6 +364,7 @@ export const useSessionNoteForm = ({
         return;
       }
       
+      // Prepare data for session_notes table
       const sessionNoteData = {
         client_id: clientData.id,
         clinician_id: clinician_id,
@@ -419,6 +416,7 @@ export const useSessionNoteForm = ({
         phq9_score: phq9Data?.total_score || null
       };
 
+      // Step 3: Update or insert session note
       let sessionNoteId;
       console.log("Saving session note data...");
       try {
@@ -469,6 +467,7 @@ export const useSessionNoteForm = ({
         });
       }
 
+      // Step 4: Update appointment status to Documented
       if (appointment?.id) {
         console.log("Updating appointment status to Documented");
         const { error: appointmentError } = await supabase
@@ -488,6 +487,7 @@ export const useSessionNoteForm = ({
         }
       }
 
+      // Step 5: Generate PDF if we have a content reference
       if (contentRef?.current && sessionNoteId) {
         console.log("Generating PDF for session note...");
         try {
@@ -500,12 +500,14 @@ export const useSessionNoteForm = ({
             createdBy: clinician_id
           };
           
+          // FIX: Pass the element ID as the first parameter, not the form data
           const elementId = 'session-note-content';
           const pdfResult = await generateAndSavePDF(elementId, documentInfo);
           
           if (pdfResult) {
             console.log("PDF generated successfully:", pdfResult);
             
+            // Update session note with PDF path
             const { error: pdfUpdateError } = await supabase
               .from('session_notes')
               .update({ pdf_path: pdfResult })
@@ -550,11 +552,11 @@ export const useSessionNoteForm = ({
     handleSave,
     isSubmitting,
     phq9Data,
-    validationErrors,
-    fieldErrors
+    validationErrors
   };
 };
 
+// Helper function for date formatting
 function format(date: Date, formatStr: string): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');

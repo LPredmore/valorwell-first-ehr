@@ -1,31 +1,22 @@
 
 import { z } from 'zod';
 
-const nonEmptyString = z.string().min(1, "This field is required").transform(val => val.trim());
-
-// Helper function to convert a comma-separated string to an array
-const stringToArray = (value: string): string[] => {
-  if (!value) return [];
-  if (Array.isArray(value)) return value;
-  return value.split(',').map(item => item.trim()).filter(Boolean);
-};
+// We'll make the validation more specific and add custom error messages
+const nonEmptyString = z.string().min(1, "This field cannot be empty").transform(val => val.trim());
 
 export const sessionNoteSchema = z.object({
   sessionDate: z.string().min(1, "Session date is required"),
   patientName: nonEmptyString,
   patientDOB: nonEmptyString,
   clinicianName: nonEmptyString,
-  diagnosis: z.union([
-    z.array(z.string()).min(1, "At least one diagnosis is required"),
-    z.string().min(1, "At least one diagnosis is required").transform(stringToArray)
-  ]),
+  diagnosis: z.array(z.string()).min(1, "At least one diagnosis is required"),
   planType: nonEmptyString,
   treatmentFrequency: nonEmptyString,
   medications: nonEmptyString,
   sessionType: nonEmptyString,
   personsInAttendance: nonEmptyString,
   
-  // Mental Status
+  // Mental Status - all fields required
   appearance: nonEmptyString,
   attitude: nonEmptyString,
   behavior: nonEmptyString,
@@ -41,7 +32,7 @@ export const sessionNoteSchema = z.object({
   suicidalIdeation: nonEmptyString,
   homicidalIdeation: nonEmptyString,
   
-  // Objectives
+  // Objectives - all fields required
   primaryObjective: nonEmptyString,
   intervention1: nonEmptyString,
   intervention2: nonEmptyString,
@@ -52,7 +43,7 @@ export const sessionNoteSchema = z.object({
   intervention5: nonEmptyString,
   intervention6: nonEmptyString,
   
-  // Assessment
+  // Assessment - all fields required
   currentSymptoms: nonEmptyString,
   functioning: nonEmptyString,
   prognosis: nonEmptyString,
@@ -63,7 +54,7 @@ export const sessionNoteSchema = z.object({
   nextTreatmentPlanUpdate: nonEmptyString,
   signature: nonEmptyString,
   
-  // Optional
+  // Optional field
   privateNote: z.string().optional(),
 });
 
