@@ -1,22 +1,18 @@
 
-export const insuranceTypeOptions = [
-  'Private Insurance',
-  'Medicare',
-  'Medicaid',
-  'VA Benefits',
-  'TRICARE',
-  'CHAMPVA',
-  'Self-Pay'
-] as const;
-
 export const relationshipOptions = [
   'Self',
-  'Spouse',
-  'Child',
   'Parent',
   'Guardian',
+  'Spouse',
+  'Partner',
+  'Sibling',
+  'Friend',
   'Other'
 ] as const;
 
-export type InsuranceType = typeof insuranceTypeOptions[number];
-export type RelationshipType = typeof relationshipOptions[number];
+export const insuranceTypeOptions = [
+  'Primary',
+  'Secondary',
+  'Tertiary',
+  'None'
+] as const;
