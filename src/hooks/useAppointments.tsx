@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTimeZone } from '@/context/TimeZoneContext';
-import { AppointmentType } from '@/types/appointment';
+import { AppointmentType, CalculatedAvailableSlot } from '@/packages/core/types/appointment';
 import { getAppointmentsInUserTimeZone } from '@/utils/appointmentUtils';
 
 export type { AppointmentType };
