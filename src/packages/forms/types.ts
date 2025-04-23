@@ -1,41 +1,35 @@
 
-/**
- * Form Types
- * 
- * This file contains types related to forms and assessments.
- */
-
-// Basic assessment submission type
-export interface AssessmentSubmission {
-  clientId: string;
-  appointmentId?: string;
-  assessmentDate: string;
-  totalScore?: number;
-  additionalNotes?: string;
+// Assessment Types
+export interface PHQ9Question {
+  id: number;
+  text: string;
+  field: string;
 }
 
-// PHQ-9 assessment
-export interface PHQ9Submission extends AssessmentSubmission {
-  question_1: number;
-  question_2: number;
-  question_3: number;
-  question_4: number;
-  question_5: number;
-  question_6: number;
-  question_7: number;
-  question_8: number;
-  question_9: number;
-  phq9_narrative?: string;
+export interface PHQ9Assessment {
+  phq9_interest: string;
+  phq9_feeling_down: string;
+  phq9_sleep: string;
+  phq9_energy: string;
+  phq9_appetite: string;
+  phq9_feeling_bad: string;
+  phq9_concentration: string;
+  phq9_movement: string;
+  phq9_thoughts: string;
 }
 
-// GAD-7 assessment
-export interface GAD7Submission extends AssessmentSubmission {
-  question_1: number;
-  question_2: number;
-  question_3: number;
-  question_4: number;
-  question_5: number;
-  question_6: number;
-  question_7: number;
-  gad7_narrative?: string;
+export interface GAD7Question {
+  id: number;
+  text: string;
+  field: string;
+}
+
+export interface GAD7Assessment {
+  gad7_nervous: string;
+  gad7_control: string;
+  gad7_worrying: string;
+  gad7_relaxing: string;
+  gad7_restless: string;
+  gad7_irritable: string;
+  gad7_afraid: string;
 }
