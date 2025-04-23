@@ -18,11 +18,13 @@ import {
   OrientationEnum,
   MemoryConcentrationEnum,
   InsightJudgementEnum,
-  MoodEnum,
+  MoodEnum
+} from "@/packages/core/types/sessionNote/mentalStatus";
+import {
   SubstanceAbuseRiskEnum,
   SuicidalIdeationEnum,
   HomicidalIdeationEnum
-} from "@/packages/core/types/sessionNote/mentalStatus";
+} from "@/packages/core/types/sessionNote/assessment";
 
 interface MentalStatusSectionProps {
   formState: any;

@@ -1,4 +1,5 @@
 
 export * from './mentalStatus';
 export * from './assessment';
-export * from './schema';
+
+// Note: Removed schema import since it's not needed
