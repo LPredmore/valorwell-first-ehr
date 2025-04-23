@@ -9,8 +9,6 @@ export {
   convertToTimezone,
   formatDateTime,
   fromUTCToTimezone,
-  toUTCFromTimezone,
-  isDSTTransitionTime,
   getTimezoneDisplayName,
   processAppointmentsWithLuxon
 } from './luxon';
@@ -25,6 +23,6 @@ export {
 } from './formatting';
 
 export {
-  convertDateTimeToTimezone,
+  convertToTimezone as convertDateTimeToTimezone,
   fromUTCToTimezone as convertFromUTC
 } from './conversion';
