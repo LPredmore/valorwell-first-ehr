@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { useUser } from '@valorwell/core/contexts';
@@ -7,10 +8,10 @@ import { useEffect, useState } from 'react';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles: string[];
-  blockNewClients?: boolean; // New prop to block "New" clients
+  blockNewClients?: boolean;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
   allowedRoles,
   blockNewClients = false

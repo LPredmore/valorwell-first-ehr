@@ -30,12 +30,11 @@ const formSchema = z.object({
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
 });
 
-const Login = () => {
+export const Login = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const { userRole, isLoading: userContextLoading } = useUser();
   
-  // Check if user is already logged in
   useEffect(() => {
     if (userRole && !userContextLoading) {
       console.log("[Login] User already authenticated, redirecting to home");
@@ -68,7 +67,6 @@ const Login = () => {
 
       console.log("[Login] Authentication successful, user:", data.user?.id);
       
-      // After successful login, clear the temporary password if it exists
       if (data.user) {
         const { data: clientData } = await supabase
           .from('clients')
@@ -77,7 +75,6 @@ const Login = () => {
           .maybeSingle();
 
         if (clientData?.client_temppassword) {
-          // Clear the temporary password
           await supabase
             .from('clients')
             .update({ client_temppassword: null })
@@ -95,7 +92,6 @@ const Login = () => {
         }
       }
       
-      // Let the UserContext handle the navigation through its useEffect
       console.log("[Login] Authentication complete - letting UserContext redirect");
     } catch (error: any) {
       console.error("[Login] Login error:", error);
@@ -110,7 +106,6 @@ const Login = () => {
     }
   };
 
-  // If user context is still loading, show loading state
   if (userContextLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -122,7 +117,6 @@ const Login = () => {
     );
   }
 
-  // If user is not logged in (userRole is null), show login form
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <Card className="w-full max-w-md">

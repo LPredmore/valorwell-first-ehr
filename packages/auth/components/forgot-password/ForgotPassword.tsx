@@ -19,7 +19,7 @@ const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
 });
 
-const ForgotPassword = () => {
+export const ForgotPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 

@@ -27,7 +27,7 @@ const formSchema = z.object({
   path: ["confirmPassword"],
 });
 
-const ResetPassword = () => {
+export const ResetPassword = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [token, setToken] = useState<string | null>(null);
