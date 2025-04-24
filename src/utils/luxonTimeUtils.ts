@@ -1,10 +1,5 @@
-import { DateTime } from "luxon";
-import { ensureIANATimeZone } from "./timeZoneUtils";
-import { 
-  formatDateTime as formatDateTimeUtil,
-  formatInTimezone,
-  formatTime 
-} from "./dateFormatUtils";
+import { DateTime } from 'luxon';
+import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
 /**
  * Convert a date and time to a Luxon DateTime object in a specific timezone
@@ -151,13 +146,12 @@ export const isDSTTransitionTime = (
  */
 export const getTimezoneDisplayName = (timezone: string): string => {
   const ianaZone = ensureIANATimeZone(timezone);
-  const zone = new IANAZone(ianaZone);
   
   try {
     // Try to get the location-based name
-    const locationName = ianaZone.split("/").pop()?.replace("_", " ") || ianaZone;
+    const locationName = ianaZone.split("/").pop()?.replace(/_/g, " ") || ianaZone;
     
-    // Get current offset for this timezone
+    // Get current offset for this timezone using Luxon
     const now = DateTime.now().setZone(ianaZone);
     const offsetStr = now.toFormat("ZZZZ"); // Format like "EST" or "EDT"
     
