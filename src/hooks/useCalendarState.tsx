@@ -141,6 +141,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     loadingClients,
     appointmentRefreshTrigger,
     refreshAppointments,
+    setAppointmentRefreshTrigger,
     isDialogOpen,
     setIsDialogOpen,
     timeZone: validTimeZone
