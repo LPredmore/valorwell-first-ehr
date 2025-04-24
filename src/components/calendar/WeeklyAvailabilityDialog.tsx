@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -136,27 +137,38 @@ export default function WeeklyAvailabilityDialog({
       const targetDate = today.set({ 
         weekday: dayIndex + 1 as WeekdayNumbers
       });
+      
+      // Convert times to proper format and create full ISO datetime strings
       const startDateTime = targetDate.set({
         hour: parseInt(newSlotStartTime.split(':')[0]),
         minute: parseInt(newSlotStartTime.split(':')[1]),
         second: 0,
         millisecond: 0
       });
+      
       const endDateTime = targetDate.set({
         hour: parseInt(newSlotEndTime.split(':')[0]),
         minute: parseInt(newSlotEndTime.split(':')[1]),
         second: 0,
         millisecond: 0
       });
+
+      // Validate time range
+      if (endDateTime <= startDateTime) {
+        throw new Error('End time must be after start time');
+      }
+
       const slotId = await AvailabilityService.createAvailabilitySlot(
         clinicianId,
         {
           startTime: startDateTime.toISO(),
           endTime: endDateTime.toISO(),
           title: 'Available',
-          recurring: false
+          recurring: true,
+          recurrenceRule: `FREQ=WEEKLY;BYDAY=${activeTab.substring(0, 2).toUpperCase()}`
         }
       );
+
       if (slotId) {
         toast({
           title: 'Success',
@@ -174,7 +186,7 @@ export default function WeeklyAvailabilityDialog({
       setError(error instanceof Error ? error : new Error('Failed to add availability slot'));
       toast({
         title: 'Error',
-        description: 'Failed to add availability slot',
+        description: error instanceof Error ? error.message : 'Failed to add availability slot',
         variant: 'destructive'
       });
     } finally {

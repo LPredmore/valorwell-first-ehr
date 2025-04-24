@@ -96,7 +96,8 @@ export class AvailabilityService {
     }
   ): Promise<string | null> {
     try {
-      const { data, error } = await supabase
+      // Create the main event
+      const { data: eventData, error: eventError } = await supabase
         .from('calendar_events')
         .insert({
           clinician_id: clinicianId,
@@ -110,25 +111,42 @@ export class AvailabilityService {
         .select('id')
         .single();
 
-      if (error) {
-        console.error('Error creating availability slot:', error);
+      if (eventError || !eventData?.id) {
+        console.error('Error creating availability slot:', eventError);
         return null;
       }
 
-      if (slot.recurring && slot.recurrenceRule && data?.id) {
+      // If this is a recurring slot, create the recurrence rule
+      if (slot.recurring && slot.recurrenceRule && eventData?.id) {
         const { error: recurrenceError } = await supabase
           .from('recurrence_rules')
           .insert({
-            event_id: data.id,
+            event_id: eventData.id,
             rrule: slot.recurrenceRule
           });
 
         if (recurrenceError) {
           console.error('Error creating recurrence rule:', recurrenceError);
+          // Delete the event if recurrence rule creation fails
+          await supabase
+            .from('calendar_events')
+            .delete()
+            .eq('id', eventData.id);
+          return null;
+        }
+        
+        // Update the event with the recurrence ID
+        const { error: updateError } = await supabase
+          .from('calendar_events')
+          .update({ recurrence_id: eventData.id })
+          .eq('id', eventData.id);
+          
+        if (updateError) {
+          console.error('Error updating event with recurrence ID:', updateError);
         }
       }
 
-      return data?.id || null;
+      return eventData.id;
     } catch (error) {
       console.error('Error in createAvailabilitySlot:', error);
       return null;
