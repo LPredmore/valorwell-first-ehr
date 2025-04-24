@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2, Edit } from 'lucide-react';
-import { formatTime12Hour } from '@/utils/timeZoneUtils';
+import { formatTime } from '@/utils/dateFormatUtils';
 
 interface AvailabilitySlotProps {
   startTime: string;
@@ -25,7 +25,7 @@ const AvailabilitySlot = ({
     <div className={`flex justify-between items-center border p-3 rounded-md ${isEditing ? 'border-primary' : ''}`}>
       <div>
         <span className="font-medium">
-          {formatTime12Hour(startTime)} - {formatTime12Hour(endTime)}
+          {formatTime(startTime)} - {formatTime(endTime)}
         </span>
         {isRecurring && (
           <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">

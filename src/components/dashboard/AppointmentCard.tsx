@@ -1,10 +1,9 @@
 
 import React from 'react';
-import { format, parseISO } from 'date-fns';
 import { Calendar, Clock, UserCircle, Video, FileText, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatTime12Hour, formatTimeInUserTimeZone, formatUTCTimeForUser } from '@/utils/timeZoneUtils';
+import { formatTime, formatDate } from '@/utils/dateFormatUtils';
 import { BaseAppointment } from '@/types/appointment';
 
 export interface AppointmentCardProps {
@@ -29,11 +28,11 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   // Format time for display in user's time zone
   const formatTimeDisplay = (timeString: string) => {
     try {
-      // Use formatTimeInUserTimeZone as it's designed for time strings without dates
-      return formatTimeInUserTimeZone(timeString, userTimeZone, 'h:mm a');
+      // Use our standardized formatTime utility
+      return formatTime(timeString);
     } catch (error) {
-      console.error('Error formatting time with time zone:', error);
-      return formatTime12Hour(timeString);
+      console.error('Error formatting time:', error);
+      return timeString;
     }
   };
 
@@ -47,7 +46,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
           </CardTitle>
           <CardDescription className="flex items-center">
             <Calendar className="h-4 w-4 mr-2" />
-            {format(parseISO(appointment.date), 'EEEE, MMMM do, yyyy')}
+            {formatDate(appointment.date, 'EEEE, MMMM d, yyyy')}
           </CardDescription>
         </CardHeader>
         <CardContent className="pb-2">
@@ -97,7 +96,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
         </CardTitle>
         <CardDescription className="flex items-center">
           <Calendar className="h-4 w-4 mr-2" />
-          {format(parseISO(appointment.date), 'EEEE, MMMM do, yyyy')}
+          {formatDate(appointment.date, 'EEEE, MMMM d, yyyy')}
         </CardDescription>
       </CardHeader>
       <CardContent className="pb-2">

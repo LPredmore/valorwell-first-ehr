@@ -4,6 +4,7 @@ import { ensureIANATimeZone } from './timeZone';
 
 /**
  * Convert a date and time to a Luxon DateTime object in a specific timezone
+ * @deprecated Use createDateTime from dateFormatUtils instead
  */
 export const createDateTime = (
   date: string | Date,
@@ -28,6 +29,7 @@ export const createDateTime = (
 
 /**
  * Convert a Luxon DateTime to another timezone
+ * @deprecated Use convertToTimezone from dateFormatUtils instead
  */
 export const convertToTimezone = (
   dateTime: DateTime,
@@ -39,6 +41,7 @@ export const convertToTimezone = (
 
 /**
  * Format a Luxon DateTime for display
+ * @deprecated Use formatDateTime from dateFormatUtils instead
  */
 export const formatDateTime = (
   dateTime: DateTime,
@@ -49,6 +52,7 @@ export const formatDateTime = (
 
 /**
  * Convert UTC datetime to target timezone
+ * @deprecated Use function from dateFormatUtils instead
  */
 export const fromUTCToTimezone = (
   utcString: string,

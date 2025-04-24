@@ -1,5 +1,7 @@
-import { format, parse, parseISO } from 'date-fns';
+
+import { format, parseISO } from 'date-fns';
 import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { formatTime } from './dateFormatUtils';
 
 /**
  * Map of common timezone display names to IANA format
@@ -285,14 +287,13 @@ export const formatTime12Hour = (timeString: string): string => {
   if (!timeString) return '';
   
   try {
-    // Handle ISO datetime strings (e.g. "2000-01-01T20:00")
-    let timePart = timeString;
-    if (timeString.includes('T')) {
-      timePart = timeString.split('T')[1];
+    // Use our standardized formatTime function if possible
+    if (timeString.includes('T') || /^\d{4}-\d{2}-\d{2}/.test(timeString)) {
+      return formatTime(timeString);
     }
     
-    // Now split the actual time part on colon
-    const [hours, minutes] = timePart.split(':');
+    // Handle simple time strings (e.g., "20:00")
+    const [hours, minutes] = timeString.split(':');
     
     // Convert to number and format with AM/PM
     const hour = parseInt(hours, 10);
@@ -310,7 +311,7 @@ export const formatTime12Hour = (timeString: string): string => {
  */
 export const formatDateToTime12Hour = (date: Date): string => {
   try {
-    return format(date, 'h:mm a');
+    return formatTime(date);
   } catch (error) {
     console.error('Error formatting date to time:', error, date);
     return '';

@@ -1,5 +1,10 @@
-import { DateTime, IANAZone } from "luxon";
+import { DateTime } from "luxon";
 import { ensureIANATimeZone } from "./timeZoneUtils";
+import { 
+  formatDateTime as formatDateTimeUtil,
+  formatInTimezone,
+  formatTime 
+} from "./dateFormatUtils";
 
 /**
  * Convert a date and time to a Luxon DateTime object in a specific timezone
@@ -51,11 +56,12 @@ export const convertToTimezone = (
 
 /**
  * Format a Luxon DateTime for display
+ * Use the centralized formatDateTime utility from dateFormatUtils
  * @param dateTime Luxon DateTime object
  * @param formatStr Format string (defaults to 'h:mm a')
  * @returns Formatted date/time string
  */
-export const formatDateTime = (
+export const formatLuxonDateTime = (
   dateTime: DateTime,
   formatStr: string = "h:mm a"
 ): string => {
@@ -200,3 +206,9 @@ export const processAppointmentsWithLuxon = (
     }
   });
 };
+
+/**
+ * @deprecated Use formatInTimezone from dateFormatUtils instead
+ * This is kept for backward compatibility
+ */
+export const formatDateTime = formatLuxonDateTime;
