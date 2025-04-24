@@ -140,6 +140,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     clients,
     loadingClients,
     appointmentRefreshTrigger,
+    setAppointmentRefreshTrigger,
     refreshAppointments,
     isDialogOpen,
     setIsDialogOpen,
