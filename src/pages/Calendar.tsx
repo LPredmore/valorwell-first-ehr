@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CalendarViewType } from '@/types/calendar';
 import Layout from '../components/layout/Layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,6 +19,7 @@ import AvailabilitySettingsDialog from '../components/calendar/AvailabilitySetti
 import WeeklyAvailabilityDialog from '../components/calendar/WeeklyAvailabilityDialog';
 import GoogleCalendarIntegration from '../components/calendar/GoogleCalendarIntegration';
 import { getWeekdayName } from '@/utils/dateFormatUtils';
+import { DateTime } from 'luxon';
 
 const CalendarPage: React.FC = () => {
   const navigate = useNavigate();
@@ -143,28 +144,64 @@ const CalendarPage: React.FC = () => {
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
-  const handleCalendarRefresh = () => {
+  const handleCalendarRefresh = useCallback(() => {
+    console.log('[Calendar] Refreshing calendar with new key');
     setCalendarKey(prev => prev + 1);
-  };
+  }, []);
 
-  const handleAvailabilityClick = (event: any) => {
-    const startDate = event.start;
-    const dayOfWeek = getWeekdayName(startDate);
-    const slotId = event.extendedProps?.id;
-    
-    setSelectedAvailabilityDate(dayOfWeek);
-    setIsWeeklyAvailabilityOpen(true);
-    
-    if (slotId) {
-      localStorage.setItem('selectedAvailabilitySlotId', slotId);
+  const handleAvailabilityClick = useCallback((event: any) => {
+    if (!event || !event.start) {
+      console.error('[Calendar] Invalid event data in availability click handler', event);
+      return;
     }
-  };
+    
+    let dayOfWeek;
+    try {
+      const eventStart = event.start;
+      
+      if (eventStart instanceof DateTime) {
+        dayOfWeek = eventStart.weekdayLong.toLowerCase();
+      } 
+      else if (eventStart instanceof Date) {
+        const dateTime = DateTime.fromJSDate(eventStart).setZone(userTimeZone);
+        dayOfWeek = dateTime.weekdayLong.toLowerCase();
+      } 
+      else {
+        dayOfWeek = getWeekdayName(eventStart);
+      }
+      
+      const slotId = event.extendedProps?.id;
+      
+      console.log('[Calendar] Availability click handler:', {
+        date: event.start,
+        dayOfWeek,
+        slotId,
+        eventData: event
+      });
+      
+      setSelectedAvailabilityDate(dayOfWeek);
+      setIsWeeklyAvailabilityOpen(true);
+      
+      if (slotId) {
+        localStorage.setItem('selectedAvailabilitySlotId', slotId);
+        console.log('[Calendar] Stored availability slot ID in localStorage:', slotId);
+      }
+    } catch (error) {
+      console.error('[Calendar] Error in availability click handler:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not process availability slot. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }, [userTimeZone, toast]);
 
   const canSelectDifferentClinician = userRole !== 'clinician';
   const canManageAvailability = userRole === 'clinician' || userRole === 'admin';
 
   if (isUserLoading || isLoadingTimeZone) {
-    return <Layout>
+    return (
+      <Layout>
         <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-2xl font-bold text-gray-800">Calendar</h1>
@@ -177,11 +214,13 @@ const CalendarPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </Layout>;
+      </Layout>
+    );
   }
 
   if (!userId) {
-    return <Layout>
+    return (
+      <Layout>
         <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4 mr-2" />
@@ -190,42 +229,68 @@ const CalendarPage: React.FC = () => {
             </AlertDescription>
           </Alert>
         </div>
-      </Layout>;
+      </Layout>
+    );
   }
 
-  return <Layout>
+  return (
+    <Layout>
       <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
-        <CalendarErrorBoundary onRetry={handleCalendarRefresh} fallbackUI={<div className="p-8 text-center border rounded-lg bg-red-50 border-red-200 my-4">
-              <div className="text-xl font-semibold text-red-700 mb-4">
-                Something went wrong with the calendar
-              </div>
-              <Button onClick={handleCalendarRefresh} variant="outline">
-                <RefreshCcw className="h-4 w-4 mr-2" />
-                Reload Calendar
-              </Button>
-            </div>}>
+        <CalendarErrorBoundary onRetry={handleCalendarRefresh} fallbackUI={
+          <div className="p-8 text-center border rounded-lg bg-red-50 border-red-200 my-4">
+            <div className="text-xl font-semibold text-red-700 mb-4">
+              Something went wrong with the calendar
+            </div>
+            <Button onClick={handleCalendarRefresh} variant="outline">
+              <RefreshCcw className="h-4 w-4 mr-2" />
+              Reload Calendar
+            </Button>
+          </div>
+        }>
           <div className="flex flex-col space-y-4">
             <div className="flex justify-between items-center">
               <h1 className="text-2xl font-bold text-gray-800">Calendar</h1>
               <div className="flex items-center gap-2">
-                {canManageAvailability && selectedClinicianId && <div className="flex items-center gap-2 mr-2">
-                    <Button variant="outline" onClick={() => setIsAvailabilitySettingsOpen(true)} className="flex items-center gap-2" title="Availability Settings">
+                {canManageAvailability && selectedClinicianId && (
+                  <div className="flex items-center gap-2 mr-2">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setIsAvailabilitySettingsOpen(true)} 
+                      className="flex items-center gap-2" 
+                      title="Availability Settings"
+                    >
                       <Settings className="h-4 w-4" />
                       <span className="hidden md:inline">Settings</span>
                     </Button>
                     
-                    <Button variant="outline" onClick={() => setIsWeeklyAvailabilityOpen(true)} className="flex items-center gap-2" title="Manage Weekly Availability">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        console.log('[Calendar] Opening weekly availability dialog');
+                        setSelectedAvailabilityDate(null);
+                        localStorage.removeItem('selectedAvailabilitySlotId');
+                        setIsWeeklyAvailabilityOpen(true);
+                      }} 
+                      className="flex items-center gap-2" 
+                      title="Manage Weekly Availability"
+                    >
                       <Clock className="h-4 w-4" />
                       <span className="hidden md:inline">Schedule Settings</span>
                     </Button>
                     
-                    <Button variant={showAvailability ? "default" : "outline"} onClick={() => setShowAvailability(!showAvailability)} className="flex items-center gap-2" title={showAvailability ? "Hide Availability" : "Show Availability"}>
+                    <Button 
+                      variant={showAvailability ? "default" : "outline"} 
+                      onClick={() => setShowAvailability(!showAvailability)} 
+                      className="flex items-center gap-2" 
+                      title={showAvailability ? "Hide Availability" : "Show Availability"}
+                    >
                       <CalendarIcon className="h-4 w-4" />
                       <span className="hidden md:inline">
                         {showAvailability ? "Hide" : "Show"} Availability
                       </span>
                     </Button>
-                  </div>}
+                  </div>
+                )}
 
                 <Button onClick={() => setIsDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
@@ -236,25 +301,34 @@ const CalendarPage: React.FC = () => {
                   <RefreshCcw className="h-4 w-4" />
                 </Button>
 
-                {clinicians.length > 1 && canSelectDifferentClinician && <div className="min-w-[200px]">
+                {clinicians.length > 1 && canSelectDifferentClinician && (
+                  <div className="min-w-[200px]">
                     <Select value={selectedClinicianId || undefined} onValueChange={setSelectedClinicianId}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a clinician" />
                       </SelectTrigger>
                       <SelectContent>
-                        {loadingClinicians ? <div className="flex items-center justify-center p-2">
+                        {loadingClinicians ? (
+                          <div className="flex items-center justify-center p-2">
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
                             Loading...
-                          </div> : clinicians.map(clinician => <SelectItem key={clinician.id} value={clinician.id}>
+                          </div>
+                        ) : (
+                          clinicians.map(clinician => (
+                            <SelectItem key={clinician.id} value={clinician.id}>
                               {clinician.clinician_professional_name}
-                            </SelectItem>)}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
-                  </div>}
+                  </div>
+                )}
               </div>
             </div>
 
-            {selectedClinicianId ? <Card className="p-4">
+            {selectedClinicianId ? (
+              <Card className="p-4">
                 <FullCalendarView 
                   key={calendarKey} 
                   clinicianId={selectedClinicianId} 
@@ -264,25 +338,42 @@ const CalendarPage: React.FC = () => {
                   showAvailability={showAvailability}
                   onAvailabilityClick={handleAvailabilityClick}
                 />
-              </Card> : <Card className="p-8 text-center">
+              </Card>
+            ) : (
+              <Card className="p-8 text-center">
                 <p className="text-gray-500">
-                  {loadingClinicians ? <span className="flex items-center justify-center">
+                  {loadingClinicians ? (
+                    <span className="flex items-center justify-center">
                       <Loader2 className="animate-spin h-4 w-4 mr-2" />
                       Loading clinicians...
-                    </span> : clinicians.length === 0 ? "No clinicians available. Please add clinicians first." : "Please select a clinician to view their calendar."}
+                    </span>
+                  ) : clinicians.length === 0 ? (
+                    "No clinicians available. Please add clinicians first."
+                  ) : (
+                    "Please select a clinician to view their calendar."
+                  )}
                 </p>
-              </Card>}
+              </Card>
+            )}
           </div>
         </CalendarErrorBoundary>
       </div>
 
-      <AppointmentDialog isOpen={isDialogOpen} onClose={() => setIsDialogOpen(false)} clients={clients} loadingClients={loadingClients} selectedClinicianId={selectedClinicianId} onAppointmentCreated={handleAppointmentCreated} />
+      <AppointmentDialog 
+        isOpen={isDialogOpen} 
+        onClose={() => setIsDialogOpen(false)} 
+        clients={clients} 
+        loadingClients={loadingClients} 
+        selectedClinicianId={selectedClinicianId} 
+        onAppointmentCreated={handleAppointmentCreated} 
+      />
 
       {canManageAvailability && selectedClinicianId && (
         <>
           <WeeklyAvailabilityDialog 
             isOpen={isWeeklyAvailabilityOpen} 
             onClose={() => {
+              console.log('[Calendar] Closing weekly availability dialog');
               setIsWeeklyAvailabilityOpen(false);
               setSelectedAvailabilityDate(null);
               localStorage.removeItem('selectedAvailabilitySlotId');
@@ -292,22 +383,41 @@ const CalendarPage: React.FC = () => {
             initialActiveTab={selectedAvailabilityDate || 'monday'}
           />
           
-          <AvailabilitySettingsDialog isOpen={isAvailabilitySettingsOpen} onClose={() => setIsAvailabilitySettingsOpen(false)} clinicianId={selectedClinicianId} onSettingsSaved={handleCalendarRefresh} />
+          <AvailabilitySettingsDialog 
+            isOpen={isAvailabilitySettingsOpen} 
+            onClose={() => setIsAvailabilitySettingsOpen(false)} 
+            clinicianId={selectedClinicianId} 
+            onSettingsSaved={handleCalendarRefresh} 
+          />
 
-          {showGoogleCalendarSettings && <div className="mt-4">
-              <Button variant="outline" onClick={() => setShowGoogleCalendarSettings(!showGoogleCalendarSettings)} className="mb-4">
+          {showGoogleCalendarSettings && (
+            <div className="mt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowGoogleCalendarSettings(!showGoogleCalendarSettings)} 
+                className="mb-4"
+              >
                 {showGoogleCalendarSettings ? 'Hide' : 'Show'} Google Calendar Settings
               </Button>
 
-              {showGoogleCalendarSettings && <Card className="p-4 mt-4">
-                  <GoogleCalendarIntegration clinicianId={selectedClinicianId} userTimeZone={userTimeZone} onSyncComplete={() => {
-                    setShowGoogleCalendarSettings(false);
-                  }} />
-                </Card>}
-            </div>}
+              {showGoogleCalendarSettings && (
+                <Card className="p-4 mt-4">
+                  <GoogleCalendarIntegration 
+                    clinicianId={selectedClinicianId} 
+                    userTimeZone={userTimeZone} 
+                    onSyncComplete={() => {
+                      setShowGoogleCalendarSettings(false);
+                      handleCalendarRefresh();
+                    }} 
+                  />
+                </Card>
+              )}
+            </div>
+          )}
         </>
       )}
-    </Layout>;
+    </Layout>
+  );
 };
 
 export default CalendarPage;

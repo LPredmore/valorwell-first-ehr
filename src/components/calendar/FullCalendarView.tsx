@@ -44,7 +44,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   // Handle errors with more detail
   useEffect(() => {
     if (error) {
-      console.error("Calendar error:", error);
+      console.error("[FullCalendarView] Calendar error:", error);
       setErrorMessage(error.message || "Failed to load calendar data");
       toast({
         title: "Calendar Error",
@@ -63,6 +63,14 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   const displayEvents = showAvailability 
     ? allEvents 
     : allEvents.filter(event => event.extendedProps?.eventType !== 'availability');
+
+  console.log("[FullCalendarView] Rendering calendar with:", {
+    totalEvents: allEvents.length,
+    displayEvents: displayEvents.length,
+    showAvailability,
+    clinicianId,
+    timeZone: userTimeZone
+  });
 
   if (isLoading) {
     return <LoadingState />;
@@ -124,11 +132,21 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
         }}
         eventClick={(info) => {
           const eventData = info.event;
+          console.log("[FullCalendarView] Event clicked:", {
+            id: eventData.id,
+            title: eventData.title,
+            start: eventData.start,
+            end: eventData.end,
+            extendedProps: eventData.extendedProps
+          });
+          
           if (eventData.extendedProps?.eventType === 'availability') {
             if (onAvailabilityClick) {
+              console.log("[FullCalendarView] Handling availability click");
               onAvailabilityClick(eventData);
             }
           } else if (onEventClick) {
+            console.log("[FullCalendarView] Handling regular event click");
             onEventClick(info);
           }
         }}
