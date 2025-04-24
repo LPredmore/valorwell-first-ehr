@@ -12,6 +12,9 @@ import { formatTime12Hour } from '@/utils/timeZoneUtils';
 import { DateTime } from 'luxon';
 import { WeekdayNumbers } from '@/types/calendar';
 import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 
 interface WeeklyAvailabilityDialogProps {
   isOpen: boolean;
@@ -66,6 +69,7 @@ export default function WeeklyAvailabilityDialog({
     minNoticeDays: 1,
     maxAdvanceDays: 30
   });
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -241,6 +245,42 @@ export default function WeeklyAvailabilityDialog({
     return options;
   }, []);
 
+  const handleGeneralSettingsSave = async () => {
+    if (!clinicianId) return;
+    
+    setIsSavingSettings(true);
+    setError(null);
+    
+    try {
+      const updated = await AvailabilityService.updateSettings(
+        clinicianId,
+        {
+          minNoticeDays: generalSettings.minNoticeDays,
+          maxAdvanceDays: generalSettings.maxAdvanceDays
+        }
+      );
+      
+      if (updated) {
+        toast({
+          title: "Success",
+          description: "Schedule settings saved successfully"
+        });
+      } else {
+        throw new Error("Failed to save schedule settings");
+      }
+    } catch (error) {
+      console.error('Error saving schedule settings:', error);
+      setError(error instanceof Error ? error : new Error('Failed to save schedule settings'));
+      toast({
+        title: "Error",
+        description: "Failed to save schedule settings",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
   const currentDaySlots = weeklyAvailability[activeTab] || [];
 
   return (
@@ -387,6 +427,8 @@ export default function WeeklyAvailabilityDialog({
               ))}
             </Tabs>
 
+            <Separator className="my-6" />
+
             <div className="border-t pt-6 mt-6">
               <h3 className="text-lg font-medium mb-4">Schedule Settings</h3>
               <div className="space-y-4">
@@ -430,9 +472,17 @@ export default function WeeklyAvailabilityDialog({
                 </div>
                 <Button 
                   onClick={handleGeneralSettingsSave}
+                  disabled={isSavingSettings}
                   className="w-full"
                 >
-                  Save Schedule Settings
+                  {isSavingSettings ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Schedule Settings"
+                  )}
                 </Button>
               </div>
             </div>
