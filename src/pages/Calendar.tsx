@@ -35,9 +35,7 @@ const CalendarPage: React.FC = () => {
     showAvailability,
     setShowAvailability
   } = useCalendarState();
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const {
     userTimeZone,
     isLoading: isLoadingTimeZone,
@@ -53,9 +51,9 @@ const CalendarPage: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [calendarKey, setCalendarKey] = useState<number>(0);
   const [isAvailabilitySettingsOpen, setIsAvailabilitySettingsOpen] = useState(false);
+  const [selectedAvailabilityDate, setSelectedAvailabilityDate] = useState<string | null>(null);
   const [isWeeklyAvailabilityOpen, setIsWeeklyAvailabilityOpen] = useState(false);
   const [showGoogleCalendarSettings, setShowGoogleCalendarSettings] = useState(false);
-  const [selectedAvailabilityDate, setSelectedAvailabilityDate] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isUserLoading && !userId) {
@@ -150,7 +148,7 @@ const CalendarPage: React.FC = () => {
 
   const handleAvailabilityClick = (event: any) => {
     const startDate = event.start;
-    const dayOfWeek = new Date(startDate).toLocaleDateString('en-US', { weekday: 'lowercase' });
+    const dayOfWeek = new Date(startDate).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
     setSelectedAvailabilityDate(dayOfWeek);
     setIsWeeklyAvailabilityOpen(true);
   };
