@@ -3,13 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AvailabilityService } from '@/services/availabilityService';
 import { AvailabilitySettings } from '@/types/appointment';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { useUser } from '@/context/UserContext';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 
 interface AvailabilitySettingsDialogProps {
@@ -28,9 +26,7 @@ export default function AvailabilitySettingsDialog({
   const { toast } = useToast();
   const { timeZone } = useUserTimeZone(clinicianId);
   const [settings, setSettings] = useState<Partial<AvailabilitySettings>>({
-    defaultSlotDuration: 60,
-    minNoticeDays: 1,
-    maxAdvanceDays: 30
+    defaultSlotDuration: 60
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -43,7 +39,9 @@ export default function AvailabilitySettingsDialog({
       try {
         const currentSettings = await AvailabilityService.getSettings(clinicianId);
         if (currentSettings) {
-          setSettings(currentSettings);
+          setSettings({
+            defaultSlotDuration: currentSettings.defaultSlotDuration
+          });
         }
       } catch (error) {
         console.error('Error fetching availability settings:', error);
@@ -140,36 +138,6 @@ export default function AvailabilitySettingsDialog({
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="minNoticeDays" className="text-right">
-                Minimum Notice (days)
-              </Label>
-              <Input
-                id="minNoticeDays"
-                type="number"
-                min="0"
-                max="30"
-                className="col-span-3"
-                value={settings.minNoticeDays}
-                onChange={(e) => setSettings(prev => ({ ...prev, minNoticeDays: parseInt(e.target.value) }))}
-              />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="maxAdvanceDays" className="text-right">
-                Maximum Advance (days)
-              </Label>
-              <Input
-                id="maxAdvanceDays"
-                type="number"
-                min="1"
-                max="365"
-                className="col-span-3"
-                value={settings.maxAdvanceDays}
-                onChange={(e) => setSettings(prev => ({ ...prev, maxAdvanceDays: parseInt(e.target.value) }))}
-              />
             </div>
 
             {timeZone && (

@@ -43,12 +43,12 @@ const dayTabs = [
   { id: 'sunday', label: 'Sunday' }
 ];
 
-const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
+export default function WeeklyAvailabilityDialog({
   isOpen,
   onClose,
   clinicianId,
   onAvailabilityUpdated
-}) => {
+}: WeeklyAvailabilityDialogProps) {
   const { toast } = useToast();
   const { timeZone } = useUserTimeZone(clinicianId);
   const [activeTab, setActiveTab] = useState('monday');
@@ -61,6 +61,41 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   const [newSlotStartTime, setNewSlotStartTime] = useState('09:00');
   const [newSlotEndTime, setNewSlotEndTime] = useState('10:00');
   const [isAddingSlot, setIsAddingSlot] = useState(false);
+
+  const [generalSettings, setGeneralSettings] = useState({
+    minNoticeDays: 1,
+    maxAdvanceDays: 30
+  });
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (!clinicianId) return;
+      
+      setIsLoading(true);
+      try {
+        const settings = await AvailabilityService.getSettings(clinicianId);
+        if (settings) {
+          setGeneralSettings({
+            minNoticeDays: settings.minNoticeDays,
+            maxAdvanceDays: settings.maxAdvanceDays
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching availability settings:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load availability settings',
+          variant: 'destructive'
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (isOpen && clinicianId) {
+      fetchSettings();
+    }
+  }, [clinicianId, isOpen, toast]);
 
   const reloadWeeklyAvailability = async () => {
     if (!clinicianId) return;
@@ -244,112 +279,164 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
             </Button>
           </div>
         ) : (
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="w-full"
-          >
-            <TabsList className="grid grid-cols-7">
+          <div className="space-y-6">
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            >
+              <TabsList className="grid grid-cols-7">
+                {dayTabs.map(day => (
+                  <TabsTrigger key={day.id} value={day.id}>
+                    {day.label.substring(0, 3)}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
               {dayTabs.map(day => (
-                <TabsTrigger key={day.id} value={day.id}>
-                  {day.label.substring(0, 3)}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-
-            {dayTabs.map(day => (
-              <TabsContent key={day.id} value={day.id} className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-medium">{day.label} Availability</h3>
-                </div>
-
-                <div className="space-y-2">
-                  {!weeklyAvailability[day.id] || weeklyAvailability[day.id].length === 0 ? (
-                    <div className="text-center py-4 text-gray-500">
-                      No availability set for {day.label}
-                    </div>
-                  ) : (
-                    weeklyAvailability[day.id].map((slot, index) => (
-                      <div 
-                        key={`${day.id}-${index}`}
-                        className="flex justify-between items-center border p-3 rounded-md"
-                      >
-                        <div>
-                          <span className="font-medium">
-                            {formatTime12Hour(slot.startTime)} - {formatTime12Hour(slot.endTime)}
-                          </span>
-                          {slot.isRecurring && (
-                            <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                              Recurring
-                            </span>
-                          )}
-                        </div>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="p-1 h-auto"
-                          onClick={() => handleDeleteSlot(day.id, index)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <div className="border p-4 rounded-md">
-                  <h4 className="text-sm font-medium mb-3">Add Availability Slot</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-xs text-gray-500">Start Time</label>
-                      <select 
-                        className="w-full border border-gray-300 rounded-md p-2"
-                        value={newSlotStartTime}
-                        onChange={(e) => setNewSlotStartTime(e.target.value)}
-                      >
-                        {timeOptions.map(option => (
-                          <option key={`start-${option.value}`} value={option.value}>
-                            {option.display}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs text-gray-500">End Time</label>
-                      <select 
-                        className="w-full border border-gray-300 rounded-md p-2"
-                        value={newSlotEndTime}
-                        onChange={(e) => setNewSlotEndTime(e.target.value)}
-                      >
-                        {timeOptions.map(option => (
-                          <option key={`end-${option.value}`} value={option.value}>
-                            {option.display}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                <TabsContent key={day.id} value={day.id} className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">{day.label} Availability</h3>
                   </div>
-                  <Button 
-                    onClick={handleAddSlot}
-                    disabled={isAddingSlot}
-                    className="mt-4 w-full"
-                  >
-                    {isAddingSlot ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Adding...
-                      </>
+
+                  <div className="space-y-2">
+                    {!weeklyAvailability[day.id] || weeklyAvailability[day.id].length === 0 ? (
+                      <div className="text-center py-4 text-gray-500">
+                        No availability set for {day.label}
+                      </div>
                     ) : (
-                      <>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Slot
-                      </>
+                      weeklyAvailability[day.id].map((slot, index) => (
+                        <div 
+                          key={`${day.id}-${index}`}
+                          className="flex justify-between items-center border p-3 rounded-md"
+                        >
+                          <div>
+                            <span className="font-medium">
+                              {formatTime12Hour(slot.startTime)} - {formatTime12Hour(slot.endTime)}
+                            </span>
+                            {slot.isRecurring && (
+                              <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                                Recurring
+                              </span>
+                            )}
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="p-1 h-auto"
+                            onClick={() => handleDeleteSlot(day.id, index)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      ))
                     )}
-                  </Button>
+                  </div>
+
+                  <div className="border p-4 rounded-md">
+                    <h4 className="text-sm font-medium mb-3">Add Availability Slot</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs text-gray-500">Start Time</label>
+                        <select 
+                          className="w-full border border-gray-300 rounded-md p-2"
+                          value={newSlotStartTime}
+                          onChange={(e) => setNewSlotStartTime(e.target.value)}
+                        >
+                          {timeOptions.map(option => (
+                            <option key={`start-${option.value}`} value={option.value}>
+                              {option.display}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs text-gray-500">End Time</label>
+                        <select 
+                          className="w-full border border-gray-300 rounded-md p-2"
+                          value={newSlotEndTime}
+                          onChange={(e) => setNewSlotEndTime(e.target.value)}
+                        >
+                          {timeOptions.map(option => (
+                            <option key={`end-${option.value}`} value={option.value}>
+                              {option.display}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={handleAddSlot}
+                      disabled={isAddingSlot}
+                      className="mt-4 w-full"
+                    >
+                      {isAddingSlot ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Adding...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Slot
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </TabsContent>
+              ))}
+            </Tabs>
+
+            <div className="border-t pt-6 mt-6">
+              <h3 className="text-lg font-medium mb-4">Schedule Settings</h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="minNoticeDays">Minimum Notice (days)</Label>
+                    <Input
+                      id="minNoticeDays"
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={generalSettings.minNoticeDays}
+                      onChange={(e) => setGeneralSettings(prev => ({
+                        ...prev,
+                        minNoticeDays: parseInt(e.target.value)
+                      }))}
+                      className="w-full"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Minimum days notice required for booking
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="maxAdvanceDays">Maximum Advance (days)</Label>
+                    <Input
+                      id="maxAdvanceDays"
+                      type="number"
+                      min="1"
+                      max="365"
+                      value={generalSettings.maxAdvanceDays}
+                      onChange={(e) => setGeneralSettings(prev => ({
+                        ...prev,
+                        maxAdvanceDays: parseInt(e.target.value)
+                      }))}
+                      className="w-full"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      How far in advance appointments can be booked
+                    </p>
+                  </div>
                 </div>
-              </TabsContent>
-            ))}
-          </Tabs>
+                <Button 
+                  onClick={handleGeneralSettingsSave}
+                  className="w-full"
+                >
+                  Save Schedule Settings
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
 
         <DialogFooter>
@@ -364,6 +451,4 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       </DialogContent>
     </Dialog>
   );
-};
-
-export default WeeklyAvailabilityDialog;
+}
