@@ -61,14 +61,36 @@ const Login = () => {
       }
 
       console.log("[Login] Authentication successful, user:", data.user?.id);
-      toast({
-        title: "Login successful",
-        description: "Welcome back!",
-      });
+      
+      // After successful login, clear the temporary password if it exists
+      if (data.user) {
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('client_temppassword')
+          .eq('id', data.user.id)
+          .maybeSingle();
+
+        if (clientData?.client_temppassword) {
+          // Clear the temporary password
+          await supabase
+            .from('clients')
+            .update({ client_temppassword: null })
+            .eq('id', data.user.id);
+          
+          toast({
+            title: "Welcome!",
+            description: "Your account has been set up successfully. You may want to change your password in settings.",
+          });
+        } else {
+          toast({
+            title: "Login successful",
+            description: "Welcome back!",
+          });
+        }
+      }
       
       // Let the UserContext handle the navigation through its useEffect
       console.log("[Login] Authentication complete - letting UserContext redirect");
-      // We don't navigate here anymore, letting the Index page handle it
     } catch (error: any) {
       console.error("[Login] Login error:", error);
       toast({

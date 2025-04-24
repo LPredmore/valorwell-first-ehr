@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -10,6 +9,11 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { PHQ9AssessmentSection } from './PHQ9AssessmentSection';
+import {
+  SubstanceAbuseRiskEnum,
+  SuicidalIdeationEnum,
+  HomicidalIdeationEnum
+} from '@/packages/core/types/sessionNote/assessment';
 
 interface SessionAssessmentSectionProps {
   formState: any;

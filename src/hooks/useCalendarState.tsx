@@ -1,7 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { getUserTimeZone } from '@/utils/timeZoneUtils';
+import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import { toast } from '@/components/ui/use-toast';
+import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 
 interface Client {
   id: string;
@@ -18,6 +19,10 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   const [loadingClients, setLoadingClients] = useState(false);
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { timeZone } = useUserTimeZone(selectedClinicianId);
+
+  // Ensure we have a valid IANA timezone
+  const validTimeZone = ensureIANATimeZone(timeZone || 'UTC');
 
   // Load clinicians
   useEffect(() => {
@@ -30,15 +35,23 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
           .order('clinician_professional_name');
 
         if (error) {
-          console.error('Error fetching clinicians:', error);
+          console.error('[useCalendarState] Error fetching clinicians:', error);
+          toast({
+            title: "Error loading clinicians",
+            description: "Unable to load clinician list. Please try again.",
+            variant: "destructive"
+          });
         } else {
           setClinicians(data || []);
-          if (data && data.length > 0 && !selectedClinicianId) {
-            setSelectedClinicianId(data[0].id);
-          }
+          console.log('[useCalendarState] Loaded clinicians:', data?.length || 0);
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('[useCalendarState] Error:', error);
+        toast({
+          title: "Error loading clinicians",
+          description: "An unexpected error occurred. Please try again.",
+          variant: "destructive"
+        });
       } finally {
         setLoadingClinicians(false);
       }
@@ -47,32 +60,61 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     fetchClinicians();
   }, []);
 
+  // If clinicians change and no clinician is selected, set the first one
+  useEffect(() => {
+    if (clinicians.length > 0 && !selectedClinicianId) {
+      setSelectedClinicianId(clinicians[0].id);
+      console.log('[useCalendarState] Auto-selected clinician:', clinicians[0].id, clinicians[0].clinician_professional_name);
+    }
+  }, [clinicians, selectedClinicianId]);
+
   // Load clients for selected clinician
   useEffect(() => {
     const fetchClientsForClinician = async () => {
-      if (!selectedClinicianId) return;
-      
+      if (!selectedClinicianId) {
+        setClients([]);
+        setLoadingClients(false);
+        console.log('[useCalendarState] No clinician selected, skipping client load.');
+        return;
+      }
+
       setLoadingClients(true);
       setClients([]);
-      
+      console.log('[useCalendarState] Fetching clients for clinician:', selectedClinicianId);
+
       try {
+        // Convert UUID to string for comparison with TEXT column
         const { data, error } = await supabase
           .from('clients')
           .select('id, client_preferred_name, client_last_name')
-          .eq('client_assigned_therapist', selectedClinicianId)
+          .eq('client_assigned_therapist', selectedClinicianId.toString())
           .order('client_last_name');
-          
+
         if (error) {
-          console.error('Error fetching clients:', error);
-        } else {
+          console.error('[useCalendarState] Error fetching clients:', error);
+          toast({
+            title: "Error loading clients",
+            description: "Unable to load client list. Please try again.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (data) {
           const formattedClients = data.map(client => ({
             id: client.id,
             displayName: `${client.client_preferred_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
           }));
           setClients(formattedClients);
+          console.log('[useCalendarState] Loaded clients:', formattedClients.length);
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('[useCalendarState] Error in fetchClientsForClinician:', error);
+        toast({
+          title: "Error loading clients",
+          description: "Unable to load client list. Please try again.",
+          variant: "destructive"
+        });
       } finally {
         setLoadingClients(false);
       }
@@ -80,6 +122,11 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
 
     fetchClientsForClinician();
   }, [selectedClinicianId]);
+
+  const refreshAppointments = () => {
+    console.log('[useCalendarState] Triggering appointment refresh');
+    setAppointmentRefreshTrigger(prev => prev + 1);
+  };
 
   return {
     showAvailability,
@@ -93,8 +140,9 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     clients,
     loadingClients,
     appointmentRefreshTrigger,
-    setAppointmentRefreshTrigger,
+    refreshAppointments,
     isDialogOpen,
     setIsDialogOpen,
+    timeZone: validTimeZone
   };
 };

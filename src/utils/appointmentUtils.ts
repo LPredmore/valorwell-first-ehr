@@ -1,6 +1,9 @@
+
 import { format } from 'date-fns';
-import { fromUTCTimestamp, ensureIANATimeZone } from './timeZoneUtils';
-import { AppointmentType } from '@/types/appointment';
+import { fromUTCToTimezone, formatDateTime } from './luxonTimeUtils';
+import { DateTime } from 'luxon';
+import { AppointmentType, BaseAppointment, AppointmentWithLuxon } from '../types/appointment';
+import { ensureIANATimeZone } from './timeZoneUtils';
 
 /**
  * Convert an appointment to the user's time zone for display
@@ -11,7 +14,7 @@ import { AppointmentType } from '@/types/appointment';
 export const getAppointmentInUserTimeZone = (
   appointment: AppointmentType, 
   userTimeZone: string
-): AppointmentType => {
+): AppointmentWithLuxon => {
   try {
     const validTimeZone = ensureIANATimeZone(userTimeZone);
     
@@ -25,7 +28,6 @@ export const getAppointmentInUserTimeZone = (
       });
       
       // Check if source time zone matches user time zone to prevent double conversion
-      // Only perform this check if source_time_zone is defined
       if (appointment.source_time_zone && 
           ensureIANATimeZone(appointment.source_time_zone) === validTimeZone) {
         console.log(`Source and target time zones match (${validTimeZone}), using original times`);
@@ -37,19 +39,25 @@ export const getAppointmentInUserTimeZone = (
         };
       }
       
-      const localStart = fromUTCTimestamp(appointment.appointment_datetime, validTimeZone);
-      const localEnd = fromUTCTimestamp(appointment.appointment_end_datetime, validTimeZone);
-      
-      return {
-        ...appointment,
-        display_date: format(localStart, 'yyyy-MM-dd'),
-        display_start_time: format(localStart, 'HH:mm'),
-        display_end_time: format(localEnd, 'HH:mm')
-      };
+      // Use Luxon for better time zone conversion
+      try {
+        const startDateTime = fromUTCToTimezone(appointment.appointment_datetime, userTimeZone);
+        const endDateTime = fromUTCToTimezone(appointment.appointment_end_datetime, userTimeZone);
+        
+        return {
+          ...appointment,
+          display_date: startDateTime.toFormat('yyyy-MM-dd'),
+          display_start_time: startDateTime.toFormat('HH:mm'),
+          display_end_time: endDateTime.toFormat('HH:mm'),
+          _luxon_start: startDateTime,
+          _luxon_end: endDateTime
+        };
+      } catch (error) {
+        console.error('Error using Luxon for time conversion:', error);
+        return appointment;
+      }
     }
     
-    // Fallback to original values if no UTC timestamps
-    console.log(`No UTC timestamps for appointment ${appointment.id}, using original values`);
     return {
       ...appointment,
       display_date: appointment.date,
@@ -57,18 +65,8 @@ export const getAppointmentInUserTimeZone = (
       display_end_time: appointment.end_time
     };
   } catch (error) {
-    console.error('Error converting appointment to user time zone:', error, {
-      appointmentId: appointment.id,
-      userTimeZone
-    });
-    
-    // Return original appointment with same display values as a fallback
-    return {
-      ...appointment,
-      display_date: appointment.date,
-      display_start_time: appointment.start_time,
-      display_end_time: appointment.end_time
-    };
+    console.error('Error converting appointment to user time zone:', error);
+    return appointment;
   }
 };
 
@@ -118,6 +116,40 @@ export const formatAppointmentTimeWithTimeZone = (
     return `${formattedHour}:${minutes} ${ampm} (${timeZoneName})`;
   } catch (error) {
     console.error('Error formatting appointment time with time zone:', error);
+    return `${appointment.start_time} (${userTimeZone})`;
+  }
+};
+
+/**
+ * Format appointment time for display with time zone indicator using Luxon
+ * @param appointment The appointment object
+ * @param userTimeZone The user's time zone
+ * @returns Formatted time string with time zone indicator
+ */
+export const formatAppointmentTimeWithLuxon = (
+  appointment: AppointmentWithLuxon,
+  userTimeZone: string
+): string => {
+  try {
+    const validTimeZone = ensureIANATimeZone(userTimeZone);
+    const displayTime = appointment.display_start_time || appointment.start_time;
+    
+    // If we have a Luxon DateTime from previous processing
+    if (appointment._luxon_start && appointment._luxon_start instanceof DateTime) {
+      return appointment._luxon_start.toFormat('h:mm a ZZZZ');
+    }
+    
+    // Create a Luxon DateTime from the date and time
+    const date = appointment.display_date || appointment.date;
+    const dateTime = DateTime.fromFormat(
+      `${date} ${displayTime}`, 
+      'yyyy-MM-dd HH:mm', 
+      { zone: validTimeZone }
+    );
+    
+    return dateTime.toFormat('h:mm a ZZZZ');
+  } catch (error) {
+    console.error('Error formatting appointment time with Luxon:', error);
     return `${appointment.start_time} (${userTimeZone})`;
   }
 };

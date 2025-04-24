@@ -12,6 +12,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { SessionDidNotOccurDialog } from '@/components/dashboard/SessionDidNotOccurDialog';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { Skeleton } from '@/components/ui/skeleton';
+import GoogleCalendarIntegration from '@/components/calendar/GoogleCalendarIntegration';
 
 const ClinicianDashboard: React.FC = () => {
   const { userRole, userId } = useUser();
@@ -101,7 +102,7 @@ const ClinicianDashboard: React.FC = () => {
       <div className="container mx-auto">
         <h1 className="text-2xl font-bold mb-6">Clinician Dashboard</h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
           {/* Today's Appointments */}
           <div>
             <AppointmentsList
@@ -149,6 +150,17 @@ const ClinicianDashboard: React.FC = () => {
             />
           </div>
         </div>
+        
+        {/* Google Calendar Integration */}
+        {currentUserId && (
+          <div className="mb-6">
+            <GoogleCalendarIntegration 
+              clinicianId={currentUserId} 
+              userTimeZone={userTimeZone}
+              onSyncComplete={refetch}
+            />
+          </div>
+        )}
       </div>
       
       {/* Video Chat Component */}

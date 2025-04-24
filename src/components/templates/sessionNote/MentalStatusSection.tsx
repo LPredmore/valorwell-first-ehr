@@ -7,6 +7,24 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
+import {
+  AppearanceEnum,
+  AttitudeEnum,
+  BehaviorEnum,
+  SpeechEnum,
+  AffectEnum,
+  ThoughtProcessEnum,
+  PerceptionEnum,
+  OrientationEnum,
+  MemoryConcentrationEnum,
+  InsightJudgementEnum,
+  MoodEnum
+} from "@/packages/core/types/sessionNote/mentalStatus";
+import {
+  SubstanceAbuseRiskEnum,
+  SuicidalIdeationEnum,
+  HomicidalIdeationEnum
+} from "@/packages/core/types/sessionNote/assessment";
 
 interface MentalStatusSectionProps {
   formState: any;
@@ -21,6 +39,12 @@ export const MentalStatusSection: React.FC<MentalStatusSectionProps> = ({
   editModes,
   toggleEditMode
 }) => {
+  // Helper to build enum dropdowns
+  const renderEnumOptions = (enumObj: object) =>
+    Object.values(enumObj).map((val) => (
+      <SelectItem value={val} key={val}>{val}</SelectItem>
+    ));
+
   return (
     <>
       <h4 className="text-md font-medium text-gray-800 mb-4">Mental Status Examination</h4>
@@ -36,16 +60,7 @@ export const MentalStatusSection: React.FC<MentalStatusSectionProps> = ({
               <SelectValue placeholder="Select appearance" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Normal Appearance & Grooming">Normal Appearance & Grooming</SelectItem>
-              <SelectItem value="Disheveled">Disheveled</SelectItem>
-              <SelectItem value="Poor Hygiene">Poor Hygiene</SelectItem>
-              <SelectItem value="Inappropriately Dressed">Inappropriately Dressed</SelectItem>
-              <SelectItem value="Eccentric Appearance">Eccentric Appearance</SelectItem>
-              <SelectItem value="Well-Groomed but Tense">Well-Groomed but Tense</SelectItem>
-              <SelectItem value="Meticulously Groomed">Meticulously Groomed</SelectItem>
-              <SelectItem value="Age-Inappropriate Appearance">Age-Inappropriate Appearance</SelectItem>
-              <SelectItem value="Unusual Clothing or Adornments">Unusual Clothing or Adornments</SelectItem>
-              <SelectItem value="Appears Older/Younger Than Stated Age">Appears Older/Younger Than Stated Age</SelectItem>
+              {renderEnumOptions(AppearanceEnum)}
             </SelectContent>
           </Select>
         </div>
@@ -59,18 +74,7 @@ export const MentalStatusSection: React.FC<MentalStatusSectionProps> = ({
               <SelectValue placeholder="Select attitude" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Calm & Cooperative">Calm & Cooperative</SelectItem>
-              <SelectItem value="Uncooperative">Uncooperative</SelectItem>
-              <SelectItem value="Guarded">Guarded</SelectItem>
-              <SelectItem value="Suspicious">Suspicious</SelectItem>
-              <SelectItem value="Hostile">Hostile</SelectItem>
-              <SelectItem value="Defensive">Defensive</SelectItem>
-              <SelectItem value="Apathetic">Apathetic</SelectItem>
-              <SelectItem value="Evasive">Evasive</SelectItem>
-              <SelectItem value="Irritable">Irritable</SelectItem>
-              <SelectItem value="Engaging">Engaging</SelectItem>
-              <SelectItem value="Friendly">Friendly</SelectItem>
-              <SelectItem value="Withdrawn">Withdrawn</SelectItem>
+              {renderEnumOptions(AttitudeEnum)}
             </SelectContent>
           </Select>
         </div>
@@ -84,18 +88,7 @@ export const MentalStatusSection: React.FC<MentalStatusSectionProps> = ({
               <SelectValue placeholder="Select behavior" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="No unusual behavior or psychomotor changes">No unusual behavior or psychomotor changes</SelectItem>
-              <SelectItem value="Psychomotor Agitation">Psychomotor Agitation</SelectItem>
-              <SelectItem value="Psychomotor Retardation">Psychomotor Retardation</SelectItem>
-              <SelectItem value="Restlessness">Restlessness</SelectItem>
-              <SelectItem value="Hyperactive">Hyperactive</SelectItem>
-              <SelectItem value="Compulsive Behaviors">Compulsive Behaviors</SelectItem>
-              <SelectItem value="Catatonic Features">Catatonic Features</SelectItem>
-              <SelectItem value="Impulsive">Impulsive</SelectItem>
-              <SelectItem value="Disorganized">Disorganized</SelectItem>
-              <SelectItem value="Aggressive">Aggressive</SelectItem>
-              <SelectItem value="Socially Inappropriate">Socially Inappropriate</SelectItem>
-              <SelectItem value="Tremulous">Tremulous</SelectItem>
+              {renderEnumOptions(BehaviorEnum)}
             </SelectContent>
           </Select>
         </div>
@@ -112,20 +105,7 @@ export const MentalStatusSection: React.FC<MentalStatusSectionProps> = ({
               <SelectValue placeholder="Select speech" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Normal rate/tone/volume w/out pressure">Normal rate/tone/volume w/out pressure</SelectItem>
-              <SelectItem value="Pressured Speech">Pressured Speech</SelectItem>
-              <SelectItem value="Monotone">Monotone</SelectItem>
-              <SelectItem value="Loud">Loud</SelectItem>
-              <SelectItem value="Soft/Quiet">Soft/Quiet</SelectItem>
-              <SelectItem value="Rapid">Rapid</SelectItem>
-              <SelectItem value="Slow">Slow</SelectItem>
-              <SelectItem value="Slurred">Slurred</SelectItem>
-              <SelectItem value="Mumbled">Mumbled</SelectItem>
-              <SelectItem value="Tangential">Tangential</SelectItem>
-              <SelectItem value="Circumstantial">Circumstantial</SelectItem>
-              <SelectItem value="Incoherent">Incoherent</SelectItem>
-              <SelectItem value="Poverty of Speech">Poverty of Speech</SelectItem>
-              <SelectItem value="Stuttering">Stuttering</SelectItem>
+              {renderEnumOptions(SpeechEnum)}
             </SelectContent>
           </Select>
         </div>
@@ -139,18 +119,7 @@ export const MentalStatusSection: React.FC<MentalStatusSectionProps> = ({
               <SelectValue placeholder="Select affect" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Normal range/congruent">Normal range/congruent</SelectItem>
-              <SelectItem value="Blunted">Blunted</SelectItem>
-              <SelectItem value="Flat">Flat</SelectItem>
-              <SelectItem value="Labile">Labile</SelectItem>
-              <SelectItem value="Constricted">Constricted</SelectItem>
-              <SelectItem value="Expansive">Expansive</SelectItem>
-              <SelectItem value="Incongruent with Content">Incongruent with Content</SelectItem>
-              <SelectItem value="Inappropriate">Inappropriate</SelectItem>
-              <SelectItem value="Anxious">Anxious</SelectItem>
-              <SelectItem value="Dysphoric">Dysphoric</SelectItem>
-              <SelectItem value="Euphoric">Euphoric</SelectItem>
-              <SelectItem value="Irritable">Irritable</SelectItem>
+              {renderEnumOptions(AffectEnum)}
             </SelectContent>
           </Select>
         </div>
@@ -164,18 +133,7 @@ export const MentalStatusSection: React.FC<MentalStatusSectionProps> = ({
               <SelectValue placeholder="Select thought process" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Goal Oriented/Directed">Goal Oriented/Directed</SelectItem>
-              <SelectItem value="Tangential">Tangential</SelectItem>
-              <SelectItem value="Circumstantial">Circumstantial</SelectItem>
-              <SelectItem value="Flight of Ideas">Flight of Ideas</SelectItem>
-              <SelectItem value="Loose Associations">Loose Associations</SelectItem>
-              <SelectItem value="Perseverative">Perseverative</SelectItem>
-              <SelectItem value="Blocking">Blocking</SelectItem>
-              <SelectItem value="Derailment">Derailment</SelectItem>
-              <SelectItem value="Concrete">Concrete</SelectItem>
-              <SelectItem value="Abstract">Abstract</SelectItem>
-              <SelectItem value="Poverty of Thought">Poverty of Thought</SelectItem>
-              <SelectItem value="Racing Thoughts">Racing Thoughts</SelectItem>
+              {renderEnumOptions(ThoughtProcessEnum)}
             </SelectContent>
           </Select>
         </div>
@@ -192,19 +150,7 @@ export const MentalStatusSection: React.FC<MentalStatusSectionProps> = ({
               <SelectValue placeholder="Select perception" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="No Hallucinations or Delusions">No Hallucinations or Delusions</SelectItem>
-              <SelectItem value="Auditory Hallucinations">Auditory Hallucinations</SelectItem>
-              <SelectItem value="Visual Hallucinations">Visual Hallucinations</SelectItem>
-              <SelectItem value="Tactile Hallucinations">Tactile Hallucinations</SelectItem>
-              <SelectItem value="Olfactory Hallucinations">Olfactory Hallucinations</SelectItem>
-              <SelectItem value="Gustatory Hallucinations">Gustatory Hallucinations</SelectItem>
-              <SelectItem value="Illusions">Illusions</SelectItem>
-              <SelectItem value="Ideas of Reference">Ideas of Reference</SelectItem>
-              <SelectItem value="Paranoid Ideation">Paranoid Ideation</SelectItem>
-              <SelectItem value="Grandiose Ideation">Grandiose Ideation</SelectItem>
-              <SelectItem value="Somatic Delusions">Somatic Delusions</SelectItem>
-              <SelectItem value="Derealization">Derealization</SelectItem>
-              <SelectItem value="Depersonalization">Depersonalization</SelectItem>
+              {renderEnumOptions(PerceptionEnum)}
             </SelectContent>
           </Select>
         </div>
@@ -218,13 +164,7 @@ export const MentalStatusSection: React.FC<MentalStatusSectionProps> = ({
               <SelectValue placeholder="Select orientation" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Oriented x3">Oriented x3</SelectItem>
-              <SelectItem value="Oriented x2">Oriented x2</SelectItem>
-              <SelectItem value="Oriented x1">Oriented x1</SelectItem>
-              <SelectItem value="Disoriented to Person">Disoriented to Person</SelectItem>
-              <SelectItem value="Disoriented to Place">Disoriented to Place</SelectItem>
-              <SelectItem value="Disoriented to Time">Disoriented to Time</SelectItem>
-              <SelectItem value="Fully Disoriented">Fully Disoriented</SelectItem>
+              {renderEnumOptions(OrientationEnum)}
             </SelectContent>
           </Select>
         </div>
@@ -238,16 +178,7 @@ export const MentalStatusSection: React.FC<MentalStatusSectionProps> = ({
               <SelectValue placeholder="Select memory/concentration" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Short & Long Term Intact">Short & Long Term Intact</SelectItem>
-              <SelectItem value="Short-Term Memory Impaired">Short-Term Memory Impaired</SelectItem>
-              <SelectItem value="Long-Term Memory Impaired">Long-Term Memory Impaired</SelectItem>
-              <SelectItem value="Both Short and Long-Term Impaired">Both Short and Long-Term Impaired</SelectItem>
-              <SelectItem value="Concentration Difficulty">Concentration Difficulty</SelectItem>
-              <SelectItem value="Easily Distracted">Easily Distracted</SelectItem>
-              <SelectItem value="Unable to Focus">Unable to Focus</SelectItem>
-              <SelectItem value="Confabulation Present">Confabulation Present</SelectItem>
-              <SelectItem value="Memory Gaps">Memory Gaps</SelectItem>
-              <SelectItem value="Selective Memory">Selective Memory</SelectItem>
+              {renderEnumOptions(MemoryConcentrationEnum)}
             </SelectContent>
           </Select>
         </div>
@@ -264,26 +195,23 @@ export const MentalStatusSection: React.FC<MentalStatusSectionProps> = ({
               <SelectValue placeholder="Select insight/judgement" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Good">Good</SelectItem>
-              <SelectItem value="Fair">Fair</SelectItem>
-              <SelectItem value="Poor">Poor</SelectItem>
-              <SelectItem value="Absent">Absent</SelectItem>
-              <SelectItem value="Limited">Limited</SelectItem>
-              <SelectItem value="Impaired">Impaired</SelectItem>
-              <SelectItem value="Inconsistent">Inconsistent</SelectItem>
-              <SelectItem value="Distorted">Distorted</SelectItem>
-              <SelectItem value="Developing">Developing</SelectItem>
-              <SelectItem value="Improved">Improved</SelectItem>
+              {renderEnumOptions(InsightJudgementEnum)}
             </SelectContent>
           </Select>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Mood</label>
-          <Input
-            placeholder="Describe mood"
+          <Select
             value={formState.mood}
-            onChange={(e) => handleChange('mood', e.target.value)}
-          />
+            onValueChange={(value) => handleChange('mood', value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select mood" />
+            </SelectTrigger>
+            <SelectContent>
+              {renderEnumOptions(MoodEnum)}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Substance Abuse Risk</label>
@@ -295,10 +223,7 @@ export const MentalStatusSection: React.FC<MentalStatusSectionProps> = ({
               <SelectValue placeholder="Select risk level" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="None">None</SelectItem>
-              <SelectItem value="Low">Low</SelectItem>
-              <SelectItem value="Medium">Medium</SelectItem>
-              <SelectItem value="High">High</SelectItem>
+              {renderEnumOptions(SubstanceAbuseRiskEnum)}
             </SelectContent>
           </Select>
         </div>
@@ -315,9 +240,7 @@ export const MentalStatusSection: React.FC<MentalStatusSectionProps> = ({
               <SelectValue placeholder="Select ideation level" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="None">None</SelectItem>
-              <SelectItem value="Passive">Passive</SelectItem>
-              <SelectItem value="Active">Active</SelectItem>
+              {renderEnumOptions(SuicidalIdeationEnum)}
             </SelectContent>
           </Select>
         </div>
@@ -331,9 +254,7 @@ export const MentalStatusSection: React.FC<MentalStatusSectionProps> = ({
               <SelectValue placeholder="Select ideation level" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="None">None</SelectItem>
-              <SelectItem value="Passive">Passive</SelectItem>
-              <SelectItem value="Active">Active</SelectItem>
+              {renderEnumOptions(HomicidalIdeationEnum)}
             </SelectContent>
           </Select>
         </div>
@@ -341,3 +262,5 @@ export const MentalStatusSection: React.FC<MentalStatusSectionProps> = ({
     </>
   );
 };
+
+// Note: This file is now quite long. Consider refactoring it into smaller components in the future!

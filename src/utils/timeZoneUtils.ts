@@ -1,10 +1,12 @@
-import { format, parse, parseISO } from 'date-fns';
+
+import { format, parseISO } from 'date-fns';
 import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { formatTime } from './dateFormatUtils';
 
 /**
  * Map of common timezone display names to IANA format
  */
-export const TIME_ZONE_MAP: Record<string, string> = {
+const TIME_ZONE_MAP: Record<string, string> = {
   'Eastern Time (ET)': 'America/New_York',
   'Central Time (CT)': 'America/Chicago',
   'Mountain Time (MT)': 'America/Denver',
@@ -19,27 +21,6 @@ export const TIME_ZONE_MAP: Record<string, string> = {
   'Alaska Standard Time (AKST)': 'America/Anchorage',
   'Hawaii-Aleutian Standard Time (HST)': 'Pacific/Honolulu',
   'Atlantic Standard Time (AST)': 'America/Puerto_Rico'
-};
-
-/**
- * Reverse mapping from IANA identifiers to display names
- */
-export const getDisplayNameFromIANA = (ianaIdentifier: string): string => {
-  // Create a reverse mapping
-  for (const [displayName, iana] of Object.entries(TIME_ZONE_MAP)) {
-    if (iana === ianaIdentifier) {
-      return displayName;
-    }
-  }
-  
-  // If no match found, return a formatted version of the IANA identifier
-  if (ianaIdentifier && ianaIdentifier.includes('/')) {
-    const parts = ianaIdentifier.split('/');
-    const location = parts[parts.length - 1].replace(/_/g, ' ');
-    return `${location} Time`;
-  }
-  
-  return ianaIdentifier || 'Central Standard Time (CST)';
 };
 
 /**
@@ -300,12 +281,21 @@ export const getUserTimeZone = (userTimeZone?: string | null): string => {
 /**
  * Format a time string to 12-hour AM/PM format
  * For use when displaying raw time values (e.g. from database)
+ * Now handles ISO-formatted time strings like '2000-01-01T20:00'
  */
 export const formatTime12Hour = (timeString: string): string => {
   if (!timeString) return '';
   
   try {
+    // Use our standardized formatTime function if possible
+    if (timeString.includes('T') || /^\d{4}-\d{2}-\d{2}/.test(timeString)) {
+      return formatTime(timeString);
+    }
+    
+    // Handle simple time strings (e.g., "20:00")
     const [hours, minutes] = timeString.split(':');
+    
+    // Convert to number and format with AM/PM
     const hour = parseInt(hours, 10);
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const formattedHour = hour % 12 || 12;
@@ -321,7 +311,7 @@ export const formatTime12Hour = (timeString: string): string => {
  */
 export const formatDateToTime12Hour = (date: Date): string => {
   try {
-    return format(date, 'h:mm a');
+    return formatTime(date);
   } catch (error) {
     console.error('Error formatting date to time:', error, date);
     return '';

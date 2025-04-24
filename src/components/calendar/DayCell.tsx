@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { format, isSameDay, isSameMonth, parseISO } from 'date-fns';
+import { DateTime } from 'luxon';
 import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
 
 interface Appointment {
@@ -61,7 +62,6 @@ const DayCell: React.FC<DayCellProps> = ({
   const isToday = isSameDay(day, new Date());
   const isCurrentMonth = isSameMonth(day, monthStart);
   
-  // For week view mode, show a larger cell with more appointment details
   if (weekViewMode) {
     return (
       <div
@@ -94,18 +94,23 @@ const DayCell: React.FC<DayCellProps> = ({
         
         {appointments.length > 0 ? (
           <div className="mt-2 space-y-2 max-h-[140px] overflow-y-auto pr-1">
-            {appointments.map(appointment => (
-              <div 
-                key={appointment.id} 
-                className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-2 rounded cursor-pointer hover:bg-blue-100 transition-colors"
-                onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
-              >
-                <div className="font-semibold">
-                  {formatDateToTime12Hour(parseISO(`2000-01-01T${appointment.start_time}`))} - {formatDateToTime12Hour(parseISO(`2000-01-01T${appointment.end_time}`))}
+            {appointments.map(appointment => {
+              const startTime = DateTime.fromISO(`2000-01-01T${appointment.start_time}`);
+              const endTime = DateTime.fromISO(`2000-01-01T${appointment.end_time}`);
+              
+              return (
+                <div 
+                  key={appointment.id} 
+                  className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-2 rounded cursor-pointer hover:bg-blue-100 transition-colors"
+                  onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
+                >
+                  <div className="font-semibold">
+                    {startTime.toFormat('h:mm a')} - {endTime.toFormat('h:mm a')}
+                  </div>
+                  <div className="truncate">{getClientName(appointment.client_id)}</div>
                 </div>
-                <div className="truncate">{getClientName(appointment.client_id)}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="h-full flex items-center justify-center text-gray-400 text-sm">
@@ -116,7 +121,6 @@ const DayCell: React.FC<DayCellProps> = ({
     );
   }
 
-  // Monthly view cell
   return (
     <div
       className={`

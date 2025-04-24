@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById, formatDateForDB, supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { getUserTimeZoneById } from '@/hooks/useUserTimeZone';
-import { TIME_ZONE_MAP, getDisplayNameFromIANA } from '@/utils/timeZoneUtils';
+import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
 // Import the tab components
 import MyPortal from '@/components/patient/MyPortal';
@@ -30,24 +30,7 @@ const PatientDashboard: React.FC = () => {
   const genderOptions = ['Male', 'Female', 'Non-Binary', 'Other', 'Prefer not to say'];
   const genderIdentityOptions = ['Male', 'Female', 'Trans Man', 'Trans Woman', 'Non-Binary', 'Other', 'Prefer not to say'];
   const stateOptions = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'];
-  
-  // Define time zone options with both display names and IANA identifiers
-  const timeZoneOptions = [
-    'Eastern Standard Time (EST)',
-    'Central Standard Time (CST)',
-    'Mountain Standard Time (MST)',
-    'Pacific Standard Time (PST)',
-    'Alaska Standard Time (AKST)',
-    'Hawaii-Aleutian Standard Time (HST)',
-    'Atlantic Standard Time (AST)'
-  ];
-  
-  // Create a reverse mapping from IANA identifiers to display names
-  const ianaToDisplayMap: Record<string, string> = {};
-  Object.entries(TIME_ZONE_MAP).forEach(([display, iana]) => {
-    ianaToDisplayMap[iana] = display;
-  });
-  
+  const timeZoneOptions = ['Eastern Standard Time (EST)', 'Central Standard Time (CST)', 'Mountain Standard Time (MST)', 'Pacific Standard Time (PST)', 'Alaska Standard Time (AKST)', 'Hawaii-Aleutian Standard Time (HST)', 'Atlantic Standard Time (AST)'];
   const insuranceTypes = ['PPO', 'HMO', 'EPO', 'POS', 'HDHP', 'Medicare', 'Medicaid', 'Other'];
   const relationshipTypes = ['Self', 'Spouse', 'Child', 'Other'];
 
@@ -147,8 +130,13 @@ const PatientDashboard: React.FC = () => {
         return;
       }
       console.log("Current user:", user);
+      
       const client = await getClientByUserId(user.id);
       console.log("Retrieved client data:", client);
+      
+      const profileTimeZone = await getUserTimeZoneById(user.id);
+      console.log("Retrieved profile time zone:", profileTimeZone);
+      
       if (client) {
         setClientData(client);
         if (client.client_assigned_therapist) {
@@ -156,14 +144,6 @@ const PatientDashboard: React.FC = () => {
         }
         
         checkForAssignedDocuments(user.id);
-        
-        // Fetch time zone from profiles table
-        const userTimeZone = await getUserTimeZoneById(user.id);
-        console.log("Retrieved user time zone from profiles:", userTimeZone);
-        
-        // Convert IANA time zone to display name for UI
-        const timeZoneDisplayName = userTimeZone ? getDisplayNameFromIANA(userTimeZone) : '';
-        console.log("Converted time zone to display name:", timeZoneDisplayName);
         
         let age = '';
         if (client.client_date_of_birth) {
@@ -180,6 +160,9 @@ const PatientDashboard: React.FC = () => {
             day: 'numeric'
           });
         }
+        
+        const timeZoneToUse = profileTimeZone || client.client_time_zone || 'America/Chicago';
+        
         form.reset({
           firstName: client.client_first_name || '',
           lastName: client.client_last_name || '',
@@ -191,28 +174,34 @@ const PatientDashboard: React.FC = () => {
           gender: client.client_gender || '',
           genderIdentity: client.client_gender_identity || '',
           state: client.client_state || '',
-          timeZone: timeZoneDisplayName || '', // Use converted display name for UI
+          timeZone: timeZoneToUse,
           client_insurance_company_primary: client.client_insurance_company_primary || '',
           client_insurance_type_primary: client.client_insurance_type_primary || '',
           client_policy_number_primary: client.client_policy_number_primary || '',
           client_group_number_primary: client.client_group_number_primary || '',
           client_subscriber_name_primary: client.client_subscriber_name_primary || '',
           client_subscriber_relationship_primary: client.client_subscriber_relationship_primary || '',
-          client_subscriber_dob_primary: client.client_subscriber_dob_primary || '',
+          client_subscriber_dob_primary: client.client_subscriber_dob_primary ? 
+            formatDateForDB(new Date(client.client_subscriber_dob_primary)) : null,
+          
           client_insurance_company_secondary: client.client_insurance_company_secondary || '',
           client_insurance_type_secondary: client.client_insurance_type_secondary || '',
           client_policy_number_secondary: client.client_policy_number_secondary || '',
           client_group_number_secondary: client.client_group_number_secondary || '',
           client_subscriber_name_secondary: client.client_subscriber_name_secondary || '',
           client_subscriber_relationship_secondary: client.client_subscriber_relationship_secondary || '',
-          client_subscriber_dob_secondary: client.client_subscriber_dob_secondary || '',
+          client_subscriber_dob_secondary: client.client_subscriber_dob_secondary ? 
+            formatDateForDB(new Date(client.client_subscriber_dob_secondary)) : null,
+          
           client_insurance_company_tertiary: client.client_insurance_company_tertiary || '',
           client_insurance_type_tertiary: client.client_insurance_type_tertiary || '',
           client_policy_number_tertiary: client.client_policy_number_tertiary || '',
           client_group_number_tertiary: client.client_group_number_tertiary || '',
           client_subscriber_name_tertiary: client.client_subscriber_name_tertiary || '',
           client_subscriber_relationship_tertiary: client.client_subscriber_relationship_tertiary || '',
-          client_subscriber_dob_tertiary: client.client_subscriber_dob_tertiary || '',
+          client_subscriber_dob_tertiary: client.client_subscriber_dob_tertiary ? 
+            formatDateForDB(new Date(client.client_subscriber_dob_tertiary)) : null,
+          
           client_champva: client.client_champva || '',
           client_tricare_beneficiary_category: client.client_tricare_beneficiary_category || '',
           client_tricare_sponsor_name: client.client_tricare_sponsor_name || '',
@@ -259,14 +248,13 @@ const PatientDashboard: React.FC = () => {
       const formValues = form.getValues();
       console.log("Form values to save:", formValues);
       
-      // Update client profile in clients table
       const updates = {
         client_preferred_name: formValues.preferredName,
         client_phone: formValues.phone,
         client_gender: formValues.gender,
         client_gender_identity: formValues.genderIdentity,
         client_state: formValues.state,
-        // Removed client_time_zone as we're now storing it in profiles table
+        client_time_zone: formValues.timeZone,
         client_insurance_company_primary: formValues.client_insurance_company_primary,
         client_insurance_type_primary: formValues.client_insurance_type_primary,
         client_policy_number_primary: formValues.client_policy_number_primary,
@@ -306,25 +294,8 @@ const PatientDashboard: React.FC = () => {
         client_tricare_referral_number: formValues.client_tricare_referral_number
       };
       
-      console.log("Sending updates to clients table:", updates);
+      console.log("Sending updates to database:", updates);
       const result = await updateClientProfile(clientData.id, updates);
-      
-      // Convert display name back to IANA format for storage
-      const timeZoneIANA = TIME_ZONE_MAP[formValues.timeZone] || formValues.timeZone;
-      console.log("Converting time zone display name to IANA format for storage:", formValues.timeZone, "->", timeZoneIANA);
-      
-      // Update time zone in profiles table
-      console.log("Updating time zone in profiles table:", timeZoneIANA);
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ time_zone: timeZoneIANA })
-        .eq('id', clientData.id);
-        
-      if (profileError) {
-        console.error("Error updating time zone in profiles:", profileError);
-        throw new Error("Failed to update time zone: " + JSON.stringify(profileError));
-      }
-      
       if (result.success) {
         console.log("Profile update successful");
         toast({
