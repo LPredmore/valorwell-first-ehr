@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Calendar, AlertCircle } from 'lucide-react';
 import { AvailabilityService } from '@/services/availabilityService';
-import { WeeklyAvailability, AvailabilitySlot } from '@/types/appointment';
+import { WeeklyAvailability, AvailabilitySlot as AvailabilitySlotType } from '@/types/appointment';
 import { formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 import { formatTime12Hour } from '@/utils/timeZoneUtils';
@@ -25,7 +25,7 @@ interface WeeklyAvailabilityDialogProps {
   onAvailabilityUpdated: () => void;
 }
 
-interface DatabaseAvailabilitySlot extends AvailabilitySlot {
+interface DatabaseAvailabilitySlot extends AvailabilitySlotType {
   id?: string;
   startTime: string;
   endTime: string;
@@ -79,7 +79,26 @@ export default function WeeklyAvailabilityDialog({
   const [editStartTime, setEditStartTime] = useState('09:00');
   const [editEndTime, setEditEndTime] = useState('10:00');
 
-  const [timeOptions, setTimeOptions] = useState<TimeOption[]>([]);
+  const timeOptions = useMemo(() => {
+    const options: TimeOption[] = [];
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute of [0, 30]) {
+        const formattedHour = hour.toString().padStart(2, '0');
+        const formattedMinute = minute.toString().padStart(2, '0');
+        const timeValue = `${formattedHour}:${formattedMinute}`;
+        
+        const displayValue = formatTime12Hour(timeValue);
+        
+        options.push({
+          value: timeValue,
+          display: displayValue
+        });
+      }
+    }
+    
+    console.log("[generateTimeOptions] values:", options.map(opt => opt.value));
+    return options;
+  }, []);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -325,27 +344,6 @@ export default function WeeklyAvailabilityDialog({
       setIsSaving(false);
     }
   };
-
-  const timeOptions = useMemo(() => {
-    const options: TimeOption[] = [];
-    for (let hour = 0; hour < 24; hour++) {
-      for (let minute of [0, 30]) {
-        const formattedHour = hour.toString().padStart(2, '0');
-        const formattedMinute = minute.toString().padStart(2, '0');
-        const timeValue = `${formattedHour}:${formattedMinute}`;
-        
-        const displayValue = formatTime12Hour(timeValue);
-        
-        options.push({
-          value: timeValue,
-          display: displayValue
-        });
-      }
-    }
-    
-    console.log("[generateTimeOptions] values:", options.map(opt => opt.value));
-    return options;
-  }, []);
 
   const handleGeneralSettingsSave = async () => {
     if (!clinicianId) return;
