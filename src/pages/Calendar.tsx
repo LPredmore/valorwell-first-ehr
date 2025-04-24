@@ -18,6 +18,8 @@ import { useNavigate } from 'react-router-dom';
 import AvailabilitySettingsDialog from '../components/calendar/AvailabilitySettingsDialog';
 import WeeklyAvailabilityDialog from '../components/calendar/WeeklyAvailabilityDialog';
 import GoogleCalendarIntegration from '../components/calendar/GoogleCalendarIntegration';
+import { DateTime } from 'luxon';
+import { getWeekdayName } from '@/utils/dateFormatUtils';
 
 const CalendarPage: React.FC = () => {
   const navigate = useNavigate();
@@ -148,7 +150,7 @@ const CalendarPage: React.FC = () => {
 
   const handleAvailabilityClick = (event: any) => {
     const startDate = event.start;
-    const dayOfWeek = new Date(startDate).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+    const dayOfWeek = getWeekdayName(startDate);
     setSelectedAvailabilityDate(dayOfWeek);
     setIsWeeklyAvailabilityOpen(true);
   };
