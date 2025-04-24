@@ -19,9 +19,8 @@ export class AvailabilityService {
     return data ? {
       id: data.id,
       clinicianId: data.clinician_id,
-      timezone: data.timezone,
       defaultSlotDuration: data.default_slot_duration,
-      minNoticeHours: data.min_notice_hours,
+      minNoticeDays: data.min_notice_days,
       maxAdvanceDays: data.max_advance_days,
       createdAt: data.created_at,
       updatedAt: data.updated_at
@@ -36,9 +35,8 @@ export class AvailabilityService {
       .from('availability_settings')
       .upsert({
         clinician_id: clinicianId,
-        timezone: settings.timezone,
         default_slot_duration: settings.defaultSlotDuration,
-        min_notice_hours: settings.minNoticeHours,
+        min_notice_days: settings.minNoticeDays,
         max_advance_days: settings.maxAdvanceDays
       })
       .select()
@@ -52,9 +50,8 @@ export class AvailabilityService {
     return data ? {
       id: data.id,
       clinicianId: data.clinician_id,
-      timezone: data.timezone,
       defaultSlotDuration: data.default_slot_duration,
-      minNoticeHours: data.min_notice_hours,
+      minNoticeDays: data.min_notice_days,
       maxAdvanceDays: data.max_advance_days,
       createdAt: data.created_at,
       updatedAt: data.updated_at
@@ -325,7 +322,7 @@ export class AvailabilityService {
     if (settings.is_active === false) {
       return [];
     }
-    const { timezone, default_slot_duration, min_notice_hours, max_advance_days } = settings;
+    const { timezone, default_slot_duration, min_notice_days, max_advance_days } = settings;
 
     const startOfDay = DateTime.fromISO(date, { zone: timezone }).startOf('day');
     const endOfDay = DateTime.fromISO(date, { zone: timezone }).endOf('day');
@@ -366,7 +363,7 @@ export class AvailabilityService {
         const slotBegin = t;
         const slotFinish = t.plus({ minutes: durationMin });
         const now = DateTime.now().setZone(timezone);
-        if (slotBegin.diff(now, 'hours').hours < (min_notice_hours || 0)) continue;
+        if (slotBegin.diff(now, 'hours').hours < (min_notice_days || 0)) continue;
         if (slotBegin.diff(now, 'days').days > (max_advance_days || 90)) continue;
         const overlaps = appointments.some(a => {
           return (

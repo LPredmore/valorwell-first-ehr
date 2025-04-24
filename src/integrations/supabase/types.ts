@@ -84,8 +84,7 @@ export type Database = {
           default_slot_duration: number
           id: string
           max_advance_days: number
-          min_notice_hours: number
-          timezone: string
+          min_notice_days: number
           updated_at: string
         }
         Insert: {
@@ -94,8 +93,7 @@ export type Database = {
           default_slot_duration?: number
           id?: string
           max_advance_days?: number
-          min_notice_hours?: number
-          timezone?: string
+          min_notice_days?: number
           updated_at?: string
         }
         Update: {
@@ -104,8 +102,7 @@ export type Database = {
           default_slot_duration?: number
           id?: string
           max_advance_days?: number
-          min_notice_hours?: number
-          timezone?: string
+          min_notice_days?: number
           updated_at?: string
         }
         Relationships: [

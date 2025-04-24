@@ -10,7 +10,7 @@ import { AvailabilitySettings } from '@/types/appointment';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
-import { timezoneOptions } from '@/utils/timezoneOptions';
+import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 
 interface AvailabilitySettingsDialogProps {
   isOpen: boolean;
@@ -26,12 +26,11 @@ export default function AvailabilitySettingsDialog({
   onSettingsSaved
 }: AvailabilitySettingsDialogProps) {
   const { toast } = useToast();
-  const { userId } = useUser();
+  const { timeZone } = useUserTimeZone(clinicianId);
   const [settings, setSettings] = useState<Partial<AvailabilitySettings>>({
-    timezone: 'America/Chicago',
     defaultSlotDuration: 60,
-    minNoticeHours: 24,
-    maxAdvanceDays: 90
+    minNoticeDays: 1,
+    maxAdvanceDays: 30
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -62,13 +61,6 @@ export default function AvailabilitySettingsDialog({
       fetchSettings();
     }
   }, [clinicianId, isOpen, toast]);
-
-  const handleInputChange = (field: keyof AvailabilitySettings, value: string | number) => {
-    setSettings(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
 
   const handleSave = async () => {
     if (!clinicianId) {
@@ -127,36 +119,13 @@ export default function AvailabilitySettingsDialog({
         ) : (
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="timezone" className="text-right">
-                Time Zone
-              </Label>
-              <div className="col-span-3">
-                <Select 
-                  value={settings.timezone}
-                  onValueChange={(value) => handleInputChange('timezone', value)}
-                >
-                  <SelectTrigger id="timezone">
-                    <SelectValue placeholder="Select time zone" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px]">
-                    {timezoneOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="defaultSlotDuration" className="text-right">
                 Default Duration (min)
               </Label>
               <div className="col-span-3">
                 <Select 
                   value={String(settings.defaultSlotDuration)}
-                  onValueChange={(value) => handleInputChange('defaultSlotDuration', parseInt(value))}
+                  onValueChange={(value) => setSettings(prev => ({ ...prev, defaultSlotDuration: parseInt(value) }))}
                 >
                   <SelectTrigger id="defaultSlotDuration">
                     <SelectValue placeholder="Select duration" />
@@ -174,17 +143,17 @@ export default function AvailabilitySettingsDialog({
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="minNoticeHours" className="text-right">
-                Minimum Notice (hours)
+              <Label htmlFor="minNoticeDays" className="text-right">
+                Minimum Notice (days)
               </Label>
               <Input
-                id="minNoticeHours"
+                id="minNoticeDays"
                 type="number"
                 min="0"
-                max="168"
+                max="30"
                 className="col-span-3"
-                value={settings.minNoticeHours}
-                onChange={(e) => handleInputChange('minNoticeHours', parseInt(e.target.value))}
+                value={settings.minNoticeDays}
+                onChange={(e) => setSettings(prev => ({ ...prev, minNoticeDays: parseInt(e.target.value) }))}
               />
             </div>
 
@@ -199,9 +168,15 @@ export default function AvailabilitySettingsDialog({
                 max="365"
                 className="col-span-3"
                 value={settings.maxAdvanceDays}
-                onChange={(e) => handleInputChange('maxAdvanceDays', parseInt(e.target.value))}
+                onChange={(e) => setSettings(prev => ({ ...prev, maxAdvanceDays: parseInt(e.target.value) }))}
               />
             </div>
+
+            {timeZone && (
+              <div className="text-sm text-muted-foreground mt-2">
+                All times are in {timeZone}
+              </div>
+            )}
           </div>
         )}
 
