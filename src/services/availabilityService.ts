@@ -150,8 +150,6 @@ export class AvailabilityService {
       if (updates.endTime) updateData.end_time = updates.endTime;
       if (updates.title) updateData.title = updates.title;
 
-      // Set is_active to false when updateRecurrence is false and no updates are provided
-      // This allows us to use this method for soft-deletes
       if (Object.keys(updates).length === 0 && updateRecurrence === false) {
         updateData.is_active = false;
       }
@@ -278,7 +276,6 @@ export class AvailabilityService {
         return createEmptyWeeklyAvailability();
       }
 
-      // Initialize with empty arrays for all days
       const weeklyAvailability: WeeklyAvailability = createEmptyWeeklyAvailability();
 
       events?.forEach(event => {
@@ -287,7 +284,7 @@ export class AvailabilityService {
         
         if (dayOfWeek in weeklyAvailability) {
           weeklyAvailability[dayOfWeek].push({
-            id: event.id,  // Include the id field
+            id: event.id,
             startTime: startDateTime.toFormat('HH:mm'),
             endTime: DateTime.fromISO(event.end_time).toFormat('HH:mm'),
             dayOfWeek,
@@ -322,7 +319,15 @@ export class AvailabilityService {
     if (settings.is_active === false) {
       return [];
     }
-    const { timezone, default_slot_duration, min_notice_days, max_advance_days } = settings;
+    
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('time_zone')
+      .eq('id', clinicianId)
+      .single();
+      
+    const timezone = profileData?.time_zone || 'UTC';
+    const { default_slot_duration, min_notice_days, max_advance_days } = settings;
 
     const startOfDay = DateTime.fromISO(date, { zone: timezone }).startOf('day');
     const endOfDay = DateTime.fromISO(date, { zone: timezone }).endOf('day');
@@ -363,8 +368,10 @@ export class AvailabilityService {
         const slotBegin = t;
         const slotFinish = t.plus({ minutes: durationMin });
         const now = DateTime.now().setZone(timezone);
-        if (slotBegin.diff(now, 'hours').hours < (min_notice_days || 0)) continue;
+        
+        if (slotBegin.diff(now, 'days').days < (min_notice_days || 0)) continue;
         if (slotBegin.diff(now, 'days').days > (max_advance_days || 90)) continue;
+        
         const overlaps = appointments.some(a => {
           return (
             (slotBegin < DateTime.fromISO(a.appointment_end_datetime, { zone: timezone })) &&

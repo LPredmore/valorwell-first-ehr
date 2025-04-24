@@ -22,6 +22,10 @@ interface WeeklyAvailabilityDialogProps {
 
 interface DatabaseAvailabilitySlot extends AvailabilitySlot {
   id?: string;
+  startTime: string;
+  endTime: string;
+  dayOfWeek: string;
+  isRecurring?: boolean;
 }
 
 interface TimeOption {

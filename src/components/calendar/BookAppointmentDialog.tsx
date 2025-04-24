@@ -41,8 +41,8 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
 
-  const [minNoticeHours, setMinNoticeHours] = useState<number>(24);
-  const [maxAdvanceDays, setMaxAdvanceDays] = useState<number>(90);
+  const [minNoticeDays, setMinNoticeDays] = useState<number>(1);
+  const [maxAdvanceDays, setMaxAdvanceDays] = useState<number>(30);
   const [isAvailabilityActive, setIsAvailabilityActive] = useState<boolean>(true);
 
   useEffect(() => {
@@ -53,7 +53,7 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
       try {
         const settings = await AvailabilityService.getSettings(clinicianId);
         if (settings) {
-          setMinNoticeHours(settings.minNoticeHours);
+          setMinNoticeDays(settings.minNoticeDays);
           setMaxAdvanceDays(settings.maxAdvanceDays);
           setIsAvailabilityActive((settings as any).is_active !== false);
         } else {
@@ -174,7 +174,7 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
     }
   };
 
-  const earliestBookableDate = DateTime.now().plus({ hours: minNoticeHours }).toJSDate();
+  const earliestBookableDate = DateTime.now().plus({ days: minNoticeDays }).toJSDate();
   const latestBookableDate = DateTime.now().plus({ days: maxAdvanceDays }).toJSDate();
 
   const isDateAvailable = (date: Date) =>
