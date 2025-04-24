@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Calendar, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, Calendar, AlertCircle, RefreshCw, Clock, User } from 'lucide-react';
 import { AvailabilityService } from '@/services/availabilityService';
 import { WeeklyAvailability, AvailabilitySlot as AvailabilitySlotType } from '@/types/appointment';
 import { formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
@@ -15,6 +16,7 @@ import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import AvailabilitySlot from './AvailabilitySlot';
 import AvailabilityEditForm from './AvailabilityEditForm';
 
@@ -32,6 +34,9 @@ interface DatabaseAvailabilitySlot extends AvailabilitySlotType {
   endTime: string;
   dayOfWeek: string;
   isRecurring?: boolean;
+  isAppointment?: boolean;
+  clientName?: string;
+  appointmentStatus?: string;
 }
 
 interface TimeOption {
@@ -81,6 +86,7 @@ export default function WeeklyAvailabilityDialog({
   const [editStartTime, setEditStartTime] = useState('09:00');
   const [editEndTime, setEditEndTime] = useState('10:00');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const timeOptions = useMemo(() => {
     const options: TimeOption[] = [];
@@ -182,6 +188,7 @@ export default function WeeklyAvailabilityDialog({
     
     setIsLoading(true);
     setError(null);
+    setIsRefreshing(true);
     try {
       console.log(`[WeeklyAvailabilityDialog] Loading availability for clinician: ${clinicianId}`);
       const availability = await AvailabilityService.getWeeklyAvailability(clinicianId);
@@ -197,6 +204,7 @@ export default function WeeklyAvailabilityDialog({
       });
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -283,6 +291,11 @@ export default function WeeklyAvailabilityDialog({
   };
 
   const handleEditSlot = (slot: DatabaseAvailabilitySlot) => {
+    // Don't allow editing appointment slots
+    if (slot.isAppointment) {
+      return;
+    }
+    
     console.log('[WeeklyAvailabilityDialog] Editing slot:', slot);
     setEditingSlot(slot);
     setEditStartTime(slot.startTime);
@@ -419,18 +432,34 @@ export default function WeeklyAvailabilityDialog({
     onClose();
   };
 
+  const handleRefresh = () => {
+    reloadWeeklyAvailability();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleCloseDialog}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Weekly Availability</span>
-            {timeZone && (
-              <span className="text-sm font-normal text-gray-500">
-                Showing times in {formatTimeZoneDisplay(timeZone)}
-              </span>
-            )}
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center">
+              <span>Weekly Availability</span>
+            </DialogTitle>
+            <div className="flex items-center space-x-2">
+              {timeZone && (
+                <span className="text-sm font-normal text-gray-500">
+                  {formatTimeZoneDisplay(timeZone)}
+                </span>
+              )}
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
         </DialogHeader>
         
         {isLoading ? (
@@ -471,7 +500,19 @@ export default function WeeklyAvailabilityDialog({
             {dayTabs.map(day => (
               <TabsContent key={day.id} value={day.id} className="space-y-4">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">{day.label} Availability</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">{day.label} Availability</h3>
+                    <div className="text-xs text-gray-500 flex items-center space-x-2">
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 bg-green-100 border border-green-500 rounded-full mr-1"></div>
+                        <span>Available</span>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 bg-blue-100 border border-blue-500 rounded-full mr-1"></div>
+                        <span>Appointment</span>
+                      </div>
+                    </div>
+                  </div>
                   
                   {weeklyAvailability[day.id].length === 0 ? (
                     <div className="text-gray-500 text-center py-4 border border-dashed border-gray-300 rounded-md">
@@ -479,30 +520,69 @@ export default function WeeklyAvailabilityDialog({
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {weeklyAvailability[day.id].map((slot, index) => (
-                        <div 
-                          key={slot.id || index} 
-                          className="p-3 border border-gray-200 rounded-md flex justify-between items-center hover:bg-gray-50"
-                        >
-                          <div>
-                            <span className="font-medium">
-                              {formatTime12Hour(slot.startTime)} - {formatTime12Hour(slot.endTime)}
-                            </span>
-                            {slot.isRecurring && (
-                              <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                                Recurring
-                              </span>
-                            )}
-                          </div>
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => handleEditSlot(slot)}
-                          >
-                            Edit
-                          </Button>
-                        </div>
-                      ))}
+                      {weeklyAvailability[day.id]
+                        .sort((a, b) => {
+                          // Sort by time
+                          return a.startTime.localeCompare(b.startTime);
+                        })
+                        .map((slot, index) => (
+                          <TooltipProvider key={slot.id || index}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div 
+                                  className={`p-3 border rounded-md flex justify-between items-center hover:bg-gray-50
+                                    ${slot.isAppointment 
+                                      ? 'border-blue-200 bg-blue-50' 
+                                      : 'border-green-200 bg-green-50'}`}
+                                >
+                                  <div className="flex items-center">
+                                    {slot.isAppointment ? (
+                                      <User className="h-4 w-4 text-blue-500 mr-2" />
+                                    ) : (
+                                      <Clock className="h-4 w-4 text-green-500 mr-2" />
+                                    )}
+                                    <span className={`font-medium ${slot.isAppointment ? 'text-blue-800' : 'text-green-800'}`}>
+                                      {formatTime12Hour(slot.startTime)} - {formatTime12Hour(slot.endTime)}
+                                    </span>
+                                    {slot.isRecurring && !slot.isAppointment && (
+                                      <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                                        Recurring
+                                      </span>
+                                    )}
+                                    {slot.isAppointment && (
+                                      <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                                        Booked
+                                      </span>
+                                    )}
+                                  </div>
+                                  {!slot.isAppointment && (
+                                    <Button 
+                                      size="sm" 
+                                      variant="ghost"
+                                      onClick={() => handleEditSlot(slot)}
+                                    >
+                                      Edit
+                                    </Button>
+                                  )}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {slot.isAppointment ? (
+                                  <div className="text-sm">
+                                    <p className="font-semibold">Appointment</p>
+                                    <p>Client: {slot.clientName || 'Unknown client'}</p>
+                                    <p>Status: {slot.appointmentStatus || 'Scheduled'}</p>
+                                  </div>
+                                ) : (
+                                  <div className="text-sm">
+                                    <p className="font-semibold">Available Time Slot</p>
+                                    <p>{slot.isRecurring ? 'Recurring weekly' : 'One-time'}</p>
+                                  </div>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ))}
                     </div>
                   )}
                   

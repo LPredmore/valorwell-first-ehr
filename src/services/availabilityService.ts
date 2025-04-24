@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySettings, AvailabilitySlot, WeeklyAvailability } from '@/types/appointment';
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
@@ -389,6 +390,10 @@ export class AvailabilityService {
       const clinicianTimeZone = ensureIANATimeZone(profileData?.time_zone || 'UTC');
       console.log('[AvailabilityService] Using clinician timezone:', clinicianTimeZone);
       
+      // Initialize the weekly availability with empty arrays
+      const weeklyAvailability: WeeklyAvailability = createEmptyWeeklyAvailability();
+      
+      // STEP 1: Fetch availability slots from calendar_events
       const { data: events, error } = await supabase
         .from('calendar_events')
         .select(`
@@ -407,11 +412,10 @@ export class AvailabilityService {
         console.error('[AvailabilityService] Error fetching weekly availability:', error);
         return createEmptyWeeklyAvailability();
       }
-
-      const weeklyAvailability: WeeklyAvailability = createEmptyWeeklyAvailability();
       
       console.log(`[AvailabilityService] Processing ${events?.length || 0} availability events`);
 
+      // Process availability events
       events?.forEach(event => {
         try {
           // Use Luxon to properly parse the UTC times and convert to clinician's timezone
@@ -419,7 +423,6 @@ export class AvailabilityService {
           const endDateTime = DateTime.fromISO(event.end_time).setZone(clinicianTimeZone);
           
           // Get day of week in lowercase to match our WeeklyAvailability keys
-          // Important: this needs to be based on the time in the clinician's timezone
           const dayOfWeek = startDateTime.weekdayLong.toLowerCase();
           
           // Log detailed information for debugging
@@ -442,7 +445,8 @@ export class AvailabilityService {
               startTime: startDateTime.toFormat('HH:mm'), // 24-hour format for consistent handling
               endTime: endDateTime.toFormat('HH:mm'),
               dayOfWeek,
-              isRecurring: !!event.recurrence_id
+              isRecurring: !!event.recurrence_id,
+              isAppointment: false
             });
             
             console.log(`[AvailabilityService] Added availability for ${dayOfWeek}:`, {
@@ -457,6 +461,105 @@ export class AvailabilityService {
           console.error(`[AvailabilityService] Error processing event ${event.id}:`, err);
         }
       });
+
+      // STEP 2: Fetch appointments for this clinician
+      // We need to get all appointments to appropriately display them in the weekly view
+      const { data: appointments, error: appointmentsError } = await supabase
+        .from('appointments')
+        .select(`
+          id, 
+          date, 
+          start_time, 
+          end_time, 
+          status,
+          source_time_zone,
+          clients:client_id (
+            client_first_name, 
+            client_last_name
+          )
+        `)
+        .eq('clinician_id', clinicianId)
+        .eq('status', 'scheduled');  // Only include scheduled appointments
+
+      if (appointmentsError) {
+        console.error('[AvailabilityService] Error fetching appointments:', appointmentsError);
+      } else {
+        console.log(`[AvailabilityService] Processing ${appointments?.length || 0} appointments`);
+        
+        // Process each appointment and add it to the weekly schedule
+        appointments?.forEach(appointment => {
+          try {
+            // Convert appointment date and time to a DateTime object in clinician timezone
+            const apptDate = appointment.date; // Format: YYYY-MM-DD
+            const startTimeStr = appointment.start_time; // Format: HH:MM:SS
+            const endTimeStr = appointment.end_time; // Format: HH:MM:SS
+            
+            // Create a datetime string by combining the date and time
+            const startDateTimeStr = `${apptDate}T${startTimeStr}`;
+            const endDateTimeStr = `${apptDate}T${endTimeStr}`;
+            
+            // Parse using the source timezone (from appointment)
+            const sourceTimeZone = appointment.source_time_zone || clinicianTimeZone;
+            const startDateTime = DateTime.fromSQL(startDateTimeStr, { zone: sourceTimeZone }).setZone(clinicianTimeZone);
+            const endDateTime = DateTime.fromSQL(endDateTimeStr, { zone: sourceTimeZone }).setZone(clinicianTimeZone);
+            
+            if (!startDateTime.isValid || !endDateTime.isValid) {
+              console.error('[AvailabilityService] Invalid appointment date/time:', {
+                appointment: appointment.id,
+                date: apptDate,
+                startTime: startTimeStr,
+                endTime: endTimeStr,
+                startValid: startDateTime.isValid,
+                startInvalidReason: startDateTime?.invalidReason,
+                endValid: endDateTime.isValid,
+                endInvalidReason: endDateTime?.invalidReason
+              });
+              return; // Skip this appointment
+            }
+            
+            // Get day of week in lowercase
+            const dayOfWeek = startDateTime.weekdayLong.toLowerCase();
+            
+            // Build the client name if available
+            let clientName = 'Client';
+            if (appointment.clients) {
+              clientName = `${appointment.clients.client_first_name || ''} ${appointment.clients.client_last_name || ''}`.trim();
+              clientName = clientName || 'Client';
+            }
+            
+            console.log(`[AvailabilityService] Appointment ${appointment.id}:`, {
+              date: apptDate,
+              startTime: startTimeStr,
+              endTime: endTimeStr,
+              dayOfWeek,
+              clientName,
+              convertedStart: startDateTime.toFormat('HH:mm'),
+              convertedEnd: endDateTime.toFormat('HH:mm')
+            });
+            
+            if (dayOfWeek in weeklyAvailability) {
+              weeklyAvailability[dayOfWeek].push({
+                id: appointment.id,
+                startTime: startDateTime.toFormat('HH:mm'),
+                endTime: endDateTime.toFormat('HH:mm'),
+                dayOfWeek,
+                isAppointment: true,
+                clientName,
+                appointmentStatus: appointment.status
+              });
+              
+              console.log(`[AvailabilityService] Added appointment for ${dayOfWeek}:`, {
+                id: appointment.id,
+                startTime: startDateTime.toFormat('HH:mm'),
+                endTime: endDateTime.toFormat('HH:mm'),
+                clientName
+              });
+            }
+          } catch (err) {
+            console.error(`[AvailabilityService] Error processing appointment ${appointment.id}:`, err);
+          }
+        });
+      }
 
       return weeklyAvailability;
     } catch (error) {

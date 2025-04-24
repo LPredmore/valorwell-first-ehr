@@ -51,6 +51,9 @@ export interface AvailabilitySlot {
   endTime: string;
   dayOfWeek: string;
   isRecurring?: boolean;
+  isAppointment?: boolean;
+  clientName?: string;
+  appointmentStatus?: string;
   excludeDates?: string[];
 }
 
