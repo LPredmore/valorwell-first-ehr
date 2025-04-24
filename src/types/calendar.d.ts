@@ -1,4 +1,3 @@
-
 // Types for calendar functionality
 
 import { EventInput } from '@fullcalendar/core';
@@ -52,9 +51,9 @@ export interface FullCalendarProps {
   onDateSelect?: (info: any) => void;
   onEventDrop?: (info: any) => void;
   onEventResize?: (info: any) => void;
+  onAvailabilityClick?: (event: any) => void;
   userTimeZone: string;
   view?: CalendarViewType;
   height?: string | number;
   showAvailability?: boolean;
 }
-

@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface CalendarEventHandlerProps {
   onEventClick?: (appointment: any) => void;
+  onAvailabilityClick?: (event: any) => void;
   onDateSelect?: (info: DateSelectArg) => void;
   onEventDrop?: (info: EventDropArg) => void;
   onEventResize?: (info: any) => void;
@@ -12,6 +13,7 @@ interface CalendarEventHandlerProps {
 
 const CalendarEventHandler: React.FC<CalendarEventHandlerProps> = ({
   onEventClick,
+  onAvailabilityClick,
   onDateSelect,
   onEventDrop,
   onEventResize,
@@ -19,7 +21,11 @@ const CalendarEventHandler: React.FC<CalendarEventHandlerProps> = ({
   const { toast } = useToast();
 
   const handleEventClick = (info: EventClickArg) => {
-    if (onEventClick) {
+    const eventType = info.event.extendedProps?.eventType;
+    
+    if (eventType === 'availability' && onAvailabilityClick) {
+      onAvailabilityClick(info.event);
+    } else if (onEventClick) {
       const appointment = info.event.extendedProps?.appointment;
       if (appointment) {
         onEventClick(appointment);

@@ -18,6 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import AvailabilitySettingsDialog from '../components/calendar/AvailabilitySettingsDialog';
 import WeeklyAvailabilityDialog from '../components/calendar/WeeklyAvailabilityDialog';
 import GoogleCalendarIntegration from '../components/calendar/GoogleCalendarIntegration';
+
 const CalendarPage: React.FC = () => {
   const navigate = useNavigate();
   const {
@@ -54,6 +55,8 @@ const CalendarPage: React.FC = () => {
   const [isAvailabilitySettingsOpen, setIsAvailabilitySettingsOpen] = useState(false);
   const [isWeeklyAvailabilityOpen, setIsWeeklyAvailabilityOpen] = useState(false);
   const [showGoogleCalendarSettings, setShowGoogleCalendarSettings] = useState(false);
+  const [selectedAvailabilityDate, setSelectedAvailabilityDate] = useState<string | null>(null);
+
   useEffect(() => {
     if (!isUserLoading && !userId) {
       console.log('[Calendar] User not authenticated, redirecting to login');
@@ -64,6 +67,7 @@ const CalendarPage: React.FC = () => {
       navigate('/login');
     }
   }, [isUserLoading, userId, navigate, toast]);
+
   useEffect(() => {
     console.log('[Calendar] Page initialized with timezone:', userTimeZone);
     if (isUserLoading || !userId) {
@@ -135,14 +139,25 @@ const CalendarPage: React.FC = () => {
     };
     fetchCurrentUser();
   }, [userTimeZone, selectedClinicianId, toast, userId, isUserLoading, navigate]);
+
   const handleAppointmentCreated = () => {
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
+
   const handleCalendarRefresh = () => {
     setCalendarKey(prev => prev + 1);
   };
+
+  const handleAvailabilityClick = (event: any) => {
+    const startDate = event.start;
+    const dayOfWeek = new Date(startDate).toLocaleDateString('en-US', { weekday: 'lowercase' });
+    setSelectedAvailabilityDate(dayOfWeek);
+    setIsWeeklyAvailabilityOpen(true);
+  };
+
   const canSelectDifferentClinician = userRole !== 'clinician';
   const canManageAvailability = userRole === 'clinician' || userRole === 'admin';
+
   if (isUserLoading || isLoadingTimeZone) {
     return <Layout>
         <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
@@ -159,6 +174,7 @@ const CalendarPage: React.FC = () => {
         </div>
       </Layout>;
   }
+
   if (!userId) {
     return <Layout>
         <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
@@ -171,6 +187,7 @@ const CalendarPage: React.FC = () => {
         </div>
       </Layout>;
   }
+
   return <Layout>
       <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
         <CalendarErrorBoundary onRetry={handleCalendarRefresh} fallbackUI={<div className="p-8 text-center border rounded-lg bg-red-50 border-red-200 my-4">
@@ -233,7 +250,15 @@ const CalendarPage: React.FC = () => {
             </div>
 
             {selectedClinicianId ? <Card className="p-4">
-                <FullCalendarView key={calendarKey} clinicianId={selectedClinicianId} userTimeZone={userTimeZone} view={calendarViewMode} height="700px" showAvailability={showAvailability} />
+                <FullCalendarView 
+                  key={calendarKey} 
+                  clinicianId={selectedClinicianId} 
+                  userTimeZone={userTimeZone} 
+                  view={calendarViewMode} 
+                  height="700px" 
+                  showAvailability={showAvailability}
+                  onAvailabilityClick={handleAvailabilityClick}
+                />
               </Card> : <Card className="p-8 text-center">
                 <p className="text-gray-500">
                   {loadingClinicians ? <span className="flex items-center justify-center">
@@ -248,23 +273,35 @@ const CalendarPage: React.FC = () => {
 
       <AppointmentDialog isOpen={isDialogOpen} onClose={() => setIsDialogOpen(false)} clients={clients} loadingClients={loadingClients} selectedClinicianId={selectedClinicianId} onAppointmentCreated={handleAppointmentCreated} />
 
-      {canManageAvailability && selectedClinicianId && <>
+      {canManageAvailability && selectedClinicianId && (
+        <>
+          <WeeklyAvailabilityDialog 
+            isOpen={isWeeklyAvailabilityOpen} 
+            onClose={() => {
+              setIsWeeklyAvailabilityOpen(false);
+              setSelectedAvailabilityDate(null);
+            }} 
+            clinicianId={selectedClinicianId} 
+            onAvailabilityUpdated={handleCalendarRefresh}
+            initialActiveTab={selectedAvailabilityDate || 'monday'}
+          />
+          
           <AvailabilitySettingsDialog isOpen={isAvailabilitySettingsOpen} onClose={() => setIsAvailabilitySettingsOpen(false)} clinicianId={selectedClinicianId} onSettingsSaved={handleCalendarRefresh} />
 
-          <WeeklyAvailabilityDialog isOpen={isWeeklyAvailabilityOpen} onClose={() => setIsWeeklyAvailabilityOpen(false)} clinicianId={selectedClinicianId} onAvailabilityUpdated={handleCalendarRefresh} />
-        </>}
+          {showGoogleCalendarSettings && <div className="mt-4">
+              <Button variant="outline" onClick={() => setShowGoogleCalendarSettings(!showGoogleCalendarSettings)} className="mb-4">
+                {showGoogleCalendarSettings ? 'Hide' : 'Show'} Google Calendar Settings
+              </Button>
 
-      {selectedClinicianId && <div className="mt-4">
-          <Button variant="outline" onClick={() => setShowGoogleCalendarSettings(!showGoogleCalendarSettings)} className="mb-4">
-            {showGoogleCalendarSettings ? 'Hide' : 'Show'} Google Calendar Settings
-          </Button>
-
-          {showGoogleCalendarSettings && <Card className="p-4 mt-4">
-              <GoogleCalendarIntegration clinicianId={selectedClinicianId} userTimeZone={userTimeZone} onSyncComplete={() => {
-          setShowGoogleCalendarSettings(false);
-        }} />
-            </Card>}
-        </div>}
+              {showGoogleCalendarSettings && <Card className="p-4 mt-4">
+                  <GoogleCalendarIntegration clinicianId={selectedClinicianId} userTimeZone={userTimeZone} onSyncComplete={() => {
+                    setShowGoogleCalendarSettings(false);
+                  }} />
+                </Card>}
+            </div>}
+        </>
+      )}
     </Layout>;
 };
+
 export default CalendarPage;

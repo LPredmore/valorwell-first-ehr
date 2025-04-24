@@ -19,6 +19,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   onDateSelect,
   onEventDrop,
   onEventResize,
+  onAvailabilityClick,
   userTimeZone = 'America/Chicago',
   view = 'dayGridMonth' as CalendarViewType,
   height = 'auto',
@@ -88,6 +89,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
         onDateSelect={onDateSelect}
         onEventDrop={onEventDrop}
         onEventResize={onEventResize}
+        onAvailabilityClick={onAvailabilityClick}
       />
 
       <FullCalendar

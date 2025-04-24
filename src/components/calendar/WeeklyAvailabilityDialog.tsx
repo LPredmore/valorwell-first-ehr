@@ -23,6 +23,7 @@ interface WeeklyAvailabilityDialogProps {
   onClose: () => void;
   clinicianId: string | null;
   onAvailabilityUpdated: () => void;
+  initialActiveTab?: string;
 }
 
 interface DatabaseAvailabilitySlot extends AvailabilitySlotType {
@@ -52,11 +53,12 @@ export default function WeeklyAvailabilityDialog({
   isOpen,
   onClose,
   clinicianId,
-  onAvailabilityUpdated
+  onAvailabilityUpdated,
+  initialActiveTab = 'monday'
 }: WeeklyAvailabilityDialogProps) {
   const { toast } = useToast();
   const { timeZone } = useUserTimeZone(clinicianId);
-  const [activeTab, setActiveTab] = useState('monday');
+  const [activeTab, setActiveTab] = useState(initialActiveTab);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [weeklyAvailability, setWeeklyAvailability] = useState<Record<string, DatabaseAvailabilitySlot[]>>(
@@ -155,6 +157,12 @@ export default function WeeklyAvailabilityDialog({
     if (isOpen) reloadWeeklyAvailability();
     // eslint-disable-next-line
   }, [clinicianId, isOpen, toast]);
+
+  useEffect(() => {
+    if (isOpen && initialActiveTab) {
+      setActiveTab(initialActiveTab);
+    }
+  }, [isOpen, initialActiveTab]);
 
   const handleAddSlot = async () => {
     if (!clinicianId) return;
