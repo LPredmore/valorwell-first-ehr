@@ -109,6 +109,7 @@ export default function WeeklyAvailabilityDialog({
     try {
       const availability = await AvailabilityService.getWeeklyAvailability(clinicianId);
       setWeeklyAvailability(availability);
+      console.log('Loaded weekly availability:', availability);
     } catch (error) {
       console.error('Error fetching weekly availability:', error);
       setError(error instanceof Error ? error : new Error('Failed to load availability settings'));
@@ -157,6 +158,13 @@ export default function WeeklyAvailabilityDialog({
       if (endDateTime <= startDateTime) {
         throw new Error('End time must be after start time');
       }
+
+      console.log('Creating slot for:', {
+        day: activeTab, 
+        startTime: startDateTime.toISO(),
+        endTime: endDateTime.toISO(),
+        timeZone
+      });
 
       const slotId = await AvailabilityService.createAvailabilitySlot(
         clinicianId,
@@ -467,7 +475,7 @@ export default function WeeklyAvailabilityDialog({
                     <Label htmlFor="maxAdvanceDays">Maximum Advance (days)</Label>
                     <Input
                       id="maxAdvanceDays"
-                      type="number"
+                      type="number" 
                       min="1"
                       max="365"
                       value={generalSettings.maxAdvanceDays}
@@ -478,37 +486,33 @@ export default function WeeklyAvailabilityDialog({
                       className="w-full"
                     />
                     <p className="text-sm text-muted-foreground">
-                      How far in advance appointments can be booked
+                      How far in advance bookings can be made
                     </p>
                   </div>
                 </div>
-                <Button 
-                  onClick={handleGeneralSettingsSave}
-                  disabled={isSavingSettings}
-                  className="w-full"
-                >
-                  {isSavingSettings ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Schedule Settings"
-                  )}
-                </Button>
+                
+                <div className="flex justify-end mt-4">
+                  <Button
+                    onClick={handleGeneralSettingsSave}
+                    disabled={isSavingSettings}
+                  >
+                    {isSavingSettings ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Settings'
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         )}
 
         <DialogFooter>
-          <Button 
-            type="button" 
-            onClick={onClose}
-            className="w-full"
-          >
-            Done
-          </Button>
+          <Button variant="outline" onClick={onClose}>Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

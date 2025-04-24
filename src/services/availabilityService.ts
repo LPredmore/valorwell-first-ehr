@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySettings, AvailabilitySlot, WeeklyAvailability } from '@/types/appointment';
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
@@ -96,6 +97,31 @@ export class AvailabilityService {
     }
   ): Promise<string | null> {
     try {
+      console.log('Creating availability slot with:', {
+        clinicianId,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        recurring: slot.recurring,
+        recurrenceRule: slot.recurrenceRule
+      });
+
+      // Get clinician's timezone for proper storage
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('time_zone')
+        .eq('id', clinicianId)
+        .single();
+      
+      const clinicianTimeZone = profileData?.time_zone || 'UTC';
+      console.log('Clinician timezone:', clinicianTimeZone);
+      
+      // Parse the incoming times and ensure they're treated as being in the clinician's timezone
+      const startDateTime = DateTime.fromISO(slot.startTime, { zone: clinicianTimeZone });
+      const endDateTime = DateTime.fromISO(slot.endTime, { zone: clinicianTimeZone });
+      
+      console.log('Parsed start time:', startDateTime.toISO());
+      console.log('Parsed end time:', endDateTime.toISO());
+
       // Create the main event
       const { data: eventData, error: eventError } = await supabase
         .from('calendar_events')
@@ -103,8 +129,8 @@ export class AvailabilityService {
           clinician_id: clinicianId,
           event_type: 'availability',
           title: slot.title || 'Available',
-          start_time: slot.startTime,
-          end_time: slot.endTime,
+          start_time: startDateTime.toISO(),
+          end_time: endDateTime.toISO(),
           all_day: false,
           is_active: true
         })
@@ -275,6 +301,16 @@ export class AvailabilityService {
 
   static async getWeeklyAvailability(clinicianId: string): Promise<WeeklyAvailability> {
     try {
+      // Get clinician's timezone for proper time conversion
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('time_zone')
+        .eq('id', clinicianId)
+        .maybeSingle();
+      
+      const clinicianTimeZone = profileData?.time_zone || 'UTC';
+      console.log('Getting weekly availability for clinician in timezone:', clinicianTimeZone);
+      
       const { data: events, error } = await supabase
         .from('calendar_events')
         .select(`
@@ -297,18 +333,30 @@ export class AvailabilityService {
       const weeklyAvailability: WeeklyAvailability = createEmptyWeeklyAvailability();
 
       events?.forEach(event => {
-        const startDateTime = DateTime.fromISO(event.start_time);
+        // Convert the UTC stored time to the clinician's timezone
+        const startDateTime = DateTime.fromISO(event.start_time).setZone(clinicianTimeZone);
+        const endDateTime = DateTime.fromISO(event.end_time).setZone(clinicianTimeZone);
+        
         const dayOfWeek = startDateTime.toFormat('EEEE').toLowerCase();
         
         if (dayOfWeek in weeklyAvailability) {
           weeklyAvailability[dayOfWeek].push({
             id: event.id,
-            startTime: startDateTime.toFormat('HH:mm'),
-            endTime: DateTime.fromISO(event.end_time).toFormat('HH:mm'),
+            startTime: startDateTime.toFormat('HH:mm'), // 24-hour format for consistent handling
+            endTime: endDateTime.toFormat('HH:mm'),
             dayOfWeek,
             isRecurring: !!event.recurrence_id
           });
         }
+
+        console.log(`Availability for ${dayOfWeek}:`, {
+          id: event.id,
+          startTime: startDateTime.toFormat('HH:mm'),
+          endTime: endDateTime.toFormat('HH:mm'),
+          originalStart: event.start_time,
+          originalEnd: event.end_time,
+          timezone: clinicianTimeZone
+        });
       });
 
       return weeklyAvailability;
@@ -345,42 +393,68 @@ export class AvailabilityService {
       .single();
       
     const timezone = profileData?.time_zone || 'UTC';
+    console.log('Calculating available slots with timezone:', timezone);
+    
     const { default_slot_duration, min_notice_days, max_advance_days } = settings;
 
     const startOfDay = DateTime.fromISO(date, { zone: timezone }).startOf('day');
     const endOfDay = DateTime.fromISO(date, { zone: timezone }).endOf('day');
+    
+    console.log('Checking availability for:', {
+      date,
+      startOfDay: startOfDay.toISO(),
+      endOfDay: endOfDay.toISO(),
+      timezone
+    });
 
+    // Convert to UTC for database query
+    const startOfDayUTC = startOfDay.toUTC().toISO();
+    const endOfDayUTC = endOfDay.toUTC().toISO();
+    
     const { data: slots, error: slotsError } = await supabase
       .from('calendar_events')
       .select('*')
       .eq('clinician_id', clinicianId)
       .eq('event_type', 'availability')
       .eq('is_active', true)
-      .lte('start_time', endOfDay.toISO())
-      .gte('end_time', startOfDay.toISO());
+      .lte('start_time', endOfDayUTC)
+      .gte('end_time', startOfDayUTC);
 
     if (slotsError || !slots) {
       console.error('Error fetching availability slots:', slotsError);
       return [];
     }
+    
+    console.log('Retrieved availability slots:', slots.length);
 
     const { data: appointments, error: apptError } = await supabase
       .from('appointments')
       .select('appointment_datetime, appointment_end_datetime, status')
       .eq('clinician_id', clinicianId)
       .neq('status', 'cancelled')
-      .gte('appointment_datetime', startOfDay.toISO())
-      .lte('appointment_end_datetime', endOfDay.toISO());
+      .gte('appointment_datetime', startOfDayUTC)
+      .lte('appointment_end_datetime', endOfDayUTC);
 
     if (apptError || !appointments) {
       console.error('Error fetching appointments:', apptError);
       return [];
     }
+    
+    console.log('Retrieved appointments:', appointments.length);
 
     let availableSlots: Array<{ start: string; end: string; slotId?: string; isRecurring?: boolean }> = [];
     for (const slot of slots) {
-      const slotStartDT = DateTime.fromISO(slot.start_time, { zone: timezone });
-      const slotEndDT = DateTime.fromISO(slot.end_time, { zone: timezone });
+      // Convert the UTC stored times to the clinician's timezone
+      const slotStartDT = DateTime.fromISO(slot.start_time).setZone(timezone);
+      const slotEndDT = DateTime.fromISO(slot.end_time).setZone(timezone);
+      
+      console.log('Processing slot:', {
+        id: slot.id,
+        start: slotStartDT.toISO(),
+        end: slotEndDT.toISO(),
+        timezone: timezone
+      });
+      
       const durationMin = default_slot_duration || 60;
       for (let t = slotStartDT; t.plus({ minutes: durationMin }) <= slotEndDT; t = t.plus({ minutes: durationMin })) {
         const slotBegin = t;
@@ -391,12 +465,20 @@ export class AvailabilityService {
         if (slotBegin.diff(now, 'days').days > (max_advance_days || 90)) continue;
         
         const overlaps = appointments.some(a => {
+          const apptStart = DateTime.fromISO(a.appointment_datetime).setZone(timezone);
+          const apptEnd = DateTime.fromISO(a.appointment_end_datetime).setZone(timezone);
+          
           return (
-            (slotBegin < DateTime.fromISO(a.appointment_end_datetime, { zone: timezone })) &&
-            (slotFinish > DateTime.fromISO(a.appointment_datetime, { zone: timezone }))
+            (slotBegin < apptEnd) && (slotFinish > apptStart)
           );
         });
+        
         if (!overlaps) {
+          console.log('Adding available slot:', {
+            start: slotBegin.toISO(),
+            end: slotFinish.toISO()
+          });
+          
           availableSlots.push({
             start: slotBegin.toISO(),
             end: slotFinish.toISO(),
