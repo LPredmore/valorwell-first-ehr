@@ -602,14 +602,4 @@ export class AvailabilityService {
   }
 }
 
-function createEmptyWeeklyAvailability(): WeeklyAvailability {
-  return {
-    monday: [],
-    tuesday: [],
-    wednesday: [],
-    thursday: [],
-    friday: [],
-    saturday: [],
-    sunday: []
-  };
-}
+export default AvailabilityService;
