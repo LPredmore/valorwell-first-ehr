@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Trash2, Calendar, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, Calendar, AlertCircle } from 'lucide-react';
 import { AvailabilityService } from '@/services/availabilityService';
 import { WeeklyAvailability, AvailabilitySlot } from '@/types/appointment';
 import { formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
@@ -16,6 +15,8 @@ import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import AvailabilitySlot from './AvailabilitySlot';
+import AvailabilityEditForm from './AvailabilityEditForm';
 
 interface WeeklyAvailabilityDialogProps {
   isOpen: boolean;
@@ -71,6 +72,14 @@ export default function WeeklyAvailabilityDialog({
     maxAdvanceDays: 30
   });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  const [editingSlot, setEditingSlot] = useState<DatabaseAvailabilitySlot | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editStartTime, setEditStartTime] = useState('09:00');
+  const [editEndTime, setEditEndTime] = useState('10:00');
+
+  const [timeOptions, setTimeOptions] = useState<TimeOption[]>([]);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -139,7 +148,6 @@ export default function WeeklyAvailabilityDialog({
         weekday: dayIndex + 1 as WeekdayNumbers
       });
       
-      // Convert times to proper format and create full ISO datetime strings
       const startDateTime = targetDate.set({
         hour: parseInt(newSlotStartTime.split(':')[0]),
         minute: parseInt(newSlotStartTime.split(':')[1]),
@@ -154,7 +162,6 @@ export default function WeeklyAvailabilityDialog({
         millisecond: 0
       });
 
-      // Validate time range
       if (endDateTime <= startDateTime) {
         throw new Error('End time must be after start time');
       }
@@ -244,6 +251,81 @@ export default function WeeklyAvailabilityDialog({
     }
   };
 
+  const handleEditSlot = (slot: DatabaseAvailabilitySlot) => {
+    setEditingSlot(slot);
+    setEditStartTime(slot.startTime);
+    setEditEndTime(slot.endTime);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingSlot(null);
+    setIsEditing(false);
+    setEditStartTime('09:00');
+    setEditEndTime('10:00');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingSlot?.id || !clinicianId) return;
+    
+    setIsSaving(true);
+    try {
+      const today = DateTime.now();
+      const dayIndex = dayTabs.findIndex(day => day.id === activeTab);
+      const targetDate = today.set({ 
+        weekday: dayIndex + 1 as WeekdayNumbers
+      });
+      
+      const startDateTime = targetDate.set({
+        hour: parseInt(editStartTime.split(':')[0]),
+        minute: parseInt(editStartTime.split(':')[1]),
+        second: 0,
+        millisecond: 0
+      });
+      
+      const endDateTime = targetDate.set({
+        hour: parseInt(editEndTime.split(':')[0]),
+        minute: parseInt(editEndTime.split(':')[1]),
+        second: 0,
+        millisecond: 0
+      });
+
+      if (endDateTime <= startDateTime) {
+        throw new Error('End time must be after start time');
+      }
+
+      const updated = await AvailabilityService.updateAvailabilitySlot(
+        editingSlot.id,
+        {
+          startTime: startDateTime.toISO(),
+          endTime: endDateTime.toISO()
+        },
+        editingSlot.isRecurring
+      );
+
+      if (updated) {
+        toast({
+          title: 'Success',
+          description: 'Availability updated successfully'
+        });
+        await reloadWeeklyAvailability();
+        onAvailabilityUpdated();
+        handleCancelEdit();
+      } else {
+        throw new Error('Failed to update availability');
+      }
+    } catch (error) {
+      console.error('Error updating availability:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update availability',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const timeOptions = useMemo(() => {
     const options: TimeOption[] = [];
     for (let hour = 0; hour < 24; hour++) {
@@ -305,7 +387,7 @@ export default function WeeklyAvailabilityDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <Calendar className="h-5 w-5 mr-2" />
@@ -366,83 +448,85 @@ export default function WeeklyAvailabilityDialog({
                       </div>
                     ) : (
                       weeklyAvailability[day.id].map((slot, index) => (
-                        <div 
-                          key={`${day.id}-${index}`}
-                          className="flex justify-between items-center border p-3 rounded-md"
-                        >
-                          <div>
-                            <span className="font-medium">
-                              {formatTime12Hour(slot.startTime)} - {formatTime12Hour(slot.endTime)}
-                            </span>
-                            {slot.isRecurring && (
-                              <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                                Recurring
-                              </span>
-                            )}
-                          </div>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="p-1 h-auto"
-                            onClick={() => handleDeleteSlot(day.id, index)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
+                        <div key={`${day.id}-${index}`}>
+                          {editingSlot?.id === slot.id ? (
+                            <AvailabilityEditForm
+                              startTime={editStartTime}
+                              endTime={editEndTime}
+                              onStartTimeChange={setEditStartTime}
+                              onEndTimeChange={setEditEndTime}
+                              onSave={handleSaveEdit}
+                              onCancel={handleCancelEdit}
+                              isSaving={isSaving}
+                              timeOptions={timeOptions}
+                            />
+                          ) : (
+                            <AvailabilitySlot
+                              startTime={slot.startTime}
+                              endTime={slot.endTime}
+                              isRecurring={slot.isRecurring}
+                              onEdit={() => handleEditSlot(slot)}
+                              onDelete={() => handleDeleteSlot(day.id, index)}
+                              isEditing={editingSlot?.id === slot.id}
+                            />
+                          )}
                         </div>
                       ))
                     )}
                   </div>
 
-                  <div className="border p-4 rounded-md">
-                    <h4 className="text-sm font-medium mb-3">Add Availability Slot</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-xs text-gray-500">Start Time</label>
-                        <select 
-                          className="w-full border border-gray-300 rounded-md p-2"
-                          value={newSlotStartTime}
-                          onChange={(e) => setNewSlotStartTime(e.target.value)}
-                        >
-                          {timeOptions.map(option => (
-                            <option key={`start-${option.value}`} value={option.value}>
-                              {option.display}
-                            </option>
-                          ))}
-                        </select>
+                  {!isEditing && (
+                    <div className="border p-4 rounded-md">
+                      <h4 className="text-sm font-medium mb-3">Add Availability Slot</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-xs text-gray-500">Start Time</label>
+                          <select 
+                            className="w-full border border-gray-300 rounded-md p-2"
+                            value={newSlotStartTime}
+                            onChange={(e) => setNewSlotStartTime(e.target.value)}
+                          >
+                            {timeOptions.map(option => (
+                              <option key={`start-${option.value}`} value={option.value}>
+                                {option.display}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs text-gray-500">End Time</label>
+                          <select 
+                            className="w-full border border-gray-300 rounded-md p-2"
+                            value={newSlotEndTime}
+                            onChange={(e) => setNewSlotEndTime(e.target.value)}
+                          >
+                            {timeOptions.map(option => (
+                              <option key={`end-${option.value}`} value={option.value}>
+                                {option.display}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-xs text-gray-500">End Time</label>
-                        <select 
-                          className="w-full border border-gray-300 rounded-md p-2"
-                          value={newSlotEndTime}
-                          onChange={(e) => setNewSlotEndTime(e.target.value)}
-                        >
-                          {timeOptions.map(option => (
-                            <option key={`end-${option.value}`} value={option.value}>
-                              {option.display}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <Button 
+                        onClick={handleAddSlot}
+                        disabled={isAddingSlot}
+                        className="mt-4 w-full"
+                      >
+                        {isAddingSlot ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Adding...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Slot
+                          </>
+                        )}
+                      </Button>
                     </div>
-                    <Button 
-                      onClick={handleAddSlot}
-                      disabled={isAddingSlot}
-                      className="mt-4 w-full"
-                    >
-                      {isAddingSlot ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Adding...
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Slot
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                  )}
                 </TabsContent>
               ))}
             </Tabs>
