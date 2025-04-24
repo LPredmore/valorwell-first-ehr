@@ -122,6 +122,16 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
           minute: '2-digit',
           meridiem: 'short'
         }}
+        eventClick={(info) => {
+          const eventData = info.event;
+          if (eventData.extendedProps?.eventType === 'availability') {
+            if (onAvailabilityClick) {
+              onAvailabilityClick(eventData);
+            }
+          } else if (onEventClick) {
+            onEventClick(info);
+          }
+        }}
         eventClassNames={(arg) => {
           const classes = [];
           const eventType = arg.event.extendedProps?.eventType;

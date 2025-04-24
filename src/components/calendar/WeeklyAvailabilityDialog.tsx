@@ -132,6 +132,36 @@ export default function WeeklyAvailabilityDialog({
     }
   }, [clinicianId, isOpen, toast]);
 
+  useEffect(() => {
+    if (isOpen) reloadWeeklyAvailability();
+    // eslint-disable-next-line
+  }, [clinicianId, isOpen, toast]);
+
+  useEffect(() => {
+    if (isOpen && initialActiveTab) {
+      setActiveTab(initialActiveTab);
+    }
+  }, [isOpen, initialActiveTab]);
+
+  useEffect(() => {
+    if (isOpen && clinicianId) {
+      const selectedSlotId = localStorage.getItem('selectedAvailabilitySlotId');
+      
+      if (selectedSlotId) {
+        // Find and set the slot for editing
+        const allSlots = Object.values(weeklyAvailability).flat();
+        const selectedSlot = allSlots.find(slot => slot.id === selectedSlotId);
+        
+        if (selectedSlot) {
+          handleEditSlot(selectedSlot);
+        }
+        
+        // Clear the stored ID after loading
+        localStorage.removeItem('selectedAvailabilitySlotId');
+      }
+    }
+  }, [isOpen, clinicianId, weeklyAvailability]);
+
   const reloadWeeklyAvailability = async () => {
     if (!clinicianId) return;
     setIsLoading(true);
@@ -152,17 +182,6 @@ export default function WeeklyAvailabilityDialog({
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (isOpen) reloadWeeklyAvailability();
-    // eslint-disable-next-line
-  }, [clinicianId, isOpen, toast]);
-
-  useEffect(() => {
-    if (isOpen && initialActiveTab) {
-      setActiveTab(initialActiveTab);
-    }
-  }, [isOpen, initialActiveTab]);
 
   const handleAddSlot = async () => {
     if (!clinicianId) return;

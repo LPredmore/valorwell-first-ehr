@@ -150,8 +150,14 @@ const CalendarPage: React.FC = () => {
   const handleAvailabilityClick = (event: any) => {
     const startDate = event.start;
     const dayOfWeek = getWeekdayName(startDate);
+    const slotId = event.extendedProps?.id;
+    
     setSelectedAvailabilityDate(dayOfWeek);
     setIsWeeklyAvailabilityOpen(true);
+    
+    if (slotId) {
+      localStorage.setItem('selectedAvailabilitySlotId', slotId);
+    }
   };
 
   const canSelectDifferentClinician = userRole !== 'clinician';
@@ -279,6 +285,7 @@ const CalendarPage: React.FC = () => {
             onClose={() => {
               setIsWeeklyAvailabilityOpen(false);
               setSelectedAvailabilityDate(null);
+              localStorage.removeItem('selectedAvailabilitySlotId');
             }} 
             clinicianId={selectedClinicianId} 
             onAvailabilityUpdated={handleCalendarRefresh}
