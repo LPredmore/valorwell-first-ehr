@@ -231,3 +231,49 @@ export const isSameDay = (date1: string | Date, date2: string | Date): boolean =
     return false;
   }
 };
+
+/**
+ * Convert Date to ISO format with timezone
+ */
+export const toISOWithZone = (
+  date: Date | string,
+  timezone?: string
+): string => {
+  try {
+    let dt: DateTime;
+    
+    if (typeof date === 'string') {
+      dt = DateTime.fromISO(date);
+    } else {
+      dt = DateTime.fromJSDate(date);
+    }
+    
+    if (timezone) {
+      const ianaZone = ensureIANATimeZone(timezone);
+      dt = dt.setZone(ianaZone);
+    }
+    
+    return dt.toISO();
+  } catch (error) {
+    console.error('Error converting to ISO with zone:', error);
+    throw error;
+  }
+};
+
+/**
+ * Parse a date string to a DateTime object with timezone
+ */
+export const parseWithZone = (
+  dateString: string,
+  timezone: string
+): DateTime => {
+  const ianaZone = ensureIANATimeZone(timezone);
+  const dt = DateTime.fromISO(dateString, { zone: ianaZone });
+  
+  if (!dt.isValid) {
+    console.error('Invalid date string:', { dateString, error: dt.invalidReason });
+    throw new Error(`Invalid date string: ${dateString}`);
+  }
+  
+  return dt;
+};

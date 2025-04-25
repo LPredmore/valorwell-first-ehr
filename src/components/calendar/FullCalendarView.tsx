@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -184,21 +185,19 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
         }}
         eventContent={(arg) => {
           if (arg.event.extendedProps?.isAvailability) {
-            return {
-              html: `
-                <div class="fc-content">
-                  <div class="fc-title">
-                    ${arg.event.title}
-                    ${arg.event.extendedProps?.isRecurring ? 
-                      '<span class="text-xs ml-1">(Recurring)</span>' : 
-                      '<span class="text-xs ml-1">(Single)</span>'}
-                  </div>
-                  <div class="fc-time">${arg.timeText}</div>
+            return (
+              <div className="fc-content">
+                <div className="fc-title">
+                  {arg.event.title}
+                  {arg.event.extendedProps?.isRecurring ? 
+                    <span className="text-xs ml-1">(Recurring)</span> : 
+                    <span className="text-xs ml-1">(Single)</span>}
                 </div>
-              `
-            };
+                <div className="fc-time">{arg.timeText}</div>
+              </div>
+            );
           }
-          return arg;
+          return arg.defaultContent;
         }}
         viewDidMount={(arg) => {
           console.log(`[FullCalendarView] View changed to: ${arg.view.type}`);

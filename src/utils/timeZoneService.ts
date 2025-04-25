@@ -1,6 +1,14 @@
 
 import { DateTime } from 'luxon';
-import { ensureIANATimeZone as ensureIANATimeZoneUtil, formatTimeZoneDisplay as formatTimeZoneDisplayUtil } from './timeZoneUtils';
+import { 
+  ensureIANATimeZone as ensureIANATimeZoneUtil, 
+  formatTimeZoneDisplay as formatTimeZoneDisplayUtil 
+} from './timeZoneUtils';
+import { 
+  formatDateTime, 
+  toISOWithZone,
+  parseWithZone
+} from './dateFormatUtils';
 
 /**
  * TimeZoneService: A centralized service for handling timezone conversions
@@ -218,6 +226,54 @@ export class TimeZoneService {
     } catch (error) {
       console.error('Error formatting time:', error);
       return time;
+    }
+  }
+  
+  /**
+   * Convert calendar event to user's timezone
+   * Properly handles FullCalendar event objects
+   */
+  static convertEventToUserTimeZone(event: any, userTimeZone: string): any {
+    if (!event || (!event.start && !event.end)) {
+      return event;
+    }
+    
+    try {
+      const safeTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
+      
+      let startDt = null;
+      let endDt = null;
+      
+      if (event.start) {
+        startDt = typeof event.start === 'string'
+          ? DateTime.fromISO(event.start)
+          : DateTime.fromJSDate(event.start);
+          
+        if (startDt.isValid) {
+          startDt = startDt.setZone(safeTimeZone);
+        }
+      }
+      
+      if (event.end) {
+        endDt = typeof event.end === 'string'
+          ? DateTime.fromISO(event.end)
+          : DateTime.fromJSDate(event.end);
+          
+        if (endDt.isValid) {
+          endDt = endDt.setZone(safeTimeZone);
+        }
+      }
+      
+      // Create a new event object with converted times
+      return {
+        ...event,
+        start: startDt ? startDt.toJSDate() : null,
+        end: endDt ? endDt.toJSDate() : null,
+        _userTimeZone: safeTimeZone // Add tracking property
+      };
+    } catch (error) {
+      console.error('Error converting event to user timezone:', error, { event, userTimeZone });
+      return event; // Return original on error
     }
   }
 }
