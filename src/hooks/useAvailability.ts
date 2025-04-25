@@ -1,10 +1,10 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { WeeklyAvailability, AvailabilitySettings, AvailabilitySlot } from '@/types/availability';
 import { AvailabilityQueryService } from '@/services/AvailabilityQueryService';
 import { AvailabilityMutationService } from '@/services/AvailabilityMutationService';
 import { useToast } from '@/hooks/use-toast';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { dayNumberToCode } from '@/utils/rruleUtils';
 
 interface MutationResult {
   success: boolean;
@@ -141,15 +141,12 @@ export function useAvailability(clinicianId: string | null) {
           return { success: false, error: 'Recurrence rule is required for recurring availability' };
         }
         
-        // Get current date to combine with time
         const today = new Date();
         const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
         
-        // Create full ISO datetime strings
         const fullStartTime = `${dateStr}T${startTime}`;
         const fullEndTime = `${dateStr}T${endTime}`;
         
-        // Log the inputs to help diagnose issues
         console.log(`[useAvailability] Creating availability with params:`, {
           clinicianId,
           startTime: fullStartTime,
@@ -158,11 +155,19 @@ export function useAvailability(clinicianId: string | null) {
           recurrenceRule
         });
         
+        let effectiveRecurrenceRule = recurrenceRule;
+        if (isRecurring && !recurrenceRule) {
+          const dayIndex = getDayIndex(dayOfWeek);
+          const dayCode = dayNumberToCode(dayIndex);
+          effectiveRecurrenceRule = `FREQ=WEEKLY;BYDAY=${dayCode}`;
+          console.log(`[useAvailability] Generated recurrence rule: ${effectiveRecurrenceRule}`);
+        }
+        
         const result = await AvailabilityMutationService.createAvailabilitySlot(clinicianId, {
           startTime: fullStartTime,
           endTime: fullEndTime,
           recurring: isRecurring,
-          recurrenceRule,
+          recurrenceRule: effectiveRecurrenceRule,
           title: 'Available'
         });
         
@@ -180,7 +185,7 @@ export function useAvailability(clinicianId: string | null) {
           throw new Error(errorMessage);
         }
       } catch (err) {
-        const error = err instanceof Error ? err.message : 'Unknown error';
+        const error = err instanceof Error ? err.message : 'Unknown error processing availability';
         console.error('[useAvailability] Error creating availability slot:', err);
         
         let errorMessage = error;
@@ -296,6 +301,20 @@ export function useAvailability(clinicianId: string | null) {
     },
     [clinicianId, fetchWeeklyAvailability, toast]
   );
+
+  const getDayIndex = (day: string): number => {
+    const indices: Record<string, number> = {
+      'monday': 1,
+      'tuesday': 2,
+      'wednesday': 3,
+      'thursday': 4,
+      'friday': 5,
+      'saturday': 6,
+      'sunday': 0
+    };
+    
+    return indices[day.toLowerCase()] || 0;
+  };
 
   useEffect(() => {
     if (clinicianId) {

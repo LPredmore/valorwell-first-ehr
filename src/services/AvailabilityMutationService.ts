@@ -145,19 +145,23 @@ export class AvailabilityMutationService {
         recurrenceRule
       });
 
-      // Validate input format
-      if (!DateTime.fromISO(startTime).isValid || !DateTime.fromISO(endTime).isValid) {
-        throw new Error(`Invalid datetime format. Expected ISO format (YYYY-MM-DDTHH:MM).`);
+      // Validate input format - we expect ISO format or close to it
+      let startDt: DateTime;
+      let endDt: DateTime;
+      
+      try {
+        // Parse both start and end times with timezone
+        startDt = TimeZoneService.parseWithZone(startTime, validTimeZone);
+        endDt = TimeZoneService.parseWithZone(endTime, validTimeZone);
+        
+        if (!startDt.isValid || !endDt.isValid) {
+          throw new Error(`Invalid datetime: ${!startDt.isValid ? startDt.invalidReason : endDt.invalidReason}`);
+        }
+      } catch (parseError) {
+        console.error('[AvailabilityMutationService] Error parsing datetime:', parseError);
+        throw new Error(`Invalid datetime format. Please check your input. ${parseError instanceof Error ? parseError.message : ''}`);
       }
       
-      // Parse both start and end times with timezone
-      const startDt = TimeZoneService.parseWithZone(startTime, validTimeZone);
-      const endDt = TimeZoneService.parseWithZone(endTime, validTimeZone);
-      
-      if (!startDt.isValid || !endDt.isValid) {
-        throw new Error(`Invalid datetime: ${!startDt.isValid ? startDt.invalidReason : endDt.invalidReason}`);
-      }
-
       // Log detailed timezone information for debugging
       console.log('[AvailabilityMutationService] DateTime information:', {
         startTime,
@@ -187,7 +191,7 @@ export class AvailabilityMutationService {
 
       if (error) {
         console.error('[AvailabilityMutationService] Error creating recurring availability:', error);
-        throw error;
+        throw new Error(`Database error: ${error.message}`);
       }
       
       if (!data || data.length === 0) {
@@ -213,7 +217,7 @@ export class AvailabilityMutationService {
           .delete()
           .eq('id', eventId);
         
-        throw recurrenceError;
+        throw new Error(`Failed to create recurrence rule: ${recurrenceError.message}`);
       }
       
       // Update the calendar event with the recurrence ID
@@ -224,7 +228,7 @@ export class AvailabilityMutationService {
         
       if (updateError) {
         console.error('[AvailabilityMutationService] Error updating event with recurrence ID:', updateError);
-        throw updateError;
+        throw new Error(`Failed to update event with recurrence ID: ${updateError.message}`);
       }
       
       return data;
@@ -308,18 +312,19 @@ export class AvailabilityMutationService {
             id: result[0].id
           };
         } else {
-          // For non-recurring events, we handle as before
-          // Validate ISO format for non-recurring events
-          if (!DateTime.fromISO(slotData.startTime).isValid || !DateTime.fromISO(slotData.endTime).isValid) {
+          // For non-recurring events, ensure the startTime and endTime are valid
+          let startDt: DateTime;
+          let endDt: DateTime;
+          
+          try {
+            startDt = TimeZoneService.parseWithZone(slotData.startTime, timezone);
+            endDt = TimeZoneService.parseWithZone(slotData.endTime, timezone);
+          } catch (parseError) {
             return {
               success: false,
-              error: `Invalid datetime format. Expected ISO format (YYYY-MM-DDTHH:MM).`
+              error: `Invalid datetime format: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
             };
           }
-          
-          // Convert times to UTC for storage
-          const startDt = TimeZoneService.parseWithZone(slotData.startTime, timezone);
-          const endDt = TimeZoneService.parseWithZone(slotData.endTime, timezone);
           
           if (!startDt.isValid || !endDt.isValid) {
             return {
