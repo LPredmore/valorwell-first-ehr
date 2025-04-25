@@ -1,3 +1,4 @@
+
 import { DateTime } from 'luxon';
 import { ensureIANATimeZone as ensureIANATimeZoneUtil } from './timeZoneUtils';
 
@@ -47,8 +48,8 @@ export class TimeZoneService {
     fromTimeZone: string,
     toTimeZone: string
   ): DateTime {
-    const safeFromTimeZone = ensureIANATimeZone(fromTimeZone);
-    const safeToTimeZone = ensureIANATimeZone(toTimeZone);
+    const safeFromTimeZone = TimeZoneService.ensureIANATimeZone(fromTimeZone);
+    const safeToTimeZone = TimeZoneService.ensureIANATimeZone(toTimeZone);
     
     let dt: DateTime;
     
@@ -82,7 +83,7 @@ export class TimeZoneService {
     }
     
     if (timeZone) {
-      const safeTimeZone = ensureIANATimeZone(timeZone);
+      const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
       return dateTime.setZone(safeTimeZone).toFormat(format);
     }
     
@@ -97,7 +98,7 @@ export class TimeZoneService {
     time: string,
     timeZone: string
   ): DateTime {
-    const safeTimeZone = ensureIANATimeZone(timeZone);
+    const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
     const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
     const [hours, minutes] = time.split(':').map(Number);
     
@@ -124,7 +125,7 @@ export class TimeZoneService {
    * Convert UTC time to local time
    */
   static fromUTC(utcDateTime: string | Date, timeZone: string): DateTime {
-    const safeTimeZone = ensureIANATimeZone(timeZone);
+    const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
     
     const dt = typeof utcDateTime === 'string'
       ? DateTime.fromISO(utcDateTime, { zone: 'UTC' })
@@ -142,7 +143,7 @@ export class TimeZoneService {
    * Convert local time to UTC
    */
   static toUTC(localDateTime: string | Date, fromTimeZone: string): DateTime {
-    const safeTimeZone = ensureIANATimeZone(fromTimeZone);
+    const safeTimeZone = TimeZoneService.ensureIANATimeZone(fromTimeZone);
     
     const dt = typeof localDateTime === 'string'
       ? DateTime.fromISO(localDateTime, { zone: safeTimeZone })
@@ -165,7 +166,7 @@ export class TimeZoneService {
     format: string = 'h:mm a'
   ): string {
     try {
-      const safeTimeZone = ensureIANATimeZone(timeZone);
+      const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
       
       // Handle HH:MM:SS format
       if (time.includes(':')) {
