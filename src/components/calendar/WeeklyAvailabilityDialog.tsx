@@ -56,7 +56,6 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     deleteSlot
   } = useAvailability(clinicianId);
 
-  // Initialize the selected slot ID from localStorage
   useEffect(() => {
     if (isOpen) {
       const storedSlotId = localStorage.getItem('selectedAvailabilitySlotId');
@@ -91,19 +90,18 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     try {
       console.log(`[WeeklyAvailabilityDialog] Creating slot for ${activeTab} from ${newStartTime} to ${newEndTime}`);
       
-      // Create a recurrence rule for weekly availability on this day of week
       const byDay = getDayCode(activeTab);
       const recurrenceRule = `FREQ=WEEKLY;BYDAY=${byDay}`;
       
       const result = await createSlot(
-        activeTab, // Pass the day of week so service can calculate the correct date
+        activeTab,
         newStartTime,
         newEndTime,
-        true, // Always recurring for weekly availability
+        true,
         recurrenceRule
       );
       
-      if (result) {
+      if (result.success) {
         toast({
           title: "Success",
           description: `Weekly availability added for ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`,
@@ -112,7 +110,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       } else {
         toast({
           title: "Error",
-          description: "Failed to add availability. Please try again.",
+          description: result.error || "Failed to add availability. Please try again.",
           variant: "destructive"
         });
       }
@@ -141,13 +139,19 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     try {
       const result = await deleteSlot(selectedSlotId);
       
-      if (result) {
+      if (result.success) {
         setIsDeleteConfirmOpen(false);
         setSelectedSlotId(null);
         onAvailabilityUpdated?.();
         toast({
           title: "Success",
           description: "Availability slot deleted successfully"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete availability slot",
+          variant: "destructive"
         });
       }
     } catch (error) {

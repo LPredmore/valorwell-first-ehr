@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySlot } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { DateTime } from 'luxon';
 
 export class AvailabilityMutationService {
   static async createAvailabilityException(
@@ -89,8 +90,16 @@ export class AvailabilityMutationService {
     timezone: string
   ): Promise<any> {
     try {
-      const startDt = TimeZoneService.parseWithZone(`${date}T${startTime}`, timezone);
-      const endDt = TimeZoneService.parseWithZone(`${date}T${endTime}`, timezone);
+      const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
+      const startDt = TimeZoneService.parseWithZone(`${date}T${startTime}`, validTimeZone);
+      const endDt = TimeZoneService.parseWithZone(`${date}T${endTime}`, validTimeZone);
+
+      console.log('[AvailabilityMutationService] Creating single availability:', {
+        clinicianId,
+        start: startDt.toISO(),
+        end: endDt.toISO(),
+        timezone: validTimeZone
+      });
 
       const { data, error } = await supabase
         .from('calendar_events')
@@ -98,21 +107,21 @@ export class AvailabilityMutationService {
           {
             clinician_id: clinicianId,
             event_type: 'availability',
-            start_time: startDt.toISO(),
-            end_time: endDt.toISO(),
+            start_time: startDt.toUTC().toISO(),
+            end_time: endDt.toUTC().toISO(),
             is_active: true,
           },
         ])
-        .select();
+        .select('id');
 
       if (error) {
-        console.error('Error creating single availability:', error);
+        console.error('[AvailabilityMutationService] Error creating single availability:', error);
         throw error;
       }
 
       return data;
     } catch (error) {
-      console.error('Error creating single availability:', error);
+      console.error('[AvailabilityMutationService] Error creating single availability:', error);
       throw error;
     }
   }
@@ -125,6 +134,16 @@ export class AvailabilityMutationService {
     timezone: string
   ): Promise<any> {
     try {
+      const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
+      
+      console.log('[AvailabilityMutationService] Creating recurring availability:', {
+        clinicianId,
+        dayOfWeek,
+        startTime,
+        endTime,
+        timezone: validTimeZone
+      });
+
       const { data, error } = await supabase
         .from('calendar_events')
         .insert([
@@ -135,20 +154,20 @@ export class AvailabilityMutationService {
             start_time: startTime,
             end_time: endTime,
             is_recurring: true,
-            timezone: timezone,
+            timezone: validTimeZone,
             is_active: true,
           },
         ])
-        .select();
+        .select('id');
 
       if (error) {
-        console.error('Error creating recurring availability:', error);
+        console.error('[AvailabilityMutationService] Error creating recurring availability:', error);
         throw error;
       }
 
       return data;
     } catch (error) {
-      console.error('Error creating recurring availability:', error);
+      console.error('[AvailabilityMutationService] Error creating recurring availability:', error);
       throw error;
     }
   }
@@ -163,8 +182,16 @@ export class AvailabilityMutationService {
       title?: string;
       dayOfWeek?: string;
     }
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; id?: string }> {
     try {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('time_zone')
+        .eq('id', clinicianId)
+        .maybeSingle();
+      
+      const timezone = TimeZoneService.ensureIANATimeZone(profileData?.time_zone || 'UTC');
+      
       const eventData: any = {
         clinician_id: clinicianId,
         event_type: 'availability',
@@ -177,36 +204,46 @@ export class AvailabilityMutationService {
         eventData.day_of_week = slotData.dayOfWeek;
         eventData.start_time = slotData.startTime;
         eventData.end_time = slotData.endTime;
+        eventData.timezone = timezone;
         
         if (slotData.recurrenceRule) {
           const { data: recurrenceData, error: recurrenceError } = await supabase
             .from('recurrence_rules')
             .insert([{ rrule: slotData.recurrenceRule }])
-            .select();
+            .select('id')
+            .single();
             
           if (recurrenceError) throw recurrenceError;
           
-          if (recurrenceData && recurrenceData.length > 0) {
-            eventData.recurrence_id = recurrenceData[0].id;
+          if (recurrenceData) {
+            eventData.recurrence_id = recurrenceData.id;
           }
         }
       } else {
-        eventData.start_time = slotData.startTime;
-        eventData.end_time = slotData.endTime;
+        const startDt = TimeZoneService.parseWithZone(slotData.startTime, timezone);
+        const endDt = TimeZoneService.parseWithZone(slotData.endTime, timezone);
+        
+        eventData.start_time = startDt.toUTC().toISO();
+        eventData.end_time = endDt.toUTC().toISO();
       }
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('calendar_events')
-        .insert([eventData]);
+        .insert([eventData])
+        .select('id')
+        .single();
         
       if (error) throw error;
       
-      return { success: true };
+      return { 
+        success: true,
+        id: data?.id
+      };
     } catch (error) {
       console.error('[AvailabilityMutationService] Error creating availability slot:', error);
       return { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error creating availability slot' 
+        error: error instanceof Error ? error.message : 'Unknown error creating availability slot'
       };
     }
   }
@@ -267,24 +304,49 @@ export class AvailabilityMutationService {
     updates: Partial<AvailabilitySlot>
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      const { data: slotData, error: fetchError } = await supabase
+        .from('calendar_events')
+        .select('clinician_id')
+        .eq('id', slotId)
+        .single();
+
+      if (fetchError || !slotData?.clinician_id) {
+        throw new Error('Failed to fetch slot data');
+      }
+
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('time_zone')
+        .eq('id', slotData.clinician_id)
+        .maybeSingle();
+      
+      const timezone = TimeZoneService.ensureIANATimeZone(profileData?.time_zone || 'UTC');
+      
+      const updateData: any = {};
+      
+      if (updates.startTime) {
+        const startDt = TimeZoneService.parseWithZone(updates.startTime, timezone);
+        updateData.start_time = startDt.toUTC().toISO();
+      }
+      
+      if (updates.endTime) {
+        const endDt = TimeZoneService.parseWithZone(updates.endTime, timezone);
+        updateData.end_time = endDt.toUTC().toISO();
+      }
+
       const { error } = await supabase
         .from('calendar_events')
-        .update({
-          start_time: updates.startTime,
-          end_time: updates.endTime,
-        })
+        .update(updateData)
         .eq('id', slotId);
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       return { success: true };
     } catch (error) {
-      console.error('Error updating availability slot:', error);
+      console.error('[AvailabilityMutationService] Error updating availability slot:', error);
       return { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error updating availability slot' 
+        error: error instanceof Error ? error.message : 'Unknown error updating availability slot'
       };
     }
   }
