@@ -5,7 +5,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
-import { Calendar } from '@fullcalendar/core';
+import { CalendarApi } from '@fullcalendar/core';
 import { toast } from '@/hooks/use-toast';
 import { CalendarViewType, CalendarEvent } from '@/types/calendar';
 import { Loader2 } from 'lucide-react';
@@ -30,7 +30,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   showAvailability = false,
   onAvailabilityClick,
 }) => {
-  const calendarRef = useRef<Calendar | null>(null);
+  const calendarRef = useRef<CalendarApi | null>(null);
   const [availabilityEvents, setAvailabilityEvents] = useState<any[]>([]);
   const [hasAvailabilityError, setHasAvailabilityError] = useState(false);
 
@@ -161,7 +161,8 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
           <CalendarAvailabilityHandler
             clinicianId={clinicianId}
             userTimeZone={validTimeZone}
-            onAvailabilityEvents={handleAvailabilityEvents}
+            onEventsChange={handleAvailabilityEvents}
+            showAvailability={true}
           />
         )}
       </div>

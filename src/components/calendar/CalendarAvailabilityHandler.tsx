@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { AvailabilityQueryService } from '@/services/AvailabilityQueryService';
 import { WeeklyAvailability } from '@/types/availability';
@@ -71,6 +72,7 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
                   end: end.toJSDate(),
                   extendedProps: {
                     isAvailability: true,
+                    eventType: 'availability',
                     isRecurring: slot.isRecurring,
                     sourceTable: slot.id
                   },
