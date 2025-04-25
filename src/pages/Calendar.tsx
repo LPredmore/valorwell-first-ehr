@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useCalendarState } from '../hooks/useCalendarState';
 import { useToast } from '@/hooks/use-toast';
 import FullCalendarView from '../components/calendar/FullCalendarView';
+import { useTimeZone } from '@/context/TimeZoneContext';
 
 const CalendarPage: React.FC = () => {
   const [calendarKey, setCalendarKey] = useState<number>(0);
@@ -15,6 +16,7 @@ const CalendarPage: React.FC = () => {
     showAvailability
   } = useCalendarState();
   const { toast } = useToast();
+  const { userTimeZone } = useTimeZone();
 
   const handleCalendarRefresh = useCallback(() => {
     console.log('[Calendar] Manually refreshing calendar');
@@ -23,7 +25,7 @@ const CalendarPage: React.FC = () => {
       title: "Calendar Refreshed",
       description: "Your calendar has been updated with the latest data.",
     });
-  }, []);
+  }, [toast]);
 
   return (
     <Layout>
@@ -44,6 +46,7 @@ const CalendarPage: React.FC = () => {
             key={calendarKey}
             clinicianId={selectedClinicianId} 
             showAvailability={showAvailability}
+            userTimeZone={userTimeZone}
           />
         ) : (
           <div className="text-center text-gray-500">
