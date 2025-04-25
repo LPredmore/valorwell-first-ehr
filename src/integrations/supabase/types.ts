@@ -166,14 +166,7 @@ export type Database = {
             foreignKeyName: "calendar_events_recurrence_id_fkey"
             columns: ["recurrence_id"]
             isOneToOne: false
-            referencedRelation: "calendar_events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "calendar_events_recurrence_id_fkey"
-            columns: ["recurrence_id"]
-            isOneToOne: false
-            referencedRelation: "calendar_events_with_rules"
+            referencedRelation: "recurrence_rules"
             referencedColumns: ["id"]
           },
         ]
@@ -2014,14 +2007,7 @@ export type Database = {
             foreignKeyName: "calendar_events_recurrence_id_fkey"
             columns: ["recurrence_id"]
             isOneToOne: false
-            referencedRelation: "calendar_events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "calendar_events_recurrence_id_fkey"
-            columns: ["recurrence_id"]
-            isOneToOne: false
-            referencedRelation: "calendar_events_with_rules"
+            referencedRelation: "recurrence_rules"
             referencedColumns: ["id"]
           },
         ]
