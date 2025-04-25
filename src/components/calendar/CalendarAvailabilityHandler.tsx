@@ -1,3 +1,4 @@
+
 import { useEffect, useCallback, useState } from 'react';
 import { CalendarEvent } from '@/types/calendar';
 import { useAvailability } from '@/hooks/useAvailability';
@@ -34,7 +35,7 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
     }
 
     const events: CalendarEvent[] = [];
-    const now = DateTime.now().setZone(userTimeZone);
+    const now = DateTime.now();
     const currentWeekStart = now.startOf('week');
     
     console.log('[CalendarAvailabilityHandler] Converting availability to events for', weeksToShow, 'weeks');
@@ -83,24 +84,16 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
         
         availabilitySlots.forEach(slot => {
           try {
-            // Create DateTime objects in the user's timezone
             const [startHour, startMinute] = slot.startTime.split(':').map(Number);
             const [endHour, endMinute] = slot.endTime.split(':').map(Number);
             
-            // Create start and end times in the user's timezone
-            const startDateTime = dayDate
-              .set({ hour: startHour, minute: startMinute })
-              .setZone(userTimeZone);
-              
-            const endDateTime = dayDate
-              .set({ hour: endHour, minute: endMinute })
-              .setZone(userTimeZone);
+            let startDateTime = dayDate.set({ hour: startHour, minute: startMinute });
+            let endDateTime = dayDate.set({ hour: endHour, minute: endMinute });
             
             console.log(`[CalendarAvailabilityHandler] Creating event for week ${week}, ${day}:`, {
-              start: startDateTime.toISO(),
-              end: endDateTime.toISO(),
-              id: slot.id,
-              timezone: userTimeZone
+              start: startDateTime.toFormat('yyyy-MM-dd HH:mm'),
+              end: endDateTime.toFormat('yyyy-MM-dd HH:mm'),
+              id: slot.id
             });
             
             events.push({
@@ -130,7 +123,7 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
 
     console.log(`[CalendarAvailabilityHandler] Total availability events created: ${events.length}`);
     return events;
-  }, [weeklyAvailability, showAvailability, weeksToShow, userTimeZone]);
+  }, [weeklyAvailability, showAvailability, weeksToShow]);
 
   // Generate availability events when data changes
   useEffect(() => {
