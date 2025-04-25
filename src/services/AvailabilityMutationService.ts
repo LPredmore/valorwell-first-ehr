@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySlot } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -173,7 +172,7 @@ export class AvailabilityMutationService {
         timezone: validTimeZone
       });
 
-      // Create the initial event
+      // Create the initial event - FIXED: removed is_recurring field and set recurring related data correctly
       const { data, error } = await supabase
         .from('calendar_events')
         .insert([
@@ -183,9 +182,8 @@ export class AvailabilityMutationService {
             title: 'Available',
             start_time: startDt.toUTC().toISO(),
             end_time: endDt.toUTC().toISO(),
-            is_recurring: true,
             is_active: true,
-          },
+          }
         ])
         .select('id');
 
@@ -340,7 +338,6 @@ export class AvailabilityMutationService {
             is_active: true,
             start_time: TimeZoneService.toUTC(startDt).toISO(),
             end_time: TimeZoneService.toUTC(endDt).toISO(),
-            is_recurring: false,
           };
           
           console.log('[AvailabilityMutationService] Creating availability event with data:', eventData);

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { WeeklyAvailability, AvailabilitySettings, AvailabilitySlot } from '@/types/availability';
 import { AvailabilityQueryService } from '@/services/AvailabilityQueryService';
@@ -141,9 +142,11 @@ export function useAvailability(clinicianId: string | null) {
           return { success: false, error: 'Recurrence rule is required for recurring availability' };
         }
         
+        // Create a date string for today as a base
         const today = new Date();
         const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
         
+        // Combine date and time for start and end
         const fullStartTime = `${dateStr}T${startTime}`;
         const fullEndTime = `${dateStr}T${endTime}`;
         
@@ -155,6 +158,7 @@ export function useAvailability(clinicianId: string | null) {
           recurrenceRule
         });
         
+        // Generate recurrence rule if not provided but recurring is true
         let effectiveRecurrenceRule = recurrenceRule;
         if (isRecurring && !recurrenceRule) {
           const dayIndex = getDayIndex(dayOfWeek);
