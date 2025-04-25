@@ -1,3 +1,4 @@
+
 // Types for calendar functionality
 
 import { EventInput } from '@fullcalendar/core';
@@ -44,6 +45,7 @@ export interface CalendarEvent extends EventInput {
     originalSlotId?: string;
     eventType?: 'availability';
     week?: number;
+    timezone?: string;
     // Add is_active for availability (not needed for appointments, but type-safe)
     is_active?: boolean;
   };
