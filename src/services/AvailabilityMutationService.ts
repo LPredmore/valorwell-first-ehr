@@ -219,17 +219,6 @@ export class AvailabilityMutationService {
         throw new Error(`Failed to create recurrence rule: ${recurrenceError.message}`);
       }
       
-      // Update the calendar event with the recurrence ID
-      const { error: updateError } = await supabase
-        .from('calendar_events')
-        .update({ recurrence_id: eventId })
-        .eq('id', eventId);
-        
-      if (updateError) {
-        console.error('[AvailabilityMutationService] Error updating event with recurrence ID:', updateError);
-        throw new Error(`Failed to update event with recurrence ID: ${updateError.message}`);
-      }
-      
       return data;
     } catch (error) {
       console.error('[AvailabilityMutationService] Error creating recurring availability:', error);
