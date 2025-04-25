@@ -105,6 +105,9 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       
       console.log(`[WeeklyAvailabilityDialog] Using recurrence rule: ${recurrenceRule}`);
       
+      // Clear any previous errors
+      setFormError(null);
+      
       const result = await createSlot(
         activeTab,
         newStartTime,
@@ -118,15 +121,35 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
           title: "Success",
           description: `Weekly availability added for ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`,
         });
+        
+        // Refresh the availability data
+        await refreshAvailability();
+        
+        // Notify parent component
         onAvailabilityUpdated?.();
+        
         setRetryCount(0);
         setFormError(null);
+        
+        // Reset form fields for next entry
+        setNewStartTime('09:00');
+        setNewEndTime('10:00');
       } else {
-        setFormError(result.error || "Failed to add availability. Please try again.");
+        let errorMessage = result.error || "Failed to add availability. Please try again.";
+        
+        // Provide more user-friendly error messages
+        if (errorMessage.includes('overlapping')) {
+          errorMessage = "This time slot overlaps with an existing availability slot. Please choose a different time.";
+        } else if (errorMessage.includes('timezone')) {
+          errorMessage = "There was a problem with your timezone settings. Please check your profile settings.";
+        }
+        
+        setFormError(errorMessage);
         setRetryCount(prev => prev + 1);
+        
         toast({
           title: "Error",
-          description: result.error || "Failed to add availability. Please try again.",
+          description: errorMessage,
           variant: "destructive"
         });
       }

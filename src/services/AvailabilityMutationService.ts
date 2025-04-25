@@ -170,26 +170,36 @@ export class AvailabilityMutationService {
             timezone
           });
           
-          // For recurring events, we'll delegate to the createRecurringAvailability method
-          const result = await this.createRecurringAvailability(
-            clinicianId,
-            slotData.startTime,
-            slotData.endTime,
-            timezone,
-            slotData.recurrenceRule
-          );
-          
-          if (!result || !result[0]?.id) {
-            return { 
-              success: false, 
-              error: 'Failed to create recurring availability' 
+          try {
+            // For recurring events, we'll delegate to the createRecurringAvailability method
+            const result = await this.createRecurringAvailability(
+              clinicianId,
+              slotData.startTime,
+              slotData.endTime,
+              timezone,
+              slotData.recurrenceRule
+            );
+            
+            if (!result || !result[0]?.id) {
+              return {
+                success: false,
+                error: 'Failed to create recurring availability'
+              };
+            }
+            
+            return {
+              success: true,
+              id: result[0].id
+            };
+          } catch (recurringError) {
+            console.error('[AvailabilityMutationService] Error creating recurring availability:', recurringError);
+            return {
+              success: false,
+              error: recurringError instanceof Error
+                ? recurringError.message
+                : 'Failed to create recurring availability'
             };
           }
-          
-          return { 
-            success: true,
-            id: result[0].id
-          };
         } else {
           // For non-recurring events, ensure the startTime and endTime are valid
           let startDt: DateTime;

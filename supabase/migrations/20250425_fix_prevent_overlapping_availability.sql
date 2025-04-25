@@ -13,13 +13,19 @@ BEGIN
     -- Check for overlapping events from the same clinician
     IF EXISTS (
       SELECT 1 FROM public.calendar_events
-      WHERE 
+      WHERE
         clinician_id = NEW.clinician_id
         AND event_type = 'availability'
         AND is_active = TRUE
         AND id <> COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::uuid) -- Handle new records without IDs
-        AND recurrence_id IS NULL -- Only check non-recurring events for overlaps
-        AND NEW.recurrence_id IS NULL -- Only check overlap if the new event is non-recurring
+        -- For non-recurring events, check against all other events
+        -- For recurring events, only check against events with the same recurrence_id
+        AND (
+          (NEW.recurrence_id IS NULL AND recurrence_id IS NULL) OR
+          (NEW.recurrence_id IS NOT NULL AND recurrence_id = NEW.recurrence_id) OR
+          (NEW.recurrence_id IS NULL AND recurrence_id IS NOT NULL) OR
+          (NEW.recurrence_id IS NOT NULL AND recurrence_id IS NULL)
+        )
         AND (
           -- Standard overlap check
           (NEW.start_time < end_time AND NEW.end_time > start_time)

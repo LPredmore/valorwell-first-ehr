@@ -54,12 +54,14 @@ export class RecurringAvailabilityService {
 
       const eventId = data[0].id;
       
-      const { error: recurrenceError } = await supabase
+      // Create the recurrence rule
+      const { data: recurrenceData, error: recurrenceError } = await supabase
         .from('recurrence_rules')
-        .insert([{ 
+        .insert([{
           event_id: eventId,
-          rrule: recurrenceRule 
-        }]);
+          rrule: recurrenceRule
+        }])
+        .select('id');
         
       if (recurrenceError) {
         // Rollback the calendar event since recurrence rule failed
@@ -69,6 +71,21 @@ export class RecurringAvailabilityService {
           .eq('id', eventId);
         
         throw new Error(`Failed to create recurrence rule: ${recurrenceError.message}`);
+      }
+      
+      // Update the calendar event with the recurrence_id
+      if (recurrenceData && recurrenceData.length > 0) {
+        const recurrenceId = recurrenceData[0].id;
+        const { error: updateError } = await supabase
+          .from('calendar_events')
+          .update({ recurrence_id: recurrenceId })
+          .eq('id', eventId);
+          
+        if (updateError) {
+          console.error('[RecurringAvailabilityService] Error updating recurrence_id:', updateError);
+          // We don't throw here to avoid rolling back the whole transaction
+          // The event is still created, just not properly linked to recurrence
+        }
       }
 
       return data;
