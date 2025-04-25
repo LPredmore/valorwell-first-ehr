@@ -47,6 +47,7 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
       currentWeekStart: currentWeekStart.toISO()
     });
 
+    // Map day names to ISO weekday numbers (1-7, Monday=1, Sunday=7)
     const dayToIsoWeekday: Record<string, number> = {
       monday: 1,
       tuesday: 2,
@@ -139,7 +140,8 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
                 dayOfWeek: day,
                 eventType: 'availability',
                 week,
-                timezone: userTimeZone
+                timezone: userTimeZone,
+                is_active: true
               }
             });
           } catch (error) {

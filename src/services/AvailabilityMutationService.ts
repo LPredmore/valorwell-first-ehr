@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { AvailabilitySettings, AvailabilityResponse } from '@/types/availability';
@@ -67,7 +68,8 @@ export class AvailabilityMutationService {
         startTime: slot.startTime,
         endTime: slot.endTime,
         recurring: slot.recurring,
-        recurrenceRule: slot.recurrenceRule
+        recurrenceRule: slot.recurrenceRule,
+        dayOfWeek: slot.dayOfWeek
       });
 
       // Get clinician's timezone for proper storage
@@ -85,40 +87,104 @@ export class AvailabilityMutationService {
       const clinicianTimeZone = profileData?.time_zone || 'UTC';
       console.log('[AvailabilityMutationService] Using clinician timezone:', clinicianTimeZone);
       
-      // Parse the incoming times with our TimeZoneService
-      const startDateTime = TimeZoneService.createDateTime(
-        DateTime.now().toISODate() || '', 
-        slot.startTime,
-        clinicianTimeZone
-      );
+      // Get the correct date based on the day of week
+      const now = DateTime.now().setZone(clinicianTimeZone);
+      let targetDate: DateTime;
       
-      const endDateTime = TimeZoneService.createDateTime(
-        DateTime.now().toISODate() || '',
-        slot.endTime,
-        clinicianTimeZone
-      );
+      if (slot.dayOfWeek) {
+        // Map day name to Luxon weekday number (1-7, Monday is 1)
+        const dayToWeekdayNumber: Record<string, number> = {
+          'monday': 1,
+          'tuesday': 2,
+          'wednesday': 3,
+          'thursday': 4,
+          'friday': 5,
+          'saturday': 6,
+          'sunday': 7
+        };
+        
+        const targetWeekday = dayToWeekdayNumber[slot.dayOfWeek.toLowerCase()];
+        if (!targetWeekday) {
+          console.error(`[AvailabilityMutationService] Invalid day of week: ${slot.dayOfWeek}`);
+          return { success: false, error: `Invalid day of week: ${slot.dayOfWeek}` };
+        }
+        
+        // Find the next occurrence of this weekday
+        targetDate = now.set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+        
+        // Calculate days to add to get to the target weekday
+        let daysToAdd = targetWeekday - targetDate.weekday;
+        if (daysToAdd <= 0) {
+          // If today is the target day or we've passed it this week, go to next week
+          daysToAdd += 7;
+        }
+        
+        targetDate = targetDate.plus({ days: daysToAdd });
+        
+        console.log('[AvailabilityMutationService] Calculated target date:', {
+          dayOfWeek: slot.dayOfWeek,
+          weekdayNumber: targetWeekday,
+          currentWeekday: now.weekday,
+          daysToAdd,
+          targetDate: targetDate.toISO()
+        });
+      } else {
+        // If no day specified, use today's date
+        targetDate = now.set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+        console.log('[AvailabilityMutationService] No day of week specified, using today:', targetDate.toISO());
+      }
+      
+      // Parse the incoming times with our TimeZoneService
+      const [startHour, startMinute] = slot.startTime.split(':').map(Number);
+      const [endHour, endMinute] = slot.endTime.split(':').map(Number);
+      
+      // Create the full datetime while maintaining timezone
+      const startDateTime = targetDate.set({
+        hour: startHour,
+        minute: startMinute,
+        second: 0,
+        millisecond: 0
+      });
+      
+      const endDateTime = targetDate.set({
+        hour: endHour,
+        minute: endMinute,
+        second: 0,
+        millisecond: 0
+      });
       
       if (!startDateTime.isValid || !endDateTime.isValid) {
+        const error = `Invalid date/time formats: ${startDateTime.invalidReason || endDateTime.invalidReason}`;
+        console.error('[AvailabilityMutationService] ' + error);
         return { 
           success: false, 
-          error: 'Invalid date/time formats' 
+          error 
         };
       }
       
       if (endDateTime <= startDateTime) {
+        const error = 'End time must be after start time';
+        console.error('[AvailabilityMutationService] ' + error, {
+          start: startDateTime.toISO(),
+          end: endDateTime.toISO()
+        });
         return { 
           success: false, 
-          error: 'End time must be after start time' 
+          error 
         };
       }
       
       // Convert to UTC for storage
-      const startUTC = TimeZoneService.toUTC(startDateTime.toISO() || '', clinicianTimeZone);
-      const endUTC = TimeZoneService.toUTC(endDateTime.toISO() || '', clinicianTimeZone);
+      const startUTC = startDateTime.toUTC();
+      const endUTC = endDateTime.toUTC();
       
-      console.log('[AvailabilityMutationService] Converted to UTC:', {
-        start: startUTC.toISO(),
-        end: endUTC.toISO()
+      console.log('[AvailabilityMutationService] Times for database storage:', {
+        originalDate: targetDate.toFormat('yyyy-MM-dd'),
+        localStart: startDateTime.toISO(),
+        localEnd: endDateTime.toISO(),
+        utcStart: startUTC.toISO(),
+        utcEnd: endUTC.toISO(),
+        timezone: clinicianTimeZone
       });
 
       // Create the main event
@@ -139,7 +205,7 @@ export class AvailabilityMutationService {
 
       if (eventError || !eventData?.id) {
         console.error('[AvailabilityMutationService] Error creating availability slot:', eventError);
-        return { success: false, error: 'Failed to create availability slot' };
+        return { success: false, error: `Failed to create availability slot: ${eventError?.message || 'Unknown error'}` };
       }
 
       // If this is a recurring slot, create the recurrence rule
@@ -162,7 +228,7 @@ export class AvailabilityMutationService {
             .delete()
             .eq('id', eventData.id);
             
-          return { success: false, error: 'Failed to create recurrence rule' };
+          return { success: false, error: `Failed to create recurrence rule: ${recurrenceError.message}` };
         }
         
         // Update the event with the recurrence ID
@@ -174,7 +240,7 @@ export class AvailabilityMutationService {
             
           if (updateError) {
             console.error('[AvailabilityMutationService] Error updating event with recurrence ID:', updateError);
-            return { success: false, error: 'Failed to update recurrence ID' };
+            return { success: false, error: `Failed to update recurrence ID: ${updateError.message}` };
           }
         }
       }
@@ -184,8 +250,9 @@ export class AvailabilityMutationService {
         data: { id: eventData.id } 
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('[AvailabilityMutationService] Error in createAvailabilitySlot:', error);
-      return { success: false, error: 'Unexpected error creating availability slot' };
+      return { success: false, error: `Unexpected error creating availability slot: ${errorMessage}` };
     }
   }
   

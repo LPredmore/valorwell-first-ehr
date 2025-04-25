@@ -88,15 +88,16 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     }
     
     setIsSubmitting(true);
+    
     try {
+      console.log(`[WeeklyAvailabilityDialog] Creating slot for ${activeTab} from ${newStartTime} to ${newEndTime}`);
+      
       // Create a recurrence rule for weekly availability on this day of week
-      const dayIndex = getDayIndex(activeTab);
-      // RRULE format: FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA,SU
       const byDay = getDayCode(activeTab);
       const recurrenceRule = `FREQ=WEEKLY;BYDAY=${byDay}`;
       
       const result = await createSlot(
-        activeTab,
+        activeTab, // Pass the day of week so service can calculate the correct date
         newStartTime,
         newEndTime,
         true, // Always recurring for weekly availability
@@ -104,10 +105,25 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       );
       
       if (result) {
+        toast({
+          title: "Success",
+          description: `Weekly availability added for ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`,
+        });
         onAvailabilityUpdated?.();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to add availability. Please try again.",
+          variant: "destructive"
+        });
       }
     } catch (error) {
-      console.error('Error adding availability slot:', error);
+      console.error('[WeeklyAvailabilityDialog] Error adding availability slot:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -130,9 +146,18 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
         setIsDeleteConfirmOpen(false);
         setSelectedSlotId(null);
         onAvailabilityUpdated?.();
+        toast({
+          title: "Success",
+          description: "Availability slot deleted successfully"
+        });
       }
     } catch (error) {
-      console.error('Error deleting availability slot:', error);
+      console.error('[WeeklyAvailabilityDialog] Error deleting availability slot:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete availability slot",
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }

@@ -52,6 +52,56 @@ export class TimeZoneService {
   }
   
   /**
+   * Get DateTime for specific day of week
+   * Helps with weekly recurring availability based on day name
+   */
+  static getDateTimeForDayOfWeek(
+    dayName: string,
+    timeZone: string,
+    startFromDate?: DateTime
+  ): DateTime {
+    const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
+    const now = startFromDate || DateTime.now().setZone(safeTimeZone);
+    
+    // Map day name to Luxon weekday number (1-7, Monday is 1)
+    const dayNameToWeekday: Record<string, number> = {
+      'monday': 1,
+      'tuesday': 2,
+      'wednesday': 3,
+      'thursday': 4,
+      'friday': 5,
+      'saturday': 6,
+      'sunday': 7
+    };
+    
+    const targetWeekday = dayNameToWeekday[dayName.toLowerCase()];
+    if (!targetWeekday) {
+      throw new Error(`Invalid day of week: ${dayName}`);
+    }
+    
+    // Calculate days to add to get to the target weekday
+    let daysToAdd = targetWeekday - now.weekday;
+    if (daysToAdd <= 0) {
+      // If today is the target day or we've passed it this week, go to next week
+      daysToAdd += 7;
+    }
+    
+    const targetDate = now
+      .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+      .plus({ days: daysToAdd });
+      
+    console.log('Calculated date for day of week:', {
+      dayName,
+      targetWeekday,
+      currentWeekday: now.weekday,
+      daysToAdd,
+      result: targetDate.toISO()
+    });
+    
+    return targetDate;
+  }
+  
+  /**
    * Format a datetime with consistent timezone handling
    */
   static formatDateTime(
