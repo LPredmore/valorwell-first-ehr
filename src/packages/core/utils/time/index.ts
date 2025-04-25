@@ -7,7 +7,7 @@
  */
 
 // Import TimeZoneService from the correct path
-import { TimeZoneService } from '../../../utils/timeZoneService';
+import { TimeZoneService } from '../../../../utils/timeZoneService';
 
 // Re-export utility functions from TimeZoneService
 export const {
