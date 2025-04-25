@@ -43,7 +43,6 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     userTimeZone: validTimeZone,
   });
 
-  // Combine regular events and availability events
   useEffect(() => {
     try {
       const allEvents = [...(appointmentEvents || [])];
@@ -68,14 +67,12 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     try {
       console.log('[FullCalendarView] Event clicked:', info.event);
       
-      // For availability slots, use the specific handler
       if (info.event.extendedProps?.isAvailability && onAvailabilityClick) {
         console.log('[FullCalendarView] Handling availability click');
         onAvailabilityClick(info.event);
         return;
       }
       
-      // For other events, use the regular handler
       if (onEventClick) {
         console.log('[FullCalendarView] Handling regular event click');
         onEventClick(info);
@@ -94,7 +91,6 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     }
   }, []);
 
-  // Add debug logging to track component lifecycle
   useEffect(() => {
     console.log('[FullCalendarView] Component mounted/updated with props:', { 
       clinicianId, 
@@ -107,7 +103,6 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     };
   }, [clinicianId, validTimeZone, showAvailability]);
   
-  // Handle errors in rendering
   if (isLoading) {
     return (
       <div className="space-y-4">

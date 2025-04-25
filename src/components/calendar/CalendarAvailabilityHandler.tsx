@@ -1,3 +1,4 @@
+
 import { useEffect, useCallback, useState } from 'react';
 import { CalendarEvent } from '@/types/calendar';
 import { useAvailability } from '@/hooks/useAvailability';
@@ -155,12 +156,13 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
     // Add single occurrence events
     Object.entries(weeklyAvailability).forEach(([day, slots]) => {
       slots.forEach(slot => {
-        if (!slot.isRecurring) {
+        if (!slot.isRecurring && slot.date) {
           try {
             const [startHour, startMinute] = slot.startTime.split(':').map(Number);
             const [endHour, endMinute] = slot.endTime.split(':').map(Number);
             
-            const slotDate = DateTime.fromFormat(slot.date || '', 'yyyy-MM-dd', { zone: userTimeZone });
+            // Use TimeZoneService for consistent handling
+            const slotDate = TimeZoneService.parseWithZone(slot.date, userTimeZone);
             
             if (!slotDate.isValid) {
               console.error('[CalendarAvailabilityHandler] Invalid date for single slot:', slot);

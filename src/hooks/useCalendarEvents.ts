@@ -4,7 +4,7 @@ import { CalendarService } from '@/services/CalendarService';
 import { CalendarEvent } from '@/types/calendar';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/context/UserContext';
-import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface UseCalendarEventsProps {
   clinicianId: string | null;
@@ -29,7 +29,7 @@ export function useCalendarEvents({
   const maxRetries = 3;
   
   // Ensure we have a valid IANA timezone
-  const validTimeZone = ensureIANATimeZone(userTimeZone);
+  const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
   
   const fetchEvents = useCallback(async (retry: boolean = false) => {
     if (isUserLoading) {
@@ -89,7 +89,12 @@ export function useCalendarEvents({
 
       console.log('[useCalendarEvents] Events fetched:', fetchedEvents?.length || 0);
       
-      setEvents(fetchedEvents || []);
+      // Apply timezone conversion to events using TimeZoneService
+      const convertedEvents = fetchedEvents?.map(event => 
+        TimeZoneService.convertEventToUserTimeZone(event, validTimeZone)
+      ) || [];
+      
+      setEvents(convertedEvents);
       if (retryCount > 0) setRetryCount(0);
       
     } catch (err) {
@@ -136,7 +141,13 @@ export function useCalendarEvents({
     
     while (retries <= maxCreateRetries) {
       try {
-        const createdEvent = await CalendarService.createEvent(event, validTimeZone);
+        // Ensure the event timezone is properly set before creation
+        const eventWithTimezone = {
+          ...event,
+          _userTimeZone: validTimeZone
+        };
+        
+        const createdEvent = await CalendarService.createEvent(eventWithTimezone, validTimeZone);
         fetchEvents();
         return createdEvent;
       } catch (err) {
@@ -161,7 +172,13 @@ export function useCalendarEvents({
 
   const updateEvent = async (event: CalendarEvent): Promise<CalendarEvent | null> => {
     try {
-      const updatedEvent = await CalendarService.updateEvent(event, validTimeZone);
+      // Ensure the event timezone is properly set before update
+      const eventWithTimezone = {
+        ...event,
+        _userTimeZone: validTimeZone
+      };
+      
+      const updatedEvent = await CalendarService.updateEvent(eventWithTimezone, validTimeZone);
       fetchEvents();
       return updatedEvent;
     } catch (err) {

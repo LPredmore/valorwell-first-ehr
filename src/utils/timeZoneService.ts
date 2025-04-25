@@ -276,4 +276,83 @@ export class TimeZoneService {
       return event; // Return original on error
     }
   }
+  
+  /**
+   * Get display name for a day of the week from a date
+   * Consistent with the getWeekdayName function
+   */
+  static getWeekdayName(date: string | Date | DateTime): string {
+    try {
+      let dt: DateTime;
+      
+      if (date instanceof DateTime) {
+        dt = date;
+      } else if (date instanceof Date) {
+        dt = DateTime.fromJSDate(date);
+      } else {
+        dt = DateTime.fromISO(date);
+      }
+      
+      if (!dt.isValid) {
+        console.error('Invalid date for getWeekdayName:', { date, error: dt.invalidReason });
+        return '';
+      }
+      
+      return dt.weekdayLong.toLowerCase();
+    } catch (error) {
+      console.error('Error in getWeekdayName:', error, { date });
+      return '';
+    }
+  }
+  
+  /**
+   * Parse an ISO string with timezone awareness
+   */
+  static parseWithZone(dateString: string, timeZone: string): DateTime {
+    const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
+    return DateTime.fromISO(dateString, { zone: safeTimeZone });
+  }
+  
+  /**
+   * Convert a DateTime to ISO string with timezone
+   */
+  static toISOWithZone(dateTime: DateTime): string {
+    return dateTime.toISO();
+  }
+  
+  /**
+   * Format a date in a consistent way
+   */
+  static formatDate(
+    date: string | Date | DateTime,
+    format: string = 'yyyy-MM-dd',
+    timeZone?: string
+  ): string {
+    try {
+      let dt: DateTime;
+      
+      if (date instanceof DateTime) {
+        dt = date;
+      } else if (date instanceof Date) {
+        dt = DateTime.fromJSDate(date);
+      } else {
+        dt = DateTime.fromISO(date);
+      }
+      
+      if (!dt.isValid) {
+        console.error('Invalid date for formatDate:', { date, error: dt.invalidReason });
+        return 'Invalid date';
+      }
+      
+      if (timeZone) {
+        const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
+        dt = dt.setZone(safeTimeZone);
+      }
+      
+      return dt.toFormat(format);
+    } catch (error) {
+      console.error('Error in formatDate:', error, { date, format, timeZone });
+      return 'Error formatting date';
+    }
+  }
 }
