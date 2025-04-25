@@ -1,4 +1,3 @@
-
 import { DateTime, Duration } from 'luxon';
 
 /**
@@ -204,4 +203,3 @@ export const createISODateTimeString = (
   const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
   return DateTime.fromISO(`${dateStr}T${time}`, { zone: ianaZone }).toISO();
 };
-
