@@ -169,6 +169,13 @@ export type Database = {
             referencedRelation: "calendar_events"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "calendar_events_recurrence_id_fkey"
+            columns: ["recurrence_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events_with_rules"
+            referencedColumns: ["id"]
+          },
         ]
       }
       calendar_exceptions: {
@@ -208,10 +215,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "calendar_exceptions_recurrence_event_id_fkey"
+            columns: ["recurrence_event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events_with_rules"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "calendar_exceptions_replacement_event_id_fkey"
             columns: ["replacement_event_id"]
             isOneToOne: false
             referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_exceptions_replacement_event_id_fkey"
+            columns: ["replacement_event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events_with_rules"
             referencedColumns: ["id"]
           },
         ]
@@ -1436,6 +1457,13 @@ export type Database = {
             referencedRelation: "calendar_events"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "recurrence_rules_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events_with_rules"
+            referencedColumns: ["id"]
+          },
         ]
       }
       session_notes: {
@@ -1964,7 +1992,40 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      calendar_events_with_rules: {
+        Row: {
+          all_day: boolean | null
+          clinician_id: string | null
+          created_at: string | null
+          description: string | null
+          end_time: string | null
+          event_type: string | null
+          google_event_id: string | null
+          id: string | null
+          is_active: boolean | null
+          recurrence_id: string | null
+          rrule: string | null
+          start_time: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_recurrence_id_fkey"
+            columns: ["recurrence_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_recurrence_id_fkey"
+            columns: ["recurrence_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events_with_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       check_table_exists: {
