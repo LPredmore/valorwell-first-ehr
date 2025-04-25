@@ -2,7 +2,8 @@
 import { EventContentArg, EventApi } from '@fullcalendar/core';
 import { CalendarEvent } from './calendar';
 
-export interface FullCalendarEventContent extends EventContentArg {
+// Extended event content interface that properly extends EventContentArg
+export interface FullCalendarEventContent extends Omit<EventContentArg, 'event'> {
   event: EventApi & {
     extendedProps?: {
       isAvailability?: boolean;
