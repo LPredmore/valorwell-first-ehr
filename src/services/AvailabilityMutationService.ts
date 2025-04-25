@@ -1,8 +1,10 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySlot } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { SingleAvailabilityService } from './SingleAvailabilityService';
 import { RecurringAvailabilityService } from './RecurringAvailabilityService';
+import { DateTime } from 'luxon'; // Add this import to fix the error
 
 export class AvailabilityMutationService {
   static async createAvailabilityException(
