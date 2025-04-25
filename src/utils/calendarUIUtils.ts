@@ -116,6 +116,7 @@ export const createDefaultEvent = (
       clinicianId,
       eventType,
       isAvailability: eventType === 'availability',
+      timezone
     }
   };
 };

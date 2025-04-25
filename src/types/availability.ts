@@ -1,3 +1,4 @@
+
 import { CalendarViewType } from './calendar';
 
 export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
@@ -13,6 +14,7 @@ export interface AvailabilitySlot {
   clientName?: string;
   appointmentStatus?: string;
   date?: string;
+  timezone?: string; // Added timezone property for time zone awareness
 }
 
 export interface WeeklyAvailability {
@@ -66,6 +68,7 @@ export interface AvailabilityEvent {
     isRecurring: boolean;
     recurrenceId?: string;
     dayOfWeek?: DayOfWeek;
+    timezone?: string; // Added timezone property
   };
 }
 

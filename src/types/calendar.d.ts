@@ -33,11 +33,11 @@ export interface CalendarEvent {
     status?: string;
     dayOfWeek?: string;
     isActive?: boolean;
+    timezone?: string;
     // Add properties that were causing build errors
     originalSlotId?: string;
     googleEventId?: string;
     week?: number;
-    timezone?: string;
     appointment?: any;
   };
 }

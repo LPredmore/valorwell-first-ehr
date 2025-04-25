@@ -30,6 +30,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     const fetchClinicians = async () => {
       setLoadingClinicians(true);
       try {
+        // Query profiles for clinicians since clinician_id is now properly typed as UUID
         const { data, error } = await supabase
           .from('clinicians')
           .select('id, clinician_professional_name')
