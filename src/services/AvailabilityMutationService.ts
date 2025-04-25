@@ -1,7 +1,7 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySlot } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { DateTime } from 'luxon';
 
 export class AvailabilityMutationService {
   static async createAvailabilityException(
@@ -220,11 +220,12 @@ export class AvailabilityMutationService {
           }
         }
       } else {
+        // For non-recurring slots, convert to UTC for storage
         const startDt = TimeZoneService.parseWithZone(slotData.startTime, timezone);
         const endDt = TimeZoneService.parseWithZone(slotData.endTime, timezone);
         
-        eventData.start_time = startDt.toUTC().toISO();
-        eventData.end_time = endDt.toUTC().toISO();
+        eventData.start_time = TimeZoneService.toUTC(startDt).toISO();
+        eventData.end_time = TimeZoneService.toUTC(endDt).toISO();
       }
       
       const { data, error } = await supabase
@@ -326,12 +327,12 @@ export class AvailabilityMutationService {
       
       if (updates.startTime) {
         const startDt = TimeZoneService.parseWithZone(updates.startTime, timezone);
-        updateData.start_time = startDt.toUTC().toISO();
+        updateData.start_time = TimeZoneService.toUTC(startDt).toISO();
       }
       
       if (updates.endTime) {
         const endDt = TimeZoneService.parseWithZone(updates.endTime, timezone);
-        updateData.end_time = endDt.toUTC().toISO();
+        updateData.end_time = TimeZoneService.toUTC(endDt).toISO();
       }
 
       const { error } = await supabase

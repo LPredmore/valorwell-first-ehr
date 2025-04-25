@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ensureIANATimeZone } from "@/utils/timeZoneUtils";
+import { TimeZoneService } from "@/utils/timeZoneService";
 
 /**
  * Hook to fetch a user's time zone from the profiles table
@@ -59,7 +60,7 @@ export const getUserTimeZoneById = async (userId: string): Promise<string> => {
       
     if (!profileError && profileData?.time_zone) {
       console.log(`[getUserTimeZoneById] Found time zone in profiles table for ${userId}: ${profileData.time_zone}`);
-      return ensureIANATimeZone(profileData.time_zone);
+      return TimeZoneService.ensureIANATimeZone(profileData.time_zone);
     }
     
     // If not in profiles, check if it's a client and get from clients table
@@ -71,7 +72,7 @@ export const getUserTimeZoneById = async (userId: string): Promise<string> => {
       
     if (!clientError && clientData?.client_time_zone) {
       console.log(`[getUserTimeZoneById] Found time zone in clients table for ${userId}: ${clientData.client_time_zone}`);
-      return ensureIANATimeZone(clientData.client_time_zone);
+      return TimeZoneService.ensureIANATimeZone(clientData.client_time_zone);
     }
     
     // If not in clients, check if it's a clinician and get from clinicians table
@@ -83,7 +84,7 @@ export const getUserTimeZoneById = async (userId: string): Promise<string> => {
       
     if (!clinicianError && clinicianData?.clinician_timezone) {
       console.log(`[getUserTimeZoneById] Found time zone in clinicians table for ${userId}: ${clinicianData.clinician_timezone}`);
-      return ensureIANATimeZone(clinicianData.clinician_timezone);
+      return TimeZoneService.ensureIANATimeZone(clinicianData.clinician_timezone);
     }
     
     // Return default if not found anywhere

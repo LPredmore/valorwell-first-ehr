@@ -1,6 +1,16 @@
 
-import { DateTime } from 'luxon';
+/**
+ * @deprecated This file is maintained for backward compatibility
+ * New code should use TimeZoneService methods directly from "@/utils/timeZoneService"
+ */
+
 import { TimeZoneService } from './timeZoneService';
+
+console.warn(
+  'You are importing from timeZoneUtils.ts, which is deprecated. ' +
+  'Please import directly from TimeZoneService instead. ' +
+  'These re-exports will be removed in a future update.'
+);
 
 // Re-export TimeZoneService functions to maintain backward compatibility
 export const {
@@ -20,6 +30,7 @@ export const {
 
 /**
  * Get user timezone or fallback to browser timezone
+ * @deprecated Use TimeZoneService or the useTimeZone hook
  */
 export const getUserTimeZone = (): string => {
   try {

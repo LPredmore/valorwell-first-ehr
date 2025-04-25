@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ensureIANATimeZone } from "@/utils/timeZoneUtils";
+import { TimeZoneService } from "@/utils/timeZoneService";
 
 interface TimeZoneContextType {
   userTimeZone: string;
@@ -39,7 +39,7 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setIsAuthenticated(false);
           // Still use browser time zone for unauthenticated users
           const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-          setUserTimeZone(browserTimeZone);
+          setUserTimeZone(TimeZoneService.ensureIANATimeZone(browserTimeZone));
           setIsLoading(false);
           return;
         }
@@ -61,21 +61,23 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           
           if (data?.time_zone) {
             // Ensure time zone is in IANA format
-            const validTimeZone = ensureIANATimeZone(data.time_zone);
+            const validTimeZone = TimeZoneService.ensureIANATimeZone(data.time_zone);
             console.log(`[TimeZoneContext] User time zone set from DB: ${validTimeZone}`);
             setUserTimeZone(validTimeZone);
           } else {
             // If no time zone in profile, use browser's time zone
             const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            console.log(`[TimeZoneContext] No time zone in profile. Using browser time zone: ${browserTimeZone}`);
-            setUserTimeZone(browserTimeZone);
+            const validTimeZone = TimeZoneService.ensureIANATimeZone(browserTimeZone);
+            console.log(`[TimeZoneContext] No time zone in profile. Using browser time zone: ${validTimeZone}`);
+            setUserTimeZone(validTimeZone);
           }
         } else {
           // No authenticated user, use browser's time zone
           setIsAuthenticated(false);
           const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-          console.log(`[TimeZoneContext] No authenticated user. Using browser time zone: ${browserTimeZone}`);
-          setUserTimeZone(browserTimeZone);
+          const validTimeZone = TimeZoneService.ensureIANATimeZone(browserTimeZone);
+          console.log(`[TimeZoneContext] No authenticated user. Using browser time zone: ${validTimeZone}`);
+          setUserTimeZone(validTimeZone);
         }
       } catch (err) {
         console.error("[TimeZoneContext] Error in time zone initialization:", err);
@@ -84,7 +86,8 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         
         // Fallback to browser time zone on error
         const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        setUserTimeZone(browserTimeZone);
+        const validTimeZone = TimeZoneService.ensureIANATimeZone(browserTimeZone);
+        setUserTimeZone(validTimeZone);
       } finally {
         setIsLoading(false);
         console.log('[TimeZoneContext] Time zone initialization completed.');
