@@ -140,6 +140,15 @@ export function useAvailability(clinicianId: string | null) {
           return { success: false, error: 'Recurrence rule is required for recurring availability' };
         }
         
+        // Log the inputs to help diagnose issues
+        console.log(`[useAvailability] Creating availability with params:`, {
+          clinicianId,
+          startTime,
+          endTime,
+          recurring: isRecurring,
+          recurrenceRule
+        });
+        
         const result = await AvailabilityMutationService.createAvailabilitySlot(clinicianId, {
           startTime,
           endTime,

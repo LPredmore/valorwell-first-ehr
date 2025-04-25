@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySlot } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -148,13 +149,28 @@ export class AvailabilityMutationService {
       const today = new Date();
       const startDateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
       
+      // Format the full datetime strings correctly
+      const startTimeStr = `${startDateStr}T${startTime}`;
+      const endTimeStr = `${startDateStr}T${endTime}`;
+      
       // Parse both start and end times with timezone
-      const startDt = TimeZoneService.parseWithZone(`${startDateStr}T${startTime}`, validTimeZone);
-      const endDt = TimeZoneService.parseWithZone(`${startDateStr}T${endTime}`, validTimeZone);
+      const startDt = TimeZoneService.parseWithZone(startTimeStr, validTimeZone);
+      const endDt = TimeZoneService.parseWithZone(endTimeStr, validTimeZone);
       
       if (!startDt.isValid || !endDt.isValid) {
         throw new Error(`Invalid datetime: ${!startDt.isValid ? startDt.invalidReason : endDt.invalidReason}`);
       }
+
+      // Log detailed timezone information for debugging
+      console.log('[AvailabilityMutationService] DateTime information:', {
+        startTimeStr,
+        endTimeStr, 
+        startDtFormatted: startDt.toISO(),
+        endDtFormatted: endDt.toISO(),
+        startDtUTC: startDt.toUTC().toISO(),
+        endDtUTC: endDt.toUTC().toISO(),
+        timezone: validTimeZone
+      });
 
       // Create the initial event
       const { data, error } = await supabase
@@ -167,7 +183,6 @@ export class AvailabilityMutationService {
             start_time: startDt.toUTC().toISO(),
             end_time: endDt.toUTC().toISO(),
             is_recurring: true,
-            timezone: validTimeZone,
             is_active: true,
           },
         ])
@@ -268,6 +283,13 @@ export class AvailabilityMutationService {
       
       try {
         if (slotData.recurring && slotData.recurrenceRule) {
+          console.log('[AvailabilityMutationService] Creating recurring availability slot with data:', {
+            startTime: slotData.startTime,
+            endTime: slotData.endTime,
+            recurrenceRule: slotData.recurrenceRule,
+            timezone
+          });
+          
           // For recurring events, we'll delegate to the createRecurringAvailability method
           const result = await this.createRecurringAvailability(
             clinicianId,
@@ -306,7 +328,6 @@ export class AvailabilityMutationService {
             event_type: 'availability',
             title: slotData.title || 'Available',
             is_active: true,
-            timezone: timezone,
             start_time: TimeZoneService.toUTC(startDt).toISO(),
             end_time: TimeZoneService.toUTC(endDt).toISO(),
             is_recurring: false,

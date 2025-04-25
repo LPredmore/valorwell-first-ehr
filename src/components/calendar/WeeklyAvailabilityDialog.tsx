@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -105,6 +104,8 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       
       const byDay = getDayCode(activeTab);
       const recurrenceRule = `FREQ=WEEKLY;BYDAY=${byDay}`;
+      
+      console.log(`[WeeklyAvailabilityDialog] Using recurrence rule: ${recurrenceRule}`);
       
       const result = await createSlot(
         activeTab,
