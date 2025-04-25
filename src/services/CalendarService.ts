@@ -156,49 +156,67 @@ export class CalendarService {
           end_time,
           description,
           recurrence_id,
-          is_active,
-          recurrence_rules!inner(rrule)
+          is_active
         `)
         .eq('clinician_id', clinicianId)
         .eq('event_type', 'availability')
         .eq('is_active', true);
 
-    if (startDate && endDate) {
-      query = query
-        .gte('start_time', startDate.toISOString())
-        .lte('start_time', endDate.toISOString());
-    }
-
-    const { data: events, error } = await query;
-
-    if (error) {
-      console.error('[CalendarService] Error fetching availability events:', error);
-      throw error;
-    }
-
-    return (events || []).map(event => ({
-      id: event.id,
-      title: event.title || 'Available',
-      start: event.start_time,
-      end: event.end_time,
-      backgroundColor: '#4ade80',
-      borderColor: '#16a34a',
-      textColor: '#052e16',
-      extendedProps: {
-        eventType: 'availability' as CalendarEventType,
-        description: event.description || 'Available for appointments',
-        recurrenceRule: event.recurrence_rules ? {
-          id: event.recurrence_id,
-          eventId: event.id,
-          rrule: event.recurrence_rules.rrule
-        } : undefined
+      if (startDate && endDate) {
+        const startDateString = startDate.toISOString();
+        const endDateString = endDate.toISOString();
+        query = query.gte('start_time', startDateString).lte('start_time', endDateString);
       }
-    }));
-  } catch (error) {
-    console.error('[CalendarService] Error fetching availability events:', error);
-    return [];
+
+      const { data: events, error } = await query;
+
+      if (error) {
+        console.error('[CalendarService] Error fetching availability events:', error);
+        throw error;
+      }
+
+      // To get recurrence rules, we need a follow-up query for FOR recurrence_id if present
+      const eventsWithRecurrence = await Promise.all(
+        (events || []).map(async (event) => {
+          let recurrenceRule = undefined;
+          if (event.recurrence_id) {
+            // Fetch rrule from recurrence_rules by recurrence_id
+            const { data: recurrenceRules, error: recurrenceError } = await supabase
+              .from('recurrence_rules')
+              .select('rrule')
+              .eq('id', event.recurrence_id)
+              .single(); // Use single() to get a single object instead of an array
+            
+            if (!recurrenceError && recurrenceRules) {
+              recurrenceRule = {
+                id: event.recurrence_id,
+                eventId: event.id,
+                rrule: recurrenceRules.rrule
+              };
+            }
+          }
+          return {
+            id: event.id,
+            title: event.title || 'Available',
+            start: event.start_time,
+            end: event.end_time,
+            backgroundColor: '#4ade80',
+            borderColor: '#16a34a',
+            textColor: '#052e16',
+            extendedProps: {
+              eventType: 'availability' as CalendarEventType,
+              description: event.description || 'Available for appointments',
+              recurrenceRule
+            }
+          };
+        })
+      );
+      return eventsWithRecurrence;
+    } catch (error) {
+      console.error('[CalendarService] Error fetching availability events:', error);
+      return [];
+    }
   }
-}
 
   static async createEvent(event: CalendarEvent, userTimeZone: string): Promise<CalendarEvent | null> {
     try {

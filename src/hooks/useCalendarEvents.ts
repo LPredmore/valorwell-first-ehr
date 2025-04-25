@@ -1,5 +1,6 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { CalendarService } from '@/services/calendarService';
+import { CalendarService } from '@/services/CalendarService';
 import { CalendarEvent } from '@/types/calendar';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/context/UserContext';
