@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -140,7 +139,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     
     setIsSubmitting(true);
     try {
-      const result = await deleteSlot(selectedSlotId, isDeleteAll);
+      const result = await deleteSlot(selectedSlotId);
       
       if (result) {
         setIsDeleteConfirmOpen(false);

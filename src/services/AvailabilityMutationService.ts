@@ -153,7 +153,6 @@ export class AvailabilityMutationService {
     }
   }
 
-  // Add the missing createAvailabilitySlot method
   static async createAvailabilitySlot(
     clinicianId: string,
     slotData: {
@@ -174,14 +173,12 @@ export class AvailabilityMutationService {
       };
       
       if (slotData.recurring) {
-        // For recurring slots
         eventData.is_recurring = true;
         eventData.day_of_week = slotData.dayOfWeek;
         eventData.start_time = slotData.startTime;
         eventData.end_time = slotData.endTime;
         
         if (slotData.recurrenceRule) {
-          // If specific recurrence rule is provided
           const { data: recurrenceData, error: recurrenceError } = await supabase
             .from('recurrence_rules')
             .insert([{ rrule: slotData.recurrenceRule }])
@@ -194,22 +191,17 @@ export class AvailabilityMutationService {
           }
         }
       } else {
-        // For single occurrence slots
         eventData.start_time = slotData.startTime;
         eventData.end_time = slotData.endTime;
       }
       
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('calendar_events')
-        .insert([eventData])
-        .select();
+        .insert([eventData]);
         
       if (error) throw error;
       
-      return { 
-        success: true,
-        data
-      };
+      return { success: true };
     } catch (error) {
       console.error('[AvailabilityMutationService] Error creating availability slot:', error);
       return { 
@@ -218,8 +210,7 @@ export class AvailabilityMutationService {
       };
     }
   }
-  
-  // Add the missing updateSettings method
+
   static async updateSettings(
     clinicianId: string, 
     settings: Partial<{
@@ -276,21 +267,19 @@ export class AvailabilityMutationService {
     updates: Partial<AvailabilitySlot>
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('calendar_events')
         .update({
           start_time: updates.startTime,
           end_time: updates.endTime,
-          // Other fields can be added here as needed
         })
-        .eq('id', slotId)
-        .select();
+        .eq('id', slotId);
 
       if (error) {
         throw error;
       }
 
-      return { success: true, data };
+      return { success: true };
     } catch (error) {
       console.error('Error updating availability slot:', error);
       return { 
