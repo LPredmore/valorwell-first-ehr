@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -10,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import CalendarAvailabilityHandler from './CalendarAvailabilityHandler';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { formatDateTime } from '@/utils/dateFormatUtils';
 
 /**
  * A React component that renders a FullCalendar instance.
@@ -43,41 +45,53 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
 
   // Combine regular events and availability events
   useEffect(() => {
-    const allEvents = [...(appointmentEvents || [])];
-    
-    if (showAvailability) {
-      allEvents.push(...availabilityEvents);
+    try {
+      const allEvents = [...(appointmentEvents || [])];
+      
+      if (showAvailability) {
+        allEvents.push(...availabilityEvents);
+      }
+      
+      console.log('[FullCalendarView] Combined events:', { 
+        appointments: appointmentEvents?.length || 0, 
+        availability: availabilityEvents.length,
+        total: allEvents.length 
+      });
+      
+      setCombinedEvents(allEvents);
+    } catch (err) {
+      console.error('[FullCalendarView] Error combining events:', err);
     }
-    
-    console.log('[FullCalendarView] Combined events:', { 
-      appointments: appointmentEvents?.length || 0, 
-      availability: availabilityEvents.length,
-      total: allEvents.length 
-    });
-    
-    setCombinedEvents(allEvents);
   }, [appointmentEvents, availabilityEvents, showAvailability]);
 
   const handleEventClick = useCallback((info: any) => {
-    console.log('[FullCalendarView] Event clicked:', info.event);
-    
-    // For availability slots, use the specific handler
-    if (info.event.extendedProps?.isAvailability && onAvailabilityClick) {
-      console.log('[FullCalendarView] Handling availability click');
-      onAvailabilityClick(info.event);
-      return;
-    }
-    
-    // For other events, use the regular handler
-    if (onEventClick) {
-      console.log('[FullCalendarView] Handling regular event click');
-      onEventClick(info);
+    try {
+      console.log('[FullCalendarView] Event clicked:', info.event);
+      
+      // For availability slots, use the specific handler
+      if (info.event.extendedProps?.isAvailability && onAvailabilityClick) {
+        console.log('[FullCalendarView] Handling availability click');
+        onAvailabilityClick(info.event);
+        return;
+      }
+      
+      // For other events, use the regular handler
+      if (onEventClick) {
+        console.log('[FullCalendarView] Handling regular event click');
+        onEventClick(info);
+      }
+    } catch (err) {
+      console.error('[FullCalendarView] Error in event click handler:', err);
     }
   }, [onEventClick, onAvailabilityClick]);
 
   const handleAvailabilityEventsChange = useCallback((events: CalendarEvent[]) => {
-    console.log(`[FullCalendarView] Received ${events.length} availability events`);
-    setAvailabilityEvents(events);
+    try {
+      console.log(`[FullCalendarView] Received ${events.length} availability events`);
+      setAvailabilityEvents(events);
+    } catch (err) {
+      console.error('[FullCalendarView] Error handling availability events change:', err);
+    }
   }, []);
 
   // Add debug logging to track component lifecycle
@@ -92,7 +106,8 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
       console.log('[FullCalendarView] Component will unmount');
     };
   }, [clinicianId, validTimeZone, showAvailability]);
-
+  
+  // Handle errors in rendering
   if (isLoading) {
     return (
       <div className="space-y-4">

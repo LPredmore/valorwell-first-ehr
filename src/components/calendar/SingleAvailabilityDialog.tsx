@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { AvailabilityMutationService } from '@/services/AvailabilityMutationService';
+import { formatDate } from '@/utils/dateFormatUtils';
 
 interface SingleAvailabilityDialogProps {
   isOpen: boolean;
@@ -27,6 +28,9 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [startTime, setStartTime] = useState<string>('09:00');
   const [endTime, setEndTime] = useState<string>('17:00');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  
+  const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
 
   const handleSubmit = async () => {
     if (!selectedDate) {
@@ -38,21 +42,47 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
       return;
     }
 
+    // Validate that end time is after start time
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const [endHour, endMinute] = endTime.split(':').map(Number);
+    if (endHour < startHour || (endHour === startHour && endMinute <= startMinute)) {
+      toast({
+        title: "Invalid Time Range",
+        description: "End time must be after start time",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      const date = DateTime.fromJSDate(selectedDate).setZone(userTimeZone);
+      setIsSubmitting(true);
+      
+      // Format date in ISO format
+      const dateStr = formatDate(selectedDate, 'yyyy-MM-dd');
+      
+      // Create datetime strings
+      const startISOString = `${dateStr}T${startTime}`;
+      const endISOString = `${dateStr}T${endTime}`;
+      
+      console.log('[SingleAvailabilityDialog] Creating availability with:', {
+        clinicianId,
+        startTime: startISOString,
+        endTime: endISOString,
+        userTimeZone: validTimeZone
+      });
       
       const response = await AvailabilityMutationService.createAvailabilitySlot(
         clinicianId,
         {
-          startTime: `${date.toFormat('yyyy-MM-dd')}T${startTime}`,
-          endTime: `${date.toFormat('yyyy-MM-dd')}T${endTime}`,
+          startTime: startISOString,
+          endTime: endISOString,
           title: 'Available (Single)',
           recurring: false,
         }
       );
 
       if (!response.success) {
-        throw new Error(response.error);
+        throw new Error(response.error || 'Failed to create availability slot');
       }
 
       toast({
@@ -66,9 +96,11 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
       console.error('Error creating single availability:', error);
       toast({
         title: "Error",
-        description: "Failed to create availability slot",
+        description: error instanceof Error ? error.message : "Failed to create availability slot",
         variant: "destructive"
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -92,17 +124,34 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
               <label>Start Time</label>
-              <TimePickerInput value={startTime} onChange={setStartTime} />
+              <TimePickerInput 
+                value={startTime} 
+                onChange={setStartTime} 
+                min="00:00" 
+                max="23:45"
+                step={900} 
+              />
             </div>
             <div className="flex flex-col gap-2">
               <label>End Time</label>
-              <TimePickerInput value={endTime} onChange={setEndTime} />
+              <TimePickerInput 
+                value={endTime} 
+                onChange={setEndTime} 
+                min="00:15" 
+                max="23:59"
+                step={900} 
+              />
             </div>
           </div>
         </div>
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit}>Add Availability</Button>
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Adding...' : 'Add Availability'}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
