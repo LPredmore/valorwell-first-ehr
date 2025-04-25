@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { WeeklyAvailability, AvailabilitySettings, createEmptyWeeklyAvailability } from '@/types/availability';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/TimeZoneService';
 import { ClientDataService } from './ClientDataService';
 import { DateTime } from 'luxon';
 
@@ -60,10 +60,17 @@ export class AvailabilityQueryService {
       // Initialize the weekly availability with empty arrays
       const weeklyAvailability: WeeklyAvailability = createEmptyWeeklyAvailability();
       
-      // STEP 1: Fetch availability slots from calendar_events
+      // STEP 1: Fetch availability slots with recurrence rules
       const { data: events, error } = await supabase
-        .from('calendar_events')
-        .select('id, start_time, end_time, recurrence_id, is_active')
+        .from('calendar_events_with_rules')
+        .select(`
+          id,
+          start_time,
+          end_time,
+          recurrence_id,
+          is_active,
+          rrule
+        `)
         .eq('clinician_id', clinicianId)
         .eq('event_type', 'availability')
         .eq('is_active', true);
@@ -75,28 +82,20 @@ export class AvailabilityQueryService {
       
       console.log(`[AvailabilityQueryService] Processing ${events?.length || 0} availability events`);
 
-      // Get recurrence rules for events with recurrence_id
+      // Process each event
       for (const event of events || []) {
         try {
-          // If event has a recurrence ID, fetch the recurrence rule
-          let recurrenceRule = null;
-          if (event.recurrence_id) {
-            const { data: ruleData, error: ruleError } = await supabase
-              .from('recurrence_rules')
-              .select('rrule')
-              .eq('id', event.recurrence_id)
-              .maybeSingle();
-              
-            if (ruleError) {
-              console.error(`[AvailabilityQueryService] Error fetching recurrence rule for event ${event.id}:`, ruleError);
-            } else if (ruleData) {
-              recurrenceRule = ruleData.rrule;
-            }
-          }
-          
           // Use TimeZoneService to properly parse the UTC times and convert to clinician's timezone
           const startDateTime = TimeZoneService.fromUTC(event.start_time, clinicianTimeZone);
           const endDateTime = TimeZoneService.fromUTC(event.end_time, clinicianTimeZone);
+          
+          if (!startDateTime.isValid || !endDateTime.isValid) {
+            console.error(`[AvailabilityQueryService] Invalid date/time for event ${event.id}:`, {
+              start: event.start_time,
+              end: event.end_time
+            });
+            continue;
+          }
           
           // Get day of week in lowercase to match our WeeklyAvailability keys
           const dayOfWeek = startDateTime.weekdayLong.toLowerCase();
@@ -112,23 +111,19 @@ export class AvailabilityQueryService {
             startHour: startDateTime.hour,
             startMinute: startDateTime.minute,
             endHour: endDateTime.hour,
-            endMinute: endDateTime.minute
+            endMinute: endDateTime.minute,
+            hasRecurrence: !!event.rrule
           });
           
           if (dayOfWeek in weeklyAvailability) {
             weeklyAvailability[dayOfWeek].push({
               id: event.id,
-              startTime: startDateTime.toFormat('HH:mm'), // 24-hour format for consistent handling
+              startTime: startDateTime.toFormat('HH:mm'),
               endTime: endDateTime.toFormat('HH:mm'),
               dayOfWeek,
-              isRecurring: !!event.recurrence_id,
+              isRecurring: !!event.rrule,
+              recurrenceRule: event.rrule || undefined,
               isAppointment: false
-            });
-            
-            console.log(`[AvailabilityQueryService] Added availability for ${dayOfWeek}:`, {
-              id: event.id,
-              startTime: startDateTime.toFormat('HH:mm'),
-              endTime: endDateTime.toFormat('HH:mm')
             });
           } else {
             console.warn(`[AvailabilityQueryService] Unknown day of week: ${dayOfWeek} for event ${event.id}`);
