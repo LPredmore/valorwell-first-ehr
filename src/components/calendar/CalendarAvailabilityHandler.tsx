@@ -1,14 +1,16 @@
 
-import { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { AvailabilityQueryService } from '@/services/AvailabilityQueryService';
+import { WeeklyAvailability } from '@/types/availability';
 import { CalendarEvent } from '@/types/calendar';
-import { useAvailability } from '@/hooks/useAvailability';
-import { TimeZoneService } from '@/utils/timeZoneService';
 import { DateTime } from 'luxon';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface CalendarAvailabilityHandlerProps {
   clinicianId: string;
   userTimeZone: string;
   onEventsChange: (events: CalendarEvent[]) => void;
+  onError?: (error: Error) => void;
   showAvailability: boolean;
   weeksToShow?: number;
 }
@@ -17,227 +19,132 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
   clinicianId,
   userTimeZone,
   onEventsChange,
+  onError,
   showAvailability,
   weeksToShow = 8
 }) => {
-  const [availabilityEvents, setAvailabilityEvents] = useState<CalendarEvent[]>([]);
-  
-  const {
-    weeklyAvailability,
-    isLoading,
-    refreshAvailability
-  } = useAvailability(clinicianId);
+  const [isLoading, setIsLoading] = useState(false);
+  const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
 
-  const convertAvailabilityToEvents = useCallback(() => {
-    if (!weeklyAvailability || !showAvailability) {
-      console.log('[CalendarAvailabilityHandler] No availability data or showAvailability is false');
+  // Convert weekly availability to calendar events
+  const convertAvailabilityToEvents = useCallback((weeklyAvailability: WeeklyAvailability): CalendarEvent[] => {
+    try {
+      const events: CalendarEvent[] = [];
+      const now = DateTime.now().setZone(validTimeZone).startOf('day');
+      const weekdayMap: { [key: string]: number } = {
+        monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 0
+      };
+      
+      // Create events for each weekday for the next several weeks
+      for (const [day, slots] of Object.entries(weeklyAvailability)) {
+        const weekday = weekdayMap[day];
+        if (weekday === undefined) continue;
+
+        // Process each slot for this day
+        for (const slot of slots) {
+          try {
+            // Skip appointment slots, we only want to show availability
+            if (slot.isAppointment) continue;
+            
+            // Get today's date and find the next occurrence of this weekday
+            let targetDay = now.set({ weekday });
+            if (targetDay < now) {
+              targetDay = targetDay.plus({ days: 7 });
+            }
+            
+            // Create events for multiple weeks ahead
+            for (let week = 0; week < weeksToShow; week++) {
+              try {
+                const eventDate = targetDay.plus({ weeks: week });
+                const [startHour, startMinute] = slot.startTime.split(':').map(Number);
+                const [endHour, endMinute] = slot.endTime.split(':').map(Number);
+                
+                const start = eventDate.set({
+                  hour: startHour,
+                  minute: startMinute,
+                  second: 0,
+                  millisecond: 0
+                });
+                
+                const end = eventDate.set({
+                  hour: endHour,
+                  minute: endMinute,
+                  second: 0,
+                  millisecond: 0
+                });
+                
+                // Only add valid dates
+                if (start.isValid && end.isValid) {
+                  events.push({
+                    id: `${slot.id}-week${week}`,
+                    title: 'Available',
+                    start: start.toJSDate(),
+                    end: end.toJSDate(),
+                    extendedProps: {
+                      isAvailability: true,
+                      isRecurring: slot.isRecurring,
+                      originalId: slot.id
+                    },
+                    classNames: ['availability-event'],
+                    backgroundColor: '#4caf50',
+                    borderColor: '#388e3c'
+                  });
+                } else {
+                  console.error('[CalendarAvailabilityHandler] Invalid date created:', {
+                    day, slot, start, end, 
+                    startValid: start.isValid, 
+                    endValid: end.isValid,
+                    startError: start.invalidReason,
+                    endError: end.invalidReason
+                  });
+                }
+              } catch (weekError) {
+                console.error(`[CalendarAvailabilityHandler] Error processing week ${week} for day ${day}:`, weekError);
+              }
+            }
+          } catch (slotError) {
+            console.error(`[CalendarAvailabilityHandler] Error processing slot ${slot.id}:`, slotError);
+          }
+        }
+      }
+
+      console.log(`[CalendarAvailabilityHandler] Generated ${events.length} availability events`);
+      return events;
+    } catch (error) {
+      console.error('[CalendarAvailabilityHandler] Error converting availability to events:', error);
+      if (onError) onError(error as Error);
       return [];
     }
+  }, [validTimeZone, weeksToShow, onError]);
 
-    const events: CalendarEvent[] = [];
-    
-    // Create now in user timezone to ensure correct day boundaries
-    const now = DateTime.now().setZone(userTimeZone);
-    // Get start of week in user timezone
-    const currentWeekStart = now.startOf('week');
-    
-    console.log('[CalendarAvailabilityHandler] Converting availability to events:', {
-      weeksToShow,
-      userTimeZone,
-      now: now.toISO(),
-      currentWeekStart: currentWeekStart.toISO()
-    });
-
-    // Map day names to ISO weekday numbers (1-7, Monday=1, Sunday=7)
-    const dayToIsoWeekday: Record<string, number> = {
-      monday: 1,
-      tuesday: 2,
-      wednesday: 3,
-      thursday: 4,
-      friday: 5,
-      saturday: 6,
-      sunday: 7
-    };
-
-    // Add recurring events
-    Object.entries(weeklyAvailability).forEach(([day, slots]) => {
-      const dayNumber = dayToIsoWeekday[day];
-      if (!dayNumber) {
-        console.warn(`[CalendarAvailabilityHandler] Unknown day: ${day}`);
+  // Fetch availability when clinician changes
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      if (!showAvailability || !clinicianId) {
+        onEventsChange([]);
         return;
       }
-
-      const availabilitySlots = slots.filter(slot => !slot.isAppointment);
-      console.log(`[CalendarAvailabilityHandler] Processing ${availabilitySlots.length} slots for ${day}`);
-
-      if (availabilitySlots.length === 0) return;
-
-      for (let week = 0; week < weeksToShow; week++) {
-        const weekOffset = week * 7;
+      
+      try {
+        setIsLoading(true);
+        console.log('[CalendarAvailabilityHandler] Fetching availability for clinician:', clinicianId);
         
-        // Create day date in user timezone explicitly
-        const dayDate = currentWeekStart
-          .plus({ days: (dayNumber - 1) + weekOffset })
-          .setZone(userTimeZone);
-
-        // Skip past dates
-        if (dayDate < now.startOf('day')) {
-          console.log(`[CalendarAvailabilityHandler] Skipping past date: ${dayDate.toISO()}`);
-          continue;
-        }
-
-        availabilitySlots.forEach(slot => {
-          try {
-            const [startHour, startMinute] = slot.startTime.split(':').map(Number);
-            const [endHour, endMinute] = slot.endTime.split(':').map(Number);
-
-            // Create the full datetime while maintaining timezone
-            const startDateTime = dayDate.set({
-              hour: startHour,
-              minute: startMinute,
-              second: 0,
-              millisecond: 0
-            });
-
-            const endDateTime = dayDate.set({
-              hour: endHour,
-              minute: endMinute,
-              second: 0,
-              millisecond: 0
-            });
-
-            // Verify times are valid before adding event
-            if (!startDateTime.isValid || !endDateTime.isValid) {
-              console.error(`[CalendarAvailabilityHandler] Invalid datetime created:`, {
-                start: startDateTime.invalidReason,
-                end: endDateTime.invalidReason
-              });
-              return;
-            }
-
-            console.log(`[CalendarAvailabilityHandler] Creating event:`, {
-              day,
-              week,
-              slotTime: `${slot.startTime}-${slot.endTime}`,
-              startISO: startDateTime.toISO(),
-              endISO: endDateTime.toISO(),
-              userTimeZone,
-              startLocal: startDateTime.toLocal().toISO(),
-              endLocal: endDateTime.toLocal().toISO()
-            });
-
-            events.push({
-              id: `${slot.id}-week-${week}`,
-              title: 'Available',
-              start: startDateTime.toJSDate(),
-              end: endDateTime.toJSDate(),
-              backgroundColor: '#22c55e',
-              borderColor: '#16a34a',
-              textColor: '#ffffff',
-              editable: false,
-              extendedProps: {
-                isAvailability: true,
-                isRecurring: !!slot.isRecurring,
-                originalSlotId: slot.id,
-                dayOfWeek: day,
-                eventType: 'availability',
-                week,
-                timezone: userTimeZone,
-                isActive: true
-              }
-            });
-          } catch (error) {
-            console.error(`[CalendarAvailabilityHandler] Error processing slot ${slot.id} for ${day}:`, error);
-          }
-        });
+        const weeklyAvailability = await AvailabilityQueryService.getWeeklyAvailability(clinicianId);
+        const events = convertAvailabilityToEvents(weeklyAvailability);
+        onEventsChange(events);
+      } catch (error) {
+        console.error('[CalendarAvailabilityHandler] Error fetching availability:', error);
+        if (onError) onError(error as Error);
+        onEventsChange([]); // Send empty array so calendar still renders without availability
+      } finally {
+        setIsLoading(false);
       }
-    });
+    };
 
-    // Add single occurrence events
-    Object.entries(weeklyAvailability).forEach(([day, slots]) => {
-      slots.forEach(slot => {
-        if (!slot.isRecurring && slot.date) {
-          try {
-            const [startHour, startMinute] = slot.startTime.split(':').map(Number);
-            const [endHour, endMinute] = slot.endTime.split(':').map(Number);
-            
-            // Use TimeZoneService for consistent handling
-            const slotDate = TimeZoneService.parseWithZone(slot.date, userTimeZone);
-            
-            if (!slotDate.isValid) {
-              console.error('[CalendarAvailabilityHandler] Invalid date for single slot:', slot);
-              return;
-            }
+    fetchAvailability();
+  }, [clinicianId, showAvailability, convertAvailabilityToEvents, onEventsChange, onError]);
 
-            const startDateTime = slotDate.set({
-              hour: startHour,
-              minute: startMinute,
-              second: 0,
-              millisecond: 0
-            });
-
-            const endDateTime = slotDate.set({
-              hour: endHour,
-              minute: endMinute,
-              second: 0,
-              millisecond: 0
-            });
-
-            events.push({
-              id: slot.id,
-              title: 'Available',
-              start: startDateTime.toJSDate(),
-              end: endDateTime.toJSDate(),
-              backgroundColor: '#3b82f6',
-              borderColor: '#2563eb',
-              textColor: '#ffffff',
-              editable: false,
-              extendedProps: {
-                isAvailability: true,
-                isRecurring: false,
-                originalSlotId: slot.id,
-                dayOfWeek: day,
-                eventType: 'availability',
-                timezone: userTimeZone,
-                isActive: true
-              }
-            });
-          } catch (error) {
-            console.error(`[CalendarAvailabilityHandler] Error processing single slot ${slot.id}:`, error);
-          }
-        }
-      });
-    });
-
-    console.log(`[CalendarAvailabilityHandler] Total events created: ${events.length}`);
-    return events;
-  }, [weeklyAvailability, showAvailability, weeksToShow, userTimeZone]);
-
-  // Generate availability events when data changes
-  useEffect(() => {
-    const events = convertAvailabilityToEvents();
-    console.log('[CalendarAvailabilityHandler] Setting availability events:', events.length);
-    setAvailabilityEvents(events);
-  }, [convertAvailabilityToEvents]);
-
-  // Update provided events when our internal state changes
-  useEffect(() => {
-    if (availabilityEvents.length > 0) {
-      console.log('[CalendarAvailabilityHandler] Sending availability events to parent:', availabilityEvents.length);
-      onEventsChange(availabilityEvents);
-    } else if (!isLoading && showAvailability) {
-      console.log('[CalendarAvailabilityHandler] No availability events to send');
-      onEventsChange([]);
-    }
-  }, [availabilityEvents, onEventsChange, isLoading, showAvailability]);
-
-  useEffect(() => {
-    if (clinicianId && showAvailability) {
-      console.log(`[CalendarAvailabilityHandler] Refreshing availability for clinician: ${clinicianId}`);
-      refreshAvailability();
-    }
-  }, [clinicianId, refreshAvailability, showAvailability]);
-
+  // This component doesn't render anything, it just processes data and calls onEventsChange
   return null;
 };
 

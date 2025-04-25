@@ -5,11 +5,11 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { FullCalendarProps, CalendarEvent, CalendarViewType } from '@/types/calendar';
-import { FullCalendarEventContent } from '@/types/fullCalendar';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, RefreshCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import CalendarAvailabilityHandler from './CalendarAvailabilityHandler';
 import { TimeZoneService } from '@/utils/timeZoneService';
 
@@ -31,6 +31,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   const [currentView, setCurrentView] = useState<CalendarViewType>(view);
   const [availabilityEvents, setAvailabilityEvents] = useState<CalendarEvent[]>([]);
   const [combinedEvents, setCombinedEvents] = useState<CalendarEvent[]>([]);
+  const [availabilityError, setAvailabilityError] = useState<Error | null>(null);
   const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
   
   const {
@@ -47,21 +48,23 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     try {
       const allEvents = [...(appointmentEvents || [])];
       
-      if (showAvailability) {
+      // Only include availability events if there were no errors fetching them
+      if (showAvailability && !availabilityError) {
         allEvents.push(...availabilityEvents);
       }
       
       console.log('[FullCalendarView] Combined events:', { 
         appointments: appointmentEvents?.length || 0, 
         availability: availabilityEvents.length,
-        total: allEvents.length 
+        total: allEvents.length,
+        hasAvailabilityError: !!availabilityError
       });
       
       setCombinedEvents(allEvents);
     } catch (err) {
       console.error('[FullCalendarView] Error combining events:', err);
     }
-  }, [appointmentEvents, availabilityEvents, showAvailability]);
+  }, [appointmentEvents, availabilityEvents, showAvailability, availabilityError]);
 
   const handleEventClick = useCallback((info: any) => {
     try {
@@ -86,10 +89,23 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     try {
       console.log(`[FullCalendarView] Received ${events.length} availability events`);
       setAvailabilityEvents(events);
+      setAvailabilityError(null); // Clear errors on successful fetch
     } catch (err) {
       console.error('[FullCalendarView] Error handling availability events change:', err);
+      setAvailabilityError(err as Error);
     }
   }, []);
+
+  const handleAvailabilityError = useCallback((error: Error) => {
+    console.error('[FullCalendarView] Availability error:', error);
+    setAvailabilityError(error);
+    // Still allow the calendar to render with just appointment events
+  }, []);
+
+  const handleRetry = useCallback(() => {
+    refetch();
+    setAvailabilityError(null);
+  }, [refetch]);
 
   useEffect(() => {
     console.log('[FullCalendarView] Component mounted/updated with props:', { 
@@ -116,8 +132,12 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     return (
       <Alert variant="destructive" className="mb-4">
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          {error.message || 'An error occurred while loading the calendar. Please try again.'}
+        <AlertDescription className="space-y-4">
+          <p>Error loading calendar events: {error.message || 'Unknown error'}</p>
+          <Button onClick={handleRetry} variant="outline" size="sm">
+            <RefreshCcw className="h-4 w-4 mr-2" />
+            Try Again
+          </Button>
         </AlertDescription>
       </Alert>
     );
@@ -127,11 +147,21 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
 
   return (
     <div className="fullcalendar-container">
+      {availabilityError && (
+        <Alert variant="warning" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Some availability slots couldn't be loaded. Appointments are still visible.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {showAvailability && clinicianId && (
         <CalendarAvailabilityHandler
           clinicianId={clinicianId}
           userTimeZone={validTimeZone}
           onEventsChange={handleAvailabilityEventsChange}
+          onError={handleAvailabilityError}
           showAvailability={showAvailability}
           weeksToShow={weeksToShow}
         />
@@ -178,46 +208,35 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
           }
           return classes;
         }}
-        eventContent={(arg: FullCalendarEventContent) => {
-          if (arg.event.extendedProps?.isAvailability) {
+        eventContent={(arg) => {
+          // Simple event content renderer that works with FullCalendar v6
+          const isAvailability = arg.event.extendedProps?.isAvailability;
+          
+          if (isAvailability) {
             return (
-              <div className="fc-content">
-                <div className="fc-title">
-                  {arg.event.title}
-                  {arg.event.extendedProps?.isRecurring ? 
-                    <span className="text-xs ml-1">(Recurring)</span> : 
-                    <span className="text-xs ml-1">(Single)</span>}
+              <div className="fc-event-main-frame">
+                <div className="fc-event-title-container">
+                  <div className="fc-event-title">
+                    {arg.timeText} {arg.event.title || 'Available'}
+                    {arg.event.extendedProps?.isRecurring && (
+                      <span className="text-xs ml-1">(Recurring)</span>
+                    )}
+                  </div>
                 </div>
-                <div className="fc-time">{arg.timeText}</div>
               </div>
             );
           }
+          
+          // For regular appointments, use default rendering
           return (
-            <div className="fc-content">
-              <div className="fc-title">{arg.event.title}</div>
-              <div className="fc-time">{arg.timeText}</div>
+            <div className="fc-event-main-frame">
+              <div className="fc-event-title-container">
+                <div className="fc-event-title">{arg.timeText} {arg.event.title}</div>
+              </div>
             </div>
           );
         }}
-        viewDidMount={(arg) => {
-          console.log(`[FullCalendarView] View changed to: ${arg.view.type}`);
-          setCurrentView(arg.view.type as CalendarViewType);
-        }}
       />
-
-      <style>{`
-        .availability-slot {
-          border-left: 3px solid;
-        }
-        .recurring-availability {
-          background-color: #22c55e !important;
-          border-color: #16a34a !important;
-        }
-        .single-availability {
-          background-color: #3b82f6 !important;
-          border-color: #2563eb !important;
-        }
-      `}</style>
     </div>
   );
 };

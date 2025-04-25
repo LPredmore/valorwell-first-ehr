@@ -58,6 +58,8 @@ const CalendarPage: React.FC = () => {
   const [isWeeklyAvailabilityOpen, setIsWeeklyAvailabilityOpen] = useState(false);
   const [showGoogleCalendarSettings, setShowGoogleCalendarSettings] = useState(false);
   const [isSingleAvailabilityOpen, setIsSingleAvailabilityOpen] = useState(false);
+  const [calendarError, setCalendarError] = useState<Error | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (!isUserLoading && !userId) {
@@ -155,7 +157,28 @@ const CalendarPage: React.FC = () => {
   const handleCalendarRefresh = useCallback(() => {
     console.log('[Calendar] Refreshing calendar with new key');
     setCalendarKey(prev => prev + 1);
+    setCalendarError(null);
+    setRetryCount(prev => prev + 1);
   }, []);
+
+  const handleCalendarError = useCallback((error: Error) => {
+    console.error('[Calendar] Calendar encountered an error:', error);
+    setCalendarError(error);
+    
+    let errorMessage = 'There was a problem loading the calendar';
+    
+    if (error.message.includes('timezone') || error.message.includes('DateTime')) {
+      errorMessage = 'Calendar error: Problem with date or timezone conversion';
+    } else if (error.message.includes('network') || error.message.includes('fetch')) {
+      errorMessage = 'Calendar error: Network connection issue';
+    }
+    
+    toast({
+      title: "Calendar Error",
+      description: errorMessage,
+      variant: "destructive",
+    });
+  }, [toast]);
 
   const handleAvailabilityClick = useCallback((event: any) => {
     if (!event || !event.start) {
@@ -244,17 +267,38 @@ const CalendarPage: React.FC = () => {
   return (
     <Layout>
       <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
-        <CalendarErrorBoundary onRetry={handleCalendarRefresh} fallbackUI={
-          <div className="p-8 text-center border rounded-lg bg-red-50 border-red-200 my-4">
-            <div className="text-xl font-semibold text-red-700 mb-4">
-              Something went wrong with the calendar
+        <CalendarErrorBoundary 
+          onRetry={handleCalendarRefresh} 
+          fallbackUI={
+            <div className="p-8 text-center border rounded-lg bg-red-50 border-red-200 my-4">
+              <div className="text-xl font-semibold text-red-700 mb-4">
+                Something went wrong with the calendar
+              </div>
+              {calendarError && (
+                <div className="text-sm text-red-600 mb-4 max-w-md mx-auto">
+                  {calendarError.toString()}
+                </div>
+              )}
+              <div className="flex flex-col space-y-4 items-center">
+                <Button onClick={handleCalendarRefresh} variant="outline">
+                  <RefreshCcw className="h-4 w-4 mr-2" />
+                  Reload Calendar
+                </Button>
+                
+                {retryCount > 2 && (
+                  <div className="text-sm text-gray-600 p-3 bg-gray-100 rounded max-w-md">
+                    <p className="font-semibold">Troubleshooting Tips:</p>
+                    <ul className="list-disc list-inside mt-2 text-left">
+                      <li>Check your network connection</li>
+                      <li>Verify your timezone settings in your profile</li>
+                      <li>Try clearing browser cache and reloading</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
-            <Button onClick={handleCalendarRefresh} variant="outline">
-              <RefreshCcw className="h-4 w-4 mr-2" />
-              Reload Calendar
-            </Button>
-          </div>
-        }>
+          }
+        >
           <div className="flex flex-col space-y-4">
             <div className="flex justify-between items-center">
               <h1 className="text-2xl font-bold text-gray-800">Calendar</h1>

@@ -86,6 +86,15 @@ export class AvailabilityQueryService {
       // Process each event
       for (const event of events || []) {
         try {
+          // Validate times before conversion
+          if (!event.start_time || !event.end_time) {
+            console.warn(`[AvailabilityQueryService] Event ${event.id} has invalid times:`, {
+              start: event.start_time,
+              end: event.end_time
+            });
+            continue;
+          }
+          
           // Use TimeZoneService to properly parse the UTC times and convert to clinician's timezone
           const startDateTime = TimeZoneService.fromUTC(event.start_time, clinicianTimeZone);
           const endDateTime = TimeZoneService.fromUTC(event.end_time, clinicianTimeZone);
@@ -93,7 +102,9 @@ export class AvailabilityQueryService {
           if (!startDateTime.isValid || !endDateTime.isValid) {
             console.error(`[AvailabilityQueryService] Invalid date/time for event ${event.id}:`, {
               start: event.start_time,
-              end: event.end_time
+              end: event.end_time,
+              startError: startDateTime.invalidReason || 'unknown',
+              endError: endDateTime.invalidReason || 'unknown'
             });
             continue;
           }
@@ -157,6 +168,12 @@ export class AvailabilityQueryService {
         // Process each appointment and add it to the weekly schedule
         for (const appointment of appointments || []) {
           try {
+            // Validate required fields
+            if (!appointment.date || !appointment.start_time || !appointment.end_time) {
+              console.warn('[AvailabilityQueryService] Appointment missing required date/time fields:', appointment.id);
+              continue;
+            }
+
             // Get client name for the appointment
             const { data: clientData } = await supabase
               .from('clients')
@@ -166,64 +183,66 @@ export class AvailabilityQueryService {
               
             const clientName = ClientDataService.formatClientName(clientData, 'Client');
             
-            // Convert appointment date and time to a DateTime object in clinician timezone
+            // Format date and time using proper Luxon methods
             const apptDate = appointment.date; // Format: YYYY-MM-DD
             const startTimeStr = appointment.start_time; // Format: HH:MM:SS
             const endTimeStr = appointment.end_time; // Format: HH:MM:SS
             
-            // Create a datetime string by combining the date and time
-            const startDateTimeStr = `${apptDate}T${startTimeStr}`;
-            const endDateTimeStr = `${apptDate}T${endTimeStr}`;
-            
-            // Parse using the source timezone (from appointment)
-            const sourceTimeZone = appointment.source_time_zone || clinicianTimeZone;
-            
-            // Use our TimeZoneService for consistent conversion
-            const startDateTime = DateTime.fromSQL(startDateTimeStr, { zone: sourceTimeZone });
-            const endDateTime = DateTime.fromSQL(endDateTimeStr, { zone: sourceTimeZone });
-            
-            const startInClinicianTZ = TimeZoneService.convertDateTime(
-              startDateTime.toISO(), 
-              sourceTimeZone, 
-              clinicianTimeZone
+            // Use safe conversion methods for datetime parsing
+            const sourceTimeZone = TimeZoneService.ensureIANATimeZone(
+              appointment.source_time_zone || clinicianTimeZone
             );
             
-            const endInClinicianTZ = TimeZoneService.convertDateTime(
-              endDateTime.toISO(), 
-              sourceTimeZone, 
-              clinicianTimeZone
-            );
-            
-            if (!startInClinicianTZ.isValid || !endInClinicianTZ.isValid) {
-              console.error('[AvailabilityQueryService] Invalid appointment date/time:', {
-                appointment: appointment.id,
-                date: apptDate,
-                startTime: startTimeStr,
-                endTime: endTimeStr
-              });
-              continue; // Skip this appointment
-            }
-            
-            // Get day of week in lowercase
-            const dayOfWeek = startInClinicianTZ.weekdayLong.toLowerCase();
-            
-            if (dayOfWeek in weeklyAvailability) {
-              weeklyAvailability[dayOfWeek].push({
-                id: appointment.id,
-                startTime: startInClinicianTZ.toFormat('HH:mm'),
-                endTime: endInClinicianTZ.toFormat('HH:mm'),
-                dayOfWeek,
-                isAppointment: true,
-                clientName,
-                appointmentStatus: appointment.status
-              });
+            try {
+              // Create ISO string for date+time
+              const startDateTimeStr = `${apptDate}T${startTimeStr}`;
+              const endDateTimeStr = `${apptDate}T${endTimeStr}`;
               
-              console.log(`[AvailabilityQueryService] Added appointment for ${dayOfWeek}:`, {
-                id: appointment.id,
-                startTime: startInClinicianTZ.toFormat('HH:mm'),
-                endTime: endInClinicianTZ.toFormat('HH:mm'),
-                clientName
-              });
+              // Parse using Luxon's fromISO which is more reliable than fromSQL
+              const startDateTime = DateTime.fromISO(startDateTimeStr, { zone: sourceTimeZone });
+              const endDateTime = DateTime.fromISO(endDateTimeStr, { zone: sourceTimeZone });
+              
+              // Check if parsing was successful
+              if (!startDateTime.isValid || !endDateTime.isValid) {
+                console.error('[AvailabilityQueryService] Invalid appointment date/time format:', {
+                  appointment: appointment.id,
+                  date: apptDate,
+                  startTime: startTimeStr,
+                  endTime: endTimeStr,
+                  startError: startDateTime.invalidReason,
+                  endError: endDateTime.invalidReason
+                });
+                continue;
+              }
+              
+              // Convert to clinician's timezone using TimeZoneService
+              const startInClinicianTZ = startDateTime.setZone(clinicianTimeZone);
+              const endInClinicianTZ = endDateTime.setZone(clinicianTimeZone);
+              
+              // Get day of week in lowercase
+              const dayOfWeek = startInClinicianTZ.weekdayLong.toLowerCase();
+              
+              if (dayOfWeek in weeklyAvailability) {
+                weeklyAvailability[dayOfWeek].push({
+                  id: appointment.id,
+                  startTime: startInClinicianTZ.toFormat('HH:mm'),
+                  endTime: endInClinicianTZ.toFormat('HH:mm'),
+                  dayOfWeek,
+                  isAppointment: true,
+                  clientName,
+                  appointmentStatus: appointment.status
+                });
+                
+                console.log(`[AvailabilityQueryService] Added appointment for ${dayOfWeek}:`, {
+                  id: appointment.id,
+                  startTime: startInClinicianTZ.toFormat('HH:mm'),
+                  endTime: endInClinicianTZ.toFormat('HH:mm'),
+                  clientName
+                });
+              }
+            } catch (parseError) {
+              console.error(`[AvailabilityQueryService] Error parsing date/time for appointment ${appointment.id}:`, parseError);
+              continue;
             }
           } catch (err) {
             console.error(`[AvailabilityQueryService] Error processing appointment ${appointment.id}:`, err);
