@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { CalendarEvent } from '@/types/calendar';
@@ -41,12 +40,12 @@ export class CalendarService {
       
       // Apply date range filter if provided
       if (startDate) {
-        const startISO = TimeZoneService.toISOWithZone(startDate as Date, userTimeZone);
+        const startISO = TimeZoneService.formatDateTime(startDate, "yyyy-MM-dd'T'HH:mm:ssZZ", userTimeZone);
         query.gte('start_time', startISO);
       }
       
       if (endDate) {
-        const endISO = TimeZoneService.toISOWithZone(endDate as Date, userTimeZone);
+        const endISO = TimeZoneService.formatDateTime(endDate, "yyyy-MM-dd'T'HH:mm:ssZZ", userTimeZone);
         query.lte('start_time', endISO);
       }
       

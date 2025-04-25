@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -24,6 +23,7 @@ import {
 import { useClinicianData } from '@/hooks/useClinicianData';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 import { Appointment } from '@/types/appointment';
+import { TimeZoneService } from '@/services/timeZoneService';
 
 interface EditAppointmentDialogProps {
   isOpen: boolean;
@@ -78,8 +78,9 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       
       if (appointment.start_time) {
         if (appointment.appointment_datetime) {
-          console.log('Using UTC timestamp for conversion:', appointment.appointment_datetime);
-          const localTime = fromUTCTimestamp(appointment.appointment_datetime, clinicianTimeZone);
+          const localTime = TimeZoneService
+            .fromUTCTimestamp(appointment.appointment_datetime, clinicianTimeZone)
+            .toJSDate();
           const displayTime = format(localTime, 'HH:mm');
           console.log('Converted from UTC to display time:', displayTime);
           setStartTime(displayTime);
@@ -221,7 +222,6 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
     }
   };
 
-  // Helper function to get client name
   const getClientName = (): string => {
     if (appointment?.clientName) {
       return appointment.clientName;
