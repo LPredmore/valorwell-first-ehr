@@ -32,7 +32,7 @@ export class CalendarService {
 
       const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
       
-      // Use the new unified calendar view
+      // Try using the unified view first
       const query = supabase
         .from('unified_calendar_view')
         .select('*')
@@ -52,8 +52,8 @@ export class CalendarService {
       const { data, error } = await query;
       
       if (error) {
-        console.error('[CalendarService] Error fetching calendar events:', error);
-        throw error;
+        console.error('[CalendarService] Error fetching from unified view:', error);
+        throw new Error('Unable to fetch calendar events. Please try again.');
       }
       
       // Transform database records to CalendarEvent objects

@@ -2018,6 +2018,21 @@ export type Database = {
           },
         ]
       }
+      unified_calendar_view: {
+        Row: {
+          all_day: boolean | null
+          clinician_id: string | null
+          end_time: string | null
+          event_type: string | null
+          id: string | null
+          is_active: boolean | null
+          recurrence_id: string | null
+          source_table: string | null
+          start_time: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       check_table_exists: {
