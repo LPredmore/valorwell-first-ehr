@@ -1,11 +1,9 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { WeeklyAvailability, AvailabilitySettings, AvailabilitySlot } from '@/types/availability';
 import { AvailabilityQueryService } from '@/services/AvailabilityQueryService';
 import { AvailabilityMutationService } from '@/services/AvailabilityMutationService';
 import { useToast } from '@/hooks/use-toast';
 
-// Define a consistent return type for mutation methods
 interface MutationResult {
   success: boolean;
   error?: string;
@@ -20,7 +18,6 @@ export function useAvailability(clinicianId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Fetch weekly availability
   const fetchWeeklyAvailability = useCallback(async () => {
     if (!clinicianId) return;
     
@@ -47,7 +44,6 @@ export function useAvailability(clinicianId: string | null) {
     }
   }, [clinicianId, toast]);
 
-  // Fetch availability settings
   const fetchSettings = useCallback(async () => {
     if (!clinicianId) return;
     
@@ -74,7 +70,6 @@ export function useAvailability(clinicianId: string | null) {
     }
   }, [clinicianId, toast]);
 
-  // Update availability settings
   const updateSettings = useCallback(
     async (updatedSettings: Partial<AvailabilitySettings>): Promise<boolean> => {
       if (!clinicianId) return false;
@@ -125,14 +120,12 @@ export function useAvailability(clinicianId: string | null) {
       
       try {
         console.log(`[useAvailability] Creating availability slot:`, { 
-          dayOfWeek, 
           startTime, 
           endTime, 
           isRecurring,
           recurrenceRule 
         });
         
-        // Validate inputs before submitting
         if (!startTime || !endTime) {
           return { success: false, error: 'Start time and end time are required' };
         }
@@ -141,8 +134,8 @@ export function useAvailability(clinicianId: string | null) {
           return { success: false, error: 'End time must be later than start time' };
         }
         
-        if (isRecurring && !dayOfWeek) {
-          return { success: false, error: 'Day of week is required for recurring availability' };
+        if (isRecurring && !recurrenceRule) {
+          return { success: false, error: 'Recurrence rule is required for recurring availability' };
         }
         
         const result = await AvailabilityMutationService.createAvailabilitySlot(clinicianId, {
@@ -150,13 +143,10 @@ export function useAvailability(clinicianId: string | null) {
           endTime,
           recurring: isRecurring,
           recurrenceRule,
-          dayOfWeek
+          title: 'Available'
         });
         
-        console.log(`[useAvailability] Create slot result:`, result);
-        
         if (result.success) {
-          // Refresh availability data
           await fetchWeeklyAvailability();
           
           toast({
@@ -165,7 +155,6 @@ export function useAvailability(clinicianId: string | null) {
           });
           return { success: true, id: result.id };
         } else {
-          // Provide more descriptive error
           const errorMessage = result.error || 'Failed to create slot';
           console.error(`[useAvailability] Error creating slot: ${errorMessage}`);
           throw new Error(errorMessage);
@@ -174,7 +163,6 @@ export function useAvailability(clinicianId: string | null) {
         const error = err instanceof Error ? err.message : 'Unknown error';
         console.error('[useAvailability] Error creating availability slot:', err);
         
-        // Provide specific error message based on the type of error
         let errorMessage = error;
         if (error.includes('timezone')) {
           errorMessage = 'There was a problem with timezone conversion. Please check your profile timezone settings.';
@@ -206,7 +194,6 @@ export function useAvailability(clinicianId: string | null) {
       try {
         console.log(`[useAvailability] Updating availability slot:`, { slotId, updates });
         
-        // Validate inputs
         if (updates.startTime && updates.endTime && updates.startTime >= updates.endTime) {
           toast({
             title: 'Invalid Time Range',
@@ -219,7 +206,6 @@ export function useAvailability(clinicianId: string | null) {
         const result = await AvailabilityMutationService.updateAvailabilitySlot(slotId, updates);
         
         if (result.success) {
-          // Refresh the availability data
           await fetchWeeklyAvailability();
           
           toast({
@@ -236,7 +222,6 @@ export function useAvailability(clinicianId: string | null) {
         console.error('[useAvailability] Error updating availability slot:', err);
         setError(`Failed to update availability slot: ${error}`);
         
-        // Provide specific error message based on the type of error
         let errorMessage = error;
         if (error.includes('timezone')) {
           errorMessage = 'There was a problem with timezone conversion. Please check your profile timezone settings.';
