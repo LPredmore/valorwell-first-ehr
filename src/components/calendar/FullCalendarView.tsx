@@ -1,176 +1,136 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { CalendarViewType } from '@/types/calendar';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import rrulePlugin from '@fullcalendar/rrule';
-import { FullCalendarProps } from '@/types/calendar';
+import { FullCalendarProps, CalendarEvent, CalendarViewType } from '@/types/calendar';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
-import CalendarEventHandler from './full-calendar/CalendarEventHandler';
-import LoadingState from './full-calendar/LoadingState';
-import { useToast } from '@/hooks/use-toast';
-import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
-import './fullCalendar.css';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
+import CalendarAvailabilityHandler from './CalendarAvailabilityHandler';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
+/**
+ * A React component that renders a FullCalendar instance.
+ */
 const FullCalendarView: React.FC<FullCalendarProps> = ({
   clinicianId,
+  userTimeZone,
   onEventClick,
   onDateSelect,
   onEventDrop,
   onEventResize,
+  view = 'timeGridWeek',
+  height = '700px',
+  showAvailability = false,
   onAvailabilityClick,
-  userTimeZone = 'America/Chicago',
-  view = 'dayGridMonth' as CalendarViewType,
-  height = 'auto',
-  events = [],
-  showAvailability = true
 }) => {
-  const calendarRef = useRef<FullCalendar>(null);
-  const { toast } = useToast();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<CalendarViewType>(view);
+  const [availabilityEvents, setAvailabilityEvents] = useState<CalendarEvent[]>([]);
+  const [combinedEvents, setCombinedEvents] = useState<CalendarEvent[]>([]);
+  const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
   
-  // Ensure we have a valid IANA timezone
-  const validTimeZone = ensureIANATimeZone(userTimeZone);
-  
-  // Use the hook to fetch events if not provided directly
   const {
-    events: fetchedEvents,
+    events: appointmentEvents,
     isLoading,
     error,
     refetch
   } = useCalendarEvents({
     clinicianId,
-    userTimeZone: validTimeZone
+    userTimeZone: validTimeZone,
   });
-  
-  // Handle errors with more detail
-  useEffect(() => {
-    if (error) {
-      console.error("[FullCalendarView] Calendar error:", error);
-      setErrorMessage(error.message || "Failed to load calendar data");
-      toast({
-        title: "Calendar Error",
-        description: "There was a problem loading your calendar data. Please try again.",
-        variant: "destructive",
-      });
-    } else {
-      setErrorMessage(null);
-    }
-  }, [error, toast]);
-  
-  // Use provided events or fetched events
-  const allEvents = events.length > 0 ? events : fetchedEvents;
-  
-  // Filter events based on showAvailability setting
-  const displayEvents = showAvailability 
-    ? allEvents 
-    : allEvents.filter(event => event.extendedProps?.eventType !== 'availability');
 
-  console.log("[FullCalendarView] Rendering calendar with:", {
-    totalEvents: allEvents.length,
-    displayEvents: displayEvents.length,
-    showAvailability,
-    clinicianId,
-    timeZone: validTimeZone
-  });
+  // Combine regular events and availability events
+  useEffect(() => {
+    const allEvents = [...(appointmentEvents || [])];
+    
+    if (showAvailability) {
+      allEvents.push(...availabilityEvents);
+    }
+    
+    setCombinedEvents(allEvents);
+  }, [appointmentEvents, availabilityEvents, showAvailability]);
+
+  const handleEventClick = useCallback((info: any) => {
+    // For availability slots, use the specific handler
+    if (info.event.extendedProps?.isAvailability && onAvailabilityClick) {
+      onAvailabilityClick(info.event);
+      return;
+    }
+    
+    // For other events, use the regular handler
+    if (onEventClick) {
+      onEventClick(info);
+    }
+  }, [onEventClick, onAvailabilityClick]);
+
+  const handleAvailabilityEventsChange = useCallback((events: CalendarEvent[]) => {
+    setAvailabilityEvents(events);
+  }, []);
 
   if (isLoading) {
-    return <LoadingState />;
-  }
-  
-  if (errorMessage) {
     return (
-      <div className="p-4 text-center">
-        <p className="text-red-500">Error loading calendar events: {errorMessage}</p>
-        <button 
-          className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600" 
-          onClick={() => refetch()}
-        >
-          Retry
-        </button>
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-[600px] w-full" />
       </div>
     );
   }
 
-  return (
-    <div className="full-calendar-wrapper">
-      <CalendarEventHandler
-        onEventClick={onEventClick}
-        onDateSelect={onDateSelect}
-        onEventDrop={onEventDrop}
-        onEventResize={onEventResize}
-        onAvailabilityClick={onAvailabilityClick}
-      />
+  if (error) {
+    return (
+      <Alert variant="destructive" className="mb-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          {error.message || 'An error occurred while loading the calendar. Please try again.'}
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
+  return (
+    <div className="fullcalendar-container">
+      {showAvailability && clinicianId && (
+        <CalendarAvailabilityHandler
+          clinicianId={clinicianId}
+          userTimeZone={validTimeZone}
+          onEventsChange={handleAvailabilityEventsChange}
+          showAvailability={showAvailability}
+        />
+      )}
+      
       <FullCalendar
-        ref={calendarRef}
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, rrulePlugin]}
-        initialView={view}
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        initialView={currentView}
         headerToolbar={{
           left: 'prev,next today',
           center: 'title',
           right: 'dayGridMonth,timeGridWeek,timeGridDay'
         }}
-        events={displayEvents}
+        events={combinedEvents}
         timeZone={validTimeZone}
+        eventClick={handleEventClick}
+        dateClick={onDateSelect}
+        eventDrop={onEventDrop}
+        eventResize={onEventResize}
+        height={height}
         editable={true}
         selectable={true}
         selectMirror={true}
         dayMaxEvents={true}
         weekends={true}
+        allDaySlot={true}
+        nowIndicator={true}
         slotMinTime="06:00:00"
-        slotMaxTime="20:00:00"
-        allDaySlot={false}
-        height={height}
+        slotMaxTime="22:00:00"
         eventTimeFormat={{
           hour: 'numeric',
           minute: '2-digit',
           meridiem: 'short'
         }}
-        slotLabelFormat={{
-          hour: 'numeric',
-          minute: '2-digit',
-          meridiem: 'short'
-        }}
-        eventClick={(info) => {
-          const eventData = info.event;
-          console.log("[FullCalendarView] Event clicked:", {
-            id: eventData.id,
-            title: eventData.title,
-            start: eventData.start,
-            end: eventData.end,
-            extendedProps: eventData.extendedProps
-          });
-          
-          if (eventData.extendedProps?.eventType === 'availability') {
-            if (onAvailabilityClick) {
-              console.log("[FullCalendarView] Handling availability click");
-              onAvailabilityClick(eventData);
-            }
-          } else if (onEventClick) {
-            console.log("[FullCalendarView] Handling regular event click");
-            onEventClick(info);
-          }
-        }}
-        eventClassNames={(arg) => {
-          const classes = [];
-          const eventType = arg.event.extendedProps?.eventType;
-          
-          if (eventType === 'time_off') {
-            classes.push('time-off-event');
-          }
-          
-          if (eventType === 'availability') {
-            classes.push('availability-event');
-          }
-          
-          if (arg.event.extendedProps?.recurrenceRule) {
-            classes.push('recurring-event');
-          }
-          
-          return classes;
-        }}
+        viewDidMount={(arg) => setCurrentView(arg.view.type as CalendarViewType)}
       />
     </div>
   );

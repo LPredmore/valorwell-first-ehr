@@ -1,28 +1,31 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { toast } from '@/components/ui/use-toast';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
+import { ClientDataService } from '@/services/ClientDataService';
+import { ClientData } from '@/types/availability';
 
-interface Client {
-  id: string;
-  displayName: string;
-}
-
+/**
+ * Custom hook for managing calendar state
+ * This hook manages the state for the calendar page and related components
+ */
 export const useCalendarState = (initialClinicianId: string | null = null) => {
   const [showAvailability, setShowAvailability] = useState(false);
   const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(initialClinicianId);
   const [clinicians, setClinicians] = useState<Array<{ id: string; clinician_professional_name: string }>>([]);
   const [loadingClinicians, setLoadingClinicians] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [clients, setClients] = useState<Client[]>([]);
+  const [clients, setClients] = useState<ClientData[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { timeZone } = useUserTimeZone(selectedClinicianId);
 
-  const validTimeZone = ensureIANATimeZone(timeZone || 'UTC');
+  const validTimeZone = TimeZoneService.ensureIANATimeZone(timeZone || 'UTC');
 
+  // Fetch all clinicians
   useEffect(() => {
     const fetchClinicians = async () => {
       setLoadingClinicians(true);
@@ -58,6 +61,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     fetchClinicians();
   }, []);
 
+  // Auto-select first clinician if needed
   useEffect(() => {
     if (clinicians.length > 0 && !selectedClinicianId) {
       setSelectedClinicianId(clinicians[0].id);
@@ -65,6 +69,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     }
   }, [clinicians, selectedClinicianId]);
 
+  // Fetch clients for the selected clinician
   useEffect(() => {
     const fetchClientsForClinician = async () => {
       if (!selectedClinicianId) {
@@ -82,7 +87,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
         const { data, error } = await supabase
           .from('clients')
           .select('id, client_preferred_name, client_last_name')
-          .eq('client_assigned_therapist', selectedClinicianId.toString())
+          .eq('client_assigned_therapist', selectedClinicianId)
           .order('client_last_name');
 
         if (error) {
@@ -96,12 +101,12 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
         }
 
         if (data) {
-          const formattedClients = data.map(client => ({
+          const normalizedClients = data.map(client => ({
             id: client.id,
-            displayName: `${client.client_preferred_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
+            displayName: ClientDataService.formatClientName(client, 'Unnamed Client')
           }));
-          setClients(formattedClients);
-          console.log('[useCalendarState] Loaded clients:', formattedClients.length);
+          setClients(normalizedClients);
+          console.log('[useCalendarState] Loaded clients:', normalizedClients.length);
         }
       } catch (error) {
         console.error('[useCalendarState] Error in fetchClientsForClinician:', error);
@@ -118,6 +123,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     fetchClientsForClinician();
   }, [selectedClinicianId]);
 
+  // Function to refresh appointments
   const refreshAppointments = () => {
     console.log('[useCalendarState] Triggering appointment refresh');
     setAppointmentRefreshTrigger(prev => prev + 1);

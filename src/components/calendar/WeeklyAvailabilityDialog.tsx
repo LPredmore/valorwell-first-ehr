@@ -1,743 +1,381 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { DayOfWeek, AvailabilitySlot } from '@/types/availability';
+import { TimeZoneService } from '@/utils/timeZoneService';
+import { useAvailability } from '@/hooks/useAvailability';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Calendar, AlertCircle, RefreshCw, Clock, User } from 'lucide-react';
-import { AvailabilityService } from '@/services/availabilityService';
-import { WeeklyAvailability, AvailabilitySlot as AvailabilitySlotType } from '@/types/appointment';
-import { formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
+import { Loader2, Plus, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
-import { formatTime12Hour } from '@/utils/timeZoneUtils';
-import { DateTime } from 'luxon';
-import { WeekdayNumbers } from '@/types/calendar';
-import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import AvailabilitySlot from './AvailabilitySlot';
-import AvailabilityEditForm from './AvailabilityEditForm';
 
 interface WeeklyAvailabilityDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  clinicianId: string | null;
-  onAvailabilityUpdated: () => void;
+  clinicianId: string;
+  onAvailabilityUpdated?: () => void;
   initialActiveTab?: string;
 }
 
-interface DatabaseAvailabilitySlot extends AvailabilitySlotType {
-  id?: string;
-  startTime: string;
-  endTime: string;
-  dayOfWeek: string;
-  isRecurring?: boolean;
-  isAppointment?: boolean;
-  clientName?: string;
-  appointmentStatus?: string;
-}
-
-interface TimeOption {
-  value: string;
-  display: string;
-}
-
-const dayTabs = [
-  { id: 'monday', label: 'Monday' },
-  { id: 'tuesday', label: 'Tuesday' },
-  { id: 'wednesday', label: 'Wednesday' },
-  { id: 'thursday', label: 'Thursday' },
-  { id: 'friday', label: 'Friday' },
-  { id: 'saturday', label: 'Saturday' },
-  { id: 'sunday', label: 'Sunday' }
-];
-
-export default function WeeklyAvailabilityDialog({
+const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   isOpen,
   onClose,
   clinicianId,
   onAvailabilityUpdated,
   initialActiveTab = 'monday'
-}: WeeklyAvailabilityDialogProps) {
-  const { toast } = useToast();
+}) => {
+  const [activeTab, setActiveTab] = useState<DayOfWeek>((initialActiveTab || 'monday') as DayOfWeek);
+  const [newStartTime, setNewStartTime] = useState('09:00');
+  const [newEndTime, setNewEndTime] = useState('10:00');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [isDeleteAll, setIsDeleteAll] = useState(false);
   const { timeZone } = useUserTimeZone(clinicianId);
-  const [activeTab, setActiveTab] = useState(initialActiveTab);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const [weeklyAvailability, setWeeklyAvailability] = useState<Record<string, DatabaseAvailabilitySlot[]>>(
-    createEmptyWeeklyAvailability()
-  );
+  const { toast } = useToast();
   
-  const [newSlotStartTime, setNewSlotStartTime] = useState('09:00');
-  const [newSlotEndTime, setNewSlotEndTime] = useState('10:00');
-  const [isAddingSlot, setIsAddingSlot] = useState(false);
+  const {
+    weeklyAvailability,
+    isLoading,
+    error,
+    refreshAvailability,
+    createSlot,
+    updateSlot,
+    deleteSlot
+  } = useAvailability(clinicianId);
 
-  const [generalSettings, setGeneralSettings] = useState({
-    minNoticeDays: 1,
-    maxAdvanceDays: 30
-  });
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
-
-  const [editingSlot, setEditingSlot] = useState<DatabaseAvailabilitySlot | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [editStartTime, setEditStartTime] = useState('09:00');
-  const [editEndTime, setEditEndTime] = useState('10:00');
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const timeOptions = useMemo(() => {
-    const options: TimeOption[] = [];
-    for (let hour = 0; hour < 24; hour++) {
-      for (let minute of [0, 30]) {
-        const formattedHour = hour.toString().padStart(2, '0');
-        const formattedMinute = minute.toString().padStart(2, '0');
-        const timeValue = `${formattedHour}:${formattedMinute}`;
-        
-        const displayValue = formatTime12Hour(timeValue);
-        
-        options.push({
-          value: timeValue,
-          display: displayValue
-        });
-      }
-    }
-    
-    console.log("[WeeklyAvailabilityDialog] Time options generated:", options.length);
-    return options;
-  }, []);
-
-  useEffect(() => {
-    const fetchSettings = async () => {
-      if (!clinicianId) return;
-      
-      setIsLoading(true);
-      try {
-        const settings = await AvailabilityService.getSettings(clinicianId);
-        if (settings) {
-          setGeneralSettings({
-            minNoticeDays: settings.minNoticeDays,
-            maxAdvanceDays: settings.maxAdvanceDays
-          });
-          console.log('[WeeklyAvailabilityDialog] Loaded settings:', settings);
-        }
-      } catch (error) {
-        console.error('[WeeklyAvailabilityDialog] Error fetching availability settings:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load availability settings',
-          variant: 'destructive'
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (isOpen && clinicianId) {
-      fetchSettings();
-    }
-  }, [clinicianId, isOpen, toast]);
-
+  // Initialize the selected slot ID from localStorage
   useEffect(() => {
     if (isOpen) {
-      console.log('[WeeklyAvailabilityDialog] Dialog opened, reloading availability');
-      reloadWeeklyAvailability();
-    }
-    // eslint-disable-next-line
-  }, [clinicianId, isOpen, toast]);
-
-  useEffect(() => {
-    if (isOpen && initialActiveTab) {
-      console.log(`[WeeklyAvailabilityDialog] Setting active tab to: ${initialActiveTab}`);
-      setActiveTab(initialActiveTab);
-    }
-  }, [isOpen, initialActiveTab]);
-
-  useEffect(() => {
-    if (isOpen && clinicianId) {
-      const selectedSlotId = localStorage.getItem('selectedAvailabilitySlotId');
-      
-      if (selectedSlotId) {
-        console.log(`[WeeklyAvailabilityDialog] Found stored slot ID: ${selectedSlotId}`);
-        // Find and set the slot for editing
-        const allSlots = Object.values(weeklyAvailability).flat();
-        const selectedSlot = allSlots.find(slot => slot.id === selectedSlotId);
-        
-        if (selectedSlot) {
-          console.log('[WeeklyAvailabilityDialog] Slot found, setting for editing:', selectedSlot);
-          handleEditSlot(selectedSlot);
-          // Set active tab to the day of the selected slot
-          setActiveTab(selectedSlot.dayOfWeek);
-        } else {
-          console.log(`[WeeklyAvailabilityDialog] No slot found with ID ${selectedSlotId} in available slots:`, allSlots);
-        }
-        
-        // Clear the stored ID after loading
+      const storedSlotId = localStorage.getItem('selectedAvailabilitySlotId');
+      if (storedSlotId) {
+        setSelectedSlotId(storedSlotId);
         localStorage.removeItem('selectedAvailabilitySlotId');
       }
     }
-  }, [isOpen, clinicianId, weeklyAvailability]);
-
-  const reloadWeeklyAvailability = async () => {
-    if (!clinicianId) {
-      console.log('[WeeklyAvailabilityDialog] No clinician ID, skipping load');
-      return;
-    }
-    
-    setIsLoading(true);
-    setError(null);
-    setIsRefreshing(true);
-    try {
-      console.log(`[WeeklyAvailabilityDialog] Loading availability for clinician: ${clinicianId}`);
-      const availability = await AvailabilityService.getWeeklyAvailability(clinicianId);
-      setWeeklyAvailability(availability);
-      console.log('[WeeklyAvailabilityDialog] Loaded weekly availability:', availability);
-    } catch (error) {
-      console.error('[WeeklyAvailabilityDialog] Error fetching weekly availability:', error);
-      setError(error instanceof Error ? error : new Error('Failed to load availability settings'));
-      toast({
-        title: 'Error',
-        description: 'Failed to load availability settings',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+  }, [isOpen]);
 
   const handleAddSlot = async () => {
-    if (!clinicianId) return;
-    
-    if (newSlotStartTime === newSlotEndTime) {
+    if (!newStartTime || !newEndTime) {
       toast({
-        title: 'Invalid Time Range',
-        description: 'Start and end times cannot be the same.',
-        variant: 'destructive'
+        title: "Missing Information",
+        description: "Please provide both start and end time.",
+        variant: "destructive"
       });
       return;
     }
     
-    setIsAddingSlot(true);
-    setError(null);
-    try {
-      const today = DateTime.now();
-      const dayIndex = dayTabs.findIndex(day => day.id === activeTab);
-      const targetDate = today.set({ 
-        weekday: dayIndex + 1 as WeekdayNumbers
-      });
-      
-      const startDateTime = targetDate.set({
-        hour: parseInt(newSlotStartTime.split(':')[0]),
-        minute: parseInt(newSlotStartTime.split(':')[1]),
-        second: 0,
-        millisecond: 0
-      });
-      
-      const endDateTime = targetDate.set({
-        hour: parseInt(newSlotEndTime.split(':')[0]),
-        minute: parseInt(newSlotEndTime.split(':')[1]),
-        second: 0,
-        millisecond: 0
-      });
-
-      if (endDateTime <= startDateTime) {
-        throw new Error('End time must be after start time');
-      }
-
-      console.log('[WeeklyAvailabilityDialog] Creating slot for:', {
-        day: activeTab, 
-        startTime: startDateTime.toISO(),
-        endTime: endDateTime.toISO(),
-        timeZone
-      });
-
-      const slotId = await AvailabilityService.createAvailabilitySlot(
-        clinicianId,
-        {
-          startTime: startDateTime.toISO(),
-          endTime: endDateTime.toISO(),
-          title: 'Available',
-          recurring: true,
-          recurrenceRule: `FREQ=WEEKLY;BYDAY=${activeTab.substring(0, 2).toUpperCase()}`
-        }
-      );
-
-      if (slotId) {
-        toast({
-          title: 'Success',
-          description: 'Availability slot added successfully'
-        });
-        await reloadWeeklyAvailability();
-        setNewSlotStartTime('09:00');
-        setNewSlotEndTime('10:00');
-        onAvailabilityUpdated();
-      } else {
-        throw new Error('Failed to add availability slot');
-      }
-    } catch (error) {
-      console.error('[WeeklyAvailabilityDialog] Error adding availability slot:', error);
-      setError(error instanceof Error ? error : new Error('Failed to add availability slot'));
+    if (newStartTime >= newEndTime) {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to add availability slot',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsAddingSlot(false);
-    }
-  };
-
-  const handleEditSlot = (slot: DatabaseAvailabilitySlot) => {
-    // Don't allow editing appointment slots
-    if (slot.isAppointment) {
-      return;
-    }
-    
-    console.log('[WeeklyAvailabilityDialog] Editing slot:', slot);
-    setEditingSlot(slot);
-    setEditStartTime(slot.startTime);
-    setEditEndTime(slot.endTime);
-    setIsEditing(true);
-  };
-
-  const handleSaveSlot = async () => {
-    if (!editingSlot?.id) return;
-    
-    if (editStartTime === editEndTime) {
-      toast({
-        title: 'Invalid Time Range',
-        description: 'Start and end times cannot be the same.',
-        variant: 'destructive'
+        title: "Invalid Time Range",
+        description: "End time must be later than start time.",
+        variant: "destructive"
       });
       return;
     }
     
-    setIsSaving(true);
+    setIsSubmitting(true);
     try {
-      const today = DateTime.now();
-      const dayIndex = dayTabs.findIndex(day => day.id === activeTab);
-      const targetDate = today.set({ 
-        weekday: dayIndex + 1 as WeekdayNumbers
-      });
+      // Create a recurrence rule for weekly availability on this day of week
+      const dayIndex = getDayIndex(activeTab);
+      // RRULE format: FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA,SU
+      const byDay = getDayCode(activeTab);
+      const recurrenceRule = `FREQ=WEEKLY;BYDAY=${byDay}`;
       
-      // Create Luxon DateTime objects with the correct timezone
-      const startDateTime = targetDate.set({
-        hour: parseInt(editStartTime.split(':')[0]),
-        minute: parseInt(editStartTime.split(':')[1]),
-        second: 0,
-        millisecond: 0
-      });
-      
-      const endDateTime = targetDate.set({
-        hour: parseInt(editEndTime.split(':')[0]),
-        minute: parseInt(editEndTime.split(':')[1]),
-        second: 0,
-        millisecond: 0
-      });
-
-      if (endDateTime <= startDateTime) {
-        throw new Error('End time must be after start time');
-      }
-
-      console.log('[WeeklyAvailabilityDialog] Updating slot:', {
-        id: editingSlot.id,
-        startTime: startDateTime.toISO(),
-        endTime: endDateTime.toISO()
-      });
-
-      const success = await AvailabilityService.updateAvailabilitySlot(
-        editingSlot.id,
-        {
-          startTime: startDateTime.toISO(),
-          endTime: endDateTime.toISO()
-        },
-        editingSlot.isRecurring || false
+      const result = await createSlot(
+        activeTab,
+        newStartTime,
+        newEndTime,
+        true, // Always recurring for weekly availability
+        recurrenceRule
       );
-
-      if (success) {
-        toast({
-          title: 'Success',
-          description: 'Availability slot updated successfully'
-        });
-        setIsEditing(false);
-        setEditingSlot(null);
-        await reloadWeeklyAvailability();
-        onAvailabilityUpdated();
-      } else {
-        throw new Error('Failed to update availability slot');
+      
+      if (result) {
+        onAvailabilityUpdated?.();
       }
     } catch (error) {
-      console.error('[WeeklyAvailabilityDialog] Error updating availability slot:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to update availability slot',
-        variant: 'destructive'
-      });
+      console.error('Error adding availability slot:', error);
     } finally {
-      setIsSaving(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleDeleteSlot = async () => {
-    if (!editingSlot?.id) return;
-    
-    setIsDeleting(true);
-    try {
-      console.log('[WeeklyAvailabilityDialog] Deleting slot:', editingSlot.id);
-      
-      // For simplicity we're using the updateAvailabilitySlot method with is_active=false
-      // This is effectively a soft delete as implemented in the service
-      const success = await AvailabilityService.updateAvailabilitySlot(
-        editingSlot.id,
-        {}, // Empty update will set is_active=false in the service
-        editingSlot.isRecurring || false
-      );
+  const handleDeleteSlot = (slotId: string, isRecurring: boolean = false) => {
+    setSelectedSlotId(slotId);
+    setIsDeleteAll(isRecurring);
+    setIsDeleteConfirmOpen(true);
+  };
 
-      if (success) {
-        toast({
-          title: 'Success',
-          description: 'Availability slot removed successfully'
-        });
-        setIsEditing(false);
-        setEditingSlot(null);
-        await reloadWeeklyAvailability();
-        onAvailabilityUpdated();
-      } else {
-        throw new Error('Failed to remove availability slot');
+  const confirmDelete = async () => {
+    if (!selectedSlotId) return;
+    
+    setIsSubmitting(true);
+    try {
+      const result = await deleteSlot(selectedSlotId, isDeleteAll);
+      
+      if (result) {
+        setIsDeleteConfirmOpen(false);
+        setSelectedSlotId(null);
+        onAvailabilityUpdated?.();
       }
     } catch (error) {
-      console.error('[WeeklyAvailabilityDialog] Error deleting availability slot:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to delete availability slot',
-        variant: 'destructive'
-      });
+      console.error('Error deleting availability slot:', error);
     } finally {
-      setIsDeleting(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleCloseDialog = () => {
-    // Clear any editing state
-    setEditingSlot(null);
-    setIsEditing(false);
+  const getDayCode = (day: DayOfWeek): string => {
+    const codes: Record<DayOfWeek, string> = {
+      monday: 'MO',
+      tuesday: 'TU',
+      wednesday: 'WE',
+      thursday: 'TH',
+      friday: 'FR',
+      saturday: 'SA',
+      sunday: 'SU'
+    };
     
-    // Clear any stored IDs in localStorage to prevent stale data
-    localStorage.removeItem('selectedAvailabilitySlotId');
-    
-    // Call the parent's onClose function
-    onClose();
+    return codes[day] || 'MO';
   };
 
-  const handleRefresh = () => {
-    reloadWeeklyAvailability();
+  const getDayIndex = (day: DayOfWeek): number => {
+    const indices: Record<DayOfWeek, number> = {
+      monday: 1,
+      tuesday: 2,
+      wednesday: 3,
+      thursday: 4,
+      friday: 5,
+      saturday: 6,
+      sunday: 0
+    };
+    
+    return indices[day];
+  };
+
+  const formatTimeDisplay = (timeStr: string): string => {
+    if (!timeStr) return '';
+    return TimeZoneService.formatTime(timeStr, timeZone || 'UTC');
+  };
+
+  const renderSlotList = (slots: AvailabilitySlot[] = []) => {
+    const availabilitySlots = slots.filter(slot => !slot.isAppointment);
+    const appointmentSlots = slots.filter(slot => slot.isAppointment);
+    
+    if (availabilitySlots.length === 0 && appointmentSlots.length === 0) {
+      return (
+        <div className="text-center text-gray-500 py-4">
+          No availability slots set for this day.
+        </div>
+      );
+    }
+    
+    return (
+      <>
+        {availabilitySlots.length > 0 && (
+          <div className="mb-4">
+            <h4 className="text-sm font-medium mb-2">Available Times</h4>
+            <ul className="space-y-2">
+              {availabilitySlots.map(slot => (
+                <li key={slot.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md border">
+                  <span className="text-sm">
+                    {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteSlot(slot.id, slot.isRecurring)}
+                    title={slot.isRecurring ? "Delete this recurring availability slot" : "Delete this availability slot"}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
+        {appointmentSlots.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium mb-2 text-blue-600">Scheduled Appointments</h4>
+            <ul className="space-y-2">
+              {appointmentSlots.map(slot => (
+                <li key={slot.id} className="p-2 bg-blue-50 rounded-md border border-blue-100">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">
+                      {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
+                    </span>
+                    <span className="text-xs px-2 py-1 bg-blue-100 rounded-full">
+                      Appointment
+                    </span>
+                  </div>
+                  {slot.clientName && (
+                    <div className="text-xs text-gray-600 mt-1">
+                      Client: {slot.clientName}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </>
+    );
+  };
+
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex justify-center items-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        </div>
+      );
+    }
+    
+    if (error) {
+      return (
+        <div className="text-center text-red-500 py-4">
+          {error}
+          <Button 
+            variant="outline" 
+            className="mt-2"
+            onClick={() => refreshAvailability()}
+          >
+            Try Again
+          </Button>
+        </div>
+      );
+    }
+    
+    return (
+      <Tabs defaultValue={activeTab} onValueChange={(value) => setActiveTab(value as DayOfWeek)}>
+        <TabsList className="grid grid-cols-7">
+          <TabsTrigger value="monday">Mon</TabsTrigger>
+          <TabsTrigger value="tuesday">Tue</TabsTrigger>
+          <TabsTrigger value="wednesday">Wed</TabsTrigger>
+          <TabsTrigger value="thursday">Thu</TabsTrigger>
+          <TabsTrigger value="friday">Fri</TabsTrigger>
+          <TabsTrigger value="saturday">Sat</TabsTrigger>
+          <TabsTrigger value="sunday">Sun</TabsTrigger>
+        </TabsList>
+        
+        {weeklyAvailability && Object.keys(weeklyAvailability).map((day) => (
+          <TabsContent key={day} value={day} className="p-4 bg-white border rounded-md mt-4">
+            <h3 className="text-lg font-semibold mb-4 capitalize">{day}</h3>
+            
+            {renderSlotList(weeklyAvailability[day as DayOfWeek])}
+            
+            <div className="mt-4 p-3 border border-dashed rounded-md">
+              <h4 className="text-sm font-medium mb-2">Add New Availability Slot</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor={`${day}-start`}>Start Time</Label>
+                  <Input
+                    id={`${day}-start`}
+                    type="time"
+                    value={newStartTime}
+                    onChange={(e) => setNewStartTime(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`${day}-end`}>End Time</Label>
+                  <Input
+                    id={`${day}-end`}
+                    type="time"
+                    value={newEndTime}
+                    onChange={(e) => setNewEndTime(e.target.value)}
+                  />
+                </div>
+              </div>
+              <Button 
+                onClick={handleAddSlot} 
+                className="mt-3 w-full"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Plus className="h-4 w-4 mr-2" />
+                )}
+                Add Time Slot
+              </Button>
+            </div>
+          </TabsContent>
+        ))}
+      </Tabs>
+    );
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleCloseDialog}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center">
-              <span>Weekly Availability</span>
-            </DialogTitle>
-            <div className="flex items-center space-x-2">
-              {timeZone && (
-                <span className="text-sm font-normal text-gray-500">
-                  {formatTimeZoneDisplay(timeZone)}
-                </span>
-              )}
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
-          </div>
-        </DialogHeader>
-        
-        {isLoading ? (
-          <div className="py-8 flex justify-center items-center">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            <span className="ml-2">Loading availability...</span>
-          </div>
-        ) : error ? (
-          <div className="p-4 border border-red-300 bg-red-50 rounded-md flex items-center">
-            <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-            <div>
-              <h4 className="font-semibold text-red-700">Error loading availability</h4>
-              <p className="text-red-600 text-sm">{error.message || 'Please try again.'}</p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="mt-2"
-                onClick={reloadWeeklyAvailability}
-              >
-                Retry
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
-            <TabsList className="mb-4 grid grid-cols-7 h-auto">
-              {dayTabs.map(day => (
-                <TabsTrigger 
-                  key={day.id} 
-                  value={day.id}
-                  className="py-2"
-                >
-                  {day.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Weekly Availability Schedule</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            {timeZone && (
+              <div className="text-sm text-gray-500 mb-4">
+                All times shown in {TimeZoneService.formatTimeZoneDisplay(timeZone)} timezone.
+              </div>
+            )}
             
-            {dayTabs.map(day => (
-              <TabsContent key={day.id} value={day.id} className="space-y-4">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">{day.label} Availability</h3>
-                    <div className="text-xs text-gray-500 flex items-center space-x-2">
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-green-100 border border-green-500 rounded-full mr-1"></div>
-                        <span>Available</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-blue-100 border border-blue-500 rounded-full mr-1"></div>
-                        <span>Appointment</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {weeklyAvailability[day.id].length === 0 ? (
-                    <div className="text-gray-500 text-center py-4 border border-dashed border-gray-300 rounded-md">
-                      No availability set for {day.label}
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {weeklyAvailability[day.id]
-                        .sort((a, b) => {
-                          // Sort by time
-                          return a.startTime.localeCompare(b.startTime);
-                        })
-                        .map((slot, index) => (
-                          <TooltipProvider key={slot.id || index}>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div 
-                                  className={`p-3 border rounded-md flex justify-between items-center hover:bg-gray-50
-                                    ${slot.isAppointment 
-                                      ? 'border-blue-200 bg-blue-50' 
-                                      : 'border-green-200 bg-green-50'}`}
-                                >
-                                  <div className="flex items-center">
-                                    {slot.isAppointment ? (
-                                      <User className="h-4 w-4 text-blue-500 mr-2" />
-                                    ) : (
-                                      <Clock className="h-4 w-4 text-green-500 mr-2" />
-                                    )}
-                                    <span className={`font-medium ${slot.isAppointment ? 'text-blue-800' : 'text-green-800'}`}>
-                                      {formatTime12Hour(slot.startTime)} - {formatTime12Hour(slot.endTime)}
-                                    </span>
-                                    {slot.isRecurring && !slot.isAppointment && (
-                                      <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                                        Recurring
-                                      </span>
-                                    )}
-                                    {slot.isAppointment && (
-                                      <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                                        Booked
-                                      </span>
-                                    )}
-                                  </div>
-                                  {!slot.isAppointment && (
-                                    <Button 
-                                      size="sm" 
-                                      variant="ghost"
-                                      onClick={() => handleEditSlot(slot)}
-                                    >
-                                      Edit
-                                    </Button>
-                                  )}
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {slot.isAppointment ? (
-                                  <div className="text-sm">
-                                    <p className="font-semibold">Appointment</p>
-                                    <p>Client: {slot.clientName || 'Unknown client'}</p>
-                                    <p>Status: {slot.appointmentStatus || 'Scheduled'}</p>
-                                  </div>
-                                ) : (
-                                  <div className="text-sm">
-                                    <p className="font-semibold">Available Time Slot</p>
-                                    <p>{slot.isRecurring ? 'Recurring weekly' : 'One-time'}</p>
-                                  </div>
-                                )}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        ))}
-                    </div>
-                  )}
-                  
-                  <div className="p-4 border border-gray-200 rounded-md mt-4">
-                    <h4 className="font-medium mb-3">Add New Availability Slot</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor={`start-time-${day.id}`}>Start Time</Label>
-                        <select 
-                          id={`start-time-${day.id}`}
-                          value={newSlotStartTime}
-                          onChange={(e) => setNewSlotStartTime(e.target.value)}
-                          className="w-full border border-gray-300 rounded-md p-2 mt-1"
-                          disabled={isAddingSlot}
-                        >
-                          {timeOptions.map(opt => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.display}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <Label htmlFor={`end-time-${day.id}`}>End Time</Label>
-                        <select 
-                          id={`end-time-${day.id}`}
-                          value={newSlotEndTime}
-                          onChange={(e) => setNewSlotEndTime(e.target.value)}
-                          className="w-full border border-gray-300 rounded-md p-2 mt-1"
-                          disabled={isAddingSlot}
-                        >
-                          {timeOptions.map(opt => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.display}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <Button 
-                      onClick={handleAddSlot} 
-                      className="mt-4 w-full"
-                      disabled={isAddingSlot}
-                    >
-                      {isAddingSlot ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Adding...
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Availability
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </TabsContent>
-            ))}
-          </Tabs>
-        )}
-        
-        {isEditing && editingSlot && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full">
-              <h3 className="text-lg font-semibold mb-4">Edit Availability Slot</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit-start-time">Start Time</Label>
-                  <select 
-                    id="edit-start-time"
-                    value={editStartTime}
-                    onChange={(e) => setEditStartTime(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md p-2 mt-1"
-                    disabled={isSaving || isDeleting}
-                  >
-                    {timeOptions.map(opt => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.display}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="edit-end-time">End Time</Label>
-                  <select 
-                    id="edit-end-time"
-                    value={editEndTime}
-                    onChange={(e) => setEditEndTime(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md p-2 mt-1"
-                    disabled={isSaving || isDeleting}
-                  >
-                    {timeOptions.map(opt => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.display}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
-              {editingSlot.isRecurring && (
-                <div className="mt-4 p-2 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800">
-                  <Calendar className="h-4 w-4 inline-block mr-1" />
-                  This is a recurring availability slot. Changes will apply to all future occurrences.
-                </div>
-              )}
-              
-              <div className="flex justify-between mt-6">
-                <Button 
-                  variant="destructive"
-                  onClick={handleDeleteSlot}
-                  disabled={isSaving || isDeleting}
-                >
-                  {isDeleting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                      Removing...
-                    </>
-                  ) : 'Remove'}
-                </Button>
-                
-                <div className="space-x-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsEditing(false)}
-                    disabled={isSaving || isDeleting}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleSaveSlot}
-                    disabled={isSaving || isDeleting}
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Saving...
-                      </>
-                    ) : 'Save Changes'}
-                  </Button>
-                </div>
-              </div>
-            </div>
+            {renderContent()}
           </div>
-        )}
-        
-        <DialogFooter>
-          <Button variant="outline" onClick={handleCloseDialog}>
-            Close
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isDeleteAll
+                ? "Delete Recurring Availability"
+                : "Delete Availability Slot"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isDeleteAll
+                ? "This will delete all instances of this recurring availability slot. Are you sure?"
+                : "Are you sure you want to delete this availability slot?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
-}
+};
+
+export default WeeklyAvailabilityDialog;
