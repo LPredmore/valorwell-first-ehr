@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { FullCalendarProps, CalendarEvent, CalendarViewType } from '@/types/calendar';
+import { FullCalendarEventContent } from '@/types/fullCalendar';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -183,7 +183,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
           }
           return classes;
         }}
-        eventContent={(arg) => {
+        eventContent={(arg: FullCalendarEventContent) => {
           if (arg.event.extendedProps?.isAvailability) {
             return (
               <div className="fc-content">
@@ -197,7 +197,12 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
               </div>
             );
           }
-          return arg.defaultContent;
+          return (
+            <div className="fc-content">
+              <div className="fc-title">{arg.event.title}</div>
+              <div className="fc-time">{arg.timeText}</div>
+            </div>
+          );
         }}
         viewDidMount={(arg) => {
           console.log(`[FullCalendarView] View changed to: ${arg.view.type}`);
