@@ -1,3 +1,4 @@
+
 import { useEffect, useCallback, useState } from 'react';
 import { CalendarEvent } from '@/types/calendar';
 import { useAvailability } from '@/hooks/useAvailability';
@@ -34,15 +35,18 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
     }
 
     const events: CalendarEvent[] = [];
+    // Create now in user timezone to ensure correct day boundaries
     const now = DateTime.now().setZone(userTimeZone);
+    // Get start of week in user timezone
     const currentWeekStart = now.startOf('week');
     
     console.log('[CalendarAvailabilityHandler] Converting availability to events:', {
       weeksToShow,
       userTimeZone,
+      now: now.toISO(),
       currentWeekStart: currentWeekStart.toISO()
     });
-    
+
     const dayToIsoWeekday: Record<string, number> = {
       monday: 1,
       tuesday: 2,
@@ -61,20 +65,21 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
       }
 
       const availabilitySlots = slots.filter(slot => !slot.isAppointment);
-      
       console.log(`[CalendarAvailabilityHandler] Processing ${availabilitySlots.length} slots for ${day}`);
-      
-      if (availabilitySlots.length === 0) {
-        return;
-      }
+
+      if (availabilitySlots.length === 0) return;
 
       for (let week = 0; week < weeksToShow; week++) {
         const weekOffset = week * 7;
-        const dayDate = currentWeekStart
-          .setZone(userTimeZone)  // Ensure timezone is explicitly set
-          .plus({ days: (dayNumber - 1) + weekOffset });
         
+        // Create day date in user timezone explicitly
+        const dayDate = currentWeekStart
+          .plus({ days: (dayNumber - 1) + weekOffset })
+          .setZone(userTimeZone);
+
+        // Skip past dates
         if (dayDate < now.startOf('day')) {
+          console.log(`[CalendarAvailabilityHandler] Skipping past date: ${dayDate.toISO()}`);
           continue;
         }
 
@@ -82,18 +87,31 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
           try {
             const [startHour, startMinute] = slot.startTime.split(':').map(Number);
             const [endHour, endMinute] = slot.endTime.split(':').map(Number);
-            
-            // Create start and end times in the user's timezone
-            const startDateTime = dayDate.set({ 
-              hour: startHour, 
-              minute: startMinute 
+
+            // Create the full datetime while maintaining timezone
+            const startDateTime = dayDate.set({
+              hour: startHour,
+              minute: startMinute,
+              second: 0,
+              millisecond: 0
             });
-            
-            const endDateTime = dayDate.set({ 
-              hour: endHour, 
-              minute: endMinute 
+
+            const endDateTime = dayDate.set({
+              hour: endHour,
+              minute: endMinute,
+              second: 0,
+              millisecond: 0
             });
-            
+
+            // Verify times are valid before adding event
+            if (!startDateTime.isValid || !endDateTime.isValid) {
+              console.error(`[CalendarAvailabilityHandler] Invalid datetime created:`, {
+                start: startDateTime.invalidReason,
+                end: endDateTime.invalidReason
+              });
+              return;
+            }
+
             console.log(`[CalendarAvailabilityHandler] Creating event:`, {
               day,
               week,
@@ -101,8 +119,8 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
               startISO: startDateTime.toISO(),
               endISO: endDateTime.toISO(),
               userTimeZone,
-              startJSDate: startDateTime.toJSDate().toISOString(),
-              endJSDate: endDateTime.toJSDate().toISOString()
+              startLocal: startDateTime.toLocal().toISO(),
+              endLocal: endDateTime.toLocal().toISO()
             });
 
             events.push({
@@ -120,7 +138,8 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
                 originalSlotId: slot.id,
                 dayOfWeek: day,
                 eventType: 'availability',
-                week
+                week,
+                timezone: userTimeZone
               }
             });
           } catch (error) {
@@ -136,7 +155,9 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
 
   // Generate availability events when data changes
   useEffect(() => {
-    setAvailabilityEvents(convertAvailabilityToEvents());
+    const events = convertAvailabilityToEvents();
+    console.log('[CalendarAvailabilityHandler] Setting availability events:', events.length);
+    setAvailabilityEvents(events);
   }, [convertAvailabilityToEvents]);
 
   // Update provided events when our internal state changes
@@ -150,7 +171,6 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
     }
   }, [availabilityEvents, onEventsChange, isLoading, showAvailability]);
 
-  // Refresh availability when component mounts or clinician changes
   useEffect(() => {
     if (clinicianId && showAvailability) {
       console.log(`[CalendarAvailabilityHandler] Refreshing availability for clinician: ${clinicianId}`);
