@@ -2,12 +2,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { AvailabilityQueryService } from '@/services/AvailabilityQueryService';
 import { WeeklyAvailability } from '@/types/availability';
-import { CalendarEvent } from '@/types/calendar';
+import { CalendarEvent, WeekdayNumbers } from '@/types/calendar';
 import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timeZoneService';
-
-// Define WeekdayNumber type locally instead of importing from @fullcalendar/core
-type WeekdayNumber = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 interface CalendarAvailabilityHandlerProps {
   clinicianId: string;
@@ -35,15 +32,15 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
       const events: CalendarEvent[] = [];
       const now = DateTime.now().setZone(validTimeZone).startOf('day');
       
-      // Define weekday mapping with our local WeekdayNumber type
-      const weekdayMap: { [key: string]: WeekdayNumber } = {
-        monday: 1,
-        tuesday: 2,
-        wednesday: 3,
-        thursday: 4,
-        friday: 5,
-        saturday: 6,
-        sunday: 0
+      // Define weekday mapping using WeekdayNumbers type from our calendar types
+      const weekdayMap: { [key: string]: WeekdayNumbers } = {
+        monday: 1 as WeekdayNumbers,
+        tuesday: 2 as WeekdayNumbers,
+        wednesday: 3 as WeekdayNumbers,
+        thursday: 4 as WeekdayNumbers,
+        friday: 5 as WeekdayNumbers,
+        saturday: 6 as WeekdayNumbers,
+        sunday: 0 as WeekdayNumbers
       };
       
       // Create events for each weekday for the next several weeks
