@@ -61,7 +61,6 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      // Reset form state when dialog opens
       setFormError(null);
       setRetryCount(0);
       
@@ -74,7 +73,6 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   }, [isOpen]);
 
   const handleAddSlot = async () => {
-    // Clear previous errors
     setFormError(null);
     
     if (!newStartTime || !newEndTime) {
@@ -121,7 +119,6 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
           description: `Weekly availability added for ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`,
         });
         onAvailabilityUpdated?.();
-        // Reset form on success
         setRetryCount(0);
         setFormError(null);
       } else {

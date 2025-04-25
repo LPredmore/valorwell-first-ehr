@@ -4,6 +4,7 @@ import { WeeklyAvailability, AvailabilitySettings, AvailabilitySlot } from '@/ty
 import { AvailabilityQueryService } from '@/services/AvailabilityQueryService';
 import { AvailabilityMutationService } from '@/services/AvailabilityMutationService';
 import { useToast } from '@/hooks/use-toast';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface MutationResult {
   success: boolean;
@@ -140,18 +141,26 @@ export function useAvailability(clinicianId: string | null) {
           return { success: false, error: 'Recurrence rule is required for recurring availability' };
         }
         
+        // Get current date to combine with time
+        const today = new Date();
+        const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+        
+        // Create full ISO datetime strings
+        const fullStartTime = `${dateStr}T${startTime}`;
+        const fullEndTime = `${dateStr}T${endTime}`;
+        
         // Log the inputs to help diagnose issues
         console.log(`[useAvailability] Creating availability with params:`, {
           clinicianId,
-          startTime,
-          endTime,
+          startTime: fullStartTime,
+          endTime: fullEndTime,
           recurring: isRecurring,
           recurrenceRule
         });
         
         const result = await AvailabilityMutationService.createAvailabilitySlot(clinicianId, {
-          startTime,
-          endTime,
+          startTime: fullStartTime,
+          endTime: fullEndTime,
           recurring: isRecurring,
           recurrenceRule,
           title: 'Available'

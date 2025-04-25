@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySlot } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { DateTime } from 'luxon';
 
 export class AvailabilityMutationService {
   static async createAvailabilityException(
@@ -144,18 +145,14 @@ export class AvailabilityMutationService {
         recurrenceRule
       });
 
-      // For recurring events, we need to create an ISO date string
-      // We'll use the current date as the start date for recurring events
-      const today = new Date();
-      const startDateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
-      
-      // Format the full datetime strings correctly
-      const startTimeStr = `${startDateStr}T${startTime}`;
-      const endTimeStr = `${startDateStr}T${endTime}`;
+      // Validate input format
+      if (!DateTime.fromISO(startTime).isValid || !DateTime.fromISO(endTime).isValid) {
+        throw new Error(`Invalid datetime format. Expected ISO format (YYYY-MM-DDTHH:MM).`);
+      }
       
       // Parse both start and end times with timezone
-      const startDt = TimeZoneService.parseWithZone(startTimeStr, validTimeZone);
-      const endDt = TimeZoneService.parseWithZone(endTimeStr, validTimeZone);
+      const startDt = TimeZoneService.parseWithZone(startTime, validTimeZone);
+      const endDt = TimeZoneService.parseWithZone(endTime, validTimeZone);
       
       if (!startDt.isValid || !endDt.isValid) {
         throw new Error(`Invalid datetime: ${!startDt.isValid ? startDt.invalidReason : endDt.invalidReason}`);
@@ -163,8 +160,8 @@ export class AvailabilityMutationService {
 
       // Log detailed timezone information for debugging
       console.log('[AvailabilityMutationService] DateTime information:', {
-        startTimeStr,
-        endTimeStr, 
+        startTime,
+        endTime, 
         startDtFormatted: startDt.toISO(),
         endDtFormatted: endDt.toISO(),
         startDtUTC: startDt.toUTC().toISO(),
@@ -312,6 +309,14 @@ export class AvailabilityMutationService {
           };
         } else {
           // For non-recurring events, we handle as before
+          // Validate ISO format for non-recurring events
+          if (!DateTime.fromISO(slotData.startTime).isValid || !DateTime.fromISO(slotData.endTime).isValid) {
+            return {
+              success: false,
+              error: `Invalid datetime format. Expected ISO format (YYYY-MM-DDTHH:MM).`
+            };
+          }
+          
           // Convert times to UTC for storage
           const startDt = TimeZoneService.parseWithZone(slotData.startTime, timezone);
           const endDt = TimeZoneService.parseWithZone(slotData.endTime, timezone);
