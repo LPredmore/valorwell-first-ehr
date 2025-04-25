@@ -48,7 +48,7 @@ const CalendarPage: React.FC = () => {
     isLoading: isUserLoading,
     userId
   } = useUser();
-  const [calendarViewMode, setCalendarViewMode] = useState<CalendarViewType>('dayGridMonth');
+  const [calendarViewMode, setCalendarViewMode] = useState<CalendarViewType>('timeGridWeek');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [calendarKey, setCalendarKey] = useState<number>(0);
@@ -139,6 +139,13 @@ const CalendarPage: React.FC = () => {
     };
     fetchCurrentUser();
   }, [userTimeZone, selectedClinicianId, toast, userId, isUserLoading, navigate]);
+
+  useEffect(() => {
+    // Set availability to show by default
+    if (!showAvailability) {
+      setShowAvailability(true);
+    }
+  }, []);
 
   const handleAppointmentCreated = () => {
     setAppointmentRefreshTrigger(prev => prev + 1);
@@ -335,7 +342,7 @@ const CalendarPage: React.FC = () => {
                   userTimeZone={userTimeZone} 
                   view={calendarViewMode} 
                   height="700px" 
-                  showAvailability={showAvailability}
+                  showAvailability={true}
                   onAvailabilityClick={handleAvailabilityClick}
                 />
               </Card>
