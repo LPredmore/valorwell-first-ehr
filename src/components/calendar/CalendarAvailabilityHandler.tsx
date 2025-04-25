@@ -31,8 +31,15 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
     try {
       const events: CalendarEvent[] = [];
       const now = DateTime.now().setZone(validTimeZone).startOf('day');
-      const weekdayMap: { [key: string]: number } = {
-        monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 0
+      // Use proper mapping that conforms to WeekdayNumbers type (0-6)
+      const weekdayMap: { [key: string]: 0 | 1 | 2 | 3 | 4 | 5 | 6 } = {
+        monday: 1 as 1, 
+        tuesday: 2 as 2, 
+        wednesday: 3 as 3, 
+        thursday: 4 as 4, 
+        friday: 5 as 5, 
+        saturday: 6 as 6, 
+        sunday: 0 as 0
       };
       
       // Create events for each weekday for the next several weeks
@@ -83,7 +90,8 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
                     extendedProps: {
                       isAvailability: true,
                       isRecurring: slot.isRecurring,
-                      originalId: slot.id
+                      // Use a property that exists in the type definition
+                      sourceTable: slot.id
                     },
                     classNames: ['availability-event'],
                     backgroundColor: '#4caf50',

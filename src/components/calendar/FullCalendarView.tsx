@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -8,7 +7,7 @@ import { FullCalendarProps, CalendarEvent, CalendarViewType } from '@/types/cale
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, RefreshCcw } from 'lucide-react';
+import { AlertCircle, RefreshCcw, Calendar as CalendarIcon, Settings, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CalendarAvailabilityHandler from './CalendarAvailabilityHandler';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -48,7 +47,6 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     try {
       const allEvents = [...(appointmentEvents || [])];
       
-      // Only include availability events if there were no errors fetching them
       if (showAvailability && !availabilityError) {
         allEvents.push(...availabilityEvents);
       }
@@ -89,7 +87,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     try {
       console.log(`[FullCalendarView] Received ${events.length} availability events`);
       setAvailabilityEvents(events);
-      setAvailabilityError(null); // Clear errors on successful fetch
+      setAvailabilityError(null);
     } catch (err) {
       console.error('[FullCalendarView] Error handling availability events change:', err);
       setAvailabilityError(err as Error);
@@ -99,7 +97,6 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   const handleAvailabilityError = useCallback((error: Error) => {
     console.error('[FullCalendarView] Availability error:', error);
     setAvailabilityError(error);
-    // Still allow the calendar to render with just appointment events
   }, []);
 
   const handleRetry = useCallback(() => {
@@ -148,7 +145,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   return (
     <div className="fullcalendar-container">
       {availabilityError && (
-        <Alert variant="warning" className="mb-4">
+        <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             Some availability slots couldn't be loaded. Appointments are still visible.
@@ -209,7 +206,6 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
           return classes;
         }}
         eventContent={(arg) => {
-          // Simple event content renderer that works with FullCalendar v6
           const isAvailability = arg.event.extendedProps?.isAvailability;
           
           if (isAvailability) {
@@ -227,7 +223,6 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
             );
           }
           
-          // For regular appointments, use default rendering
           return (
             <div className="fc-event-main-frame">
               <div className="fc-event-title-container">
