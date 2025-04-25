@@ -1,13 +1,15 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { WeeklyAvailability, AvailabilitySettings, AvailabilitySlot } from '@/types/availability';
 import { AvailabilityQueryService } from '@/services/AvailabilityQueryService';
 import { AvailabilityMutationService } from '@/services/AvailabilityMutationService';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 // Define a consistent return type for mutation methods
 interface MutationResult {
   success: boolean;
   error?: string;
+  id?: string;
 }
 
 export function useAvailability(clinicianId: string | null) {
@@ -122,7 +124,27 @@ export function useAvailability(clinicianId: string | null) {
       if (!clinicianId) return { success: false, error: 'No clinician ID provided' };
       
       try {
-        console.log(`[useAvailability] Creating availability slot:`, { dayOfWeek, startTime, endTime, isRecurring });
+        console.log(`[useAvailability] Creating availability slot:`, { 
+          dayOfWeek, 
+          startTime, 
+          endTime, 
+          isRecurring,
+          recurrenceRule 
+        });
+        
+        // Validate inputs before submitting
+        if (!startTime || !endTime) {
+          return { success: false, error: 'Start time and end time are required' };
+        }
+        
+        if (startTime >= endTime) {
+          return { success: false, error: 'End time must be later than start time' };
+        }
+        
+        if (isRecurring && !dayOfWeek) {
+          return { success: false, error: 'Day of week is required for recurring availability' };
+        }
+        
         const result = await AvailabilityMutationService.createAvailabilitySlot(clinicianId, {
           startTime,
           endTime,
@@ -131,28 +153,44 @@ export function useAvailability(clinicianId: string | null) {
           dayOfWeek
         });
         
+        console.log(`[useAvailability] Create slot result:`, result);
+        
         if (result.success) {
+          // Refresh availability data
           await fetchWeeklyAvailability();
           
           toast({
             title: 'Slot Created',
             description: 'Availability slot has been created successfully.',
           });
-          return { success: true };
+          return { success: true, id: result.id };
         } else {
-          throw new Error(result.error || 'Failed to create slot');
+          // Provide more descriptive error
+          const errorMessage = result.error || 'Failed to create slot';
+          console.error(`[useAvailability] Error creating slot: ${errorMessage}`);
+          throw new Error(errorMessage);
         }
       } catch (err) {
         const error = err instanceof Error ? err.message : 'Unknown error';
         console.error('[useAvailability] Error creating availability slot:', err);
         
+        // Provide specific error message based on the type of error
+        let errorMessage = error;
+        if (error.includes('timezone')) {
+          errorMessage = 'There was a problem with timezone conversion. Please check your profile timezone settings.';
+        } else if (error.includes('overlapping')) {
+          errorMessage = 'This time slot overlaps with an existing availability slot.';
+        } else if (error.includes('recurrence')) {
+          errorMessage = 'There was a problem creating the recurring schedule. Please try again.';
+        }
+        
         toast({
           title: 'Error',
-          description: `Failed to create availability slot. ${error}`,
+          description: `Failed to create availability slot. ${errorMessage}`,
           variant: 'destructive',
         });
         
-        return { success: false, error };
+        return { success: false, error: errorMessage };
       }
     },
     [clinicianId, fetchWeeklyAvailability, toast]
@@ -167,6 +205,17 @@ export function useAvailability(clinicianId: string | null) {
       
       try {
         console.log(`[useAvailability] Updating availability slot:`, { slotId, updates });
+        
+        // Validate inputs
+        if (updates.startTime && updates.endTime && updates.startTime >= updates.endTime) {
+          toast({
+            title: 'Invalid Time Range',
+            description: 'End time must be later than start time.',
+            variant: 'destructive',
+          });
+          return false;
+        }
+        
         const result = await AvailabilityMutationService.updateAvailabilitySlot(slotId, updates);
         
         if (result.success) {
@@ -186,9 +235,18 @@ export function useAvailability(clinicianId: string | null) {
         const error = err instanceof Error ? err.message : 'Unknown error';
         console.error('[useAvailability] Error updating availability slot:', err);
         setError(`Failed to update availability slot: ${error}`);
+        
+        // Provide specific error message based on the type of error
+        let errorMessage = error;
+        if (error.includes('timezone')) {
+          errorMessage = 'There was a problem with timezone conversion. Please check your profile timezone settings.';
+        } else if (error.includes('overlapping')) {
+          errorMessage = 'This time slot would overlap with an existing availability slot.';
+        }
+        
         toast({
           title: 'Error',
-          description: `Failed to update availability slot. ${error}`,
+          description: `Failed to update availability slot. ${errorMessage}`,
           variant: 'destructive',
         });
         return false;

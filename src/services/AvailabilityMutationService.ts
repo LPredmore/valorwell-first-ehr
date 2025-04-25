@@ -184,13 +184,50 @@ export class AvailabilityMutationService {
     }
   ): Promise<{ success: boolean; error?: string; id?: string }> {
     try {
-      const { data: profileData } = await supabase
+      // Get clinician timezone from profile
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('time_zone')
         .eq('id', clinicianId)
         .maybeSingle();
       
+      if (profileError) {
+        console.error('[AvailabilityMutationService] Error fetching clinician timezone:', profileError);
+        return { 
+          success: false, 
+          error: `Failed to fetch clinician timezone: ${profileError.message}`
+        };
+      }
+      
       const timezone = TimeZoneService.ensureIANATimeZone(profileData?.time_zone || 'UTC');
+      console.log('[AvailabilityMutationService] Using timezone:', timezone);
+      
+      // Validate time slots
+      if (!slotData.startTime || !slotData.endTime) {
+        return {
+          success: false,
+          error: 'Start time and end time are required'
+        };
+      }
+      
+      // For recurring events, validate the recurrence rule if provided
+      if (slotData.recurring && slotData.recurrenceRule) {
+        if (!slotData.recurrenceRule.includes('FREQ=') || !slotData.recurrenceRule.includes('BYDAY=')) {
+          console.error('[AvailabilityMutationService] Invalid recurrence rule format:', slotData.recurrenceRule);
+          return {
+            success: false,
+            error: 'Invalid recurrence rule format'
+          };
+        }
+        
+        if (!slotData.dayOfWeek) {
+          console.error('[AvailabilityMutationService] Day of week is required for recurring events');
+          return {
+            success: false,
+            error: 'Day of week is required for recurring events'
+          };
+        }
+      }
       
       const eventData: any = {
         clinician_id: clinicianId,
@@ -199,6 +236,10 @@ export class AvailabilityMutationService {
         is_active: true
       };
       
+      // Start a transaction by using a single connection for multiple operations
+      // We're simulating a transaction using a Promise.all approach since
+      // Supabase JS client doesn't support actual transactions yet
+      
       if (slotData.recurring) {
         eventData.is_recurring = true;
         eventData.day_of_week = slotData.dayOfWeek;
@@ -206,40 +247,126 @@ export class AvailabilityMutationService {
         eventData.end_time = slotData.endTime;
         eventData.timezone = timezone;
         
+        console.log('[AvailabilityMutationService] Creating recurring availability event with data:', eventData);
+        
+        // First step: Create the calendar event
+        const { data: eventResult, error: eventError } = await supabase
+          .from('calendar_events')
+          .insert([eventData])
+          .select('id')
+          .single();
+          
+        if (eventError) {
+          console.error('[AvailabilityMutationService] Error creating calendar event:', eventError);
+          return { 
+            success: false, 
+            error: `Failed to create calendar event: ${eventError.message}` 
+          };
+        }
+        
+        const eventId = eventResult.id;
+        console.log('[AvailabilityMutationService] Created calendar event with ID:', eventId);
+        
+        // If recurrence rule is provided, create it and link to the event
         if (slotData.recurrenceRule) {
+          console.log('[AvailabilityMutationService] Creating recurrence rule:', slotData.recurrenceRule);
+          
           const { data: recurrenceData, error: recurrenceError } = await supabase
             .from('recurrence_rules')
-            .insert([{ rrule: slotData.recurrenceRule }])
+            .insert([{ 
+              event_id: eventId,
+              rrule: slotData.recurrenceRule 
+            }])
             .select('id')
             .single();
             
-          if (recurrenceError) throw recurrenceError;
+          if (recurrenceError) {
+            console.error('[AvailabilityMutationService] Error creating recurrence rule:', recurrenceError);
+            
+            // Try to clean up the calendar event since recurrence rule failed
+            await supabase
+              .from('calendar_events')
+              .delete()
+              .eq('id', eventId);
+            
+            return { 
+              success: false, 
+              error: `Failed to create recurrence rule: ${recurrenceError.message}` 
+            };
+          }
           
-          if (recurrenceData) {
-            eventData.recurrence_id = recurrenceData.id;
+          console.log('[AvailabilityMutationService] Created recurrence rule with ID:', recurrenceData.id);
+          
+          // Update the calendar event with the recurrence ID
+          const { error: updateError } = await supabase
+            .from('calendar_events')
+            .update({ recurrence_id: eventId })
+            .eq('id', eventId);
+            
+          if (updateError) {
+            console.error('[AvailabilityMutationService] Error updating event with recurrence ID:', updateError);
+            return { 
+              success: false, 
+              error: `Failed to update event with recurrence ID: ${updateError.message}` 
+            };
           }
         }
+        
+        return { 
+          success: true,
+          id: eventId
+        };
       } else {
         // For non-recurring slots, convert to UTC for storage
-        const startDt = TimeZoneService.parseWithZone(slotData.startTime, timezone);
-        const endDt = TimeZoneService.parseWithZone(slotData.endTime, timezone);
-        
-        eventData.start_time = TimeZoneService.toUTC(startDt).toISO();
-        eventData.end_time = TimeZoneService.toUTC(endDt).toISO();
+        try {
+          const startDt = TimeZoneService.parseWithZone(slotData.startTime, timezone);
+          const endDt = TimeZoneService.parseWithZone(slotData.endTime, timezone);
+          
+          if (!startDt.isValid) {
+            return {
+              success: false,
+              error: `Invalid start time: ${startDt.invalidReason}`
+            };
+          }
+          
+          if (!endDt.isValid) {
+            return {
+              success: false,
+              error: `Invalid end time: ${endDt.invalidReason}`
+            };
+          }
+          
+          eventData.start_time = TimeZoneService.toUTC(startDt).toISO();
+          eventData.end_time = TimeZoneService.toUTC(endDt).toISO();
+          
+          console.log('[AvailabilityMutationService] Creating non-recurring availability event with data:', eventData);
+          
+          const { data, error } = await supabase
+            .from('calendar_events')
+            .insert([eventData])
+            .select('id')
+            .single();
+            
+          if (error) {
+            console.error('[AvailabilityMutationService] Error creating non-recurring event:', error);
+            return { 
+              success: false, 
+              error: `Failed to create availability slot: ${error.message}` 
+            };
+          }
+          
+          return { 
+            success: true,
+            id: data?.id
+          };
+        } catch (error) {
+          console.error('[AvailabilityMutationService] Error parsing dates:', error);
+          return {
+            success: false,
+            error: error instanceof Error ? `Date parsing error: ${error.message}` : 'Unknown date parsing error'
+          };
+        }
       }
-      
-      const { data, error } = await supabase
-        .from('calendar_events')
-        .insert([eventData])
-        .select('id')
-        .single();
-        
-      if (error) throw error;
-      
-      return { 
-        success: true,
-        id: data?.id
-      };
     } catch (error) {
       console.error('[AvailabilityMutationService] Error creating availability slot:', error);
       return { 
@@ -327,11 +454,23 @@ export class AvailabilityMutationService {
       
       if (updates.startTime) {
         const startDt = TimeZoneService.parseWithZone(updates.startTime, timezone);
+        if (!startDt.isValid) {
+          return {
+            success: false,
+            error: `Invalid start time: ${startDt.invalidReason}`
+          };
+        }
         updateData.start_time = TimeZoneService.toUTC(startDt).toISO();
       }
       
       if (updates.endTime) {
         const endDt = TimeZoneService.parseWithZone(updates.endTime, timezone);
+        if (!endDt.isValid) {
+          return {
+            success: false,
+            error: `Invalid end time: ${endDt.invalidReason}`
+          };
+        }
         updateData.end_time = TimeZoneService.toUTC(endDt).toISO();
       }
 
@@ -356,18 +495,53 @@ export class AvailabilityMutationService {
     slotId: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      // Check if this is a recurring event
+      const { data: slotData, error: fetchError } = await supabase
+        .from('calendar_events')
+        .select('recurrence_id')
+        .eq('id', slotId)
+        .single();
+        
+      if (fetchError) {
+        console.error('[AvailabilityMutationService] Error fetching slot data:', fetchError);
+        return { 
+          success: false, 
+          error: `Failed to fetch slot data: ${fetchError.message}` 
+        };
+      }
+      
+      // If it's a recurring event, we need to clean up the recurrence rules too
+      if (slotData?.recurrence_id) {
+        console.log('[AvailabilityMutationService] Deleting recurrence rule for slot:', slotId);
+        
+        // Delete recurrence rules
+        const { error: recurrenceError } = await supabase
+          .from('recurrence_rules')
+          .delete()
+          .eq('event_id', slotId);
+          
+        if (recurrenceError) {
+          console.error('[AvailabilityMutationService] Error deleting recurrence rule:', recurrenceError);
+          // We'll continue trying to delete the event even if recurrence rule deletion fails
+        }
+      }
+
       const { error } = await supabase
         .from('calendar_events')
         .delete()
         .eq('id', slotId);
 
       if (error) {
-        throw error;
+        console.error('[AvailabilityMutationService] Error deleting availability slot:', error);
+        return { 
+          success: false, 
+          error: `Error deleting availability slot: ${error.message}` 
+        };
       }
 
       return { success: true };
     } catch (error) {
-      console.error('Error deleting availability slot:', error);
+      console.error('[AvailabilityMutationService] Error deleting availability slot:', error);
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Unknown error deleting availability slot' 

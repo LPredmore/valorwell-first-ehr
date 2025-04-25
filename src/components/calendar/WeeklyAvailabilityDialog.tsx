@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,7 +9,7 @@ import { DayOfWeek, AvailabilitySlot } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { useAvailability } from '@/hooks/useAvailability';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Trash2, AlertCircle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +21,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface WeeklyAvailabilityDialogProps {
   isOpen: boolean;
@@ -45,6 +47,8 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   const [isDeleteAll, setIsDeleteAll] = useState(false);
   const { timeZone } = useUserTimeZone(clinicianId);
   const { toast } = useToast();
+  const [formError, setFormError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   
   const {
     weeklyAvailability,
@@ -58,6 +62,10 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      // Reset form state when dialog opens
+      setFormError(null);
+      setRetryCount(0);
+      
       const storedSlotId = localStorage.getItem('selectedAvailabilitySlotId');
       if (storedSlotId) {
         setSelectedSlotId(storedSlotId);
@@ -67,7 +75,11 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   }, [isOpen]);
 
   const handleAddSlot = async () => {
+    // Clear previous errors
+    setFormError(null);
+    
     if (!newStartTime || !newEndTime) {
+      setFormError("Please provide both start and end time");
       toast({
         title: "Missing Information",
         description: "Please provide both start and end time.",
@@ -77,6 +89,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     }
     
     if (newStartTime >= newEndTime) {
+      setFormError("End time must be later than start time");
       toast({
         title: "Invalid Time Range",
         description: "End time must be later than start time.",
@@ -107,7 +120,12 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
           description: `Weekly availability added for ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`,
         });
         onAvailabilityUpdated?.();
+        // Reset form on success
+        setRetryCount(0);
+        setFormError(null);
       } else {
+        setFormError(result.error || "Failed to add availability. Please try again.");
+        setRetryCount(prev => prev + 1);
         toast({
           title: "Error",
           description: result.error || "Failed to add availability. Please try again.",
@@ -116,6 +134,8 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       }
     } catch (error) {
       console.error('[WeeklyAvailabilityDialog] Error adding availability slot:', error);
+      setFormError(error instanceof Error ? error.message : "An unexpected error occurred");
+      setRetryCount(prev => prev + 1);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "An unexpected error occurred",
@@ -147,7 +167,9 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
           title: "Success",
           description: "Availability slot deleted successfully"
         });
+        setFormError(null);
       } else {
+        setFormError(result.error || "Failed to delete availability slot");
         toast({
           title: "Error",
           description: result.error || "Failed to delete availability slot",
@@ -156,6 +178,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       }
     } catch (error) {
       console.error('[WeeklyAvailabilityDialog] Error deleting availability slot:', error);
+      setFormError("Failed to delete availability slot");
       toast({
         title: "Error",
         description: "Failed to delete availability slot",
@@ -164,6 +187,11 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleRetry = () => {
+    refreshAvailability();
+    setFormError(null);
   };
 
   const getDayCode = (day: DayOfWeek): string => {
@@ -280,7 +308,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
           <Button 
             variant="outline" 
             className="mt-2"
-            onClick={() => refreshAvailability()}
+            onClick={handleRetry}
           >
             Try Again
           </Button>
@@ -308,6 +336,14 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
             
             <div className="mt-4 p-3 border border-dashed rounded-md">
               <h4 className="text-sm font-medium mb-2">Add New Availability Slot</h4>
+              
+              {formError && (
+                <Alert variant="destructive" className="mb-3">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{formError}</AlertDescription>
+                </Alert>
+              )}
+              
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor={`${day}-start`}>Start Time</Label>
@@ -340,6 +376,18 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
                 )}
                 Add Time Slot
               </Button>
+
+              {retryCount > 1 && (
+                <div className="mt-3 p-2 bg-gray-50 rounded-md text-xs text-gray-600">
+                  <p className="font-medium">Troubleshooting Tips:</p>
+                  <ul className="list-disc list-inside mt-1">
+                    <li>Ensure the start time is before the end time</li>
+                    <li>Check for time slot conflicts</li>
+                    <li>Verify your timezone settings in profile</li>
+                    <li>Try refreshing the page if the issue persists</li>
+                  </ul>
+                </div>
+              )}
             </div>
           </TabsContent>
         ))}
