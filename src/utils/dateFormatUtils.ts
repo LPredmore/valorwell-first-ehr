@@ -151,3 +151,83 @@ export const addDuration = (
   }
 };
 
+/**
+ * Get the weekday name from a date
+ */
+export const getWeekdayName = (date: string | Date): string => {
+  try {
+    let dt: DateTime;
+    
+    if (typeof date === 'string') {
+      dt = DateTime.fromISO(date);
+    } else {
+      dt = DateTime.fromJSDate(date);
+    }
+    
+    if (!dt.isValid) {
+      console.error('Invalid date for getWeekdayName:', { date, error: dt.invalidReason });
+      return 'Invalid date';
+    }
+    
+    return dt.weekdayLong.toLowerCase();
+  } catch (error) {
+    console.error('Error getting weekday name:', error);
+    return 'Invalid date';
+  }
+};
+
+/**
+ * Format a date in a specific timezone
+ */
+export const formatInTimezone = (
+  date: string | Date,
+  format: string,
+  timezone?: string
+): string => {
+  return formatDateTime(date, format, timezone);
+};
+
+/**
+ * Get the month name from a date
+ */
+export const getMonthName = (date: string | Date): string => {
+  try {
+    let dt: DateTime;
+    
+    if (typeof date === 'string') {
+      dt = DateTime.fromISO(date);
+    } else {
+      dt = DateTime.fromJSDate(date);
+    }
+    
+    if (!dt.isValid) {
+      console.error('Invalid date for getMonthName:', { date, error: dt.invalidReason });
+      return 'Invalid date';
+    }
+    
+    return dt.monthLong;
+  } catch (error) {
+    console.error('Error getting month name:', error);
+    return 'Invalid date';
+  }
+};
+
+/**
+ * Check if two dates are the same day
+ */
+export const isSameDay = (date1: string | Date, date2: string | Date): boolean => {
+  try {
+    const dt1 = typeof date1 === 'string' ? DateTime.fromISO(date1) : DateTime.fromJSDate(date1);
+    const dt2 = typeof date2 === 'string' ? DateTime.fromISO(date2) : DateTime.fromJSDate(date2);
+    
+    if (!dt1.isValid || !dt2.isValid) {
+      console.error('Invalid date for isSameDay check');
+      return false;
+    }
+    
+    return dt1.hasSame(dt2, 'day');
+  } catch (error) {
+    console.error('Error checking if dates are the same day:', error);
+    return false;
+  }
+};
