@@ -52,7 +52,7 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .from("profiles")
             .select("time_zone")
             .eq("id", authData.user.id)
-            .single();
+            .maybeSingle();
             
           if (profileError) {
             console.error("[TimeZoneContext] Error fetching user time zone:", profileError);

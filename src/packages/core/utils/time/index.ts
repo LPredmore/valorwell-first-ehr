@@ -3,7 +3,6 @@
  * THIS FILE IS BEING DEPRECATED
  * All timezone functionality should use TimeZoneService from @/utils/timeZoneService directly
  * This file now re-exports functionality from TimeZoneService for backward compatibility
- * New code should import directly from @/utils/timeZoneService
  */
 
 // Import TimeZoneService from the correct path
@@ -54,4 +53,3 @@ export {
 export * from './validation';
 // @deprecated - Use TimeZoneService directly
 export * from './conversion';
-

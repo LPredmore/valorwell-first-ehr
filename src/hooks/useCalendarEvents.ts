@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { CalendarService } from '@/services/CalendarService';
 import { CalendarEvent } from '@/types/calendar';
@@ -242,45 +243,7 @@ export function useCalendarEvents({
     error,
     refetch,
     createEvent,
-    updateEvent: async (event: CalendarEvent) => {
-      try {
-        // Ensure the event timezone is properly set before update
-        const eventWithTimezone = {
-          ...event,
-          _userTimeZone: validTimeZone
-        };
-        
-        const updatedEvent = await CalendarService.updateEvent(eventWithTimezone, validTimeZone);
-        fetchEvents();
-        return updatedEvent;
-      } catch (err) {
-        console.error("Error updating calendar event:", err);
-        toast({
-          title: "Error updating event",
-          description: "There was a problem updating your event. Please try again.",
-          variant: "destructive",
-        });
-        return null;
-      }
-    },
-    deleteEvent: async (eventId: string) => {
-      try {
-        const success = await CalendarService.deleteEvent(eventId);
-        if (success) {
-          fetchEvents();
-          return true;
-        } else {
-          throw new Error("Delete operation returned false");
-        }
-      } catch (err) {
-        console.error("Error deleting calendar event:", err);
-        toast({
-          title: "Error deleting event",
-          description: "There was a problem deleting your event. Please try again.",
-          variant: "destructive",
-        });
-        return false;
-      }
-    }
+    updateEvent,
+    deleteEvent
   };
 }

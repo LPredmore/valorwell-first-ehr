@@ -5,7 +5,6 @@ import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
 import Layout from '@/components/layout/Layout';
 import VideoChat from '@/components/video/VideoChat';
-import { formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
 import { AppointmentsList } from '@/components/dashboard/AppointmentsList';
 import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -13,12 +12,13 @@ import { SessionDidNotOccurDialog } from '@/components/dashboard/SessionDidNotOc
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import GoogleCalendarIntegration from '@/components/calendar/GoogleCalendarIntegration';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 const ClinicianDashboard: React.FC = () => {
   const { userRole, userId } = useUser();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { userTimeZone, isLoading: isLoadingTimeZone } = useTimeZone();
-  const timeZoneDisplay = formatTimeZoneDisplay(userTimeZone);
+  const timeZoneDisplay = TimeZoneService.formatTimeZoneDisplay(userTimeZone);
   const [showSessionDidNotOccurDialog, setShowSessionDidNotOccurDialog] = useState(false);
   const [selectedAppointmentForNoShow, setSelectedAppointmentForNoShow] = useState<any>(null);
 

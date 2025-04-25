@@ -56,7 +56,7 @@ export const getUserTimeZoneById = async (userId: string): Promise<string> => {
       .from('profiles')
       .select('time_zone')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
       
     if (!profileError && profileData?.time_zone) {
       console.log(`[getUserTimeZoneById] Found time zone in profiles table for ${userId}: ${profileData.time_zone}`);
@@ -68,7 +68,7 @@ export const getUserTimeZoneById = async (userId: string): Promise<string> => {
       .from('clients')
       .select('client_time_zone')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
       
     if (!clientError && clientData?.client_time_zone) {
       console.log(`[getUserTimeZoneById] Found time zone in clients table for ${userId}: ${clientData.client_time_zone}`);
@@ -80,7 +80,7 @@ export const getUserTimeZoneById = async (userId: string): Promise<string> => {
       .from('clinicians')
       .select('clinician_timezone')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
       
     if (!clinicianError && clinicianData?.clinician_timezone) {
       console.log(`[getUserTimeZoneById] Found time zone in clinicians table for ${userId}: ${clinicianData.clinician_timezone}`);
