@@ -10,7 +10,7 @@ AS $$
 BEGIN
   -- Only check for overlaps if this is an active availability event
   IF NEW.event_type = 'availability' AND NEW.is_active = TRUE THEN
-    -- Check for overlapping events
+    -- Check for overlapping events from the same clinician
     IF EXISTS (
       SELECT 1 FROM public.calendar_events
       WHERE 
@@ -18,7 +18,8 @@ BEGIN
         AND event_type = 'availability'
         AND is_active = TRUE
         AND id <> COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::uuid) -- Handle new records without IDs
-        AND recurrence_id IS NOT DISTINCT FROM NEW.recurrence_id -- Only check against events with same recurrence ID or both NULL
+        AND recurrence_id IS NULL -- Only check non-recurring events for overlaps
+        AND NEW.recurrence_id IS NULL -- Only check overlap if the new event is non-recurring
         AND (
           -- Standard overlap check
           (NEW.start_time < end_time AND NEW.end_time > start_time)
@@ -38,5 +39,5 @@ CREATE TRIGGER check_availability_overlap
 BEFORE INSERT OR UPDATE ON public.calendar_events
 FOR EACH ROW EXECUTE FUNCTION public.prevent_overlapping_availability();
 
--- Ensure events in same recurrence series don't trigger the overlap check
-COMMENT ON FUNCTION public.prevent_overlapping_availability() IS 'Prevents overlapping availability slots while allowing events in the same recurrence series';
+-- Add comment explaining the function's purpose
+COMMENT ON FUNCTION public.prevent_overlapping_availability() IS 'Prevents overlapping availability slots for non-recurring events';

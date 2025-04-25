@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySlot } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -107,6 +108,7 @@ export class AvailabilityMutationService {
           {
             clinician_id: clinicianId,
             event_type: 'availability',
+            availability_type: 'single', // Added this field to satisfy the constraint
             start_time: startDt.toUTC().toISO(),
             end_time: endDt.toUTC().toISO(),
             is_active: true,
@@ -115,6 +117,9 @@ export class AvailabilityMutationService {
         .select('id');
 
       if (error) {
+        if (error.message.includes('overlapping availability')) {
+          throw new Error('This time slot overlaps with an existing availability. Please select a different time.');
+        }
         console.error('[AvailabilityMutationService] Error creating single availability:', error);
         throw error;
       }
@@ -172,14 +177,14 @@ export class AvailabilityMutationService {
         timezone: validTimeZone
       });
 
-      // Create the initial event - add availability_type field to satisfy constraint
+      // Create the initial event with availability_type field
       const { data, error } = await supabase
         .from('calendar_events')
         .insert([
           {
             clinician_id: clinicianId,
             event_type: 'availability',
-            availability_type: 'recurring', // Add this field to satisfy the constraint
+            availability_type: 'recurring',
             title: 'Available',
             start_time: startDt.toUTC().toISO(),
             end_time: endDt.toUTC().toISO(),
@@ -189,6 +194,9 @@ export class AvailabilityMutationService {
         .select('id');
 
       if (error) {
+        if (error.message.includes('overlapping availability')) {
+          throw new Error('This recurring schedule overlaps with existing availability slots.');
+        }
         console.error('[AvailabilityMutationService] Error creating recurring availability:', error);
         throw new Error(`Database error: ${error.message}`);
       }
@@ -473,7 +481,15 @@ export class AvailabilityMutationService {
         .update(updateData)
         .eq('id', slotId);
 
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('overlapping availability')) {
+          return {
+            success: false,
+            error: 'This time slot would overlap with an existing availability slot.'
+          };
+        }
+        throw error;
+      }
 
       return { success: true };
     } catch (error) {
