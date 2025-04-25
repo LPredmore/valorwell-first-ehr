@@ -5,6 +5,7 @@ import { WeeklyAvailability } from '@/types/availability';
 import { CalendarEvent, WeekdayNumbers } from '@/types/calendar';
 import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { weekdayNameToNumber, getWeekdayNumberFromDateTime } from '@/utils/calendarWeekdayUtils';
 
 interface CalendarAvailabilityHandlerProps {
   clinicianId: string;
@@ -32,20 +33,11 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
       const events: CalendarEvent[] = [];
       const now = DateTime.now().setZone(validTimeZone).startOf('day');
       
-      // Define weekday mapping using WeekdayNumbers type from our calendar types
-      const weekdayMap: { [key: string]: WeekdayNumbers } = {
-        monday: 1 as WeekdayNumbers,
-        tuesday: 2 as WeekdayNumbers,
-        wednesday: 3 as WeekdayNumbers,
-        thursday: 4 as WeekdayNumbers,
-        friday: 5 as WeekdayNumbers,
-        saturday: 6 as WeekdayNumbers,
-        sunday: 0 as WeekdayNumbers
-      };
+      // Using our utility function to map day names to weekday numbers
       
       // Create events for each weekday for the next several weeks
       for (const [day, slots] of Object.entries(weeklyAvailability)) {
-        const weekday = weekdayMap[day];
+        const weekday = weekdayNameToNumber[day];
         if (weekday === undefined) continue;
 
         // Process each slot for this day
@@ -55,7 +47,7 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
             if (slot.isAppointment) continue;
             
             // Get today's date and find the next occurrence of this weekday
-            let targetDay = now.set({ weekday });
+            let targetDay = now.set({ weekday: weekday === 0 ? 7 : weekday }); // Convert back to Luxon format (0→7 for Sunday)
             if (targetDay < now) {
               targetDay = targetDay.plus({ days: 7 });
             }

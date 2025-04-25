@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -11,6 +12,7 @@ import { AlertCircle, RefreshCcw, Calendar as CalendarIcon, Settings, Clock } fr
 import { Button } from '@/components/ui/button';
 import CalendarAvailabilityHandler from './CalendarAvailabilityHandler';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { getWeekdayNameFromNumber } from '@/utils/calendarWeekdayUtils';
 
 /**
  * A React component that renders a FullCalendar instance.
