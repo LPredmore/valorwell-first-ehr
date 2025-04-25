@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { WeeklyAvailability, AvailabilitySettings, AvailabilitySlot } from '@/types/availability';
 import { AvailabilityQueryService } from '@/services/AvailabilityQueryService';
@@ -120,6 +121,7 @@ export function useAvailability(clinicianId: string | null) {
       
       try {
         console.log(`[useAvailability] Creating availability slot:`, { 
+          dayOfWeek,
           startTime, 
           endTime, 
           isRecurring,
@@ -170,6 +172,8 @@ export function useAvailability(clinicianId: string | null) {
           errorMessage = 'This time slot overlaps with an existing availability slot.';
         } else if (error.includes('recurrence')) {
           errorMessage = 'There was a problem creating the recurring schedule. Please try again.';
+        } else if (error.includes('day_of_week')) {
+          errorMessage = 'There was an issue with the day of week configuration. Please try again.';
         }
         
         toast({

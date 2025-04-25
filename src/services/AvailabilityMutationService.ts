@@ -127,31 +127,45 @@ export class AvailabilityMutationService {
 
   static async createRecurringAvailability(
     clinicianId: string,
-    dayOfWeek: string,
     startTime: string,
     endTime: string,
-    timezone: string
+    timezone: string,
+    recurrenceRule: string
   ): Promise<any> {
     try {
       const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
       
       console.log('[AvailabilityMutationService] Creating recurring availability:', {
         clinicianId,
-        dayOfWeek,
         startTime,
         endTime,
-        timezone: validTimeZone
+        timezone: validTimeZone,
+        recurrenceRule
       });
 
+      // For recurring events, we need to create an ISO date string
+      // We'll use the current date as the start date for recurring events
+      const today = new Date();
+      const startDateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+      
+      // Parse both start and end times with timezone
+      const startDt = TimeZoneService.parseWithZone(`${startDateStr}T${startTime}`, validTimeZone);
+      const endDt = TimeZoneService.parseWithZone(`${startDateStr}T${endTime}`, validTimeZone);
+      
+      if (!startDt.isValid || !endDt.isValid) {
+        throw new Error(`Invalid datetime: ${!startDt.isValid ? startDt.invalidReason : endDt.invalidReason}`);
+      }
+
+      // Create the initial event
       const { data, error } = await supabase
         .from('calendar_events')
         .insert([
           {
             clinician_id: clinicianId,
             event_type: 'availability',
-            day_of_week: dayOfWeek,
-            start_time: startTime,
-            end_time: endTime,
+            title: 'Available',
+            start_time: startDt.toUTC().toISO(),
+            end_time: endDt.toUTC().toISO(),
             is_recurring: true,
             timezone: validTimeZone,
             is_active: true,
@@ -163,7 +177,44 @@ export class AvailabilityMutationService {
         console.error('[AvailabilityMutationService] Error creating recurring availability:', error);
         throw error;
       }
-
+      
+      if (!data || data.length === 0) {
+        throw new Error('No data returned from calendar event creation');
+      }
+      
+      const eventId = data[0].id;
+      
+      // Create the recurrence rule linked to the event
+      const { error: recurrenceError } = await supabase
+        .from('recurrence_rules')
+        .insert([{ 
+          event_id: eventId,
+          rrule: recurrenceRule 
+        }]);
+        
+      if (recurrenceError) {
+        console.error('[AvailabilityMutationService] Error creating recurrence rule:', recurrenceError);
+        
+        // Try to clean up the calendar event since recurrence rule failed
+        await supabase
+          .from('calendar_events')
+          .delete()
+          .eq('id', eventId);
+        
+        throw recurrenceError;
+      }
+      
+      // Update the calendar event with the recurrence ID
+      const { error: updateError } = await supabase
+        .from('calendar_events')
+        .update({ recurrence_id: eventId })
+        .eq('id', eventId);
+        
+      if (updateError) {
+        console.error('[AvailabilityMutationService] Error updating event with recurrence ID:', updateError);
+        throw updateError;
+      }
+      
       return data;
     } catch (error) {
       console.error('[AvailabilityMutationService] Error creating recurring availability:', error);
@@ -207,87 +258,89 @@ export class AvailabilityMutationService {
           error: 'Start time and end time are required'
         };
       }
-
-      // Convert times to UTC for storage
-      const startDt = TimeZoneService.parseWithZone(slotData.startTime, timezone);
-      const endDt = TimeZoneService.parseWithZone(slotData.endTime, timezone);
-
-      const eventData = {
-        clinician_id: clinicianId,
-        event_type: 'availability',
-        title: slotData.title || 'Available',
-        is_active: true,
-        timezone: timezone,
-        start_time: TimeZoneService.toUTC(startDt).toISO(),
-        end_time: TimeZoneService.toUTC(endDt).toISO(),
-        is_recurring: slotData.recurring || false,
-      };
       
-      console.log('[AvailabilityMutationService] Creating availability event with data:', eventData);
-      
-      // First step: Create the calendar event
-      const { data: eventResult, error: eventError } = await supabase
-        .from('calendar_events')
-        .insert([eventData])
-        .select('id')
-        .single();
-        
-      if (eventError) {
-        console.error('[AvailabilityMutationService] Error creating calendar event:', eventError);
-        return { 
-          success: false, 
-          error: `Failed to create calendar event: ${eventError.message}` 
+      if (slotData.recurring && !slotData.recurrenceRule) {
+        return {
+          success: false,
+          error: 'Recurrence rule is required for recurring availability'
         };
       }
       
-      const eventId = eventResult.id;
-      console.log('[AvailabilityMutationService] Created calendar event with ID:', eventId);
-      
-      // If recurrence rule is provided, create it and link to the event
-      if (slotData.recurring && slotData.recurrenceRule) {
-        console.log('[AvailabilityMutationService] Creating recurrence rule:', slotData.recurrenceRule);
-        
-        const { error: recurrenceError } = await supabase
-          .from('recurrence_rules')
-          .insert([{ 
-            event_id: eventId,
-            rrule: slotData.recurrenceRule 
-          }]);
+      try {
+        if (slotData.recurring && slotData.recurrenceRule) {
+          // For recurring events, we'll delegate to the createRecurringAvailability method
+          const result = await this.createRecurringAvailability(
+            clinicianId,
+            slotData.startTime,
+            slotData.endTime,
+            timezone,
+            slotData.recurrenceRule
+          );
           
-        if (recurrenceError) {
-          console.error('[AvailabilityMutationService] Error creating recurrence rule:', recurrenceError);
+          if (!result || !result[0]?.id) {
+            return { 
+              success: false, 
+              error: 'Failed to create recurring availability' 
+            };
+          }
           
-          // Try to clean up the calendar event since recurrence rule failed
-          await supabase
+          return { 
+            success: true,
+            id: result[0].id
+          };
+        } else {
+          // For non-recurring events, we handle as before
+          // Convert times to UTC for storage
+          const startDt = TimeZoneService.parseWithZone(slotData.startTime, timezone);
+          const endDt = TimeZoneService.parseWithZone(slotData.endTime, timezone);
+          
+          if (!startDt.isValid || !endDt.isValid) {
+            return {
+              success: false,
+              error: `Invalid datetime: ${!startDt.isValid ? startDt.invalidReason : endDt.invalidReason}`
+            };
+          }
+
+          const eventData = {
+            clinician_id: clinicianId,
+            event_type: 'availability',
+            title: slotData.title || 'Available',
+            is_active: true,
+            timezone: timezone,
+            start_time: TimeZoneService.toUTC(startDt).toISO(),
+            end_time: TimeZoneService.toUTC(endDt).toISO(),
+            is_recurring: false,
+          };
+          
+          console.log('[AvailabilityMutationService] Creating availability event with data:', eventData);
+          
+          // Create the calendar event
+          const { data: eventResult, error: eventError } = await supabase
             .from('calendar_events')
-            .delete()
-            .eq('id', eventId);
+            .insert([eventData])
+            .select('id')
+            .single();
+            
+          if (eventError) {
+            console.error('[AvailabilityMutationService] Error creating calendar event:', eventError);
+            return { 
+              success: false, 
+              error: `Failed to create calendar event: ${eventError.message}` 
+            };
+          }
           
           return { 
-            success: false, 
-            error: `Failed to create recurrence rule: ${recurrenceError.message}` 
+            success: true,
+            id: eventResult.id
           };
         }
-        
-        // Update the calendar event with the recurrence ID
-        const { error: updateError } = await supabase
-          .from('calendar_events')
-          .update({ recurrence_id: eventId })
-          .eq('id', eventId);
-          
-        if (updateError) {
-          console.error('[AvailabilityMutationService] Error updating event with recurrence ID:', updateError);
-          return { 
-            success: false, 
-            error: `Failed to update event with recurrence ID: ${updateError.message}` 
-          };
-        }
+      } catch (processingError) {
+        console.error('[AvailabilityMutationService] Error processing availability slot creation:', processingError);
+        return { 
+          success: false, 
+          error: processingError instanceof Error ? processingError.message : 'Unknown error processing availability' 
+        };
       }
-      
-      return { 
-        success: true,
-        id: eventId
-      };
       
     } catch (error) {
       console.error('[AvailabilityMutationService] Error creating availability slot:', error);
