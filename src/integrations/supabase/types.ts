@@ -118,9 +118,11 @@ export type Database = {
       calendar_events: {
         Row: {
           all_day: boolean | null
+          availability_type: string | null
           clinician_id: string
           created_at: string
           description: string | null
+          display_color: string | null
           end_time: string
           event_type: string
           google_event_id: string | null
@@ -133,9 +135,11 @@ export type Database = {
         }
         Insert: {
           all_day?: boolean | null
+          availability_type?: string | null
           clinician_id: string
           created_at?: string
           description?: string | null
+          display_color?: string | null
           end_time: string
           event_type: string
           google_event_id?: string | null
@@ -148,9 +152,11 @@ export type Database = {
         }
         Update: {
           all_day?: boolean | null
+          availability_type?: string | null
           clinician_id?: string
           created_at?: string
           description?: string | null
+          display_color?: string | null
           end_time?: string
           event_type?: string
           google_event_id?: string | null

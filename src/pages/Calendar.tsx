@@ -20,6 +20,7 @@ import WeeklyAvailabilityDialog from '../components/calendar/WeeklyAvailabilityD
 import GoogleCalendarIntegration from '../components/calendar/GoogleCalendarIntegration';
 import { getWeekdayName } from '@/utils/dateFormatUtils';
 import { DateTime } from 'luxon';
+import SingleAvailabilityDialog from '../components/calendar/SingleAvailabilityDialog';
 
 const CalendarPage: React.FC = () => {
   const navigate = useNavigate();
@@ -56,6 +57,7 @@ const CalendarPage: React.FC = () => {
   const [selectedAvailabilityDate, setSelectedAvailabilityDate] = useState<string | null>(null);
   const [isWeeklyAvailabilityOpen, setIsWeeklyAvailabilityOpen] = useState(false);
   const [showGoogleCalendarSettings, setShowGoogleCalendarSettings] = useState(false);
+  const [isSingleAvailabilityOpen, setIsSingleAvailabilityOpen] = useState(false);
 
   useEffect(() => {
     if (!isUserLoading && !userId) {
@@ -141,7 +143,6 @@ const CalendarPage: React.FC = () => {
   }, [userTimeZone, selectedClinicianId, toast, userId, isUserLoading, navigate]);
 
   useEffect(() => {
-    // Set availability to show by default
     if (!showAvailability) {
       setShowAvailability(true);
     }
@@ -282,7 +283,17 @@ const CalendarPage: React.FC = () => {
                       title="Manage Weekly Availability"
                     >
                       <Clock className="h-4 w-4" />
-                      <span className="hidden md:inline">Schedule Settings</span>
+                      <span className="hidden md:inline">Weekly Schedule</span>
+                    </Button>
+
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setIsSingleAvailabilityOpen(true)} 
+                      className="flex items-center gap-2" 
+                      title="Add Single Day Availability"
+                    >
+                      <CalendarIcon className="h-4 w-4" />
+                      <span className="hidden md:inline">Single Day</span>
                     </Button>
                     
                     <Button 
@@ -298,7 +309,7 @@ const CalendarPage: React.FC = () => {
                     </Button>
                   </div>
                 )}
-
+                
                 <Button onClick={() => setIsDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   New Appointment
@@ -422,6 +433,16 @@ const CalendarPage: React.FC = () => {
             </div>
           )}
         </>
+      )}
+
+      {canManageAvailability && selectedClinicianId && (
+        <SingleAvailabilityDialog
+          isOpen={isSingleAvailabilityOpen}
+          onClose={() => setIsSingleAvailabilityOpen(false)}
+          clinicianId={selectedClinicianId}
+          userTimeZone={userTimeZone}
+          onAvailabilityCreated={handleCalendarRefresh}
+        />
       )}
     </Layout>
   );

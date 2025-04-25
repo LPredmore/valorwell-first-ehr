@@ -1,4 +1,3 @@
-
 import { useEffect, useCallback, useState } from 'react';
 import { CalendarEvent } from '@/types/calendar';
 import { useAvailability } from '@/hooks/useAvailability';
@@ -35,6 +34,7 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
     }
 
     const events: CalendarEvent[] = [];
+    
     // Create now in user timezone to ensure correct day boundaries
     const now = DateTime.now().setZone(userTimeZone);
     // Get start of week in user timezone
@@ -58,6 +58,7 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
       sunday: 7
     };
 
+    // Add recurring events
     Object.entries(weeklyAvailability).forEach(([day, slots]) => {
       const dayNumber = dayToIsoWeekday[day];
       if (!dayNumber) {
@@ -149,6 +150,61 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
           }
         });
       }
+    });
+
+    // Add single occurrence events
+    Object.entries(weeklyAvailability).forEach(([day, slots]) => {
+      slots.forEach(slot => {
+        if (!slot.isRecurring) {
+          try {
+            const [startHour, startMinute] = slot.startTime.split(':').map(Number);
+            const [endHour, endMinute] = slot.endTime.split(':').map(Number);
+            
+            const slotDate = DateTime.fromFormat(slot.date || '', 'yyyy-MM-dd', { zone: userTimeZone });
+            
+            if (!slotDate.isValid) {
+              console.error('[CalendarAvailabilityHandler] Invalid date for single slot:', slot);
+              return;
+            }
+
+            const startDateTime = slotDate.set({
+              hour: startHour,
+              minute: startMinute,
+              second: 0,
+              millisecond: 0
+            });
+
+            const endDateTime = slotDate.set({
+              hour: endHour,
+              minute: endMinute,
+              second: 0,
+              millisecond: 0
+            });
+
+            events.push({
+              id: slot.id,
+              title: 'Available',
+              start: startDateTime.toJSDate(),
+              end: endDateTime.toJSDate(),
+              backgroundColor: '#3b82f6',
+              borderColor: '#2563eb',
+              textColor: '#ffffff',
+              editable: false,
+              extendedProps: {
+                isAvailability: true,
+                isRecurring: false,
+                originalSlotId: slot.id,
+                dayOfWeek: day,
+                eventType: 'availability',
+                timezone: userTimeZone,
+                is_active: true
+              }
+            });
+          } catch (error) {
+            console.error(`[CalendarAvailabilityHandler] Error processing single slot ${slot.id}:`, error);
+          }
+        }
+      });
     });
 
     console.log(`[CalendarAvailabilityHandler] Total events created: ${events.length}`);
