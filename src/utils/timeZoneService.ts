@@ -1,14 +1,8 @@
-
 import { DateTime } from 'luxon';
 import { 
   ensureIANATimeZone as ensureIANATimeZoneUtil, 
   formatTimeZoneDisplay as formatTimeZoneDisplayUtil 
 } from './timeZoneUtils';
-import { 
-  formatDateTime, 
-  toISOWithZone,
-  parseWithZone
-} from './dateFormatUtils';
 
 /**
  * TimeZoneService: A centralized service for handling timezone conversions
@@ -110,126 +104,6 @@ export class TimeZoneService {
   }
   
   /**
-   * Format a datetime with consistent timezone handling
-   */
-  static formatDateTime(
-    dateTime: DateTime, 
-    format: string = 'yyyy-MM-dd HH:mm:ss',
-    timeZone?: string
-  ): string {
-    if (!dateTime.isValid) {
-      console.error('Invalid DateTime object:', dateTime.invalidReason);
-      return 'Invalid date';
-    }
-    
-    if (timeZone) {
-      const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
-      return dateTime.setZone(safeTimeZone).toFormat(format);
-    }
-    
-    return dateTime.toFormat(format);
-  }
-  
-  /**
-   * Create a DateTime object with consistent timezone handling
-   */
-  static createDateTime(
-    date: string | Date,
-    time: string,
-    timeZone: string
-  ): DateTime {
-    const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
-    const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
-    const [hours, minutes] = time.split(':').map(Number);
-    
-    const dt = DateTime.fromObject(
-      {
-        year: parseInt(dateStr.split('-')[0]),
-        month: parseInt(dateStr.split('-')[1]),
-        day: parseInt(dateStr.split('-')[2]),
-        hour: hours,
-        minute: minutes,
-      },
-      { zone: safeTimeZone }
-    );
-    
-    if (!dt.isValid) {
-      console.error('Failed to create valid DateTime:', { date, time, timeZone, error: dt.invalidReason });
-      throw new Error(`Invalid date/time combination: ${dt.invalidReason}`);
-    }
-    
-    return dt;
-  }
-  
-  /**
-   * Convert UTC time to local time
-   */
-  static fromUTC(utcDateTime: string | Date, timeZone: string): DateTime {
-    const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
-    
-    const dt = typeof utcDateTime === 'string'
-      ? DateTime.fromISO(utcDateTime, { zone: 'UTC' })
-      : DateTime.fromJSDate(utcDateTime, { zone: 'UTC' });
-      
-    if (!dt.isValid) {
-      console.error('Invalid UTC datetime:', { utcDateTime, error: dt.invalidReason });
-      throw new Error(`Invalid UTC datetime: ${dt.invalidReason}`);
-    }
-    
-    return dt.setZone(safeTimeZone);
-  }
-  
-  /**
-   * Convert local time to UTC
-   */
-  static toUTC(localDateTime: string | Date, fromTimeZone: string): DateTime {
-    const safeTimeZone = TimeZoneService.ensureIANATimeZone(fromTimeZone);
-    
-    const dt = typeof localDateTime === 'string'
-      ? DateTime.fromISO(localDateTime, { zone: safeTimeZone })
-      : DateTime.fromJSDate(localDateTime, { zone: safeTimeZone });
-      
-    if (!dt.isValid) {
-      console.error('Invalid local datetime:', { localDateTime, fromTimeZone, error: dt.invalidReason });
-      throw new Error(`Invalid local datetime: ${dt.invalidReason}`);
-    }
-    
-    return dt.setZone('UTC');
-  }
-  
-  /**
-   * Format time only (no date component) with timezone consideration
-   */
-  static formatTime(
-    time: string,
-    timeZone: string,
-    format: string = 'h:mm a'
-  ): string {
-    try {
-      const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
-      
-      // Handle HH:MM:SS format
-      if (time.includes(':')) {
-        const [hours, minutes] = time.split(':').map(Number);
-        const today = DateTime.now().setZone(safeTimeZone);
-        const dt = today.set({ hour: hours, minute: minutes });
-        
-        if (!dt.isValid) {
-          console.error('Invalid time format:', { time, error: dt.invalidReason });
-          return time;
-        }
-        
-        return dt.toFormat(format);
-      }
-      
-      return time;
-    } catch (error) {
-      console.error('Error formatting time:', error);
-      return time;
-    }
-  }
-  
-  /**
    * Convert calendar event to user's timezone
    * Properly handles FullCalendar event objects
    */
@@ -240,6 +114,11 @@ export class TimeZoneService {
     
     try {
       const safeTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
+      
+      // If the event already has the correct timezone, return it unchanged
+      if (event._userTimeZone === safeTimeZone) {
+        return event;
+      }
       
       let startDt = null;
       let endDt = null;
@@ -278,8 +157,7 @@ export class TimeZoneService {
   }
   
   /**
-   * Get display name for a day of the week from a date
-   * Consistent with the getWeekdayName function
+   * Get weekday name from a date
    */
   static getWeekdayName(date: string | Date | DateTime): string {
     try {
@@ -306,22 +184,7 @@ export class TimeZoneService {
   }
   
   /**
-   * Parse an ISO string with timezone awareness
-   */
-  static parseWithZone(dateString: string, timeZone: string): DateTime {
-    const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
-    return DateTime.fromISO(dateString, { zone: safeTimeZone });
-  }
-  
-  /**
-   * Convert a DateTime to ISO string with timezone
-   */
-  static toISOWithZone(dateTime: DateTime): string {
-    return dateTime.toISO();
-  }
-  
-  /**
-   * Format a date in a consistent way
+   * Format a date
    */
   static formatDate(
     date: string | Date | DateTime,
@@ -354,5 +217,227 @@ export class TimeZoneService {
       console.error('Error in formatDate:', error, { date, format, timeZone });
       return 'Error formatting date';
     }
+  }
+  
+  /**
+   * Format a date and time
+   */
+  static formatDateTime(
+    dateTime: string | Date | DateTime,
+    format: string = 'yyyy-MM-dd HH:mm',
+    timeZone?: string
+  ): string {
+    try {
+      let dt: DateTime;
+      
+      if (dateTime instanceof DateTime) {
+        dt = dateTime;
+      } else if (dateTime instanceof Date) {
+        dt = DateTime.fromJSDate(dateTime);
+      } else {
+        dt = DateTime.fromISO(dateTime);
+      }
+      
+      if (!dt.isValid) {
+        console.error('Invalid datetime for formatDateTime:', { dateTime, error: dt.invalidReason });
+        return 'Invalid datetime';
+      }
+      
+      if (timeZone) {
+        const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
+        dt = dt.setZone(safeTimeZone);
+      }
+      
+      return dt.toFormat(format);
+    } catch (error) {
+      console.error('Error in formatDateTime:', error, { dateTime, format, timeZone });
+      return 'Error formatting datetime';
+    }
+  }
+  
+  /**
+   * Format just the time portion
+   */
+  static formatTime(
+    time: string,
+    format: string = 'h:mm a',
+    timeZone?: string
+  ): string {
+    try {
+      let dt: DateTime;
+      
+      if (time.includes('T') || time.includes('Z')) {
+        dt = DateTime.fromISO(time);
+      } else if (time.includes(':')) {
+        const [hours, minutes] = time.split(':').map(Number);
+        dt = DateTime.now().set({ hour: hours, minute: minutes });
+      } else {
+        throw new Error(`Unsupported time format: ${time}`);
+      }
+      
+      if (!dt.isValid) {
+        console.error('Invalid time format:', { time, error: dt.invalidReason });
+        return time;
+      }
+      
+      if (timeZone) {
+        const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
+        dt = dt.setZone(safeTimeZone);
+      }
+      
+      return dt.toFormat(format);
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return time;
+    }
+  }
+  
+  /**
+   * Format in a specific timezone
+   */
+  static formatInTimezone(
+    date: string | Date | DateTime,
+    format: string,
+    timeZone: string
+  ): string {
+    return TimeZoneService.formatDateTime(date, format, timeZone);
+  }
+  
+  /**
+   * Get the month name
+   */
+  static getMonthName(date: string | Date | DateTime): string {
+    try {
+      let dt: DateTime;
+      
+      if (date instanceof DateTime) {
+        dt = date;
+      } else if (date instanceof Date) {
+        dt = DateTime.fromJSDate(date);
+      } else {
+        dt = DateTime.fromISO(date);
+      }
+      
+      if (!dt.isValid) {
+        console.error('Invalid date for getMonthName:', { date, error: dt.invalidReason });
+        return 'Invalid date';
+      }
+      
+      return dt.monthLong;
+    } catch (error) {
+      console.error('Error in getMonthName:', error, { date });
+      return 'Invalid date';
+    }
+  }
+  
+  /**
+   * Get the current date/time in the specified timezone
+   */
+  static getCurrentDateTime(timeZone: string): DateTime {
+    const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
+    return DateTime.now().setZone(safeTimeZone);
+  }
+  
+  /**
+   * Check if two dates are the same day
+   */
+  static isSameDay(date1: string | Date | DateTime, date2: string | Date | DateTime): boolean {
+    try {
+      const dt1 = date1 instanceof DateTime ? date1 : 
+                  date1 instanceof Date ? DateTime.fromJSDate(date1) : 
+                  DateTime.fromISO(date1);
+                  
+      const dt2 = date2 instanceof DateTime ? date2 : 
+                  date2 instanceof Date ? DateTime.fromJSDate(date2) : 
+                  DateTime.fromISO(date2);
+      
+      if (!dt1.isValid || !dt2.isValid) {
+        console.error('Invalid date for isSameDay check');
+        return false;
+      }
+      
+      return dt1.hasSame(dt2, 'day');
+    } catch (error) {
+      console.error('Error in isSameDay:', error, { date1, date2 });
+      return false;
+    }
+  }
+  
+  /**
+   * Add a duration to a date
+   */
+  static addDuration(
+    date: string | Date | DateTime,
+    amount: number,
+    unit: 'years' | 'months' | 'weeks' | 'days' | 'hours' | 'minutes' | 'seconds',
+    timeZone?: string
+  ): DateTime {
+    try {
+      let dt = date instanceof DateTime ? date : 
+               date instanceof Date ? DateTime.fromJSDate(date) : 
+               DateTime.fromISO(date);
+      
+      if (!dt.isValid) {
+        throw new Error('Invalid date for adding duration');
+      }
+      
+      if (timeZone) {
+        const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
+        dt = dt.setZone(safeTimeZone);
+      }
+      
+      return dt.plus({ [unit]: amount });
+    } catch (error) {
+      console.error('Error adding duration to date:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Convert Date to ISO format with timezone
+   */
+  static toISOWithZone(
+    date: Date | string | DateTime,
+    timezone?: string
+  ): string {
+    try {
+      let dt: DateTime;
+      
+      if (date instanceof DateTime) {
+        dt = date;
+      } else if (date instanceof Date) {
+        dt = DateTime.fromJSDate(date);
+      } else {
+        dt = DateTime.fromISO(date);
+      }
+      
+      if (timezone) {
+        const safeTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
+        dt = dt.setZone(safeTimeZone);
+      }
+      
+      return dt.toISO();
+    } catch (error) {
+      console.error('Error converting to ISO with zone:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Parse a date string to a DateTime object with timezone
+   */
+  static parseWithZone(
+    dateString: string,
+    timezone: string
+  ): DateTime {
+    const safeTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
+    const dt = DateTime.fromISO(dateString, { zone: safeTimeZone });
+    
+    if (!dt.isValid) {
+      console.error('Invalid date string:', { dateString, error: dt.invalidReason });
+      throw new Error(`Invalid date string: ${dateString}`);
+    }
+    
+    return dt;
   }
 }

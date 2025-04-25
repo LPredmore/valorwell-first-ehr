@@ -16,7 +16,7 @@ export {
 export * from './validation';
 export * from './conversion';
 
-// Export the standardized utilities from dateFormatUtils
+// Export the standardized utilities from TimeZoneService
 export {
   getWeekdayName,
   formatDate,
@@ -29,4 +29,4 @@ export {
   addDuration,
   toISOWithZone,
   parseWithZone
-} from '@/utils/dateFormatUtils';
+} from '@/utils/timeZoneService';

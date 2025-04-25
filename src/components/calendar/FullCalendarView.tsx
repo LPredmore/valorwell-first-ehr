@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -11,7 +12,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import CalendarAvailabilityHandler from './CalendarAvailabilityHandler';
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { formatDateTime } from '@/utils/dateFormatUtils';
 
 /**
  * A React component that renders a FullCalendar instance.
