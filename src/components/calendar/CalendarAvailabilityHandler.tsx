@@ -56,8 +56,6 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
       // Get the date for this day in the current week
       const dayDate = currentWeekStart.plus({ days: dayNumber - 1 });
       
-      console.log(`[CalendarAvailabilityHandler] Processing ${slots?.length || 0} slots for ${day}`);
-      
       // Process each slot
       slots
         .filter(slot => !slot.isAppointment) // Only include availability slots, not appointments
@@ -70,40 +68,29 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
           let startDateTime = dayDate.set({ hour: startHour, minute: startMinute });
           let endDateTime = dayDate.set({ hour: endHour, minute: endMinute });
           
-          // Add events for current week and next several weeks for better visibility
-          for (let weekOffset = 0; weekOffset < 12; weekOffset++) {
-            const weekStart = startDateTime.plus({ weeks: weekOffset });
-            const weekEnd = endDateTime.plus({ weeks: weekOffset });
-            
-            console.log(`[CalendarAvailabilityHandler] Creating availability event:`, {
-              id: `${slot.id}-${weekOffset}`,
-              title: 'Available',
-              start: weekStart.toJSDate(),
-              end: weekEnd.toJSDate(),
-              day: day,
-              isRecurring: !!slot.isRecurring
-            });
-            
-            events.push({
-              id: `${slot.id}-${weekOffset}`,
-              title: 'Available',
-              start: weekStart.toJSDate(),
-              end: weekEnd.toJSDate(),
-              backgroundColor: '#22c55e',
-              borderColor: '#16a34a',
-              textColor: '#ffffff',
-              extendedProps: {
-                isAvailability: true,
-                isRecurring: !!slot.isRecurring,
-                dayOfWeek: day,
-                eventType: 'availability'
-              }
-            });
-          }
+          // Convert to UTC for FullCalendar
+          const start = startDateTime.toJSDate();
+          const end = endDateTime.toJSDate();
+          
+          // Create the event
+          events.push({
+            id: slot.id,
+            title: 'Available',
+            start,
+            end,
+            backgroundColor: '#22c55e',
+            borderColor: '#16a34a',
+            textColor: '#ffffff',
+            extendedProps: {
+              isAvailability: true,
+              isRecurring: !!slot.isRecurring,
+              dayOfWeek: day,
+              eventType: 'availability'
+            }
+          });
         });
     });
 
-    console.log(`[CalendarAvailabilityHandler] Generated ${events.length} availability events`);
     return events;
   }, [weeklyAvailability, showAvailability]);
 
@@ -111,15 +98,16 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
   useEffect(() => {
     if (!isLoading && clinicianId) {
       const availabilityEvents = convertAvailabilityToEvents();
-      console.log('[CalendarAvailabilityHandler] Converted availability to events:', availabilityEvents.length);
-      onEventsChange(availabilityEvents);
+      if (availabilityEvents.length > 0) {
+        console.log('[CalendarAvailabilityHandler] Converted availability to events:', availabilityEvents.length);
+        onEventsChange(availabilityEvents);
+      }
     }
   }, [clinicianId, weeklyAvailability, isLoading, onEventsChange, convertAvailabilityToEvents]);
 
   // Refresh availability when component mounts or clinician changes
   useEffect(() => {
     if (clinicianId && showAvailability) {
-      console.log('[CalendarAvailabilityHandler] Refreshing availability');
       refreshAvailability();
     }
   }, [clinicianId, refreshAvailability, showAvailability]);
