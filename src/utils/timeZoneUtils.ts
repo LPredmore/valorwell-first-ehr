@@ -1,5 +1,5 @@
 
-import { DateTime } from 'luxon';
+import { DateTime, Duration } from 'luxon';
 
 /**
  * Map of common timezone display names to IANA format
@@ -16,12 +16,9 @@ const TIME_ZONE_MAP: Record<string, string> = {
 
 /**
  * Ensure timezone is in IANA format
- * @param timeZone Timezone string that might be in various formats
- * @returns IANA format timezone string
  */
 export const ensureIANATimeZone = (timeZone: string): string => {
   if (!timeZone) {
-    console.log('No timezone provided, using system default');
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
   }
   
@@ -33,19 +30,11 @@ export const ensureIANATimeZone = (timeZone: string): string => {
     return TIME_ZONE_MAP[timeZone];
   }
   
-  try {
-    console.log(`Unable to map timezone "${timeZone}" to IANA format, using system default`);
-    return Intl.DateTimeFormat().resolvedOptions().timeZone;
-  } catch (error) {
-    console.error('Error getting system timezone, using America/Chicago as fallback:', error);
-    return 'America/Chicago';
-  }
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
 };
 
 /**
  * Format timezone for display
- * @param timezone IANA timezone string
- * @returns User-friendly display name
  */
 export const formatTimeZoneDisplay = (timezone: string): string => {
   const ianaZone = ensureIANATimeZone(timezone);
@@ -60,7 +49,6 @@ export const formatTimeZoneDisplay = (timezone: string): string => {
       return location.replace(/_/g, ' ');
     }
     
-    // Get timezone abbreviation
     const now = DateTime.now().setZone(ianaZone);
     return `${now.offsetNameShort}`;
   } catch (error) {
@@ -70,31 +58,150 @@ export const formatTimeZoneDisplay = (timezone: string): string => {
 };
 
 /**
- * Check if a timezone string is valid
- * @param timezone Timezone string to check
- * @returns Boolean indicating if timezone is valid
+ * Format time in 12-hour format
  */
-export const isValidTimeZone = (timezone: string): boolean => {
+export const formatTime12Hour = (time: string): string => {
   try {
-    Intl.DateTimeFormat(undefined, { timeZone: timezone });
-    return true;
-  } catch (e) {
-    return false;
+    if (!time) return '';
+    
+    const dt = DateTime.fromISO(`2000-01-01T${time}`);
+    return dt.toFormat('h:mm a');
+  } catch (error) {
+    console.error('Error formatting 12-hour time:', error);
+    return time;
   }
 };
 
 /**
- * Get current offset for a timezone (in hours)
- * @param timezone IANA timezone string
- * @returns Offset in hours (e.g., -5, 2)
+ * Format time in user's timezone
  */
-export const getTimezoneOffset = (timezone: string): number => {
+export const formatTimeInUserTimeZone = (
+  time: string,
+  timezone: string,
+  format: string = 'h:mm a'
+): string => {
   try {
     const ianaZone = ensureIANATimeZone(timezone);
-    const now = DateTime.now().setZone(ianaZone);
-    return now.offset / 60;
+    const dt = DateTime.fromISO(`2000-01-01T${time}`).setZone(ianaZone);
+    return dt.toFormat(format);
   } catch (error) {
-    console.error('Error getting timezone offset:', error);
-    return 0;
+    console.error('Error formatting user timezone:', error);
+    return formatTime12Hour(time);
   }
 };
+
+/**
+ * Convert date and time to UTC timestamp
+ */
+export const toUTCTimestamp = (
+  date: string | Date,
+  time: string,
+  timezone: string
+): string => {
+  const ianaZone = ensureIANATimeZone(timezone);
+  const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
+  
+  const dt = DateTime.fromISO(`${dateStr}T${time}`, { zone: ianaZone });
+  return dt.toUTC().toISO();
+};
+
+/**
+ * Convert UTC timestamp to local date/time
+ */
+export const fromUTCTimestamp = (
+  timestamp: string,
+  timezone: string
+): Date => {
+  const ianaZone = ensureIANATimeZone(timezone);
+  return DateTime.fromISO(timestamp).setZone(ianaZone).toJSDate();
+};
+
+/**
+ * Get user's timezone
+ */
+export const getUserTimeZone = (): string => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch (error) {
+    console.error('Error getting user timezone:', error);
+    return 'America/Chicago';
+  }
+};
+
+/**
+ * Format UTC time for user display
+ */
+export const formatUTCTimeForUser = (
+  timestamp: string,
+  timezone: string,
+  format: string = 'h:mm a'
+): string => {
+  try {
+    const ianaZone = ensureIANATimeZone(timezone);
+    return DateTime.fromISO(timestamp).setZone(ianaZone).toFormat(format);
+  } catch (error) {
+    console.error('Error formatting UTC time for user:', error);
+    return '';
+  }
+};
+
+/**
+ * Convert local time to UTC
+ */
+export const toUTC = (
+  dateTime: string | Date,
+  timezone: string
+): string => {
+  const ianaZone = ensureIANATimeZone(timezone);
+  const dt = typeof dateTime === 'string' 
+    ? DateTime.fromISO(dateTime, { zone: ianaZone })
+    : DateTime.fromJSDate(dateTime, { zone: ianaZone });
+  return dt.toUTC().toISO();
+};
+
+/**
+ * Convert UTC to local time
+ */
+export const fromUTC = (
+  utcDateTime: string,
+  timezone: string
+): string => {
+  const ianaZone = ensureIANATimeZone(timezone);
+  return DateTime.fromISO(utcDateTime).setZone(ianaZone).toISO();
+};
+
+/**
+ * Format date to time in 12-hour format
+ */
+export const formatDateToTime12Hour = (date: Date): string => {
+  return DateTime.fromJSDate(date).toFormat('h:mm a');
+};
+
+/**
+ * Format with timezone
+ */
+export const formatWithTimeZone = (
+  date: string | Date,
+  timezone: string,
+  format: string = 'yyyy-MM-dd HH:mm:ss'
+): string => {
+  const ianaZone = ensureIANATimeZone(timezone);
+  const dt = typeof date === 'string'
+    ? DateTime.fromISO(date, { zone: ianaZone })
+    : DateTime.fromJSDate(date, { zone: ianaZone });
+  return dt.toFormat(format);
+};
+
+/**
+ * Create ISO datetime string
+ */
+export const createISODateTimeString = (
+  date: string | Date,
+  time: string,
+  timezone: string
+): string => {
+  const ianaZone = ensureIANATimeZone(timezone);
+  const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
+  return DateTime.fromISO(`${dateStr}T${time}`, { zone: ianaZone }).toISO();
+};
+
