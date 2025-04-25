@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { AvailabilitySettings, AvailabilityResponse } from '@/types/availability';

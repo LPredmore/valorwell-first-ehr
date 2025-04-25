@@ -1,3 +1,4 @@
+
 import { DateTime } from 'luxon';
 import { 
   ensureIANATimeZone as ensureIANATimeZoneUtil, 
@@ -51,6 +52,46 @@ export class TimeZoneService {
     }
     
     return dt.setZone(safeToTimeZone);
+  }
+  
+  /**
+   * Convert from UTC string to a specific timezone
+   */
+  static fromUTC(utcString: string, timezone: string): DateTime {
+    const safeTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
+    return DateTime.fromISO(utcString, { zone: 'UTC' }).setZone(safeTimeZone);
+  }
+  
+  /**
+   * Convert to UTC from a specific timezone
+   */
+  static toUTC(dateTimeString: string, fromTimezone: string): DateTime {
+    const safeTimeZone = TimeZoneService.ensureIANATimeZone(fromTimezone);
+    return DateTime.fromISO(dateTimeString, { zone: safeTimeZone }).setZone('UTC');
+  }
+  
+  /**
+   * Create DateTime from date and time strings in specific timezone
+   */
+  static createDateTime(
+    date: string | Date,
+    time: string,
+    timezone: string
+  ): DateTime {
+    const ianaZone = TimeZoneService.ensureIANATimeZone(timezone);
+    const dateStr = typeof date === "string" ? date : date.toISOString().split("T")[0];
+    const [hours, minutes] = time.split(":").map(Number);
+    
+    return DateTime.fromObject(
+      { 
+        year: parseInt(dateStr.split("-")[0]), 
+        month: parseInt(dateStr.split("-")[1]), 
+        day: parseInt(dateStr.split("-")[2]),
+        hour: hours,
+        minute: minutes,
+      },
+      { zone: ianaZone }
+    );
   }
   
   /**
