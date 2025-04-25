@@ -13,6 +13,14 @@ export interface FullCalendarEventContent extends Omit<EventContentArg, 'event' 
       eventType?: string;
       timezone?: string;
       is_active?: boolean;
+      googleEventId?: string;
+      week?: number;
+      recurrenceId?: string;
+      sourceTable?: string;
+      status?: string;
+      clientId?: string;
+      clinicianId?: string;
+      appointment?: any;
     };
     title: string;
   };
@@ -20,4 +28,32 @@ export interface FullCalendarEventContent extends Omit<EventContentArg, 'event' 
   view: {
     type: string;
   };
+}
+
+// Add additional interfaces for Google Calendar integration
+export interface GoogleCalendarEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  start: {
+    dateTime: string;
+    timeZone?: string;
+  };
+  end: {
+    dateTime: string;
+    timeZone?: string;
+  };
+  recurrence?: string[];
+  status: string;
+  extendedProperties?: {
+    private?: Record<string, string>;
+  };
+}
+
+export interface GoogleCalendarSyncResult {
+  added: number;
+  updated: number;
+  deleted: number;
+  errors: number;
+  events: GoogleCalendarEvent[];
 }

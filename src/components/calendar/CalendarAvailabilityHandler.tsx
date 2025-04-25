@@ -143,7 +143,7 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
                 eventType: 'availability',
                 week,
                 timezone: userTimeZone,
-                is_active: true
+                isActive: true
               }
             });
           } catch (error) {
@@ -199,7 +199,7 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
                 dayOfWeek: day,
                 eventType: 'availability',
                 timezone: userTimeZone,
-                is_active: true
+                isActive: true
               }
             });
           } catch (error) {

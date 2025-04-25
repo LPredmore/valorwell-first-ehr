@@ -1,12 +1,13 @@
 
-import React, { ErrorInfo, Component, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
-  fallbackUI?: ReactNode;
   onRetry?: () => void;
+  fallbackUI?: ReactNode;
 }
 
 interface State {
@@ -17,42 +18,48 @@ interface State {
 class CalendarErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { 
+    this.state = {
       hasError: false,
       error: null
     };
   }
 
   static getDerivedStateFromError(error: Error): State {
+    // Update state so the next render will show the fallback UI.
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("Calendar error boundary caught an error:", error, errorInfo);
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    // You can also log the error to an error reporting service
+    console.error('[CalendarErrorBoundary] Calendar component error:', error, errorInfo);
   }
 
-  handleRetry = () => {
+  handleRetry = (): void => {
     this.setState({ hasError: false, error: null });
     if (this.props.onRetry) {
       this.props.onRetry();
     }
   };
 
-  render() {
+  render(): ReactNode {
     if (this.state.hasError) {
       if (this.props.fallbackUI) {
         return this.props.fallbackUI;
       }
 
       return (
-        <div className="p-8 text-center border rounded-lg bg-red-50 border-red-200">
-          <AlertTriangle className="h-12 w-12 mx-auto text-red-500 mb-4" />
-          <h3 className="text-xl font-semibold text-red-700 mb-2">Calendar Error</h3>
-          <p className="text-red-600 mb-4">
-            {this.state.error?.message || "Something went wrong with the calendar."}
-          </p>
-          <Button onClick={this.handleRetry}>Retry</Button>
-        </div>
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Calendar Error</AlertTitle>
+          <AlertDescription className="space-y-4">
+            <p>An error occurred while rendering the calendar.</p>
+            <p className="text-xs text-gray-500">{this.state.error?.message}</p>
+            <Button onClick={this.handleRetry} variant="outline" size="sm" className="mt-2">
+              <RefreshCcw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       );
     }
 

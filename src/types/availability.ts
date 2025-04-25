@@ -1,7 +1,7 @@
-
-import { WeekdayNumbers } from './calendar';
+import { CalendarViewType } from './calendar';
 
 export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+export type WeekdayNumber = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface AvailabilitySlot {
   id: string; // Unique identifier for the slot
@@ -12,6 +12,7 @@ export interface AvailabilitySlot {
   isAppointment?: boolean;
   clientName?: string;
   appointmentStatus?: string;
+  date?: string;
 }
 
 export interface WeeklyAvailability {

@@ -3,6 +3,7 @@ import { EventApi, ViewApi } from '@fullcalendar/core';
 
 export type CalendarViewType = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay' | string;
 export type CalendarEventType = 'appointment' | 'availability' | 'time_off' | 'general' | string;
+export type WeekdayNumbers = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface CalendarEvent {
   id?: string;
@@ -32,6 +33,12 @@ export interface CalendarEvent {
     status?: string;
     dayOfWeek?: string;
     isActive?: boolean;
+    // Add properties that were causing build errors
+    originalSlotId?: string;
+    googleEventId?: string;
+    week?: number;
+    timezone?: string;
+    appointment?: any;
   };
 }
 
