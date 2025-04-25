@@ -6,8 +6,8 @@ import { CalendarEvent } from '@/types/calendar';
 import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timeZoneService';
 
-// Import WeekdayNumbers if needed
-import { WeekdayNumbers } from '@fullcalendar/core';
+// Define WeekdayNumber type locally instead of importing from @fullcalendar/core
+type WeekdayNumber = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 interface CalendarAvailabilityHandlerProps {
   clinicianId: string;
@@ -35,8 +35,8 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
       const events: CalendarEvent[] = [];
       const now = DateTime.now().setZone(validTimeZone).startOf('day');
       
-      // Corrected weekday mapping using WeekdayNumbers type
-      const weekdayMap: { [key: string]: WeekdayNumbers } = {
+      // Define weekday mapping with our local WeekdayNumber type
+      const weekdayMap: { [key: string]: WeekdayNumber } = {
         monday: 1,
         tuesday: 2,
         wednesday: 3,
@@ -94,7 +94,7 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
                     extendedProps: {
                       isAvailability: true,
                       isRecurring: slot.isRecurring,
-                      // Use a property that exists in the type definition
+                      // Use sourceTable which exists in the type definition
                       sourceTable: slot.id
                     },
                     classNames: ['availability-event'],

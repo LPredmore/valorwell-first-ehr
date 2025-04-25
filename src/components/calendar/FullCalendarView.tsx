@@ -145,7 +145,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   return (
     <div className="fullcalendar-container">
       {availabilityError && (
-        <Alert variant="destructive" className="mb-4">
+        <Alert variant="warning" className="mb-4">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             Some availability slots couldn't be loaded. Appointments are still visible.
