@@ -1,6 +1,6 @@
 
 import { DateTime } from 'luxon';
-import { ensureIANATimeZone as ensureIANATimeZoneUtil } from './timeZoneUtils';
+import { ensureIANATimeZone as ensureIANATimeZoneUtil, formatTimeZoneDisplay as formatTimeZoneDisplayUtil } from './timeZoneUtils';
 
 /**
  * TimeZoneService: A centralized service for handling timezone conversions
@@ -19,25 +19,7 @@ export class TimeZoneService {
    * Format a timezone for display
    */
   static formatTimeZoneDisplay(timezone: string): string {
-    try {
-      if (!timezone) return '';
-      
-      // If it's a display name already, just return it without the parentheses part
-      if (timezone.includes('(') && timezone.includes(')')) {
-        return timezone.split('(')[0].trim();
-      }
-      
-      // If it's an IANA identifier, extract the location part (after the /)
-      if (timezone.includes('/')) {
-        const location = timezone.split('/').pop() || timezone;
-        return location.replace(/_/g, ' ');
-      }
-      
-      return timezone;
-    } catch (error) {
-      console.error('[TimeZoneService] Error formatting time zone display:', error, timezone);
-      return timezone || '';
-    }
+    return formatTimeZoneDisplayUtil(timezone);
   }
   
   /**

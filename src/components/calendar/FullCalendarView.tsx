@@ -50,25 +50,49 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
       allEvents.push(...availabilityEvents);
     }
     
+    console.log('[FullCalendarView] Combined events:', { 
+      appointments: appointmentEvents?.length || 0, 
+      availability: availabilityEvents.length,
+      total: allEvents.length 
+    });
+    
     setCombinedEvents(allEvents);
   }, [appointmentEvents, availabilityEvents, showAvailability]);
 
   const handleEventClick = useCallback((info: any) => {
+    console.log('[FullCalendarView] Event clicked:', info.event);
+    
     // For availability slots, use the specific handler
     if (info.event.extendedProps?.isAvailability && onAvailabilityClick) {
+      console.log('[FullCalendarView] Handling availability click');
       onAvailabilityClick(info.event);
       return;
     }
     
     // For other events, use the regular handler
     if (onEventClick) {
+      console.log('[FullCalendarView] Handling regular event click');
       onEventClick(info);
     }
   }, [onEventClick, onAvailabilityClick]);
 
   const handleAvailabilityEventsChange = useCallback((events: CalendarEvent[]) => {
+    console.log(`[FullCalendarView] Received ${events.length} availability events`);
     setAvailabilityEvents(events);
   }, []);
+
+  // Add debug logging to track component lifecycle
+  useEffect(() => {
+    console.log('[FullCalendarView] Component mounted/updated with props:', { 
+      clinicianId, 
+      userTimeZone: validTimeZone,
+      showAvailability
+    });
+    
+    return () => {
+      console.log('[FullCalendarView] Component will unmount');
+    };
+  }, [clinicianId, validTimeZone, showAvailability]);
 
   if (isLoading) {
     return (
@@ -90,6 +114,8 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     );
   }
 
+  const weeksToShow = currentView === 'dayGridMonth' ? 12 : 8;
+
   return (
     <div className="fullcalendar-container">
       {showAvailability && clinicianId && (
@@ -98,6 +124,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
           userTimeZone={validTimeZone}
           onEventsChange={handleAvailabilityEventsChange}
           showAvailability={showAvailability}
+          weeksToShow={weeksToShow}
         />
       )}
       
@@ -130,7 +157,10 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
           minute: '2-digit',
           meridiem: 'short'
         }}
-        viewDidMount={(arg) => setCurrentView(arg.view.type as CalendarViewType)}
+        viewDidMount={(arg) => {
+          console.log(`[FullCalendarView] View changed to: ${arg.view.type}`);
+          setCurrentView(arg.view.type as CalendarViewType);
+        }}
       />
     </div>
   );

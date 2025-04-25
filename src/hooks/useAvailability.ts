@@ -25,7 +25,10 @@ export function useAvailability(clinicianId: string | null) {
       setIsLoadingAvailability(true);
       setError(null);
       
+      console.log(`[useAvailability] Fetching weekly availability for clinician: ${clinicianId}`);
       const availability = await AvailabilityQueryService.getWeeklyAvailability(clinicianId);
+      console.log('[useAvailability] Received weekly availability:', availability);
+      
       setWeeklyAvailability(availability);
       
     } catch (err) {
@@ -49,7 +52,10 @@ export function useAvailability(clinicianId: string | null) {
       setIsLoadingSettings(true);
       setError(null);
       
+      console.log(`[useAvailability] Fetching availability settings for clinician: ${clinicianId}`);
       const settingsData = await AvailabilityQueryService.getSettings(clinicianId);
+      console.log('[useAvailability] Received settings:', settingsData);
+      
       setSettings(settingsData);
       
     } catch (err) {
@@ -74,6 +80,7 @@ export function useAvailability(clinicianId: string | null) {
         setIsLoadingSettings(true);
         setError(null);
         
+        console.log(`[useAvailability] Updating availability settings:`, updatedSettings);
         const result = await AvailabilityMutationService.updateSettings(clinicianId, updatedSettings);
         
         if (result) {
@@ -115,6 +122,7 @@ export function useAvailability(clinicianId: string | null) {
       if (!clinicianId) return false;
       
       try {
+        console.log(`[useAvailability] Creating availability slot:`, { dayOfWeek, startTime, endTime, isRecurring });
         const result = await AvailabilityMutationService.createAvailabilitySlot(clinicianId, {
           startTime,
           endTime,
@@ -161,6 +169,7 @@ export function useAvailability(clinicianId: string | null) {
       if (!clinicianId) return false;
       
       try {
+        console.log(`[useAvailability] Updating availability slot:`, { slotId, updates, updateRecurrence });
         const result = await AvailabilityMutationService.updateAvailabilitySlot(
           slotId,
           updates,
@@ -201,6 +210,7 @@ export function useAvailability(clinicianId: string | null) {
       if (!clinicianId) return false;
       
       try {
+        console.log(`[useAvailability] Deleting availability slot:`, { slotId, deleteRecurrence });
         const result = await AvailabilityMutationService.deleteAvailabilitySlot(
           slotId,
           deleteRecurrence
@@ -237,6 +247,7 @@ export function useAvailability(clinicianId: string | null) {
   // Initialize the data
   useEffect(() => {
     if (clinicianId) {
+      console.log(`[useAvailability] Initializing with clinicianId: ${clinicianId}`);
       fetchWeeklyAvailability();
       fetchSettings();
     }

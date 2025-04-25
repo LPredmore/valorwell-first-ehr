@@ -367,6 +367,12 @@ export const formatWithTimeZone = (
 };
 
 /**
+ * Format a datetime with the timezone display
+ * Alias for backward compatibility with old code
+ */
+export const formatDateWithTimeZone = formatWithTimeZone;
+
+/**
  * Determine if a time is ambiguous due to DST transitions
  * Useful for checking times around DST transitions
  */
