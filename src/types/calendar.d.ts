@@ -1,4 +1,3 @@
-
 // Types for calendar functionality
 
 import { EventInput } from '@fullcalendar/core';
@@ -39,9 +38,12 @@ export interface CalendarEvent extends EventInput {
     isException?: boolean;
     googleEventId?: string;
     description?: string;
-    isAvailability?: boolean; // Added this property
-    isRecurring?: boolean; // Added this property
-    dayOfWeek?: string; // Added this property
+    isAvailability?: boolean;
+    isRecurring?: boolean;
+    dayOfWeek?: string;
+    originalSlotId?: string;
+    eventType?: 'availability';
+    week?: number;
     // Add is_active for availability (not needed for appointments, but type-safe)
     is_active?: boolean;
   };

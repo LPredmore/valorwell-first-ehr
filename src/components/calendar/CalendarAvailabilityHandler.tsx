@@ -10,19 +10,15 @@ interface CalendarAvailabilityHandlerProps {
   userTimeZone: string;
   onEventsChange: (events: CalendarEvent[]) => void;
   showAvailability: boolean;
-  weeksToShow?: number; // New prop to control how many weeks to display
+  weeksToShow?: number;
 }
 
-/**
- * Component to handle the fetching and preparation of availability data for the calendar
- * This separates the availability logic from the calendar rendering component
- */
 const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = ({
   clinicianId,
   userTimeZone,
   onEventsChange,
   showAvailability,
-  weeksToShow = 8 // Default to 8 weeks (2 months) of availability
+  weeksToShow = 8
 }) => {
   const [availabilityEvents, setAvailabilityEvents] = useState<CalendarEvent[]>([]);
   
@@ -78,7 +74,6 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
       
       // Generate events for multiple weeks
       for (let week = 0; week < weeksToShow; week++) {
-        // Get the date for this day in the current week + offset
         const weekOffset = week * 7; // days
         const dayDate = currentWeekStart.plus({ days: (dayNumber - 1) + weekOffset });
         
@@ -87,45 +82,33 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
           continue;
         }
         
-        // Process each slot for the current day
         availabilitySlots.forEach(slot => {
           try {
-            // Parse the time strings
             const [startHour, startMinute] = slot.startTime.split(':').map(Number);
             const [endHour, endMinute] = slot.endTime.split(':').map(Number);
             
-            // Create DateTime objects for start and end times in the clinician's timezone
             let startDateTime = dayDate.set({ hour: startHour, minute: startMinute });
             let endDateTime = dayDate.set({ hour: endHour, minute: endMinute });
             
-            // Format for logging
-            const startFormatted = startDateTime.toFormat('yyyy-MM-dd HH:mm');
-            const endFormatted = endDateTime.toFormat('yyyy-MM-dd HH:mm');
-            
             console.log(`[CalendarAvailabilityHandler] Creating event for week ${week}, ${day}:`, {
-              start: startFormatted,
-              end: endFormatted,
+              start: startDateTime.toFormat('yyyy-MM-dd HH:mm'),
+              end: endDateTime.toFormat('yyyy-MM-dd HH:mm'),
               id: slot.id
             });
             
-            // Convert to UTC for FullCalendar
-            const start = startDateTime.toJSDate();
-            const end = endDateTime.toJSDate();
-            
-            // Create the event
             events.push({
               id: `${slot.id}-week-${week}`,
               title: 'Available',
-              start,
-              end,
+              start: startDateTime.toJSDate(),
+              end: endDateTime.toJSDate(),
               backgroundColor: '#22c55e',
               borderColor: '#16a34a',
               textColor: '#ffffff',
-              editable: false, // Make sure availability slots aren't editable
+              editable: false,
               extendedProps: {
                 isAvailability: true,
                 isRecurring: !!slot.isRecurring,
-                originalSlotId: slot.id, // Keep reference to original slot ID
+                originalSlotId: slot.id,
                 dayOfWeek: day,
                 eventType: 'availability',
                 week
