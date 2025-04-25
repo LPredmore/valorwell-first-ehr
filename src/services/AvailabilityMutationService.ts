@@ -186,29 +186,7 @@ export class AvailabilityMutationService {
         timezone: clinicianTimeZone
       });
 
-      // First create the recurrence rule if this is a recurring slot
-      let recurrenceId: string | null = null;
-      if (slot.recurring && slot.recurrenceRule) {
-        const { data: recurrenceData, error: recurrenceError } = await supabase
-          .from('recurrence_rules')
-          .insert({
-            rrule: slot.recurrenceRule
-          })
-          .select('id')
-          .single();
-
-        if (recurrenceError) {
-          console.error('[AvailabilityMutationService] Error creating recurrence rule:', recurrenceError);
-          return { success: false, error: `Failed to create recurrence rule: ${recurrenceError.message}` };
-        }
-
-        if (recurrenceData) {
-          recurrenceId = recurrenceData.id;
-          console.log('[AvailabilityMutationService] Created recurrence rule:', recurrenceId);
-        }
-      }
-
-      // Create the main event with the recurrence ID if it exists
+      // Create the main event first - we'll update it with the recurrence_id later if needed
       const { data: eventData, error: eventError } = await supabase
         .from('calendar_events')
         .insert({
@@ -218,21 +196,12 @@ export class AvailabilityMutationService {
           start_time: startUTC.toISO(),
           end_time: endUTC.toISO(),
           all_day: false,
-          is_active: true,
-          recurrence_id: recurrenceId // Set the recurrence_id from the previously created rule
+          is_active: true
         })
         .select('id')
         .single();
 
       if (eventError) {
-        // If event creation fails and we created a recurrence rule, clean it up
-        if (recurrenceId) {
-          await supabase
-            .from('recurrence_rules')
-            .delete()
-            .eq('id', recurrenceId);
-        }
-        
         console.error('[AvailabilityMutationService] Error creating availability slot:', eventError);
         return { 
           success: false, 
@@ -241,16 +210,50 @@ export class AvailabilityMutationService {
       }
 
       if (!eventData?.id) {
-        if (recurrenceId) {
-          await supabase
-            .from('recurrence_rules')
-            .delete()
-            .eq('id', recurrenceId);
-        }
         return { 
           success: false, 
           error: 'Failed to create availability slot: No event ID returned' 
         };
+      }
+
+      // If this is a recurring slot, create the recurrence rule and update the event
+      let recurrenceId: string | null = null;
+      
+      if (slot.recurring && slot.recurrenceRule) {
+        const { data: recurrenceData, error: recurrenceError } = await supabase
+          .from('recurrence_rules')
+          .insert({
+            rrule: slot.recurrenceRule,
+            event_id: eventData.id // Now we have the event_id to use here
+          })
+          .select('id')
+          .single();
+
+        if (recurrenceError) {
+          console.error('[AvailabilityMutationService] Error creating recurrence rule:', recurrenceError);
+          // Rollback by deleting the created event
+          await supabase.from('calendar_events').delete().eq('id', eventData.id);
+          return { success: false, error: `Failed to create recurrence rule: ${recurrenceError.message}` };
+        }
+
+        if (recurrenceData) {
+          recurrenceId = recurrenceData.id;
+          console.log('[AvailabilityMutationService] Created recurrence rule:', recurrenceId);
+          
+          // Update the event with the recurrence ID
+          const { error: updateError } = await supabase
+            .from('calendar_events')
+            .update({ recurrence_id: recurrenceId })
+            .eq('id', eventData.id);
+            
+          if (updateError) {
+            console.error('[AvailabilityMutationService] Error updating event with recurrence ID:', updateError);
+            // Attempt to clean up both records
+            await supabase.from('recurrence_rules').delete().eq('id', recurrenceId);
+            await supabase.from('calendar_events').delete().eq('id', eventData.id);
+            return { success: false, error: `Failed to update event with recurrence ID: ${updateError.message}` };
+          }
+        }
       }
 
       return { 
