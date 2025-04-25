@@ -47,15 +47,20 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     const allEvents = [...(appointmentEvents || [])];
     
     if (showAvailability) {
+      console.log('[FullCalendarView] Adding availability events:', availabilityEvents.length);
       allEvents.push(...availabilityEvents);
     }
     
+    console.log('[FullCalendarView] Combined events total:', allEvents.length);
     setCombinedEvents(allEvents);
   }, [appointmentEvents, availabilityEvents, showAvailability]);
 
   const handleEventClick = useCallback((info: any) => {
+    console.log('[FullCalendarView] Event clicked:', info.event);
+    
     // For availability slots, use the specific handler
     if (info.event.extendedProps?.isAvailability && onAvailabilityClick) {
+      console.log('[FullCalendarView] Availability slot clicked');
       onAvailabilityClick(info.event);
       return;
     }
@@ -67,6 +72,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   }, [onEventClick, onAvailabilityClick]);
 
   const handleAvailabilityEventsChange = useCallback((events: CalendarEvent[]) => {
+    console.log('[FullCalendarView] Setting availability events:', events.length);
     setAvailabilityEvents(events);
   }, []);
 
@@ -92,7 +98,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
 
   return (
     <div className="fullcalendar-container">
-      {showAvailability && clinicianId && (
+      {clinicianId && (
         <CalendarAvailabilityHandler
           clinicianId={clinicianId}
           userTimeZone={validTimeZone}

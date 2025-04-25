@@ -38,6 +38,7 @@ export class AvailabilityQueryService {
   
   /**
    * Get clinician's weekly availability with proper timezone handling
+   * FIXED: Modified query to avoid join issues
    */
   static async getWeeklyAvailability(clinicianId: string): Promise<WeeklyAvailability> {
     try {
@@ -57,6 +58,7 @@ export class AvailabilityQueryService {
       const weeklyAvailability: WeeklyAvailability = createEmptyWeeklyAvailability();
       
       // STEP 1: Fetch availability slots from calendar_events
+      // FIXED: Changed the query to avoid the join error with recurrence_rules
       const { data: events, error } = await supabase
         .from('calendar_events')
         .select(`
@@ -64,7 +66,6 @@ export class AvailabilityQueryService {
           start_time, 
           end_time, 
           recurrence_id,
-          recurrence_rules:recurrence_id(rrule),
           is_active
         `)
         .eq('clinician_id', clinicianId)
@@ -74,6 +75,26 @@ export class AvailabilityQueryService {
       if (error) {
         console.error('[AvailabilityQueryService] Error fetching weekly availability:', error);
         return createEmptyWeeklyAvailability();
+      }
+      
+      // Get recurrence rules separately if needed
+      const recurrenceIds = events
+        ?.filter(event => event.recurrence_id)
+        .map(event => event.recurrence_id) || [];
+      
+      let recurrenceRules: Record<string, string> = {};
+      
+      if (recurrenceIds.length > 0) {
+        const { data: rulesData } = await supabase
+          .from('recurrence_rules')
+          .select('id, rrule')
+          .in('event_id', recurrenceIds);
+          
+        if (rulesData) {
+          rulesData.forEach(rule => {
+            recurrenceRules[rule.id] = rule.rrule;
+          });
+        }
       }
       
       console.log(`[AvailabilityQueryService] Processing ${events?.length || 0} availability events`);
@@ -99,7 +120,9 @@ export class AvailabilityQueryService {
             startHour: startDateTime.hour,
             startMinute: startDateTime.minute,
             endHour: endDateTime.hour,
-            endMinute: endDateTime.minute
+            endMinute: endDateTime.minute,
+            isRecurring: !!event.recurrence_id,
+            recurrenceRule: event.recurrence_id ? recurrenceRules[event.recurrence_id] : undefined
           });
           
           if (dayOfWeek in weeklyAvailability) {

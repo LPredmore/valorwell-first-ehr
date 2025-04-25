@@ -1,258 +1,188 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { WeeklyAvailability, AvailabilitySettings, AvailabilitySlot } from '@/types/availability';
+import { WeeklyAvailability, createEmptyWeeklyAvailability, AvailabilityResponse } from '@/types/availability';
 import { AvailabilityQueryService } from '@/services/AvailabilityQueryService';
 import { AvailabilityMutationService } from '@/services/AvailabilityMutationService';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
-/**
- * Custom hook for managing availability data
- * This provides a consistent interface for components to interact with availability
- */
-export function useAvailability(clinicianId: string | null) {
-  const [weeklyAvailability, setWeeklyAvailability] = useState<WeeklyAvailability | null>(null);
-  const [settings, setSettings] = useState<AvailabilitySettings | null>(null);
-  const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
-  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
+export const useAvailability = (clinicianId: string | null) => {
+  const [weeklyAvailability, setWeeklyAvailability] = useState<WeeklyAvailability>(createEmptyWeeklyAvailability());
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-
+  
   // Fetch weekly availability
-  const fetchWeeklyAvailability = useCallback(async () => {
-    if (!clinicianId) return;
+  const refreshAvailability = useCallback(async () => {
+    if (!clinicianId) {
+      setWeeklyAvailability(createEmptyWeeklyAvailability());
+      return;
+    }
+    
+    setIsLoading(true);
+    setError(null);
     
     try {
-      setIsLoadingAvailability(true);
-      setError(null);
-      
-      const availability = await AvailabilityQueryService.getWeeklyAvailability(clinicianId);
-      setWeeklyAvailability(availability);
-      
+      console.log(`[useAvailability] Fetching availability for clinician: ${clinicianId}`);
+      const data = await AvailabilityQueryService.getWeeklyAvailability(clinicianId);
+      console.log('[useAvailability] Retrieved availability data:', data);
+      setWeeklyAvailability(data);
     } catch (err) {
-      console.error('[useAvailability] Error fetching weekly availability:', err);
+      console.error('[useAvailability] Error fetching availability:', err);
       setError('Failed to load availability schedule');
       toast({
         title: 'Error',
-        description: 'Failed to load availability schedule. Please try again.',
+        description: 'Failed to load availability schedule',
         variant: 'destructive',
       });
     } finally {
-      setIsLoadingAvailability(false);
+      setIsLoading(false);
     }
   }, [clinicianId, toast]);
-
-  // Fetch availability settings
-  const fetchSettings = useCallback(async () => {
-    if (!clinicianId) return;
+  
+  // Create a new availability slot
+  const createSlot = useCallback(async (
+    dayOfWeek: string,
+    startTime: string,
+    endTime: string,
+    isRecurring: boolean = false,
+    recurrenceRule?: string
+  ): Promise<boolean> => {
+    if (!clinicianId) return false;
     
     try {
-      setIsLoadingSettings(true);
-      setError(null);
-      
-      const settingsData = await AvailabilityQueryService.getSettings(clinicianId);
-      setSettings(settingsData);
-      
-    } catch (err) {
-      console.error('[useAvailability] Error fetching availability settings:', err);
-      setError('Failed to load availability settings');
-      toast({
-        title: 'Error',
-        description: 'Failed to load availability settings. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoadingSettings(false);
-    }
-  }, [clinicianId, toast]);
-
-  // Update availability settings
-  const updateSettings = useCallback(
-    async (updatedSettings: Partial<AvailabilitySettings>): Promise<boolean> => {
-      if (!clinicianId) return false;
-      
-      try {
-        setIsLoadingSettings(true);
-        setError(null);
-        
-        const result = await AvailabilityMutationService.updateSettings(clinicianId, updatedSettings);
-        
-        if (result) {
-          setSettings(result);
-          toast({
-            title: 'Settings Updated',
-            description: 'Availability settings have been updated successfully.',
-          });
-          return true;
-        } else {
-          throw new Error('Failed to update settings');
-        }
-        
-      } catch (err) {
-        console.error('[useAvailability] Error updating availability settings:', err);
-        setError('Failed to update availability settings');
-        toast({
-          title: 'Error',
-          description: 'Failed to update availability settings. Please try again.',
-          variant: 'destructive',
-        });
-        return false;
-      } finally {
-        setIsLoadingSettings(false);
-      }
-    },
-    [clinicianId, toast]
-  );
-
-  // Create a new availability slot
-  const createSlot = useCallback(
-    async (
-      dayOfWeek: string,
-      startTime: string,
-      endTime: string,
-      isRecurring: boolean = false,
-      recurrenceRule?: string
-    ): Promise<boolean> => {
-      if (!clinicianId) return false;
-      
-      try {
-        const result = await AvailabilityMutationService.createAvailabilitySlot(clinicianId, {
+      const response = await AvailabilityMutationService.createAvailabilitySlot(
+        clinicianId,
+        {
           startTime,
           endTime,
+          title: 'Available',
           recurring: isRecurring,
           recurrenceRule,
           dayOfWeek
-        });
-        
-        if (result.success) {
-          // Refresh the availability data
-          await fetchWeeklyAvailability();
-          
-          toast({
-            title: 'Slot Created',
-            description: 'Availability slot has been created successfully.',
-          });
-          return true;
-        } else {
-          throw new Error(result.error || 'Failed to create slot');
         }
-        
-      } catch (err) {
-        const error = err instanceof Error ? err.message : 'Unknown error';
-        console.error('[useAvailability] Error creating availability slot:', err);
-        setError(`Failed to create availability slot: ${error}`);
-        toast({
-          title: 'Error',
-          description: `Failed to create availability slot. ${error}`,
-          variant: 'destructive',
-        });
-        return false;
-      }
-    },
-    [clinicianId, fetchWeeklyAvailability, toast]
-  );
-
-  // Update an existing availability slot
-  const updateSlot = useCallback(
-    async (
-      slotId: string,
-      updates: { startTime?: string; endTime?: string },
-      updateRecurrence: boolean = false
-    ): Promise<boolean> => {
-      if (!clinicianId) return false;
+      );
       
-      try {
-        const result = await AvailabilityMutationService.updateAvailabilitySlot(
-          slotId,
-          updates,
-          updateRecurrence
-        );
-        
-        if (result.success) {
-          // Refresh the availability data
-          await fetchWeeklyAvailability();
-          
-          toast({
-            title: 'Slot Updated',
-            description: 'Availability slot has been updated successfully.',
-          });
-          return true;
-        } else {
-          throw new Error(result.error || 'Failed to update slot');
-        }
-        
-      } catch (err) {
-        const error = err instanceof Error ? err.message : 'Unknown error';
-        console.error('[useAvailability] Error updating availability slot:', err);
-        setError(`Failed to update availability slot: ${error}`);
+      if (response.success) {
+        await refreshAvailability();
+        toast({
+          title: 'Success',
+          description: 'Availability slot created successfully',
+        });
+        return true;
+      } else {
+        console.error('[useAvailability] Error creating slot:', response.error);
         toast({
           title: 'Error',
-          description: `Failed to update availability slot. ${error}`,
+          description: response.error || 'Failed to create availability slot',
           variant: 'destructive',
         });
         return false;
       }
+    } catch (err) {
+      console.error('[useAvailability] Exception creating slot:', err);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, [clinicianId, refreshAvailability, toast]);
+  
+  // Update an existing slot
+  const updateSlot = useCallback(async (
+    slotId: string,
+    updates: {
+      startTime?: string;
+      endTime?: string;
+      title?: string;
     },
-    [clinicianId, fetchWeeklyAvailability, toast]
-  );
-
-  // Delete an availability slot
-  const deleteSlot = useCallback(
-    async (slotId: string, deleteRecurrence: boolean = false): Promise<boolean> => {
-      if (!clinicianId) return false;
+    updateAll: boolean = false
+  ): Promise<boolean> => {
+    try {
+      const response = await AvailabilityMutationService.updateAvailabilitySlot(
+        slotId,
+        updates,
+        updateAll
+      );
       
-      try {
-        const result = await AvailabilityMutationService.deleteAvailabilitySlot(
-          slotId,
-          deleteRecurrence
-        );
-        
-        if (result.success) {
-          // Refresh the availability data
-          await fetchWeeklyAvailability();
-          
-          toast({
-            title: 'Slot Deleted',
-            description: 'Availability slot has been deleted successfully.',
-          });
-          return true;
-        } else {
-          throw new Error(result.error || 'Failed to delete slot');
-        }
-        
-      } catch (err) {
-        const error = err instanceof Error ? err.message : 'Unknown error';
-        console.error('[useAvailability] Error deleting availability slot:', err);
-        setError(`Failed to delete availability slot: ${error}`);
+      if (response.success) {
+        await refreshAvailability();
+        toast({
+          title: 'Success',
+          description: 'Availability updated successfully',
+        });
+        return true;
+      } else {
         toast({
           title: 'Error',
-          description: `Failed to delete availability slot. ${error}`,
+          description: response.error || 'Failed to update availability',
           variant: 'destructive',
         });
         return false;
       }
-    },
-    [clinicianId, fetchWeeklyAvailability, toast]
-  );
-
-  // Initialize the data
+    } catch (err) {
+      console.error('[useAvailability] Error updating slot:', err);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, [refreshAvailability, toast]);
+  
+  // Delete a slot
+  const deleteSlot = useCallback(async (
+    slotId: string,
+    deleteAll: boolean = false
+  ): Promise<boolean> => {
+    try {
+      const response = await AvailabilityMutationService.deleteAvailabilitySlot(
+        slotId,
+        deleteAll
+      );
+      
+      if (response.success) {
+        await refreshAvailability();
+        toast({
+          title: 'Success',
+          description: 'Availability slot deleted successfully',
+        });
+        return true;
+      } else {
+        toast({
+          title: 'Error',
+          description: response.error || 'Failed to delete availability slot',
+          variant: 'destructive',
+        });
+        return false;
+      }
+    } catch (err) {
+      console.error('[useAvailability] Error deleting slot:', err);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, [refreshAvailability, toast]);
+  
+  // Load availability on mount or when clinician changes
   useEffect(() => {
     if (clinicianId) {
-      fetchWeeklyAvailability();
-      fetchSettings();
+      refreshAvailability();
     }
-  }, [clinicianId, fetchWeeklyAvailability, fetchSettings]);
-
-  // Return the data and functions
+  }, [clinicianId, refreshAvailability]);
+  
   return {
     weeklyAvailability,
-    settings,
-    isLoading: isLoadingAvailability || isLoadingSettings,
+    isLoading,
     error,
-    refreshAvailability: fetchWeeklyAvailability,
-    refreshSettings: fetchSettings,
-    updateSettings,
+    refreshAvailability,
     createSlot,
     updateSlot,
     deleteSlot
   };
-}
+};
