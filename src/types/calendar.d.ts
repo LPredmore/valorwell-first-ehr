@@ -1,67 +1,78 @@
 
-// Types for calendar functionality
+import { EventApi, ViewApi } from '@fullcalendar/core';
 
-import { EventInput } from '@fullcalendar/core';
-import { AppointmentType } from './appointment';
+export type CalendarViewType = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay' | string;
+export type CalendarEventType = 'appointment' | 'availability' | 'time_off' | 'general' | string;
 
-// View types for FullCalendar
-export type CalendarViewType = "dayGridMonth" | "timeGridWeek" | "timeGridDay";
-export type CalendarEventType = 'appointment' | 'time_off' | 'availability';
+export interface CalendarEvent {
+  id?: string;
+  title: string;
+  start: Date | string;
+  end: Date | string;
+  allDay?: boolean;
+  url?: string;
+  classNames?: string[];
+  editable?: boolean;
+  startEditable?: boolean;
+  durationEditable?: boolean;
+  resourceEditable?: boolean;
+  display?: string;
+  backgroundColor?: string;
+  borderColor?: string;
+  textColor?: string;
+  extendedProps?: {
+    clinicianId?: string;
+    clientId?: string;
+    eventType?: CalendarEventType;
+    description?: string;
+    isAvailability?: boolean;
+    isRecurring?: boolean;
+    recurrenceId?: string;
+    sourceTable?: string;
+    status?: string;
+    dayOfWeek?: string;
+    isActive?: boolean;
+  };
+}
 
-// Update the WeekdayNumbers type to match Luxon's definition (Monday=1, Sunday=7)
-export type WeekdayNumbers = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-
-interface RecurrenceRuleResult {
-  rrule: string;
+export interface AppointmentType {
+  id: string;
+  clientId: string;
+  clinicianId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+  type: string;
+  notes?: string;
+  sourceTimeZone?: string;
+  appointmentDatetime?: string;
+  appointmentEndDatetime?: string;
 }
 
 export interface RecurrenceRule {
-  id?: string;
+  id: string;
   eventId: string;
   rrule: string;
 }
 
 export interface CalendarException {
-  id?: string;
+  id: string;
   recurrenceEventId: string;
   exceptionDate: string;
   isCancelled: boolean;
   replacementEventId?: string;
 }
 
-// The type for events returned from the backend and passed to FullCalendar
-export interface CalendarEvent extends EventInput {
-  extendedProps?: {
-    appointment?: AppointmentType;
-    eventType?: CalendarEventType;
-    recurrenceRule?: RecurrenceRule;
-    exceptions?: CalendarException[];
-    isException?: boolean;
-    googleEventId?: string;
-    description?: string;
-    isAvailability?: boolean;
-    isRecurring?: boolean;
-    dayOfWeek?: string;
-    originalSlotId?: string;
-    eventType?: 'availability';
-    week?: number;
-    timezone?: string;
-    // Add is_active for availability (not needed for appointments, but type-safe)
-    is_active?: boolean;
-  };
-}
-
-// The props for the FullCalendarView React component
 export interface FullCalendarProps {
-  events?: CalendarEvent[];
   clinicianId: string | null;
+  userTimeZone: string;
   onEventClick?: (info: any) => void;
   onDateSelect?: (info: any) => void;
   onEventDrop?: (info: any) => void;
   onEventResize?: (info: any) => void;
-  onAvailabilityClick?: (event: any) => void;
-  userTimeZone: string;
   view?: CalendarViewType;
   height?: string | number;
   showAvailability?: boolean;
+  onAvailabilityClick?: (event: EventApi) => void;
 }

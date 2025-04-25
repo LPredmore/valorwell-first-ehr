@@ -41,12 +41,12 @@ export class CalendarService {
       
       // Apply date range filter if provided
       if (startDate) {
-        const startISO = TimeZoneService.toISOWithZone(startDate, userTimeZone);
+        const startISO = TimeZoneService.toISOWithZone(startDate as Date, userTimeZone);
         query.gte('start_time', startISO);
       }
       
       if (endDate) {
-        const endISO = TimeZoneService.toISOWithZone(endDate, userTimeZone);
+        const endISO = TimeZoneService.toISOWithZone(endDate as Date, userTimeZone);
         query.lte('start_time', endISO);
       }
       
@@ -181,20 +181,19 @@ export class CalendarService {
   private static async createAvailabilityEvent(event: CalendarEvent, userTimeZone: string): Promise<CalendarEvent> {
     const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
     
-    const clinicianId = event.extendedProps?.clinicianId;
-    if (!clinicianId) {
+    if (!event.extendedProps?.clinicianId) {
       throw new Error('Clinician ID is required for availability events');
     }
     
     // Convert the event times to UTC for storage
     const startUtc = TimeZoneService.convertDateTime(
-      event.start, 
+      event.start as Date|string, 
       validTimeZone, 
       'UTC'
     );
     
     const endUtc = TimeZoneService.convertDateTime(
-      event.end, 
+      event.end as Date|string, 
       validTimeZone, 
       'UTC'
     );
@@ -203,7 +202,7 @@ export class CalendarService {
     const { data, error } = await supabase
       .from('calendar_events')
       .insert({
-        clinician_id: clinicianId,
+        clinician_id: event.extendedProps.clinicianId,
         event_type: 'availability',
         title: event.title,
         start_time: startUtc.toISO(),
@@ -229,32 +228,29 @@ export class CalendarService {
   private static async createAppointmentEvent(event: CalendarEvent, userTimeZone: string): Promise<CalendarEvent> {
     const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
     
-    const clinicianId = event.extendedProps?.clinicianId;
-    const clientId = event.extendedProps?.clientId;
-    
-    if (!clinicianId) {
+    if (!event.extendedProps?.clinicianId) {
       throw new Error('Clinician ID is required for appointment events');
     }
     
-    if (!clientId) {
+    if (!event.extendedProps?.clientId) {
       throw new Error('Client ID is required for appointment events');
     }
     
     // Convert the event times to the user's timezone
     const startDt = typeof event.start === 'string' 
       ? TimeZoneService.parseWithZone(event.start, validTimeZone)
-      : DateTime.fromJSDate(event.start).setZone(validTimeZone);
+      : DateTime.fromJSDate(event.start as Date).setZone(validTimeZone);
       
     const endDt = typeof event.end === 'string'
       ? TimeZoneService.parseWithZone(event.end, validTimeZone)
-      : DateTime.fromJSDate(event.end).setZone(validTimeZone);
+      : DateTime.fromJSDate(event.end as Date).setZone(validTimeZone);
     
     // Create the appointment record
     const { data, error } = await supabase
       .from('appointments')
       .insert({
-        clinician_id: clinicianId,
-        client_id: clientId,
+        clinician_id: event.extendedProps.clinicianId,
+        client_id: event.extendedProps.clientId,
         date: startDt.toFormat('yyyy-MM-dd'),
         start_time: startDt.toFormat('HH:mm:ss'),
         end_time: endDt.toFormat('HH:mm:ss'),
@@ -295,25 +291,24 @@ export class CalendarService {
   private static async createTimeOffEvent(event: CalendarEvent, userTimeZone: string): Promise<CalendarEvent> {
     const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
     
-    const clinicianId = event.extendedProps?.clinicianId;
-    if (!clinicianId) {
+    if (!event.extendedProps?.clinicianId) {
       throw new Error('Clinician ID is required for time off events');
     }
     
     // Convert the event times to the user's timezone
     const startDt = typeof event.start === 'string' 
       ? TimeZoneService.parseWithZone(event.start, validTimeZone)
-      : DateTime.fromJSDate(event.start).setZone(validTimeZone);
+      : DateTime.fromJSDate(event.start as Date).setZone(validTimeZone);
       
     const endDt = typeof event.end === 'string'
       ? TimeZoneService.parseWithZone(event.end, validTimeZone)
-      : DateTime.fromJSDate(event.end).setZone(validTimeZone);
+      : DateTime.fromJSDate(event.end as Date).setZone(validTimeZone);
     
     // Create the time_off record
     const { data, error } = await supabase
       .from('time_off')
       .insert({
-        clinician_id: clinicianId,
+        clinician_id: event.extendedProps.clinicianId,
         date: startDt.toFormat('yyyy-MM-dd'),
         start_time: startDt.toFormat('HH:mm:ss'),
         end_time: endDt.toFormat('HH:mm:ss'),
@@ -349,20 +344,19 @@ export class CalendarService {
   private static async createGenericEvent(event: CalendarEvent, userTimeZone: string): Promise<CalendarEvent> {
     const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
     
-    const clinicianId = event.extendedProps?.clinicianId;
-    if (!clinicianId) {
+    if (!event.extendedProps?.clinicianId) {
       throw new Error('Clinician ID is required for calendar events');
     }
     
     // Convert the event times to UTC for storage
     const startUtc = TimeZoneService.convertDateTime(
-      event.start, 
+      event.start as Date|string, 
       validTimeZone, 
       'UTC'
     );
     
     const endUtc = TimeZoneService.convertDateTime(
-      event.end, 
+      event.end as Date|string, 
       validTimeZone, 
       'UTC'
     );
@@ -371,7 +365,7 @@ export class CalendarService {
     const { data, error } = await supabase
       .from('calendar_events')
       .insert({
-        clinician_id: clinicianId,
+        clinician_id: event.extendedProps.clinicianId,
         event_type: event.extendedProps?.eventType || 'general',
         title: event.title,
         start_time: startUtc.toISO(),
@@ -400,11 +394,11 @@ export class CalendarService {
     // Convert the event times to the user's timezone
     const startDt = typeof event.start === 'string' 
       ? TimeZoneService.parseWithZone(event.start, validTimeZone)
-      : DateTime.fromJSDate(event.start).setZone(validTimeZone);
+      : DateTime.fromJSDate(event.start as Date).setZone(validTimeZone);
       
     const endDt = typeof event.end === 'string'
       ? TimeZoneService.parseWithZone(event.end, validTimeZone)
-      : DateTime.fromJSDate(event.end).setZone(validTimeZone);
+      : DateTime.fromJSDate(event.end as Date).setZone(validTimeZone);
     
     // Prepare update data
     const updateData: any = {
@@ -463,11 +457,11 @@ export class CalendarService {
     // Convert the event times to the user's timezone
     const startDt = typeof event.start === 'string' 
       ? TimeZoneService.parseWithZone(event.start, validTimeZone)
-      : DateTime.fromJSDate(event.start).setZone(validTimeZone);
+      : DateTime.fromJSDate(event.start as Date).setZone(validTimeZone);
       
     const endDt = typeof event.end === 'string'
       ? TimeZoneService.parseWithZone(event.end, validTimeZone)
-      : DateTime.fromJSDate(event.end).setZone(validTimeZone);
+      : DateTime.fromJSDate(event.end as Date).setZone(validTimeZone);
     
     // Prepare update data
     const updateData: any = {
@@ -521,13 +515,13 @@ export class CalendarService {
     
     // Convert the event times to UTC for storage
     const startUtc = TimeZoneService.convertDateTime(
-      event.start, 
+      event.start as Date|string, 
       validTimeZone, 
       'UTC'
     );
     
     const endUtc = TimeZoneService.convertDateTime(
-      event.end, 
+      event.end as Date|string, 
       validTimeZone, 
       'UTC'
     );
