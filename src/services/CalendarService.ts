@@ -175,7 +175,7 @@ export class CalendarService {
         throw error;
       }
 
-      // To get recurrence rules, we need a follow-up query for FOR recurrence_id if present
+      // To get recurrence rules, we need a follow-up query for each event with recurrence_id
       const eventsWithRecurrence = await Promise.all(
         (events || []).map(async (event) => {
           let recurrenceRule = undefined;
@@ -185,7 +185,7 @@ export class CalendarService {
               .from('recurrence_rules')
               .select('rrule')
               .eq('id', event.recurrence_id)
-              .single(); // Use single() to get a single object instead of an array
+              .maybeSingle();
             
             if (!recurrenceError && recurrenceRules) {
               recurrenceRule = {

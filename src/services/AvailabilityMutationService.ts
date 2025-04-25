@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { AvailabilitySettings, AvailabilityResponse } from '@/types/availability';
@@ -132,7 +131,8 @@ export class AvailabilityMutationService {
           start_time: startUTC.toISO(),
           end_time: endUTC.toISO(),
           all_day: false,
-          is_active: true
+          is_active: true,
+          recurrence_id: null // Initially null, will update after recurrence rule creation if needed
         })
         .select('id')
         .single();
@@ -144,12 +144,14 @@ export class AvailabilityMutationService {
 
       // If this is a recurring slot, create the recurrence rule
       if (slot.recurring && slot.recurrenceRule && eventData?.id) {
-        const { error: recurrenceError } = await supabase
+        const { data: recurrenceData, error: recurrenceError } = await supabase
           .from('recurrence_rules')
           .insert({
             event_id: eventData.id,
             rrule: slot.recurrenceRule
-          });
+          })
+          .select('id')
+          .single();
 
         if (recurrenceError) {
           console.error('[AvailabilityMutationService] Error creating recurrence rule:', recurrenceError);
@@ -164,14 +166,16 @@ export class AvailabilityMutationService {
         }
         
         // Update the event with the recurrence ID
-        const { error: updateError } = await supabase
-          .from('calendar_events')
-          .update({ recurrence_id: eventData.id })
-          .eq('id', eventData.id);
-          
-        if (updateError) {
-          console.error('[AvailabilityMutationService] Error updating event with recurrence ID:', updateError);
-          return { success: false, error: 'Failed to update recurrence ID' };
+        if (recurrenceData?.id) {
+          const { error: updateError } = await supabase
+            .from('calendar_events')
+            .update({ recurrence_id: recurrenceData.id })
+            .eq('id', eventData.id);
+            
+          if (updateError) {
+            console.error('[AvailabilityMutationService] Error updating event with recurrence ID:', updateError);
+            return { success: false, error: 'Failed to update recurrence ID' };
+          }
         }
       }
 

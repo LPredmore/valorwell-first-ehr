@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { WeeklyAvailability, AvailabilitySettings, createEmptyWeeklyAvailability } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -14,26 +13,31 @@ export class AvailabilityQueryService {
    * Get availability settings for a clinician
    */
   static async getSettings(clinicianId: string): Promise<AvailabilitySettings | null> {
-    const { data, error } = await supabase
-      .from('availability_settings')
-      .select('*')
-      .eq('clinician_id', clinicianId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('availability_settings')
+        .select('id, clinician_id, default_slot_duration, min_notice_days, max_advance_days, created_at, updated_at')
+        .eq('clinician_id', clinicianId)
+        .single();
 
-    if (error) {
-      console.error('[AvailabilityQueryService] Error fetching availability settings:', error);
+      if (error) {
+        console.error('[AvailabilityQueryService] Error fetching availability settings:', error);
+        return null;
+      }
+
+      return data ? {
+        id: data.id,
+        clinicianId: data.clinician_id,
+        defaultSlotDuration: data.default_slot_duration,
+        minNoticeDays: data.min_notice_days,
+        maxAdvanceDays: data.max_advance_days,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      } : null;
+    } catch (error) {
+      console.error('[AvailabilityQueryService] Error fetching settings:', error);
       return null;
     }
-
-    return data ? {
-      id: data.id,
-      clinicianId: data.clinician_id,
-      defaultSlotDuration: data.default_slot_duration,
-      minNoticeDays: data.min_notice_days,
-      maxAdvanceDays: data.max_advance_days,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
-    } : null;
   }
   
   /**
@@ -59,14 +63,7 @@ export class AvailabilityQueryService {
       // STEP 1: Fetch availability slots from calendar_events
       const { data: events, error } = await supabase
         .from('calendar_events')
-        .select(`
-          id, 
-          start_time, 
-          end_time, 
-          recurrence_id,
-          recurrence_rules:recurrence_id(rrule),
-          is_active
-        `)
+        .select('id, start_time, end_time, recurrence_id, is_active')
         .eq('clinician_id', clinicianId)
         .eq('event_type', 'availability')
         .eq('is_active', true);
@@ -78,9 +75,25 @@ export class AvailabilityQueryService {
       
       console.log(`[AvailabilityQueryService] Processing ${events?.length || 0} availability events`);
 
-      // Process availability events
-      events?.forEach(event => {
+      // Get recurrence rules for events with recurrence_id
+      for (const event of events || []) {
         try {
+          // If event has a recurrence ID, fetch the recurrence rule
+          let recurrenceRule = null;
+          if (event.recurrence_id) {
+            const { data: ruleData, error: ruleError } = await supabase
+              .from('recurrence_rules')
+              .select('rrule')
+              .eq('id', event.recurrence_id)
+              .maybeSingle();
+              
+            if (ruleError) {
+              console.error(`[AvailabilityQueryService] Error fetching recurrence rule for event ${event.id}:`, ruleError);
+            } else if (ruleData) {
+              recurrenceRule = ruleData.rrule;
+            }
+          }
+          
           // Use TimeZoneService to properly parse the UTC times and convert to clinician's timezone
           const startDateTime = TimeZoneService.fromUTC(event.start_time, clinicianTimeZone);
           const endDateTime = TimeZoneService.fromUTC(event.end_time, clinicianTimeZone);
@@ -123,7 +136,7 @@ export class AvailabilityQueryService {
         } catch (err) {
           console.error(`[AvailabilityQueryService] Error processing event ${event.id}:`, err);
         }
-      });
+      }
 
       // STEP 2: Fetch scheduled appointments for this clinician
       const { data: appointments, error: appointmentsError } = await supabase
