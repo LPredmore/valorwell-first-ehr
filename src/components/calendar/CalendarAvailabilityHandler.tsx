@@ -37,11 +37,12 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
     const now = DateTime.now().setZone(userTimeZone);
     const currentWeekStart = now.startOf('week');
     
-    console.log('[CalendarAvailabilityHandler] Converting availability to events for', weeksToShow, 'weeks');
-    console.log('[CalendarAvailabilityHandler] Current week starts at:', currentWeekStart.toISO());
-    console.log('[CalendarAvailabilityHandler] Weekly availability data:', weeklyAvailability);
+    console.log('[CalendarAvailabilityHandler] Converting availability to events:', {
+      weeksToShow,
+      userTimeZone,
+      currentWeekStart: currentWeekStart.toISO()
+    });
     
-    // Map day names to ISO weekday numbers (1-7, Monday to Sunday)
     const dayToIsoWeekday: Record<string, number> = {
       monday: 1,
       tuesday: 2,
@@ -52,57 +53,58 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
       sunday: 7
     };
 
-    // Process each day's availability slots
     Object.entries(weeklyAvailability).forEach(([day, slots]) => {
       const dayNumber = dayToIsoWeekday[day];
       if (!dayNumber) {
         console.warn(`[CalendarAvailabilityHandler] Unknown day: ${day}`);
         return;
       }
-      
-      console.log(`[CalendarAvailabilityHandler] Processing ${slots.length} slots for ${day}`);
-      
-      // Filter out appointment slots
+
       const availabilitySlots = slots.filter(slot => !slot.isAppointment);
       
-      console.log(`[CalendarAvailabilityHandler] Found ${availabilitySlots.length} availability slots for ${day}`);
+      console.log(`[CalendarAvailabilityHandler] Processing ${availabilitySlots.length} slots for ${day}`);
       
       if (availabilitySlots.length === 0) {
         return;
       }
-      
-      // Generate events for multiple weeks
+
       for (let week = 0; week < weeksToShow; week++) {
-        const weekOffset = week * 7; // days
-        const dayDate = currentWeekStart.plus({ days: (dayNumber - 1) + weekOffset });
+        const weekOffset = week * 7;
+        const dayDate = currentWeekStart
+          .setZone(userTimeZone)  // Ensure timezone is explicitly set
+          .plus({ days: (dayNumber - 1) + weekOffset });
         
-        // Skip dates in the past
         if (dayDate < now.startOf('day')) {
           continue;
         }
-        
+
         availabilitySlots.forEach(slot => {
           try {
-            // Create DateTime objects in the user's timezone
             const [startHour, startMinute] = slot.startTime.split(':').map(Number);
             const [endHour, endMinute] = slot.endTime.split(':').map(Number);
             
             // Create start and end times in the user's timezone
-            const startDateTime = dayDate
-              .set({ hour: startHour, minute: startMinute })
-              .setZone(userTimeZone);
-              
-            const endDateTime = dayDate
-              .set({ hour: endHour, minute: endMinute })
-              .setZone(userTimeZone);
-            
-            console.log(`[CalendarAvailabilityHandler] Creating event for week ${week}, ${day}:`, {
-              start: startDateTime.toISO(),
-              end: endDateTime.toISO(),
-              id: slot.id,
-              timezone: userTimeZone
+            const startDateTime = dayDate.set({ 
+              hour: startHour, 
+              minute: startMinute 
             });
             
+            const endDateTime = dayDate.set({ 
+              hour: endHour, 
+              minute: endMinute 
+            });
+            
+            console.log(`[CalendarAvailabilityHandler] Creating event:`, {
+              day,
+              week,
+              slotTime: `${slot.startTime}-${slot.endTime}`,
+              startISO: startDateTime.toISO(),
+              endISO: endDateTime.toISO(),
+              userTimeZone,
+              startJSDate: startDateTime.toJSDate().toISOString(),
+              endJSDate: endDateTime.toJSDate().toISOString()
+            });
+
             events.push({
               id: `${slot.id}-week-${week}`,
               title: 'Available',
@@ -128,7 +130,7 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
       }
     });
 
-    console.log(`[CalendarAvailabilityHandler] Total availability events created: ${events.length}`);
+    console.log(`[CalendarAvailabilityHandler] Total events created: ${events.length}`);
     return events;
   }, [weeklyAvailability, showAvailability, weeksToShow, userTimeZone]);
 
