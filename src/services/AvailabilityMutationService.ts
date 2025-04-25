@@ -172,13 +172,14 @@ export class AvailabilityMutationService {
         timezone: validTimeZone
       });
 
-      // Create the initial event - FIXED: removed is_recurring field and set recurring related data correctly
+      // Create the initial event - add availability_type field to satisfy constraint
       const { data, error } = await supabase
         .from('calendar_events')
         .insert([
           {
             clinician_id: clinicianId,
             event_type: 'availability',
+            availability_type: 'recurring', // Add this field to satisfy the constraint
             title: 'Available',
             start_time: startDt.toUTC().toISO(),
             end_time: endDt.toUTC().toISO(),
@@ -334,6 +335,7 @@ export class AvailabilityMutationService {
           const eventData = {
             clinician_id: clinicianId,
             event_type: 'availability',
+            availability_type: 'single', // Add this field to satisfy the constraint
             title: slotData.title || 'Available',
             is_active: true,
             start_time: TimeZoneService.toUTC(startDt).toISO(),
