@@ -163,18 +163,13 @@ export function useAvailability(clinicianId: string | null) {
   const updateSlot = useCallback(
     async (
       slotId: string,
-      updates: { startTime?: string; endTime?: string },
-      updateRecurrence: boolean = false
+      updates: { startTime?: string; endTime?: string }
     ): Promise<boolean> => {
       if (!clinicianId) return false;
       
       try {
-        console.log(`[useAvailability] Updating availability slot:`, { slotId, updates, updateRecurrence });
-        const result = await AvailabilityMutationService.updateAvailabilitySlot(
-          slotId,
-          updates,
-          updateRecurrence
-        );
+        console.log(`[useAvailability] Updating availability slot:`, { slotId, updates });
+        const result = await AvailabilityMutationService.updateAvailabilitySlot(slotId, updates);
         
         if (result.success) {
           // Refresh the availability data
@@ -206,15 +201,12 @@ export function useAvailability(clinicianId: string | null) {
 
   // Delete an availability slot
   const deleteSlot = useCallback(
-    async (slotId: string, deleteRecurrence: boolean = false): Promise<boolean> => {
+    async (slotId: string): Promise<boolean> => {
       if (!clinicianId) return false;
       
       try {
-        console.log(`[useAvailability] Deleting availability slot:`, { slotId, deleteRecurrence });
-        const result = await AvailabilityMutationService.deleteAvailabilitySlot(
-          slotId,
-          deleteRecurrence
-        );
+        console.log(`[useAvailability] Deleting availability slot:`, { slotId });
+        const result = await AvailabilityMutationService.deleteAvailabilitySlot(slotId);
         
         if (result.success) {
           // Refresh the availability data

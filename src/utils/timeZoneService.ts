@@ -1,3 +1,4 @@
+
 import { DateTime } from 'luxon';
 import { CalendarEvent } from '@/types/calendar';
 
@@ -254,3 +255,6 @@ export class TimeZoneService {
     return DateTime.fromJSDate(date).toFormat('h:mm a');
   }
 }
+
+// Create a singleton instance for use in imports
+export const timeZoneService = new TimeZoneService();

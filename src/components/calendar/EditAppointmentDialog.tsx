@@ -23,7 +23,7 @@ import {
 import { useClinicianData } from '@/hooks/useClinicianData';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 import { Appointment } from '@/types/appointment';
-import { TimeZoneService } from '@/services/timeZoneService';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface EditAppointmentDialogProps {
   isOpen: boolean;
