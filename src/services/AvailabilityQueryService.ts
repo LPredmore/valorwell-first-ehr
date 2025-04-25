@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { WeeklyAvailability, AvailabilitySettings, createEmptyWeeklyAvailability } from '@/types/availability';
-import { timeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { ClientDataService } from './ClientDataService';
 import { DateTime } from 'luxon';
 
@@ -86,8 +86,8 @@ export class AvailabilityQueryService {
       for (const event of events || []) {
         try {
           // Use TimeZoneService to properly parse the UTC times and convert to clinician's timezone
-          const startDateTime = timeZoneService.fromUTC(event.start_time, clinicianTimeZone);
-          const endDateTime = timeZoneService.fromUTC(event.end_time, clinicianTimeZone);
+          const startDateTime = TimeZoneService.fromUTC(event.start_time, clinicianTimeZone);
+          const endDateTime = TimeZoneService.fromUTC(event.end_time, clinicianTimeZone);
           
           if (!startDateTime.isValid || !endDateTime.isValid) {
             console.error(`[AvailabilityQueryService] Invalid date/time for event ${event.id}:`, {
@@ -181,13 +181,13 @@ export class AvailabilityQueryService {
             const startDateTime = DateTime.fromSQL(startDateTimeStr, { zone: sourceTimeZone });
             const endDateTime = DateTime.fromSQL(endDateTimeStr, { zone: sourceTimeZone });
             
-            const startInClinicianTZ = timeZoneService.convertDateTime(
+            const startInClinicianTZ = TimeZoneService.convertDateTime(
               startDateTime.toISO(), 
               sourceTimeZone, 
               clinicianTimeZone
             );
             
-            const endInClinicianTZ = timeZoneService.convertDateTime(
+            const endInClinicianTZ = TimeZoneService.convertDateTime(
               endDateTime.toISO(), 
               sourceTimeZone, 
               clinicianTimeZone
