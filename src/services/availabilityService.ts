@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySettings, AvailabilitySlot, WeeklyAvailability } from '@/types/appointment';
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
@@ -522,9 +521,20 @@ export class AvailabilityService {
             
             // Build the client name if available
             let clientName = 'Client';
-            if (appointment.clients) {
-              clientName = `${appointment.clients.client_first_name || ''} ${appointment.clients.client_last_name || ''}`.trim();
+            
+            // Fix: Handle clients data as an array and access first item
+            if (appointment.clients && Array.isArray(appointment.clients) && appointment.clients.length > 0) {
+              const client = appointment.clients[0]; // Access the first client in the array
+              clientName = `${client.client_first_name || ''} ${client.client_last_name || ''}`.trim();
               clientName = clientName || 'Client';
+              
+              console.log('[AvailabilityService] Found client data:', {
+                clientsArray: appointment.clients,
+                firstClient: client,
+                formattedName: clientName
+              });
+            } else {
+              console.log('[AvailabilityService] No client data found or unexpected format:', appointment.clients);
             }
             
             console.log(`[AvailabilityService] Appointment ${appointment.id}:`, {
@@ -534,7 +544,8 @@ export class AvailabilityService {
               dayOfWeek,
               clientName,
               convertedStart: startDateTime.toFormat('HH:mm'),
-              convertedEnd: endDateTime.toFormat('HH:mm')
+              convertedEnd: endDateTime.toFormat('HH:mm'),
+              clientsData: appointment.clients
             });
             
             if (dayOfWeek in weeklyAvailability) {

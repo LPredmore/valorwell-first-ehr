@@ -21,10 +21,8 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { timeZone } = useUserTimeZone(selectedClinicianId);
 
-  // Ensure we have a valid IANA timezone
   const validTimeZone = ensureIANATimeZone(timeZone || 'UTC');
 
-  // Load clinicians
   useEffect(() => {
     const fetchClinicians = async () => {
       setLoadingClinicians(true);
@@ -60,7 +58,6 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     fetchClinicians();
   }, []);
 
-  // If clinicians change and no clinician is selected, set the first one
   useEffect(() => {
     if (clinicians.length > 0 && !selectedClinicianId) {
       setSelectedClinicianId(clinicians[0].id);
@@ -68,7 +65,6 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     }
   }, [clinicians, selectedClinicianId]);
 
-  // Load clients for selected clinician
   useEffect(() => {
     const fetchClientsForClinician = async () => {
       if (!selectedClinicianId) {
@@ -83,7 +79,6 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
       console.log('[useCalendarState] Fetching clients for clinician:', selectedClinicianId);
 
       try {
-        // Convert UUID to string for comparison with TEXT column
         const { data, error } = await supabase
           .from('clients')
           .select('id, client_preferred_name, client_last_name')
@@ -140,6 +135,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     clients,
     loadingClients,
     appointmentRefreshTrigger,
+    setAppointmentRefreshTrigger,
     refreshAppointments,
     isDialogOpen,
     setIsDialogOpen,
