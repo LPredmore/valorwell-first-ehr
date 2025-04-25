@@ -1,8 +1,8 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySlot } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { DateTime } from 'luxon';
+import { SingleAvailabilityService } from './SingleAvailabilityService';
+import { RecurringAvailabilityService } from './RecurringAvailabilityService';
 
 export class AvailabilityMutationService {
   static async createAvailabilityException(
@@ -90,45 +90,13 @@ export class AvailabilityMutationService {
     endTime: string,
     timezone: string
   ): Promise<any> {
-    try {
-      const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
-      const startDt = TimeZoneService.parseWithZone(`${date}T${startTime}`, validTimeZone);
-      const endDt = TimeZoneService.parseWithZone(`${date}T${endTime}`, validTimeZone);
-
-      console.log('[AvailabilityMutationService] Creating single availability:', {
-        clinicianId,
-        start: startDt.toISO(),
-        end: endDt.toISO(),
-        timezone: validTimeZone
-      });
-
-      const { data, error } = await supabase
-        .from('calendar_events')
-        .insert([
-          {
-            clinician_id: clinicianId,
-            event_type: 'availability',
-            availability_type: 'single', // Added this field to satisfy the constraint
-            start_time: startDt.toUTC().toISO(),
-            end_time: endDt.toUTC().toISO(),
-            is_active: true,
-          },
-        ])
-        .select('id');
-
-      if (error) {
-        if (error.message.includes('overlapping availability')) {
-          throw new Error('This time slot overlaps with an existing availability. Please select a different time.');
-        }
-        console.error('[AvailabilityMutationService] Error creating single availability:', error);
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('[AvailabilityMutationService] Error creating single availability:', error);
-      throw error;
-    }
+    return SingleAvailabilityService.createSingleAvailability(
+      clinicianId,
+      date,
+      startTime,
+      endTime,
+      timezone
+    );
   }
 
   static async createRecurringAvailability(
@@ -138,100 +106,13 @@ export class AvailabilityMutationService {
     timezone: string,
     recurrenceRule: string
   ): Promise<any> {
-    try {
-      const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
-      
-      console.log('[AvailabilityMutationService] Creating recurring availability:', {
-        clinicianId,
-        startTime,
-        endTime,
-        timezone: validTimeZone,
-        recurrenceRule
-      });
-
-      // Validate input format - we expect ISO format or close to it
-      let startDt: DateTime;
-      let endDt: DateTime;
-      
-      try {
-        // Parse both start and end times with timezone
-        startDt = TimeZoneService.parseWithZone(startTime, validTimeZone);
-        endDt = TimeZoneService.parseWithZone(endTime, validTimeZone);
-        
-        if (!startDt.isValid || !endDt.isValid) {
-          throw new Error(`Invalid datetime: ${!startDt.isValid ? startDt.invalidReason : endDt.invalidReason}`);
-        }
-      } catch (parseError) {
-        console.error('[AvailabilityMutationService] Error parsing datetime:', parseError);
-        throw new Error(`Invalid datetime format. Please check your input. ${parseError instanceof Error ? parseError.message : ''}`);
-      }
-      
-      // Log detailed timezone information for debugging
-      console.log('[AvailabilityMutationService] DateTime information:', {
-        startTime,
-        endTime, 
-        startDtFormatted: startDt.toISO(),
-        endDtFormatted: endDt.toISO(),
-        startDtUTC: startDt.toUTC().toISO(),
-        endDtUTC: endDt.toUTC().toISO(),
-        timezone: validTimeZone
-      });
-
-      // Create the initial event with availability_type field
-      const { data, error } = await supabase
-        .from('calendar_events')
-        .insert([
-          {
-            clinician_id: clinicianId,
-            event_type: 'availability',
-            availability_type: 'recurring',
-            title: 'Available',
-            start_time: startDt.toUTC().toISO(),
-            end_time: endDt.toUTC().toISO(),
-            is_active: true,
-          }
-        ])
-        .select('id');
-
-      if (error) {
-        if (error.message.includes('overlapping availability')) {
-          throw new Error('This recurring schedule overlaps with existing availability slots.');
-        }
-        console.error('[AvailabilityMutationService] Error creating recurring availability:', error);
-        throw new Error(`Database error: ${error.message}`);
-      }
-      
-      if (!data || data.length === 0) {
-        throw new Error('No data returned from calendar event creation');
-      }
-      
-      const eventId = data[0].id;
-      
-      // Create the recurrence rule linked to the event
-      const { error: recurrenceError } = await supabase
-        .from('recurrence_rules')
-        .insert([{ 
-          event_id: eventId,
-          rrule: recurrenceRule 
-        }]);
-        
-      if (recurrenceError) {
-        console.error('[AvailabilityMutationService] Error creating recurrence rule:', recurrenceError);
-        
-        // Try to clean up the calendar event since recurrence rule failed
-        await supabase
-          .from('calendar_events')
-          .delete()
-          .eq('id', eventId);
-        
-        throw new Error(`Failed to create recurrence rule: ${recurrenceError.message}`);
-      }
-      
-      return data;
-    } catch (error) {
-      console.error('[AvailabilityMutationService] Error creating recurring availability:', error);
-      throw error;
-    }
+    return RecurringAvailabilityService.createRecurringAvailability(
+      clinicianId,
+      startTime,
+      endTime,
+      timezone,
+      recurrenceRule
+    );
   }
 
   static async createAvailabilitySlot(
