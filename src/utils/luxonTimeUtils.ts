@@ -1,7 +1,7 @@
 
 import { TimeZoneService } from '@/utils/timeZoneService';
 
-// Re-export only the essential Luxon-related utilities from TimeZoneService
+// Re-export only the current, essential Luxon-related utilities from TimeZoneService
 export const {
   createDateTime,
   parseWithZone,
@@ -9,6 +9,14 @@ export const {
   formatDateTime,
   formatTime,
   addDuration,
-  isSameDay
+  isSameDay,
+  toUTC,
+  fromUTC,
+  toUTCTimestamp,
+  fromUTCTimestamp,
+  getCurrentDateTime,
+  formatDateToTime12Hour
 } = TimeZoneService;
 
+// Optional: Export a type alias for common DateTime operations if needed
+export type { TimeUnit, DateTimeFormat } from '@/utils/timeZoneService';
