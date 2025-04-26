@@ -15,14 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
-import { 
-  toUTCTimestamp,
-  ensureIANATimeZone, 
-  formatUTCTimeForUser,
-  formatTime12Hour,
-  formatTimeZoneDisplay,
-  createISODateTimeString
-} from '@/utils/timeZoneUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 
 interface Client {
@@ -62,7 +55,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
         try {
           const timeZone = await getClinicianTimeZone(selectedClinicianId);
           console.log("[AppointmentDialog] Fetched clinician timezone:", timeZone);
-          const validTimeZone = ensureIANATimeZone(timeZone);
+          const validTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
           setClinicianTimeZone(validTimeZone);
         } catch (error) {
           console.error("[AppointmentDialog] Error fetching clinician timezone:", error);
@@ -145,8 +138,8 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
     }
 
     try {
-      const validTimeZone = ensureIANATimeZone(clinicianTimeZone);
-      console.log(`[AppointmentDialog] Using clinician timezone: ${validTimeZone} (${formatTimeZoneDisplay(validTimeZone)})`);
+      const validTimeZone = TimeZoneService.ensureIANATimeZone(clinicianTimeZone);
+      console.log(`[AppointmentDialog] Using clinician timezone: ${validTimeZone} (${TimeZoneService.formatTimeZoneDisplay(validTimeZone)})`);
       
       const endTime = calculateEndTime(startTime);
       
@@ -160,8 +153,8 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           try {
             const formattedDate = format(date, 'yyyy-MM-dd');
             
-            const startTimestamp = toUTCTimestamp(date, startTime, validTimeZone);
-            const endTimestamp = toUTCTimestamp(date, endTime, validTimeZone);
+            const startTimestamp = TimeZoneService.toUTCTimestamp(formattedDate, startTime, validTimeZone);
+            const endTimestamp = TimeZoneService.toUTCTimestamp(formattedDate, endTime, validTimeZone);
             
             console.log(`[AppointmentDialog] Creating appointment for ${formattedDate} at ${startTime}-${endTime}`);
             console.log(`[AppointmentDialog] UTC timestamps: ${startTimestamp} to ${endTimestamp}`);
@@ -204,8 +197,8 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
         try {
           const formattedDate = format(selectedDate, 'yyyy-MM-dd');
 
-          const startTimestamp = toUTCTimestamp(selectedDate, startTime, validTimeZone);
-          const endTimestamp = toUTCTimestamp(selectedDate, endTime, validTimeZone);
+          const startTimestamp = TimeZoneService.toUTCTimestamp(formattedDate, startTime, validTimeZone);
+          const endTimestamp = TimeZoneService.toUTCTimestamp(formattedDate, endTime, validTimeZone);
           
           console.log(`[AppointmentDialog] Creating appointment for ${formattedDate}:`);
           console.log(`- Local time (${validTimeZone}): ${startTime}-${endTime}`);
@@ -257,7 +250,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
     }
   };
 
-  const timeZoneDisplay = formatTimeZoneDisplay(clinicianTimeZone);
+  const timeZoneDisplay = TimeZoneService.formatTimeZoneDisplay(clinicianTimeZone);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -342,7 +335,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
                     displayTime = format(timeDate, 'h:mm a');
                   } catch (error) {
                     console.error('Error formatting time for display:', error, time);
-                    displayTime = formatTime12Hour(time);
+                    displayTime = TimeZoneService.formatTime(time);
                   }
                   
                   return (

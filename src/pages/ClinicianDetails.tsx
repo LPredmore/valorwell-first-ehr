@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
-import { timezoneOptions } from '@/utils/timezoneOptions';
+import { TIMEZONE_OPTIONS } from '@/utils/timezoneOptions';
 
 interface Clinician {
   id: string;
@@ -589,12 +589,12 @@ const ClinicianDetails = () => {
                           <SelectValue placeholder="Select time zone" />
                         </SelectTrigger>
                         <SelectContent>
-                          {timezoneOptions.map(zone => <SelectItem key={zone.value} value={zone.value}>
+                          {TIMEZONE_OPTIONS.map(zone => <SelectItem key={zone.value} value={zone.value}>
                               {zone.label}
                             </SelectItem>)}
                         </SelectContent>
                       </Select> : <p className="p-2 border rounded-md bg-gray-50">
-                        {timezoneOptions.find(tz => tz.value === clinicianTimeZone)?.label || clinicianTimeZone || 'Central Time (CT)'}
+                        {TIMEZONE_OPTIONS.find(tz => tz.value === clinicianTimeZone)?.label || clinicianTimeZone || 'Central Time (CT)'}
                       </p>}
                   </div>
                 </div>

@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 
@@ -49,7 +49,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
       render={({ field, fieldState: { error } }) => {
         const handleSelectChange = (selectedValue: string) => {
           if (isTimeZoneField) {
-            const ianaValue = ensureIANATimeZone(selectedValue);
+            const ianaValue = TimeZoneService.ensureIANATimeZone(selectedValue);
             field.onChange(ianaValue);
             return;
           }

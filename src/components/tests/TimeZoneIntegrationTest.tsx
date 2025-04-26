@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZoneById } from '@/hooks/useUserTimeZone';
-import { ensureIANATimeZone, formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
+// Update import to use TimeZoneService
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { getAppointmentInUserTimeZone } from '@/utils/appointmentUtils';
 import { AppointmentType } from '@/types/appointment';
 
@@ -203,8 +204,8 @@ const TimeZoneIntegrationTest: React.FC = () => {
                   >
                     <h3 className="font-medium mb-2">{testName}</h3>
                     <p className="text-sm mb-2">
-                      <span className="font-medium">Client:</span> {formatTimeZoneDisplay(result.testCase.clientTimeZone)},&nbsp;
-                      <span className="font-medium">Clinician:</span> {formatTimeZoneDisplay(result.testCase.clinicianTimeZone)}
+                      <span className="font-medium">Client:</span> {TimeZoneService.formatTimeZoneDisplay(result.testCase.clientTimeZone)},&nbsp;
+                      <span className="font-medium">Clinician:</span> {TimeZoneService.formatTimeZoneDisplay(result.testCase.clinicianTimeZone)}
                     </p>
                     <p className="text-sm mb-2">
                       <span className="font-medium">Original Time:</span> {result.testCase.appointmentTime}
@@ -241,10 +242,10 @@ const TimeZoneIntegrationTest: React.FC = () => {
                     <div className="space-y-4">
                       <div className="p-4 rounded-md bg-muted">
                         <h3 className="font-medium mb-2">Test Configuration</h3>
-                        <p><span className="font-medium">Client Time Zone:</span> {formatTimeZoneDisplay(result.testCase.clientTimeZone)}</p>
-                        <p><span className="font-medium">Clinician Time Zone:</span> {formatTimeZoneDisplay(result.testCase.clinicianTimeZone)}</p>
+                        <p><span className="font-medium">Client Time Zone:</span> {TimeZoneService.formatTimeZoneDisplay(result.testCase.clientTimeZone)}</p>
+                        <p><span className="font-medium">Clinician Time Zone:</span> {TimeZoneService.formatTimeZoneDisplay(result.testCase.clinicianTimeZone)}</p>
                         <p><span className="font-medium">Original Appointment Time:</span> {result.testCase.appointmentTime}</p>
-                        <p><span className="font-medium">Source Time Zone:</span> {formatTimeZoneDisplay(result.appointment?.source_time_zone || '')}</p>
+                        <p><span className="font-medium">Source Time Zone:</span> {TimeZoneService.formatTimeZoneDisplay(result.appointment?.source_time_zone || '')}</p>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -46,7 +46,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
   
   useEffect(() => {
     if (clinicianTimeZone) {
-      setTimeZoneDisplay(formatTimeZoneDisplay(clinicianTimeZone));
+      setTimeZoneDisplay(TimeZoneService.formatTimeZoneDisplay(clinicianTimeZone));
     }
   }, [clinicianTimeZone]);
 

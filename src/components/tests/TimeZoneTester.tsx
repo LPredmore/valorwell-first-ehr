@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZoneById } from '@/hooks/useUserTimeZone';
-import { ensureIANATimeZone, formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { getAppointmentInUserTimeZone } from '@/utils/appointmentUtils';
 import { AppointmentType } from '@/types/appointment';
 
@@ -33,13 +33,11 @@ const TimeZoneTester: React.FC = () => {
     const createTestAppointment = async () => {
       setLoading(true);
       try {
-        // Create a test appointment with both client and clinician in PST
         const now = new Date();
         const appointmentDate = format(now, 'yyyy-MM-dd');
         const appointmentTime = '09:00'; // 9 AM
         const appointmentEndTime = '09:30'; // 9:30 AM
         
-        // Create test appointment data
         const appointment: Partial<AppointmentType> = {
           id: 'test-appointment-id',
           client_id: 'test-client-id',
@@ -56,21 +54,18 @@ const TimeZoneTester: React.FC = () => {
         
         setTestAppointment(appointment as AppointmentType);
         
-        // Convert appointment to client view (PST)
         const clientAppointment = getAppointmentInUserTimeZone(
           appointment as AppointmentType,
           clientTimeZone
         );
         setClientView(clientAppointment);
         
-        // Convert appointment to clinician view (PST)
         const clinicianAppointment = getAppointmentInUserTimeZone(
           appointment as AppointmentType,
           clinicianTimeZone
         );
         setClinicianView(clinicianAppointment);
         
-        // Verify the test
         if (clientAppointment.display_start_time === appointmentTime && 
             clinicianAppointment.display_start_time === appointmentTime) {
           setTestResult('success');
@@ -113,8 +108,8 @@ const TimeZoneTester: React.FC = () => {
               <div className="space-y-4">
                 <div className="p-4 rounded-md bg-muted">
                   <h3 className="font-medium mb-2">Test Configuration</h3>
-                  <p><span className="font-medium">Client Time Zone:</span> {formatTimeZoneDisplay(clientTimeZone)}</p>
-                  <p><span className="font-medium">Clinician Time Zone:</span> {formatTimeZoneDisplay(clinicianTimeZone)}</p>
+                  <p><span className="font-medium">Client Time Zone:</span> {TimeZoneService.formatTimeZoneDisplay(clientTimeZone)}</p>
+                  <p><span className="font-medium">Clinician Time Zone:</span> {TimeZoneService.formatTimeZoneDisplay(clinicianTimeZone)}</p>
                   <p><span className="font-medium">Original Appointment Time:</span> {testAppointment?.start_time}</p>
                 </div>
                 

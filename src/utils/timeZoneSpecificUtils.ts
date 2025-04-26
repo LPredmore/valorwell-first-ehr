@@ -1,4 +1,3 @@
-
 /**
  * This file contains timezone-specific utilities that are used across the application
  * but haven't yet been migrated to the standardized date/time utilities.
@@ -14,6 +13,7 @@ import {
   formatInTimezone 
 } from './dateFormatUtils';
 import { ensureIANATimeZone } from './timeZoneUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 /**
  * Format a date and time in a specific timezone with timezone indicator

@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById, formatDateForDB, supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { getUserTimeZoneById } from '@/hooks/useUserTimeZone';
-import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 // Import the tab components
 import MyPortal from '@/components/patient/MyPortal';

@@ -1,180 +1,145 @@
-import { AvailabilitySettings, WeeklyAvailability } from '@/types/availability';
+import { DateTime } from 'luxon';
+import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
+import { 
+  AvailabilitySettings,
+  TimeSlot,
+  DayOfWeek
+} from '@/types/availability';
 
 export class AvailabilityQueryService {
-  static mapSettingsFromDB(data: any): AvailabilitySettings {
-    return {
-      id: data.id,
-      clinicianId: data.clinicianId,
-      timeZone: TimeZoneService.ensureIANATimeZone(data.timeZone || 'America/Chicago'),
-      slotDuration: data.defaultSlotDuration,
-      defaultSlotDuration: data.defaultSlotDuration,
-      minDaysAhead: data.minNoticeDays,
-      maxDaysAhead: data.maxAdvanceDays,
-      minNoticeDays: data.minNoticeDays,
-      maxAdvanceDays: data.maxAdvanceDays,
-      bufferBetweenSlots: data.bufferBetweenSlots || 0,
-      earlyMorningHours: data.earlyMorningHours || false,
-      lateEveningHours: data.lateEveningHours || false,
-      weekendAvailability: data.weekendAvailability || false,
-      allowRecurringScheduling: data.allowRecurringScheduling || false,
-      autoConfirm: data.autoConfirm || false,
-      timeGranularity: data.timeGranularity || 'hour',
-      createdAt: data.createdAt,
-      updatedAt: data.updatedAt
-    };
-  }
-  
-  static calculateAvailableSlots(
+  static async calculateAvailableSlots(
     settings: AvailabilitySettings,
     date: string,
-    existingAppointments: any[] = []
-  ): { start: string; end: string }[] {
-    // Default slot duration in minutes
-    const slotDuration = settings.slotDuration || 60;
-    
-    // Get the day of week (0-6, where 0 is Sunday)
-    const dateObj = new Date(date);
-    const dayOfWeek = dateObj.getDay();
-    
-    // Skip if weekend and weekend availability is disabled
-    if ((dayOfWeek === 0 || dayOfWeek === 6) && !settings.weekendAvailability) {
+    existingAppointments: any[] // TODO: Define type for existing appointments
+  ): Promise<TimeSlot[]> {
+    const { timeZone, slotDuration, timeGranularity } = settings;
+    const validTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
+    const dayOfWeek = DateTime.fromISO(date).setZone(validTimeZone).toFormat('cccc').toLowerCase() as DayOfWeek;
+
+    // Fetch weekly availability for the clinician
+    const weeklyAvailability = await this.getWeeklyAvailability(settings.clinicianId);
+    const dayAvailability = weeklyAvailability[dayOfWeek];
+
+    if (!dayAvailability || dayAvailability.length === 0) {
+      console.log(`No availability found for ${dayOfWeek}`);
       return [];
     }
-    
-    // Define start and end hours based on settings
-    let startHour = settings.earlyMorningHours ? 6 : 8;
-    let endHour = settings.lateEveningHours ? 20 : 18;
-    
-    // Generate time slots
-    const slots: { start: string; end: string }[] = [];
-    const timeZone = TimeZoneService.ensureIANATimeZone(settings.timeZone);
-    
-    for (let hour = startHour; hour < endHour; hour++) {
-      // For each hour, create slots based on granularity
-      const slotsPerHour = this.getSlotsPerHour(settings.timeGranularity || 'hour');
-      const minutesPerSlot = 60 / slotsPerHour;
-      
-      for (let i = 0; i < slotsPerHour; i++) {
-        const startMinute = i * minutesPerSlot;
-        
-        // Create the slot start and end times
-        const slotStart = new Date(date);
-        slotStart.setHours(hour, startMinute, 0, 0);
-        
-        const slotEnd = new Date(slotStart);
-        slotEnd.setMinutes(slotStart.getMinutes() + slotDuration);
-        
-        // Convert to ISO strings in the clinician's timezone
-        const startISO = TimeZoneService.createISODateTimeString(
-          date,
-          `${hour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`,
-          timeZone
-        );
-        
-        const endISO = TimeZoneService.createISODateTimeString(
-          date,
-          `${slotEnd.getHours().toString().padStart(2, '0')}:${slotEnd.getMinutes().toString().padStart(2, '0')}`,
-          timeZone
-        );
-        
-        // Check if slot conflicts with existing appointments
-        const isAvailable = !this.hasConflict(startISO, endISO, existingAppointments);
-        
-        if (isAvailable) {
-          slots.push({
-            start: startISO,
-            end: endISO
+
+    // Convert date string to DateTime object in the clinician's timezone
+    const currentDate = DateTime.fromISO(date, { zone: validTimeZone });
+
+    // Calculate start and end of the day in the clinician's timezone
+    const startOfDay = currentDate.startOf('day');
+    const endOfDay = currentDate.endOf('day');
+
+    let availableSlots: TimeSlot[] = [];
+
+    // Iterate through each availability slot for the day
+    dayAvailability.forEach(slot => {
+      const startTime = DateTime.fromFormat(slot.startTime, 'HH:mm', { zone: validTimeZone });
+      const endTime = DateTime.fromFormat(slot.endTime, 'HH:mm', { zone: validTimeZone });
+
+      // Ensure start and end times are valid
+      if (!startTime.isValid || !endTime.isValid) {
+        console.error('Invalid start or end time:', slot.startTime, slot.endTime);
+        return;
+      }
+
+      let currentSlotTime = startOfDay.set({
+        hour: startTime.hour,
+        minute: startTime.minute,
+        second: 0,
+        millisecond: 0
+      });
+
+      // Generate time slots for the current availability slot
+      while (currentSlotTime < endOfDay && currentSlotTime < endTime) {
+        const slotEndTime = currentSlotTime.plus({ minutes: slotDuration });
+
+        // Check if the slot end time exceeds the end of the availability slot
+        if (slotEndTime > endTime) {
+          break;
+        }
+
+        // Check if the slot overlaps with any existing appointments
+        const isSlotBooked = existingAppointments.some(appointment => {
+          const appointmentStartTime = DateTime.fromISO(appointment.start_time, { zone: validTimeZone });
+          return currentSlotTime < appointmentStartTime && slotEndTime > appointmentStartTime;
+        });
+
+        if (!isSlotBooked) {
+          availableSlots.push({
+            startTime: currentSlotTime.toFormat('HH:mm'),
+            endTime: slotEndTime.toFormat('HH:mm'),
+            available: true
           });
         }
-      }
-    }
-    
-    return slots;
-  }
-  
-  static getSlotsPerHour(granularity: string): number {
-    switch (granularity) {
-      case 'quarter':
-        return 4; // 15-minute slots
-      case 'halfhour':
-        return 2; // 30-minute slots
-      case 'hour':
-      default:
-        return 1; // 60-minute slots
-    }
-  }
-  
-  static hasConflict(
-    start: string,
-    end: string,
-    appointments: { start: string; end: string }[]
-  ): boolean {
-    return appointments.some(appointment => {
-      const appointmentStart = new Date(appointment.start).getTime();
-      const appointmentEnd = new Date(appointment.end).getTime();
-      const slotStart = new Date(start).getTime();
-      const slotEnd = new Date(end).getTime();
-      
-      // Check for overlap
-      return (
-        (slotStart >= appointmentStart && slotStart < appointmentEnd) ||
-        (slotEnd > appointmentStart && slotEnd <= appointmentEnd) ||
-        (slotStart <= appointmentStart && slotEnd >= appointmentEnd)
-      );
-    });
-  }
-  
-  static getDefaultSettings(clinicianId: string): AvailabilitySettings {
-    const now = new Date();
-    return {
-      id: `default-${clinicianId}`,
-      clinicianId,
-      timeZone: TimeZoneService.getUserTimeZone(),
-      slotDuration: 60,
-      defaultSlotDuration: 60,
-      minDaysAhead: 1,
-      maxDaysAhead: 30,
-      minNoticeDays: 1,
-      maxAdvanceDays: 30,
-      bufferBetweenSlots: 0,
-      earlyMorningHours: false,
-      lateEveningHours: false,
-      weekendAvailability: false,
-      allowRecurringScheduling: true,
-      autoConfirm: false,
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString()
-    };
-  }
 
-  static async getWeeklyAvailability(clinicianId: string): Promise<WeeklyAvailability> {
-    const { data, error } = await supabase
-      .from('availability_slots')
-      .select('*')
-      .eq('clinician_id', clinicianId);
-
-    if (error) {
-      console.error('Error fetching weekly availability:', error);
-      return createEmptyWeeklyAvailability();
-    }
-
-    const slots = (data || []).map(slot => ({
-      id: slot.id,
-      startTime: TimeZoneService.formatTime(slot.start_time),
-      endTime: TimeZoneService.formatTime(slot.end_time),
-      dayOfWeek: slot.day_of_week,
-      isRecurring: slot.is_recurring || false
-    }));
-
-    const weeklySlots = createEmptyWeeklyAvailability();
-    slots.forEach(slot => {
-      if (slot.dayOfWeek && slot.dayOfWeek in weeklySlots) {
-        weeklySlots[slot.dayOfWeek].push(slot);
+        // Increment the current slot time based on the time granularity
+        if (timeGranularity === 'half-hour') {
+          currentSlotTime = currentSlotTime.plus({ minutes: 30 });
+        } else {
+          currentSlotTime = currentSlotTime.plus({ minutes: 60 });
+        }
       }
     });
 
-    return weeklySlots;
+    return availableSlots;
+  }
+
+  static async getWeeklyAvailability(clinicianId: string): Promise<Record<DayOfWeek, { startTime: string, endTime: string }[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('availability_slots')
+        .select('*')
+        .eq('clinician_id', clinicianId);
+
+      if (error) {
+        console.error('Error fetching weekly availability:', error);
+        return {
+          monday: [],
+          tuesday: [],
+          wednesday: [],
+          thursday: [],
+          friday: [],
+          saturday: [],
+          sunday: []
+        };
+      }
+
+      const weeklyAvailability: Record<DayOfWeek, { startTime: string, endTime: string }[]> = {
+        monday: [],
+        tuesday: [],
+        wednesday: [],
+        thursday: [],
+        friday: [],
+        saturday: [],
+        sunday: []
+      };
+
+      data.forEach(slot => {
+        const dayOfWeek = slot.day_of_week as DayOfWeek;
+        if (weeklyAvailability[dayOfWeek]) {
+          weeklyAvailability[dayOfWeek].push({
+            startTime: slot.start_time,
+            endTime: slot.end_time
+          });
+        }
+      });
+
+      return weeklyAvailability;
+    } catch (error) {
+      console.error('Error in getWeeklyAvailability:', error);
+      return {
+        monday: [],
+        tuesday: [],
+        wednesday: [],
+        thursday: [],
+        friday: [],
+        saturday: [],
+        sunday: []
+      };
+    }
   }
 }
