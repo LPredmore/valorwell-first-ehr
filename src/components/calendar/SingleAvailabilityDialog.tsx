@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,6 @@ import { toast } from '@/hooks/use-toast';
 import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { AvailabilityMutationService } from '@/services/AvailabilityMutationService';
-import { formatDate } from '@/utils/dateFormatUtils';
 
 interface SingleAvailabilityDialogProps {
   isOpen: boolean;
@@ -56,25 +56,21 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
     try {
       setIsSubmitting(true);
       
-      // Format date in ISO format
-      const dateStr = formatDate(selectedDate, 'yyyy-MM-dd');
-      
-      // Create datetime strings
-      const startISOString = `${dateStr}T${startTime}`;
-      const endISOString = `${dateStr}T${endTime}`;
+      // Format date properly for TimeZoneService
+      const dateStr = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD format
       
       console.log('[SingleAvailabilityDialog] Creating availability with:', {
         clinicianId,
-        startTime: startISOString,
-        endTime: endISOString,
+        startTime: dateStr + 'T' + startTime,
+        endTime: dateStr + 'T' + endTime,
         userTimeZone: validTimeZone
       });
       
       const response = await AvailabilityMutationService.createAvailabilitySlot(
         clinicianId,
         {
-          startTime: startISOString,
-          endTime: endISOString,
+          startTime: dateStr + 'T' + startTime,
+          endTime: dateStr + 'T' + endTime,
           title: 'Available (Single)',
           recurring: false,
         }

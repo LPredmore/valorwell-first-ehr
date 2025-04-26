@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -130,9 +131,9 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
         setNewStartTime('09:00');
         setNewEndTime('10:00');
       } else {
-        const errorMessage = result.error instanceof Error ? 
-          result.error.message : 
-          String(result.error || "Failed to add availability. Please try again.");
+        const errorMessage = result.error ? 
+          String(result.error) : 
+          "Failed to add availability. Please try again.";
         
         setFormError(errorMessage);
         setRetryCount(prev => prev + 1);
@@ -143,9 +144,9 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
           variant: "destructive"
         });
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
-      console.error('[WeeklyAvailabilityDialog] Error adding availability slot:', error);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
+      console.error('[WeeklyAvailabilityDialog] Error adding availability slot:', err);
       setFormError(errorMessage);
       setRetryCount(prev => prev + 1);
       toast({
@@ -188,8 +189,8 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
           variant: "destructive"
         });
       }
-    } catch (error) {
-      console.error('[WeeklyAvailabilityDialog] Error deleting availability slot:', error);
+    } catch (err) {
+      console.error('[WeeklyAvailabilityDialog] Error deleting availability slot:', err);
       setFormError("Failed to delete availability slot");
       toast({
         title: "Error",
