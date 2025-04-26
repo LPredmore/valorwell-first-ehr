@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { AvailabilityService } from '@/services/availabilityService';
 import { RecurringAvailabilityService } from '@/services/RecurringAvailabilityService';
 import { DateTime } from 'luxon';
-import { WeeklyAvailability, DayOfWeek } from '@/types/availability';
+import { WeeklyAvailability, DayOfWeek, AvailabilitySettings } from '@/types/availability';
 import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
 import { TimeZoneService } from '@/utils/timeZoneService';
 
@@ -17,6 +17,7 @@ export const useAvailability = (clinicianId: string) => {
   const [weeklyAvailability, setWeeklyAvailability] = useState<WeeklyAvailability>(
     createEmptyWeeklyAvailability()
   );
+  const [settings, setSettings] = useState<AvailabilitySettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,10 +34,21 @@ export const useAvailability = (clinicianId: string) => {
       setIsLoading(false);
     }
   };
+  
+  const fetchSettings = async () => {
+    try {
+      const settingsData = await AvailabilityService.getSettings(clinicianId);
+      setSettings(settingsData);
+    } catch (err) {
+      console.error('Error fetching availability settings:', err);
+      // Don't set error state here to avoid blocking availability display
+    }
+  };
 
   useEffect(() => {
     if (clinicianId) {
       fetchAvailability();
+      fetchSettings();
     }
   }, [clinicianId]);
 
@@ -180,6 +192,20 @@ export const useAvailability = (clinicianId: string) => {
       };
     }
   };
+  
+  const updateSettings = async (settingsUpdate: Partial<AvailabilitySettings>): Promise<boolean> => {
+    try {
+      const updatedSettings = await AvailabilityService.updateSettings(clinicianId, settingsUpdate);
+      if (updatedSettings) {
+        setSettings(updatedSettings);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error updating availability settings:', err);
+      return false;
+    }
+  };
 
   const getNextDayOfWeekDate = (dayOfWeek: DayOfWeek): DateTime => {
     const today = DateTime.now();
@@ -203,11 +229,13 @@ export const useAvailability = (clinicianId: string) => {
 
   return {
     weeklyAvailability,
+    settings,
     isLoading,
     error,
     refreshAvailability: fetchAvailability,
     createSlot,
     updateSlot,
-    deleteSlot
+    deleteSlot,
+    updateSettings
   };
 };

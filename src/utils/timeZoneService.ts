@@ -1,4 +1,3 @@
-
 /**
  * TimeZoneService - THE OFFICIAL SOURCE OF TRUTH for all timezone operations
  * 
@@ -42,9 +41,78 @@ export const DATETIME_FORMATS = {
 };
 
 /**
+ * Standard timezone options for dropdown menus
+ */
+export const TIMEZONE_OPTIONS = [
+  { value: "America/New_York", label: "Eastern Time (ET)" },
+  { value: "America/Chicago", label: "Central Time (CT)" },
+  { value: "America/Denver", label: "Mountain Time (MT)" },
+  { value: "America/Phoenix", label: "Mountain Time - Arizona (no DST)" },
+  { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
+  { value: "America/Anchorage", label: "Alaska Time (AKT)" },
+  { value: "Pacific/Honolulu", label: "Hawaii-Aleutian Time (HST)" },
+  { value: "America/Puerto_Rico", label: "Atlantic Time (AT)" },
+];
+
+/**
+ * Map of common timezone display names to IANA format
+ */
+const TIME_ZONE_MAP: Record<string, string> = {
+  'Eastern Time (ET)': 'America/New_York',
+  'Central Time (CT)': 'America/Chicago',
+  'Mountain Time (MT)': 'America/Denver',
+  'Pacific Time (PT)': 'America/Los_Angeles',
+  'Alaska Time (AKT)': 'America/Anchorage',
+  'Hawaii-Aleutian Time (HST)': 'Pacific/Honolulu',
+  'Atlantic Time (AST)': 'America/Puerto_Rico'
+};
+
+/**
  * TimeZoneService - Unified service for all timezone operations
  */
 export class TimeZoneService {
+  /**
+   * Get a user's timezone or fallback to browser timezone
+   * @returns IANA timezone string
+   */
+  static getUserTimeZone(): string {
+    try {
+      return this.ensureIANATimeZone(
+        Intl.DateTimeFormat().resolvedOptions().timeZone
+      );
+    } catch (error) {
+      console.error('Error getting user timezone, falling back to UTC:', error);
+      return 'UTC';
+    }
+  }
+  
+  /**
+   * Get IANA timezone string from display name
+   * @param displayName Display name of timezone (e.g., "Eastern Time (ET)")
+   * @returns IANA timezone string
+   */
+  static getIANAFromDisplayName(displayName: string): string {
+    if (!displayName) return 'UTC';
+    
+    if (TIME_ZONE_MAP[displayName]) {
+      return TIME_ZONE_MAP[displayName];
+    }
+    
+    return this.ensureIANATimeZone(displayName);
+  }
+  
+  /**
+   * Get display name from IANA timezone string
+   * @param ianaTimeZone IANA timezone string
+   * @returns User-friendly display name
+   */
+  static getDisplayNameFromIANA(ianaTimeZone: string): string {
+    const option = TIMEZONE_OPTIONS.find(opt => opt.value === ianaTimeZone);
+    if (option) return option.label;
+    
+    return this.formatTimeZoneDisplay(ianaTimeZone);
+  }
+
   /**
    * Ensure a timezone string is in valid IANA format
    * @param timeZone The timezone string to validate
@@ -52,11 +120,32 @@ export class TimeZoneService {
    */
   static ensureIANATimeZone(timeZone: string): string {
     try {
-      if (!timeZone || DateTime.local().setZone(timeZone).invalidReason) {
-        console.warn(`Invalid timezone ${timeZone}, falling back to UTC`);
+      if (!timeZone) {
+        console.warn('No timezone provided, falling back to UTC');
         return 'UTC';
       }
-      return timeZone;
+      
+      // If it's already in IANA format
+      if (timeZone && timeZone.includes('/')) {
+        const dt = DateTime.now().setZone(timeZone);
+        if (dt.isValid) {
+          return timeZone;
+        }
+      }
+      
+      // If it's a display name in our map
+      if (timeZone && TIME_ZONE_MAP[timeZone]) {
+        return TIME_ZONE_MAP[timeZone];
+      }
+      
+      // As a fallback, try browser's timezone
+      console.warn(`Invalid timezone ${timeZone}, falling back to system timezone`);
+      try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone;
+      } catch (e) {
+        console.error('Error getting system timezone, using UTC as fallback');
+        return 'UTC';
+      }
     } catch (error) {
       console.error('Error validating timezone:', error);
       return 'UTC';
@@ -433,6 +522,21 @@ export class TimeZoneService {
       { year, month, day, hour: hours, minute: minutes },
       { zone: validTimeZone }
     );
+  }
+
+  /**
+   * Get timezone offset string (e.g., GMT+2)
+   * @param timeZone IANA timezone identifier
+   * @returns Formatted timezone offset string
+   */
+  static getTimezoneOffsetString(timeZone: string): string {
+    try {
+      const now = DateTime.now().setZone(this.ensureIANATimeZone(timeZone));
+      return now.toFormat('ZZZZ');
+    } catch (error) {
+      console.error('Error getting timezone offset string:', error);
+      return '';
+    }
   }
 }
 

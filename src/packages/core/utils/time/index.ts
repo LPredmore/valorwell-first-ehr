@@ -26,30 +26,16 @@ export const {
   addDuration,
   getWeekdayName,
   getMonthName,
-  formatDate
+  formatDate,
+  getUserTimeZone,
+  getDisplayNameFromIANA,
+  getIANAFromDisplayName,
+  getTimezoneOffsetString
 } = TimeZoneService;
 
 // Add deprecated warning to old imports
-// These will be gradually removed in future updates
-// @deprecated - Use TimeZoneService directly
-export * from './timeZone';
-// @deprecated - Use TimeZoneService directly
-export {
-  createDateTime as createDateTimeLegacy,
-  convertToTimezone as convertToTimezoneLegacy,
-  formatDateTime as formatDateTimeLegacy,
-  fromUTCToTimezone as fromUTCToTimezoneLegacy
-} from './luxon';
-// @deprecated - Use TimeZoneService directly
-export {
-  formatEventTime as formatEventTimeLegacy,
-  convertEventToUserTimeZone as convertEventToUserTimeZoneLegacy
-} from './calendar';
-// @deprecated - Use TimeZoneService directly
-export {
-  formatTimeZoneDisplay as formatTimeZoneDisplayLegacy
-} from './formatting';
-// @deprecated - Use TimeZoneService directly
-export * from './validation';
-// @deprecated - Use TimeZoneService directly
-export * from './conversion';
+console.warn(
+  'You are importing from packages/core/utils/time/index.ts, which is deprecated. ' +
+  'Please import from @/utils/timeZoneService directly. ' +
+  'These re-exports will be removed in a future update.'
+);

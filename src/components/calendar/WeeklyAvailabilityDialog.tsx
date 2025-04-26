@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -250,7 +249,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     if (!timeStr) return '';
     
     try {
-      return TimeZoneService.formatTime(timeStr, 'h:mm a', timeZone);
+      return TimeZoneService.formatTime(`2000-01-01T${timeStr}`, 'h:mm a', timeZone);
     } catch (error) {
       console.error('[WeeklyAvailabilityDialog] Error formatting time:', error);
       return timeStr;
