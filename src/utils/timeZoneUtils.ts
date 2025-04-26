@@ -25,7 +25,8 @@ export const {
   formatWithTimeZone,
   formatDateToTime12Hour,
   toUTC,
-  fromUTC
+  fromUTC,
+  parseWithZone
 } = TimeZoneService;
 
 /**

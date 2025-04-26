@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -104,6 +105,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       const recurrenceRule = `FREQ=WEEKLY;BYDAY=${byDay}`;
       
       console.log(`[WeeklyAvailabilityDialog] Using recurrence rule: ${recurrenceRule}`);
+      console.log(`[WeeklyAvailabilityDialog] Using timezone: ${timeZone || 'UTC'}`);
       
       // Clear any previous errors
       setFormError(null);
@@ -113,7 +115,8 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
         newStartTime,
         newEndTime,
         true,
-        recurrenceRule
+        recurrenceRule,
+        timeZone
       );
       
       if (result.success) {
@@ -245,7 +248,13 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
 
   const formatTimeDisplay = (timeStr: string): string => {
     if (!timeStr) return '';
-    return TimeZoneService.formatTime(timeStr, timeZone || 'UTC');
+    
+    try {
+      return TimeZoneService.formatTime(timeStr, 'h:mm a', timeZone);
+    } catch (error) {
+      console.error('[WeeklyAvailabilityDialog] Error formatting time:', error);
+      return timeStr;
+    }
   };
 
   const renderSlotList = (slots: AvailabilitySlot[] = []) => {

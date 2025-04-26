@@ -1,9 +1,10 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySettings, AvailabilitySlot, WeeklyAvailability } from '@/types/appointment';
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
 import { DateTime } from 'luxon';
 import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
-import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 export class AvailabilityService {
   static async getSettings(clinicianId: string): Promise<AvailabilitySettings | null> {
@@ -116,11 +117,11 @@ export class AvailabilityService {
         console.error('[AvailabilityService] Error fetching clinician timezone:', profileError);
       }
       
-      const clinicianTimeZone = profileData?.time_zone || 'UTC';
+      const clinicianTimeZone = TimeZoneService.ensureIANATimeZone(profileData?.time_zone || 'UTC');
       console.log('[AvailabilityService] Using clinician timezone:', clinicianTimeZone);
       
-      const startDateTime = DateTime.fromISO(slot.startTime, { zone: clinicianTimeZone });
-      const endDateTime = DateTime.fromISO(slot.endTime, { zone: clinicianTimeZone });
+      const startDateTime = TimeZoneService.parseWithZone(slot.startTime, clinicianTimeZone);
+      const endDateTime = TimeZoneService.parseWithZone(slot.endTime, clinicianTimeZone);
       
       if (!startDateTime.isValid || !endDateTime.isValid) {
         console.error('[AvailabilityService] Invalid date/time formats:', { 
@@ -151,8 +152,9 @@ export class AvailabilityService {
           clinician_id: clinicianId,
           event_type: 'availability',
           title: slot.title || 'Available',
-          start_time: startDateTime.toUTC().toISO(),
-          end_time: endDateTime.toUTC().toISO(),
+          availability_type: slot.recurring ? 'recurring' : 'single',
+          start_time: TimeZoneService.toUTC(startDateTime).toISO(),
+          end_time: TimeZoneService.toUTC(endDateTime).toISO(),
           all_day: false,
           is_active: true
         })
@@ -165,12 +167,13 @@ export class AvailabilityService {
       }
 
       if (slot.recurring && slot.recurrenceRule && eventData?.id) {
-        const { error: recurrenceError } = await supabase
+        const { data: recurrenceData, error: recurrenceError } = await supabase
           .from('recurrence_rules')
           .insert({
             event_id: eventData.id,
             rrule: slot.recurrenceRule
-          });
+          })
+          .select('id');
 
         if (recurrenceError) {
           console.error('[AvailabilityService] Error creating recurrence rule:', recurrenceError);
@@ -181,13 +184,15 @@ export class AvailabilityService {
           return null;
         }
         
-        const { error: updateError } = await supabase
-          .from('calendar_events')
-          .update({ recurrence_id: eventData.id })
-          .eq('id', eventData.id);
-          
-        if (updateError) {
-          console.error('[AvailabilityService] Error updating event with recurrence ID:', updateError);
+        if (recurrenceData && recurrenceData.length > 0) {
+          const { error: updateError } = await supabase
+            .from('calendar_events')
+            .update({ recurrence_id: recurrenceData[0].id })
+            .eq('id', eventData.id);
+            
+          if (updateError) {
+            console.error('[AvailabilityService] Error updating event with recurrence ID:', updateError);
+          }
         }
       }
 
@@ -225,27 +230,27 @@ export class AvailabilityService {
         .eq('id', slotData.clinician_id)
         .maybeSingle();
         
-      const clinicianTimeZone = profileData?.time_zone || 'UTC';
+      const clinicianTimeZone = TimeZoneService.ensureIANATimeZone(profileData?.time_zone || 'UTC');
       console.log('[AvailabilityService] Using clinician timezone for update:', clinicianTimeZone);
 
       const updateData: any = {};
       
       if (updates.startTime) {
-        const startDateTime = DateTime.fromISO(updates.startTime, { zone: clinicianTimeZone });
+        const startDateTime = TimeZoneService.parseWithZone(updates.startTime, clinicianTimeZone);
         if (!startDateTime.isValid) {
           console.error('[AvailabilityService] Invalid start time format:', updates.startTime);
           return false;
         }
-        updateData.start_time = startDateTime.toUTC().toISO();
+        updateData.start_time = TimeZoneService.toUTC(startDateTime).toISO();
       }
       
       if (updates.endTime) {
-        const endDateTime = DateTime.fromISO(updates.endTime, { zone: clinicianTimeZone });
+        const endDateTime = TimeZoneService.parseWithZone(updates.endTime, clinicianTimeZone);
         if (!endDateTime.isValid) {
           console.error('[AvailabilityService] Invalid end time format:', updates.endTime);
           return false;
         }
-        updateData.end_time = endDateTime.toUTC().toISO();
+        updateData.end_time = TimeZoneService.toUTC(endDateTime).toISO();
       }
       
       if (updates.title) {
@@ -371,7 +376,7 @@ export class AvailabilityService {
         .eq('id', clinicianId)
         .maybeSingle();
       
-      const clinicianTimeZone = ensureIANATimeZone(profileData?.time_zone || 'UTC');
+      const clinicianTimeZone = TimeZoneService.ensureIANATimeZone(profileData?.time_zone || 'UTC');
       console.log('[AvailabilityService] Using clinician timezone:', clinicianTimeZone);
       
       const weeklyAvailability = createEmptyWeeklyAvailability();
@@ -396,8 +401,8 @@ export class AvailabilityService {
 
       events?.forEach(event => {
         try {
-          const startDateTime = DateTime.fromISO(event.start_time).setZone(clinicianTimeZone);
-          const endDateTime = DateTime.fromISO(event.end_time).setZone(clinicianTimeZone);
+          const startDateTime = TimeZoneService.fromUTC(event.start_time, clinicianTimeZone);
+          const endDateTime = TimeZoneService.fromUTC(event.end_time, clinicianTimeZone);
           
           const dayOfWeek = startDateTime.weekdayLong.toLowerCase();
           
@@ -468,7 +473,7 @@ export class AvailabilityService {
             const startDateTimeStr = `${apptDate}T${startTimeStr}`;
             const endDateTimeStr = `${apptDate}T${endTimeStr}`;
             
-            const sourceTimeZone = appointment.source_time_zone || clinicianTimeZone;
+            const sourceTimeZone = TimeZoneService.ensureIANATimeZone(appointment.source_time_zone || clinicianTimeZone);
             const startDateTime = DateTime.fromSQL(startDateTimeStr, { zone: sourceTimeZone }).setZone(clinicianTimeZone);
             const endDateTime = DateTime.fromSQL(endDateTimeStr, { zone: sourceTimeZone }).setZone(clinicianTimeZone);
             
