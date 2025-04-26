@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -87,9 +86,9 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
       try {
         const { data, error } = await supabase
           .from('clients')
-          .select('id, client_first_name, client_last_name, client_preferred_name, email, phone, time_zone, created_at, updated_at')
+          .select('id, name, email, phone, time_zone, created_at, updated_at')
           .eq('client_assigned_therapist', selectedClinicianId)
-          .order('client_last_name');
+          .order('name');
 
         if (error) {
           console.error('[useCalendarState] Error fetching clients:', error);
@@ -104,7 +103,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
         if (data) {
           const normalizedClients: ClientData[] = data.map(client => ({
             id: client.id,
-            name: ClientDataService.formatClientName(client, 'Unnamed Client'),
+            name: client.name || 'Unnamed Client',
             email: client.email,
             phone: client.phone,
             timeZone: client.time_zone || 'America/Chicago',

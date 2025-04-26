@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { availabilityService } from '@/services/availabilityService';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
@@ -77,8 +76,7 @@ export const useAvailability = (clinicianId: string | null) => {
     endTime: string,
     isRecurring: boolean = true,
     recurrenceRule?: string,
-    timeZone?: string,
-    specificDate?: string // New parameter to pass the specific date
+    timeZone?: string
   ): Promise<AvailabilitySlotResult> => {
     if (!clinicianId) {
       return { success: false, error: 'No clinician ID provided' };
@@ -90,8 +88,7 @@ export const useAvailability = (clinicianId: string | null) => {
         dayOfWeek,
         startTime,
         endTime,
-        timeZone,
-        specificDate
+        timeZone
       });
 
       const result = await availabilityService.createAvailabilitySlot(
@@ -101,8 +98,7 @@ export const useAvailability = (clinicianId: string | null) => {
         endTime,
         isRecurring,
         recurrenceRule,
-        timeZone,
-        specificDate
+        timeZone
       );
 
       await fetchWeeklyAvailability();
