@@ -32,6 +32,7 @@ export class SingleAvailabilityService {
           start_time: TimeZoneService.toUTC(startDt).toISO(),
           end_time: TimeZoneService.toUTC(endDt).toISO(),
           is_active: true,
+          time_zone: validTimeZone
         }])
         .select('id');
 

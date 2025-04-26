@@ -1,3 +1,4 @@
+
 import { EventApi, ViewApi } from '@fullcalendar/core';
 
 export type CalendarViewType = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay' | string;

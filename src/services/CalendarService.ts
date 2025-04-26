@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { CalendarEvent } from '@/types/calendar';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -130,7 +131,8 @@ export class CalendarService {
             description: event.description,
             location: event.location,
             type: event.type,
-            source_time_zone: validTimeZone
+            source_time_zone: validTimeZone,
+            time_zone: validTimeZone
           }
         ])
         .select()
@@ -167,7 +169,8 @@ export class CalendarService {
           description: event.description,
           location: event.location,
           type: event.type,
-          source_time_zone: validTimeZone
+          source_time_zone: validTimeZone,
+          time_zone: validTimeZone
         })
         .eq('id', event.id)
         .select()

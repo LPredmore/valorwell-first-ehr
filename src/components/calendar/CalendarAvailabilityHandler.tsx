@@ -1,9 +1,7 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { AvailabilityQueryService } from '@/services/AvailabilityQueryService';
 import { WeeklyAvailability, AvailabilitySlot, DayOfWeek } from '@/types/availability';
 import { CalendarEvent, WeekdayNumbers } from '@/types/calendar';
-import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { weekdayNameToNumber, getWeekdayNumberFromDateTime } from '@/utils/calendarWeekdayUtils';
 
