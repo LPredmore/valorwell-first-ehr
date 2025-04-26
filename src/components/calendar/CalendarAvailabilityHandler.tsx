@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { AvailabilityQueryService } from '@/services/AvailabilityQueryService';
-import { WeeklyAvailability, AvailabilitySlot } from '@/types/availability';
+import { WeeklyAvailability, AvailabilitySlot, DayOfWeek } from '@/types/availability';
 import { CalendarEvent, WeekdayNumbers } from '@/types/calendar';
 import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -30,7 +30,7 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
   const convertAvailabilityToEvents = useCallback((weeklyAvailability: WeeklyAvailability): CalendarEvent[] => {
     try {
       const events: CalendarEvent[] = [];
-      const now = DateTime.now().setZone(validTimeZone).startOf('day');
+      const now = TimeZoneService.getCurrentDateTime(validTimeZone).startOf('day');
       
       for (const [day, slots] of Object.entries(weeklyAvailability)) {
         const weekday = weekdayNameToNumber[day as DayOfWeek];

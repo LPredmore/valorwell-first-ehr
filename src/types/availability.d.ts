@@ -38,6 +38,6 @@ export interface AvailabilitySettings {
   maxAdvanceDays: number;
   timeZone: string;
   slotDuration?: number;
-  timeGranularity: 'hour' | 'half-hour';
+  timeGranularity: 'hour' | 'half-hour' | 'quarter';
   isActive: boolean;
 }

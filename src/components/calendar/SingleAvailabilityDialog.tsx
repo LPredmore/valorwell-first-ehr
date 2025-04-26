@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { TimePickerInput } from '@/components/ui/time-picker';
 import { toast } from '@/hooks/use-toast';
-import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { AvailabilityMutationService } from '@/services/AvailabilityMutationService';
 
@@ -66,14 +65,18 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
         userTimeZone: validTimeZone
       });
       
+      // Create availability object with correct day of week
+      const selectedDateTime = DateTime.fromJSDate(selectedDate).setZone(validTimeZone);
+      const dayOfWeek = TimeZoneService.getWeekdayName(selectedDateTime, 'long').toLowerCase() as any;
+      
       const response = await AvailabilityMutationService.createAvailabilitySlot(
         clinicianId,
-        {
-          startTime: dateStr + 'T' + startTime,
-          endTime: dateStr + 'T' + endTime,
-          title: 'Available (Single)',
-          recurring: false,
-        }
+        dayOfWeek,
+        dateStr + 'T' + startTime,
+        dateStr + 'T' + endTime,
+        false, // Not recurring for single day
+        undefined,
+        validTimeZone
       );
 
       if (!response.success) {
