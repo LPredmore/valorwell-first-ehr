@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from 'react';
+import { DateTime } from 'luxon';
 import { AvailabilityService } from '@/services/availabilityService';
 import { RecurringAvailabilityService } from '@/services/RecurringAvailabilityService';
 import { WeeklyAvailability, DayOfWeek, AvailabilitySettings, AvailabilitySlot } from '@/types/availability';
-import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
+import { createEmptyWeeklyAvailability, getDayNumber } from '@/utils/availabilityUtils';
 import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface CreateSlotResult {
@@ -13,7 +13,6 @@ interface CreateSlotResult {
 }
 
 export const useAvailability = (clinicianId: string) => {
-  // Fix: Ensure we're using a properly typed initial state
   const [weeklyAvailability, setWeeklyAvailability] = useState<WeeklyAvailability>(createEmptyWeeklyAvailability());
   const [settings, setSettings] = useState<AvailabilitySettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,12 +23,7 @@ export const useAvailability = (clinicianId: string) => {
     setError(null);
     try {
       const data = await AvailabilityService.getWeeklyAvailability(clinicianId);
-      // Fix: Ensure we're merging with a properly typed object
-      const mergedData = {
-        ...createEmptyWeeklyAvailability(),
-        ...(data as Partial<WeeklyAvailability>)
-      };
-      setWeeklyAvailability(mergedData);
+      setWeeklyAvailability(data);
     } catch (err) {
       console.error('Error fetching weekly availability:', err);
       setError('Failed to load availability. Please try again later.');
@@ -37,7 +31,7 @@ export const useAvailability = (clinicianId: string) => {
       setIsLoading(false);
     }
   };
-  
+
   const fetchSettings = async () => {
     try {
       const settingsData = await AvailabilityService.getSettings(clinicianId);
@@ -61,6 +55,13 @@ export const useAvailability = (clinicianId: string) => {
       fetchSettings();
     }
   }, [clinicianId]);
+
+  const getNextDayOfWeekDate = (dayOfWeek: DayOfWeek): DateTime => {
+    const today = DateTime.now();
+    const dayNum = getDayNumber(dayOfWeek);
+    const daysToAdd = (dayNum - today.weekday + 7) % 7;
+    return today.plus({ days: daysToAdd });
+  };
 
   const createSlot = async (
     dayOfWeek: DayOfWeek,
@@ -210,13 +211,6 @@ export const useAvailability = (clinicianId: string) => {
       console.error('Error updating availability settings:', err);
       return false;
     }
-  };
-
-  const getNextDayOfWeekDate = (dayOfWeek: DayOfWeek): DateTime => {
-    const today = DateTime.now();
-    const dayNumber = getDayNumber(dayOfWeek);
-    const daysToAdd = (dayNumber - today.weekday + 7) % 7;
-    return today.plus({ days: daysToAdd });
   };
 
   const getDayNumber = (dayOfWeek: DayOfWeek): number => {

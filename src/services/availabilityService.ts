@@ -1,6 +1,8 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySettings, WeeklyAvailability, AvailabilitySlot } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
 import { DateTime } from 'luxon';
 
 export class AvailabilityService {
@@ -95,9 +97,10 @@ export class AvailabilityService {
     }
 
     return events.map(event => ({
+      id: event.id,
       startTime: event.start_time,
       endTime: event.end_time,
-      dayOfWeek: TimeZoneService.getWeekdayName(event.start_time).toLowerCase(), 
+      dayOfWeek: TimeZoneService.getWeekdayName(event.start_time).toLowerCase(),
       isRecurring: !!event.recurrence_id
     }));
   }
