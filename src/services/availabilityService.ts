@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
@@ -106,12 +107,17 @@ class AvailabilityService {
     endTime: string,
     isRecurring: boolean = true,
     recurrenceRule?: string,
-    timeZone?: string
+    timeZone?: string,
+    specificDate?: string // New parameter to pass through
   ) {
     try {
       // Validate timezone before proceeding
       const validatedTimeZone = TimeZoneService.ensureIANATimeZone(timeZone || 'UTC');
       console.log('[AvailabilityService] Creating slot with validated timezone:', validatedTimeZone);
+      
+      if (specificDate) {
+        console.log('[AvailabilityService] Using specific date for availability:', specificDate);
+      }
 
       return await AvailabilityMutationService.createAvailabilitySlot(
         clinicianId,
@@ -120,7 +126,8 @@ class AvailabilityService {
         endTime,
         isRecurring,
         recurrenceRule,
-        validatedTimeZone
+        validatedTimeZone,
+        specificDate
       );
     } catch (error) {
       console.error('Error creating availability slot:', error);

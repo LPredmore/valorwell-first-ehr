@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { CalendarViewType } from '@/types/calendar';
 import Layout from '../components/layout/Layout';
@@ -187,18 +188,31 @@ const CalendarPage: React.FC = () => {
     }
     
     let dayOfWeek;
+    let specificDate;
+    
     try {
       const eventStart = event.start;
       
       if (eventStart instanceof DateTime) {
         dayOfWeek = eventStart.weekdayLong.toLowerCase();
+        specificDate = eventStart.toFormat('yyyy-MM-dd');
       } 
       else if (eventStart instanceof Date) {
         const dateTime = DateTime.fromJSDate(eventStart).setZone(userTimeZone);
         dayOfWeek = dateTime.weekdayLong.toLowerCase();
+        specificDate = dateTime.toFormat('yyyy-MM-dd');
       } 
       else {
         dayOfWeek = getWeekdayName(eventStart);
+        // Try to extract date from string format if possible
+        try {
+          const dt = DateTime.fromISO(eventStart);
+          if (dt.isValid) {
+            specificDate = dt.toFormat('yyyy-MM-dd');
+          }
+        } catch (err) {
+          console.warn('[Calendar] Could not parse date from event:', err);
+        }
       }
       
       const slotId = event.extendedProps?.id;
@@ -206,9 +220,16 @@ const CalendarPage: React.FC = () => {
       console.log('[Calendar] Availability click handler:', {
         date: event.start,
         dayOfWeek,
+        specificDate,
         slotId,
         eventData: event
       });
+      
+      // Store specific date in localStorage for the weekly dialog to use
+      if (specificDate) {
+        localStorage.setItem('selectedAvailabilityDate', specificDate);
+        console.log('[Calendar] Stored availability date in localStorage:', specificDate);
+      }
       
       setSelectedAvailabilityDate(dayOfWeek);
       setIsWeeklyAvailabilityOpen(true);

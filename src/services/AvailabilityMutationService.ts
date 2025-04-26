@@ -11,7 +11,8 @@ export class AvailabilityMutationService {
     endTime: string,
     isRecurring: boolean = true,
     recurrenceRule?: string,
-    timeZone: string = 'America/Chicago'
+    timeZone: string = 'America/Chicago',
+    specificDate?: string
   ) {
     try {
       // Input validation
@@ -24,7 +25,9 @@ export class AvailabilityMutationService {
       console.log(`Creating availability slot with time zone: ${validTimeZone}`);
       
       // Prepare the data for insertion
-      const baseDate = this.getBaseDate(dayOfWeek);
+      // Use specificDate if provided, otherwise calculate baseDate from dayOfWeek
+      const baseDate = specificDate || this.getBaseDate(dayOfWeek);
+      console.log(`Using base date: ${baseDate} for day: ${dayOfWeek}`);
       
       // Use TimeZoneService to create DateTimes properly
       const start = TimeZoneService.parseWithZone(`${baseDate}T${startTime}:00`, validTimeZone);
@@ -37,6 +40,8 @@ export class AvailabilityMutationService {
       if (start >= end) {
         throw new Error('Start time must be before end time');
       }
+      
+      console.log(`Parsed dates - Start: ${start.toISO()}, End: ${end.toISO()}`);
       
       // Insert into database
       const { data, error } = await supabase
@@ -193,7 +198,12 @@ export class AvailabilityMutationService {
     }
   }
   
-  private static getBaseDate(dayOfWeek: DayOfWeek): string {
+  /**
+   * Get a base date for a given day of week
+   * @param dayOfWeek The day of the week
+   * @returns String date in YYYY-MM-DD format
+   */
+  static getBaseDate(dayOfWeek: DayOfWeek): string {
     const today = DateTime.now();
     const dayMap: Record<DayOfWeek, number> = {
       monday: 1,
@@ -209,7 +219,12 @@ export class AvailabilityMutationService {
     if (!targetDay) targetDay = 1; // Default to Monday
     
     const currentDay = today.weekday;
-    const daysToAdd = (targetDay + 7 - currentDay) % 7;
+    
+    // Calculate days to add to get to next occurrence of the target day
+    // If today is the target day, keep it on today's date
+    const daysToAdd = currentDay === targetDay ? 0 : (targetDay + 7 - currentDay) % 7;
+    
+    console.log(`Day calculation: current=${currentDay}, target=${targetDay}, adding=${daysToAdd}`);
     
     const targetDate = today.plus({ days: daysToAdd });
     return targetDate.toFormat('yyyy-MM-dd');
