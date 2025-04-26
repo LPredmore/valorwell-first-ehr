@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySettings, WeeklyAvailability, DayOfWeek } from '@/types/availability';
 import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { AvailabilityQueryService } from './AvailabilityQueryService';
 
 export const getSettingsForClinician = async (clinicianId: string): Promise<AvailabilitySettings | null> => {
   try {

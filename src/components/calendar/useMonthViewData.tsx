@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { DateTime } from 'luxon';
-import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Appointment {
@@ -320,8 +320,8 @@ export const useMonthViewData = (
         });
         
         // Format times for display
-        const startHourFormatted = formatDateToTime12Hour(DateTime.fromISO(`2000-01-01T${earliestStart}`).toJSDate());
-        const endHourFormatted = formatDateToTime12Hour(DateTime.fromISO(`2000-01-01T${latestEnd}`).toJSDate());
+        const startHourFormatted = TimeZoneService.formatTime(DateTime.fromISO(`2000-01-01T${earliestStart}`).toJSDate());
+        const endHourFormatted = TimeZoneService.formatTime(DateTime.fromISO(`2000-01-01T${latestEnd}`).toJSDate());
         
         displayHours = `${startHourFormatted}-${endHourFormatted}`;
       }

@@ -97,6 +97,15 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
     return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
 
+  const formatTimeWithTimezone = (time: string): string => {
+    try {
+      return TimeZoneService.formatTime(time);
+    } catch (error) {
+      console.error('Error formatting time with timezone:', error);
+      return time;
+    }
+  };
+
   const handleSaveClick = () => {
     if (isRecurring) {
       setIsEditOptionDialogOpen(true);
@@ -118,8 +127,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
     setIsLoading(true);
     try {
       const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-      
-      const validTimeZone = ensureIANATimeZone(clinicianTimeZone);
+      const validTimeZone = TimeZoneService.ensureIANATimeZone(clinicianTimeZone);
       
       console.log('Updating appointment with time:', { 
         date: formattedDate,
@@ -127,9 +135,9 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
         timezone: validTimeZone 
       });
       
-      const startTimestamp = toUTCTimestamp(formattedDate, startTime, validTimeZone);
+      const startTimestamp = TimeZoneService.toUTCTimestamp(formattedDate, startTime, validTimeZone);
       const endTimeStr = calculateEndTime(startTime);
-      const endTimestamp = toUTCTimestamp(formattedDate, endTimeStr, validTimeZone);
+      const endTimestamp = TimeZoneService.toUTCTimestamp(formattedDate, endTimeStr, validTimeZone);
       
       console.log('Converted to UTC timestamps:', {
         start: startTimestamp,
@@ -201,16 +209,6 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const formatTimeWithTimezone = (time: string): string => {
-    try {
-      const formatted = formatTime12Hour(time);
-      return `${formatted} (${timeZoneDisplay})`;
-    } catch (error) {
-      console.error('Error formatting time with timezone:', error);
-      return formatTime12Hour(time);
     }
   };
 
