@@ -1,4 +1,3 @@
-
 // Update the imports to use proper types
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
@@ -169,5 +168,22 @@ export class AvailabilityQueryService {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  }
+
+  static mapRawSlotToAvailabilitySlot(raw: any): AvailabilitySlot {
+    return {
+      id: raw.id,
+      clinicianId: raw.clinician_id,
+      dayOfWeek: raw.day_of_week,
+      startTime: raw.start_time,
+      endTime: raw.end_time,
+      isRecurring: raw.is_recurring,
+      recurrenceRule: raw.recurrence_rule,
+      timeZone: raw.time_zone
+    };
+  }
+
+  static validateTimeGranularity(granularity: string): 'hour' | 'halfhour' {
+    return granularity === 'halfhour' ? 'halfhour' : 'hour';
   }
 }

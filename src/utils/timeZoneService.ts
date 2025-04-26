@@ -312,7 +312,6 @@ export class TimeZoneService {
     }
     
     try {
-      // Fix type errors by handling different input types properly
       let startDt: DateTime;
       let endDt: DateTime;
       
@@ -328,18 +327,20 @@ export class TimeZoneService {
         endDt = TimeZoneService.parseWithZone(String(event.end), validTimeZone);
       }
       
+      const extendedProps = {
+        ...(event.extendedProps || {}),
+        displayStart: startDt.toFormat('h:mm a'),
+        displayEnd: endDt.toFormat('h:mm a'),
+        displayDay: startDt.toFormat('ccc'),
+        displayDate: startDt.toFormat('MMM d')
+      };
+      
       return {
         ...event,
         start: startDt.toISO(),
         end: endDt.toISO(),
         title: event.title || '',
-        extendedProps: {
-          ...event.extendedProps,
-          displayStart: startDt.toFormat('h:mm a'),
-          displayEnd: endDt.toFormat('h:mm a'),
-          displayDay: startDt.toFormat('ccc'),
-          displayDate: startDt.toFormat('MMM d')
-        }
+        extendedProps
       };
     } catch (error) {
       console.error('Error converting event to user timezone:', error);
