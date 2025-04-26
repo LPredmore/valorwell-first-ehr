@@ -14,9 +14,11 @@ interface CreateSlotResult {
 }
 
 export const useAvailability = (clinicianId: string) => {
+  // Fix type error by ensuring we use the correct WeeklyAvailability type
   const [weeklyAvailability, setWeeklyAvailability] = useState<WeeklyAvailability>(
     createEmptyWeeklyAvailability()
   );
+  // Fix type error by using null as initial state to avoid incompatible types
   const [settings, setSettings] = useState<AvailabilitySettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
