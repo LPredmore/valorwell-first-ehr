@@ -1,3 +1,4 @@
+
 import { DateTime } from 'luxon';
 
 export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
@@ -52,17 +53,8 @@ export interface ClientData {
   email: string;
   phone?: string;
   timeZone: string;
-  displayName?: string;
+  displayName: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export const createEmptyWeeklyAvailability = (): WeeklyAvailability => ({
-  monday: [],
-  tuesday: [],
-  wednesday: [],
-  thursday: [],
-  friday: [],
-  saturday: [],
-  sunday: []
-});

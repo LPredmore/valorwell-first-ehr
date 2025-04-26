@@ -5,8 +5,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { SelectSingleEventHandler } from 'react-day-picker';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, CalendarIcon, Clock } from 'lucide-react';
-import { AvailabilityService } from '@/services/availabilityService';
-import { formatTimeZoneDisplay, formatTime12Hour } from '@/utils/timeZoneUtils';
+import { availabilityService } from '@/services/availabilityService';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { Card, CardContent } from '@/components/ui/card';
 import { format, startOfToday, addDays, isToday } from 'date-fns';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
@@ -51,7 +51,7 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
 
       setIsLoading(true);
       try {
-        const settings = await AvailabilityService.getSettings(clinicianId);
+        const settings = await availabilityService.getSettings(clinicianId);
         if (settings) {
           setMinNoticeDays(settings.minNoticeDays);
           setMaxAdvanceDays(settings.maxAdvanceDays);
@@ -74,7 +74,7 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
         const results = await Promise.all(
           candidateDates.map(async (date) => {
             const isoDate = DateTime.fromJSDate(date).toISODate() ?? '';
-            const slots = await AvailabilityService.calculateAvailableSlots(clinicianId, isoDate);
+            const slots = await availabilityService.calculateAvailableSlots(clinicianId, isoDate);
             return slots.length > 0 ? date : null;
           })
         );
@@ -115,7 +115,7 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
     setIsLoading(true);
     try {
       const isoDate = DateTime.fromJSDate(date).toISODate() ?? '';
-      const slots = await AvailabilityService.calculateAvailableSlots(clinicianId, isoDate);
+      const slots = await availabilityService.calculateAvailableSlots(clinicianId, isoDate);
 
       const formatted: TimeSlot[] = slots.map((slot) => {
         const startDt = DateTime.fromISO(slot.start, { zone: timeZone });

@@ -1,333 +1,150 @@
-import { supabase } from '@/integrations/supabase/client';
-import { WeeklyAvailability, AvailabilitySettings, createEmptyWeeklyAvailability } from '@/types/availability';
+import { AvailabilitySettings } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { ClientDataService } from './ClientDataService';
-import { DateTime } from 'luxon';
 
-/**
- * AvailabilityQueryService: Handles all read operations for availability data
- * This separates the complex availability query logic from mutation operations
- */
 export class AvailabilityQueryService {
-  /**
-   * Get availability settings for a clinician
-   */
-  static async getSettings(clinicianId: string): Promise<AvailabilitySettings | null> {
-    try {
-      const { data, error } = await supabase
-        .from('availability_settings')
-        .select('id, clinician_id, default_slot_duration, min_notice_days, max_advance_days, created_at, updated_at')
-        .eq('clinician_id', clinicianId)
-        .single();
-
-      if (error) {
-        console.error('[AvailabilityQueryService] Error fetching availability settings:', error);
-        return null;
+  static mapSettingsFromDB(data: any): AvailabilitySettings {
+    return {
+      id: data.id,
+      clinicianId: data.clinicianId,
+      timeZone: TimeZoneService.ensureIANATimeZone(data.timeZone || 'America/Chicago'),
+      slotDuration: data.defaultSlotDuration,
+      defaultSlotDuration: data.defaultSlotDuration,
+      minDaysAhead: data.minNoticeDays,
+      maxDaysAhead: data.maxAdvanceDays,
+      minNoticeDays: data.minNoticeDays,
+      maxAdvanceDays: data.maxAdvanceDays,
+      bufferBetweenSlots: data.bufferBetweenSlots || 0,
+      earlyMorningHours: data.earlyMorningHours || false,
+      lateEveningHours: data.lateEveningHours || false,
+      weekendAvailability: data.weekendAvailability || false,
+      allowRecurringScheduling: data.allowRecurringScheduling || false,
+      autoConfirm: data.autoConfirm || false,
+      timeGranularity: data.timeGranularity || 'hour',
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt
+    };
+  }
+  
+  static calculateAvailableSlots(
+    settings: AvailabilitySettings,
+    date: string,
+    existingAppointments: any[] = []
+  ): { start: string; end: string }[] {
+    // Default slot duration in minutes
+    const slotDuration = settings.slotDuration || 60;
+    
+    // Get the day of week (0-6, where 0 is Sunday)
+    const dateObj = new Date(date);
+    const dayOfWeek = dateObj.getDay();
+    
+    // Skip if weekend and weekend availability is disabled
+    if ((dayOfWeek === 0 || dayOfWeek === 6) && !settings.weekendAvailability) {
+      return [];
+    }
+    
+    // Define start and end hours based on settings
+    let startHour = settings.earlyMorningHours ? 6 : 8;
+    let endHour = settings.lateEveningHours ? 20 : 18;
+    
+    // Generate time slots
+    const slots: { start: string; end: string }[] = [];
+    const timeZone = TimeZoneService.ensureIANATimeZone(settings.timeZone);
+    
+    for (let hour = startHour; hour < endHour; hour++) {
+      // For each hour, create slots based on granularity
+      const slotsPerHour = this.getSlotsPerHour(settings.timeGranularity || 'hour');
+      const minutesPerSlot = 60 / slotsPerHour;
+      
+      for (let i = 0; i < slotsPerHour; i++) {
+        const startMinute = i * minutesPerSlot;
+        
+        // Create the slot start and end times
+        const slotStart = new Date(date);
+        slotStart.setHours(hour, startMinute, 0, 0);
+        
+        const slotEnd = new Date(slotStart);
+        slotEnd.setMinutes(slotStart.getMinutes() + slotDuration);
+        
+        // Convert to ISO strings in the clinician's timezone
+        const startISO = TimeZoneService.createISODateTimeString(
+          date,
+          `${hour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`,
+          timeZone
+        );
+        
+        const endISO = TimeZoneService.createISODateTimeString(
+          date,
+          `${slotEnd.getHours().toString().padStart(2, '0')}:${slotEnd.getMinutes().toString().padStart(2, '0')}`,
+          timeZone
+        );
+        
+        // Check if slot conflicts with existing appointments
+        const isAvailable = !this.hasConflict(startISO, endISO, existingAppointments);
+        
+        if (isAvailable) {
+          slots.push({
+            start: startISO,
+            end: endISO
+          });
+        }
       }
-
-      return data ? {
-        id: data.id,
-        clinicianId: data.clinician_id,
-        defaultSlotDuration: data.default_slot_duration,
-        minNoticeDays: data.min_notice_days,
-        maxAdvanceDays: data.max_advance_days,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
-      } : null;
-    } catch (error) {
-      console.error('[AvailabilityQueryService] Error fetching settings:', error);
-      return null;
+    }
+    
+    return slots;
+  }
+  
+  static getSlotsPerHour(granularity: string): number {
+    switch (granularity) {
+      case 'quarter':
+        return 4; // 15-minute slots
+      case 'halfhour':
+        return 2; // 30-minute slots
+      case 'hour':
+      default:
+        return 1; // 60-minute slots
     }
   }
   
-  /**
-   * Get clinician's weekly availability with proper timezone handling
-   */
-  static async getWeeklyAvailability(clinicianId: string): Promise<WeeklyAvailability> {
-    try {
-      console.log('[AvailabilityQueryService] Getting weekly availability for clinician:', clinicianId);
+  static hasConflict(
+    start: string,
+    end: string,
+    appointments: { start: string; end: string }[]
+  ): boolean {
+    return appointments.some(appointment => {
+      const appointmentStart = new Date(appointment.start).getTime();
+      const appointmentEnd = new Date(appointment.end).getTime();
+      const slotStart = new Date(start).getTime();
+      const slotEnd = new Date(end).getTime();
       
-      // Get clinician's timezone for proper time conversion
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('time_zone')
-        .eq('id', clinicianId)
-        .maybeSingle();
-      
-      const clinicianTimeZone = TimeZoneService.ensureIANATimeZone(profileData?.time_zone || 'UTC');
-      console.log('[AvailabilityQueryService] Using clinician timezone:', clinicianTimeZone);
-      
-      // Initialize the weekly availability with empty arrays
-      const weeklyAvailability: WeeklyAvailability = createEmptyWeeklyAvailability();
-      
-      // STEP 1: Fetch availability slots with recurrence rules
-      const { data: events, error } = await supabase
-        .from('calendar_events_with_rules')
-        .select(`
-          id,
-          start_time,
-          end_time,
-          recurrence_id,
-          is_active,
-          rrule
-        `)
-        .eq('clinician_id', clinicianId)
-        .eq('event_type', 'availability')
-        .eq('is_active', true);
-
-      if (error) {
-        console.error('[AvailabilityQueryService] Error fetching weekly availability:', error);
-        return createEmptyWeeklyAvailability();
-      }
-      
-      console.log(`[AvailabilityQueryService] Processing ${events?.length || 0} availability events`);
-
-      // Process each event
-      for (const event of events || []) {
-        try {
-          // Validate times before conversion
-          if (!event.start_time || !event.end_time) {
-            console.warn(`[AvailabilityQueryService] Event ${event.id} has invalid times:`, {
-              start: event.start_time,
-              end: event.end_time
-            });
-            continue;
-          }
-          
-          // Use TimeZoneService to properly parse the UTC times and convert to clinician's timezone
-          const startDateTime = TimeZoneService.fromUTC(event.start_time, clinicianTimeZone);
-          const endDateTime = TimeZoneService.fromUTC(event.end_time, clinicianTimeZone);
-          
-          if (!startDateTime.isValid || !endDateTime.isValid) {
-            console.error(`[AvailabilityQueryService] Invalid date/time for event ${event.id}:`, {
-              start: event.start_time,
-              end: event.end_time,
-              startError: startDateTime.invalidReason || 'unknown',
-              endError: endDateTime.invalidReason || 'unknown'
-            });
-            continue;
-          }
-          
-          // Get day of week in lowercase to match our WeeklyAvailability keys
-          const dayOfWeek = startDateTime.weekdayLong.toLowerCase();
-          
-          // Log detailed information for debugging
-          console.log(`[AvailabilityQueryService] Event ${event.id}:`, {
-            originalStart: event.start_time,
-            originalEnd: event.end_time,
-            timezone: clinicianTimeZone,
-            convertedStart: startDateTime.toString(),
-            convertedEnd: endDateTime.toString(),
-            dayOfWeek: dayOfWeek,
-            startHour: startDateTime.hour,
-            startMinute: startDateTime.minute,
-            endHour: endDateTime.hour,
-            endMinute: endDateTime.minute,
-            hasRecurrence: !!event.rrule
-          });
-          
-          if (dayOfWeek in weeklyAvailability) {
-            weeklyAvailability[dayOfWeek as keyof WeeklyAvailability].push({
-              id: event.id,
-              startTime: startDateTime.toFormat('HH:mm'),
-              endTime: endDateTime.toFormat('HH:mm'),
-              dayOfWeek: dayOfWeek as any,
-              isRecurring: !!event.rrule,
-              recurrenceRule: event.rrule || undefined,
-              isAppointment: false
-            });
-          } else {
-            console.warn(`[AvailabilityQueryService] Unknown day of week: ${dayOfWeek} for event ${event.id}`);
-          }
-        } catch (err) {
-          console.error(`[AvailabilityQueryService] Error processing event ${event.id}:`, err);
-        }
-      }
-
-      // STEP 2: Fetch scheduled appointments for this clinician
-      const { data: appointments, error: appointmentsError } = await supabase
-        .from('appointments')
-        .select(`
-          id, 
-          date, 
-          start_time, 
-          end_time, 
-          status,
-          source_time_zone,
-          client_id
-        `)
-        .eq('clinician_id', clinicianId)
-        .eq('status', 'scheduled');  // Only include scheduled appointments
-
-      if (appointmentsError) {
-        console.error('[AvailabilityQueryService] Error fetching appointments:', appointmentsError);
-      } else {
-        console.log(`[AvailabilityQueryService] Processing ${appointments?.length || 0} appointments`);
-        
-        // Process each appointment and add it to the weekly schedule
-        for (const appointment of appointments || []) {
-          try {
-            // Validate required fields
-            if (!appointment.date || !appointment.start_time || !appointment.end_time) {
-              console.warn('[AvailabilityQueryService] Appointment missing required date/time fields:', appointment.id);
-              continue;
-            }
-
-            // Get client name for the appointment
-            const { data: clientData } = await supabase
-              .from('clients')
-              .select('client_preferred_name, client_last_name')
-              .eq('id', appointment.client_id)
-              .single();
-              
-            const clientName = ClientDataService.formatClientName(clientData, 'Client');
-            
-            // Format date and time using proper Luxon methods
-            const apptDate = appointment.date; // Format: YYYY-MM-DD
-            const startTimeStr = appointment.start_time; // Format: HH:MM:SS
-            const endTimeStr = appointment.end_time; // Format: HH:MM:SS
-            
-            // Use safe conversion methods for datetime parsing
-            const sourceTimeZone = TimeZoneService.ensureIANATimeZone(
-              appointment.source_time_zone || clinicianTimeZone
-            );
-            
-            try {
-              // Create ISO string for date+time
-              const startDateTimeStr = `${apptDate}T${startTimeStr}`;
-              const endDateTimeStr = `${apptDate}T${endTimeStr}`;
-              
-              // Parse using Luxon's fromISO which is more reliable than fromSQL
-              const startDateTime = DateTime.fromISO(startDateTimeStr, { zone: sourceTimeZone });
-              const endDateTime = DateTime.fromISO(endDateTimeStr, { zone: sourceTimeZone });
-              
-              // Check if parsing was successful
-              if (!startDateTime.isValid || !endDateTime.isValid) {
-                console.error('[AvailabilityQueryService] Invalid appointment date/time format:', {
-                  appointment: appointment.id,
-                  date: apptDate,
-                  startTime: startTimeStr,
-                  endTime: endTimeStr,
-                  startError: startDateTime.invalidReason,
-                  endError: endDateTime.invalidReason
-                });
-                continue;
-              }
-              
-              // Convert to clinician's timezone using TimeZoneService
-              const startInClinicianTZ = startDateTime.setZone(clinicianTimeZone);
-              const endInClinicianTZ = endDateTime.setZone(clinicianTimeZone);
-              
-              // Get day of week in lowercase
-              const dayOfWeek = startInClinicianTZ.weekdayLong.toLowerCase();
-              
-              if (dayOfWeek in weeklyAvailability) {
-                weeklyAvailability[dayOfWeek].push({
-                  id: appointment.id,
-                  startTime: startInClinicianTZ.toFormat('HH:mm'),
-                  endTime: endInClinicianTZ.toFormat('HH:mm'),
-                  dayOfWeek,
-                  isAppointment: true,
-                  clientName,
-                  appointmentStatus: appointment.status
-                });
-                
-                console.log(`[AvailabilityQueryService] Added appointment for ${dayOfWeek}:`, {
-                  id: appointment.id,
-                  startTime: startInClinicianTZ.toFormat('HH:mm'),
-                  endTime: endInClinicianTZ.toFormat('HH:mm'),
-                  clientName
-                });
-              }
-            } catch (parseError) {
-              console.error(`[AvailabilityQueryService] Error parsing date/time for appointment ${appointment.id}:`, parseError);
-              continue;
-            }
-          } catch (err) {
-            console.error(`[AvailabilityQueryService] Error processing appointment ${appointment.id}:`, err);
-          }
-        }
-      }
-
-      return weeklyAvailability;
-    } catch (error) {
-      console.error('[AvailabilityQueryService] Error getting weekly availability:', error);
-      return createEmptyWeeklyAvailability();
-    }
+      // Check for overlap
+      return (
+        (slotStart >= appointmentStart && slotStart < appointmentEnd) ||
+        (slotEnd > appointmentStart && slotEnd <= appointmentEnd) ||
+        (slotStart <= appointmentStart && slotEnd >= appointmentEnd)
+      );
+    });
   }
-
-  static async getAvailabilitiesForCalendar(clinicianId: string, start: string, end: string, userTimeZone: string) {
-    try {
-      console.log('[AvailabilityQueryService] Getting availabilities for calendar:', {
-        clinicianId,
-        start,
-        end,
-        userTimeZone
-      });
-      
-      // Validate timezone
-      const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
-      
-      // Convert to UTC for database query
-      const startUTC = TimeZoneService.toUTC(
-        TimeZoneService.parseWithZone(start, validTimeZone)
-      ).toISO();
-      
-      const endUTC = TimeZoneService.toUTC(
-        TimeZoneService.parseWithZone(end, validTimeZone)
-      ).toISO();
-      
-      console.log('[AvailabilityQueryService] Converted times:', {
-        startUTC,
-        endUTC
-      });
-      
-      const query = supabase
-        .from('calendar_events')
-        .select('*')
-        .eq('clinician_id', clinicianId)
-        .eq('event_type', 'availability')
-        .eq('is_active', true)
-        .or(`start_time.gte.${startUTC},end_time.gte.${startUTC}`)
-        .lt('start_time', endUTC);
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('[AvailabilityQueryService] Error fetching availabilities:', error);
-        throw error;
-      }
-      
-      if (!data) {
-        return [];
-      }
-      
-      // Format for FullCalendar
-      return data.map(event => {
-        // Convert from UTC to user timezone for display
-        const startLocal = TimeZoneService.fromUTC(event.start_time, validTimeZone);
-        const endLocal = TimeZoneService.fromUTC(event.end_time, validTimeZone);
-        
-        // Create event object for calendar
-        return {
-          id: event.id,
-          title: 'Available',
-          start: startLocal.toISO(),
-          end: endLocal.toISO(),
-          eventType: 'availability',
-          availabilityType: event.availability_type,
-          // Fix: Remove recurrenceRule property or ensure it's defined in AvailabilitySlot type
-          // recurrenceRule: event.recurrence_rule,
-          extendedProps: {
-            eventType: 'availability',
-            availabilityType: event.availability_type,
-            recurrenceRule: event.recurrence_rule,
-          }
-        };
-      });
-    } catch (error) {
-      console.error('[AvailabilityQueryService] Error:', error);
-      throw error;
-    }
+  
+  static getDefaultSettings(clinicianId: string): AvailabilitySettings {
+    const now = new Date();
+    return {
+      id: `default-${clinicianId}`,
+      clinicianId,
+      timeZone: TimeZoneService.getUserTimeZone(),
+      slotDuration: 60,
+      defaultSlotDuration: 60,
+      minDaysAhead: 1,
+      maxDaysAhead: 30,
+      minNoticeDays: 1,
+      maxAdvanceDays: 30,
+      bufferBetweenSlots: 0,
+      earlyMorningHours: false,
+      lateEveningHours: false,
+      weekendAvailability: false,
+      allowRecurringScheduling: true,
+      autoConfirm: false,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    };
   }
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { DateTime } from 'luxon';
-import { AvailabilityService } from '@/services/availabilityService';
+import { availabilityService } from '@/services/availabilityService';
 import { RecurringAvailabilityService } from '@/services/RecurringAvailabilityService';
 import { WeeklyAvailability, DayOfWeek, AvailabilitySettings, AvailabilitySlot } from '@/types/availability';
 import { createEmptyWeeklyAvailability, getDayNumber } from '@/utils/availabilityUtils';
@@ -22,7 +22,7 @@ export const useAvailability = (clinicianId: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await AvailabilityService.getWeeklyAvailability(clinicianId);
+      const data = await availabilityService.getWeeklyAvailability(clinicianId);
       setWeeklyAvailability(data);
     } catch (err) {
       console.error('Error fetching weekly availability:', err);
@@ -34,7 +34,7 @@ export const useAvailability = (clinicianId: string) => {
 
   const fetchSettings = async () => {
     try {
-      const settingsData = await AvailabilityService.getSettings(clinicianId);
+      const settingsData = await availabilityService.getSettings(clinicianId);
       if (settingsData) {
         const fullSettings: AvailabilitySettings = {
           ...settingsData,
@@ -113,7 +113,7 @@ export const useAvailability = (clinicianId: string) => {
           };
         }
       } else {
-        const slotId = await AvailabilityService.createAvailabilitySlot(
+        const slotId = await availabilityService.createAvailabilitySlot(
           clinicianId, 
           {
             startTime: startIso,
@@ -153,7 +153,7 @@ export const useAvailability = (clinicianId: string) => {
     }
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      const success = await AvailabilityService.updateAvailabilitySlot(slotId, updates);
+      const success = await availabilityService.updateAvailabilitySlot(slotId, updates);
       if (success) {
         await fetchAvailability();
         return { success: true };
@@ -180,7 +180,7 @@ export const useAvailability = (clinicianId: string) => {
       const slot = availabilitySlots.find(slot => slot.id === slotId);
       const isRecurring = slot?.isRecurring || false;
       
-      const success = await AvailabilityService.deleteAvailabilitySlot(slotId, isRecurring);
+      const success = await availabilityService.deleteAvailabilitySlot(slotId, isRecurring);
       if (success) {
         await fetchAvailability();
         return { success: true };
@@ -201,7 +201,7 @@ export const useAvailability = (clinicianId: string) => {
 
   const updateSettings = async (settingsUpdate: Partial<AvailabilitySettings>): Promise<boolean> => {
     try {
-      const updatedSettings = await AvailabilityService.updateSettings(clinicianId, settingsUpdate);
+      const updatedSettings = await availabilityService.updateSettings(clinicianId, settingsUpdate);
       if (updatedSettings) {
         setSettings(updatedSettings as AvailabilitySettings | null);
         return true;
