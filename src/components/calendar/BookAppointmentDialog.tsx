@@ -118,11 +118,11 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
       const slots = await availabilityService.calculateAvailableSlots(clinicianId, isoDate);
 
       const formatted: TimeSlot[] = slots.map((slot) => {
-        const startDt = DateTime.fromISO(slot.start, { zone: timeZone });
-        const endDt = DateTime.fromISO(slot.end, { zone: timeZone });
+        const startDt = DateTime.fromISO(slot.start || slot.startTime || '', { zone: timeZone });
+        const endDt = DateTime.fromISO(slot.end || slot.endTime || '', { zone: timeZone });
         return {
-          start: slot.start,
-          end: slot.end,
+          start: slot.start || slot.startTime || '',
+          end: slot.end || slot.endTime || '',
           startFormatted: TimeZoneService.formatTime(startDt.toFormat("HH:mm")),
           endFormatted: TimeZoneService.formatTime(endDt.toFormat("HH:mm")),
         };

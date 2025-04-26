@@ -40,46 +40,10 @@ export interface CalendarEvent {
     week?: number;
     appointment?: any;
   };
-}
-
-export interface AppointmentType {
-  id: string;
-  clientId: string;
-  clinicianId: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  status: string;
-  type: string;
-  notes?: string;
-  sourceTimeZone?: string;
-  appointmentDatetime?: string;
-  appointmentEndDatetime?: string;
-}
-
-export interface RecurrenceRule {
-  id: string;
-  eventId: string;
-  rrule: string;
-}
-
-export interface CalendarException {
-  id: string;
-  recurrenceEventId: string;
-  exceptionDate: string;
-  isCancelled: boolean;
-  replacementEventId?: string;
-}
-
-export interface FullCalendarProps {
-  clinicianId: string | null;
-  userTimeZone: string;
-  onEventClick?: (info: any) => void;
-  onDateSelect?: (info: any) => void;
-  onEventDrop?: (info: any) => void;
-  onEventResize?: (info: any) => void;
-  view?: CalendarViewType;
-  height?: string | number;
-  showAvailability?: boolean;
-  onAvailabilityClick?: (event: EventApi) => void;
+  // Add these properties directly to the CalendarEvent type
+  clinician_id?: string;
+  type?: string;
+  description?: string;
+  location?: string;
+  _userTimeZone?: string;
 }

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
@@ -25,7 +24,7 @@ class AvailabilityService {
       
       if (!data) {
         // Create default settings if none exist
-        const defaultSettings: AvailabilitySettings = {
+        const defaultSettings: Partial<AvailabilitySettings> = {
           clinicianId,
           defaultSlotDuration: 60,
           minNoticeDays: 1,

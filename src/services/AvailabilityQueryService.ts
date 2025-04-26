@@ -1,17 +1,10 @@
+
 // Update the imports to use proper types
 import { supabase } from '@/integrations/supabase/client';
-import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
+import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability, TimeSlot } from '@/types/availability';
 import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { DateTime } from 'luxon';
-
-// Define the TimeSlot interface locally if it's not exported from @/types/availability
-interface TimeSlot {
-  startTime: string;
-  endTime: string;
-  available: boolean;
-  appointmentId?: string;
-}
 
 /**
  * Service for querying availability data from the database
@@ -51,11 +44,11 @@ export class AvailabilityQueryService {
           const day = startDt.weekdayLong.toLowerCase() as DayOfWeek;
           const slot: AvailabilitySlot = {
             id: event.id,
+            clinicianId: event.clinician_id,
             dayOfWeek: day,
             startTime: startDt.toFormat('HH:mm'),
             endTime: endDt.toFormat('HH:mm'),
             isRecurring: event.availability_type === 'recurring',
-            isAppointment: false,
             timeZone: 'UTC' // Default to UTC as the database stores in UTC
           };
           
@@ -92,7 +85,7 @@ export class AvailabilityQueryService {
       
       if (timeGranularity === 'quarter') {
         intervalMinutes = 15;
-      } else if (timeGranularity === 'half-hour') {
+      } else if (timeGranularity === 'halfhour') {
         intervalMinutes = 30;
       }
       
@@ -133,9 +126,10 @@ export class AvailabilityQueryService {
           
           if (!isOverlapping) {
             availableSlots.push({
+              start: slotStartTime,
+              end: slotEndTime,
               startTime: slotStartTime,
-              endTime: slotEndTime,
-              available: true
+              endTime: slotEndTime
             });
           }
         }
