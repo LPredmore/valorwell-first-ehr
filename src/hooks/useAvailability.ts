@@ -199,7 +199,7 @@ export const useAvailability = (clinicianId: string) => {
     try {
       const updatedSettings = await AvailabilityService.updateSettings(clinicianId, settingsUpdate);
       if (updatedSettings) {
-        setSettings(updatedSettings);
+        setSettings(updatedSettings as AvailabilitySettings | null);
         return true;
       }
       return false;
