@@ -4,57 +4,38 @@ import { DateTime } from 'luxon';
 export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 
 export interface AvailabilitySlot {
-  id: string;
+  id?: string;
+  clinicianId: string;
+  dayOfWeek: DayOfWeek;
   startTime: string;
   endTime: string;
-  dayOfWeek: DayOfWeek;
   isRecurring?: boolean;
-  isAppointment?: boolean;
-  clientName?: string;
-  appointmentStatus?: string;
   recurrenceRule?: string;
+  timeZone?: string;
+  isActive?: boolean;
 }
 
-export interface WeeklyAvailability {
-  monday: AvailabilitySlot[];
-  tuesday: AvailabilitySlot[];
-  wednesday: AvailabilitySlot[];
-  thursday: AvailabilitySlot[];
-  friday: AvailabilitySlot[];
-  saturday: AvailabilitySlot[];
-  sunday: AvailabilitySlot[];
+export interface TimeSlot {
+  start: string;
+  end: string;
+  startTime?: string;
+  endTime?: string;
+  timeZone?: string;
 }
 
 export interface AvailabilitySettings {
-  id: string;
+  id?: string;
   clinicianId: string;
-  timeZone: string;
-  slotDuration: number;
   defaultSlotDuration: number;
-  minDaysAhead: number;
-  maxDaysAhead: number;
   minNoticeDays: number;
   maxAdvanceDays: number;
-  bufferBetweenSlots: number;
-  earlyMorningHours: boolean;
-  lateEveningHours: boolean;
-  weekendAvailability: boolean;
-  allowRecurringScheduling: boolean;
-  autoConfirm: boolean;
-  bookingInstructions?: string;
-  timeGranularity?: 'hour' | 'halfhour' | 'quarter';
-  createdAt: string;
-  updatedAt: string;
+  timeZone: string;
+  slotDuration: number;
+  timeGranularity: 'hour' | 'halfhour';
+  isActive?: boolean;
 }
 
-export interface ClientData {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  timeZone: string;
-  displayName: string;
-  createdAt: string;
-  updatedAt: string;
+export interface WeeklyAvailability {
+  [key in DayOfWeek]: AvailabilitySlot[];
 }
 
