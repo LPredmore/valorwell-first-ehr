@@ -1,6 +1,7 @@
 
 import { CalendarEvent } from './calendar';
 
+// Database calendar event shape matches our Supabase table exactly
 export interface DatabaseCalendarEvent {
   id: string;
   title: string;
@@ -17,11 +18,7 @@ export interface DatabaseCalendarEvent {
   recurrence_id?: string;
 }
 
-export interface TimeZoneConfig {
-  userTimeZone: string;
-  sourceTimeZone?: string;
-}
-
+// Interface for transforming between DB and UI formats
 export interface CalendarEventTransform {
   fromDatabase: (dbEvent: DatabaseCalendarEvent, timezone: string) => CalendarEvent;
   toDatabase: (event: CalendarEvent, timezone: string) => Omit<DatabaseCalendarEvent, 'id'>;

@@ -23,7 +23,7 @@ export const calendarTransformer: CalendarEventTransform = {
           isAvailability: dbEvent.event_type === 'availability',
           isActive: dbEvent.is_active,
           timezone: validTimeZone,
-          sourceTimeZone: dbEvent.source_time_zone || validTimeZone,
+          clinicianId: dbEvent.clinician_id,
           recurrenceId: dbEvent.recurrence_id
         }
       };
