@@ -186,19 +186,30 @@ const CalendarPage: React.FC = () => {
       return;
     }
     
-    let dayOfWeek;
     try {
       const eventStart = event.start;
+      let dayOfWeek: string;
+      let specificDate: string | null = null;
       
       if (eventStart instanceof DateTime) {
         dayOfWeek = eventStart.weekdayLong.toLowerCase();
+        specificDate = eventStart.toISODate();
       } 
       else if (eventStart instanceof Date) {
         const dateTime = DateTime.fromJSDate(eventStart).setZone(userTimeZone);
         dayOfWeek = dateTime.weekdayLong.toLowerCase();
+        specificDate = dateTime.toISODate();
       } 
       else {
         dayOfWeek = getWeekdayName(eventStart);
+        try {
+          const parsed = DateTime.fromISO(eventStart);
+          if (parsed.isValid) {
+            specificDate = parsed.toISODate();
+          }
+        } catch (err) {
+          console.log('[Calendar] Could not parse specific date from event start:', eventStart);
+        }
       }
       
       const slotId = event.extendedProps?.id;
@@ -206,6 +217,7 @@ const CalendarPage: React.FC = () => {
       console.log('[Calendar] Availability click handler:', {
         date: event.start,
         dayOfWeek,
+        specificDate,
         slotId,
         eventData: event
       });
@@ -215,7 +227,10 @@ const CalendarPage: React.FC = () => {
       
       if (slotId) {
         localStorage.setItem('selectedAvailabilitySlotId', slotId);
-        console.log('[Calendar] Stored availability slot ID in localStorage:', slotId);
+      }
+      
+      if (specificDate) {
+        localStorage.setItem('selectedAvailabilityDate', specificDate);
       }
     } catch (error) {
       console.error('[Calendar] Error in availability click handler:', error);
@@ -321,6 +336,7 @@ const CalendarPage: React.FC = () => {
                         console.log('[Calendar] Opening weekly availability dialog');
                         setSelectedAvailabilityDate(null);
                         localStorage.removeItem('selectedAvailabilitySlotId');
+                        localStorage.removeItem('selectedAvailabilityDate');
                         setIsWeeklyAvailabilityOpen(true);
                       }} 
                       className="flex items-center gap-2" 
@@ -439,6 +455,7 @@ const CalendarPage: React.FC = () => {
               setIsWeeklyAvailabilityOpen(false);
               setSelectedAvailabilityDate(null);
               localStorage.removeItem('selectedAvailabilitySlotId');
+              localStorage.removeItem('selectedAvailabilityDate');
             }} 
             clinicianId={selectedClinicianId} 
             onAvailabilityUpdated={handleCalendarRefresh}

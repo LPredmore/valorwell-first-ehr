@@ -11,7 +11,8 @@ export class AvailabilityMutationService {
     endTime: string,
     isRecurring: boolean = true,
     recurrenceRule?: string,
-    timeZone: string = 'America/Chicago'
+    timeZone: string = 'America/Chicago',
+    specificDate?: string | Date | DateTime
   ) {
     try {
       // Input validation
@@ -24,7 +25,8 @@ export class AvailabilityMutationService {
       console.log(`Creating availability slot with time zone: ${validTimeZone}`);
       
       // Prepare the data for insertion
-      const baseDate = this.getBaseDate(dayOfWeek);
+      const baseDate = this.getBaseDate(dayOfWeek, specificDate);
+      console.log(`[AvailabilityMutationService] Using base date: ${baseDate} for day ${dayOfWeek}`);
       
       // Use TimeZoneService to create DateTimes properly
       const start = TimeZoneService.parseWithZone(`${baseDate}T${startTime}:00`, validTimeZone);
@@ -193,7 +195,34 @@ export class AvailabilityMutationService {
     }
   }
   
-  private static getBaseDate(dayOfWeek: DayOfWeek): string {
+  private static getBaseDate(dayOfWeek: DayOfWeek, specificDate?: string | Date | DateTime): string {
+    // If a specific date is provided, use that
+    if (specificDate) {
+      let dateTime: DateTime;
+      
+      if (specificDate instanceof DateTime) {
+        dateTime = specificDate;
+      } else if (specificDate instanceof Date) {
+        dateTime = DateTime.fromJSDate(specificDate);
+      } else {
+        dateTime = DateTime.fromISO(specificDate);
+      }
+      
+      if (!dateTime.isValid) {
+        console.error(`[AvailabilityMutationService] Invalid specific date provided: ${specificDate}. Falling back to calculating based on day of week.`);
+      } else {
+        // Verify this date's weekday matches the requested dayOfWeek
+        const weekdayName = dateTime.weekdayLong.toLowerCase() as DayOfWeek;
+        
+        if (weekdayName !== dayOfWeek) {
+          console.warn(`[AvailabilityMutationService] Specific date ${dateTime.toISODate()} is a ${weekdayName}, but requested day is ${dayOfWeek}. Will use the requested day of week for consistency.`);
+        }
+        
+        return dateTime.toFormat('yyyy-MM-dd');
+      }
+    }
+    
+    // If no specific date or it's invalid, calculate based on day of week
     const today = DateTime.now();
     const dayMap: Record<DayOfWeek, number> = {
       monday: 1,
@@ -209,7 +238,12 @@ export class AvailabilityMutationService {
     if (!targetDay) targetDay = 1; // Default to Monday
     
     const currentDay = today.weekday;
-    const daysToAdd = (targetDay + 7 - currentDay) % 7;
+    let daysToAdd = targetDay - currentDay;
+    
+    // If the day has already passed this week, schedule for next week
+    if (daysToAdd < 0) {
+      daysToAdd += 7;
+    }
     
     const targetDate = today.plus({ days: daysToAdd });
     return targetDate.toFormat('yyyy-MM-dd');

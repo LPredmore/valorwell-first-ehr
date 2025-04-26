@@ -29,7 +29,6 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     const fetchClinicians = async () => {
       setLoadingClinicians(true);
       try {
-        // Query profiles for clinicians since clinician_id is now properly typed as UUID
         const { data, error } = await supabase
           .from('clinicians')
           .select('id, clinician_professional_name')
@@ -86,9 +85,9 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
       try {
         const { data, error } = await supabase
           .from('clients')
-          .select('id, name, email, phone, time_zone, created_at, updated_at')
+          .select('id, client_first_name, client_last_name, client_preferred_name, client_email, client_phone, client_time_zone, created_at, updated_at')
           .eq('client_assigned_therapist', selectedClinicianId)
-          .order('name');
+          .order('client_last_name', { ascending: true });
 
         if (error) {
           console.error('[useCalendarState] Error fetching clients:', error);
@@ -101,16 +100,9 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
         }
 
         if (data) {
-          const normalizedClients: ClientData[] = data.map(client => ({
-            id: client.id,
-            name: client.name || 'Unnamed Client',
-            email: client.email,
-            phone: client.phone,
-            timeZone: client.time_zone || 'America/Chicago',
-            displayName: ClientDataService.formatClientName(client, 'Unnamed Client'),
-            createdAt: client.created_at,
-            updatedAt: client.updated_at
-          }));
+          const normalizedClients: ClientData[] = data.map(client => 
+            ClientDataService.normalizeClientData(client)
+          );
           setClients(normalizedClients);
           console.log('[useCalendarState] Loaded clients:', normalizedClients.length);
         }

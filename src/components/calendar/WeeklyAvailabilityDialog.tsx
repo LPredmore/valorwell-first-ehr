@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { DateTime } from 'luxon';
 
 interface WeeklyAvailabilityDialogProps {
   isOpen: boolean;
@@ -49,6 +50,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   const { toast } = useToast();
   const [formError, setFormError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [specificDate, setSpecificDate] = useState<string | null>(null);
   
   const {
     weeklyAvailability,
@@ -69,6 +71,15 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       if (storedSlotId) {
         setSelectedSlotId(storedSlotId);
         localStorage.removeItem('selectedAvailabilitySlotId');
+      }
+      
+      const storedDate = localStorage.getItem('selectedAvailabilityDate');
+      if (storedDate) {
+        setSpecificDate(storedDate);
+        console.log('[WeeklyAvailabilityDialog] Retrieved specific date from storage:', storedDate);
+        localStorage.removeItem('selectedAvailabilityDate');
+      } else {
+        setSpecificDate(null);
       }
     }
   }, [isOpen]);
@@ -109,13 +120,22 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       const byDay = getDayCode(activeTab);
       const recurrenceRule = `FREQ=WEEKLY;BYDAY=${byDay}`;
       
+      console.log('[WeeklyAvailabilityDialog] Creating slot with:', {
+        activeTab,
+        newStartTime,
+        newEndTime,
+        timeZone,
+        specificDate
+      });
+      
       const result = await createSlot(
         activeTab,
         newStartTime,
         newEndTime,
         true,
         recurrenceRule,
-        timeZone
+        timeZone,
+        specificDate
       );
       
       if (result.success) {

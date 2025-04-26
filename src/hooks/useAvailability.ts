@@ -1,8 +1,10 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { availabilityService } from '@/services/availabilityService';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { CalendarErrorHandler } from '@/services/calendar/CalendarErrorHandler';
+import { DateTime } from 'luxon';
 
 interface AvailabilitySlotResult {
   success: boolean;
@@ -76,7 +78,8 @@ export const useAvailability = (clinicianId: string | null) => {
     endTime: string,
     isRecurring: boolean = true,
     recurrenceRule?: string,
-    timeZone?: string
+    timeZone?: string,
+    specificDate?: string | Date | DateTime
   ): Promise<AvailabilitySlotResult> => {
     if (!clinicianId) {
       return { success: false, error: 'No clinician ID provided' };
@@ -88,7 +91,12 @@ export const useAvailability = (clinicianId: string | null) => {
         dayOfWeek,
         startTime,
         endTime,
-        timeZone
+        timeZone,
+        specificDate: specificDate ? 
+          (specificDate instanceof DateTime ? 
+            specificDate.toISODate() : 
+            String(specificDate)
+          ) : 'none'
       });
 
       const result = await availabilityService.createAvailabilitySlot(
@@ -98,7 +106,8 @@ export const useAvailability = (clinicianId: string | null) => {
         endTime,
         isRecurring,
         recurrenceRule,
-        timeZone
+        timeZone,
+        specificDate
       );
 
       await fetchWeeklyAvailability();

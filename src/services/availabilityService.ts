@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
@@ -106,7 +107,8 @@ class AvailabilityService {
     endTime: string,
     isRecurring: boolean = true,
     recurrenceRule?: string,
-    timeZone?: string
+    timeZone?: string,
+    specificDate?: string | Date | DateTime
   ) {
     try {
       // Validate timezone before proceeding
@@ -120,7 +122,8 @@ class AvailabilityService {
         endTime,
         isRecurring,
         recurrenceRule,
-        validatedTimeZone
+        validatedTimeZone,
+        specificDate
       );
     } catch (error) {
       console.error('Error creating availability slot:', error);
