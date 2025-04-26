@@ -47,6 +47,10 @@ export interface CalendarEvent {
     googleEventId?: string;
     week?: number;
     appointment?: any;
+    displayStart?: string;
+    displayEnd?: string;
+    displayDay?: string;
+    displayDate?: string;
   };
   clinician_id?: string;
   type?: string;

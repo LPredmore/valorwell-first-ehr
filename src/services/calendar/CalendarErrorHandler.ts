@@ -4,7 +4,7 @@
  * Provides consistent error formatting and handling across calendar services
  */
 
-import { AppError, handleDatabaseError as coreHandleDatabaseError } from '@/packages/core/utils/errors/errorHandler';
+import { AppError } from '@/packages/core/utils/errors';
 
 export type CalendarErrorCode = 
   | 'CALENDAR_DB_ERROR' 
@@ -16,10 +16,20 @@ export type CalendarErrorCode =
   | 'CALENDAR_UNKNOWN_ERROR'
   | 'VALIDATION_ERROR';
 
-export class CalendarError extends AppError {
+export class CalendarError extends Error {
+  code: CalendarErrorCode;
+  context?: Record<string, any>;
+  
   constructor(message: string, code: CalendarErrorCode, context?: Record<string, any>) {
-    super(message, code, context);
+    super(message);
     this.name = 'CalendarError';
+    this.code = code;
+    this.context = context;
+    
+    // Ensures proper stack trace in modern JS environments
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, CalendarError);
+    }
   }
 }
 
@@ -35,14 +45,28 @@ export class CalendarErrorHandler {
    * Handle database-specific errors
    */
   static handleDatabaseError(error: any): CalendarError {
-    // First use the core database error handler
-    const baseError = coreHandleDatabaseError(error);
+    // Process database errors manually since we can't rely on the core error handler
+    console.error('Database error:', error);
     
-    // Then specialize for calendar context
+    let errorCode: CalendarErrorCode = 'CALENDAR_DB_ERROR';
+    let errorMessage = 'A database error occurred';
+    
+    // Extract error code from Supabase error if available
+    if (error?.code === '23505') {
+      errorMessage = 'This calendar record already exists.';
+      errorCode = 'CALENDAR_DB_ERROR';
+    } else if (error?.code === '23503') {
+      errorMessage = 'Referenced record does not exist.';
+      errorCode = 'CALENDAR_DB_ERROR';
+    } else if (error?.code?.startsWith('22')) {
+      errorMessage = 'Invalid data format.';
+      errorCode = 'CALENDAR_DB_ERROR';
+    }
+    
     return new CalendarError(
-      baseError.message,
-      `CALENDAR_${baseError.code}` as CalendarErrorCode,
-      baseError.context
+      error?.message || errorMessage,
+      errorCode,
+      { originalError: error }
     );
   }
 
@@ -53,15 +77,6 @@ export class CalendarErrorHandler {
     // If it's already a CalendarError, return it
     if (error instanceof CalendarError) {
       return error;
-    }
-    
-    // If it's an AppError, convert it to a CalendarError
-    if (error instanceof AppError) {
-      return new CalendarError(
-        error.message,
-        `CALENDAR_${error.code}` as CalendarErrorCode,
-        error.context
-      );
     }
     
     // Handle standard Error objects
