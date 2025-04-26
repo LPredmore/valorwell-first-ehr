@@ -13,7 +13,15 @@ interface CreateSlotResult {
 }
 
 export const useAvailability = (clinicianId: string) => {
-  const [weeklyAvailability, setWeeklyAvailability] = useState<WeeklyAvailability>(createEmptyWeeklyAvailability());
+  const [weeklyAvailability, setWeeklyAvailability] = useState<WeeklyAvailability>(() => ({
+    monday: [],
+    tuesday: [],
+    wednesday: [],
+    thursday: [],
+    friday: [],
+    saturday: [],
+    sunday: []
+  }));
   const [settings, setSettings] = useState<AvailabilitySettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

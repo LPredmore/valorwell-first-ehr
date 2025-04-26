@@ -1,3 +1,6 @@
 
+/**
+ * @deprecated Import contexts directly from src/context/* instead
+ */
 export * from './UserContext';
-export * from './TimeZoneContext';
+export { useTimeZone, TimeZoneProvider } from '../../../src/context/TimeZoneContext';
