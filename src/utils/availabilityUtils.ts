@@ -21,13 +21,16 @@ export const convertClinicianDataToAvailabilityBlocks = (clinicianData: any) => 
   
   return Object.entries(clinicianData)
     .filter(([key]) => key.startsWith('availability_'))
-    .map(([key, value]) => ({
-      id: `${clinicianData.id}-${key}`,
-      day_of_week: key.replace('availability_', ''),
-      start_time: value?.start_time || '09:00:00',
-      end_time: value?.end_time || '17:00:00',
-      clinician_id: clinicianData.id
-    }))
+    .map(([key, value]) => {
+      const availabilityValue = value as Record<string, any> | null;
+      return {
+        id: `${clinicianData.id}-${key}`,
+        day_of_week: key.replace('availability_', ''),
+        start_time: availabilityValue?.start_time || '09:00:00',
+        end_time: availabilityValue?.end_time || '17:00:00',
+        clinician_id: clinicianData.id
+      };
+    })
     .filter(block => block.start_time && block.end_time);
 };
 

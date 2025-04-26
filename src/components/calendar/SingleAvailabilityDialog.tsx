@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { TimePickerInput } from '@/components/ui/time-picker';
 import { toast } from '@/hooks/use-toast';
+import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { AvailabilityMutationService } from '@/services/AvailabilityMutationService';
 
@@ -78,10 +79,6 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
         undefined,
         validTimeZone
       );
-
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to create availability slot');
-      }
 
       toast({
         title: "Success",

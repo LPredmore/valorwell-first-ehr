@@ -73,7 +73,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   const [bookingInProgress, setBookingInProgress] = useState<boolean>(false);
   const [minDaysAhead, setMinDaysAhead] = useState<number>(1);
   const [clinicianTimeZone, setClinicianTimeZone] = useState<string>("America/Chicago");
-  const [clientTimeZone, setClientTimeZone] = useState<string>(TimeZoneService.ensureIANATimeZone(propTimeZone || getUserTimeZone()));
+  const [clientTimeZone, setClientTimeZone] = useState<string>(TimeZoneService.ensureIANATimeZone(propTimeZone || TimeZoneService.getUserTimeZone()));
   const [timeGranularity, setTimeGranularity] = useState<string>("half-hour");
   const { toast } = useToast();
 
@@ -90,7 +90,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           setClientTimeZone(timeZone);
         } catch (error) {
           console.error('[AppointmentBookingDialog] Error fetching client time zone:', error);
-          setClientTimeZone(TimeZoneService.ensureIANATimeZone(propTimeZone || getUserTimeZone()));
+          setClientTimeZone(TimeZoneService.ensureIANATimeZone(propTimeZone || TimeZoneService.getUserTimeZone()));
         }
       };
       

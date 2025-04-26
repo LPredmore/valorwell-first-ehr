@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, TimeSlot, WeeklyAvailability } from '@/types/availability';
+import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
 import { AvailabilityQueryService } from './AvailabilityQueryService';
 import { AvailabilityMutationService } from './AvailabilityMutationService';
 import { DateTime } from 'luxon';
@@ -33,7 +33,7 @@ class AvailabilityService {
           timeZone: 'America/Chicago',
           slotDuration: 60,
           timeGranularity: 'hour',
-          is_active: true
+          isActive: true
         };
         
         const { data: newData, error: createError } = await supabase
@@ -142,7 +142,7 @@ class AvailabilityService {
   /**
    * Calculate available time slots for a specific date
    */
-  async calculateAvailableSlots(clinicianId: string, date: string): Promise<TimeSlot[]> {
+  async calculateAvailableSlots(clinicianId: string, date: string) {
     try {
       const settings = await this.getSettingsForClinician(clinicianId);
       
@@ -150,6 +150,7 @@ class AvailabilityService {
       // In a real implementation, we would fetch existing appointments for the date
       const existingAppointments: any[] = [];
       
+      // Return available slots based on settings and existing appointments
       return await AvailabilityQueryService.calculateAvailableSlots(
         settings,
         date,

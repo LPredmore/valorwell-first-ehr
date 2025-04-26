@@ -1,4 +1,3 @@
-
 /**
  * TimeZoneService - THE OFFICIAL SOURCE OF TRUTH for all timezone operations
  * 
@@ -313,18 +312,34 @@ export class TimeZoneService {
     }
     
     try {
-      const startDt = DateTime.fromISO(event.start).setZone(validTimeZone);
-      const endDt = DateTime.fromISO(event.end).setZone(validTimeZone);
+      // Fix type errors by handling different input types properly
+      let startDt: DateTime;
+      let endDt: DateTime;
+      
+      if (event.start instanceof Date) {
+        startDt = DateTime.fromJSDate(event.start).setZone(validTimeZone);
+      } else {
+        startDt = TimeZoneService.parseWithZone(String(event.start), validTimeZone);
+      }
+      
+      if (event.end instanceof Date) {
+        endDt = DateTime.fromJSDate(event.end).setZone(validTimeZone);
+      } else {
+        endDt = TimeZoneService.parseWithZone(String(event.end), validTimeZone);
+      }
       
       return {
         ...event,
         start: startDt.toISO(),
         end: endDt.toISO(),
         title: event.title || '',
-        displayStart: startDt.toFormat('h:mm a'),
-        displayEnd: endDt.toFormat('h:mm a'),
-        displayDay: startDt.toFormat('ccc'),
-        displayDate: startDt.toFormat('MMM d')
+        extendedProps: {
+          ...event.extendedProps,
+          displayStart: startDt.toFormat('h:mm a'),
+          displayEnd: endDt.toFormat('h:mm a'),
+          displayDay: startDt.toFormat('ccc'),
+          displayDate: startDt.toFormat('MMM d')
+        }
       };
     } catch (error) {
       console.error('Error converting event to user timezone:', error);

@@ -1,143 +1,173 @@
 
-import { DateTime } from 'luxon';
+// Update the imports to use proper types
 import { supabase } from '@/integrations/supabase/client';
+import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
+import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { 
-  AvailabilitySettings,
-  TimeSlot,
-  DayOfWeek,
-  AvailabilitySlot,
-  WeeklyAvailability
-} from '@/types/availability';
+import { DateTime } from 'luxon';
 
+// Define the TimeSlot interface locally if it's not exported from @/types/availability
+interface TimeSlot {
+  startTime: string;
+  endTime: string;
+  available: boolean;
+  appointmentId?: string;
+}
+
+/**
+ * Service for querying availability data from the database
+ */
 export class AvailabilityQueryService {
-  static async calculateAvailableSlots(
-    settings: AvailabilitySettings,
-    date: string,
-    existingAppointments: any[] // TODO: Define type for existing appointments
-  ): Promise<TimeSlot[]> {
-    const { timeZone, slotDuration, timeGranularity } = settings;
-    const validTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
-    const dayOfWeek = DateTime.fromISO(date).setZone(validTimeZone).toFormat('cccc').toLowerCase() as DayOfWeek;
-
-    // Fetch weekly availability for the clinician
-    const weeklyAvailability = await this.getWeeklyAvailability(settings.clinicianId);
-    const dayAvailability = weeklyAvailability[dayOfWeek];
-
-    if (!dayAvailability || dayAvailability.length === 0) {
-      console.log(`No availability found for ${dayOfWeek}`);
-      return [];
-    }
-
-    // Convert date string to DateTime object in the clinician's timezone
-    const currentDate = DateTime.fromISO(date, { zone: validTimeZone });
-
-    // Calculate start and end of the day in the clinician's timezone
-    const startOfDay = currentDate.startOf('day');
-    const endOfDay = currentDate.endOf('day');
-
-    let availableSlots: TimeSlot[] = [];
-
-    // Iterate through each availability slot for the day
-    dayAvailability.forEach(slot => {
-      const startTime = DateTime.fromFormat(slot.startTime, 'HH:mm', { zone: validTimeZone });
-      const endTime = DateTime.fromFormat(slot.endTime, 'HH:mm', { zone: validTimeZone });
-
-      // Ensure start and end times are valid
-      if (!startTime.isValid || !endTime.isValid) {
-        console.error('Invalid start or end time:', slot.startTime, slot.endTime);
-        return;
-      }
-
-      let currentSlotTime = startOfDay.set({
-        hour: startTime.hour,
-        minute: startTime.minute,
-        second: 0,
-        millisecond: 0
-      });
-
-      // Generate time slots for the current availability slot
-      while (currentSlotTime < endOfDay && currentSlotTime < endTime) {
-        const slotEndTime = currentSlotTime.plus({ minutes: slotDuration });
-
-        // Check if the slot end time exceeds the end of the availability slot
-        if (slotEndTime > endTime) {
-          break;
-        }
-
-        // Check if the slot overlaps with any existing appointments
-        const isSlotBooked = existingAppointments.some(appointment => {
-          const appointmentStartTime = DateTime.fromISO(appointment.start_time, { zone: validTimeZone });
-          return currentSlotTime < appointmentStartTime && slotEndTime > appointmentStartTime;
-        });
-
-        if (!isSlotBooked) {
-          availableSlots.push({
-            startTime: currentSlotTime.toFormat('HH:mm'),
-            endTime: slotEndTime.toFormat('HH:mm'),
-            available: true
-          });
-        }
-
-        // Increment the current slot time based on the time granularity
-        if (timeGranularity === 'half-hour') {
-          currentSlotTime = currentSlotTime.plus({ minutes: 30 });
-        } else {
-          currentSlotTime = currentSlotTime.plus({ minutes: 60 });
-        }
-      }
-    });
-
-    return availableSlots;
-  }
-
+  /**
+   * Get weekly availability for a clinician
+   * @param clinicianId Clinician ID to get availability for
+   * @returns Weekly availability object
+   */
   static async getWeeklyAvailability(clinicianId: string): Promise<WeeklyAvailability> {
     try {
+      console.log('Fetching weekly availability for clinician:', clinicianId);
+      
       const { data, error } = await supabase
-        .from('availability_slots')
+        .from('calendar_events')
         .select('*')
-        .eq('clinician_id', clinicianId);
-
-      if (error) {
-        console.error('Error fetching weekly availability:', error);
-        return this.getEmptyWeeklyAvailability();
-      }
-
-      const weeklyAvailability: WeeklyAvailability = this.getEmptyWeeklyAvailability();
-
-      data.forEach(slot => {
-        const dayOfWeek = slot.day_of_week as DayOfWeek;
-        if (weeklyAvailability[dayOfWeek]) {
-          const availabilitySlot: AvailabilitySlot = {
-            id: slot.id,
-            dayOfWeek,
-            startTime: slot.start_time,
-            endTime: slot.end_time,
-            isRecurring: !!slot.is_recurring,
-            isAppointment: false, // Regular availability slot
-            timeZone: slot.time_zone || 'UTC'
+        .eq('clinician_id', clinicianId)
+        .eq('event_type', 'availability')
+        .eq('is_active', true);
+      
+      if (error) throw error;
+      
+      const weeklyAvailability = createEmptyWeeklyAvailability();
+      
+      // Process calendar events into weekly availability slots
+      for (const event of data || []) {
+        try {
+          const startDt = DateTime.fromISO(event.start_time);
+          const endDt = DateTime.fromISO(event.end_time);
+          
+          if (!startDt.isValid || !endDt.isValid) {
+            console.error('Invalid date in availability event:', event);
+            continue;
+          }
+          
+          const day = startDt.weekdayLong.toLowerCase() as DayOfWeek;
+          const slot: AvailabilitySlot = {
+            id: event.id,
+            dayOfWeek: day,
+            startTime: startDt.toFormat('HH:mm'),
+            endTime: endDt.toFormat('HH:mm'),
+            isRecurring: event.availability_type === 'recurring',
+            isAppointment: false,
+            timeZone: 'UTC' // Default to UTC as the database stores in UTC
           };
           
-          weeklyAvailability[dayOfWeek].push(availabilitySlot);
+          weeklyAvailability[day].push(slot);
+        } catch (slotError) {
+          console.error('Error processing availability slot:', slotError);
         }
-      });
-
+      }
+      
       return weeklyAvailability;
     } catch (error) {
-      console.error('Error in getWeeklyAvailability:', error);
-      return this.getEmptyWeeklyAvailability();
+      console.error('Error getting weekly availability:', error);
+      throw error;
     }
   }
   
-  private static getEmptyWeeklyAvailability(): WeeklyAvailability {
-    return {
-      monday: [],
-      tuesday: [],
-      wednesday: [],
-      thursday: [],
-      friday: [],
-      saturday: [],
-      sunday: []
-    };
+  /**
+   * Calculate available appointment slots for a specific date
+   * @param settings Availability settings to use
+   * @param date Date to calculate slots for
+   * @param existingAppointments Array of existing appointments to avoid
+   * @returns Array of available time slots
+   */
+  static async calculateAvailableSlots(
+    settings: AvailabilitySettings,
+    date: string,
+    existingAppointments: any[]
+  ): Promise<TimeSlot[]> {
+    try {
+      const { timeGranularity, slotDuration = 60, defaultSlotDuration } = settings;
+      
+      // Determine time slot interval in minutes
+      let intervalMinutes = 60; // Default to hour
+      
+      if (timeGranularity === 'quarter') {
+        intervalMinutes = 15;
+      } else if (timeGranularity === 'half-hour') {
+        intervalMinutes = 30;
+      }
+      
+      // Get actual slot duration (use default if not specified)
+      const actualSlotDuration = slotDuration || defaultSlotDuration || 60;
+      
+      // Based on the date, determine day of week and fetch clinician availability
+      const dateObj = DateTime.fromISO(date);
+      const dayOfWeek = dateObj.weekdayLong.toLowerCase() as DayOfWeek;
+      
+      // Get clinician weekly availability
+      // Here we would typically filter by clinicianId but we already have settings
+      const availability = await this.getWeeklyAvailability(settings.clinicianId);
+      
+      // Get availability blocks for the specific day
+      const dayAvailability = availability[dayOfWeek] || [];
+      
+      // Available slots to return
+      const availableSlots: TimeSlot[] = [];
+      
+      // For each availability block on this day
+      for (const block of dayAvailability) {
+        // Convert times to minutes since midnight for easier calculations
+        const blockStart = this.timeToMinutes(block.startTime);
+        const blockEnd = this.timeToMinutes(block.endTime);
+        
+        // Step through the block in interval increments
+        for (let time = blockStart; time + actualSlotDuration <= blockEnd; time += intervalMinutes) {
+          const slotStartTime = this.minutesToTime(time);
+          const slotEndTime = this.minutesToTime(time + actualSlotDuration);
+          
+          // Check if this slot overlaps with any existing appointments
+          const isOverlapping = existingAppointments.some(appt => {
+            const apptStart = this.timeToMinutes(appt.startTime);
+            const apptEnd = this.timeToMinutes(appt.endTime);
+            return (time < apptEnd && time + actualSlotDuration > apptStart);
+          });
+          
+          if (!isOverlapping) {
+            availableSlots.push({
+              startTime: slotStartTime,
+              endTime: slotEndTime,
+              available: true
+            });
+          }
+        }
+      }
+      
+      return availableSlots;
+      
+    } catch (error) {
+      console.error('Error calculating available slots:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Convert time string to minutes since midnight
+   * @param time Time string in format HH:MM
+   * @returns Minutes since midnight
+   */
+  private static timeToMinutes(time: string): number {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  }
+  
+  /**
+   * Convert minutes since midnight to time string
+   * @param minutes Minutes since midnight
+   * @returns Time string in format HH:MM
+   */
+  private static minutesToTime(minutes: number): string {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
   }
 }

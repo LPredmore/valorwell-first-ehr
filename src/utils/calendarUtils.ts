@@ -1,6 +1,7 @@
 
 import { CalendarEvent } from '@/types/calendar';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { DateTime } from 'luxon';
 
 /**
  * Format calendar event times to user's timezone
@@ -23,7 +24,9 @@ export const formatEventTimeToUserTimeZone = (event: CalendarEvent, userTimeZone
  * @returns Time string in target timezone
  */
 export const convertTimeToUserTimeZone = (time: string, fromTimeZone: string, toTimeZone: string): string => {
-  const convertedTime = TimeZoneService.convertDateTime(time, fromTimeZone, toTimeZone);
+  // Fix the type error by using parseWithZone to create a DateTime object first
+  const dateTime = TimeZoneService.parseWithZone(time, fromTimeZone);
+  const convertedTime = TimeZoneService.convertDateTime(dateTime, fromTimeZone, toTimeZone);
   return convertedTime.toFormat('HH:mm:ss');
 };
 

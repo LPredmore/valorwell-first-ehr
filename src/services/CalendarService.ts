@@ -185,17 +185,16 @@ export class CalendarService {
     }
     
     // Convert the event times to UTC for storage
-    const startUtc = TimeZoneService.convertDateTime(
-      event.start as Date|string, 
-      validTimeZone, 
-      'UTC'
-    );
+    const startDateTime = event.start instanceof Date 
+      ? DateTime.fromJSDate(event.start) 
+      : TimeZoneService.parseWithZone(event.start as string, validTimeZone);
+      
+    const endDateTime = event.end instanceof Date 
+      ? DateTime.fromJSDate(event.end) 
+      : TimeZoneService.parseWithZone(event.end as string, validTimeZone);
     
-    const endUtc = TimeZoneService.convertDateTime(
-      event.end as Date|string, 
-      validTimeZone, 
-      'UTC'
-    );
+    const startUtc = TimeZoneService.toUTC(startDateTime);
+    const endUtc = TimeZoneService.toUTC(endDateTime);
     
     // Create the calendar_events record
     const { data, error } = await supabase
@@ -236,13 +235,13 @@ export class CalendarService {
     }
     
     // Convert the event times to the user's timezone
-    const startDt = typeof event.start === 'string' 
-      ? TimeZoneService.parseWithZone(event.start, validTimeZone)
-      : DateTime.fromJSDate(event.start as Date).setZone(validTimeZone);
+    const startDateTime = event.start instanceof Date 
+      ? DateTime.fromJSDate(event.start).setZone(validTimeZone)
+      : TimeZoneService.parseWithZone(event.start as string, validTimeZone);
       
-    const endDt = typeof event.end === 'string'
-      ? TimeZoneService.parseWithZone(event.end, validTimeZone)
-      : DateTime.fromJSDate(event.end as Date).setZone(validTimeZone);
+    const endDateTime = event.end instanceof Date 
+      ? DateTime.fromJSDate(event.end).setZone(validTimeZone)
+      : TimeZoneService.parseWithZone(event.end as string, validTimeZone);
     
     // Create the appointment record
     const { data, error } = await supabase
@@ -250,14 +249,14 @@ export class CalendarService {
       .insert({
         clinician_id: event.extendedProps.clinicianId,
         client_id: event.extendedProps.clientId,
-        date: startDt.toFormat('yyyy-MM-dd'),
-        start_time: startDt.toFormat('HH:mm:ss'),
-        end_time: endDt.toFormat('HH:mm:ss'),
+        date: startDateTime.toFormat('yyyy-MM-dd'),
+        start_time: startDateTime.toFormat('HH:mm:ss'),
+        end_time: endDateTime.toFormat('HH:mm:ss'),
         type: event.title,
         status: 'scheduled',
         source_time_zone: validTimeZone,
-        appointment_datetime: startDt.toISO(),
-        appointment_end_datetime: endDt.toISO()
+        appointment_datetime: startDateTime.toISO(),
+        appointment_end_datetime: endDateTime.toISO()
       })
       .select()
       .single();
@@ -271,8 +270,8 @@ export class CalendarService {
     return {
       id: data.id,
       title: data.type,
-      start: startDt.toJSDate(),
-      end: endDt.toJSDate(),
+      start: startDateTime.toJSDate(),
+      end: endDateTime.toJSDate(),
       allDay: false,
       extendedProps: {
         eventType: 'appointment',
@@ -295,22 +294,22 @@ export class CalendarService {
     }
     
     // Convert the event times to the user's timezone
-    const startDt = typeof event.start === 'string' 
-      ? TimeZoneService.parseWithZone(event.start, validTimeZone)
-      : DateTime.fromJSDate(event.start as Date).setZone(validTimeZone);
+    const startDateTime = event.start instanceof Date 
+      ? DateTime.fromJSDate(event.start).setZone(validTimeZone)
+      : TimeZoneService.parseWithZone(event.start as string, validTimeZone);
       
-    const endDt = typeof event.end === 'string'
-      ? TimeZoneService.parseWithZone(event.end, validTimeZone)
-      : DateTime.fromJSDate(event.end as Date).setZone(validTimeZone);
+    const endDateTime = event.end instanceof Date 
+      ? DateTime.fromJSDate(event.end).setZone(validTimeZone)
+      : TimeZoneService.parseWithZone(event.end as string, validTimeZone);
     
     // Create the time_off record
     const { data, error } = await supabase
       .from('time_off')
       .insert({
         clinician_id: event.extendedProps.clinicianId,
-        date: startDt.toFormat('yyyy-MM-dd'),
-        start_time: startDt.toFormat('HH:mm:ss'),
-        end_time: endDt.toFormat('HH:mm:ss'),
+        date: startDateTime.toFormat('yyyy-MM-dd'),
+        start_time: startDateTime.toFormat('HH:mm:ss'),
+        end_time: endDateTime.toFormat('HH:mm:ss'),
         reason: event.title || 'Time Off',
         all_day: event.allDay || false
       })
@@ -326,8 +325,8 @@ export class CalendarService {
     return {
       id: data.id,
       title: data.reason,
-      start: startDt.toJSDate(),
-      end: endDt.toJSDate(),
+      start: startDateTime.toJSDate(),
+      end: endDateTime.toJSDate(),
       allDay: data.all_day,
       extendedProps: {
         eventType: 'time_off',
@@ -391,21 +390,21 @@ export class CalendarService {
     const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
     
     // Convert the event times to the user's timezone
-    const startDt = typeof event.start === 'string' 
-      ? TimeZoneService.parseWithZone(event.start, validTimeZone)
-      : DateTime.fromJSDate(event.start as Date).setZone(validTimeZone);
+    const startDateTime = event.start instanceof Date 
+      ? DateTime.fromJSDate(event.start).setZone(validTimeZone)
+      : TimeZoneService.parseWithZone(event.start as string, validTimeZone);
       
-    const endDt = typeof event.end === 'string'
-      ? TimeZoneService.parseWithZone(event.end, validTimeZone)
-      : DateTime.fromJSDate(event.end as Date).setZone(validTimeZone);
+    const endDateTime = event.end instanceof Date 
+      ? DateTime.fromJSDate(event.end).setZone(validTimeZone)
+      : TimeZoneService.parseWithZone(event.end as string, validTimeZone);
     
     // Prepare update data
     const updateData: any = {
-      date: startDt.toFormat('yyyy-MM-dd'),
-      start_time: startDt.toFormat('HH:mm:ss'),
-      end_time: endDt.toFormat('HH:mm:ss'),
-      appointment_datetime: startDt.toISO(),
-      appointment_end_datetime: endDt.toISO()
+      date: startDateTime.toFormat('yyyy-MM-dd'),
+      start_time: startDateTime.toFormat('HH:mm:ss'),
+      end_time: endDateTime.toFormat('HH:mm:ss'),
+      appointment_datetime: startDateTime.toISO(),
+      appointment_end_datetime: endDateTime.toISO()
     };
     
     // Add optional fields if provided
@@ -434,8 +433,8 @@ export class CalendarService {
     return {
       id: data.id,
       title: data.type,
-      start: startDt.toJSDate(),
-      end: endDt.toJSDate(),
+      start: startDateTime.toJSDate(),
+      end: endDateTime.toJSDate(),
       allDay: false,
       extendedProps: {
         eventType: 'appointment',
@@ -454,19 +453,19 @@ export class CalendarService {
     const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
     
     // Convert the event times to the user's timezone
-    const startDt = typeof event.start === 'string' 
-      ? TimeZoneService.parseWithZone(event.start, validTimeZone)
-      : DateTime.fromJSDate(event.start as Date).setZone(validTimeZone);
+    const startDateTime = event.start instanceof Date 
+      ? DateTime.fromJSDate(event.start).setZone(validTimeZone)
+      : TimeZoneService.parseWithZone(event.start as string, validTimeZone);
       
-    const endDt = typeof event.end === 'string'
-      ? TimeZoneService.parseWithZone(event.end, validTimeZone)
-      : DateTime.fromJSDate(event.end as Date).setZone(validTimeZone);
+    const endDateTime = event.end instanceof Date 
+      ? DateTime.fromJSDate(event.end).setZone(validTimeZone)
+      : TimeZoneService.parseWithZone(event.end as string, validTimeZone);
     
     // Prepare update data
     const updateData: any = {
-      date: startDt.toFormat('yyyy-MM-dd'),
-      start_time: startDt.toFormat('HH:mm:ss'),
-      end_time: endDt.toFormat('HH:mm:ss')
+      date: startDateTime.toFormat('yyyy-MM-dd'),
+      start_time: startDateTime.toFormat('HH:mm:ss'),
+      end_time: endDateTime.toFormat('HH:mm:ss')
     };
     
     // Add optional fields if provided
@@ -495,8 +494,8 @@ export class CalendarService {
     return {
       id: data.id,
       title: data.reason,
-      start: startDt.toJSDate(),
-      end: endDt.toJSDate(),
+      start: startDateTime.toJSDate(),
+      end: endDateTime.toJSDate(),
       allDay: data.all_day,
       extendedProps: {
         eventType: 'time_off',

@@ -111,8 +111,8 @@ export class AvailabilityMutationService {
         const baseDate = DateTime.fromISO(existingSlot.start_time).toISODate();
         if (!baseDate) throw new Error('Invalid start time in existing slot');
         
-        const timeZone = updates.timeZone || existingSlot.time_zone || 'UTC';
-        const startDateTime = TimeZoneService.parseWithZone(`${baseDate}T${updates.startTime}:00`, timeZone);
+        const timeZoneToUse = updates.timeZone || existingSlot.time_zone || 'UTC';
+        const startDateTime = TimeZoneService.parseWithZone(`${baseDate}T${updates.startTime}:00`, timeZoneToUse);
         dbUpdates.start_time = startDateTime.toISO();
       }
       
@@ -120,8 +120,8 @@ export class AvailabilityMutationService {
         const baseDate = DateTime.fromISO(existingSlot.end_time).toISODate();
         if (!baseDate) throw new Error('Invalid end time in existing slot');
         
-        const timeZone = updates.timeZone || existingSlot.time_zone || 'UTC';
-        const endDateTime = TimeZoneService.parseWithZone(`${baseDate}T${updates.endTime}:00`, timeZone);
+        const timeZoneToUse = updates.timeZone || existingSlot.time_zone || 'UTC';
+        const endDateTime = TimeZoneService.parseWithZone(`${baseDate}T${updates.endTime}:00`, timeZoneToUse);
         dbUpdates.end_time = endDateTime.toISO();
       }
       
