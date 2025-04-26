@@ -255,4 +255,79 @@ export class AvailabilityQueryService {
       return createEmptyWeeklyAvailability();
     }
   }
+
+  static async getAvailabilitiesForCalendar(clinicianId: string, start: string, end: string, userTimeZone: string) {
+    try {
+      console.log('[AvailabilityQueryService] Getting availabilities for calendar:', {
+        clinicianId,
+        start,
+        end,
+        userTimeZone
+      });
+      
+      // Validate timezone
+      const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
+      
+      // Convert to UTC for database query
+      const startUTC = TimeZoneService.toUTC(
+        TimeZoneService.parseWithZone(start, validTimeZone)
+      ).toISO();
+      
+      const endUTC = TimeZoneService.toUTC(
+        TimeZoneService.parseWithZone(end, validTimeZone)
+      ).toISO();
+      
+      console.log('[AvailabilityQueryService] Converted times:', {
+        startUTC,
+        endUTC
+      });
+      
+      const query = supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('clinician_id', clinicianId)
+        .eq('event_type', 'availability')
+        .eq('is_active', true)
+        .or(`start_time.gte.${startUTC},end_time.gte.${startUTC}`)
+        .lt('start_time', endUTC);
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('[AvailabilityQueryService] Error fetching availabilities:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        return [];
+      }
+      
+      // Format for FullCalendar
+      return data.map(event => {
+        // Convert from UTC to user timezone for display
+        const startLocal = TimeZoneService.fromUTC(event.start_time, validTimeZone);
+        const endLocal = TimeZoneService.fromUTC(event.end_time, validTimeZone);
+        
+        // Create event object for calendar
+        return {
+          id: event.id,
+          title: 'Available',
+          start: startLocal.toISO(),
+          end: endLocal.toISO(),
+          eventType: 'availability',
+          availabilityType: event.availability_type,
+          // Fix: Remove recurrenceRule property or ensure it's defined in AvailabilitySlot type
+          // recurrenceRule: event.recurrence_rule,
+          extendedProps: {
+            eventType: 'availability',
+            availabilityType: event.availability_type,
+            recurrenceRule: event.recurrence_rule,
+          }
+        };
+      });
+    } catch (error) {
+      console.error('[AvailabilityQueryService] Error:', error);
+      throw error;
+    }
+  }
 }

@@ -3,18 +3,9 @@ import { format, parse, addDays, isSameDay, isAfter, differenceInCalendarDays } 
 import { Calendar as CalendarIcon, Clock, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  formatTimeInUserTimeZone, 
-  getUserTimeZone, 
-  toUTC, 
-  fromUTC,
-  formatUTCTimeForUser,
-  formatTimeZoneDisplay,
-  ensureIANATimeZone,
-  formatTime12Hour,
-  toUTCTimestamp
-} from '@/utils/timeZoneUtils';
-import { 
+import { TimeZoneService } from '@/utils/timeZoneService'; 
+import { useTimeZone } from '@/context/TimeZoneContext';
+import {
   convertClinicianDataToAvailabilityBlocks,
   getClinicianAvailabilityFieldsQuery
 } from '@/utils/availabilityUtils';
@@ -72,10 +63,12 @@ const ViewAvailabilityDialog: React.FC<ViewAvailabilityDialogProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [minDaysAhead, setMinDaysAhead] = useState<number>(1);
   const [clinicianTimeZone, setClinicianTimeZone] = useState<string>("America/Chicago");
-  const [clientTimeZone, setClientTimeZone] = useState<string>(ensureIANATimeZone(propTimeZone || getUserTimeZone()));
+  const { userTimeZone } = useTimeZone();
   const [timeGranularity, setTimeGranularity] = useState<string>("half-hour");
   const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
   const { toast } = useToast();
+  
+  const clientTimeZone = TimeZoneService.ensureIANATimeZone(propTimeZone || userTimeZone);
 
   useEffect(() => {
     if (open) {
@@ -332,16 +325,16 @@ const ViewAvailabilityDialog: React.FC<ViewAvailabilityDialogProps> = ({
         originalTime: timeString
       });
       
-      const formattedTime = formatTimeInUserTimeZone(timeString, clientTimeZone, 'h:mm a');
+      const formattedTime = TimeZoneService.formatTime(timeString, 'h:mm a', clientTimeZone);
       console.log('Formatted time result:', formattedTime);
       return formattedTime;
     } catch (error) {
       console.error('Error formatting time for display:', error, { timeString, clientTimeZone });
-      return formatTime12Hour(timeString);
+      return TimeZoneService.formatTime(timeString, 'h:mm a');
     }
   };
 
-  const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);
+  const timeZoneDisplay = TimeZoneService.formatTimeZoneDisplay(clientTimeZone);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

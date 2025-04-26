@@ -2,8 +2,7 @@
 import { useState, useEffect } from 'react';
 import { AvailabilityService } from '@/services/availabilityService';
 import { RecurringAvailabilityService } from '@/services/RecurringAvailabilityService';
-import { DateTime } from 'luxon';
-import { WeeklyAvailability, DayOfWeek, AvailabilitySettings } from '@/types/availability';
+import { WeeklyAvailability, DayOfWeek, AvailabilitySettings, AvailabilitySlot } from '@/types/availability';
 import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
 import { TimeZoneService } from '@/utils/timeZoneService';
 
@@ -14,6 +13,7 @@ interface CreateSlotResult {
 }
 
 export const useAvailability = (clinicianId: string) => {
+  // Fix: Ensure we're using a properly typed initial state
   const [weeklyAvailability, setWeeklyAvailability] = useState<WeeklyAvailability>(createEmptyWeeklyAvailability());
   const [settings, setSettings] = useState<AvailabilitySettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,10 +24,12 @@ export const useAvailability = (clinicianId: string) => {
     setError(null);
     try {
       const data = await AvailabilityService.getWeeklyAvailability(clinicianId);
-      setWeeklyAvailability({
+      // Fix: Ensure we're merging with a properly typed object
+      const mergedData = {
         ...createEmptyWeeklyAvailability(),
-        ...data as Partial<WeeklyAvailability>
-      });
+        ...(data as Partial<WeeklyAvailability>)
+      };
+      setWeeklyAvailability(mergedData);
     } catch (err) {
       console.error('Error fetching weekly availability:', err);
       setError('Failed to load availability. Please try again later.');

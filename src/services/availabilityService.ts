@@ -1,31 +1,47 @@
 import { supabase } from '@/integrations/supabase/client';
-import { AvailabilitySettings, AvailabilitySlot, WeeklyAvailability } from '@/types/appointment';
-import { CalendarEvent, CalendarEventType } from '@/types/calendar';
-import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
+import { AvailabilitySettings, WeeklyAvailability, AvailabilitySlot } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { DateTime } from 'luxon';
 
 export class AvailabilityService {
   static async getSettings(clinicianId: string): Promise<AvailabilitySettings | null> {
-    const { data, error } = await supabase
-      .from('availability_settings')
-      .select('*')
-      .eq('clinician_id', clinicianId)
-      .single();
-
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('availability_settings')
+        .select('*')
+        .eq('clinician_id', clinicianId)
+        .single();
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+          console.log('No availability settings found for clinician:', clinicianId);
+          return null;
+        }
+        throw error;
+      }
+      
+      return data ? {
+        id: data.id,
+        clinicianId: data.clinician_id,
+        timeZone: data.time_zone || 'America/Chicago',
+        slotDuration: data.slot_duration || 60,
+        minDaysAhead: data.min_days_ahead || 1,
+        maxDaysAhead: data.max_days_ahead || 60,
+        bufferBetweenSlots: data.buffer_between_slots || 0,
+        earlyMorningHours: data.early_morning_hours || false,
+        lateEveningHours: data.late_evening_hours || false,
+        weekendAvailability: data.weekend_availability || false,
+        allowRecurringScheduling: data.allow_recurring_scheduling || true,
+        autoConfirm: data.auto_confirm || false,
+        bookingInstructions: data.booking_instructions || '',
+        timeGranularity: data.time_granularity || 'hour',
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      } : null;
+    } catch (error) {
       console.error('Error fetching availability settings:', error);
-      return null;
+      throw error;
     }
-
-    return data ? {
-      id: data.id,
-      clinicianId: data.clinician_id,
-      defaultSlotDuration: data.default_slot_duration,
-      minNoticeDays: data.min_notice_days,
-      maxAdvanceDays: data.max_advance_days,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
-    } : null;
   }
 
   static async updateSettings(

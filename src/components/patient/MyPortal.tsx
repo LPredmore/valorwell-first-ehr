@@ -9,19 +9,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AppointmentBookingDialog from './AppointmentBookingDialog';
 import { supabase, getOrCreateVideoRoom, checkPHQ9ForAppointment } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  format, 
-  parseISO, 
-  startOfToday, 
-  isToday 
-} from 'date-fns';
-import { 
-  getUserTimeZone, 
-  formatTimeZoneDisplay, 
-  formatTimeInUserTimeZone, 
-  formatTime12Hour, 
-  ensureIANATimeZone 
-} from '@/utils/timeZoneUtils';
+import { format, parseISO, startOfToday, isToday } from 'date-fns';
+import { TimeZoneService } from '@/utils/timeZoneService';
+import { useTimeZone } from '@/context/TimeZoneContext';
 import PHQ9Template from '@/components/templates/PHQ9Template';
 import VideoChat from '@/components/video/VideoChat';
 
@@ -57,11 +47,10 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const [pendingAppointmentId, setPendingAppointmentId] = useState<string | number | null>(null);
   const [clinicianData, setClinicianData] = useState<any>(null);
   const [hasAssignedDocuments, setHasAssignedDocuments] = useState<boolean>(false);
-  const {
-    toast
-  } = useToast();
-
-  const clientTimeZone = ensureIANATimeZone(clientData?.client_time_zone || getUserTimeZone());
+  const { toast } = useToast();
+  const { userTimeZone } = useTimeZone();
+  
+  const clientTimeZone = TimeZoneService.ensureIANATimeZone(clientData?.client_time_zone || userTimeZone);
   
   useEffect(() => {
     const fetchAssignedDocuments = async () => {
@@ -120,19 +109,22 @@ const MyPortal: React.FC<MyPortalProps> = ({
         const todayStr = format(today, 'yyyy-MM-dd');
         console.log("Fetching appointments for client:", clientData.id);
         console.log("Using time zone:", clientTimeZone);
-        const {
-          data,
-          error
-        } = await supabase.from('appointments').select('*').eq('client_id', clientData.id).eq('status', 'scheduled').gte('date', todayStr).order('date', {
-          ascending: true
-        }).order('start_time', {
-          ascending: true
-        });
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('client_id', clientData.id)
+          .eq('status', 'scheduled')
+          .gte('date', todayStr)
+          .order('date', { ascending: true })
+          .order('start_time', { ascending: true });
+          
         if (error) {
           console.error('Error fetching appointments:', error);
           return;
         }
+        
         console.log("Appointments data from Supabase:", data);
+        
         if (data && data.length > 0) {
           const formattedAppointments = data.map(appointment => {
             try {
@@ -140,16 +132,20 @@ const MyPortal: React.FC<MyPortalProps> = ({
 
               let formattedTime = '';
               try {
-                formattedTime = formatTimeInUserTimeZone(appointment.start_time, clientTimeZone,
-                'h:mm a');
+                formattedTime = TimeZoneService.formatTime(
+                  appointment.start_time, 
+                  'h:mm a', 
+                  clientTimeZone
+                );
                 console.log(`Formatted time for ${appointment.start_time}: ${formattedTime}`);
               } catch (error) {
                 console.error('Error formatting time:', error, {
                   time: appointment.start_time,
                   timezone: clientTimeZone
                 });
-                formattedTime = formatTime12Hour(appointment.start_time) || 'Time unavailable';
+                formattedTime = TimeZoneService.formatTime(appointment.start_time, 'h:mm a') || 'Time unavailable';
               }
+              
               return {
                 id: appointment.id,
                 date: formattedDate,
@@ -171,6 +167,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
               };
             }
           });
+          
           console.log("Formatted appointments:", formattedAppointments);
           setUpcomingAppointments(formattedAppointments);
         } else {
@@ -186,6 +183,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
         });
       }
     };
+    
     fetchAppointments();
   }, [clientData, clinicianName, refreshAppointments, clientTimeZone, toast]);
 
@@ -274,7 +272,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
     setVideoRoomUrl(null);
   };
 
-  const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);
+  const timeZoneDisplay = TimeZoneService.formatTimeZoneDisplay(clientTimeZone);
   const todayAppointments = upcomingAppointments.filter(appointment => isAppointmentToday(appointment.rawDate));
   const futureAppointments = upcomingAppointments.filter(appointment => !isAppointmentToday(appointment.rawDate));
 
