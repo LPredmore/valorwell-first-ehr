@@ -1,22 +1,14 @@
-// Update the imports to use proper types
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability, TimeSlot } from '@/types/availability';
 import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { CalendarErrorHandler } from '@/services/calendar/CalendarErrorHandler';
 import { DateTime } from 'luxon';
 
-/**
- * Service for querying availability data from the database
- */
 export class AvailabilityQueryService {
-  /**
-   * Get weekly availability for a clinician
-   * @param clinicianId Clinician ID to get availability for
-   * @returns Weekly availability object
-   */
   static async getWeeklyAvailability(clinicianId: string): Promise<WeeklyAvailability> {
     try {
-      console.log('Fetching weekly availability for clinician:', clinicianId);
+      console.log('[AvailabilityQueryService] Fetching weekly availability for clinician:', clinicianId);
       
       const { data, error } = await supabase
         .from('calendar_events')
@@ -25,18 +17,37 @@ export class AvailabilityQueryService {
         .eq('event_type', 'availability')
         .eq('is_active', true);
       
-      if (error) throw error;
+      if (error) {
+        console.error('[AvailabilityQueryService] Database error:', error);
+        throw CalendarErrorHandler.handleDatabaseError(error);
+      }
+
+      if (!data) {
+        console.log('[AvailabilityQueryService] No availability data found for clinician:', clinicianId);
+        return createEmptyWeeklyAvailability();
+      }
       
       const weeklyAvailability = createEmptyWeeklyAvailability();
       
       // Process calendar events into weekly availability slots
-      for (const event of data || []) {
+      for (const event of data) {
         try {
+          console.log('[AvailabilityQueryService] Processing event:', {
+            id: event.id,
+            startTime: event.start_time,
+            endTime: event.end_time,
+            timeZone: event.time_zone
+          });
+
           const startDt = DateTime.fromISO(event.start_time);
           const endDt = DateTime.fromISO(event.end_time);
           
           if (!startDt.isValid || !endDt.isValid) {
-            console.error('Invalid date in availability event:', event);
+            console.error('[AvailabilityQueryService] Invalid date in event:', {
+              event,
+              startInvalid: startDt.invalidReason,
+              endInvalid: endDt.invalidReason
+            });
             continue;
           }
           
@@ -58,24 +69,20 @@ export class AvailabilityQueryService {
           
           weeklyAvailability[day].push(slot);
         } catch (slotError) {
-          console.error('Error processing availability slot:', slotError);
+          console.error('[AvailabilityQueryService] Error processing availability slot:', {
+            error: slotError,
+            event
+          });
         }
       }
       
       return weeklyAvailability;
     } catch (error) {
-      console.error('Error getting weekly availability:', error);
-      throw error;
+      console.error('[AvailabilityQueryService] Error getting weekly availability:', error);
+      throw CalendarErrorHandler.formatError(error);
     }
   }
-  
-  /**
-   * Calculate available appointment slots for a specific date
-   * @param settings Availability settings to use
-   * @param date Date to calculate slots for
-   * @param existingAppointments Array of existing appointments to avoid
-   * @returns Array of available time slots
-   */
+
   static async calculateAvailableSlots(
     settings: AvailabilitySettings,
     date: string,
@@ -146,22 +153,12 @@ export class AvailabilityQueryService {
       throw error;
     }
   }
-  
-  /**
-   * Convert time string to minutes since midnight
-   * @param time Time string in format HH:MM
-   * @returns Minutes since midnight
-   */
+
   private static timeToMinutes(time: string): number {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
   }
-  
-  /**
-   * Convert minutes since midnight to time string
-   * @param minutes Minutes since midnight
-   * @returns Time string in format HH:MM
-   */
+
   private static minutesToTime(minutes: number): string {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;

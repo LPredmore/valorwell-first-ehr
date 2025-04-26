@@ -3,6 +3,7 @@ import { TimeZoneService } from '@/utils/timeZoneService';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
 import { AvailabilityQueryService } from './AvailabilityQueryService';
 import { AvailabilityMutationService } from './AvailabilityMutationService';
+import { CalendarErrorHandler } from './calendar/CalendarErrorHandler';
 import { DateTime } from 'luxon';
 
 /**
@@ -14,15 +15,21 @@ class AvailabilityService {
    */
   async getSettingsForClinician(clinicianId: string): Promise<AvailabilitySettings> {
     try {
+      console.log('[AvailabilityService] Fetching settings for clinician:', clinicianId);
+      
       const { data, error } = await supabase
         .from('availability_settings')
         .select('*')
         .eq('clinician_id', clinicianId)
         .maybeSingle();
       
-      if (error) throw error;
+      if (error) {
+        console.error('[AvailabilityService] Database error fetching settings:', error);
+        throw CalendarErrorHandler.handleDatabaseError(error);
+      }
       
       if (!data) {
+        console.log('[AvailabilityService] No settings found, creating defaults');
         // Create default settings if none exist
         const defaultSettings: Partial<AvailabilitySettings> = {
           clinicianId,
@@ -41,15 +48,18 @@ class AvailabilityService {
           .select()
           .single();
         
-        if (createError) throw createError;
+        if (createError) {
+          console.error('[AvailabilityService] Error creating default settings:', createError);
+          throw CalendarErrorHandler.handleDatabaseError(createError);
+        }
         
         return newData as AvailabilitySettings;
       }
       
       return data as AvailabilitySettings;
     } catch (error) {
-      console.error('Error getting availability settings:', error);
-      throw error;
+      console.error('[AvailabilityService] Error in getSettingsForClinician:', error);
+      throw CalendarErrorHandler.formatError(error);
     }
   }
   
@@ -99,6 +109,10 @@ class AvailabilityService {
     timeZone?: string
   ) {
     try {
+      // Validate timezone before proceeding
+      const validatedTimeZone = TimeZoneService.ensureIANATimeZone(timeZone || 'UTC');
+      console.log('[AvailabilityService] Creating slot with validated timezone:', validatedTimeZone);
+
       return await AvailabilityMutationService.createAvailabilitySlot(
         clinicianId,
         dayOfWeek,
@@ -106,11 +120,11 @@ class AvailabilityService {
         endTime,
         isRecurring,
         recurrenceRule,
-        timeZone
+        validatedTimeZone
       );
     } catch (error) {
       console.error('Error creating availability slot:', error);
-      throw error;
+      throw CalendarErrorHandler.formatError(error);
     }
   }
   

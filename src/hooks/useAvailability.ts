@@ -1,8 +1,8 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { availabilityService } from '@/services/availabilityService';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { CalendarErrorHandler } from '@/services/calendar/CalendarErrorHandler';
 
 interface AvailabilitySlotResult {
   success: boolean;
@@ -25,14 +25,15 @@ export const useAvailability = (clinicianId: string | null) => {
     }
 
     try {
+      console.log('[useAvailability] Fetching settings for clinician:', clinicianId);
       setLoading(true);
       setIsLoading(true);
       const data = await availabilityService.getSettingsForClinician(clinicianId);
       setSettings(data);
       setError(null);
     } catch (err) {
-      console.error('Error fetching availability settings:', err);
-      setError(err instanceof Error ? err : new Error('Unknown error'));
+      console.error('[useAvailability] Error fetching settings:', err);
+      setError(CalendarErrorHandler.formatError(err));
     } finally {
       setLoading(false);
       setIsLoading(false);
@@ -46,13 +47,15 @@ export const useAvailability = (clinicianId: string | null) => {
     }
 
     try {
+      console.log('[useAvailability] Fetching weekly availability for clinician:', clinicianId);
       setLoading(true);
       setIsLoading(true);
       const data = await availabilityService.getWeeklyAvailabilityForClinician(clinicianId);
       setWeeklyAvailability(data);
+      setError(null);
     } catch (err) {
-      console.error('Error fetching weekly availability:', err);
-      setError(err instanceof Error ? err : new Error('Unknown error'));
+      console.error('[useAvailability] Error fetching weekly availability:', err);
+      setError(CalendarErrorHandler.formatError(err));
     } finally {
       setLoading(false);
       setIsLoading(false);
@@ -80,7 +83,14 @@ export const useAvailability = (clinicianId: string | null) => {
     }
 
     try {
-      const validTimeZone = timeZone ? TimeZoneService.ensureIANATimeZone(timeZone) : 'UTC';
+      console.log('[useAvailability] Creating availability slot:', {
+        clinicianId,
+        dayOfWeek,
+        startTime,
+        endTime,
+        timeZone
+      });
+
       const result = await availabilityService.createAvailabilitySlot(
         clinicianId,
         dayOfWeek,
@@ -88,16 +98,17 @@ export const useAvailability = (clinicianId: string | null) => {
         endTime,
         isRecurring,
         recurrenceRule,
-        validTimeZone
+        timeZone
       );
 
       await fetchWeeklyAvailability();
       return { success: true, slotId: result?.id };
     } catch (err) {
-      console.error('Error creating availability slot:', err);
+      const error = CalendarErrorHandler.formatError(err);
+      console.error('[useAvailability] Error creating slot:', error);
       return { 
         success: false, 
-        error: err instanceof Error ? err.message : 'Failed to create availability slot' 
+        error: error.message 
       };
     }
   }, [clinicianId, fetchWeeklyAvailability]);
@@ -164,7 +175,7 @@ export const useAvailability = (clinicianId: string | null) => {
   return {
     settings,
     loading,
-    isLoading, // Alias for consistency with other hooks
+    isLoading,
     error,
     weeklyAvailability,
     refreshAvailability,
