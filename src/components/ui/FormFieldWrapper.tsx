@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -72,7 +73,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
         if (isTimeZoneField && field.value && field.value.includes('/')) {
           const matchingOption = options.find((opt) => {
             const optValue = typeof opt === 'string' ? opt : opt.value;
-            const ianaValue = ensureIANATimeZone(optValue);
+            const ianaValue = TimeZoneService.ensureIANATimeZone(optValue);
             return ianaValue === field.value;
           });
           

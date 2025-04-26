@@ -1,12 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { DateTime } from 'luxon';
-import { 
-  createDateTime,
-  convertToTimezone, 
-  formatDateTime,
-  getTimezoneDisplayName
-} from '@/utils/luxonTimeUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -78,15 +73,16 @@ const LuxonTimeZoneTest: React.FC = () => {
     
     return testTimes.map((testTime, index) => {
       // Create DateTime in source time zone
-      const sourceDateTime = createDateTime(
+      const sourceDateTime = TimeZoneService.createDateTime(
         testTime.date, 
         testTime.time, 
         selectedSourceZone
       );
       
       // Convert to target time zone
-      const targetDateTime = convertToTimezone(
+      const targetDateTime = TimeZoneService.convertDateTime(
         sourceDateTime,
+        selectedSourceZone,
         selectedTargetZone
       );
       
@@ -94,10 +90,10 @@ const LuxonTimeZoneTest: React.FC = () => {
         id: index,
         sourceDate: testTime.date,
         sourceTime: testTime.time,
-        sourceFormatted: formatDateTime(sourceDateTime, 'yyyy-MM-dd h:mm a ZZZZ'),
+        sourceFormatted: TimeZoneService.formatDateTime(sourceDateTime, 'yyyy-MM-dd h:mm a ZZZZ'),
         targetDate: targetDateTime.toFormat('yyyy-MM-dd'),
         targetTime: targetDateTime.toFormat('HH:mm'),
-        targetFormatted: formatDateTime(targetDateTime, 'yyyy-MM-dd h:mm a ZZZZ'),
+        targetFormatted: TimeZoneService.formatDateTime(targetDateTime, 'yyyy-MM-dd h:mm a ZZZZ'),
         isDST: {
           source: sourceDateTime.isInDST,
           target: targetDateTime.isInDST
@@ -123,7 +119,7 @@ const LuxonTimeZoneTest: React.FC = () => {
                 const zonedTime = currentTime.setZone(zone);
                 return (
                   <div key={zone} className="flex justify-between items-center border-b pb-2">
-                    <div className="font-medium">{getTimezoneDisplayName(zone)}</div>
+                    <div className="font-medium">{TimeZoneService.formatTimeZoneDisplay(zone)}</div>
                     <div>{zonedTime.toFormat('yyyy-MM-dd h:mm:ss a')}</div>
                   </div>
                 );
@@ -147,7 +143,7 @@ const LuxonTimeZoneTest: React.FC = () => {
                     onChange={(e) => setSelectedSourceZone(e.target.value)}
                   >
                     {SAMPLE_TIME_ZONES.map(zone => (
-                      <option key={`source-${zone}`} value={zone}>{getTimezoneDisplayName(zone)}</option>
+                      <option key={`source-${zone}`} value={zone}>{TimeZoneService.formatTimeZoneDisplay(zone)}</option>
                     ))}
                   </select>
                 </div>
@@ -159,7 +155,7 @@ const LuxonTimeZoneTest: React.FC = () => {
                     onChange={(e) => setSelectedTargetZone(e.target.value)}
                   >
                     {SAMPLE_TIME_ZONES.map(zone => (
-                      <option key={`target-${zone}`} value={zone}>{getTimezoneDisplayName(zone)}</option>
+                      <option key={`target-${zone}`} value={zone}>{TimeZoneService.formatTimeZoneDisplay(zone)}</option>
                     ))}
                   </select>
                 </div>

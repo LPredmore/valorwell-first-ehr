@@ -1,8 +1,9 @@
 
 import { TimeZoneService } from './timeZoneService';
 
-// Export timezone options from TimeZoneService
+// Export both named exports for backward compatibility
 export const TIMEZONE_OPTIONS = TimeZoneService.TIMEZONE_OPTIONS;
+export const timezoneOptions = TimeZoneService.TIMEZONE_OPTIONS;
 
 export const DEFAULT_TIMEZONE = 'America/Chicago';
 

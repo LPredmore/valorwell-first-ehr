@@ -1,10 +1,13 @@
+
 import { DateTime } from 'luxon';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { 
   AvailabilitySettings,
   TimeSlot,
-  DayOfWeek
+  DayOfWeek,
+  AvailabilitySlot,
+  WeeklyAvailability
 } from '@/types/availability';
 
 export class AvailabilityQueryService {
@@ -88,7 +91,7 @@ export class AvailabilityQueryService {
     return availableSlots;
   }
 
-  static async getWeeklyAvailability(clinicianId: string): Promise<Record<DayOfWeek, { startTime: string, endTime: string }[]>> {
+  static async getWeeklyAvailability(clinicianId: string): Promise<WeeklyAvailability> {
     try {
       const { data, error } = await supabase
         .from('availability_slots')
@@ -97,49 +100,44 @@ export class AvailabilityQueryService {
 
       if (error) {
         console.error('Error fetching weekly availability:', error);
-        return {
-          monday: [],
-          tuesday: [],
-          wednesday: [],
-          thursday: [],
-          friday: [],
-          saturday: [],
-          sunday: []
-        };
+        return this.getEmptyWeeklyAvailability();
       }
 
-      const weeklyAvailability: Record<DayOfWeek, { startTime: string, endTime: string }[]> = {
-        monday: [],
-        tuesday: [],
-        wednesday: [],
-        thursday: [],
-        friday: [],
-        saturday: [],
-        sunday: []
-      };
+      const weeklyAvailability: WeeklyAvailability = this.getEmptyWeeklyAvailability();
 
       data.forEach(slot => {
         const dayOfWeek = slot.day_of_week as DayOfWeek;
         if (weeklyAvailability[dayOfWeek]) {
-          weeklyAvailability[dayOfWeek].push({
+          const availabilitySlot: AvailabilitySlot = {
+            id: slot.id,
+            dayOfWeek,
             startTime: slot.start_time,
-            endTime: slot.end_time
-          });
+            endTime: slot.end_time,
+            isRecurring: !!slot.is_recurring,
+            isAppointment: false, // Regular availability slot
+            timeZone: slot.time_zone || 'UTC'
+          };
+          
+          weeklyAvailability[dayOfWeek].push(availabilitySlot);
         }
       });
 
       return weeklyAvailability;
     } catch (error) {
       console.error('Error in getWeeklyAvailability:', error);
-      return {
-        monday: [],
-        tuesday: [],
-        wednesday: [],
-        thursday: [],
-        friday: [],
-        saturday: [],
-        sunday: []
-      };
+      return this.getEmptyWeeklyAvailability();
     }
+  }
+  
+  private static getEmptyWeeklyAvailability(): WeeklyAvailability {
+    return {
+      monday: [],
+      tuesday: [],
+      wednesday: [],
+      thursday: [],
+      friday: [],
+      saturday: [],
+      sunday: []
+    };
   }
 }

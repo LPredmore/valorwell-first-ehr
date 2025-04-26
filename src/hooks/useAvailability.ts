@@ -1,38 +1,176 @@
 
-// Update to handle availabilityService.getSettingsForClinician method instead of getSettings
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { availabilityService } from '@/services/availabilityService';
-import { AvailabilitySettings } from '@/types/availability';
+import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
+import { TimeZoneService } from '@/utils/timeZoneService';
+
+interface AvailabilitySlotResult {
+  success: boolean;
+  error?: string;
+  slotId?: string;
+}
 
 export const useAvailability = (clinicianId: string | null) => {
   const [settings, setSettings] = useState<AvailabilitySettings | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Alias for consistency
   const [error, setError] = useState<Error | null>(null);
+  const [weeklyAvailability, setWeeklyAvailability] = useState<WeeklyAvailability | null>(null);
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      if (!clinicianId) {
-        setLoading(false);
-        return;
-      }
+  const fetchSettings = useCallback(async () => {
+    if (!clinicianId) {
+      setLoading(false);
+      setIsLoading(false);
+      return;
+    }
 
-      try {
-        setLoading(true);
-        // Fix this line to use getSettingsForClinician
-        const data = await availabilityService.getSettingsForClinician(clinicianId);
-        setSettings(data);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching availability settings:', err);
-        setError(err instanceof Error ? err : new Error('Unknown error'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSettings();
+    try {
+      setLoading(true);
+      setIsLoading(true);
+      const data = await availabilityService.getSettingsForClinician(clinicianId);
+      setSettings(data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching availability settings:', err);
+      setError(err instanceof Error ? err : new Error('Unknown error'));
+    } finally {
+      setLoading(false);
+      setIsLoading(false);
+    }
   }, [clinicianId]);
 
-  return { settings, loading, error };
+  const fetchWeeklyAvailability = useCallback(async () => {
+    if (!clinicianId) {
+      setWeeklyAvailability(null);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setIsLoading(true);
+      const data = await availabilityService.getWeeklyAvailabilityForClinician(clinicianId);
+      setWeeklyAvailability(data);
+    } catch (err) {
+      console.error('Error fetching weekly availability:', err);
+      setError(err instanceof Error ? err : new Error('Unknown error'));
+    } finally {
+      setLoading(false);
+      setIsLoading(false);
+    }
+  }, [clinicianId]);
+
+  const refreshAvailability = useCallback(async () => {
+    await Promise.all([fetchSettings(), fetchWeeklyAvailability()]);
+  }, [fetchSettings, fetchWeeklyAvailability]);
+
+  useEffect(() => {
+    refreshAvailability();
+  }, [refreshAvailability]);
+
+  const createSlot = useCallback(async (
+    dayOfWeek: DayOfWeek,
+    startTime: string,
+    endTime: string,
+    isRecurring: boolean = true,
+    recurrenceRule?: string,
+    timeZone?: string
+  ): Promise<AvailabilitySlotResult> => {
+    if (!clinicianId) {
+      return { success: false, error: 'No clinician ID provided' };
+    }
+
+    try {
+      const validTimeZone = timeZone ? TimeZoneService.ensureIANATimeZone(timeZone) : 'UTC';
+      const result = await availabilityService.createAvailabilitySlot(
+        clinicianId,
+        dayOfWeek,
+        startTime,
+        endTime,
+        isRecurring,
+        recurrenceRule,
+        validTimeZone
+      );
+
+      await fetchWeeklyAvailability();
+      return { success: true, slotId: result?.id };
+    } catch (err) {
+      console.error('Error creating availability slot:', err);
+      return { 
+        success: false, 
+        error: err instanceof Error ? err.message : 'Failed to create availability slot' 
+      };
+    }
+  }, [clinicianId, fetchWeeklyAvailability]);
+
+  const updateSlot = useCallback(async (
+    slotId: string,
+    updates: Partial<AvailabilitySlot>
+  ): Promise<AvailabilitySlotResult> => {
+    if (!clinicianId || !slotId) {
+      return { success: false, error: 'Missing required parameters' };
+    }
+
+    try {
+      await availabilityService.updateAvailabilitySlot(slotId, updates);
+      await fetchWeeklyAvailability();
+      return { success: true, slotId };
+    } catch (err) {
+      console.error('Error updating availability slot:', err);
+      return { 
+        success: false, 
+        error: err instanceof Error ? err.message : 'Failed to update availability slot' 
+      };
+    }
+  }, [clinicianId, fetchWeeklyAvailability]);
+
+  const deleteSlot = useCallback(async (
+    slotId: string
+  ): Promise<AvailabilitySlotResult> => {
+    if (!clinicianId || !slotId) {
+      return { success: false, error: 'Missing required parameters' };
+    }
+
+    try {
+      await availabilityService.deleteAvailabilitySlot(slotId);
+      await fetchWeeklyAvailability();
+      return { success: true };
+    } catch (err) {
+      console.error('Error deleting availability slot:', err);
+      return { 
+        success: false, 
+        error: err instanceof Error ? err.message : 'Failed to delete availability slot' 
+      };
+    }
+  }, [clinicianId, fetchWeeklyAvailability]);
+
+  const updateSettings = useCallback(async (
+    updatedSettings: Partial<AvailabilitySettings>
+  ) => {
+    if (!clinicianId) {
+      return false;
+    }
+
+    try {
+      await availabilityService.updateSettings(clinicianId, updatedSettings);
+      await fetchSettings();
+      return true;
+    } catch (err) {
+      console.error('Error updating availability settings:', err);
+      setError(err instanceof Error ? err : new Error('Unknown error'));
+      return false;
+    }
+  }, [clinicianId, fetchSettings]);
+
+  return {
+    settings,
+    loading,
+    isLoading, // Alias for consistency with other hooks
+    error,
+    weeklyAvailability,
+    refreshAvailability,
+    createSlot,
+    updateSlot,
+    deleteSlot,
+    updateSettings
+  };
 };

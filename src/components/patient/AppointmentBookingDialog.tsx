@@ -1,3 +1,6 @@
+// AppointmentBookingDialog.tsx
+// Make sure to handle Date objects properly
+
 import React, { useState, useEffect } from 'react';
 import { format, parse, addDays, isSameDay, isAfter, differenceInCalendarDays } from 'date-fns';
 import { Calendar as CalendarIcon, Clock, Check } from 'lucide-react';
@@ -335,8 +338,8 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
         timezone: clientTimeZone
       });
       
-      const startTimestamp = TimeZoneService.toUTCTimestamp(selectedDate, startTime, clientTimeZone);
-      const endTimestamp = TimeZoneService.toUTCTimestamp(selectedDate, endTime, clientTimeZone);
+      const startTimestamp = TimeZoneService.toUTCTimestamp(formatDateForApi(selectedDate), startTime, clientTimeZone);
+      const endTimestamp = TimeZoneService.toUTCTimestamp(formatDateForApi(selectedDate), endTime, clientTimeZone);
       
       console.log('Converted to UTC timestamps:', {
         startTimestamp,
