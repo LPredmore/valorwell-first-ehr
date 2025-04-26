@@ -80,7 +80,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   });
 
   const handleEventClick = (info: any) => {
-    const eventType = info.event.extendedProps.eventType;
+    const eventType = info.event.extendedProps?.eventType;
     
     if (eventType === 'availability' && typeof onAvailabilityClick === 'function') {
       try {
@@ -88,9 +88,9 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
       } catch (error) {
         console.error('[FullCalendarView] Error in availability click handler:', error);
         toast({
-          title: 'Error',
-          description: 'There was a problem processing this availability slot.',
-          variant: 'destructive',
+          title: "Error",
+          description: "There was a problem processing this availability slot.",
+          variant: "destructive",
         });
       }
     }
@@ -134,18 +134,18 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
           slotMinTime="06:00:00"
           slotMaxTime="22:00:00"
           allDaySlot={false}
-          firstDay={0} // Sunday as first day
+          firstDay={0}
           eventTimeFormat={{
             hour: 'numeric',
             minute: '2-digit',
             meridiem: 'short',
           }}
           eventClassNames={(arg) => {
-            const eventType = arg.event.extendedProps.eventType;
+            const eventType = arg.event.extendedProps?.eventType;
             
             if (eventType === 'availability') {
               return ['bg-green-200', 'text-green-900', 'border-green-300', 'hover:bg-green-300', 'cursor-pointer'];
-            } else if (arg.event.extendedProps.status === 'cancelled') {
+            } else if (arg.event.extendedProps?.status === 'cancelled') {
               return ['bg-red-100', 'text-red-800', 'border-red-200', 'line-through', 'opacity-70'];
             } else {
               return ['bg-blue-100', 'text-blue-800', 'border-blue-200'];
