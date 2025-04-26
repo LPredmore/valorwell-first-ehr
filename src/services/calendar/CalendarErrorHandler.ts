@@ -1,10 +1,9 @@
-
 /**
  * CalendarErrorHandler - Specialized error handling for calendar operations
  * Provides consistent error formatting and handling across calendar services
  */
 
-import { AppError } from '@/packages/core/utils/errors';
+import { AppError } from '@/packages/core/utils/errors/errorHandler';
 
 export type CalendarErrorCode = 
   | 'CALENDAR_DB_ERROR' 
@@ -16,20 +15,10 @@ export type CalendarErrorCode =
   | 'CALENDAR_UNKNOWN_ERROR'
   | 'VALIDATION_ERROR';
 
-export class CalendarError extends Error {
-  code: CalendarErrorCode;
-  context?: Record<string, any>;
-  
+export class CalendarError extends AppError {
   constructor(message: string, code: CalendarErrorCode, context?: Record<string, any>) {
-    super(message);
+    super(message, code, context);
     this.name = 'CalendarError';
-    this.code = code;
-    this.context = context;
-    
-    // Ensures proper stack trace in modern JS environments
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, CalendarError);
-    }
   }
 }
 
