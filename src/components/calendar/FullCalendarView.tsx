@@ -1,26 +1,16 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
-import { CalendarApi } from '@fullcalendar/core';
+import { CalendarApi, EventClickArg } from '@fullcalendar/core';
 import { toast } from '@/hooks/use-toast';
-import { CalendarViewType, CalendarEvent } from '@/types/calendar';
+import { CalendarViewType, CalendarEvent, FullCalendarProps } from '@/types/calendar';
 import { Loader2 } from 'lucide-react';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import CalendarAvailabilityHandler from './CalendarAvailabilityHandler';
 import { TimeZoneService } from '@/utils/timeZoneService';
-
-interface FullCalendarProps {
-  clinicianId: string;
-  userTimeZone: string;
-  view?: CalendarViewType;
-  height?: string | number;
-  showAvailability?: boolean;
-  onAvailabilityClick?: (event: any) => void;
-}
 
 const FullCalendarView: React.FC<FullCalendarProps> = ({
   clinicianId,
@@ -31,7 +21,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   onAvailabilityClick,
 }) => {
   const calendarRef = useRef<CalendarApi | null>(null);
-  const [availabilityEvents, setAvailabilityEvents] = useState<any[]>([]);
+  const [availabilityEvents, setAvailabilityEvents] = useState<CalendarEvent[]>([]);
   const [hasAvailabilityError, setHasAvailabilityError] = useState(false);
 
   const {
@@ -54,7 +44,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     }
   }, [appointmentsError]);
 
-  const handleAvailabilityEvents = (events: any[], error?: Error) => {
+  const handleAvailabilityEvents = (events: CalendarEvent[], error?: Error) => {
     if (error) {
       console.error('[FullCalendarView] Error in availability events:', error);
       setHasAvailabilityError(true);
@@ -79,7 +69,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     hasAvailabilityError
   });
 
-  const handleEventClick = (info: any) => {
+  const handleEventClick = (info: EventClickArg) => {
     const eventType = info.event.extendedProps?.eventType;
     
     if (eventType === 'availability' && typeof onAvailabilityClick === 'function') {
