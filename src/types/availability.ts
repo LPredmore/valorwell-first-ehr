@@ -13,6 +13,10 @@ export interface AvailabilitySlot {
   recurrenceRule?: string;
   timeZone?: string;
   isActive?: boolean;
+  // Add these properties to resolve previous build errors
+  isAppointment?: boolean;
+  clientName?: string;
+  appointmentStatus?: string;
 }
 
 export interface TimeSlot {
@@ -31,11 +35,22 @@ export interface AvailabilitySettings {
   maxAdvanceDays: number;
   timeZone: string;
   slotDuration: number;
-  timeGranularity: 'hour' | 'halfhour';
+  timeGranularity: 'hour' | 'halfhour' | 'quarter';
   isActive?: boolean;
 }
 
-export interface WeeklyAvailability {
-  [key in DayOfWeek]: AvailabilitySlot[];
+export interface ClientData {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  timeZone: string;
+  displayName: string;
+  createdAt: string;
+  updatedAt: string;
 }
+
+export type WeeklyAvailability = {
+  [key in DayOfWeek]: AvailabilitySlot[];
+};
 
