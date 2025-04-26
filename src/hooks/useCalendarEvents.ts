@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { CalendarService } from '@/services/CalendarService';
+import { CalendarService, CalendarErrorHandler } from '@/services/calendar/CalendarFacade';
 import { CalendarEvent } from '@/types/calendar';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/context/UserContext';
@@ -99,7 +99,8 @@ export function useCalendarEvents({
       
     } catch (err) {
       console.error("[useCalendarEvents] Error fetching calendar events:", err);
-      const fetchError = err instanceof Error ? err : new Error(String(err));
+      const errorMessage = CalendarErrorHandler.getUserFriendlyMessage(err);
+      const fetchError = err instanceof Error ? err : new Error(errorMessage);
       setError(fetchError);
       
       if (retry && retryCount < maxRetries) {
@@ -119,13 +120,13 @@ export function useCalendarEvents({
       } else if (retry) {
         toast({
           title: "Error fetching calendar events",
-          description: "Max retry attempts reached. Please try again manually.",
+          description: errorMessage,
           variant: "destructive",
         });
       } else {
         toast({
           title: "Error fetching calendar events",
-          description: "There was a problem loading your calendar. Please try again.",
+          description: errorMessage,
           variant: "destructive",
         });
       }
@@ -156,7 +157,7 @@ export function useCalendarEvents({
         if (retries === maxCreateRetries) {
           toast({
             title: "Error creating event",
-            description: "Failed to create your event after multiple attempts. Please try again.",
+            description: CalendarErrorHandler.getUserFriendlyMessage(err),
             variant: "destructive",
           });
           return null;
@@ -185,7 +186,7 @@ export function useCalendarEvents({
       console.error("Error updating calendar event:", err);
       toast({
         title: "Error updating event",
-        description: "There was a problem updating your event. Please try again.",
+        description: CalendarErrorHandler.getUserFriendlyMessage(err),
         variant: "destructive",
       });
       return null;
@@ -199,13 +200,13 @@ export function useCalendarEvents({
         fetchEvents();
         return true;
       } else {
-        throw new Error("Delete operation returned false");
+        throw new Error("Delete operation failed");
       }
     } catch (err) {
       console.error("Error deleting calendar event:", err);
       toast({
         title: "Error deleting event",
-        description: "There was a problem deleting your event. Please try again.",
+        description: CalendarErrorHandler.getUserFriendlyMessage(err),
         variant: "destructive",
       });
       return false;

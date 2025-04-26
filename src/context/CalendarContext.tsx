@@ -5,6 +5,7 @@ import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { useUser } from '@/context/UserContext';
 import { useToast } from '@/hooks/use-toast';
+import { CalendarErrorHandler } from '@/services/calendar/CalendarFacade';
 
 interface CalendarContextProps {
   events: CalendarEvent[];
@@ -71,10 +72,19 @@ export const CalendarProvider: React.FC<{
   // Notify on errors
   useEffect(() => {
     if (error) {
+      const errorMessage = CalendarErrorHandler.getUserFriendlyMessage(error);
+      
       toast({
         title: "Calendar Error",
-        description: `Error loading calendar events: ${error.message}`,
+        description: errorMessage,
         variant: "destructive"
+      });
+      
+      // Log detailed error information
+      console.error('[CalendarContext] Calendar error:', {
+        error,
+        message: error.message,
+        stack: error.stack
       });
     }
   }, [error, toast]);

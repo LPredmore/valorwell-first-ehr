@@ -1,0 +1,124 @@
+
+/**
+ * CalendarErrorHandler - Specialized error handling for calendar operations
+ * Provides consistent error formatting and handling across calendar services
+ */
+
+import { AppError, handleDatabaseError as coreHandleDatabaseError } from '@/packages/core/utils/errors/errorHandler';
+
+export type CalendarErrorCode = 
+  | 'CALENDAR_DB_ERROR' 
+  | 'CALENDAR_CONVERSION_ERROR' 
+  | 'CALENDAR_VALIDATION_ERROR' 
+  | 'CALENDAR_TIMEZONE_ERROR'
+  | 'CALENDAR_AUTHORIZATION_ERROR'
+  | 'CALENDAR_NETWORK_ERROR'
+  | 'CALENDAR_UNKNOWN_ERROR'
+  | 'VALIDATION_ERROR';
+
+export class CalendarError extends AppError {
+  constructor(message: string, code: CalendarErrorCode, context?: Record<string, any>) {
+    super(message, code, context);
+    this.name = 'CalendarError';
+  }
+}
+
+export class CalendarErrorHandler {
+  /**
+   * Create a new calendar-specific error
+   */
+  static createError(message: string, code: CalendarErrorCode, context?: Record<string, any>): CalendarError {
+    return new CalendarError(message, code, context);
+  }
+
+  /**
+   * Handle database-specific errors
+   */
+  static handleDatabaseError(error: any): CalendarError {
+    // First use the core database error handler
+    const baseError = coreHandleDatabaseError(error);
+    
+    // Then specialize for calendar context
+    return new CalendarError(
+      baseError.message,
+      `CALENDAR_${baseError.code}` as CalendarErrorCode,
+      baseError.context
+    );
+  }
+
+  /**
+   * Format any error type into a standardized CalendarError
+   */
+  static formatError(error: unknown): CalendarError {
+    // If it's already a CalendarError, return it
+    if (error instanceof CalendarError) {
+      return error;
+    }
+    
+    // If it's an AppError, convert it to a CalendarError
+    if (error instanceof AppError) {
+      return new CalendarError(
+        error.message,
+        `CALENDAR_${error.code}` as CalendarErrorCode,
+        error.context
+      );
+    }
+    
+    // Handle standard Error objects
+    if (error instanceof Error) {
+      let errorCode: CalendarErrorCode = 'CALENDAR_UNKNOWN_ERROR';
+      
+      // Try to infer the error type from the message
+      if (error.message.includes('timezone') || error.message.includes('time zone')) {
+        errorCode = 'CALENDAR_TIMEZONE_ERROR';
+      } else if (error.message.includes('validation') || error.message.includes('invalid')) {
+        errorCode = 'CALENDAR_VALIDATION_ERROR';
+      } else if (error.message.includes('conversion') || error.message.includes('transform')) {
+        errorCode = 'CALENDAR_CONVERSION_ERROR';
+      } else if (error.message.includes('network') || error.message.includes('fetch')) {
+        errorCode = 'CALENDAR_NETWORK_ERROR';
+      } else if (error.message.includes('permission') || error.message.includes('authorize')) {
+        errorCode = 'CALENDAR_AUTHORIZATION_ERROR';
+      }
+      
+      return new CalendarError(
+        error.message, 
+        errorCode, 
+        { originalError: error }
+      );
+    }
+    
+    // Handle other types of errors
+    return new CalendarError(
+      String(error) || 'Unknown calendar error occurred',
+      'CALENDAR_UNKNOWN_ERROR',
+      { originalError: error }
+    );
+  }
+
+  /**
+   * Get a user-friendly error message
+   */
+  static getUserFriendlyMessage(error: unknown): string {
+    const calendarError = this.formatError(error);
+    
+    // Provide friendly messages based on error code
+    switch (calendarError.code) {
+      case 'CALENDAR_TIMEZONE_ERROR':
+        return 'There was an issue with timezone conversion. Please check your timezone settings.';
+      case 'CALENDAR_VALIDATION_ERROR':
+      case 'VALIDATION_ERROR':
+        return 'The calendar data is invalid. Please check your input and try again.';
+      case 'CALENDAR_CONVERSION_ERROR':
+        return 'There was an error processing calendar data. Please try again.';
+      case 'CALENDAR_NETWORK_ERROR':
+        return 'Could not connect to the calendar service. Please check your internet connection.';
+      case 'CALENDAR_AUTHORIZATION_ERROR':
+        return 'You do not have permission to perform this action. Please check your login status.';
+      case 'CALENDAR_DB_ERROR':
+        return 'There was a problem accessing calendar data. Please try again later.';
+      default:
+        return 'An unexpected error occurred with the calendar. Please try again later.';
+    }
+  }
+}
