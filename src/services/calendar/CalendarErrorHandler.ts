@@ -4,7 +4,7 @@
  * Provides consistent error formatting and handling across calendar services
  */
 
-// Fix the import path to use the correct location for AppError
+// Import from the correct location for AppError
 import { AppError } from '@/utils/errors/errorHandler';
 
 export type CalendarErrorCode = 
@@ -17,12 +17,16 @@ export type CalendarErrorCode =
   | 'CALENDAR_UNKNOWN_ERROR'
   | 'VALIDATION_ERROR';
 
-// Make sure CalendarError properly extends AppError with all required properties
+/**
+ * CalendarError - Specialized error type for calendar operations
+ * Extends the base AppError with calendar-specific error codes
+ */
 export class CalendarError extends AppError {
-  name: string; // Add explicit name property to satisfy TypeScript
+  // No need to redeclare name property as it's already inherited from AppError
   
   constructor(message: string, code: CalendarErrorCode, context?: Record<string, any>) {
     super(message, code, context);
+    // Only set the name, don't redeclare it
     this.name = 'CalendarError';
   }
 }
@@ -99,7 +103,7 @@ export class CalendarErrorHandler {
     
     // Handle other types of errors
     return new CalendarError(
-      String(error) || 'Unknown calendar error occurred',
+      typeof error === 'string' ? error : 'Unknown calendar error occurred',
       'CALENDAR_UNKNOWN_ERROR',
       { originalError: error }
     );
@@ -112,7 +116,7 @@ export class CalendarErrorHandler {
     const calendarError = this.formatError(error);
     
     // Provide friendly messages based on error code
-    switch (calendarError.code as CalendarErrorCode) { // Add type assertion for code property
+    switch (calendarError.code as CalendarErrorCode) {
       case 'CALENDAR_TIMEZONE_ERROR':
         return 'There was an issue with timezone conversion. Please check your timezone settings.';
       case 'CALENDAR_VALIDATION_ERROR':
