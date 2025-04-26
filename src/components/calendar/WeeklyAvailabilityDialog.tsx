@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -333,7 +334,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     if (error) {
       return (
         <div className="text-center text-red-500 py-4">
-          {error}
+          <p>{error instanceof Error ? error.message : String(error)}</p>
           <Button 
             variant="outline" 
             className="mt-2"
