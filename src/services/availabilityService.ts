@@ -1,5 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
-import { AvailabilitySettings, WeeklyAvailability, DayOfWeek, createEmptyWeeklyAvailability } from '@/types/availability';
+import { AvailabilitySettings, WeeklyAvailability, DayOfWeek } from '@/types/availability';
+import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 export const getSettingsForClinician = async (clinicianId: string): Promise<AvailabilitySettings | null> => {
   try {
@@ -209,5 +211,24 @@ export const getWeeklyAvailability = async (clinicianId: string): Promise<Weekly
   } catch (error) {
     console.error('Error in getWeeklyAvailability:', error);
     return createEmptyWeeklyAvailability();
+  }
+};
+
+export const availabilityService = {
+  getSettingsForClinician,
+  createAvailabilitySlot,
+  updateAvailabilitySlot,
+  deleteAvailabilitySlot,
+  updateSettings,
+  getWeeklyAvailability,
+  calculateAvailableSlots: async (clinicianId: string, date: string) => {
+    const settings = await getSettingsForClinician(clinicianId);
+    if (!settings) return [];
+    
+    return AvailabilityQueryService.calculateAvailableSlots(
+      settings,
+      date,
+      [] // TODO: Pass existing appointments when needed
+    );
   }
 };

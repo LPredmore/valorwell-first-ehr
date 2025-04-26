@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { format, isSameDay, isSameMonth, parseISO } from 'date-fns';
 import { DateTime } from 'luxon';
-import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface Appointment {
   id: string;
@@ -158,7 +157,7 @@ const DayCell: React.FC<DayCellProps> = ({
               className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-1 rounded truncate cursor-pointer hover:bg-blue-100 transition-colors"
               onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
             >
-              {formatDateToTime12Hour(parseISO(`2000-01-01T${appointment.start_time}`))} - {getClientName(appointment.client_id)}
+              {TimeZoneService.formatTime(parseISO(`2000-01-01T${appointment.start_time}`))} - {getClientName(appointment.client_id)}
             </div>
           ))}
           {appointments.length > 3 && (

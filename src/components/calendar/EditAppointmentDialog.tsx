@@ -12,18 +12,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { 
-  formatTime12Hour, 
-  toUTCTimestamp, 
-  fromUTCTimestamp, 
-  ensureIANATimeZone, 
-  formatTimeZoneDisplay,
-  formatUTCTimeForUser
-} from '@/utils/timeZoneUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { useClinicianData } from '@/hooks/useClinicianData';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 import { Appointment } from '@/types/appointment';
-import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface EditAppointmentDialogProps {
   isOpen: boolean;

@@ -1,5 +1,6 @@
-import { AvailabilitySettings } from '@/types/availability';
+import { AvailabilitySettings, WeeklyAvailability } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
 
 export class AvailabilityQueryService {
   static mapSettingsFromDB(data: any): AvailabilitySettings {
@@ -146,5 +147,34 @@ export class AvailabilityQueryService {
       createdAt: now.toISOString(),
       updatedAt: now.toISOString()
     };
+  }
+
+  static async getWeeklyAvailability(clinicianId: string): Promise<WeeklyAvailability> {
+    const { data, error } = await supabase
+      .from('availability_slots')
+      .select('*')
+      .eq('clinician_id', clinicianId);
+
+    if (error) {
+      console.error('Error fetching weekly availability:', error);
+      return createEmptyWeeklyAvailability();
+    }
+
+    const slots = (data || []).map(slot => ({
+      id: slot.id,
+      startTime: TimeZoneService.formatTime(slot.start_time),
+      endTime: TimeZoneService.formatTime(slot.end_time),
+      dayOfWeek: slot.day_of_week,
+      isRecurring: slot.is_recurring || false
+    }));
+
+    const weeklySlots = createEmptyWeeklyAvailability();
+    slots.forEach(slot => {
+      if (slot.dayOfWeek && slot.dayOfWeek in weeklySlots) {
+        weeklySlots[slot.dayOfWeek].push(slot);
+      }
+    });
+
+    return weeklySlots;
   }
 }

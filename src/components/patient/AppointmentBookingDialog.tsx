@@ -4,21 +4,14 @@ import { Calendar as CalendarIcon, Clock, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  formatTimeInUserTimeZone, 
-  getUserTimeZone, 
-  toUTC, 
-  fromUTC,
-  formatUTCTimeForUser,
-  formatTimeZoneDisplay,
-  ensureIANATimeZone,
-  formatTime12Hour,
-  toUTCTimestamp
+  getUserTimeZone
 } from '@/utils/timeZoneUtils';
 import { 
   convertClinicianDataToAvailabilityBlocks,
   getClinicianAvailabilityFieldsQuery
 } from '@/utils/availabilityUtils';
 import { getUserTimeZoneById } from '@/hooks/useUserTimeZone';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 import { 
   Dialog, 
@@ -82,7 +75,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   const [bookingInProgress, setBookingInProgress] = useState<boolean>(false);
   const [minDaysAhead, setMinDaysAhead] = useState<number>(1);
   const [clinicianTimeZone, setClinicianTimeZone] = useState<string>("America/Chicago");
-  const [clientTimeZone, setClientTimeZone] = useState<string>(ensureIANATimeZone(propTimeZone || getUserTimeZone()));
+  const [clientTimeZone, setClientTimeZone] = useState<string>(TimeZoneService.ensureIANATimeZone(propTimeZone || getUserTimeZone()));
   const [timeGranularity, setTimeGranularity] = useState<string>("half-hour");
   const { toast } = useToast();
 
@@ -95,7 +88,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           setClientTimeZone(timeZone);
         } catch (error) {
           console.error('[AppointmentBookingDialog] Error fetching client time zone:', error);
-          setClientTimeZone(ensureIANATimeZone(propTimeZone || getUserTimeZone()));
+          setClientTimeZone(TimeZoneService.ensureIANATimeZone(propTimeZone || getUserTimeZone()));
         }
       };
       
@@ -342,8 +335,8 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
         timezone: clientTimeZone
       });
       
-      const startTimestamp = toUTCTimestamp(selectedDate, startTime, clientTimeZone);
-      const endTimestamp = toUTCTimestamp(selectedDate, endTime, clientTimeZone);
+      const startTimestamp = TimeZoneService.toUTCTimestamp(selectedDate, startTime, clientTimeZone);
+      const endTimestamp = TimeZoneService.toUTCTimestamp(selectedDate, endTime, clientTimeZone);
       
       console.log('Converted to UTC timestamps:', {
         startTimestamp,
@@ -451,16 +444,16 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
         originalTime: timeString
       });
       
-      const formattedTime = formatTimeInUserTimeZone(timeString, clientTimeZone, 'h:mm a');
+      const formattedTime = TimeZoneService.formatTime(timeString, 'h:mm a', clientTimeZone);
       console.log('Formatted time result:', formattedTime);
       return formattedTime;
     } catch (error) {
       console.error('Error formatting time for display:', error, { timeString, clientTimeZone });
-      return formatTime12Hour(timeString);
+      return TimeZoneService.formatTime(timeString, 'h:mm a');
     }
   };
 
-  const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);
+  const timeZoneDisplay = TimeZoneService.formatTimeZoneDisplay(clientTimeZone);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

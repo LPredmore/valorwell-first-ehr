@@ -51,7 +51,7 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
 
       setIsLoading(true);
       try {
-        const settings = await availabilityService.getSettings(clinicianId);
+        const settings = await availabilityService.getSettingsForClinician(clinicianId);
         if (settings) {
           setMinNoticeDays(settings.minNoticeDays);
           setMaxAdvanceDays(settings.maxAdvanceDays);
@@ -123,8 +123,8 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
         return {
           start: slot.start,
           end: slot.end,
-          startFormatted: formatTime12Hour(startDt.toFormat("HH:mm")),
-          endFormatted: formatTime12Hour(endDt.toFormat("HH:mm")),
+          startFormatted: TimeZoneService.formatTime(startDt.toFormat("HH:mm")),
+          endFormatted: TimeZoneService.formatTime(endDt.toFormat("HH:mm")),
         };
       });
       setTimeSlots(formatted);
@@ -180,6 +180,10 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
   const isDateAvailable = (date: Date) =>
     availableDates.some(d => d.getFullYear() === date.getFullYear() && d.getMonth() === date.getMonth() && d.getDate() === date.getDate());
 
+  const formatTimeWithZone = (time: string) => {
+    return TimeZoneService.formatTime(time);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[550px]">
@@ -189,7 +193,7 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
             Book an Appointment
             {timeZone && (
               <span className="ml-2 text-sm font-normal text-gray-500">
-                ({formatTimeZoneDisplay(timeZone)})
+                ({TimeZoneService.formatTimeZoneDisplay(timeZone)})
               </span>
             )}
           </DialogTitle>
@@ -273,7 +277,7 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
                     <div className="text-gray-500">Time:</div>
                     <div>{selectedTimeSlot.startFormatted} - {selectedTimeSlot.endFormatted}</div>
                     <div className="text-gray-500">Time Zone:</div>
-                    <div>{formatTimeZoneDisplay(timeZone || 'UTC')}</div>
+                    <div>{TimeZoneService.formatTimeZoneDisplay(timeZone || 'UTC')}</div>
                     <div className="text-gray-500">Duration:</div>
                     <div>
                       {(() => {
