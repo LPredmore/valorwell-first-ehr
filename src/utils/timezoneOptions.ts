@@ -1,10 +1,8 @@
 
 import { TimeZoneService } from './timeZoneService';
 
-export const TIMEZONE_OPTIONS = TimeZoneService.TIMEZONE_OPTIONS.map(tz => ({
-  value: tz,
-  label: TimeZoneService.formatTimeZoneDisplay(tz)
-}));
+// Export timezone options from TimeZoneService
+export const TIMEZONE_OPTIONS = TimeZoneService.TIMEZONE_OPTIONS;
 
 export const DEFAULT_TIMEZONE = 'America/Chicago';
 

@@ -61,6 +61,10 @@ const DayCell: React.FC<DayCellProps> = ({
   const isToday = isSameDay(day, new Date());
   const isCurrentMonth = isSameMonth(day, monthStart);
   
+  const formatTimeWithTimezone = (timeStr: string): string => {
+    return TimeZoneService.formatTime(timeStr);
+  };
+
   if (weekViewMode) {
     return (
       <div
@@ -157,7 +161,7 @@ const DayCell: React.FC<DayCellProps> = ({
               className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-1 rounded truncate cursor-pointer hover:bg-blue-100 transition-colors"
               onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
             >
-              {TimeZoneService.formatTime(parseISO(`2000-01-01T${appointment.start_time}`))} - {getClientName(appointment.client_id)}
+              {formatTimeWithTimezone(appointment.start_time)} - {getClientName(appointment.client_id)}
             </div>
           ))}
           {appointments.length > 3 && (
