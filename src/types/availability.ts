@@ -30,8 +30,11 @@ export interface AvailabilitySettings {
   clinicianId: string;
   timeZone: string;
   slotDuration: number;
+  defaultSlotDuration: number;  // Added
   minDaysAhead: number;
   maxDaysAhead: number;
+  minNoticeDays: number;      // Added
+  maxAdvanceDays: number;     // Added
   bufferBetweenSlots: number;
   earlyMorningHours: boolean;
   lateEveningHours: boolean;
@@ -40,6 +43,17 @@ export interface AvailabilitySettings {
   autoConfirm: boolean;
   bookingInstructions?: string;
   timeGranularity?: 'hour' | 'halfhour' | 'quarter';
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Add ClientData type that was missing
+export interface ClientData {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  timeZone: string;
   createdAt: string;
   updatedAt: string;
 }

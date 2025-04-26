@@ -1,5 +1,6 @@
 
-import { WeeklyAvailability, DayOfWeek } from '@/types/availability';
+import { WeeklyAvailability, DayOfWeek, AvailabilitySlot } from '@/types/availability';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 export const createEmptyWeeklyAvailability = (): WeeklyAvailability => ({
   monday: [],
@@ -23,3 +24,22 @@ export const getDayNumber = (dayOfWeek: DayOfWeek): number => {
   };
   return days[dayOfWeek];
 };
+
+// Add missing utility functions
+export const convertClinicianDataToAvailabilityBlocks = (availabilityData: any) => {
+  return availabilityData.map((slot: any) => ({
+    id: slot.id,
+    startTime: TimeZoneService.formatTime(slot.startTime, 'TIME_12H'),
+    endTime: TimeZoneService.formatTime(slot.endTime, 'TIME_12H'),
+    dayOfWeek: slot.dayOfWeek as DayOfWeek
+  }));
+};
+
+export const getClinicianAvailabilityFieldsQuery = () => `
+  id,
+  startTime,
+  endTime,
+  dayOfWeek,
+  isRecurring,
+  clinicianId
+`;
