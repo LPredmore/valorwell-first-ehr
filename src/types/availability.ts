@@ -1,4 +1,3 @@
-
 import { DateTime } from 'luxon';
 
 export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
@@ -30,11 +29,11 @@ export interface AvailabilitySettings {
   clinicianId: string;
   timeZone: string;
   slotDuration: number;
-  defaultSlotDuration: number;  // Added
+  defaultSlotDuration: number;
   minDaysAhead: number;
   maxDaysAhead: number;
-  minNoticeDays: number;      // Added
-  maxAdvanceDays: number;     // Added
+  minNoticeDays: number;
+  maxAdvanceDays: number;
   bufferBetweenSlots: number;
   earlyMorningHours: boolean;
   lateEveningHours: boolean;
@@ -47,13 +46,23 @@ export interface AvailabilitySettings {
   updatedAt: string;
 }
 
-// Add ClientData type that was missing
 export interface ClientData {
   id: string;
   name: string;
   email: string;
   phone?: string;
   timeZone: string;
+  displayName?: string;
   createdAt: string;
   updatedAt: string;
 }
+
+export const createEmptyWeeklyAvailability = (): WeeklyAvailability => ({
+  monday: [],
+  tuesday: [],
+  wednesday: [],
+  thursday: [],
+  friday: [],
+  saturday: [],
+  sunday: []
+});
