@@ -24,11 +24,10 @@ export const useAvailability = (clinicianId: string) => {
     setError(null);
     try {
       const data = await AvailabilityService.getWeeklyAvailability(clinicianId);
-      const fullData: WeeklyAvailability = {
+      setWeeklyAvailability({
         ...createEmptyWeeklyAvailability(),
-        ...data
-      };
-      setWeeklyAvailability(fullData);
+        ...data as Partial<WeeklyAvailability>
+      });
     } catch (err) {
       console.error('Error fetching weekly availability:', err);
       setError('Failed to load availability. Please try again later.');
@@ -43,7 +42,8 @@ export const useAvailability = (clinicianId: string) => {
       if (settingsData) {
         const fullSettings: AvailabilitySettings = {
           ...settingsData,
-          createdAt: settingsData.createdAt || new Date().toISOString()
+          createdAt: settingsData.createdAt || new Date().toISOString(),
+          updatedAt: settingsData.updatedAt || new Date().toISOString()
         };
         setSettings(fullSettings);
       }

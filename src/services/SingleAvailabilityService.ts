@@ -13,8 +13,8 @@ export class SingleAvailabilityService {
   ): Promise<any> {
     try {
       const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
-      const startDt = TimeZoneService.parseWithZone(`${date}T${startTime}`, validTimeZone);
-      const endDt = TimeZoneService.parseWithZone(`${date}T${endTime}`, validTimeZone);
+      const startDt = TimeZoneService.createDateTime(date, startTime, validTimeZone);
+      const endDt = TimeZoneService.createDateTime(date, endTime, validTimeZone);
 
       console.log('[SingleAvailabilityService] Creating single availability:', {
         clinicianId,
@@ -29,8 +29,8 @@ export class SingleAvailabilityService {
           clinician_id: clinicianId,
           event_type: 'availability',
           availability_type: 'single',
-          start_time: startDt.toUTC().toISO(),
-          end_time: endDt.toUTC().toISO(),
+          start_time: TimeZoneService.toUTC(startDt).toISO(),
+          end_time: TimeZoneService.toUTC(endDt).toISO(),
           is_active: true,
         }])
         .select('id');

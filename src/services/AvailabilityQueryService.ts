@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { WeeklyAvailability, AvailabilitySettings, createEmptyWeeklyAvailability } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -55,7 +54,7 @@ export class AvailabilityQueryService {
         .eq('id', clinicianId)
         .maybeSingle();
       
-      const clinicianTimeZone = profileData?.time_zone || 'UTC';
+      const clinicianTimeZone = TimeZoneService.ensureIANATimeZone(profileData?.time_zone || 'UTC');
       console.log('[AvailabilityQueryService] Using clinician timezone:', clinicianTimeZone);
       
       // Initialize the weekly availability with empty arrays
@@ -128,11 +127,11 @@ export class AvailabilityQueryService {
           });
           
           if (dayOfWeek in weeklyAvailability) {
-            weeklyAvailability[dayOfWeek].push({
+            weeklyAvailability[dayOfWeek as keyof WeeklyAvailability].push({
               id: event.id,
               startTime: startDateTime.toFormat('HH:mm'),
               endTime: endDateTime.toFormat('HH:mm'),
-              dayOfWeek,
+              dayOfWeek: dayOfWeek as any,
               isRecurring: !!event.rrule,
               recurrenceRule: event.rrule || undefined,
               isAppointment: false
