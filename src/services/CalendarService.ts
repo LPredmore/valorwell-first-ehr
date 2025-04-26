@@ -2,7 +2,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { CalendarEvent } from '@/types/calendar';
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { DateTime } from 'luxon';
+import { calendarTransformer } from '@/utils/calendarTransformer';
+import { DatabaseCalendarEvent } from '@/types/calendarTypes';
 
 export class CalendarService {
   static async getEvents(
@@ -23,6 +24,8 @@ export class CalendarService {
   static async getAllEvents(clinicianId: string, timezone: string): Promise<CalendarEvent[]> {
     try {
       const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
+      console.log('[CalendarService] Fetching all events for clinician:', clinicianId);
+      
       const { data, error } = await supabase
         .from('calendar_events')
         .select('*')
@@ -30,36 +33,43 @@ export class CalendarService {
         .order('start_time', { ascending: true });
 
       if (error) {
-        console.error('Error fetching all events:', error);
+        console.error('[CalendarService] Error fetching all events:', error);
         throw error;
       }
 
-      return data ? data.map(event => ({
-        ...event,
-        start: TimeZoneService.fromUTCTimestamp(event.start_time, validTimeZone).toISO(),
-        end: TimeZoneService.fromUTCTimestamp(event.end_time, validTimeZone).toISO()
-      })) : [];
+      return data ? data.map(event => 
+        calendarTransformer.fromDatabase(event as DatabaseCalendarEvent, validTimeZone)
+      ) : [];
+      
     } catch (error) {
-      console.error('Error fetching all events:', error);
+      console.error('[CalendarService] Error in getAllEvents:', error);
       throw error;
     }
   }
 
   static async getEventsInRange(
     clinicianId: string, 
-    startDate: string | Date, 
-    endDate: string | Date, 
+    startDate: Date | string, 
+    endDate: Date | string, 
     timezone: string
   ): Promise<CalendarEvent[]> {
     try {
       const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
+      
+      // Convert dates to UTC for database query
       const startDt = typeof startDate === 'string' ? 
         TimeZoneService.parseWithZone(startDate, validTimeZone) :
-        DateTime.fromJSDate(startDate).setZone(validTimeZone);
+        TimeZoneService.createDateTime(startDate.toISOString().split('T')[0], '00:00:00', validTimeZone);
         
       const endDt = typeof endDate === 'string' ?
         TimeZoneService.parseWithZone(endDate, validTimeZone) :
-        DateTime.fromJSDate(endDate).setZone(validTimeZone);
+        TimeZoneService.createDateTime(endDate.toISOString().split('T')[0], '23:59:59', validTimeZone);
+
+      console.log('[CalendarService] Fetching events in range:', {
+        clinicianId,
+        start: startDt.toUTC().toISO(),
+        end: endDt.toUTC().toISO()
+      });
 
       const { data, error } = await supabase
         .from('calendar_events')
@@ -70,34 +80,39 @@ export class CalendarService {
         .order('start_time', { ascending: true });
 
       if (error) {
-        console.error('Error fetching events in range:', error);
+        console.error('[CalendarService] Error fetching events in range:', error);
         throw error;
       }
 
-      return data ? data.map(event => ({
-        ...event,
-        start: TimeZoneService.fromUTCTimestamp(event.start_time, validTimeZone).toISO(),
-        end: TimeZoneService.fromUTCTimestamp(event.end_time, validTimeZone).toISO()
-      })) : [];
+      return data ? data.map(event => 
+        calendarTransformer.fromDatabase(event as DatabaseCalendarEvent, validTimeZone)
+      ) : [];
     } catch (error) {
-      console.error('Error fetching events:', error);
+      console.error('[CalendarService] Error in getEventsInRange:', error);
       throw error;
     }
   }
 
   static async getEventsForDate(
     clinicianId: string, 
-    date: string | Date, 
+    date: Date | string, 
     timezone: string
   ): Promise<CalendarEvent[]> {
     try {
       const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
       const dt = typeof date === 'string' ?
         TimeZoneService.parseWithZone(date, validTimeZone) :
-        DateTime.fromJSDate(date).setZone(validTimeZone);
+        TimeZoneService.createDateTime(date.toISOString().split('T')[0], '00:00:00', validTimeZone);
 
       const startOfDay = dt.startOf('day').toUTC().toISO();
       const endOfDay = dt.endOf('day').toUTC().toISO();
+
+      console.log('[CalendarService] Fetching events for date:', {
+        clinicianId,
+        date: dt.toISO(),
+        startOfDay,
+        endOfDay
+      });
 
       const { data, error } = await supabase
         .from('calendar_events')
@@ -108,17 +123,15 @@ export class CalendarService {
         .order('start_time', { ascending: true });
 
       if (error) {
-        console.error('Error fetching events for date:', error);
+        console.error('[CalendarService] Error fetching events for date:', error);
         throw error;
       }
 
-      return data ? data.map(event => ({
-        ...event,
-        start: TimeZoneService.fromUTCTimestamp(event.start_time, validTimeZone).toISO(),
-        end: TimeZoneService.fromUTCTimestamp(event.end_time, validTimeZone).toISO()
-      })) : [];
+      return data ? data.map(event => 
+        calendarTransformer.fromDatabase(event as DatabaseCalendarEvent, validTimeZone)
+      ) : [];
     } catch (error) {
-      console.error('Error fetching events for date:', error);
+      console.error('[CalendarService] Error in getEventsForDate:', error);
       throw error;
     }
   }
@@ -126,39 +139,27 @@ export class CalendarService {
   static async createEvent(event: CalendarEvent, timezone: string): Promise<CalendarEvent | null> {
     try {
       const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
-      const startDateTime = TimeZoneService.parseWithZone(String(event.start), validTimeZone).toUTC().toISO();
-      const endDateTime = TimeZoneService.parseWithZone(String(event.end), validTimeZone).toUTC().toISO();
+      const dbEvent = calendarTransformer.toDatabase(event, validTimeZone);
+
+      console.log('[CalendarService] Creating event:', {
+        event: dbEvent,
+        timezone: validTimeZone
+      });
 
       const { data, error } = await supabase
         .from('calendar_events')
-        .insert([
-          {
-            clinician_id: event.clinician_id,
-            title: event.title,
-            start_time: startDateTime,
-            end_time: endDateTime,
-            description: event.description,
-            location: event.location,
-            type: event.type,
-            source_time_zone: validTimeZone,
-            time_zone: validTimeZone
-          }
-        ])
+        .insert([dbEvent])
         .select()
         .single();
 
       if (error) {
-        console.error('Error creating event:', error);
+        console.error('[CalendarService] Error creating event:', error);
         throw error;
       }
 
-      return data ? {
-        ...data,
-        start: TimeZoneService.fromUTCTimestamp(data.start_time, validTimeZone).toISO(),
-        end: TimeZoneService.fromUTCTimestamp(data.end_time, validTimeZone).toISO()
-      } : null;
+      return data ? calendarTransformer.fromDatabase(data as DatabaseCalendarEvent, validTimeZone) : null;
     } catch (error) {
-      console.error('Error creating event:', error);
+      console.error('[CalendarService] Error in createEvent:', error);
       throw error;
     }
   }
@@ -166,56 +167,50 @@ export class CalendarService {
   static async updateEvent(event: CalendarEvent, timezone: string): Promise<CalendarEvent | null> {
     try {
       const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
-      const startDateTime = TimeZoneService.parseWithZone(String(event.start), validTimeZone).toUTC().toISO();
-      const endDateTime = TimeZoneService.parseWithZone(String(event.end), validTimeZone).toUTC().toISO();
+      const dbEvent = calendarTransformer.toDatabase(event, validTimeZone);
+
+      console.log('[CalendarService] Updating event:', {
+        id: event.id,
+        event: dbEvent,
+        timezone: validTimeZone
+      });
 
       const { data, error } = await supabase
         .from('calendar_events')
-        .update({
-          title: event.title,
-          start_time: startDateTime,
-          end_time: endDateTime,
-          description: event.description,
-          location: event.location,
-          type: event.type,
-          source_time_zone: validTimeZone,
-          time_zone: validTimeZone
-        })
+        .update(dbEvent)
         .eq('id', event.id)
         .select()
         .single();
 
       if (error) {
-        console.error('Error updating event:', error);
+        console.error('[CalendarService] Error updating event:', error);
         throw error;
       }
 
-      return data ? {
-        ...data,
-        start: TimeZoneService.fromUTCTimestamp(data.start_time, validTimeZone).toISO(),
-        end: TimeZoneService.fromUTCTimestamp(data.end_time, validTimeZone).toISO()
-      } : null;
+      return data ? calendarTransformer.fromDatabase(data as DatabaseCalendarEvent, validTimeZone) : null;
     } catch (error) {
-      console.error('Error updating event:', error);
+      console.error('[CalendarService] Error in updateEvent:', error);
       throw error;
     }
   }
 
   static async deleteEvent(eventId: string): Promise<boolean> {
     try {
+      console.log('[CalendarService] Deleting event:', eventId);
+      
       const { error } = await supabase
         .from('calendar_events')
         .delete()
         .eq('id', eventId);
 
       if (error) {
-        console.error('Error deleting event:', error);
+        console.error('[CalendarService] Error deleting event:', error);
         throw error;
       }
 
       return true;
     } catch (error) {
-      console.error('Error deleting event:', error);
+      console.error('[CalendarService] Error in deleteEvent:', error);
       return false;
     }
   }
