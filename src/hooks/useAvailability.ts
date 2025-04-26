@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { AvailabilityService } from '@/services/availabilityService';
 import { RecurringAvailabilityService } from '@/services/RecurringAvailabilityService';
@@ -13,15 +14,7 @@ interface CreateSlotResult {
 }
 
 export const useAvailability = (clinicianId: string) => {
-  const [weeklyAvailability, setWeeklyAvailability] = useState<WeeklyAvailability>(() => ({
-    monday: [],
-    tuesday: [],
-    wednesday: [],
-    thursday: [],
-    friday: [],
-    saturday: [],
-    sunday: []
-  }));
+  const [weeklyAvailability, setWeeklyAvailability] = useState<WeeklyAvailability>(createEmptyWeeklyAvailability());
   const [settings, setSettings] = useState<AvailabilitySettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +24,11 @@ export const useAvailability = (clinicianId: string) => {
     setError(null);
     try {
       const data = await AvailabilityService.getWeeklyAvailability(clinicianId);
-      setWeeklyAvailability(data);
+      const fullData: WeeklyAvailability = {
+        ...createEmptyWeeklyAvailability(),
+        ...data
+      };
+      setWeeklyAvailability(fullData);
     } catch (err) {
       console.error('Error fetching weekly availability:', err);
       setError('Failed to load availability. Please try again later.');
@@ -43,7 +40,13 @@ export const useAvailability = (clinicianId: string) => {
   const fetchSettings = async () => {
     try {
       const settingsData = await AvailabilityService.getSettings(clinicianId);
-      setSettings(settingsData);
+      if (settingsData) {
+        const fullSettings: AvailabilitySettings = {
+          ...settingsData,
+          createdAt: settingsData.createdAt || new Date().toISOString()
+        };
+        setSettings(fullSettings);
+      }
     } catch (err) {
       console.error('Error fetching availability settings:', err);
       // Don't set error state here to avoid blocking availability display
