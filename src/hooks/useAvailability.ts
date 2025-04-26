@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { AvailabilityService } from '@/services/availabilityService';
 import { RecurringAvailabilityService } from '@/services/RecurringAvailabilityService';
@@ -14,11 +13,9 @@ interface CreateSlotResult {
 }
 
 export const useAvailability = (clinicianId: string) => {
-  // Fix type error by ensuring we use the correct WeeklyAvailability type
   const [weeklyAvailability, setWeeklyAvailability] = useState<WeeklyAvailability>(
-    createEmptyWeeklyAvailability()
+    () => createEmptyWeeklyAvailability()
   );
-  // Fix type error by using null as initial state to avoid incompatible types
   const [settings, setSettings] = useState<AvailabilitySettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,11 +60,9 @@ export const useAvailability = (clinicianId: string) => {
     timezone?: string
   ): Promise<CreateSlotResult> => {
     try {
-      // Create a date for the current or next occurrence of the specified day
       const targetDate = getNextDayOfWeekDate(dayOfWeek);
       const dateStr = targetDate.toFormat('yyyy-MM-dd');
       
-      // Format ISO datetime strings for start and end times
       const startIso = `${dateStr}T${startTime}`;
       const endIso = `${dateStr}T${endTime}`;
       
@@ -86,7 +81,6 @@ export const useAvailability = (clinicianId: string) => {
       });
 
       if (isRecurring && recurrenceRule) {
-        // Use RecurringAvailabilityService for recurring slots
         const data = await RecurringAvailabilityService.createRecurringAvailability(
           clinicianId,
           startIso,
@@ -107,7 +101,6 @@ export const useAvailability = (clinicianId: string) => {
           };
         }
       } else {
-        // Use AvailabilityService for single slots
         const slotId = await AvailabilityService.createAvailabilitySlot(
           clinicianId, 
           {
@@ -171,7 +164,6 @@ export const useAvailability = (clinicianId: string) => {
     slotId: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      // Get slot details to determine if it's recurring
       const availabilitySlots = weeklyAvailability[Object.keys(weeklyAvailability)[0] as DayOfWeek];
       const slot = availabilitySlots.find(slot => slot.id === slotId);
       const isRecurring = slot?.isRecurring || false;
@@ -194,7 +186,7 @@ export const useAvailability = (clinicianId: string) => {
       };
     }
   };
-  
+
   const updateSettings = async (settingsUpdate: Partial<AvailabilitySettings>): Promise<boolean> => {
     try {
       const updatedSettings = await AvailabilityService.updateSettings(clinicianId, settingsUpdate);

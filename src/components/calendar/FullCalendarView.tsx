@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -54,7 +53,6 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     }
   }, [appointmentsError]);
 
-  // This will be called by CalendarAvailabilityHandler when availability events are ready
   const handleAvailabilityEvents = (events: any[], error?: Error) => {
     if (error) {
       console.error('[FullCalendarView] Error in availability events:', error);
@@ -71,7 +69,6 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     }
   };
 
-  // Combine appointment events and availability events
   const combinedEvents = [...appointmentEvents, ...availabilityEvents];
 
   console.log('[FullCalendarView] Combined events:', {
@@ -81,7 +78,6 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     hasAvailabilityError
   });
 
-  // Event click handler
   const handleEventClick = (info: any) => {
     const eventType = info.event.extendedProps.eventType;
     
@@ -109,7 +105,6 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   }
 
   try {
-    // Validate and ensure we have a proper timezone
     const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
     
     return (
