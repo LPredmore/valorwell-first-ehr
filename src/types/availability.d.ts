@@ -17,7 +17,7 @@ export interface AvailabilitySlot {
   isAppointment: boolean;
   appointmentId?: string;
   clientName?: string;
-  timeZone?: string;
+  timeZone: string;
 }
 
 export interface WeeklyAvailability {
@@ -36,14 +36,8 @@ export interface AvailabilitySettings {
   defaultSlotDuration: number;
   minNoticeDays: number;
   maxAdvanceDays: number;
-  timeZone?: string;
+  timeZone: string;
   slotDuration?: number;
-  timeGranularity?: 'hour' | 'half-hour';
-  is_active?: boolean;
-}
-
-export interface AvailabilitySettingsForm {
-  defaultSlotDuration: number;
-  minNoticeDays: number;
-  maxAdvanceDays: number;
+  timeGranularity: 'hour' | 'half-hour';
+  isActive: boolean;
 }

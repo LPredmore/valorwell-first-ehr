@@ -3,18 +3,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { format, parse, addDays, isSameDay, isAfter, differenceInCalendarDays } from 'date-fns';
-import { Calendar as CalendarIcon, Clock, Check } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  getUserTimeZone
-} from '@/utils/timeZoneUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { 
   convertClinicianDataToAvailabilityBlocks,
   getClinicianAvailabilityFieldsQuery
 } from '@/utils/availabilityUtils';
 import { getUserTimeZoneById } from '@/hooks/useUserTimeZone';
-import { TimeZoneService } from '@/utils/timeZoneService';
 
 import { 
   Dialog, 
@@ -27,9 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
 
 interface AppointmentBookingDialogProps {
   open: boolean;
@@ -81,6 +76,10 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   const [clientTimeZone, setClientTimeZone] = useState<string>(TimeZoneService.ensureIANATimeZone(propTimeZone || getUserTimeZone()));
   const [timeGranularity, setTimeGranularity] = useState<string>("half-hour");
   const { toast } = useToast();
+
+  const formatDateForApi = (date: Date): string => {
+    return TimeZoneService.formatDateTime(date, 'yyyy-MM-dd');
+  };
 
   useEffect(() => {
     if (open && clientId) {
@@ -245,7 +244,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     const checkExistingAppointments = async () => {
       if (!selectedDate || !clinicianId) return;
       
-      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const dateStr = formatDateForApi(selectedDate);
       console.log('Checking appointments for date:', dateStr);
       
       const today = new Date();
@@ -328,18 +327,12 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
       endTimeObj.setMinutes(endTimeObj.getMinutes() + 30);
       const endTime = format(endTimeObj, 'HH:mm');
       
-      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const dateStr = formatDateForApi(selectedDate);
       
       console.log(`Booking appointment: ${dateStr} at ${startTime} in timezone: ${clientTimeZone}`);
-      console.log('Converting from client timezone to database format:', { 
-        originalDate: dateStr, 
-        originalStartTime: startTime,
-        originalEndTime: endTime,
-        timezone: clientTimeZone
-      });
       
-      const startTimestamp = TimeZoneService.toUTCTimestamp(formatDateForApi(selectedDate), startTime, clientTimeZone);
-      const endTimestamp = TimeZoneService.toUTCTimestamp(formatDateForApi(selectedDate), endTime, clientTimeZone);
+      const startTimestamp = TimeZoneService.toUTCTimestamp(dateStr, startTime, clientTimeZone);
+      const endTimestamp = TimeZoneService.toUTCTimestamp(dateStr, endTime, clientTimeZone);
       
       console.log('Converted to UTC timestamps:', {
         startTimestamp,
