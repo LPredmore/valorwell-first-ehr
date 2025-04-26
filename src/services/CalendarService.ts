@@ -12,9 +12,9 @@ export class CalendarService {
     endDate?: Date
   ): Promise<CalendarEvent[]> {
     if (startDate && endDate) {
-      return this.getEventsInRange(startDate, endDate, timezone);
+      return this.getEventsInRange(clinicianId, startDate, endDate, timezone);
     } else if (startDate) {
-      return this.getEventsForDate(startDate, timezone);
+      return this.getEventsForDate(clinicianId, startDate, timezone);
     } else {
       return this.getAllEvents(clinicianId, timezone);
     }
@@ -27,7 +27,7 @@ export class CalendarService {
         .from('calendar_events')
         .select('*')
         .eq('clinician_id', clinicianId)
-        .order('start', { ascending: true });
+        .order('start_time', { ascending: true });
 
       if (error) {
         console.error('Error fetching all events:', error);
@@ -36,8 +36,8 @@ export class CalendarService {
 
       return data ? data.map(event => ({
         ...event,
-        start: TimeZoneService.fromUTCTimestamp(event.start, validTimeZone).toISO(),
-        end: TimeZoneService.fromUTCTimestamp(event.end, validTimeZone).toISO()
+        start: TimeZoneService.fromUTCTimestamp(event.start_time, validTimeZone).toISO(),
+        end: TimeZoneService.fromUTCTimestamp(event.end_time, validTimeZone).toISO()
       })) : [];
     } catch (error) {
       console.error('Error fetching all events:', error);
@@ -45,7 +45,12 @@ export class CalendarService {
     }
   }
 
-  static async getEventsInRange(startDate: string | Date, endDate: string | Date, timezone: string): Promise<CalendarEvent[]> {
+  static async getEventsInRange(
+    clinicianId: string, 
+    startDate: string | Date, 
+    endDate: string | Date, 
+    timezone: string
+  ): Promise<CalendarEvent[]> {
     try {
       const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
       const startDt = typeof startDate === 'string' ? 
@@ -59,10 +64,10 @@ export class CalendarService {
       const { data, error } = await supabase
         .from('calendar_events')
         .select('*')
-        .eq('clinician_id', '49c37c97-66ca-4ca9-954a-9c119ff0500f')
-        .gte('start', startDt.toUTC().toISO())
-        .lte('end', endDt.toUTC().toISO())
-        .order('start', { ascending: true });
+        .eq('clinician_id', clinicianId)
+        .gte('start_time', startDt.toUTC().toISO())
+        .lte('end_time', endDt.toUTC().toISO())
+        .order('start_time', { ascending: true });
 
       if (error) {
         console.error('Error fetching events in range:', error);
@@ -71,8 +76,8 @@ export class CalendarService {
 
       return data ? data.map(event => ({
         ...event,
-        start: TimeZoneService.fromUTCTimestamp(event.start, validTimeZone).toISO(),
-        end: TimeZoneService.fromUTCTimestamp(event.end, validTimeZone).toISO()
+        start: TimeZoneService.fromUTCTimestamp(event.start_time, validTimeZone).toISO(),
+        end: TimeZoneService.fromUTCTimestamp(event.end_time, validTimeZone).toISO()
       })) : [];
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -80,7 +85,11 @@ export class CalendarService {
     }
   }
 
-  static async getEventsForDate(date: string | Date, timezone: string): Promise<CalendarEvent[]> {
+  static async getEventsForDate(
+    clinicianId: string, 
+    date: string | Date, 
+    timezone: string
+  ): Promise<CalendarEvent[]> {
     try {
       const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
       const dt = typeof date === 'string' ?
@@ -93,10 +102,10 @@ export class CalendarService {
       const { data, error } = await supabase
         .from('calendar_events')
         .select('*')
-        .eq('clinician_id', '49c37c97-66ca-4ca9-954a-9c119ff0500f')
-        .gte('start', startOfDay)
-        .lte('end', endOfDay)
-        .order('start', { ascending: true });
+        .eq('clinician_id', clinicianId)
+        .gte('start_time', startOfDay)
+        .lte('end_time', endOfDay)
+        .order('start_time', { ascending: true });
 
       if (error) {
         console.error('Error fetching events for date:', error);
@@ -105,8 +114,8 @@ export class CalendarService {
 
       return data ? data.map(event => ({
         ...event,
-        start: TimeZoneService.fromUTCTimestamp(event.start, validTimeZone).toISO(),
-        end: TimeZoneService.fromUTCTimestamp(event.end, validTimeZone).toISO()
+        start: TimeZoneService.fromUTCTimestamp(event.start_time, validTimeZone).toISO(),
+        end: TimeZoneService.fromUTCTimestamp(event.end_time, validTimeZone).toISO()
       })) : [];
     } catch (error) {
       console.error('Error fetching events for date:', error);
@@ -126,8 +135,8 @@ export class CalendarService {
           {
             clinician_id: event.clinician_id,
             title: event.title,
-            start: startDateTime,
-            end: endDateTime,
+            start_time: startDateTime,
+            end_time: endDateTime,
             description: event.description,
             location: event.location,
             type: event.type,
@@ -145,8 +154,8 @@ export class CalendarService {
 
       return data ? {
         ...data,
-        start: TimeZoneService.fromUTCTimestamp(data.start, validTimeZone).toISO(),
-        end: TimeZoneService.fromUTCTimestamp(data.end, validTimeZone).toISO()
+        start: TimeZoneService.fromUTCTimestamp(data.start_time, validTimeZone).toISO(),
+        end: TimeZoneService.fromUTCTimestamp(data.end_time, validTimeZone).toISO()
       } : null;
     } catch (error) {
       console.error('Error creating event:', error);
@@ -164,8 +173,8 @@ export class CalendarService {
         .from('calendar_events')
         .update({
           title: event.title,
-          start: startDateTime,
-          end: endDateTime,
+          start_time: startDateTime,
+          end_time: endDateTime,
           description: event.description,
           location: event.location,
           type: event.type,
@@ -183,8 +192,8 @@ export class CalendarService {
 
       return data ? {
         ...data,
-        start: TimeZoneService.fromUTCTimestamp(data.start, validTimeZone).toISO(),
-        end: TimeZoneService.fromUTCTimestamp(data.end, validTimeZone).toISO()
+        start: TimeZoneService.fromUTCTimestamp(data.start_time, validTimeZone).toISO(),
+        end: TimeZoneService.fromUTCTimestamp(data.end_time, validTimeZone).toISO()
       } : null;
     } catch (error) {
       console.error('Error updating event:', error);

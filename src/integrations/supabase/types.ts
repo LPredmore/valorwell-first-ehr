@@ -129,7 +129,9 @@ export type Database = {
           id: string
           is_active: boolean
           recurrence_id: string | null
+          source_time_zone: string | null
           start_time: string
+          time_zone: string | null
           title: string
           updated_at: string
         }
@@ -146,7 +148,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           recurrence_id?: string | null
+          source_time_zone?: string | null
           start_time: string
+          time_zone?: string | null
           title: string
           updated_at?: string
         }
@@ -163,7 +167,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           recurrence_id?: string | null
+          source_time_zone?: string | null
           start_time?: string
+          time_zone?: string | null
           title?: string
           updated_at?: string
         }
