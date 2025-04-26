@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -73,24 +72,31 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     }
   }, [isOpen]);
 
+  const formatTimeDisplay = (timeStr: string): string => {
+    if (!timeStr) return '';
+    return TimeZoneService.formatTime(timeStr, 'h:mm a', timeZone);
+  };
+
   const handleAddSlot = async () => {
     setFormError(null);
     
     if (!newStartTime || !newEndTime) {
-      setFormError("Please provide both start and end time");
+      const errorMessage = "Please provide both start and end time";
+      setFormError(errorMessage);
       toast({
         title: "Missing Information",
-        description: "Please provide both start and end time.",
+        description: errorMessage,
         variant: "destructive"
       });
       return;
     }
     
     if (newStartTime >= newEndTime) {
-      setFormError("End time must be later than start time");
+      const errorMessage = "End time must be later than start time";
+      setFormError(errorMessage);
       toast({
         title: "Invalid Time Range",
-        description: "End time must be later than start time.",
+        description: errorMessage,
         variant: "destructive"
       });
       return;
@@ -99,16 +105,8 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     setIsSubmitting(true);
     
     try {
-      console.log(`[WeeklyAvailabilityDialog] Creating slot for ${activeTab} from ${newStartTime} to ${newEndTime}`);
-      
       const byDay = getDayCode(activeTab);
       const recurrenceRule = `FREQ=WEEKLY;BYDAY=${byDay}`;
-      
-      console.log(`[WeeklyAvailabilityDialog] Using recurrence rule: ${recurrenceRule}`);
-      console.log(`[WeeklyAvailabilityDialog] Using timezone: ${timeZone || 'UTC'}`);
-      
-      // Clear any previous errors
-      setFormError(null);
       
       const result = await createSlot(
         activeTab,
@@ -125,27 +123,16 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
           description: `Weekly availability added for ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`,
         });
         
-        // Refresh the availability data
         await refreshAvailability();
-        
-        // Notify parent component
         onAvailabilityUpdated?.();
-        
         setRetryCount(0);
         setFormError(null);
-        
-        // Reset form fields for next entry
         setNewStartTime('09:00');
         setNewEndTime('10:00');
       } else {
-        let errorMessage = result.error || "Failed to add availability. Please try again.";
-        
-        // Provide more user-friendly error messages
-        if (errorMessage.includes('overlapping')) {
-          errorMessage = "This time slot overlaps with an existing availability slot. Please choose a different time.";
-        } else if (errorMessage.includes('timezone')) {
-          errorMessage = "There was a problem with your timezone settings. Please check your profile settings.";
-        }
+        const errorMessage = result.error instanceof Error ? 
+          result.error.message : 
+          String(result.error || "Failed to add availability. Please try again.");
         
         setFormError(errorMessage);
         setRetryCount(prev => prev + 1);
@@ -157,12 +144,13 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
         });
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
       console.error('[WeeklyAvailabilityDialog] Error adding availability slot:', error);
-      setFormError(error instanceof Error ? error.message : "An unexpected error occurred");
+      setFormError(errorMessage);
       setRetryCount(prev => prev + 1);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -246,17 +234,6 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     return indices[day];
   };
 
-  const formatTimeDisplay = (timeStr: string): string => {
-    if (!timeStr) return '';
-    
-    try {
-      return TimeZoneService.formatTime(`2000-01-01T${timeStr}`, 'h:mm a', timeZone);
-    } catch (error) {
-      console.error('[WeeklyAvailabilityDialog] Error formatting time:', error);
-      return timeStr;
-    }
-  };
-
   const renderSlotList = (slots: AvailabilitySlot[] = []) => {
     const availabilitySlots = slots.filter(slot => !slot.isAppointment);
     const appointmentSlots = slots.filter(slot => slot.isAppointment);
@@ -333,8 +310,13 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     
     if (error) {
       return (
-        <div className="text-center text-red-500 py-4">
-          <p>{error instanceof Error ? error.message : String(error)}</p>
+        <div className="text-center py-4">
+          <Alert variant="destructive" className="mb-3">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error instanceof Error ? error.message : String(error)}
+            </AlertDescription>
+          </Alert>
           <Button 
             variant="outline" 
             className="mt-2"
@@ -455,9 +437,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isDeleteAll
-                ? "Delete Recurring Availability"
-                : "Delete Availability Slot"}
+              {isDeleteAll ? "Delete Recurring Availability" : "Delete Availability Slot"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {isDeleteAll
