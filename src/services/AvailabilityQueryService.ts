@@ -1,4 +1,3 @@
-
 // Update the imports to use proper types
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability, TimeSlot } from '@/types/availability';
@@ -49,7 +48,12 @@ export class AvailabilityQueryService {
             startTime: startDt.toFormat('HH:mm'),
             endTime: endDt.toFormat('HH:mm'),
             isRecurring: event.availability_type === 'recurring',
-            timeZone: 'UTC' // Default to UTC as the database stores in UTC
+            timeZone: event.time_zone || 'UTC',
+            isActive: event.is_active,
+            recurrenceRule: event.recurrence_rule,
+            isAppointment: event.event_type === 'appointment',
+            clientName: event.client_name,
+            appointmentStatus: event.status
           };
           
           weeklyAvailability[day].push(slot);
@@ -173,7 +177,11 @@ export class AvailabilityQueryService {
       endTime: raw.end_time,
       isRecurring: raw.is_recurring,
       recurrenceRule: raw.recurrence_rule,
-      timeZone: raw.time_zone
+      timeZone: raw.time_zone || 'UTC',
+      isActive: raw.is_active,
+      isAppointment: raw.event_type === 'appointment',
+      clientName: raw.client_name,
+      appointmentStatus: raw.status
     };
   }
 

@@ -3,12 +3,7 @@ import { TimeZoneService } from '@/utils/timeZoneService';
 import { AvailabilitySlot, DayOfWeek } from '@/types/availability';
 import { DateTime } from 'luxon';
 
-// This file contains functions for creating and updating availability slots
-
 export class AvailabilityMutationService {
-  /**
-   * Create a new availability slot
-   */
   static async createAvailabilitySlot(
     clinicianId: string,
     dayOfWeek: DayOfWeek,
@@ -53,7 +48,8 @@ export class AvailabilityMutationService {
           end_time: end.toISO(),
           clinician_id: clinicianId,
           availability_type: isRecurring ? 'recurring' : 'single',
-          is_active: true
+          is_active: true,
+          time_zone: validTimeZone
         })
         .select()
         .single();
@@ -82,9 +78,6 @@ export class AvailabilityMutationService {
     }
   }
   
-  /**
-   * Update an existing availability slot
-   */
   static async updateAvailabilitySlot(
     slotId: string,
     updates: Partial<AvailabilitySlot>
@@ -124,8 +117,16 @@ export class AvailabilityMutationService {
         dbUpdates.end_time = endDateTime.toISO();
       }
       
+      if (updates.timeZone) {
+        dbUpdates.time_zone = TimeZoneService.ensureIANATimeZone(updates.timeZone);
+      }
+      
       if (updates.isRecurring !== undefined) {
         dbUpdates.availability_type = updates.isRecurring ? 'recurring' : 'single';
+      }
+      
+      if (updates.isActive !== undefined) {
+        dbUpdates.is_active = updates.isActive;
       }
       
       if (Object.keys(dbUpdates).length === 0) {
@@ -151,9 +152,6 @@ export class AvailabilityMutationService {
     }
   }
   
-  /**
-   * Delete an availability slot
-   */
   static async deleteAvailabilitySlot(slotId: string) {
     try {
       // Input validation
@@ -195,10 +193,6 @@ export class AvailabilityMutationService {
     }
   }
   
-  /**
-   * Get a base date for a day of the week
-   * This helps when creating new availability slots
-   */
   private static getBaseDate(dayOfWeek: DayOfWeek): string {
     const today = DateTime.now();
     const dayMap: Record<DayOfWeek, number> = {
@@ -221,9 +215,6 @@ export class AvailabilityMutationService {
     return targetDate.toFormat('yyyy-MM-dd');
   }
   
-  /**
-   * Convert day of week to iCalendar code
-   */
   private static getDayCode(day: DayOfWeek): string {
     const codes: Record<DayOfWeek, string> = {
       monday: 'MO',
