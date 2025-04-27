@@ -1,6 +1,6 @@
 
 import { CalendarEvent } from '@/types/calendar';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from './timezone';
 
 /**
  * Format calendar event times to user's timezone

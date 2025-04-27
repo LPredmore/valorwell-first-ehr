@@ -1,11 +1,14 @@
 
 /**
  * This file is provided for backward compatibility with components that import from @/utils/timeZoneUtils
- * It re-exports everything from TimeZoneService.
- * New code should import from @/utils/timeZoneService directly.
+ * It re-exports everything from the new modular timezone service.
+ * New code should import from @/utils/timezone directly.
+ * 
+ * @deprecated Use the new modular TimeZoneService from @/utils/timezone instead
  */
-import { TimeZoneService } from './timeZoneService';
+import { TimeZoneService } from './timezone';
 
+// Re-export all methods from TimeZoneService
 export const {
   ensureIANATimeZone,
   formatTimeZoneDisplay,
@@ -27,7 +30,9 @@ export const {
   formatDate,
   getDisplayNameFromIANA,
   getIANAFromDisplayName,
-  getTimezoneOffsetString
+  getTimezoneOffsetString,
+  toUTCTimestamp,
+  fromUTCTimestamp
 } = TimeZoneService;
 
 // For backward compatibility

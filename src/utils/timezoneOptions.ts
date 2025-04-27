@@ -1,5 +1,5 @@
 
-import { TimeZoneService } from './timeZoneService';
+import { TimeZoneService } from './timezone';
 
 // Export both named exports for backward compatibility
 export const TIMEZONE_OPTIONS = TimeZoneService.TIMEZONE_OPTIONS;

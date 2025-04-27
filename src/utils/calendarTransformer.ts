@@ -1,6 +1,7 @@
+
 import { CalendarEvent } from '@/types/calendar';
 import { DatabaseCalendarEvent, CalendarEventTransform } from '@/types/calendarTypes';
-import { TimeZoneService } from './timeZoneService';
+import { TimeZoneService } from './timezone';
 import { DateTime } from 'luxon';
 import { CalendarErrorHandler } from '@/services/calendar/CalendarErrorHandler';
 
@@ -123,16 +124,16 @@ export const calendarTransformer: CalendarEventTransform = {
       // Validate the calendar event
       validateCalendarEvent(event);
       
-      // Parse and convert times to UTC using the new signature
-      const startUtc = TimeZoneService.toUTCTimestamp(
-        typeof event.start === 'string' ? event.start : event.start,
-        validTimeZone
-      );
-      
-      const endUtc = TimeZoneService.toUTCTimestamp(
-        typeof event.end === 'string' ? event.end : event.end,
-        validTimeZone
-      );
+      // Convert to UTC with the right method signature
+      // If start/end is a Date object, use the first overload
+      // If start/end is a string, use the first overload as well
+      const startUtc = typeof event.start === 'string' || event.start instanceof Date
+        ? TimeZoneService.toUTCTimestamp(event.start, validTimeZone)
+        : '';
+        
+      const endUtc = typeof event.end === 'string' || event.end instanceof Date
+        ? TimeZoneService.toUTCTimestamp(event.end, validTimeZone)
+        : '';
       
       if (!startUtc || !endUtc) {
         throw new Error('Failed to convert times to UTC');
