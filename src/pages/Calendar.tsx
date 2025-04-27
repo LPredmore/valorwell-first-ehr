@@ -1,26 +1,25 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { CalendarViewType } from '@/types/calendar';
 import Layout from '../components/layout/Layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Plus, RefreshCcw, AlertCircle, Calendar as CalendarIcon, Settings, Clock } from 'lucide-react';
+import { Loader2, Plus, RefreshCcw, AlertCircle, Settings, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCalendarState } from '../hooks/useCalendarState';
 import AppointmentDialog from '../components/calendar/AppointmentDialog';
 import { Card } from '@/components/ui/card';
 import FullCalendarView from '../components/calendar/FullCalendarView';
-import { useTimeZone } from '@/context/TimeZoneContext';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import CalendarErrorBoundary from '../components/calendar/CalendarErrorBoundary';
-import { useUser } from '@/context/UserContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
 import AvailabilitySettingsDialog from '../components/calendar/AvailabilitySettingsDialog';
 import WeeklyAvailabilityDialog from '../components/calendar/WeeklyAvailabilityDialog';
-import GoogleCalendarIntegration from '../components/calendar/GoogleCalendarIntegration';
+import SingleAvailabilityDialog from '../components/calendar/SingleAvailabilityDialog';
+import CalendarErrorBoundary from '../components/calendar/CalendarErrorBoundary';
+import { useUser } from '@/context/UserContext';
+import { useTimeZone } from '@/context/TimeZoneContext';
 import { getWeekdayName } from '@/utils/dateFormatUtils';
 import { DateTime } from 'luxon';
-import SingleAvailabilityDialog from '../components/calendar/SingleAvailabilityDialog';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const CalendarPage: React.FC = () => {
   const navigate = useNavigate();
@@ -32,34 +31,25 @@ const CalendarPage: React.FC = () => {
     clients,
     loadingClients,
     appointmentRefreshTrigger,
-    setAppointmentRefreshTrigger,
-    isDialogOpen,
     setIsDialogOpen,
-    showAvailability,
-    setShowAvailability
+    isDialogOpen,
+    timeZone
   } = useCalendarState();
-  const { toast } = useToast();
-  const {
-    userTimeZone,
-    isLoading: isLoadingTimeZone,
-    isAuthenticated: isTimeZoneAuthenticated
-  } = useTimeZone();
-  const {
-    userRole,
-    isLoading: isUserLoading,
-    userId
-  } = useUser();
-  const [calendarViewMode, setCalendarViewMode] = useState<CalendarViewType>('timeGridWeek');
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  const { userRole, isLoading: isUserLoading, userId } = useUser();
+  const { isLoading: isLoadingTimeZone } = useTimeZone();
   const [calendarKey, setCalendarKey] = useState<number>(0);
-  const [isAvailabilitySettingsOpen, setIsAvailabilitySettingsOpen] = useState(false);
-  const [selectedAvailabilityDate, setSelectedAvailabilityDate] = useState<string | null>(null);
-  const [isWeeklyAvailabilityOpen, setIsWeeklyAvailabilityOpen] = useState(false);
-  const [showGoogleCalendarSettings, setShowGoogleCalendarSettings] = useState(false);
-  const [isSingleAvailabilityOpen, setIsSingleAvailabilityOpen] = useState(false);
-  const [calendarError, setCalendarError] = useState<Error | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [calendarError, setCalendarError] = useState<Error | null>(null);
+  const [isAvailabilitySettingsOpen, setIsAvailabilitySettingsOpen] = useState(false);
+  const [isWeeklyAvailabilityOpen, setIsWeeklyAvailabilityOpen] = useState(false);
+  const [isSingleAvailabilityOpen, setIsSingleAvailabilityOpen] = useState(false);
+  const [selectedAvailabilityDate, setSelectedAvailabilityDate] = useState<string | null>(null);
+  const { toast } = useToast();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [showGoogleCalendarSettings, setShowGoogleCalendarSettings] = useState(false);
+  const [showAvailability, setShowAvailability] = useState(false);
 
   useEffect(() => {
     if (!isUserLoading && !userId) {
@@ -73,7 +63,7 @@ const CalendarPage: React.FC = () => {
   }, [isUserLoading, userId, navigate, toast]);
 
   useEffect(() => {
-    console.log('[Calendar] Page initialized with timezone:', userTimeZone);
+    console.log('[Calendar] Page initialized with timezone:', timeZone);
     if (isUserLoading || !userId) {
       return;
     }
@@ -142,17 +132,13 @@ const CalendarPage: React.FC = () => {
       }
     };
     fetchCurrentUser();
-  }, [userTimeZone, selectedClinicianId, toast, userId, isUserLoading, navigate]);
+  }, [timeZone, selectedClinicianId, toast, userId, isUserLoading, navigate]);
 
   useEffect(() => {
     if (!showAvailability) {
       setShowAvailability(true);
     }
   }, []);
-
-  const handleAppointmentCreated = () => {
-    setAppointmentRefreshTrigger(prev => prev + 1);
-  };
 
   const handleCalendarRefresh = useCallback(() => {
     console.log('[Calendar] Refreshing calendar with new key');
@@ -165,17 +151,9 @@ const CalendarPage: React.FC = () => {
     console.error('[Calendar] Calendar encountered an error:', error);
     setCalendarError(error);
     
-    let errorMessage = 'There was a problem loading the calendar';
-    
-    if (error.message.includes('timezone') || error.message.includes('DateTime')) {
-      errorMessage = 'Calendar error: Problem with date or timezone conversion';
-    } else if (error.message.includes('network') || error.message.includes('fetch')) {
-      errorMessage = 'Calendar error: Network connection issue';
-    }
-    
     toast({
       title: "Calendar Error",
-      description: errorMessage,
+      description: 'There was a problem loading the calendar. Please try refreshing.',
       variant: "destructive",
     });
   }, [toast]);
@@ -196,7 +174,7 @@ const CalendarPage: React.FC = () => {
         specificDate = eventStart.toISODate();
       } 
       else if (eventStart instanceof Date) {
-        const dateTime = DateTime.fromJSDate(eventStart).setZone(userTimeZone);
+        const dateTime = DateTime.fromJSDate(eventStart).setZone(timeZone);
         dayOfWeek = dateTime.weekdayLong.toLowerCase();
         specificDate = dateTime.toISODate();
       } 
@@ -240,10 +218,7 @@ const CalendarPage: React.FC = () => {
         variant: 'destructive',
       });
     }
-  }, [userTimeZone, toast]);
-
-  const canSelectDifferentClinician = userRole !== 'clinician';
-  const canManageAvailability = userRole === 'clinician' || userRole === 'admin';
+  }, [timeZone, toast]);
 
   if (isUserLoading || isLoadingTimeZone) {
     return (
@@ -278,6 +253,9 @@ const CalendarPage: React.FC = () => {
       </Layout>
     );
   }
+
+  const canSelectDifferentClinician = userRole !== 'clinician';
+  const canManageAvailability = userRole === 'clinician' || userRole === 'admin';
 
   return (
     <Layout>
@@ -333,7 +311,6 @@ const CalendarPage: React.FC = () => {
                     <Button 
                       variant="outline" 
                       onClick={() => {
-                        console.log('[Calendar] Opening weekly availability dialog');
                         setSelectedAvailabilityDate(null);
                         localStorage.removeItem('selectedAvailabilitySlotId');
                         localStorage.removeItem('selectedAvailabilityDate');
@@ -352,7 +329,7 @@ const CalendarPage: React.FC = () => {
                       className="flex items-center gap-2" 
                       title="Add Single Day Availability"
                     >
-                      <CalendarIcon className="h-4 w-4" />
+                      <Clock className="h-4 w-4" />
                       <span className="hidden md:inline">Single Day</span>
                     </Button>
                     
@@ -410,8 +387,8 @@ const CalendarPage: React.FC = () => {
                 <FullCalendarView 
                   key={calendarKey} 
                   clinicianId={selectedClinicianId} 
-                  userTimeZone={userTimeZone} 
-                  view={calendarViewMode} 
+                  userTimeZone={timeZone} 
+                  view='timeGridWeek'
                   height="700px" 
                   showAvailability={true}
                   onAvailabilityClick={handleAvailabilityClick}
@@ -443,7 +420,7 @@ const CalendarPage: React.FC = () => {
         clients={clients} 
         loadingClients={loadingClients} 
         selectedClinicianId={selectedClinicianId} 
-        onAppointmentCreated={handleAppointmentCreated} 
+        onAppointmentCreated={handleCalendarRefresh} 
       />
 
       {canManageAvailability && selectedClinicianId && (
@@ -451,7 +428,6 @@ const CalendarPage: React.FC = () => {
           <WeeklyAvailabilityDialog 
             isOpen={isWeeklyAvailabilityOpen} 
             onClose={() => {
-              console.log('[Calendar] Closing weekly availability dialog');
               setIsWeeklyAvailabilityOpen(false);
               setSelectedAvailabilityDate(null);
               localStorage.removeItem('selectedAvailabilitySlotId');
@@ -469,41 +445,14 @@ const CalendarPage: React.FC = () => {
             onSettingsSaved={handleCalendarRefresh} 
           />
 
-          {showGoogleCalendarSettings && (
-            <div className="mt-4">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowGoogleCalendarSettings(!showGoogleCalendarSettings)} 
-                className="mb-4"
-              >
-                {showGoogleCalendarSettings ? 'Hide' : 'Show'} Google Calendar Settings
-              </Button>
-
-              {showGoogleCalendarSettings && (
-                <Card className="p-4 mt-4">
-                  <GoogleCalendarIntegration 
-                    clinicianId={selectedClinicianId} 
-                    userTimeZone={userTimeZone} 
-                    onSyncComplete={() => {
-                      setShowGoogleCalendarSettings(false);
-                      handleCalendarRefresh();
-                    }} 
-                  />
-                </Card>
-              )}
-            </div>
-          )}
+          <SingleAvailabilityDialog
+            isOpen={isSingleAvailabilityOpen}
+            onClose={() => setIsSingleAvailabilityOpen(false)}
+            clinicianId={selectedClinicianId}
+            userTimeZone={timeZone}
+            onAvailabilityCreated={handleCalendarRefresh}
+          />
         </>
-      )}
-
-      {canManageAvailability && selectedClinicianId && (
-        <SingleAvailabilityDialog
-          isOpen={isSingleAvailabilityOpen}
-          onClose={() => setIsSingleAvailabilityOpen(false)}
-          clinicianId={selectedClinicianId}
-          userTimeZone={userTimeZone}
-          onAvailabilityCreated={handleCalendarRefresh}
-        />
       )}
     </Layout>
   );

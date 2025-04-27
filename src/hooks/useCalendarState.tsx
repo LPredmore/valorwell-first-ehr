@@ -1,29 +1,20 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 import { ClientDataService } from '@/services/ClientDataService';
 import { ClientData } from '@/types/availability';
 
-/**
- * Custom hook for managing calendar state
- * This hook manages the state for the calendar page and related components
- */
 export const useCalendarState = (initialClinicianId: string | null = null) => {
-  const [showAvailability, setShowAvailability] = useState(false);
   const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(initialClinicianId);
   const [clinicians, setClinicians] = useState<Array<{ id: string; clinician_professional_name: string }>>([]);
   const [loadingClinicians, setLoadingClinicians] = useState(true);
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [clients, setClients] = useState<ClientData[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { timeZone } = useUserTimeZone(selectedClinicianId);
-
-  const validTimeZone = TimeZoneService.ensureIANATimeZone(timeZone || 'UTC');
 
   // Fetch all clinicians
   useEffect(() => {
@@ -65,7 +56,6 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   useEffect(() => {
     if (clinicians.length > 0 && !selectedClinicianId) {
       setSelectedClinicianId(clinicians[0].id);
-      console.log('[useCalendarState] Auto-selected clinician:', clinicians[0].id, clinicians[0].clinician_professional_name);
     }
   }, [clinicians, selectedClinicianId]);
 
@@ -124,21 +114,15 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     fetchClientsForClinician();
   }, [selectedClinicianId]);
 
-  // Function to refresh appointments
   const refreshAppointments = () => {
-    console.log('[useCalendarState] Triggering appointment refresh');
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
   return {
-    showAvailability,
-    setShowAvailability,
     selectedClinicianId,
     setSelectedClinicianId,
     clinicians,
     loadingClinicians,
-    currentDate,
-    setCurrentDate,
     clients,
     loadingClients,
     appointmentRefreshTrigger,
@@ -146,6 +130,6 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     refreshAppointments,
     isDialogOpen,
     setIsDialogOpen,
-    timeZone: validTimeZone
+    timeZone: TimeZoneService.ensureIANATimeZone(timeZone || 'UTC')
   };
 };
