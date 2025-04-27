@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { CalendarViewType } from '@/types/calendar';
 import Layout from '../components/layout/Layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Plus, RefreshCcw, AlertCircle, Calendar as CalendarIcon, Settings, Clock } from 'lucide-react';
+import { Loader2, Plus, RefreshCcw, AlertCircle, Settings, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCalendarState } from '../hooks/useCalendarState';
 import AppointmentDialog from '../components/calendar/AppointmentDialog';
@@ -17,10 +17,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
 import AvailabilitySettingsDialog from '../components/calendar/AvailabilitySettingsDialog';
 import WeeklyAvailabilityDialog from '../components/calendar/WeeklyAvailabilityDialog';
-import GoogleCalendarIntegration from '../components/calendar/GoogleCalendarIntegration';
 import { getWeekdayName } from '@/utils/dateFormatUtils';
 import { DateTime } from 'luxon';
 import SingleAvailabilityDialog from '../components/calendar/SingleAvailabilityDialog';
+import GoogleCalendarIntegration from '../components/calendar/GoogleCalendarIntegration';
 
 const CalendarPage: React.FC = () => {
   const navigate = useNavigate();
@@ -35,8 +35,6 @@ const CalendarPage: React.FC = () => {
     setAppointmentRefreshTrigger,
     isDialogOpen,
     setIsDialogOpen,
-    showAvailability,
-    setShowAvailability
   } = useCalendarState();
   const { toast } = useToast();
   const {
@@ -145,9 +143,7 @@ const CalendarPage: React.FC = () => {
   }, [userTimeZone, selectedClinicianId, toast, userId, isUserLoading, navigate]);
 
   useEffect(() => {
-    if (!showAvailability) {
-      setShowAvailability(true);
-    }
+    setShowAvailability(true);
   }, []);
 
   const handleAppointmentCreated = () => {
@@ -356,17 +352,6 @@ const CalendarPage: React.FC = () => {
                       <span className="hidden md:inline">Single Day</span>
                     </Button>
                     
-                    <Button 
-                      variant={showAvailability ? "default" : "outline"} 
-                      onClick={() => setShowAvailability(!showAvailability)} 
-                      className="flex items-center gap-2" 
-                      title={showAvailability ? "Hide Availability" : "Show Availability"}
-                    >
-                      <CalendarIcon className="h-4 w-4" />
-                      <span className="hidden md:inline">
-                        {showAvailability ? "Hide" : "Show"} Availability
-                      </span>
-                    </Button>
                   </div>
                 )}
                 
