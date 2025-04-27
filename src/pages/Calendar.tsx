@@ -1,28 +1,30 @@
 import React, { useCallback, useState, useEffect } from 'react';
-import { CalendarViewType } from '@/types/calendar';
 import Layout from '../components/layout/Layout';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Plus, RefreshCcw, AlertCircle, Settings, Clock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useCalendarState } from '../hooks/useCalendarState';
 import AppointmentDialog from '../components/calendar/AppointmentDialog';
 import { Card } from '@/components/ui/card';
 import FullCalendarView from '../components/calendar/FullCalendarView';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useNavigate } from 'react-router-dom';
-import AvailabilitySettingsDialog from '../components/calendar/AvailabilitySettingsDialog';
-import WeeklyAvailabilityDialog from '../components/calendar/WeeklyAvailabilityDialog';
-import SingleAvailabilityDialog from '../components/calendar/SingleAvailabilityDialog';
 import CalendarErrorBoundary from '../components/calendar/CalendarErrorBoundary';
 import { useUser } from '@/context/UserContext';
 import { useTimeZone } from '@/context/TimeZoneContext';
+import { useToast } from '@/hooks/use-toast';
+import CalendarControls from '@/components/calendar/CalendarControls';
+import CalendarLoading from '@/components/calendar/CalendarLoading';
+import CalendarAuthError from '@/components/calendar/CalendarAuthError';
+import AvailabilitySettingsDialog from '../components/calendar/AvailabilitySettingsDialog';
+import WeeklyAvailabilityDialog from '../components/calendar/WeeklyAvailabilityDialog';
+import SingleAvailabilityDialog from '../components/calendar/SingleAvailabilityDialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle, RefreshCcw, Settings, Clock, CalendarIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { getWeekdayName } from '@/utils/dateFormatUtils';
 import { DateTime } from 'luxon';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 const CalendarPage: React.FC = () => {
-  const navigate = useNavigate();
   const {
     selectedClinicianId,
     setSelectedClinicianId,
@@ -30,7 +32,6 @@ const CalendarPage: React.FC = () => {
     loadingClinicians,
     clients,
     loadingClients,
-    appointmentRefreshTrigger,
     setIsDialogOpen,
     isDialogOpen,
     timeZone
@@ -38,18 +39,19 @@ const CalendarPage: React.FC = () => {
 
   const { userRole, isLoading: isUserLoading, userId } = useUser();
   const { isLoading: isLoadingTimeZone } = useTimeZone();
-  const [calendarKey, setCalendarKey] = useState<number>(0);
-  const [retryCount, setRetryCount] = useState(0);
-  const [calendarError, setCalendarError] = useState<Error | null>(null);
-  const [isAvailabilitySettingsOpen, setIsAvailabilitySettingsOpen] = useState(false);
-  const [isWeeklyAvailabilityOpen, setIsWeeklyAvailabilityOpen] = useState(false);
-  const [isSingleAvailabilityOpen, setIsSingleAvailabilityOpen] = useState(false);
-  const [selectedAvailabilityDate, setSelectedAvailabilityDate] = useState<string | null>(null);
+  const [calendarKey, setCalendarKey] = React.useState<number>(0);
+  const [retryCount, setRetryCount] = React.useState(0);
+  const [calendarError, setCalendarError] = React.useState<Error | null>(null);
+  const [isAvailabilitySettingsOpen, setIsAvailabilitySettingsOpen] = React.useState(false);
+  const [isWeeklyAvailabilityOpen, setIsWeeklyAvailabilityOpen] = React.useState(false);
+  const [isSingleAvailabilityOpen, setIsSingleAvailabilityOpen] = React.useState(false);
+  const [selectedAvailabilityDate, setSelectedAvailabilityDate] = React.useState<string | null>(null);
   const { toast } = useToast();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showGoogleCalendarSettings, setShowGoogleCalendarSettings] = useState(false);
   const [showAvailability, setShowAvailability] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!isUserLoading && !userId) {
@@ -223,18 +225,7 @@ const CalendarPage: React.FC = () => {
   if (isUserLoading || isLoadingTimeZone) {
     return (
       <Layout>
-        <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold text-gray-800">Calendar</h1>
-            <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
-          <div className="p-8 text-center">
-            <div className="flex flex-col items-center justify-center">
-              <Loader2 className="h-10 w-10 animate-spin text-blue-500 mb-4" />
-              <p className="text-gray-600">Loading calendar information...</p>
-            </div>
-          </div>
-        </div>
+        <CalendarLoading />
       </Layout>
     );
   }
@@ -242,20 +233,20 @@ const CalendarPage: React.FC = () => {
   if (!userId) {
     return (
       <Layout>
-        <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="h-4 w-4 mr-2" />
-            <AlertDescription>
-              Authentication required. Please <Button variant="link" className="p-0 h-auto" onClick={() => navigate('/login')}>log in</Button> to access the calendar.
-            </AlertDescription>
-          </Alert>
-        </div>
+        <CalendarAuthError />
       </Layout>
     );
   }
 
   const canSelectDifferentClinician = userRole !== 'clinician';
   const canManageAvailability = userRole === 'clinician' || userRole === 'admin';
+
+  const handleWeeklyScheduleClick = () => {
+    setSelectedAvailabilityDate(null);
+    localStorage.removeItem('selectedAvailabilitySlotId');
+    localStorage.removeItem('selectedAvailabilityDate');
+    setIsWeeklyAvailabilityOpen(true);
+  };
 
   return (
     <Layout>
@@ -293,94 +284,19 @@ const CalendarPage: React.FC = () => {
           }
         >
           <div className="flex flex-col space-y-4">
-            <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold text-gray-800">Calendar</h1>
-              <div className="flex items-center gap-2">
-                {canManageAvailability && selectedClinicianId && (
-                  <div className="flex items-center gap-2 mr-2">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setIsAvailabilitySettingsOpen(true)} 
-                      className="flex items-center gap-2" 
-                      title="Availability Settings"
-                    >
-                      <Settings className="h-4 w-4" />
-                      <span className="hidden md:inline">Settings</span>
-                    </Button>
-                    
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        setSelectedAvailabilityDate(null);
-                        localStorage.removeItem('selectedAvailabilitySlotId');
-                        localStorage.removeItem('selectedAvailabilityDate');
-                        setIsWeeklyAvailabilityOpen(true);
-                      }} 
-                      className="flex items-center gap-2" 
-                      title="Manage Weekly Availability"
-                    >
-                      <Clock className="h-4 w-4" />
-                      <span className="hidden md:inline">Weekly Schedule</span>
-                    </Button>
-
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setIsSingleAvailabilityOpen(true)} 
-                      className="flex items-center gap-2" 
-                      title="Add Single Day Availability"
-                    >
-                      <Clock className="h-4 w-4" />
-                      <span className="hidden md:inline">Single Day</span>
-                    </Button>
-                    
-                    <Button 
-                      variant={showAvailability ? "default" : "outline"} 
-                      onClick={() => setShowAvailability(!showAvailability)} 
-                      className="flex items-center gap-2" 
-                      title={showAvailability ? "Hide Availability" : "Show Availability"}
-                    >
-                      <CalendarIcon className="h-4 w-4" />
-                      <span className="hidden md:inline">
-                        {showAvailability ? "Hide" : "Show"} Availability
-                      </span>
-                    </Button>
-                  </div>
-                )}
-                
-                <Button onClick={() => setIsDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Appointment
-                </Button>
-
-                <Button variant="ghost" onClick={handleCalendarRefresh} title="Refresh Calendar">
-                  <RefreshCcw className="h-4 w-4" />
-                </Button>
-
-                {clinicians.length > 1 && canSelectDifferentClinician && (
-                  <div className="min-w-[200px]">
-                    <Select value={selectedClinicianId || undefined} onValueChange={setSelectedClinicianId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a clinician" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {loadingClinicians ? (
-                          <div className="flex items-center justify-center p-2">
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Loading...
-                          </div>
-                        ) : (
-                          clinicians.map(clinician => (
-                            <SelectItem key={clinician.id} value={clinician.id}>
-                              {clinician.clinician_professional_name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-            </div>
+            <CalendarControls 
+              clinicians={clinicians}
+              selectedClinicianId={selectedClinicianId}
+              loadingClinicians={loadingClinicians}
+              canSelectDifferentClinician={canSelectDifferentClinician}
+              canManageAvailability={canManageAvailability}
+              onClinicianSelect={setSelectedClinicianId}
+              onNewAppointment={() => setIsDialogOpen(true)}
+              onRefresh={handleCalendarRefresh}
+              onSettingsClick={() => setIsAvailabilitySettingsOpen(true)}
+              onWeeklyScheduleClick={handleWeeklyScheduleClick}
+              onSingleDayClick={() => setIsSingleAvailabilityOpen(true)}
+            />
 
             {selectedClinicianId ? (
               <Card className="p-4">
