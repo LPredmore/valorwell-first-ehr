@@ -31,6 +31,7 @@ export const useAvailability = (clinicianId: string | null) => {
       setLoading(true);
       setIsLoading(true);
       const data = await availabilityService.getSettingsForClinician(clinicianId);
+      console.log('[useAvailability] Retrieved settings:', data);
       setSettings(data);
       setError(null);
     } catch (err) {

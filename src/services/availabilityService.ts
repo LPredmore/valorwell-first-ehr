@@ -21,7 +21,7 @@ class AvailabilityService {
       const { data, error } = await supabase
         .from('availability_settings')
         .select('*')
-        .eq('clinician_id', clinicianId)
+        .eq('clinician_id', clinicianId) // Use snake_case to match database column name
         .maybeSingle();
       
       if (error) {
@@ -45,7 +45,16 @@ class AvailabilityService {
         
         const { data: newData, error: createError } = await supabase
           .from('availability_settings')
-          .insert(defaultSettings)
+          .insert({
+            clinician_id: clinicianId, // Use snake_case for the database
+            default_slot_duration: defaultSettings.defaultSlotDuration,
+            min_notice_days: defaultSettings.minNoticeDays,
+            max_advance_days: defaultSettings.maxAdvanceDays,
+            time_zone: defaultSettings.timeZone,
+            slot_duration: defaultSettings.slotDuration,
+            time_granularity: defaultSettings.timeGranularity,
+            is_active: defaultSettings.isActive
+          })
           .select()
           .single();
         
@@ -54,10 +63,32 @@ class AvailabilityService {
           throw CalendarErrorHandler.handleDatabaseError(createError);
         }
         
-        return newData as AvailabilitySettings;
+        // Map the snake_case database columns to camelCase for our application
+        return {
+          id: newData.id,
+          clinicianId: newData.clinician_id,
+          defaultSlotDuration: newData.default_slot_duration,
+          minNoticeDays: newData.min_notice_days,
+          maxAdvanceDays: newData.max_advance_days,
+          timeZone: newData.time_zone || 'America/Chicago',
+          slotDuration: newData.slot_duration,
+          timeGranularity: newData.time_granularity || 'hour',
+          isActive: newData.is_active
+        } as AvailabilitySettings;
       }
       
-      return data as AvailabilitySettings;
+      // Map the snake_case database columns to camelCase for our application
+      return {
+        id: data.id,
+        clinicianId: data.clinician_id,
+        defaultSlotDuration: data.default_slot_duration,
+        minNoticeDays: data.min_notice_days,
+        maxAdvanceDays: data.max_advance_days,
+        timeZone: data.time_zone || 'America/Chicago',
+        slotDuration: data.slot_duration,
+        timeGranularity: data.time_granularity || 'hour',
+        isActive: data.is_active
+      } as AvailabilitySettings;
     } catch (error) {
       console.error('[AvailabilityService] Error in getSettingsForClinician:', error);
       throw CalendarErrorHandler.formatError(error);
@@ -69,16 +100,38 @@ class AvailabilityService {
    */
   async updateSettings(clinicianId: string, settings: Partial<AvailabilitySettings>): Promise<AvailabilitySettings> {
     try {
+      // Convert camelCase object to snake_case for database
+      const dbSettings: any = {};
+      
+      if (settings.defaultSlotDuration !== undefined) dbSettings.default_slot_duration = settings.defaultSlotDuration;
+      if (settings.minNoticeDays !== undefined) dbSettings.min_notice_days = settings.minNoticeDays;
+      if (settings.maxAdvanceDays !== undefined) dbSettings.max_advance_days = settings.maxAdvanceDays;
+      if (settings.timeZone !== undefined) dbSettings.time_zone = settings.timeZone;
+      if (settings.slotDuration !== undefined) dbSettings.slot_duration = settings.slotDuration;
+      if (settings.timeGranularity !== undefined) dbSettings.time_granularity = settings.timeGranularity;
+      if (settings.isActive !== undefined) dbSettings.is_active = settings.isActive;
+      
       const { data, error } = await supabase
         .from('availability_settings')
-        .update(settings)
-        .eq('clinician_id', clinicianId)
+        .update(dbSettings)
+        .eq('clinician_id', clinicianId) // Use snake_case to match database column name
         .select()
         .single();
       
       if (error) throw error;
       
-      return data as AvailabilitySettings;
+      // Map the snake_case database columns to camelCase for our application
+      return {
+        id: data.id,
+        clinicianId: data.clinician_id,
+        defaultSlotDuration: data.default_slot_duration,
+        minNoticeDays: data.min_notice_days,
+        maxAdvanceDays: data.max_advance_days,
+        timeZone: data.time_zone || 'America/Chicago',
+        slotDuration: data.slot_duration,
+        timeGranularity: data.time_granularity || 'hour',
+        isActive: data.is_active
+      } as AvailabilitySettings;
     } catch (error) {
       console.error('Error updating availability settings:', error);
       throw error;

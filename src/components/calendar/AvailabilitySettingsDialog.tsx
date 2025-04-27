@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Dialog, 
@@ -42,6 +41,7 @@ const AvailabilitySettingsDialog: React.FC<AvailabilitySettingsDialogProps> = ({
   // Initialize form with existing settings
   useEffect(() => {
     if (settings) {
+      console.log('[AvailabilitySettingsDialog] Loading settings:', settings);
       setDefaultSlotDuration(settings.defaultSlotDuration);
       setMinNoticeDays(settings.minNoticeDays);
       setMaxAdvanceDays(settings.maxAdvanceDays);
@@ -53,6 +53,13 @@ const AvailabilitySettingsDialog: React.FC<AvailabilitySettingsDialogProps> = ({
     
     setIsSubmitting(true);
     try {
+      console.log('[AvailabilitySettingsDialog] Saving settings:', {
+        defaultSlotDuration,
+        minNoticeDays,
+        maxAdvanceDays,
+        clinicianId
+      });
+      
       const result = await updateSettings({
         defaultSlotDuration,
         minNoticeDays,
@@ -64,7 +71,7 @@ const AvailabilitySettingsDialog: React.FC<AvailabilitySettingsDialogProps> = ({
         onClose();
       }
     } catch (error) {
-      console.error('Error saving availability settings:', error);
+      console.error('[AvailabilitySettingsDialog] Error saving availability settings:', error);
     } finally {
       setIsSubmitting(false);
     }

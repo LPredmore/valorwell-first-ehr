@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -83,6 +84,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
       console.log('[useCalendarState] Fetching clients for clinician:', selectedClinicianId);
 
       try {
+        // Using the correct column names as in the database schema
         const { data, error } = await supabase
           .from('clients')
           .select('id, client_first_name, client_last_name, client_preferred_name, client_email, client_phone, client_time_zone, created_at, updated_at')
@@ -100,6 +102,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
         }
 
         if (data) {
+          console.log('[useCalendarState] Raw client data:', data);
           const normalizedClients: ClientData[] = data.map(client => 
             ClientDataService.normalizeClientData(client)
           );
