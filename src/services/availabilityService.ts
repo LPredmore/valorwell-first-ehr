@@ -1,10 +1,12 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { AvailabilitySettings, AvailabilitySlot } from '@/types/availability';
+import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
 import { AvailabilityQueryService } from './AvailabilityQueryService';
 import { AvailabilityMutationService } from './AvailabilityMutationService';
 import { CalendarErrorHandler } from './calendar/CalendarErrorHandler';
 import { AvailabilitySettingService } from './AvailabilitySettingService';
+import { DateTime } from 'luxon';
 
 /**
  * Service for managing availability settings and slots
