@@ -10,8 +10,6 @@ export type { DateTimeFormat } from './formatting';
 export type TimeUnit = 'years' | 'quarters' | 'months' | 'weeks' | 'days' | 'hours' | 'minutes' | 'seconds' | 'milliseconds';
 
 export { TimeZoneError } from './TimeZoneError';
-export const TIMEZONE_OPTIONS = Core.TIMEZONE_OPTIONS;
-export const timezoneOptions = Core.TIMEZONE_OPTIONS;
 
 /**
  * TimeZoneService Interface
@@ -48,7 +46,7 @@ export interface TimeZoneServiceInterface {
   // Calendar functions
   convertEventToUserTimeZone(event: CalendarEvent, userTimeZone: string): CalendarEvent;
   
-  // UTC timestamp conversion
+  // UTC timestamp conversion with proper overloads
   toUTCTimestamp(dateTime: Date | string, timeZone: string): string;
   toUTCTimestamp(dateStr: string, timeStr: string, timeZone: string): string;
   fromUTCTimestamp(timestamp: string, timeZone: string): DateTime;
@@ -56,12 +54,6 @@ export interface TimeZoneServiceInterface {
 
 /**
  * TimeZoneService - THE OFFICIAL SOURCE OF TRUTH for all timezone operations
- * 
- * Core Principles:
- * - All timezone operations MUST use Luxon through this service
- * - All dates/times MUST be stored in UTC in the database
- * - All timezone conversions MUST happen at the display layer only
- * - All timezone strings MUST be in IANA format (e.g., 'America/New_York')
  */
 export const TimeZoneService: TimeZoneServiceInterface = {
   // Constants
@@ -94,7 +86,8 @@ export const TimeZoneService: TimeZoneServiceInterface = {
   // Calendar functions
   convertEventToUserTimeZone: Calendar.convertEventToUserTimeZone,
   
-  // UTC timestamp conversion with overloads
+  // UTC timestamp conversion
   toUTCTimestamp: Core.toUTCTimestamp,
   fromUTCTimestamp: Core.fromUTCTimestamp
 };
+

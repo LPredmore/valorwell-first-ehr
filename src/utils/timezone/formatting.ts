@@ -1,6 +1,5 @@
-
-import { DateTime, Duration } from 'luxon';
-import { ensureIANATimeZone, TIMEZONE_OPTIONS } from './core';
+import { DateTime } from 'luxon';
+import { ensureIANATimeZone, TIMEZONE_OPTIONS, getUserTimeZone } from './core';
 import { TimeZoneError } from './TimeZoneError';
 
 export type DateTimeFormat = 
@@ -215,7 +214,14 @@ export function getDisplayNameFromIANA(timeZone: string): string {
  */
 export function getIANAFromDisplayName(displayName: string): string {
   const option = TIMEZONE_OPTIONS.find(tz => tz.label === displayName);
-  return option?.value || getUserTimeZone();
+  if (option) {
+    return option.value;
+  }
+  
+  // Use system timezone as fallback
+  const systemZone = getUserTimeZone();
+  console.warn(`No IANA timezone found for display name: ${displayName}, using system timezone: ${systemZone}`);
+  return systemZone;
 }
 
 /**

@@ -71,19 +71,18 @@ export const calendarTransformer: CalendarEventTransform = {
       // Validate the database event
       validateDatabaseEvent(dbEvent);
       
-      // Parse dates with timezone
+      // Parse dates with timezone - improved error handling
       const startInUserTz = TimeZoneService.fromUTCTimestamp(dbEvent.start_time, validTimeZone);
-      const endInUserTz = TimeZoneService.fromUTCTimestamp(dbEvent.end_time, validTimeZone);
-      
-      // Ensure times are valid
-      if (!startInUserTz.isValid || !endInUserTz.isValid) {
-        const invalidTime = !startInUserTz.isValid ? 'start_time' : 'end_time';
-        const invalidReason = !startInUserTz.isValid ? startInUserTz.invalidReason : endInUserTz.invalidReason;
-        
-        throw new Error(`Invalid ${invalidTime}: ${invalidReason}`);
+      if (!startInUserTz.isValid) {
+        throw new Error(`Invalid start time: ${startInUserTz.invalidReason}`);
       }
       
-      // Create the calendar event
+      const endInUserTz = TimeZoneService.fromUTCTimestamp(dbEvent.end_time, validTimeZone);
+      if (!endInUserTz.isValid) {
+        throw new Error(`Invalid end time: ${endInUserTz.invalidReason}`);
+      }
+      
+      // Create the calendar event with improved timezone handling
       return {
         id: dbEvent.id,
         title: dbEvent.title,
@@ -101,11 +100,12 @@ export const calendarTransformer: CalendarEventTransform = {
           displayStart: startInUserTz.toFormat('h:mm a'),
           displayEnd: endInUserTz.toFormat('h:mm a'),
           displayDay: startInUserTz.toFormat('ccc'),
-          displayDate: startInUserTz.toFormat('MMM d')
+          displayDate: startInUserTz.toFormat('MMM d'),
+          originalTimezone: dbEvent.source_time_zone || validTimeZone
         }
       };
     } catch (error) {
-      console.error('Error transforming database event:', error, {
+      console.error('[CalendarTransformer] Error transforming database event:', error, {
         event: dbEvent,
         timezone: validTimeZone
       });
@@ -124,22 +124,22 @@ export const calendarTransformer: CalendarEventTransform = {
       // Validate the calendar event
       validateCalendarEvent(event);
       
-      // Convert to UTC with the right method signature
-      // If start/end is a Date object, use the first overload
-      // If start/end is a string, use the first overload as well
-      const startUtc = typeof event.start === 'string' || event.start instanceof Date
-        ? TimeZoneService.toUTCTimestamp(event.start, validTimeZone)
-        : '';
-        
-      const endUtc = typeof event.end === 'string' || event.end instanceof Date
-        ? TimeZoneService.toUTCTimestamp(event.end, validTimeZone)
-        : '';
+      // Improved UTC conversion with proper error handling
+      let startUtc: string;
+      let endUtc: string;
+      
+      if (typeof event.start === 'string' && typeof event.end === 'string') {
+        startUtc = TimeZoneService.toUTCTimestamp(event.start, validTimeZone);
+        endUtc = TimeZoneService.toUTCTimestamp(event.end, validTimeZone);
+      } else {
+        throw new Error('Event start and end times must be strings');
+      }
       
       if (!startUtc || !endUtc) {
         throw new Error('Failed to convert times to UTC');
       }
       
-      // Create the database event
+      // Create the database event with improved timezone tracking
       return {
         title: event.title,
         start_time: startUtc,
@@ -149,17 +149,17 @@ export const calendarTransformer: CalendarEventTransform = {
         is_active: event.extendedProps?.isActive ?? true,
         clinician_id: event.extendedProps?.clinicianId || '',
         time_zone: validTimeZone,
-        source_time_zone: validTimeZone,
+        source_time_zone: event.extendedProps?.originalTimezone || validTimeZone,
         all_day: event.allDay,
         recurrence_id: event.extendedProps?.recurrenceId
       };
     } catch (error) {
-      console.error('Error transforming calendar event to database format:', error, {
+      console.error('[CalendarTransformer] Error transforming to database format:', error, {
         event,
         timezone: validTimeZone
       });
       throw CalendarErrorHandler.createError(
-        `Failed to transform event to database format: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to transform to database format: ${error instanceof Error ? error.message : 'Unknown error'}`,
         'CALENDAR_CONVERSION_ERROR',
         { event, timezone: validTimeZone }
       );

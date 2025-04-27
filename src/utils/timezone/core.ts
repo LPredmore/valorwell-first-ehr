@@ -1,4 +1,3 @@
-
 import { DateTime } from 'luxon';
 import { TimeZoneError } from './TimeZoneError';
 
@@ -201,15 +200,19 @@ export function convertDateTime(dateTime: DateTime, fromZone: string, toZone: st
 }
 
 /**
- * Get browser's timezone
+ * Get browser's timezone with improved error handling
  */
 export function getUserTimeZone(): string {
   try {
     const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!browserTimeZone) {
+      console.warn('[TimeZoneService] Browser timezone not available, defaulting to UTC');
+      return 'UTC';
+    }
     return ensureIANATimeZone(browserTimeZone);
   } catch (error) {
-    console.warn('[TimeZoneService] Error detecting browser timezone:', error);
-    return 'America/Chicago';
+    console.error('[TimeZoneService] Error detecting browser timezone:', error);
+    return 'UTC';
   }
 }
 
