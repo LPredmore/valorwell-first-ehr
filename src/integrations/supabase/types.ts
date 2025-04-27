@@ -83,8 +83,12 @@ export type Database = {
           created_at: string
           default_slot_duration: number
           id: string
+          is_active: boolean | null
           max_advance_days: number
           min_notice_days: number
+          slot_duration: number | null
+          time_granularity: string | null
+          time_zone: string | null
           updated_at: string
         }
         Insert: {
@@ -92,8 +96,12 @@ export type Database = {
           created_at?: string
           default_slot_duration?: number
           id?: string
+          is_active?: boolean | null
           max_advance_days?: number
           min_notice_days?: number
+          slot_duration?: number | null
+          time_granularity?: string | null
+          time_zone?: string | null
           updated_at?: string
         }
         Update: {
@@ -101,8 +109,12 @@ export type Database = {
           created_at?: string
           default_slot_duration?: number
           id?: string
+          is_active?: boolean | null
           max_advance_days?: number
           min_notice_days?: number
+          slot_duration?: number | null
+          time_granularity?: string | null
+          time_zone?: string | null
           updated_at?: string
         }
         Relationships: [
