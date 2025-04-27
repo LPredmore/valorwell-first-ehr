@@ -1,7 +1,7 @@
 
 import { useState, useCallback } from 'react';
 import { WeeklyAvailability, DayOfWeek } from '@/types/availability';
-import { CalendarEvent } from '@/types/calendar';
+import { CalendarEvent, WeekdayNumbers } from '@/types/calendar';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { weekdayNameToNumber } from '@/utils/calendarWeekdayUtils';
 
@@ -73,9 +73,8 @@ export const useAvailabilityEvents = ({ userTimeZone, weeksToShow = 8 }: UseAvai
                   eventType: 'availability',
                   isRecurring: slot.isRecurring,
                   sourceTable: slot.id,
-                  // Add debug info without extending the type
                   dayOfWeek: day,
-                  sourceInfo: 'calendar_events' // Use existing property or a compatible one
+                  sourceInfo: 'calendar_events'
                 },
                 classNames: ['availability-event'],
                 backgroundColor: '#4caf50',

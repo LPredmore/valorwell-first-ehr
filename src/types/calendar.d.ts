@@ -39,6 +39,7 @@ export interface CalendarEvent {
     isRecurring?: boolean;
     recurrenceId?: string;
     sourceTable?: string;
+    sourceInfo?: string;
     status?: string;
     dayOfWeek?: string;
     isActive?: boolean;
