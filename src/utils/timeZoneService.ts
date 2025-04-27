@@ -1,4 +1,3 @@
-
 /**
  * TimeZoneService - THE OFFICIAL SOURCE OF TRUTH for all timezone operations
  * 
@@ -9,7 +8,7 @@
  * - All timezone strings MUST be in IANA format (e.g., 'America/New_York')
  */
 
-import { DateTime } from 'luxon';
+import { DateTime, Duration } from 'luxon';
 import { CalendarEvent } from '@/types/calendar';
 
 export type TimeUnit = 'years' | 'quarters' | 'months' | 'weeks' | 'days' | 'hours' | 'minutes' | 'seconds' | 'milliseconds';
@@ -64,6 +63,19 @@ interface TimeZoneServiceInterface {
   formatTime(time: string | Date, format?: string, timeZone?: string): string;
   convertEventToUserTimeZone(event: CalendarEvent, userTimeZone: string): CalendarEvent;
   getUserTimeZone(): string;
+  parseWithZone(dateTimeStr: string, timeZone: string): DateTime;
+  getCurrentDateTime(timeZone?: string): DateTime;
+  formatDateToTime12Hour(date: Date | string): string;
+  isSameDay(date1: DateTime, date2: DateTime): boolean;
+  addDuration(date: DateTime, amount: number, unit: TimeUnit): DateTime;
+  getWeekdayName(date: DateTime, format?: 'long' | 'short'): string;
+  getMonthName(date: DateTime, format?: 'long' | 'short'): string;
+  formatDate(date: DateTime | Date | string, format?: string): string;
+  getDisplayNameFromIANA(timeZone: string): string;
+  getIANAFromDisplayName(displayName: string): string;
+  getTimezoneOffsetString(timeZone: string): string;
+  toUTCTimestamp(date: Date | string, timeZone?: string): string;
+  fromUTCTimestamp(timestamp: string, timeZone: string): DateTime;
 }
 
 export const TimeZoneService: TimeZoneServiceInterface = {
@@ -256,6 +268,84 @@ export const TimeZoneService: TimeZoneServiceInterface = {
       console.warn('Error detecting browser timezone:', error);
       return 'America/Chicago';
     }
+  },
+
+  parseWithZone(dateTimeStr: string, timeZone: string): DateTime {
+    const validTimeZone = this.ensureIANATimeZone(timeZone);
+    return DateTime.fromISO(dateTimeStr, { zone: validTimeZone });
+  },
+
+  getCurrentDateTime(timeZone?: string): DateTime {
+    const validTimeZone = this.ensureIANATimeZone(timeZone);
+    return DateTime.now().setZone(validTimeZone);
+  },
+
+  formatDateToTime12Hour(date: Date | string): string {
+    const dt = typeof date === 'string' ? DateTime.fromISO(date) : DateTime.fromJSDate(date);
+    return dt.toFormat('h:mm a');
+  },
+
+  isSameDay(date1: DateTime, date2: DateTime): boolean {
+    return date1.hasSame(date2, 'day');
+  },
+
+  addDuration(date: DateTime, amount: number, unit: TimeUnit): DateTime {
+    return date.plus({ [unit]: amount });
+  },
+
+  getWeekdayName(date: DateTime, format: 'long' | 'short' = 'long'): string {
+    return date.toFormat(format === 'long' ? 'cccc' : 'ccc');
+  },
+
+  getMonthName(date: DateTime, format: 'long' | 'short' = 'long'): string {
+    return date.toFormat(format === 'long' ? 'MMMM' : 'MMM');
+  },
+
+  formatDate(date: DateTime | Date | string, format: string = 'yyyy-MM-dd'): string {
+    let dt: DateTime;
+    if (date instanceof DateTime) {
+      dt = date;
+    } else if (date instanceof Date) {
+      dt = DateTime.fromJSDate(date);
+    } else {
+      dt = DateTime.fromISO(date);
+    }
+    return dt.toFormat(format);
+  },
+
+  getDisplayNameFromIANA(timeZone: string): string {
+    const validTimeZone = this.ensureIANATimeZone(timeZone);
+    const option = TIMEZONE_OPTIONS.find(tz => tz.value === validTimeZone);
+    return option?.label || validTimeZone;
+  },
+
+  getIANAFromDisplayName(displayName: string): string {
+    const option = TIMEZONE_OPTIONS.find(tz => tz.label === displayName);
+    return option?.value || this.getUserTimeZone();
+  },
+
+  getTimezoneOffsetString(timeZone: string): string {
+    const validTimeZone = this.ensureIANATimeZone(timeZone);
+    return DateTime.now().setZone(validTimeZone).toFormat('ZZ');
+  },
+
+  toUTCTimestamp(date: Date | string, timeZone?: string): string {
+    let dt: DateTime;
+    if (date instanceof Date) {
+      dt = DateTime.fromJSDate(date);
+    } else {
+      dt = DateTime.fromISO(date);
+    }
+    
+    if (timeZone) {
+      dt = dt.setZone(this.ensureIANATimeZone(timeZone));
+    }
+    
+    return dt.toUTC().toISO();
+  },
+
+  fromUTCTimestamp(timestamp: string, timeZone: string): DateTime {
+    const validTimeZone = this.ensureIANATimeZone(timeZone);
+    return DateTime.fromISO(timestamp).setZone(validTimeZone);
   }
 };
-
