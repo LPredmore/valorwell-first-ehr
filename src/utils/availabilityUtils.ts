@@ -1,4 +1,3 @@
-
 import { WeeklyAvailability, DayOfWeek } from '@/types/availability';
 
 export const createEmptyWeeklyAvailability = (): WeeklyAvailability => ({

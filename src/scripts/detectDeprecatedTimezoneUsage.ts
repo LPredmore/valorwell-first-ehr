@@ -39,6 +39,16 @@ export const detectDeprecatedTimezoneUsage = () => {
       name: 'Old TimeZoneContext import',
       pattern: /from\s+['"](\.\.\/)*packages\/core\/contexts\/TimeZoneContext['"]/g,
       severity: 'HIGH'
+    },
+    {
+      name: 'Clinician Availability Fields',
+      pattern: /availability_(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/g,
+      severity: 'HIGH'
+    },
+    {
+      name: 'convertClinicianDataToAvailabilityBlocks usage',
+      pattern: /convertClinicianDataToAvailabilityBlocks/g,
+      severity: 'HIGH'
     }
   ];
 

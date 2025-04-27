@@ -14,6 +14,7 @@ export const useAvailabilityEvents = ({ userTimeZone, weeksToShow = 8 }: UseAvai
   const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
 
   const convertAvailabilityToEvents = useCallback((weeklyAvailability: WeeklyAvailability): CalendarEvent[] => {
+    console.log('[useAvailabilityEvents] Converting availability to events with timezone:', validTimeZone);
     const events: CalendarEvent[] = [];
     const now = TimeZoneService.getCurrentDateTime(validTimeZone);
     
@@ -25,7 +26,16 @@ export const useAvailabilityEvents = ({ userTimeZone, weeksToShow = 8 }: UseAvai
       }
       
       for (const slot of slots) {
+        // Skip appointment slots as they'll be handled separately
         if (slot.isAppointment) continue;
+        
+        // Track the source of each availability slot for debugging
+        console.log(`[useAvailabilityEvents] Processing slot from ${day}:`, {
+          id: slot.id,
+          start: slot.startTime,
+          end: slot.endTime,
+          isRecurring: slot.isRecurring
+        });
         
         let targetDay = now.set({ weekday: weekday === 0 ? 7 : weekday });
         if (targetDay < now) {
@@ -62,7 +72,9 @@ export const useAvailabilityEvents = ({ userTimeZone, weeksToShow = 8 }: UseAvai
                   isAvailability: true,
                   eventType: 'availability',
                   isRecurring: slot.isRecurring,
-                  sourceTable: slot.id
+                  sourceTable: slot.id,
+                  sourcePath: 'calendar_events',  // Mark source for debugging
+                  sourceDay: day
                 },
                 classNames: ['availability-event'],
                 backgroundColor: '#4caf50',
@@ -78,6 +90,7 @@ export const useAvailabilityEvents = ({ userTimeZone, weeksToShow = 8 }: UseAvai
       }
     }
     
+    console.log(`[useAvailabilityEvents] Generated ${events.length} availability events`);
     return events;
   }, [validTimeZone, weeksToShow]);
 

@@ -31,6 +31,10 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
   useEffect(() => {
     const fetchAvailability = async () => {
       if (!showAvailability || !clinicianId) {
+        console.log('[CalendarAvailabilityHandler] Skipping availability fetch:', {
+          showAvailability,
+          clinicianId: clinicianId || 'none'
+        });
         onEventsChange([]);
         return;
       }
@@ -38,8 +42,13 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
       try {
         console.log('[CalendarAvailabilityHandler] Fetching availability for clinician:', clinicianId);
         
+        // Get availability exclusively from calendar_events table
         const weeklyAvailability = await AvailabilityQueryService.getWeeklyAvailability(clinicianId);
+        
+        // Convert to calendar events format
         const events = convertAvailabilityToEvents(weeklyAvailability);
+        
+        console.log(`[CalendarAvailabilityHandler] Retrieved ${events.length} availability events`);
         onEventsChange(events);
       } catch (error) {
         console.error('[CalendarAvailabilityHandler] Error fetching availability:', error);
