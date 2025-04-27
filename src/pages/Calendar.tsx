@@ -10,7 +10,7 @@ import CalendarAuthError from '@/components/calendar/CalendarAuthError';
 import AvailabilitySettingsDialog from '../components/calendar/AvailabilitySettingsDialog';
 import WeeklyAvailabilityDialog from '../components/calendar/WeeklyAvailabilityDialog';
 import SingleAvailabilityDialog from '../components/calendar/SingleAvailabilityDialog';
-import CalendarDiagnosticDialog from '../components/calendar/CalendarDiagnosticDialog';
+import CalendarDiagnosticDialog from '@/components/calendar/CalendarDiagnosticDialog';
 import { getWeekdayName } from '@/utils/dateFormatUtils';
 import { DateTime } from 'luxon';
 import { useCalendarAuth } from '@/hooks/useCalendarAuth';

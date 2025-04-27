@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Dialog, 
@@ -14,7 +15,7 @@ import { Loader2, AlertCircle, Info } from 'lucide-react';
 import { useAvailability } from '@/hooks/useAvailability';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { Alert } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Add permissionLevel to the props
 interface AvailabilitySettingsDialogProps {
@@ -248,3 +249,6 @@ const AvailabilitySettingsDialog: React.FC<AvailabilitySettingsDialogProps> = ({
     </Dialog>
   );
 };
+
+// Export as default
+export default AvailabilitySettingsDialog;
