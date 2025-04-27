@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -25,13 +25,19 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   const [availabilityEvents, setAvailabilityEvents] = useState<CalendarEvent[]>([]);
   const [hasAvailabilityError, setHasAvailabilityError] = useState(false);
 
+  // Memoize the timezone to prevent unnecessary re-renders
+  const validTimeZone = useMemo(() => 
+    TimeZoneService.ensureIANATimeZone(userTimeZone), 
+    [userTimeZone]
+  );
+
   const {
     events: appointmentEvents,
     isLoading: isLoadingAppointments,
     error: appointmentsError,
   } = useCalendarEvents({
     clinicianId,
-    userTimeZone,
+    userTimeZone: validTimeZone,
   });
 
   useEffect(() => {
@@ -61,7 +67,11 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     }
   };
 
-  const combinedEvents = [...appointmentEvents, ...availabilityEvents];
+  // Memoize combinedEvents to prevent unnecessary re-renders
+  const combinedEvents = useMemo(() => 
+    [...appointmentEvents, ...availabilityEvents], 
+    [appointmentEvents, availabilityEvents]
+  );
 
   console.log('[FullCalendarView] Combined events:', {
     appointments: appointmentEvents.length,
@@ -96,9 +106,20 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     );
   }
 
-  try {
-    const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
+  // Memoized event class names function
+  const getEventClassNames = (arg: any) => {
+    const eventType = arg.event.extendedProps?.eventType;
     
+    if (eventType === 'availability') {
+      return ['bg-green-200', 'text-green-900', 'border-green-300', 'hover:bg-green-300', 'cursor-pointer'];
+    } else if (arg.event.extendedProps?.status === 'cancelled') {
+      return ['bg-red-100', 'text-red-800', 'border-red-200', 'line-through', 'opacity-70'];
+    } else {
+      return ['bg-blue-100', 'text-blue-800', 'border-blue-200'];
+    }
+  };
+
+  try {
     return (
       <div className="calendar-container">
         {validTimeZone && (
@@ -131,17 +152,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
             minute: '2-digit',
             meridiem: 'short',
           }}
-          eventClassNames={(arg) => {
-            const eventType = arg.event.extendedProps?.eventType;
-            
-            if (eventType === 'availability') {
-              return ['bg-green-200', 'text-green-900', 'border-green-300', 'hover:bg-green-300', 'cursor-pointer'];
-            } else if (arg.event.extendedProps?.status === 'cancelled') {
-              return ['bg-red-100', 'text-red-800', 'border-red-200', 'line-through', 'opacity-70'];
-            } else {
-              return ['bg-blue-100', 'text-blue-800', 'border-blue-200'];
-            }
-          }}
+          eventClassNames={getEventClassNames}
         />
         
         {showAvailability && (
@@ -162,14 +173,8 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
       variant: 'destructive',
     });
     
-    return (
-      <div className="p-4 border border-red-300 rounded bg-red-50 text-red-800">
-        <h3 className="font-medium">Calendar Error</h3>
-        <p>There was a problem initializing the calendar. Please check your timezone settings and try again.</p>
-        <p className="text-sm mt-2">{error instanceof Error ? error.message : 'Unknown error'}</p>
-      </div>
-    );
+    throw error; // Let the error boundary handle it
   }
 };
 
-export default FullCalendarView;
+export default React.memo(FullCalendarView);

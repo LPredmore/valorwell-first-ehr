@@ -73,8 +73,9 @@ export const useAvailabilityEvents = ({ userTimeZone, weeksToShow = 8 }: UseAvai
                   eventType: 'availability',
                   isRecurring: slot.isRecurring,
                   sourceTable: slot.id,
-                  sourcePath: 'calendar_events',  // Mark source for debugging
-                  sourceDay: day
+                  // Add debug info without extending the type
+                  dayOfWeek: day,
+                  sourceInfo: 'calendar_events' // Use existing property or a compatible one
                 },
                 classNames: ['availability-event'],
                 backgroundColor: '#4caf50',
