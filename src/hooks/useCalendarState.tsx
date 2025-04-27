@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -6,7 +7,12 @@ import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 import { ClientDataService } from '@/services/ClientDataService';
 import { ClientData } from '@/types/availability';
 
+/**
+ * Custom hook for managing calendar state
+ * This hook manages the state for the calendar page and related components
+ */
 export const useCalendarState = (initialClinicianId: string | null = null) => {
+  const [showAvailability, setShowAvailability] = useState(false);
   const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(initialClinicianId);
   const [clinicians, setClinicians] = useState<Array<{ id: string; clinician_professional_name: string }>>([]);
   const [loadingClinicians, setLoadingClinicians] = useState(true);
@@ -19,6 +25,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
 
   const validTimeZone = TimeZoneService.ensureIANATimeZone(timeZone || 'UTC');
 
+  // Fetch all clinicians
   useEffect(() => {
     const fetchClinicians = async () => {
       setLoadingClinicians(true);
@@ -54,6 +61,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     fetchClinicians();
   }, []);
 
+  // Auto-select first clinician if needed
   useEffect(() => {
     if (clinicians.length > 0 && !selectedClinicianId) {
       setSelectedClinicianId(clinicians[0].id);
@@ -61,6 +69,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     }
   }, [clinicians, selectedClinicianId]);
 
+  // Fetch clients for the selected clinician
   useEffect(() => {
     const fetchClientsForClinician = async () => {
       if (!selectedClinicianId) {
@@ -75,6 +84,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
       console.log('[useCalendarState] Fetching clients for clinician:', selectedClinicianId);
 
       try {
+        // Using the correct column names as in the database schema
         const { data, error } = await supabase
           .from('clients')
           .select('id, client_first_name, client_last_name, client_preferred_name, client_email, client_phone, client_time_zone, created_at, updated_at')
@@ -114,12 +124,15 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     fetchClientsForClinician();
   }, [selectedClinicianId]);
 
+  // Function to refresh appointments
   const refreshAppointments = () => {
     console.log('[useCalendarState] Triggering appointment refresh');
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
   return {
+    showAvailability,
+    setShowAvailability,
     selectedClinicianId,
     setSelectedClinicianId,
     clinicians,
@@ -130,6 +143,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     loadingClients,
     appointmentRefreshTrigger,
     setAppointmentRefreshTrigger,
+    refreshAppointments,
     isDialogOpen,
     setIsDialogOpen,
     timeZone: validTimeZone
