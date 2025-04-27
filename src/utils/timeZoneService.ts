@@ -53,6 +53,7 @@ const TIMEZONE_NAME_MAP: Record<string, string> = {
 };
 
 interface TimeZoneServiceInterface {
+  TIMEZONE_OPTIONS: typeof TIMEZONE_OPTIONS;
   ensureIANATimeZone(timeZone?: string): string;
   formatTimeZoneDisplay(timeZone: string): string;
   createDateTime(dateStr: string, timeStr: string, timeZone: string): DateTime;
@@ -74,11 +75,13 @@ interface TimeZoneServiceInterface {
   getDisplayNameFromIANA(timeZone: string): string;
   getIANAFromDisplayName(displayName: string): string;
   getTimezoneOffsetString(timeZone: string): string;
-  toUTCTimestamp(date: Date | string, timeZone?: string): string;
+  toUTCTimestamp(dateOrDateStr: Date | string, timeOrTimeZone?: string, timeZone?: string): string;
   fromUTCTimestamp(timestamp: string, timeZone: string): DateTime;
 }
 
 export const TimeZoneService: TimeZoneServiceInterface = {
+  TIMEZONE_OPTIONS,
+
   ensureIANATimeZone(timeZone?: string): string {
     try {
       if (!timeZone) {
@@ -329,16 +332,23 @@ export const TimeZoneService: TimeZoneServiceInterface = {
     return DateTime.now().setZone(validTimeZone).toFormat('ZZ');
   },
 
-  toUTCTimestamp(date: Date | string, timeZone?: string): string {
-    let dt: DateTime;
-    if (date instanceof Date) {
-      dt = DateTime.fromJSDate(date);
-    } else {
-      dt = DateTime.fromISO(date);
+  toUTCTimestamp(dateOrDateStr: Date | string, timeOrTimeZone?: string, timeZone?: string): string {
+    if (typeof dateOrDateStr === 'string' && typeof timeOrTimeZone === 'string' && timeZone) {
+      const validTimeZone = this.ensureIANATimeZone(timeZone);
+      return this.createDateTime(dateOrDateStr, timeOrTimeZone, validTimeZone)
+        .toUTC()
+        .toISO();
     }
     
-    if (timeZone) {
-      dt = dt.setZone(this.ensureIANATimeZone(timeZone));
+    let dt: DateTime;
+    if (dateOrDateStr instanceof Date) {
+      dt = DateTime.fromJSDate(dateOrDateStr);
+    } else {
+      dt = DateTime.fromISO(dateOrDateStr);
+    }
+    
+    if (timeOrTimeZone) {
+      dt = dt.setZone(this.ensureIANATimeZone(timeOrTimeZone));
     }
     
     return dt.toUTC().toISO();
