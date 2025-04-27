@@ -15,11 +15,15 @@ export class AvailabilityMutationService {
     specificDate?: string | Date | DateTime
   ) {
     try {
-      // Input validation
+      // Improved input validation with detailed error messages
       if (!clinicianId) throw new Error('Clinician ID is required');
       if (!startTime) throw new Error('Start time is required');
       if (!endTime) throw new Error('End time is required');
       if (!dayOfWeek) throw new Error('Day of week is required');
+      
+      // Ensure clinicianId is a valid UUID
+      const validClinicianId = this.ensureUUID(clinicianId);
+      console.log(`[AvailabilityMutationService] Validated clinician ID: ${validClinicianId} (original: ${clinicianId})`);
       
       const validTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
       console.log(`[AvailabilityMutationService] Creating availability slot:`, {
@@ -27,6 +31,7 @@ export class AvailabilityMutationService {
         startTime,
         endTime,
         timeZone: validTimeZone,
+        clinicianId: validClinicianId,
         specificDate: specificDate ? 
           (specificDate instanceof DateTime ? 
             specificDate.toISO() : 
@@ -57,7 +62,25 @@ export class AvailabilityMutationService {
         throw new Error('Start time must be before end time');
       }
       
-      // Insert into database
+      // Get the authenticated user ID for debugging
+      const { data: { user } } = await supabase.auth.getUser();
+      const authUserId = user?.id;
+      console.log(`[AvailabilityMutationService] Current auth user ID: ${authUserId}, using clinician ID: ${validClinicianId}`);
+      
+      // Verify database access before insert
+      const { data: testAccess, error: accessError } = await supabase
+        .from('calendar_events')
+        .select('id')
+        .limit(1);
+        
+      if (accessError) {
+        console.error('[AvailabilityMutationService] Database access check failed:', accessError);
+        throw new Error(`Database access error: ${accessError.message}`);
+      }
+      
+      console.log('[AvailabilityMutationService] Database access verified, proceeding with insert');
+      
+      // Insert into database with explicit UUID conversion
       const { data, error } = await supabase
         .from('calendar_events')
         .insert({
@@ -65,7 +88,7 @@ export class AvailabilityMutationService {
           event_type: 'availability',
           start_time: start.toISO(),
           end_time: end.toISO(),
-          clinician_id: clinicianId,
+          clinician_id: validClinicianId,
           availability_type: isRecurring ? 'recurring' : 'single',
           is_active: true,
           time_zone: validTimeZone
@@ -73,7 +96,21 @@ export class AvailabilityMutationService {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('[AvailabilityMutationService] Error creating availability slot:', {
+          error,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        
+        if (error.message.includes('violates row level security policy')) {
+          throw new Error('Permission denied: You do not have access to create availability for this clinician. Check your login permissions.');
+        }
+        
+        throw error;
+      }
       
       // If recurring, create a recurrence rule
       if (isRecurring && data.id) {
@@ -86,7 +123,10 @@ export class AvailabilityMutationService {
             rrule: rrule
           });
         
-        if (ruleError) throw ruleError;
+        if (ruleError) {
+          console.error('[AvailabilityMutationService] Error creating recurrence rule:', ruleError);
+          throw ruleError;
+        }
       }
       
       return data;
@@ -97,6 +137,36 @@ export class AvailabilityMutationService {
     }
   }
   
+  // Helper method to ensure the clinician ID is a valid UUID
+  private static ensureUUID(id: string): string {
+    try {
+      // Regular expression pattern for UUID validation
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      
+      if (uuidPattern.test(id)) {
+        return id; // Already a valid UUID format
+      }
+      
+      // Check if this is a JSON-compatible format that needs unwrapping
+      try {
+        const parsedId = JSON.parse(id);
+        if (typeof parsedId === 'string' && uuidPattern.test(parsedId)) {
+          return parsedId;
+        }
+      } catch (e) {
+        // Not JSON, continue with other checks
+      }
+      
+      // Log warning for invalid UUID format
+      console.warn(`[AvailabilityMutationService] Non-standard UUID format provided: ${id}`);
+      
+      return id; // Return the original if no conversions apply
+    } catch (e) {
+      console.error('[AvailabilityMutationService] UUID validation error:', e);
+      return id; // Return the original on error
+    }
+  }
+
   static async updateAvailabilitySlot(
     slotId: string,
     updates: Partial<AvailabilitySlot>

@@ -8,7 +8,7 @@
  * - All timezone strings MUST be in IANA format (e.g., 'America/New_York')
  */
 
-import { DateTime, Duration } from 'luxon';
+import { DateTime } from 'luxon';
 import { CalendarEvent } from '@/types/calendar';
 
 /**
@@ -68,7 +68,7 @@ const TIMEZONE_NAME_MAP: Record<string, string> = {
 /**
  * Central TimeZoneService class for all timezone operations
  */
-export class TimeZoneService {
+export const TimeZoneService = {
   /**
    * List of common IANA timezone options for UI selection
    */
@@ -80,20 +80,26 @@ export class TimeZoneService {
    * @param timeZone Timezone string to validate
    * @returns Valid IANA timezone string
    */
-  static ensureIANATimeZone(timeZone: string | null | undefined): string {
-    if (!timeZone) return 'America/Chicago';
-    
+  static ensureIANATimeZone(timeZone?: string): string {
     try {
-      // Try to create a DateTime with the given timeZone to validate it
-      const test = DateTime.now().setZone(timeZone);
-      if (test.invalidReason) {
-        console.warn(`Invalid timezone: ${timeZone}, falling back to America/Chicago`);
-        return 'America/Chicago';
+      if (!timeZone) {
+        console.warn('[TimeZoneService] No timezone provided, defaulting to UTC');
+        return 'UTC';
       }
-      return timeZone;
+      
+      // Check if timezone is valid
+      const now = DateTime.now();
+      const validZone = now.setZone(timeZone);
+      
+      if (!validZone.isValid) {
+        console.error(`[TimeZoneService] Invalid timezone: ${timeZone}, reason: ${validZone.invalidReason}, defaulting to UTC`);
+        return 'UTC';
+      }
+      
+      return timezone;
     } catch (error) {
-      console.warn(`Error validating timezone: ${timeZone}, falling back to America/Chicago`);
-      return 'America/Chicago';
+      console.error('[TimeZoneService] Error validating timezone:', error);
+      return 'UTC';
     }
   }
 

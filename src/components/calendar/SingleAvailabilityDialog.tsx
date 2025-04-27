@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -8,6 +8,9 @@ import { toast } from '@/hooks/use-toast';
 import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { AvailabilityMutationService } from '@/services/AvailabilityMutationService';
+import { useCalendarAuth } from '@/hooks/useCalendarAuth';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 interface SingleAvailabilityDialogProps {
   isOpen: boolean;
@@ -28,8 +31,17 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
   const [startTime, setStartTime] = useState<string>('09:00');
   const [endTime, setEndTime] = useState<string>('17:00');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [formError, setFormError] = useState<string | null>(null);
   
+  const { currentUserId, refreshAuth } = useCalendarAuth();
   const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
+
+  useEffect(() => {
+    // Reset form error when dialog opens/closes
+    if (isOpen) {
+      setFormError(null);
+    }
+  }, [isOpen]);
 
   const handleSubmit = async () => {
     if (!selectedDate) {
@@ -53,6 +65,8 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
       return;
     }
 
+    setFormError(null);
+    
     try {
       setIsSubmitting(true);
       
@@ -63,8 +77,15 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
         clinicianId,
         startTime: dateStr + 'T' + startTime,
         endTime: dateStr + 'T' + endTime,
-        userTimeZone: validTimeZone
+        userTimeZone: validTimeZone,
+        authUserId: currentUserId
       });
+      
+      // Debug authentication state before proceeding
+      if (!currentUserId) {
+        console.warn('[SingleAvailabilityDialog] Warning: No authenticated user found');
+        await refreshAuth();
+      }
       
       // Create availability object with correct day of week
       const selectedDateTime = DateTime.fromJSDate(selectedDate).setZone(validTimeZone);
@@ -77,7 +98,8 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
         dateStr + 'T' + endTime,
         false, // Not recurring for single day
         undefined,
-        validTimeZone
+        validTimeZone,
+        selectedDateTime
       );
 
       toast({
@@ -88,10 +110,26 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
       onAvailabilityCreated();
       onClose();
     } catch (error) {
-      console.error('Error creating single availability:', error);
+      console.error('[SingleAvailabilityDialog] Error creating single availability:', error);
+      
+      let errorMessage = "Failed to create availability slot";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // Enhanced error messages for specific cases
+        if (error.message.includes('violates row level security policy')) {
+          errorMessage = "Permission denied: You don't have access to create availability for this clinician.";
+        } else if (error.message.includes('overlapping')) {
+          errorMessage = "This time slot overlaps with an existing availability. Please select a different time.";
+        }
+      }
+      
+      setFormError(errorMessage);
+      
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create availability slot",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -105,7 +143,15 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Add Single Day Availability</DialogTitle>
         </DialogHeader>
+        
         <div className="grid gap-4 py-4">
+          {formError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
+          )}
+          
           <div className="flex flex-col gap-2">
             <label>Select Date</label>
             <Calendar
@@ -138,14 +184,23 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
               />
             </div>
           </div>
+          
+          <p className="text-xs text-gray-500 mt-1">
+            Adding availability for: {clinicianId}<br/>
+            Current user: {currentUserId || 'Not authenticated'}
+          </p>
         </div>
+        
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
           <Button 
             onClick={handleSubmit} 
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Adding...' : 'Add Availability'}
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
+            Add Availability
           </Button>
         </div>
       </DialogContent>

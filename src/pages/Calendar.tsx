@@ -1,5 +1,5 @@
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import { useCalendarState } from '../hooks/useCalendarState';
 import AppointmentDialog from '../components/calendar/AppointmentDialog';
@@ -17,6 +17,8 @@ import { useCalendarDialogs } from '@/hooks/useCalendarDialogs';
 import CalendarHeader from '@/components/calendar/CalendarHeader';
 import CalendarViewManager from '@/components/calendar/CalendarViewManager';
 import { useTimeZoneSync } from '@/hooks/useTimeZoneSync';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 const CalendarPage: React.FC = () => {
   const {
@@ -30,11 +32,12 @@ const CalendarPage: React.FC = () => {
   } = useCalendarState();
 
   const { userRole, isLoading: isUserLoading, userId } = useUser();
-  const { isAuthenticated, isLoading: isAuthLoading } = useCalendarAuth();
+  const { isAuthenticated, isLoading: isAuthLoading, currentUserId } = useCalendarAuth();
   const { timeZone: syncedTimeZone, isLoading: isTimeZoneLoading } = useTimeZoneSync({ userId });
   
   const [showAvailability, setShowAvailability] = useState(true);
   const [calendarKey, setCalendarKey] = useState<number>(0);
+  const [permissionWarning, setPermissionWarning] = useState<string | null>(null);
   const { toast } = useToast();
 
   const {
@@ -52,6 +55,25 @@ const CalendarPage: React.FC = () => {
     openSingleAvailability,
     closeSingleAvailability
   } = useCalendarDialogs();
+
+  // Verify permission to manage the selected clinician's calendar
+  useEffect(() => {
+    if (selectedClinicianId && currentUserId && userRole !== 'admin') {
+      // If we're not an admin and trying to manage someone else's calendar
+      if (selectedClinicianId !== currentUserId) {
+        console.warn('[Calendar] Permission warning: Editing another clinician\'s calendar', {
+          currentUserId,
+          selectedClinicianId,
+          userRole
+        });
+        setPermissionWarning("You may have limited permissions to edit this clinician's calendar.");
+      } else {
+        setPermissionWarning(null);
+      }
+    } else {
+      setPermissionWarning(null);
+    }
+  }, [selectedClinicianId, currentUserId, userRole]);
 
   const handleCalendarRefresh = useCallback(() => {
     console.log('[Calendar] Refreshing calendar with new key');
@@ -157,6 +179,13 @@ const CalendarPage: React.FC = () => {
             onSingleDayClick={openSingleAvailability}
           />
 
+          {permissionWarning && (
+            <Alert variant="warning" className="mt-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{permissionWarning}</AlertDescription>
+            </Alert>
+          )}
+
           <CalendarViewManager
             key={calendarKey}
             clinicianId={selectedClinicianId}
@@ -207,3 +236,4 @@ const CalendarPage: React.FC = () => {
 };
 
 export default CalendarPage;
+
