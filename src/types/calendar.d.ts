@@ -44,6 +44,7 @@ export interface CalendarEvent {
     dayOfWeek?: string;
     isActive?: boolean;
     timezone?: string;
+    sourceTimeZone?: string;
     originalSlotId?: string;
     googleEventId?: string;
     week?: number;

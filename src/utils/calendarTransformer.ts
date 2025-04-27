@@ -101,7 +101,7 @@ export const calendarTransformer: CalendarEventTransform = {
           displayEnd: endInUserTz.toFormat('h:mm a'),
           displayDay: startInUserTz.toFormat('ccc'),
           displayDate: startInUserTz.toFormat('MMM d'),
-          originalTimezone: dbEvent.source_time_zone || validTimeZone
+          sourceTimeZone: dbEvent.source_time_zone || validTimeZone
         }
       };
     } catch (error) {
@@ -149,7 +149,7 @@ export const calendarTransformer: CalendarEventTransform = {
         is_active: event.extendedProps?.isActive ?? true,
         clinician_id: event.extendedProps?.clinicianId || '',
         time_zone: validTimeZone,
-        source_time_zone: event.extendedProps?.originalTimezone || validTimeZone,
+        source_time_zone: event.extendedProps?.sourceTimeZone || validTimeZone,
         all_day: event.allDay,
         recurrence_id: event.extendedProps?.recurrenceId
       };
