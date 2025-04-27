@@ -10,7 +10,7 @@ import { TimeZoneService } from '@/utils/timeZoneService';
 import { AvailabilityMutationService } from '@/services/AvailabilityMutationService';
 import { useCalendarAuth } from '@/hooks/useCalendarAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, Info } from 'lucide-react';
 
 interface SingleAvailabilityDialogProps {
   isOpen: boolean;
@@ -18,6 +18,7 @@ interface SingleAvailabilityDialogProps {
   clinicianId: string;
   userTimeZone: string;
   onAvailabilityCreated: () => void;
+  permissionLevel?: 'full' | 'limited' | 'none';
 }
 
 const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
@@ -25,7 +26,8 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
   onClose,
   clinicianId,
   userTimeZone,
-  onAvailabilityCreated
+  onAvailabilityCreated,
+  permissionLevel = 'full'
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [startTime, setStartTime] = useState<string>('09:00');
@@ -40,6 +42,9 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
     // Reset form error when dialog opens/closes
     if (isOpen) {
       setFormError(null);
+      setSelectedDate(undefined);
+      setStartTime('09:00');
+      setEndTime('17:00');
     }
   }, [isOpen]);
 
@@ -78,13 +83,27 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
         startTime: dateStr + 'T' + startTime,
         endTime: dateStr + 'T' + endTime,
         userTimeZone: validTimeZone,
-        authUserId: currentUserId
+        authUserId: currentUserId,
+        permissionLevel
       });
       
       // Debug authentication state before proceeding
       if (!currentUserId) {
         console.warn('[SingleAvailabilityDialog] Warning: No authenticated user found');
         await refreshAuth();
+      }
+
+      // Permission check
+      if (permissionLevel === 'none') {
+        throw new Error('You do not have permission to create availability slots');
+      }
+
+      if (clinicianId !== currentUserId && permissionLevel !== 'full') {
+        console.warn('[SingleAvailabilityDialog] User may have limited permissions', { 
+          currentUserId, 
+          clinicianId, 
+          permissionLevel 
+        });
       }
       
       // Create availability object with correct day of week
@@ -139,12 +158,21 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Single Day Availability</DialogTitle>
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
+          {permissionLevel !== 'full' && clinicianId !== currentUserId && (
+            <Alert variant="warning">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                You are adding availability for a different clinician. Some actions may be restricted.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           {formError && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -185,17 +213,18 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
             </div>
           </div>
           
-          <p className="text-xs text-gray-500 mt-1">
-            Adding availability for: {clinicianId}<br/>
-            Current user: {currentUserId || 'Not authenticated'}
-          </p>
+          <div className="text-xs text-gray-500 mt-1">
+            <p>Adding availability for: {clinicianId.substring(0, 8)}...</p>
+            <p>Current user: {currentUserId ? currentUserId.substring(0, 8) + '...' : 'Not authenticated'}</p>
+            <p>Time zone: {TimeZoneService.formatTimeZoneDisplay(validTimeZone)}</p>
+          </div>
         </div>
         
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
           <Button 
             onClick={handleSubmit} 
-            disabled={isSubmitting}
+            disabled={isSubmitting || permissionLevel === 'none'}
           >
             {isSubmitting ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />

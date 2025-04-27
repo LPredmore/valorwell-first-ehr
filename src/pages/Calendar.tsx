@@ -10,6 +10,7 @@ import CalendarAuthError from '@/components/calendar/CalendarAuthError';
 import AvailabilitySettingsDialog from '../components/calendar/AvailabilitySettingsDialog';
 import WeeklyAvailabilityDialog from '../components/calendar/WeeklyAvailabilityDialog';
 import SingleAvailabilityDialog from '../components/calendar/SingleAvailabilityDialog';
+import CalendarDiagnosticDialog from '../components/calendar/CalendarDiagnosticDialog';
 import { getWeekdayName } from '@/utils/dateFormatUtils';
 import { DateTime } from 'luxon';
 import { useCalendarAuth } from '@/hooks/useCalendarAuth';
@@ -18,7 +19,10 @@ import CalendarHeader from '@/components/calendar/CalendarHeader';
 import CalendarViewManager from '@/components/calendar/CalendarViewManager';
 import { useTimeZoneSync } from '@/hooks/useTimeZoneSync';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Info, AlertTriangle } from 'lucide-react';
+import { authDebugUtils } from '@/utils/authDebugUtils';
+import { calendarPermissionDebug } from '@/utils/calendarPermissionDebug';
+import { Button } from '@/components/ui/button';
 
 const CalendarPage: React.FC = () => {
   const {
@@ -38,6 +42,8 @@ const CalendarPage: React.FC = () => {
   const [showAvailability, setShowAvailability] = useState(true);
   const [calendarKey, setCalendarKey] = useState<number>(0);
   const [permissionWarning, setPermissionWarning] = useState<string | null>(null);
+  const [permissionLevel, setPermissionLevel] = useState<'full' | 'limited' | 'none'>('none');
+  const [isDiagnosticOpen, setIsDiagnosticOpen] = useState(false);
   const { toast } = useToast();
 
   const {
@@ -58,22 +64,68 @@ const CalendarPage: React.FC = () => {
 
   // Verify permission to manage the selected clinician's calendar
   useEffect(() => {
-    if (selectedClinicianId && currentUserId && userRole !== 'admin') {
-      // If we're not an admin and trying to manage someone else's calendar
-      if (selectedClinicianId !== currentUserId) {
-        console.warn('[Calendar] Permission warning: Editing another clinician\'s calendar', {
-          currentUserId,
-          selectedClinicianId,
-          userRole
-        });
-        setPermissionWarning("You may have limited permissions to edit this clinician's calendar.");
-      } else {
+    const checkPermissions = async () => {
+      if (!selectedClinicianId || !currentUserId) {
         setPermissionWarning(null);
+        setPermissionLevel('none');
+        return;
       }
-    } else {
+
+      console.log('[Calendar] Checking calendar permissions:', {
+        currentUserId,
+        selectedClinicianId,
+        userRole,
+        userId
+      });
+      
+      // Reset warning first
       setPermissionWarning(null);
-    }
-  }, [selectedClinicianId, currentUserId, userRole]);
+      
+      // If viewing own calendar, should have full permissions
+      if (selectedClinicianId === currentUserId) {
+        console.log('[Calendar] User is viewing their own calendar - full permissions granted');
+        setPermissionLevel('full');
+        return;
+      }
+      
+      // If admin, should have full permissions for all clinicians
+      if (userRole === 'admin') {
+        console.log('[Calendar] User is admin - full permissions granted');
+        setPermissionLevel('full');
+        return;
+      }
+      
+      // Run diagnostic check
+      try {
+        const diagnosticResults = await calendarPermissionDebug.runDiagnostic(
+          currentUserId,
+          selectedClinicianId
+        );
+        
+        if (diagnosticResults.success) {
+          // Check calendar permissions
+          if (diagnosticResults.tests.calendarPermissions?.success) {
+            console.log('[Calendar] User has at least limited permissions for this calendar');
+            setPermissionLevel('limited');
+          } else {
+            console.log('[Calendar] User lacks permissions for this calendar');
+            setPermissionLevel('none');
+            setPermissionWarning("You don't have permission to edit this clinician's calendar.");
+          }
+        } else {
+          console.warn('[Calendar] Permission diagnostic failed:', diagnosticResults.summary);
+          setPermissionLevel('limited');
+          setPermissionWarning("Unable to verify calendar permissions. Some features may be unavailable.");
+        }
+      } catch (error) {
+        console.error('[Calendar] Error in permission diagnostic:', error);
+        setPermissionLevel('limited');
+        setPermissionWarning("Unable to verify calendar permissions. Some features may be unavailable.");
+      }
+    };
+    
+    checkPermissions();
+  }, [selectedClinicianId, currentUserId, userRole, userId]);
 
   const handleCalendarRefresh = useCallback(() => {
     console.log('[Calendar] Refreshing calendar with new key');
@@ -119,8 +171,18 @@ const CalendarPage: React.FC = () => {
         dayOfWeek,
         specificDate,
         slotId,
-        eventData: event
+        eventData: event,
+        permissionLevel
       });
+      
+      if (permissionLevel === 'none') {
+        toast({
+          title: 'Permission Denied',
+          description: 'You do not have permission to manage this calendar.',
+          variant: 'destructive',
+        });
+        return;
+      }
       
       if (slotId) {
         localStorage.setItem('selectedAvailabilitySlotId', slotId);
@@ -139,7 +201,7 @@ const CalendarPage: React.FC = () => {
         variant: 'destructive',
       });
     }
-  }, [syncedTimeZone, toast, openWeeklyAvailability]);
+  }, [syncedTimeZone, toast, openWeeklyAvailability, permissionLevel]);
 
   if (isUserLoading || isAuthLoading || isTimeZoneLoading) {
     return (
@@ -157,8 +219,8 @@ const CalendarPage: React.FC = () => {
     );
   }
 
-  const canSelectDifferentClinician = userRole !== 'clinician';
-  const canManageAvailability = userRole === 'clinician' || userRole === 'admin';
+  const canSelectDifferentClinician = userRole === 'admin';
+  const canManageAvailability = permissionLevel !== 'none';
 
   return (
     <Layout>
@@ -181,8 +243,26 @@ const CalendarPage: React.FC = () => {
 
           {permissionWarning && (
             <Alert variant="warning" className="mt-2">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{permissionWarning}</AlertDescription>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="flex justify-between items-center">
+                <span>{permissionWarning}</span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsDiagnosticOpen(true)}
+                >
+                  Troubleshoot
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {selectedClinicianId && currentUserId && selectedClinicianId !== currentUserId && permissionLevel === 'full' && (
+            <Alert variant="default" className="mt-2 bg-blue-50">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                You are viewing another clinician's calendar with admin access.
+              </AlertDescription>
             </Alert>
           )}
 
@@ -213,6 +293,7 @@ const CalendarPage: React.FC = () => {
             clinicianId={selectedClinicianId} 
             onAvailabilityUpdated={handleCalendarRefresh}
             initialActiveTab={selectedAvailabilityDate || 'monday'}
+            permissionLevel={permissionLevel}
           />
           
           <AvailabilitySettingsDialog 
@@ -220,6 +301,7 @@ const CalendarPage: React.FC = () => {
             onClose={closeAvailabilitySettings} 
             clinicianId={selectedClinicianId} 
             onSettingsSaved={handleCalendarRefresh} 
+            permissionLevel={permissionLevel}
           />
 
           <SingleAvailabilityDialog
@@ -228,12 +310,18 @@ const CalendarPage: React.FC = () => {
             clinicianId={selectedClinicianId}
             userTimeZone={syncedTimeZone}
             onAvailabilityCreated={handleCalendarRefresh}
+            permissionLevel={permissionLevel}
           />
         </>
       )}
+      
+      <CalendarDiagnosticDialog 
+        isOpen={isDiagnosticOpen}
+        onClose={() => setIsDiagnosticOpen(false)}
+        selectedClinicianId={selectedClinicianId}
+      />
     </Layout>
   );
 };
 
 export default CalendarPage;
-

@@ -10,21 +10,31 @@ interface CalendarAuthResult {
   isLoading: boolean;
   currentUserId: string | null;
   userEmail: string | null;
+  userRole: string | null;
   refreshAuth: () => Promise<void>;
 }
 
 export const useCalendarAuth = (): CalendarAuthResult => {
-  const { userId, isLoading: isUserLoading } = useUser();
+  const { userId, isLoading: isUserLoading, userRole: contextUserRole } = useUser();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
 
   const fetchCurrentUser = useCallback(async () => {
+    // Don't fetch if there's no userId from context yet
     if (!userId) return;
     
+    // Prevent duplicate checks
+    if (isChecking) return;
+    
     try {
+      setIsChecking(true);
       console.log('[useCalendarAuth] Fetching current user details');
+      
+      // Get user from supabase auth
       const { data, error } = await supabase.auth.getUser();
       
       if (error) {
@@ -43,12 +53,49 @@ export const useCalendarAuth = (): CalendarAuthResult => {
           id: data.user.id,
           email: data.user.email
         });
+        
         setCurrentUserId(data.user.id);
         setUserEmail(data.user.email);
+        
+        // Compare to context userId for consistency check
+        if (userId !== data.user.id) {
+          console.warn('[useCalendarAuth] Warning: Context userId doesn\'t match authenticated user', {
+            contextUserId: userId,
+            authUserId: data.user.id
+          });
+        }
+        
+        // Get additional profile data
+        try {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', data.user.id)
+            .maybeSingle();
+            
+          if (profileData?.role) {
+            setUserRole(profileData.role);
+            
+            // Compare to context userRole for consistency check
+            if (contextUserRole !== profileData.role) {
+              console.warn('[useCalendarAuth] Warning: Context userRole doesn\'t match profile role', {
+                contextUserRole,
+                profileRole: profileData.role
+              });
+            }
+          } else {
+            setUserRole(contextUserRole);
+          }
+        } catch (profileError) {
+          console.error('[useCalendarAuth] Error fetching user profile:', profileError);
+          setUserRole(contextUserRole); // Fallback to context
+        }
+        
       } else {
         console.log('[useCalendarAuth] No authenticated user found');
         setCurrentUserId(null);
         setUserEmail(null);
+        setUserRole(null);
         navigate('/login');
       }
     } catch (error) {
@@ -58,8 +105,10 @@ export const useCalendarAuth = (): CalendarAuthResult => {
         description: "Unable to verify your user information. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsChecking(false);
     }
-  }, [userId, navigate, toast]);
+  }, [userId, navigate, toast, contextUserRole]);
 
   // Refresh auth state on demand
   const refreshAuth = useCallback(async () => {
@@ -82,21 +131,35 @@ export const useCalendarAuth = (): CalendarAuthResult => {
 
   // Subscribe to auth state changes
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      console.log('[useCalendarAuth] Auth state changed, refreshing user data');
-      fetchCurrentUser();
+    console.log('[useCalendarAuth] Setting up auth state change listener');
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log(`[useCalendarAuth] Auth state changed: ${event}`, {
+        hasSession: !!session,
+        userId: session?.user?.id
+      });
+      
+      if (event === 'SIGNED_OUT') {
+        setCurrentUserId(null);
+        setUserEmail(null);
+        setUserRole(null);
+        navigate('/login');
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        fetchCurrentUser();
+      }
     });
 
     return () => {
+      console.log('[useCalendarAuth] Cleaning up auth subscription');
       subscription.unsubscribe();
     };
-  }, [fetchCurrentUser]);
+  }, [navigate, fetchCurrentUser]);
 
   return { 
     isAuthenticated: !!userId,
-    isLoading: isUserLoading,
+    isLoading: isUserLoading || isChecking,
     currentUserId,
     userEmail,
+    userRole,
     refreshAuth
   };
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,7 +8,7 @@ import { DayOfWeek, AvailabilitySlot } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { useAvailability } from '@/hooks/useAvailability';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Trash2, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, Trash2, AlertCircle, Info } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +29,7 @@ interface WeeklyAvailabilityDialogProps {
   clinicianId: string;
   onAvailabilityUpdated?: () => void;
   initialActiveTab?: string;
+  permissionLevel?: 'full' | 'limited' | 'none';
 }
 
 const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
@@ -37,7 +37,8 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   onClose,
   clinicianId,
   onAvailabilityUpdated,
-  initialActiveTab = 'monday'
+  initialActiveTab = 'monday',
+  permissionLevel = 'full'
 }) => {
   const [activeTab, setActiveTab] = useState<DayOfWeek>((initialActiveTab || 'monday') as DayOfWeek);
   const [newStartTime, setNewStartTime] = useState('09:00');
@@ -113,6 +114,17 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       });
       return;
     }
+
+    if (permissionLevel === 'none') {
+      const errorMessage = "You do not have permission to create availability slots";
+      setFormError(errorMessage);
+      toast({
+        title: "Permission Denied",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsSubmitting(true);
     
@@ -125,7 +137,8 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
         newStartTime,
         newEndTime,
         timeZone,
-        specificDate
+        specificDate,
+        permissionLevel
       });
       
       const result = await createSlot(
@@ -180,6 +193,15 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   };
 
   const handleDeleteSlot = (slotId: string, isRecurring: boolean = false) => {
+    if (permissionLevel === 'none') {
+      toast({
+        title: "Permission Denied",
+        description: "You don't have permission to delete availability slots",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setSelectedSlotId(slotId);
     setIsDeleteAll(isRecurring);
     setIsDeleteConfirmOpen(true);
@@ -361,67 +383,79 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
           <TabsTrigger value="sunday">Sun</TabsTrigger>
         </TabsList>
         
+        {permissionLevel !== 'full' && (
+          <Alert variant="warning" className="mt-4">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              You may have limited permissions to manage this calendar.
+              {permissionLevel === 'none' ? " You can only view availability." : " Some actions may be restricted."}
+            </AlertDescription>
+          </Alert>
+        )}
+        
         {weeklyAvailability && Object.keys(weeklyAvailability).map((day) => (
           <TabsContent key={day} value={day} className="p-4 bg-white border rounded-md mt-4">
             <h3 className="text-lg font-semibold mb-4 capitalize">{day}</h3>
             
             {renderSlotList(weeklyAvailability[day as DayOfWeek])}
             
-            <div className="mt-4 p-3 border border-dashed rounded-md">
-              <h4 className="text-sm font-medium mb-2">Add New Availability Slot</h4>
-              
-              {formError && (
-                <Alert variant="destructive" className="mb-3">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{formError}</AlertDescription>
-                </Alert>
-              )}
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor={`${day}-start`}>Start Time</Label>
-                  <Input
-                    id={`${day}-start`}
-                    type="time"
-                    value={newStartTime}
-                    onChange={(e) => setNewStartTime(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor={`${day}-end`}>End Time</Label>
-                  <Input
-                    id={`${day}-end`}
-                    type="time"
-                    value={newEndTime}
-                    onChange={(e) => setNewEndTime(e.target.value)}
-                  />
-                </div>
-              </div>
-              <Button 
-                onClick={handleAddSlot} 
-                className="mt-3 w-full"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Plus className="h-4 w-4 mr-2" />
+            {permissionLevel !== 'none' && (
+              <div className="mt-4 p-3 border border-dashed rounded-md">
+                <h4 className="text-sm font-medium mb-2">Add New Availability Slot</h4>
+                
+                {formError && (
+                  <Alert variant="destructive" className="mb-3">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{formError}</AlertDescription>
+                  </Alert>
                 )}
-                Add Time Slot
-              </Button>
-
-              {retryCount > 1 && (
-                <div className="mt-3 p-2 bg-gray-50 rounded-md text-xs text-gray-600">
-                  <p className="font-medium">Troubleshooting Tips:</p>
-                  <ul className="list-disc list-inside mt-1">
-                    <li>Ensure the start time is before the end time</li>
-                    <li>Check for time slot conflicts</li>
-                    <li>Verify your timezone settings in profile</li>
-                    <li>Try refreshing the page if the issue persists</li>
-                  </ul>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor={`${day}-start`}>Start Time</Label>
+                    <Input
+                      id={`${day}-start`}
+                      type="time"
+                      value={newStartTime}
+                      onChange={(e) => setNewStartTime(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`${day}-end`}>End Time</Label>
+                    <Input
+                      id={`${day}-end`}
+                      type="time"
+                      value={newEndTime}
+                      onChange={(e) => setNewEndTime(e.target.value)}
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
+                <Button 
+                  onClick={handleAddSlot} 
+                  className="mt-3 w-full"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Plus className="h-4 w-4 mr-2" />
+                  )}
+                  Add Time Slot
+                </Button>
+
+                {retryCount > 1 && (
+                  <div className="mt-3 p-2 bg-gray-50 rounded-md text-xs text-gray-600">
+                    <p className="font-medium">Troubleshooting Tips:</p>
+                    <ul className="list-disc list-inside mt-1">
+                      <li>Ensure the start time is before the end time</li>
+                      <li>Check for time slot conflicts</li>
+                      <li>Verify your timezone settings in profile</li>
+                      <li>Try refreshing the page if the issue persists</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
           </TabsContent>
         ))}
       </Tabs>
