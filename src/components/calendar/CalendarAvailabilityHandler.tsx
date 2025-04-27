@@ -28,19 +28,31 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
   const convertAvailabilityToEvents = useCallback((weeklyAvailability: WeeklyAvailability): CalendarEvent[] => {
     try {
       const events: CalendarEvent[] = [];
-      const now = TimeZoneService.getCurrentDateTime(validTimeZone).startOf('day');
+      const now = TimeZoneService.getCurrentDateTime(validTimeZone);
       
       for (const [day, slots] of Object.entries(weeklyAvailability)) {
         const weekday = weekdayNameToNumber[day as DayOfWeek];
-        if (weekday === undefined) continue;
-
+        if (weekday === undefined) {
+          console.error('[CalendarAvailabilityHandler] Invalid weekday:', day);
+          continue;
+        }
+        
         for (const slot of slots) {
           if (slot.isAppointment) continue;
           
           let targetDay = now.set({ weekday: weekday === 0 ? 7 : weekday });
           if (targetDay < now) {
-            targetDay = targetDay.plus({ days: 7 });
+            targetDay = targetDay.plus({ weeks: 1 });
           }
+          
+          console.log('[CalendarAvailabilityHandler] Processing slot:', {
+            day,
+            weekday,
+            targetDay: targetDay.toISO(),
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            timeZone: validTimeZone
+          });
           
           for (let week = 0; week < weeksToShow; week++) {
             try {
@@ -63,7 +75,7 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
               });
               
               if (start.isValid && end.isValid) {
-                events.push({
+                const event: CalendarEvent = {
                   id: `${slot.id}-week${week}`,
                   title: 'Available',
                   start: start.toJSDate(),
@@ -77,10 +89,21 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
                   classNames: ['availability-event'],
                   backgroundColor: '#4caf50',
                   borderColor: '#388e3c'
+                };
+                
+                console.log('[CalendarAvailabilityHandler] Created event:', {
+                  id: event.id,
+                  start: event.start,
+                  end: event.end
                 });
+                
+                events.push(event);
               } else {
                 console.error('[CalendarAvailabilityHandler] Invalid date created:', {
-                  day, slot, start, end, 
+                  day, 
+                  slot, 
+                  start, 
+                  end, 
                   startValid: start.isValid, 
                   endValid: end.isValid,
                   startError: start.invalidReason,
@@ -93,7 +116,7 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
           }
         }
       }
-
+      
       console.log(`[CalendarAvailabilityHandler] Generated ${events.length} availability events`);
       return events;
     } catch (error) {

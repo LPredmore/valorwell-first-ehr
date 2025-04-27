@@ -22,16 +22,33 @@ export class AvailabilityMutationService {
       if (!dayOfWeek) throw new Error('Day of week is required');
       
       const validTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
-      console.log(`Creating availability slot with time zone: ${validTimeZone}`);
+      console.log(`[AvailabilityMutationService] Creating availability slot:`, {
+        dayOfWeek,
+        startTime,
+        endTime,
+        timeZone: validTimeZone,
+        specificDate: specificDate ? 
+          (specificDate instanceof DateTime ? 
+            specificDate.toISO() : 
+            String(specificDate)
+          ) : 'none'
+      });
       
-      // Prepare the data for insertion
+      // Get the base date for this availability slot
       const baseDate = this.getBaseDate(dayOfWeek, specificDate);
       console.log(`[AvailabilityMutationService] Using base date: ${baseDate} for day ${dayOfWeek}`);
       
-      // Use TimeZoneService to create DateTimes properly
-      const start = TimeZoneService.parseWithZone(`${baseDate}T${startTime}:00`, validTimeZone);
-      const end = TimeZoneService.parseWithZone(`${baseDate}T${endTime}:00`, validTimeZone);
+      // Create proper DateTime objects with timezone
+      const start = TimeZoneService.parseWithZone(`${baseDate}T${startTime}`, validTimeZone);
+      const end = TimeZoneService.parseWithZone(`${baseDate}T${endTime}`, validTimeZone);
       
+      console.log('[AvailabilityMutationService] Created DateTimes:', {
+        start: start.toISO(),
+        end: end.toISO(),
+        startValid: start.isValid,
+        endValid: end.isValid
+      });
+
       if (!start.isValid || !end.isValid) {
         throw new Error(`Invalid date/time: ${start.invalidReason || end.invalidReason}`);
       }
@@ -75,7 +92,7 @@ export class AvailabilityMutationService {
       return data;
       
     } catch (error) {
-      console.error('Error creating availability slot:', error);
+      console.error('[AvailabilityMutationService] Error creating availability slot:', error);
       throw error;
     }
   }
@@ -196,6 +213,16 @@ export class AvailabilityMutationService {
   }
   
   private static getBaseDate(dayOfWeek: DayOfWeek, specificDate?: string | Date | DateTime): string {
+    const dayMap: Record<DayOfWeek, number> = {
+      sunday: 0,
+      monday: 1,
+      tuesday: 2,
+      wednesday: 3,
+      thursday: 4,
+      friday: 5,
+      saturday: 6
+    };
+
     // If a specific date is provided, use that
     if (specificDate) {
       let dateTime: DateTime;
@@ -211,53 +238,50 @@ export class AvailabilityMutationService {
       if (!dateTime.isValid) {
         console.error(`[AvailabilityMutationService] Invalid specific date provided: ${specificDate}. Falling back to calculating based on day of week.`);
       } else {
-        // Verify this date's weekday matches the requested dayOfWeek
-        const weekdayName = dateTime.weekdayLong.toLowerCase() as DayOfWeek;
-        
-        if (weekdayName !== dayOfWeek) {
-          console.warn(`[AvailabilityMutationService] Specific date ${dateTime.toISODate()} is a ${weekdayName}, but requested day is ${dayOfWeek}. Will use the requested day of week for consistency.`);
-        }
-        
         return dateTime.toFormat('yyyy-MM-dd');
       }
     }
     
-    // If no specific date or it's invalid, calculate based on day of week
+    // Get target day number (0-6, Sunday is 0)
+    const targetDay = dayMap[dayOfWeek];
+    if (targetDay === undefined) {
+      console.error(`[AvailabilityMutationService] Invalid day of week: ${dayOfWeek}`);
+      throw new Error(`Invalid day of week: ${dayOfWeek}`);
+    }
+    
+    // Get current date
     const today = DateTime.now();
-    const dayMap: Record<DayOfWeek, number> = {
-      monday: 1,
-      tuesday: 2,
-      wednesday: 3,
-      thursday: 4,
-      friday: 5,
-      saturday: 6,
-      sunday: 7
-    };
+    const currentDay = today.weekday % 7; // Convert Luxon's 1-7 to 0-6
     
-    let targetDay = dayMap[dayOfWeek];
-    if (!targetDay) targetDay = 1; // Default to Monday
-    
-    const currentDay = today.weekday;
+    // Calculate days to add
     let daysToAdd = targetDay - currentDay;
     
-    // If the day has already passed this week, schedule for next week
-    if (daysToAdd < 0) {
+    // If the target day has already passed this week, move to next week
+    if (daysToAdd <= 0) {
       daysToAdd += 7;
     }
     
     const targetDate = today.plus({ days: daysToAdd });
+    console.log('[AvailabilityMutationService] Date calculation:', {
+      today: today.toISO(),
+      targetDay,
+      currentDay,
+      daysToAdd,
+      result: targetDate.toFormat('yyyy-MM-dd')
+    });
+    
     return targetDate.toFormat('yyyy-MM-dd');
   }
   
   private static getDayCode(day: DayOfWeek): string {
     const codes: Record<DayOfWeek, string> = {
+      sunday: 'SU',
       monday: 'MO',
       tuesday: 'TU',
       wednesday: 'WE',
       thursday: 'TH',
       friday: 'FR',
-      saturday: 'SA',
-      sunday: 'SU'
+      saturday: 'SA'
     };
     
     return codes[day] || 'MO';
