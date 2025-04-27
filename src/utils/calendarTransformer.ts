@@ -1,4 +1,3 @@
-
 import { CalendarEvent } from '@/types/calendar';
 import { DatabaseCalendarEvent, CalendarEventTransform } from '@/types/calendarTypes';
 import { TimeZoneService } from './timeZoneService';
@@ -124,50 +123,26 @@ export const calendarTransformer: CalendarEventTransform = {
       // Validate the calendar event
       validateCalendarEvent(event);
       
-      // Parse and convert times to UTC
-      let startUtc: DateTime;
-      let endUtc: DateTime;
+      // Parse and convert times to UTC using the new signature
+      const startUtc = TimeZoneService.toUTCTimestamp(
+        typeof event.start === 'string' ? event.start : event.start,
+        validTimeZone
+      );
       
-      if (typeof event.start === 'string') {
-        startUtc = TimeZoneService.toUTC(
-          TimeZoneService.parseWithZone(event.start, validTimeZone)
-        );
-      } else if (event.start instanceof Date) {
-        startUtc = TimeZoneService.toUTC(
-          DateTime.fromJSDate(event.start).setZone(validTimeZone)
-        );
-      } else {
-        throw new Error('Invalid start time format');
-      }
+      const endUtc = TimeZoneService.toUTCTimestamp(
+        typeof event.end === 'string' ? event.end : event.end,
+        validTimeZone
+      );
       
-      if (typeof event.end === 'string') {
-        endUtc = TimeZoneService.toUTC(
-          TimeZoneService.parseWithZone(event.end, validTimeZone)
-        );
-      } else if (event.end instanceof Date) {
-        endUtc = TimeZoneService.toUTC(
-          DateTime.fromJSDate(event.end).setZone(validTimeZone)
-        );
-      } else {
-        throw new Error('Invalid end time format');
-      }
-      
-      // Ensure times are valid
-      if (!startUtc.isValid || !endUtc.isValid) {
-        throw new Error('Invalid date conversion: ' + 
-          (!startUtc.isValid ? startUtc.invalidReason : endUtc.invalidReason));
-      }
-      
-      // Ensure start is before end
-      if (startUtc >= endUtc) {
-        throw new Error('Start time must be before end time');
+      if (!startUtc || !endUtc) {
+        throw new Error('Failed to convert times to UTC');
       }
       
       // Create the database event
       return {
         title: event.title,
-        start_time: startUtc.toISO() || '',
-        end_time: endUtc.toISO() || '',
+        start_time: startUtc,
+        end_time: endUtc,
         description: event.extendedProps?.description,
         event_type: event.extendedProps?.eventType || 'general',
         is_active: event.extendedProps?.isActive ?? true,
