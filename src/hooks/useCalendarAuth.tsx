@@ -4,8 +4,6 @@ import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { ensureUUID, formatAsUUID } from '@/utils/validation/uuidUtils';
-import { trackCalendarInitialization, compareIds } from '@/utils/calendarDebugUtils';
 
 interface CalendarAuthResult {
   isAuthenticated: boolean;
@@ -14,7 +12,6 @@ interface CalendarAuthResult {
   userEmail: string | null;
   userRole: string | null;
   refreshAuth: () => Promise<void>;
-  normalizeId: (id: string | null) => string | null;
 }
 
 export const useCalendarAuth = (): CalendarAuthResult => {
@@ -25,19 +22,6 @@ export const useCalendarAuth = (): CalendarAuthResult => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
-
-  // Utility function to normalize IDs
-  const normalizeId = useCallback((id: string | null): string | null => {
-    if (!id) return null;
-    
-    try {
-      // First try to format as proper UUID
-      return formatAsUUID(id);
-    } catch (e) {
-      // If that fails, return the original
-      return id;
-    }
-  }, []);
 
   const fetchCurrentUser = useCallback(async () => {
     // Don't fetch if there's no userId from context yet
@@ -74,28 +58,19 @@ export const useCalendarAuth = (): CalendarAuthResult => {
       }
       
       if (data?.user) {
-        const authUserId = data.user.id;
-        // Try to normalize the UUID format
-        const normalizedAuthUserId = normalizeId(authUserId);
-        
         console.log('[useCalendarAuth] Current authenticated user:', {
-          id: authUserId,
-          normalizedId: normalizedAuthUserId,
+          id: data.user.id,
           email: data.user.email
         });
         
-        setCurrentUserId(normalizedAuthUserId || authUserId);
+        setCurrentUserId(data.user.id);
         setUserEmail(data.user.email);
         
         // Compare to context userId for consistency check
-        compareIds(userId, authUserId, 'contextUserId', 'authUserId');
-        
-        if (userId !== authUserId && userId !== normalizedAuthUserId) {
+        if (userId !== data.user.id) {
           console.warn('[useCalendarAuth] Warning: Context userId doesn\'t match authenticated user', {
             contextUserId: userId,
-            authUserId: authUserId,
-            normalizedAuthUserId,
-            match: compareIds(userId, authUserId, 'contextUserId', 'authUserId') ? 'Match after normalization' : 'No match'
+            authUserId: data.user.id
           });
         }
         
@@ -104,7 +79,7 @@ export const useCalendarAuth = (): CalendarAuthResult => {
           const { data: profileData } = await supabase
             .from('profiles')
             .select('role')
-            .eq('id', authUserId)
+            .eq('id', data.user.id)
             .maybeSingle();
             
           if (profileData?.role) {
@@ -142,7 +117,7 @@ export const useCalendarAuth = (): CalendarAuthResult => {
     } finally {
       setIsChecking(false);
     }
-  }, [userId, navigate, toast, contextUserRole, normalizeId]);
+  }, [userId, navigate, toast, contextUserRole]);
 
   // Refresh auth state on demand
   const refreshAuth = useCallback(async () => {
@@ -188,19 +163,12 @@ export const useCalendarAuth = (): CalendarAuthResult => {
     };
   }, [navigate, fetchCurrentUser]);
 
-  trackCalendarInitialization('auth-loaded', {
-    currentUserId,
-    userRole,
-    isAuthenticated: !!currentUserId,
-  });
-
   return { 
     isAuthenticated: !!userId,
     isLoading: isUserLoading || isChecking,
     currentUserId,
     userEmail,
     userRole,
-    refreshAuth,
-    normalizeId
+    refreshAuth
   };
 };

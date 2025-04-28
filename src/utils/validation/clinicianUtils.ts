@@ -1,4 +1,3 @@
-
 import { UUIDValidationError, isValidUUID, ensureUUID, formatAsUUID } from './uuidUtils';
 import { ValidationError } from '@/utils/errors';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,32 +46,11 @@ export function ensureClinicianID(id: string): string {
   }
   
   try {
-    // First check if it's already a valid format
-    if (isValidUUID(id)) {
-      return id;
-    }
-    
-    // Try to format as UUID
-    const formatted = formatAsUUID(id);
-    if (isValidUUID(formatted)) {
-      console.log(`[Clinician Validation] Reformatted ID: ${id} → ${formatted}`);
-      return formatted;
-    }
-    
-    // If we can't format it, try to ensure it's a UUID
-    try {
-      return ensureUUID(id, 'Clinician');
-    } catch (uuidError) {
-      // If that also fails, throw an error with more context
-      throw new ClinicianIDValidationError(`Invalid clinician ID format: ${id}`, {
-        originalId: id,
-        cause: uuidError instanceof Error ? uuidError : undefined
-      });
-    }
+    // First ensure it's a valid UUID
+    const validUUID = ensureUUID(id, 'Clinician');
+    return validUUID;
   } catch (error) {
-    if (error instanceof ClinicianIDValidationError) {
-      throw error;
-    } else if (error instanceof UUIDValidationError) {
+    if (error instanceof UUIDValidationError) {
       // Convert UUID validation error to a clinician-specific error
       throw new ClinicianIDValidationError(error.message, {
         cause: error,
@@ -82,49 +60,94 @@ export function ensureClinicianID(id: string): string {
     
     console.error('[Clinician Validation] Error processing clinician ID:', error);
     throw new ClinicianIDValidationError(
-      `Error validating clinician ID: ${(error instanceof Error) ? error.message : String(error)}`,
+      `Error validating clinician ID: ${(error as Error).message}`,
       {
         cause: error instanceof Error ? error : undefined,
-        context: { originalId: id }
+        context: { originalError: error }
       }
     );
   }
 }
 
 /**
- * Normalizes clinician ID for comparison
+ * Attempts to format a string as a clinician ID if possible
  * 
- * @param id - The clinician ID to normalize
- * @returns string - The normalized clinician ID
+ * @param id - The string to format as a clinician ID
+ * @returns string - The formatted clinician ID if possible, or the original string if not
  */
-export function normalizeClinicianID(id: string): string {
-  if (!id) return '';
-  return id.toLowerCase().replace(/-/g, '');
+export function formatAsClinicianID(id: string): string {
+  if (!id) return id;
+  
+  try {
+    return formatAsUUID(id);
+  } catch (error) {
+    console.error('[Clinician Validation] Error formatting clinician ID:', error);
+    return id;
+  }
 }
 
 /**
- * Checks if two clinician IDs match, even if they have different formats
+ * Validates that a clinician ID exists in the database
  * 
- * @param id1 - First clinician ID 
- * @param id2 - Second clinician ID
- * @returns boolean - True if the IDs match after normalization
+ * @param id - The clinician ID to validate
+ * @returns Promise<boolean> - True if the clinician ID exists, false otherwise
  */
-export function clinicianIDsMatch(id1: string, id2: string): boolean {
-  if (!id1 || !id2) return false;
-  return normalizeClinicianID(id1) === normalizeClinicianID(id2);
-}
-
-export async function verifyClinicianExists(clinicianId: string): Promise<boolean> {
+export async function clinicianIDExists(id: string): Promise<boolean> {
   try {
+    // First ensure it's a valid UUID format
+    if (!isValidClinicianID(id)) {
+      return false;
+    }
+    
+    // Check if the clinician ID exists in the profiles table
     const { data, error } = await supabase
-      .from('clinicians')
+      .from('profiles')
       .select('id')
-      .eq('id', clinicianId)
+      .eq('id', id)
       .single();
       
-    return !error && !!data;
+    if (error || !data) {
+      console.warn('[Clinician Validation] Clinician ID not found in database:', id);
+      return false;
+    }
+    
+    return true;
   } catch (error) {
-    console.error('[Clinician Validation] Error verifying clinician exists:', error);
+    console.error('[Clinician Validation] Error checking if clinician ID exists:', error);
     return false;
   }
 }
+
+/**
+ * Validates a clinician ID and checks that it exists in the database
+ * 
+ * @param id - The clinician ID to validate
+ * @returns Promise<string> - The validated clinician ID
+ * @throws ClinicianIDValidationError if the ID is not valid or doesn't exist
+ */
+export async function validateClinicianID(id: string): Promise<string> {
+  // First ensure it's a valid UUID
+  const validID = ensureClinicianID(id);
+  
+  // Then check if it exists in the database
+  const exists = await clinicianIDExists(validID);
+  if (!exists) {
+    throw new ClinicianIDValidationError(`Clinician ID ${validID} does not exist in the database`);
+  }
+  
+  return validID;
+}
+
+/**
+ * Utility module for clinician ID validation
+ */
+export const ClinicianIDUtils = {
+  isValidClinicianID,
+  ensureClinicianID,
+  formatAsClinicianID,
+  clinicianIDExists,
+  validateClinicianID
+};
+
+// Default export for convenience
+export default ClinicianIDUtils;
