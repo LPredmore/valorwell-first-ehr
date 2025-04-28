@@ -3,8 +3,11 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Clinician } from "@/types/client";
 import { getUserTimeZoneById } from "./useUserTimeZone";
+import { useUser } from "@/context/UserContext";
 
-export const useClinicianData = () => {
+export const useClinicianData = (clinicianId?: string) => {
+  // Get the current user's ID if no clinicianId is provided
+  const { userId: currentUserId } = useUser();
   const [clinicianData, setClinicianData] = useState<Clinician | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -14,11 +17,28 @@ export const useClinicianData = () => {
       try {
         setLoading(true);
         
-        // Get the first clinician for now (in a real app, you would get the current user's clinician)
+        // If clinicianId is provided, fetch that specific clinician
+        // Otherwise, use the current user's ID
+        const targetId = clinicianId || currentUserId;
+        
+        console.log('[useClinicianData] Clinician data request:', {
+          providedClinicianId: clinicianId,
+          currentUserId,
+          targetId,
+          usingCurrentUserAsFallback: !clinicianId && !!currentUserId
+        });
+        
+        if (!targetId) {
+          console.warn('[useClinicianData] No clinician ID or current user ID available');
+          setLoading(false);
+          return;
+        }
+        
+        console.log(`[useClinicianData] Fetching clinician data for ID: ${targetId}`);
         const { data, error } = await supabase
           .from('clinicians')
           .select('*')
-          .limit(1)
+          .eq('id', targetId)
           .single();
 
         if (error) {
@@ -35,7 +55,7 @@ export const useClinicianData = () => {
     };
 
     fetchClinicianData();
-  }, []);
+  }, [clinicianId, currentUserId]);
 
   return { clinicianData, loading, error };
 };

@@ -25,14 +25,23 @@ export const useCalendarAuth = (): CalendarAuthResult => {
 
   const fetchCurrentUser = useCallback(async () => {
     // Don't fetch if there's no userId from context yet
-    if (!userId) return;
+    if (!userId) {
+      console.log('[useCalendarAuth] No userId from context yet, skipping fetch');
+      return;
+    }
     
     // Prevent duplicate checks
-    if (isChecking) return;
+    if (isChecking) {
+      console.log('[useCalendarAuth] Already checking, skipping duplicate fetch');
+      return;
+    }
     
     try {
       setIsChecking(true);
-      console.log('[useCalendarAuth] Fetching current user details');
+      console.log('[useCalendarAuth] Fetching current user details', {
+        contextUserId: userId,
+        contextUserRole: contextUserRole
+      });
       
       // Get user from supabase auth
       const { data, error } = await supabase.auth.getUser();

@@ -13,7 +13,6 @@ import { Loader2 } from 'lucide-react';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import CalendarAvailabilityHandler from './CalendarAvailabilityHandler';
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { componentMonitor } from '@/utils/performance/componentMonitor';
 
 const FullCalendarView: React.FC<FullCalendarProps> = ({
   clinicianId,

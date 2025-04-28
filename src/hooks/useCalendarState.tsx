@@ -77,6 +77,23 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   
+  // Log initialization with initial clinician ID
+  useEffect(() => {
+    console.log('[useCalendarState] Initialized with:', {
+      initialClinicianId,
+      selectedClinicianId: selectedClinicianId
+    });
+  }, [initialClinicianId]);
+  
+  // Track when selectedClinicianId changes
+  useEffect(() => {
+    console.log('[useCalendarState] Selected clinician changed:', {
+      previousId: initialClinicianId,
+      currentId: selectedClinicianId,
+      wasExplicitlySet: initialClinicianId !== selectedClinicianId
+    });
+  }, [selectedClinicianId, initialClinicianId]);
+  
   // Get user timezone
   const { timeZone } = useUserTimeZone(selectedClinicianId);
   

@@ -20,8 +20,24 @@ import { AlertCircle, Info, AlertTriangle } from 'lucide-react';
 import { authDebugUtils } from '@/utils/authDebugUtils';
 import { calendarPermissionDebug } from '@/utils/calendarPermissionDebug';
 import { Button } from '@/components/ui/button';
+import {
+  logCalendarState,
+  diagnoseCalendarIssues,
+  trackCalendarInitialization,
+  logDetailedCalendarState,
+  logCalendarEvents
+} from '@/utils/calendarDebugUtils';
 
 const CalendarPage: React.FC = () => {
+  const { userRole, isLoading: isUserLoading, userId } = useUser();
+  const { isAuthenticated, isLoading: isAuthLoading, currentUserId } = useCalendarAuth();
+  
+  // Track initialization start
+  useEffect(() => {
+    trackCalendarInitialization('start', { userId, isUserLoading });
+  }, []);
+  
+  // Pass the currentUserId as the initialClinicianId to useCalendarState
   const {
     selectedClinicianId,
     setSelectedClinicianId,
@@ -30,10 +46,7 @@ const CalendarPage: React.FC = () => {
     clients,
     loadingClients,
     timeZone
-  } = useCalendarState();
-
-  const { userRole, isLoading: isUserLoading, userId } = useUser();
-  const { isAuthenticated, isLoading: isAuthLoading, currentUserId } = useCalendarAuth();
+  } = useCalendarState(currentUserId);
   const { timeZone: syncedTimeZone, isLoading: isTimeZoneLoading } = useTimeZoneSync({ userId });
   const {
     checkPermissionLevel,
@@ -42,7 +55,51 @@ const CalendarPage: React.FC = () => {
     isCheckingPermission
   } = usePermissions();
   
+  // Track auth loaded state
+  useEffect(() => {
+    if (!isAuthLoading && !isUserLoading) {
+      trackCalendarInitialization('auth-loaded', {
+        currentUserId,
+        userId,
+        isAuthenticated,
+        userRole
+      });
+    }
+  }, [isAuthLoading, isUserLoading, currentUserId, userId, isAuthenticated, userRole]);
+  
   const [showAvailability, setShowAvailability] = useState(true);
+  
+  // Ensure selectedClinicianId is set to currentUserId when it becomes available
+  useEffect(() => {
+    if (currentUserId && !selectedClinicianId) {
+      console.log('[Calendar] Setting selectedClinicianId to currentUserId:', currentUserId);
+      setSelectedClinicianId(currentUserId);
+      trackCalendarInitialization('clinician-selected', {
+        selectedClinicianId: currentUserId,
+        source: 'auto-selection'
+      });
+    } else if (currentUserId && selectedClinicianId && currentUserId !== selectedClinicianId) {
+      console.log('[Calendar] Note: currentUserId and selectedClinicianId differ:', {
+        currentUserId,
+        selectedClinicianId,
+        userRole
+      });
+      
+      // Diagnose potential issues
+      const { hasIssues, issues } = diagnoseCalendarIssues(
+        currentUserId,
+        selectedClinicianId,
+        userRole,
+        permissionLevel
+      );
+      
+      if (hasIssues) {
+        console.warn('[Calendar] Potential issues detected:', issues);
+      }
+    } else if (!currentUserId) {
+      console.log('[Calendar] Waiting for currentUserId to become available');
+    }
+  }, [currentUserId, selectedClinicianId, setSelectedClinicianId, userRole, permissionLevel]);
   const [calendarKey, setCalendarKey] = useState<number>(0);
   const [permissionWarning, setPermissionWarning] = useState<string | null>(null);
   const { toast } = useToast();
@@ -170,6 +227,33 @@ const CalendarPage: React.FC = () => {
       });
     }
   }, [syncedTimeZone, toast, openWeeklyAvailability, permissionLevel]);
+
+  // Log detailed calendar state when all data is loaded
+  useEffect(() => {
+    if (!isUserLoading && !isAuthLoading && !isTimeZoneLoading && !loadingClinicians) {
+      trackCalendarInitialization('complete', {
+        selectedClinicianId,
+        currentUserId,
+        timeZone: syncedTimeZone
+      });
+      
+      logDetailedCalendarState({
+        currentUserId,
+        userRole,
+        isAuthenticated,
+        selectedClinicianId,
+        clinicians: clinicians?.length,
+        permissionLevel,
+        permissionError,
+        canManageAvailability: permissionLevel !== 'none',
+        timeZone: syncedTimeZone
+      });
+    }
+  }, [
+    isUserLoading, isAuthLoading, isTimeZoneLoading, loadingClinicians,
+    selectedClinicianId, currentUserId, syncedTimeZone, userRole,
+    isAuthenticated, clinicians, permissionLevel, permissionError
+  ]);
 
   if (isUserLoading || isAuthLoading || isTimeZoneLoading) {
     return (
