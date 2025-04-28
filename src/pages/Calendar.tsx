@@ -9,7 +9,7 @@ import CalendarLoading from '@/components/calendar/CalendarLoading';
 import CalendarAuthError from '@/components/calendar/CalendarAuthError';
 import DialogManager from '@/components/common/DialogManager';
 import { getWeekdayName } from '@/utils/dateFormatUtils';
-import { DateTime } from 'luxon';
+import { DateTime } from 'luxus';
 import { useCalendarAuth } from '@/hooks/useCalendarAuth';
 import { useDialogs } from '@/context/DialogContext';
 import CalendarHeader from '@/components/calendar/CalendarHeader';
@@ -25,12 +25,13 @@ import {
   diagnoseCalendarIssues,
   trackCalendarInitialization,
   logDetailedCalendarState,
-  logCalendarEvents
+  logCalendarEvents,
+  compareIds
 } from '@/utils/calendarDebugUtils';
 
 const CalendarPage: React.FC = () => {
   const { userRole, isLoading: isUserLoading, userId } = useUser();
-  const { isAuthenticated, isLoading: isAuthLoading, currentUserId } = useCalendarAuth();
+  const { isAuthenticated, isLoading: isAuthLoading, currentUserId, normalizeId } = useCalendarAuth();
   
   // Track initialization start
   useEffect(() => {
@@ -52,6 +53,7 @@ const CalendarPage: React.FC = () => {
     checkPermissionLevel,
     permissionLevel,
     permissionError,
+    permissionDetails,
     isCheckingPermission
   } = usePermissions();
   
@@ -82,7 +84,8 @@ const CalendarPage: React.FC = () => {
       console.log('[Calendar] Note: currentUserId and selectedClinicianId differ:', {
         currentUserId,
         selectedClinicianId,
-        userRole
+        userRole,
+        normalizedMatch: compareIds(currentUserId, selectedClinicianId, 'currentUserId', 'selectedClinicianId')
       });
       
       // Diagnose potential issues
@@ -125,7 +128,8 @@ const CalendarPage: React.FC = () => {
         currentUserId,
         selectedClinicianId,
         userRole,
-        userId
+        userId,
+        normalizedMatch: compareIds(currentUserId, selectedClinicianId, 'currentUserId', 'selectedClinicianId')
       });
       
       // Reset warning first
@@ -226,7 +230,7 @@ const CalendarPage: React.FC = () => {
         variant: 'destructive',
       });
     }
-  }, [syncedTimeZone, toast, openWeeklyAvailability, permissionLevel]);
+  }, [syncedTimeZone, toast, openDialog, permissionLevel, selectedClinicianId, handleCalendarRefresh]);
 
   // Log detailed calendar state when all data is loaded
   useEffect(() => {
@@ -245,6 +249,7 @@ const CalendarPage: React.FC = () => {
         clinicians: clinicians?.length,
         permissionLevel,
         permissionError,
+        permissionDetails,
         canManageAvailability: permissionLevel !== 'none',
         timeZone: syncedTimeZone
       });
@@ -252,7 +257,7 @@ const CalendarPage: React.FC = () => {
   }, [
     isUserLoading, isAuthLoading, isTimeZoneLoading, loadingClinicians,
     selectedClinicianId, currentUserId, syncedTimeZone, userRole,
-    isAuthenticated, clinicians, permissionLevel, permissionError
+    isAuthenticated, clinicians, permissionLevel, permissionError, permissionDetails
   ]);
 
   if (isUserLoading || isAuthLoading || isTimeZoneLoading) {
@@ -273,6 +278,13 @@ const CalendarPage: React.FC = () => {
 
   const canSelectDifferentClinician = userRole === 'admin';
   const canManageAvailability = permissionLevel !== 'none';
+
+  // Support diagnostic button
+  const handleRunDiagnostics = () => {
+    openDialog('diagnostic', {
+      selectedClinicianId
+    });
+  };
 
   return (
     <Layout>
@@ -319,9 +331,7 @@ const CalendarPage: React.FC = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => openDialog('diagnostic', {
-                    selectedClinicianId
-                  })}
+                  onClick={handleRunDiagnostics}
                 >
                   Troubleshoot
                 </Button>
@@ -329,7 +339,37 @@ const CalendarPage: React.FC = () => {
             </Alert>
           )}
 
-          {selectedClinicianId && currentUserId && selectedClinicianId !== currentUserId && permissionLevel === 'full' && (
+          {selectedClinicianId && currentUserId && selectedClinicianId !== currentUserId && 
+           !compareIds(currentUserId, selectedClinicianId, 'currentUserId', 'selectedClinicianId') && (
+            <Alert variant="destructive" className="mt-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="flex justify-between items-center">
+                <span>User ID and clinician ID are different formats which may cause permission issues.</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRunDiagnostics}
+                >
+                  Run Diagnostics
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {selectedClinicianId && currentUserId && selectedClinicianId !== currentUserId && 
+           permissionLevel === 'full' && 
+           compareIds(currentUserId, selectedClinicianId, 'currentUserId', 'selectedClinicianId') && (
+            <Alert variant="default" className="mt-2 bg-blue-50">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                IDs match after normalization. You have full access to this calendar.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {selectedClinicianId && currentUserId && selectedClinicianId !== currentUserId && 
+           permissionLevel === 'full' && 
+           !compareIds(currentUserId, selectedClinicianId, 'currentUserId', 'selectedClinicianId') && (
             <Alert variant="default" className="mt-2 bg-blue-50">
               <Info className="h-4 w-4" />
               <AlertDescription>

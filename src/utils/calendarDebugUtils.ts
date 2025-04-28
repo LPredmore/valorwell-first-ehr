@@ -1,3 +1,4 @@
+
 /**
  * Calendar Debug Utilities
  * 
@@ -42,9 +43,20 @@ export const diagnoseCalendarIssues = (
     issues.push('No clinician selected - calendar cannot display without a clinician ID');
   }
   
-  if (currentUserId && selectedClinicianId && currentUserId !== selectedClinicianId) {
-    if (userRole !== 'admin' && permissionLevel !== 'full') {
-      issues.push('Viewing another clinician\'s calendar without proper permissions');
+  if (currentUserId && selectedClinicianId) {
+    // Check for ID format differences (e.g. same ID but different format/case)
+    const normalizedUserId = currentUserId.toLowerCase().replace(/-/g, '');
+    const normalizedClinicianId = selectedClinicianId.toLowerCase().replace(/-/g, '');
+    
+    if (normalizedUserId !== normalizedClinicianId) {
+      if (userRole !== 'admin' && permissionLevel !== 'full') {
+        issues.push('User ID and clinician ID do not match - permission issue detected');
+        issues.push(`User ID: ${currentUserId}, Clinician ID: ${selectedClinicianId}`);
+      }
+    } else if (currentUserId !== selectedClinicianId) {
+      // They're the same ID but in different formats
+      issues.push('ID format mismatch detected - IDs match after normalization but have different formats');
+      issues.push(`User ID: ${currentUserId}, Clinician ID: ${selectedClinicianId}`);
     }
   }
   
@@ -58,7 +70,7 @@ export const diagnoseCalendarIssues = (
  * Track calendar initialization sequence
  */
 export const trackCalendarInitialization = (
-  stage: 'start' | 'auth-loaded' | 'clinician-selected' | 'events-loading' | 'complete',
+  stage: 'start' | 'auth-loaded' | 'clinician-selected' | 'events-loading' | 'complete' | 'permission-check' | 'error',
   details: Record<string, any> = {}
 ) => {
   console.log(`[CalendarInitialization] Stage: ${stage}`, details);
@@ -77,6 +89,9 @@ export const logDetailedCalendarState = (calendarState: any) => {
   console.log('Clinician Selection:', {
     selectedClinicianId: calendarState.selectedClinicianId,
     usingCurrentUserAsClinicianId: calendarState.currentUserId === calendarState.selectedClinicianId,
+    normalizedIdsMatch: calendarState.currentUserId && calendarState.selectedClinicianId ? 
+      calendarState.currentUserId.toLowerCase().replace(/-/g, '') === 
+      calendarState.selectedClinicianId.toLowerCase().replace(/-/g, '') : false,
     totalClinicians: calendarState.clinicians?.length || 0
   });
   console.log('Permissions:', {
@@ -120,10 +135,40 @@ export const logCalendarEvents = (
   console.log(`[${source}] Sample events (${sampleSize}):`, events.slice(0, sampleSize));
 };
 
+/**
+ * Compare and log ID differences
+ */
+export const compareIds = (id1: string | null, id2: string | null, label1: string, label2: string): boolean => {
+  if (!id1 || !id2) {
+    console.log(`[ID Comparison] Cannot compare: ${label1}=${id1}, ${label2}=${id2}`);
+    return false;
+  }
+  
+  // Check direct equality
+  const directMatch = id1 === id2;
+  
+  // Check normalized equality (no dashes, lowercase)
+  const normalized1 = id1.toLowerCase().replace(/-/g, '');
+  const normalized2 = id2.toLowerCase().replace(/-/g, '');
+  const normalizedMatch = normalized1 === normalized2;
+  
+  console.log(`[ID Comparison] ${label1} vs ${label2}:`, {
+    directMatch,
+    normalizedMatch,
+    [label1]: id1,
+    [label2]: id2,
+    normalized1,
+    normalized2
+  });
+  
+  return directMatch || normalizedMatch;
+};
+
 export default {
   logCalendarState,
   diagnoseCalendarIssues,
   trackCalendarInitialization,
   logDetailedCalendarState,
-  logCalendarEvents
+  logCalendarEvents,
+  compareIds
 };

@@ -1,6 +1,8 @@
+
 import * as React from "react";
 import { useUser } from '@/context/UserContext';
 import { PermissionService } from '@/services/PermissionService';
+import { trackCalendarInitialization, compareIds } from '@/utils/calendarDebugUtils';
 
 /**
  * React hook that provides easy access to permission-related functionality
@@ -11,6 +13,7 @@ export const usePermissions = () => {
   const [isCheckingPermission, setIsCheckingPermission] = React.useState(false);
   const [permissionLevel, setPermissionLevel] = React.useState<'full' | 'limited' | 'none'>('none');
   const [permissionError, setPermissionError] = React.useState<string | null>(null);
+  const [permissionDetails, setPermissionDetails] = React.useState<Record<string, any> | null>(null);
 
   /**
    * Checks if the current user can manage a clinician's calendar
@@ -25,12 +28,27 @@ export const usePermissions = () => {
       setIsCheckingPermission(true);
       setPermissionError(null);
       
+      // Check if IDs match after normalization
+      const idsMatch = compareIds(userId, clinicianId, 'userId', 'clinicianId');
+      
       // Quick check for admin or self
-      if (userRole === 'admin' || userId === clinicianId) {
+      if (userRole === 'admin' || idsMatch) {
+        console.log('[usePermissions] Quick permission check passed:', {
+          reason: userRole === 'admin' ? 'admin role' : 'self access',
+          userId,
+          clinicianId,
+          idsMatch
+        });
         return true;
       }
       
+      console.log('[usePermissions] Quick permission check failed, checking with service:', {
+        userId,
+        clinicianId
+      });
+      
       const result = await PermissionService.canManageCalendar(userId, clinicianId);
+      console.log('[usePermissions] Permission service result:', { result });
       return result;
     } catch (error) {
       console.error('[usePermissions] Error checking calendar management permission:', error);
@@ -54,8 +72,11 @@ export const usePermissions = () => {
       setIsCheckingPermission(true);
       setPermissionError(null);
       
+      // Check if IDs match after normalization
+      const idsMatch = compareIds(userId, clinicianId, 'userId', 'clinicianId');
+      
       // Quick check for admin or self
-      if (userRole === 'admin' || userId === clinicianId) {
+      if (userRole === 'admin' || idsMatch) {
         return true;
       }
       
@@ -115,30 +136,76 @@ export const usePermissions = () => {
       setIsCheckingPermission(true);
       setPermissionError(null);
       
+      const startTime = performance.now();
+      
+      // Check if IDs match after normalization
+      const idsMatch = compareIds(userId, resourceId, 'userId', 'resourceId');
+      
+      // Log start of permission check
+      trackCalendarInitialization('permission-check', {
+        userId,
+        resourceId,
+        resourceType,
+        userRole,
+        idsMatch
+      });
+      
       // Quick check for admin or self
       if (userRole === 'admin') {
+        console.log('[usePermissions] Admin role detected - granting full access');
         setPermissionLevel('full');
+        setPermissionDetails({
+          reason: 'admin_role',
+          match_type: 'role_based',
+          check_duration_ms: performance.now() - startTime
+        });
         return 'full';
       }
       
-      if (userId === resourceId) {
+      if (idsMatch) {
+        console.log('[usePermissions] User is accessing their own resource - granting full access');
         setPermissionLevel('full');
+        setPermissionDetails({
+          reason: 'self_access',
+          match_type: 'normalized_id_match',
+          direct_match: userId === resourceId,
+          normalized_match: idsMatch,
+          check_duration_ms: performance.now() - startTime
+        });
         return 'full';
       }
       
       const level = await PermissionService.getPermissionLevel(userId, resourceType, resourceId);
       setPermissionLevel(level);
+      setPermissionDetails({
+        reason: 'permission_service',
+        result: level,
+        check_duration_ms: performance.now() - startTime
+      });
       return level;
     } catch (error) {
       console.error('[usePermissions] Error checking permission level:', error);
       setPermissionError(error instanceof Error ? error.message : 'Unknown permission error');
       setPermissionLevel('none');
+      setPermissionDetails({
+        reason: 'error',
+        error: error instanceof Error ? error.message : 'Unknown permission error'
+      });
+      
+      trackCalendarInitialization('error', {
+        type: 'permission_check_failed',
+        userId,
+        resourceId,
+        error: error instanceof Error ? error.message : 'Unknown permission error'
+      });
+      
       return 'none';
     } finally {
       setIsCheckingPermission(false);
     }
   }, [userId, userRole, isUserLoading]);
 
+  // Provide all permission related functions and state
   return {
     canManageCalendar,
     canEditAvailability,
@@ -146,6 +213,7 @@ export const usePermissions = () => {
     checkPermissionLevel,
     permissionLevel,
     permissionError,
+    permissionDetails,
     isCheckingPermission,
     isUserLoading
   };
