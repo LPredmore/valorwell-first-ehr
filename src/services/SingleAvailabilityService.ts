@@ -1,7 +1,7 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySlot } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { ensureClinicianID } from '@/utils/validation/clinicianUtils';
 
 export class SingleAvailabilityService {
   static async createSingleAvailability(
@@ -12,12 +12,15 @@ export class SingleAvailabilityService {
     timezone: string
   ): Promise<any> {
     try {
+      // Validate clinician ID
+      const validClinicianId = ensureClinicianID(clinicianId);
+      
       const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
       const startDt = TimeZoneService.createDateTime(date, startTime, validTimeZone);
       const endDt = TimeZoneService.createDateTime(date, endTime, validTimeZone);
 
       console.log('[SingleAvailabilityService] Creating single availability:', {
-        clinicianId,
+        clinicianId: validClinicianId,
         start: startDt.toISO(),
         end: endDt.toISO(),
         timezone: validTimeZone
@@ -26,7 +29,7 @@ export class SingleAvailabilityService {
       const { data, error } = await supabase
         .from('calendar_events')
         .insert([{
-          clinician_id: clinicianId,
+          clinician_id: validClinicianId,
           event_type: 'availability',
           availability_type: 'single',
           start_time: TimeZoneService.toUTC(startDt).toISO(),

@@ -11,77 +11,132 @@ import { AvailabilityMutationService } from '@/services/AvailabilityMutationServ
 import { useCalendarAuth } from '@/hooks/useCalendarAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Loader2, Info } from 'lucide-react';
+import { useDialogs, DialogType } from '@/context/DialogContext';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { z } from 'zod';
+import { useFormValidation } from '@/hooks/useFormValidation';
+import { validateAvailabilitySlot } from '@/utils/validation/validationUtils';
+import {
+  ValidationError,
+  TimeZoneError,
+  PermissionError,
+  AuthenticationError,
+  ConflictError,
+  formatErrorForUser
+} from '@/utils/errors';
 
 interface SingleAvailabilityDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
   clinicianId: string;
   userTimeZone: string;
   onAvailabilityCreated: () => void;
   permissionLevel?: 'full' | 'limited' | 'none';
 }
 
+// Define the form schema for availability
+const availabilityFormSchema = z.object({
+  selectedDate: z.date({
+    required_error: "Please select a date for the availability slot"
+  }),
+  startTime: z.string().min(1, "Start time is required"),
+  endTime: z.string().min(1, "End time is required")
+}).refine(
+  (data) => {
+    // Validate that end time is after start time
+    const [startHour, startMinute] = data.startTime.split(':').map(Number);
+    const [endHour, endMinute] = data.endTime.split(':').map(Number);
+    return endHour > startHour || (endHour === startHour && endMinute > startMinute);
+  },
+  {
+    message: "End time must be after start time",
+    path: ["endTime"]
+  }
+);
+
+type AvailabilityFormValues = z.infer<typeof availabilityFormSchema>;
+
 const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
-  isOpen,
-  onClose,
   clinicianId,
   userTimeZone,
   onAvailabilityCreated,
   permissionLevel = 'full'
 }) => {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [startTime, setStartTime] = useState<string>('09:00');
-  const [endTime, setEndTime] = useState<string>('17:00');
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  
+  const { state, closeDialog } = useDialogs();
+  const isOpen = state.type === 'singleAvailability';
+  const onClose = closeDialog;
   const { currentUserId, refreshAuth } = useCalendarAuth();
   const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
+  
+  // Use our error handling hook
+  const {
+    errorMessage,
+    isErrorVisible,
+    isLoading: isSubmitting,
+    validationErrors,
+    handleError,
+    clearErrors,
+    withErrorHandling
+  } = useErrorHandler({
+    showErrors: true,
+    logErrors: true
+  });
+  
+  // Use form validation hook
+  const {
+    isValid,
+    errors: formValidationErrors,
+    validatedData,
+    validate,
+    setFieldValue,
+    getFieldProps,
+    reset: resetForm
+  } = useFormValidation<AvailabilityFormValues>(
+    availabilityFormSchema,
+    {
+      initialValues: {
+        selectedDate: undefined,
+        startTime: '09:00',
+        endTime: '17:00'
+      },
+      validateOnBlur: true
+    }
+  );
+  
+  // Computed form error from error handler
+  const formError = isErrorVisible ? errorMessage : null;
 
   useEffect(() => {
     // Reset form error when dialog opens/closes
     if (isOpen) {
-      setFormError(null);
-      setSelectedDate(undefined);
-      setStartTime('09:00');
-      setEndTime('17:00');
+      clearErrors();
+      resetForm();
     }
-  }, [isOpen]);
+  }, [isOpen, clearErrors, resetForm]);
 
   const handleSubmit = async () => {
-    if (!selectedDate) {
-      toast({
-        title: "Select Date",
-        description: "Please select a date for the availability slot",
-        variant: "destructive"
-      });
+    // Validate form inputs
+    const isFormValid = await validate();
+    if (!isFormValid || !validatedData) {
       return;
     }
-
-    // Validate that end time is after start time
-    const [startHour, startMinute] = startTime.split(':').map(Number);
-    const [endHour, endMinute] = endTime.split(':').map(Number);
-    if (endHour < startHour || (endHour === startHour && endMinute <= startMinute)) {
-      toast({
-        title: "Invalid Time Range",
-        description: "End time must be after start time",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setFormError(null);
     
-    try {
-      setIsSubmitting(true);
+    // Use our error handling wrapper
+    await withErrorHandling(async () => {
+      // Validate availability slot with our utility function
+      const { date, startTime, endTime, timeZone } = validateAvailabilitySlot(
+        validatedData.selectedDate,
+        validatedData.startTime,
+        validatedData.endTime,
+        validTimeZone
+      );
       
       // Format date properly for TimeZoneService
-      const dateStr = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
       
       console.log('[SingleAvailabilityDialog] Creating availability with:', {
         clinicianId,
-        startTime: dateStr + 'T' + startTime,
-        endTime: dateStr + 'T' + endTime,
+        startTime: dateStr + 'T' + validatedData.startTime,
+        endTime: dateStr + 'T' + validatedData.endTime,
         userTimeZone: validTimeZone,
         authUserId: currentUserId,
         permissionLevel
@@ -91,30 +146,40 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
       if (!currentUserId) {
         console.warn('[SingleAvailabilityDialog] Warning: No authenticated user found');
         await refreshAuth();
+        
+        if (!currentUserId) {
+          throw new AuthenticationError('Authentication error: Please log out and log back in to refresh your session.', {
+            userMessage: 'Your session has expired. Please log out and log back in.'
+          });
+        }
       }
 
       // Permission check
       if (permissionLevel === 'none') {
-        throw new Error('You do not have permission to create availability slots');
+        throw new PermissionError('You do not have permission to create availability slots', {
+          userMessage: 'You do not have permission to create availability slots',
+          resource: 'availability',
+          action: 'create'
+        });
       }
 
       if (clinicianId !== currentUserId && permissionLevel !== 'full') {
-        console.warn('[SingleAvailabilityDialog] User may have limited permissions', { 
-          currentUserId, 
-          clinicianId, 
-          permissionLevel 
+        console.warn('[SingleAvailabilityDialog] User may have limited permissions', {
+          currentUserId,
+          clinicianId,
+          permissionLevel
         });
       }
       
       // Create availability object with correct day of week
-      const selectedDateTime = DateTime.fromJSDate(selectedDate).setZone(validTimeZone);
+      const selectedDateTime = DateTime.fromJSDate(validatedData.selectedDate).setZone(validTimeZone);
       const dayOfWeek = TimeZoneService.getWeekdayName(selectedDateTime, 'long').toLowerCase() as any;
       
       const response = await AvailabilityMutationService.createAvailabilitySlot(
         clinicianId,
         dayOfWeek,
-        dateStr + 'T' + startTime,
-        dateStr + 'T' + endTime,
+        dateStr + 'T' + validatedData.startTime,
+        dateStr + 'T' + validatedData.endTime,
         false, // Not recurring for single day
         undefined,
         validTimeZone,
@@ -128,37 +193,28 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
       
       onAvailabilityCreated();
       onClose();
-    } catch (error) {
-      console.error('[SingleAvailabilityDialog] Error creating single availability:', error);
       
-      let errorMessage = "Failed to create availability slot";
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-        
-        // Enhanced error messages for specific cases
-        if (error.message.includes('violates row level security policy')) {
-          errorMessage = "Permission denied: You don't have access to create availability for this clinician.";
-        } else if (error.message.includes('overlapping')) {
-          errorMessage = "This time slot overlaps with an existing availability. Please select a different time.";
-        }
+      return response;
+    }, {
+      context: {
+        component: 'SingleAvailabilityDialog',
+        clinicianId,
+        date: validatedData.selectedDate,
+        startTime: validatedData.startTime,
+        endTime: validatedData.endTime,
+        timeZone: validTimeZone
       }
-      
-      setFormError(errorMessage);
-      
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    });
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
+    <ErrorBoundary
+      errorTitle="Calendar Error"
+      errorMessage="There was a problem with the availability dialog"
+      onRetry={() => clearErrors()}
+    >
+      <Dialog open={isOpen} onOpenChange={() => onClose()}>
+        <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Single Day Availability</DialogTitle>
         </DialogHeader>
@@ -184,32 +240,41 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
             <label>Select Date</label>
             <Calendar
               mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
+              selected={getFieldProps('selectedDate').value}
+              onSelect={(date) => setFieldValue('selectedDate', date)}
               initialFocus
               disabled={(date) => date < new Date()}
             />
+            {formValidationErrors.selectedDate && (
+              <p className="text-sm text-red-500 mt-1">{formValidationErrors.selectedDate}</p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
               <label>Start Time</label>
-              <TimePickerInput 
-                value={startTime} 
-                onChange={setStartTime} 
-                min="00:00" 
+              <TimePickerInput
+                value={getFieldProps('startTime').value}
+                onChange={(value) => setFieldValue('startTime', value)}
+                min="00:00"
                 max="23:45"
-                step={900} 
+                step={900}
               />
+              {formValidationErrors.startTime && (
+                <p className="text-sm text-red-500 mt-1">{formValidationErrors.startTime}</p>
+              )}
             </div>
             <div className="flex flex-col gap-2">
               <label>End Time</label>
-              <TimePickerInput 
-                value={endTime} 
-                onChange={setEndTime} 
-                min="00:15" 
+              <TimePickerInput
+                value={getFieldProps('endTime').value}
+                onChange={(value) => setFieldValue('endTime', value)}
+                min="00:15"
                 max="23:59"
-                step={900} 
+                step={900}
               />
+              {formValidationErrors.endTime && (
+                <p className="text-sm text-red-500 mt-1">{formValidationErrors.endTime}</p>
+              )}
             </div>
           </div>
           
@@ -217,11 +282,23 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
             <p>Adding availability for: {clinicianId.substring(0, 8)}...</p>
             <p>Current user: {currentUserId ? currentUserId.substring(0, 8) + '...' : 'Not authenticated'}</p>
             <p>Time zone: {TimeZoneService.formatTimeZoneDisplay(validTimeZone)}</p>
+            <p>Permission level: {permissionLevel}</p>
+            {formError && (
+              <div className="mt-2 p-2 bg-gray-50 rounded-md text-xs text-red-600">
+                <p className="font-medium">Troubleshooting Tips:</p>
+                <ul className="list-disc list-inside mt-1">
+                  <li>Ensure the date and time don't overlap with existing availability</li>
+                  <li>Verify your timezone settings in profile</li>
+                  <li>Check that you have permission to manage this calendar</li>
+                  <li>Try refreshing the page if the issue persists</li>
+                </ul>
+              </div>
+            )}
           </div>
         </div>
         
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+          <Button variant="outline" onClick={() => onClose()} disabled={isSubmitting}>Cancel</Button>
           <Button 
             onClick={handleSubmit} 
             disabled={isSubmitting || permissionLevel === 'none'}
@@ -232,8 +309,9 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
             Add Availability
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </ErrorBoundary>
   );
 };
 

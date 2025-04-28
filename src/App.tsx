@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { UserProvider } from "./context/UserContext";
 import { TimeZoneProvider } from "./context/TimeZoneContext";
+import { DialogProvider } from "./context/DialogContext";
+import DialogManager from "./components/common/DialogManager";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 // Pages
@@ -51,8 +53,10 @@ const App: React.FC = () => {
           <TooltipProvider>
             <UserProvider>
               <TimeZoneProvider>
-                <Toaster />
-                <Sonner />
+                <DialogProvider>
+                  <Toaster />
+                  <Sonner />
+                  <DialogManager />
                 <Routes>
                   {/* Public routes */}
                   <Route path="/" element={<Index />} />
@@ -162,6 +166,7 @@ const App: React.FC = () => {
                   
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+                </DialogProvider>
               </TimeZoneProvider>
             </UserProvider>
           </TooltipProvider>

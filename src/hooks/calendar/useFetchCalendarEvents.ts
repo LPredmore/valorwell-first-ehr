@@ -1,10 +1,11 @@
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { CalendarService } from '@/services/calendar/CalendarFacade';
 import { CalendarEvent } from '@/types/calendar';
 import { useToast } from '@/hooks/use-toast';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { CalendarErrorHandler } from '@/services/calendar/CalendarFacade';
+import { componentMonitor } from '@/utils/performance/componentMonitor';
 
 interface UseFetchCalendarEventsProps {
   clinicianId: string | null;
@@ -30,8 +31,70 @@ export function useFetchCalendarEvents({
   const fetchInProgress = useRef(false);
   const { toast } = useToast();
   const maxRetries = 3;
+  
+  // Cache for calendar events to implement lazy loading
+  const eventsCache = useRef<Record<string, {
+    events: CalendarEvent[],
+    timestamp: number,
+    range: { start: Date, end: Date }
+  }>>({});
+  
+  // Cache expiration time (2 minutes)
+  const CACHE_EXPIRATION = 2 * 60 * 1000;
+  
+  // Performance monitoring
+  const fetchStartTime = useRef(0);
+
+  // Generate a cache key based on clinician ID and date range
+  const getCacheKey = useCallback((
+    clinicianId: string,
+    start?: Date,
+    end?: Date
+  ): string => {
+    const startStr = start ? start.toISOString().split('T')[0] : 'all';
+    const endStr = end ? end.toISOString().split('T')[0] : 'all';
+    return `${clinicianId}:${startStr}:${endStr}`;
+  }, []);
+  
+  // Check if we have valid cached data for the current request
+  const getValidCachedEvents = useCallback((
+    clinicianId: string,
+    start?: Date,
+    end?: Date
+  ): CalendarEvent[] | null => {
+    if (!clinicianId) return null;
+    
+    const cacheKey = getCacheKey(clinicianId, start, end);
+    const cacheEntry = eventsCache.current[cacheKey];
+    const now = Date.now();
+    
+    // If we have a valid cache entry that hasn't expired
+    if (cacheEntry && (now - cacheEntry.timestamp) < CACHE_EXPIRATION) {
+      // If no date range specified, return all cached events
+      if (!start || !end) {
+        return cacheEntry.events;
+      }
+      
+      // If the requested range is fully contained within the cached range
+      if (
+        cacheEntry.range.start <= start &&
+        cacheEntry.range.end >= end
+      ) {
+        return cacheEntry.events.filter(event => {
+          const eventStart = new Date(event.start);
+          const eventEnd = new Date(event.end);
+          return eventStart <= end && eventEnd >= start;
+        });
+      }
+    }
+    
+    return null;
+  }, [getCacheKey]);
 
   const fetchEvents = useCallback(async (retry: boolean = false) => {
+    // Start performance monitoring
+    fetchStartTime.current = performance.now();
+    
     if (isUserLoading) {
       console.log('[useFetchCalendarEvents] User authentication still loading, deferring fetch');
       return;
@@ -46,13 +109,28 @@ export function useFetchCalendarEvents({
     }
     
     if (!clinicianId || fetchInProgress.current) {
-      console.log('[useFetchCalendarEvents] Skipping fetch:', { 
+      console.log('[useFetchCalendarEvents] Skipping fetch:', {
         reason: !clinicianId ? 'No clinicianId' : 'Fetch in progress',
         clinicianId,
         fetchInProgress: fetchInProgress.current
       });
       
       if (!clinicianId) setEvents([]);
+      return;
+    }
+    
+    // Check cache first
+    const cachedEvents = getValidCachedEvents(clinicianId, startDate, endDate);
+    if (cachedEvents) {
+      console.log('[useFetchCalendarEvents] Using cached events:', cachedEvents.length);
+      setEvents(cachedEvents);
+      
+      // Record performance
+      const fetchTime = performance.now() - fetchStartTime.current;
+      componentMonitor.recordRender('useFetchCalendarEvents (cached)', fetchTime, {
+        props: { clinicianId, eventCount: cachedEvents.length }
+      });
+      
       return;
     }
 
@@ -87,12 +165,29 @@ export function useFetchCalendarEvents({
         endDate
       );
       
-      const convertedEvents = fetchedEvents?.map(event => 
+      const convertedEvents = fetchedEvents?.map(event =>
         TimeZoneService.convertEventToUserTimeZone(event, userTimeZone)
       ) || [];
       
+      // Update cache
+      const cacheKey = getCacheKey(clinicianId, startDate, endDate);
+      eventsCache.current[cacheKey] = {
+        events: convertedEvents,
+        timestamp: Date.now(),
+        range: {
+          start: startDate || new Date(0), // Beginning of time if no start date
+          end: endDate || new Date(8640000000000000) // End of time if no end date
+        }
+      };
+      
       setEvents(convertedEvents);
       if (retryCount > 0) setRetryCount(0);
+      
+      // Record performance
+      const fetchTime = performance.now() - fetchStartTime.current;
+      componentMonitor.recordRender('useFetchCalendarEvents (network)', fetchTime, {
+        props: { clinicianId, eventCount: convertedEvents.length }
+      });
       
     } catch (err) {
       console.error("[useFetchCalendarEvents] Error fetching calendar events:", err);
@@ -120,11 +215,28 @@ export function useFetchCalendarEvents({
           variant: "destructive",
         });
       }
+      
+      // Record performance for error case
+      const fetchTime = performance.now() - fetchStartTime.current;
+      componentMonitor.recordRender('useFetchCalendarEvents (error)', fetchTime, {
+        props: { clinicianId, error: errorMessage }
+      });
     } finally {
       setIsLoading(false);
       fetchInProgress.current = false;
     }
-  }, [clinicianId, userTimeZone, startDate, endDate, toast, retryCount, userId, isUserLoading]);
+  }, [
+    clinicianId,
+    userTimeZone,
+    startDate,
+    endDate,
+    toast,
+    retryCount,
+    userId,
+    isUserLoading,
+    getValidCachedEvents,
+    getCacheKey
+  ]);
 
   return {
     events,

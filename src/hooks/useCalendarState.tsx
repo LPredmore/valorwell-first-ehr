@@ -1,124 +1,149 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { TimeZoneService } from '@/utils/timeZoneService';
-import { toast } from '@/hooks/use-toast';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useEntityState } from './useEntityState';
+import { useAsyncState } from './useAsyncState';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
-import { ClientDataService } from '@/services/ClientDataService';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { ClientData } from '@/types/availability';
+import { componentMonitor } from '@/utils/performance/componentMonitor';
 
+/**
+ * @hook useCalendarState
+ * @description Hook for managing calendar state including clinician selection, client data,
+ * appointment refresh state, and timezone handling. Provides a centralized state management
+ * solution for calendar-related components.
+ *
+ * @param {string | null} initialClinicianId - Optional initial clinician ID to pre-select
+ * @returns {object} Calendar state and actions
+ * @returns {string | null} .selectedClinicianId - Currently selected clinician ID
+ * @returns {function} .setSelectedClinicianId - Function to update the selected clinician
+ * @returns {Array} .clinicians - List of available clinicians
+ * @returns {boolean} .loadingClinicians - Whether clinicians are currently loading
+ * @returns {Array<ClientData>} .clients - Normalized client data for the selected clinician
+ * @returns {boolean} .loadingClients - Whether clients are currently loading
+ * @returns {number} .appointmentRefreshTrigger - Counter to trigger appointment refresh
+ * @returns {function} .refreshAppointments - Function to trigger appointment refresh
+ * @returns {boolean} .isDialogOpen - Whether the calendar dialog is open
+ * @returns {function} .setIsDialogOpen - Function to control dialog visibility
+ * @returns {string} .timeZone - Current timezone in IANA format
+ * @returns {function} .refreshClients - Function to refresh client data
+ *
+ * @example
+ * // Basic usage in a calendar component
+ * const {
+ *   selectedClinicianId,
+ *   setSelectedClinicianId,
+ *   clinicians,
+ *   clients,
+ *   timeZone,
+ *   refreshAppointments
+ * } = useCalendarState();
+ *
+ * // Using the state to render a clinician selector
+ * return (
+ *   <div>
+ *     <select
+ *       value={selectedClinicianId || ''}
+ *       onChange={(e) => setSelectedClinicianId(e.target.value || null)}
+ *     >
+ *       {clinicians.map(clinician => (
+ *         <option key={clinician.id} value={clinician.id}>
+ *           {clinician.clinician_professional_name}
+ *         </option>
+ *       ))}
+ *     </select>
+ *
+ *     <CalendarView
+ *       clinicianId={selectedClinicianId}
+ *       clients={clients}
+ *       timeZone={timeZone}
+ *       onAppointmentChange={refreshAppointments}
+ *     />
+ *   </div>
+ * );
+ */
 export const useCalendarState = (initialClinicianId: string | null = null) => {
-  const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(initialClinicianId);
-  const [clinicians, setClinicians] = useState<Array<{ id: string; clinician_professional_name: string }>>([]);
-  const [loadingClinicians, setLoadingClinicians] = useState(true);
-  const [clients, setClients] = useState<ClientData[]>([]);
-  const [loadingClients, setLoadingClients] = useState(false);
-  const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { timeZone } = useUserTimeZone(selectedClinicianId);
-
-  // Fetch all clinicians
+  // Performance monitoring
   useEffect(() => {
-    const fetchClinicians = async () => {
-      setLoadingClinicians(true);
-      try {
-        const { data, error } = await supabase
-          .from('clinicians')
-          .select('id, clinician_professional_name')
-          .order('clinician_professional_name');
-
-        if (error) {
-          console.error('[useCalendarState] Error fetching clinicians:', error);
-          toast({
-            title: "Error loading clinicians",
-            description: "Unable to load clinician list. Please try again.",
-            variant: "destructive"
-          });
-        } else {
-          setClinicians(data || []);
-          console.log('[useCalendarState] Loaded clinicians:', data?.length || 0);
-        }
-      } catch (error) {
-        console.error('[useCalendarState] Error:', error);
-        toast({
-          title: "Error loading clinicians",
-          description: "An unexpected error occurred. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setLoadingClinicians(false);
-      }
+    const hookStartTime = performance.now();
+    
+    return () => {
+      const totalHookTime = performance.now() - hookStartTime;
+      componentMonitor.recordRender('useCalendarState', totalHookTime);
     };
-
-    fetchClinicians();
   }, []);
 
+  // Local state
+  const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(initialClinicianId);
+  const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // Get user timezone
+  const { timeZone } = useUserTimeZone(selectedClinicianId);
+  
+  // Fetch clinicians using useEntityState
+  const {
+    data: clinicians,
+    isLoading: loadingClinicians,
+  } = useEntityState<{ id: string; clinician_professional_name: string }>({
+    entityType: 'clinicians',
+    orderBy: { column: 'clinician_professional_name', ascending: true },
+  });
+  
+  // Fetch clients for the selected clinician using useEntityState
+  const {
+    data: clientsRaw,
+    isLoading: loadingClients,
+    setQuery: setClientsQuery,
+    refresh: refreshClients,
+  } = useEntityState<Record<string, any>>({
+    entityType: 'clients',
+    initialQuery: selectedClinicianId ? { client_assigned_therapist: selectedClinicianId } : {},
+    orderBy: { column: 'client_last_name', ascending: true },
+    cacheTime: 5 * 60 * 1000, // 5 minutes
+  });
+  
+  // Normalize client data
+  const clients = useMemo(() => {
+    return clientsRaw.map(client => {
+      // Extract client fields with proper naming
+      const normalizedClient: ClientData = {
+        id: client.id,
+        name: `${client.client_first_name || ''} ${client.client_last_name || ''}`.trim(),
+        displayName: client.client_preferred_name || `${client.client_first_name || ''} ${client.client_last_name || ''}`.trim(),
+        email: client.client_email || '',
+        phone: client.client_phone || '',
+        timeZone: client.client_time_zone || '',
+        createdAt: client.created_at,
+        updatedAt: client.updated_at,
+      };
+      
+      return normalizedClient;
+    });
+  }, [clientsRaw]);
+  
   // Auto-select first clinician if needed
   useEffect(() => {
     if (clinicians.length > 0 && !selectedClinicianId) {
       setSelectedClinicianId(clinicians[0].id);
     }
   }, [clinicians, selectedClinicianId]);
-
-  // Fetch clients for the selected clinician
+  
+  // Update clients query when clinician changes
   useEffect(() => {
-    const fetchClientsForClinician = async () => {
-      if (!selectedClinicianId) {
-        setClients([]);
-        setLoadingClients(false);
-        console.log('[useCalendarState] No clinician selected, skipping client load.');
-        return;
-      }
-
-      setLoadingClients(true);
-      setClients([]);
-      console.log('[useCalendarState] Fetching clients for clinician:', selectedClinicianId);
-
-      try {
-        // Using the correct column names as in the database schema
-        const { data, error } = await supabase
-          .from('clients')
-          .select('id, client_first_name, client_last_name, client_preferred_name, client_email, client_phone, client_time_zone, created_at, updated_at')
-          .eq('client_assigned_therapist', selectedClinicianId)
-          .order('client_last_name', { ascending: true });
-
-        if (error) {
-          console.error('[useCalendarState] Error fetching clients:', error);
-          toast({
-            title: "Error loading clients",
-            description: "Unable to load client list. Please try again.",
-            variant: "destructive"
-          });
-          return;
-        }
-
-        if (data) {
-          console.log('[useCalendarState] Raw client data:', data);
-          const normalizedClients: ClientData[] = data.map(client => 
-            ClientDataService.normalizeClientData(client)
-          );
-          setClients(normalizedClients);
-          console.log('[useCalendarState] Loaded clients:', normalizedClients.length);
-        }
-      } catch (error) {
-        console.error('[useCalendarState] Error in fetchClientsForClinician:', error);
-        toast({
-          title: "Error loading clients",
-          description: "Unable to load client list. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setLoadingClients(false);
-      }
-    };
-
-    fetchClientsForClinician();
-  }, [selectedClinicianId]);
-
-  const refreshAppointments = () => {
+    if (selectedClinicianId) {
+      setClientsQuery({ client_assigned_therapist: selectedClinicianId });
+    } else {
+      setClientsQuery({});
+    }
+  }, [selectedClinicianId, setClientsQuery]);
+  
+  // Memoized refresh function
+  const refreshAppointments = useCallback(() => {
     setAppointmentRefreshTrigger(prev => prev + 1);
-  };
-
-  return {
+  }, []);
+  
+  // Memoize return values to prevent unnecessary re-renders
+  const calendarState = useMemo(() => ({
     selectedClinicianId,
     setSelectedClinicianId,
     clinicians,
@@ -126,10 +151,25 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     clients,
     loadingClients,
     appointmentRefreshTrigger,
-    setAppointmentRefreshTrigger,
     refreshAppointments,
     isDialogOpen,
     setIsDialogOpen,
-    timeZone: TimeZoneService.ensureIANATimeZone(timeZone || 'UTC')
-  };
+    timeZone: TimeZoneService.ensureIANATimeZone(timeZone || 'UTC'),
+    
+    // Add additional methods for refreshing data
+    refreshClients,
+  }), [
+    selectedClinicianId,
+    clinicians,
+    loadingClinicians,
+    clients,
+    loadingClients,
+    appointmentRefreshTrigger,
+    refreshAppointments,
+    isDialogOpen,
+    timeZone,
+    refreshClients
+  ]);
+  
+  return calendarState;
 };

@@ -1,18 +1,9 @@
 /**
+ * @deprecated Use the TimeZoneService from @/utils/timezone instead
  * This file contains timezone-specific utilities that are used across the application
- * but haven't yet been migrated to the standardized date/time utilities.
- * 
- * The goal is to gradually move all date/time utilities to use the standardized utilities
- * in dateFormatUtils.ts, but this file serves as a transition aid.
+ * but should be replaced with the standardized TimeZoneService.
  */
 
-import { DateTime } from 'luxon';
-import { 
-  formatTime, 
-  formatDateTime, 
-  formatInTimezone 
-} from './dateFormatUtils';
-import { ensureIANATimeZone } from './timeZoneUtils';
 import { TimeZoneService } from '@/utils/timeZoneService';
 
 /**
@@ -23,6 +14,10 @@ import { TimeZoneService } from '@/utils/timeZoneService';
  * @param includeTimeZone Whether to include timezone in output
  * @returns Formatted date and time with timezone indicator
  */
+/**
+ * Format a date and time in a specific timezone with timezone indicator
+ * @deprecated Use TimeZoneService.formatDateTime with appropriate format instead
+ */
 export const formatDateTimeWithTimeZone = (
   date: string | Date,
   time: string,
@@ -30,17 +25,20 @@ export const formatDateTimeWithTimeZone = (
   includeTimeZone: boolean = true
 ): string => {
   try {
-    const ianaTimeZone = ensureIANATimeZone(timeZone);
+    const ianaTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
     
-    // Use standardized formatInTimezone
-    const formattedTime = formatTime(`${typeof date === 'string' ? date : date.toISOString().split('T')[0]}T${time}`);
+    // Create a combined date+time string
+    const dateTimeStr = `${typeof date === 'string' ? date : date.toISOString().split('T')[0]}T${time}`;
+    
+    // Format the time
+    const formattedTime = TimeZoneService.formatTime(dateTimeStr, 'h:mm a', ianaTimeZone);
     
     if (!includeTimeZone) {
       return formattedTime;
     }
     
-    // Extract timezone abbreviation/name for display
-    const timeZoneDisplay = formatTimeZoneDisplay(timeZone);
+    // Get timezone display
+    const timeZoneDisplay = TimeZoneService.formatTimeZoneDisplay(ianaTimeZone);
     return `${formattedTime} (${timeZoneDisplay})`;
   } catch (error) {
     console.error('Error formatting with timezone:', error, { date, time, timeZone });
@@ -53,26 +51,12 @@ export const formatDateTimeWithTimeZone = (
  * @param timeZone IANA time zone identifier or display name
  * @returns User-friendly time zone display
  */
+/**
+ * Generate a formatted time zone display name
+ * @deprecated Use TimeZoneService.formatTimeZoneDisplay instead
+ */
 export const formatTimeZoneDisplay = (timeZone: string): string => {
-  try {
-    if (!timeZone) return '';
-    
-    // If it's a display name already, just return it without the parentheses part
-    if (timeZone.includes('(') && timeZone.includes(')')) {
-      return timeZone.split('(')[0].trim();
-    }
-    
-    // If it's an IANA identifier, extract the location part (after the /)
-    if (timeZone.includes('/')) {
-      const location = timeZone.split('/').pop() || timeZone;
-      return location.replace(/_/g, ' ');
-    }
-    
-    return timeZone;
-  } catch (error) {
-    console.error('Error formatting time zone display:', error, timeZone);
-    return timeZone || '';
-  }
+  return TimeZoneService.formatTimeZoneDisplay(timeZone);
 };
 
 /**
@@ -80,12 +64,10 @@ export const formatTimeZoneDisplay = (timeZone: string): string => {
  * @param timeZone IANA timezone identifier
  * @returns Formatted timezone offset string
  */
+/**
+ * Get timezone offset string (e.g., GMT+2)
+ * @deprecated Use TimeZoneService.getTimezoneOffsetString instead
+ */
 export const getTimezoneOffsetString = (timeZone: string): string => {
-  try {
-    const now = DateTime.now().setZone(ensureIANATimeZone(timeZone));
-    return now.toFormat('ZZZZ');
-  } catch (error) {
-    console.error('Error getting timezone offset string:', error);
-    return '';
-  }
+  return TimeZoneService.getTimezoneOffsetString(timeZone);
 };

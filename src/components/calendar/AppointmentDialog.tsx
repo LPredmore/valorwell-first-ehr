@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useDialogs, DialogType } from '@/context/DialogContext';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, 
   DialogFooter, DialogClose 
@@ -24,8 +25,6 @@ interface Client {
 }
 
 interface AppointmentDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
   clients: Client[];
   loadingClients: boolean;
   selectedClinicianId: string | null;
@@ -33,13 +32,14 @@ interface AppointmentDialogProps {
 }
 
 const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
-  isOpen,
-  onClose,
   clients,
   loadingClients,
   selectedClinicianId,
   onAppointmentCreated
 }) => {
+  const { state, closeDialog } = useDialogs();
+  const isOpen = state.type === 'appointment';
+  const onClose = closeDialog;
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [startTime, setStartTime] = useState<string>("09:00");
@@ -253,7 +253,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   const timeZoneDisplay = TimeZoneService.formatTimeZoneDisplay(clinicianTimeZone);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={() => onClose()}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Create New Appointment</DialogTitle>

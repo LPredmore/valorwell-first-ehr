@@ -1,10 +1,8 @@
-
 import React from 'react';
 import { Calendar, Clock, UserCircle, Video, FileText, XCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatTime, formatDate } from '@/utils/dateFormatUtils';
 import { BaseAppointment } from '@/types/appointment';
+import { InfoCard, InfoCardItem } from '@/components/ui/patterns';
 
 export interface AppointmentCardProps {
   appointment: BaseAppointment;
@@ -36,91 +34,99 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
     }
   };
 
+  // Format client name
+  const clientName = appointment.client 
+    ? `${appointment.client.client_first_name} ${appointment.client.client_last_name}`
+    : 'Unknown Client';
+
+  // Format appointment time
+  const appointmentTime = `${formatTimeDisplay(appointment.start_time)} - ${formatTimeDisplay(appointment.end_time)}`;
+  
+  // Format appointment date
+  const appointmentDate = formatDate(appointment.date, 'EEEE, MMMM d, yyyy');
+
   if (onDocumentSession) {
+    // Documentation view of appointment card
     return (
-      <Card key={appointment.id} className="mb-3">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold flex items-center">
-            <UserCircle className="h-4 w-4 mr-2" />
-            {appointment.client?.client_first_name} {appointment.client?.client_last_name}
-          </CardTitle>
-          <CardDescription className="flex items-center">
-            <Calendar className="h-4 w-4 mr-2" />
-            {formatDate(appointment.date, 'EEEE, MMMM d, yyyy')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pb-2">
-          <div className="flex items-center">
-            <Clock className="h-4 w-4 mr-2" />
-            <span className="text-sm">
-              {formatTimeDisplay(appointment.start_time)} - {formatTimeDisplay(appointment.end_time)}
-            </span>
-          </div>
-          <div className="text-sm mt-1">{appointment.type}</div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-2">
-          <Button
-            variant="default"
-            size="sm"
-            className="w-full"
-            onClick={() => onDocumentSession(appointment)}
-          >
-            <FileText className="h-4 w-4 mr-2" />
-            Document Session
-          </Button>
-          
-          {onSessionDidNotOccur && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-              onClick={() => onSessionDidNotOccur(appointment)}
-            >
-              <XCircle className="h-4 w-4 mr-2" />
-              Session Did Not Occur
-            </Button>
+      <InfoCard
+        key={appointment.id}
+        title={clientName}
+        icon={UserCircle}
+        className="mb-3"
+        actions={[
+          {
+            label: 'Document Session',
+            icon: FileText,
+            onClick: () => onDocumentSession(appointment),
+            variant: 'default'
+          },
+          ...(onSessionDidNotOccur ? [
+            {
+              label: 'Session Did Not Occur',
+              icon: XCircle,
+              onClick: () => onSessionDidNotOccur(appointment),
+              variant: 'outline',
+              destructive: true
+            }
+          ] : [])
+        ]}
+      >
+        <div className="space-y-2">
+          <InfoCardItem
+            label="Date"
+            value={appointmentDate}
+            icon={Calendar}
+          />
+          <InfoCardItem
+            label="Time"
+            value={appointmentTime}
+            icon={Clock}
+          />
+          {appointment.type && (
+            <InfoCardItem
+              label="Type"
+              value={appointment.type}
+            />
           )}
-        </CardFooter>
-      </Card>
+        </div>
+      </InfoCard>
     );
   }
 
-  
+  // Standard view of appointment card
   return (
-    <Card key={appointment.id} className="mb-3">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold flex items-center">
-          <Clock className="h-4 w-4 mr-2" />
-          {formatTimeDisplay(appointment.start_time)} - {formatTimeDisplay(appointment.end_time)} 
-          <span className="text-xs text-gray-500 ml-1">({timeZoneDisplay})</span>
-        </CardTitle>
-        <CardDescription className="flex items-center">
-          <Calendar className="h-4 w-4 mr-2" />
-          {formatDate(appointment.date, 'EEEE, MMMM d, yyyy')}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="pb-2">
-        <div className="flex items-center">
-          <UserCircle className="h-4 w-4 mr-2" />
-          <span className="text-sm">
-            {appointment.client?.client_first_name} {appointment.client?.client_last_name}
-          </span>
-        </div>
-        <div className="text-sm mt-1">{appointment.type}</div>
-      </CardContent>
-      {showStartButton && onStartSession && (
-        <CardFooter>
-          <Button
-            variant="default"
-            size="sm"
-            className="w-full"
-            onClick={() => onStartSession(appointment)}
-          >
-            <Video className="h-4 w-4 mr-2" />
-            Start Session
-          </Button>
-        </CardFooter>
-      )}
-    </Card>
+    <InfoCard
+      key={appointment.id}
+      title={`${appointmentTime} ${timeZoneDisplay ? `(${timeZoneDisplay})` : ''}`}
+      icon={Clock}
+      className="mb-3"
+      actions={showStartButton && onStartSession ? [
+        {
+          label: 'Start Session',
+          icon: Video,
+          onClick: () => onStartSession(appointment),
+          variant: 'default'
+        }
+      ] : []}
+    >
+      <div className="space-y-2">
+        <InfoCardItem
+          label="Date"
+          value={appointmentDate}
+          icon={Calendar}
+        />
+        <InfoCardItem
+          label="Client"
+          value={clientName}
+          icon={UserCircle}
+        />
+        {appointment.type && (
+          <InfoCardItem
+            label="Type"
+            value={appointment.type}
+          />
+        )}
+      </div>
+    </InfoCard>
   );
 };

@@ -1,9 +1,44 @@
+/**
+ * @component Textarea
+ * @description An enhanced textarea component with auto-resize functionality.
+ * Automatically adjusts its height based on content, while maintaining all standard
+ * textarea functionality and styling consistent with the design system.
+ */
+
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
+/**
+ * @interface TextareaProps
+ * @description Props for the Textarea component
+ * @extends React.TextareaHTMLAttributes<HTMLTextAreaElement>
+ */
 export interface TextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
 
+/**
+ * A textarea component that automatically resizes based on content.
+ *
+ * @example
+ * // Basic usage
+ * <Textarea placeholder="Enter your message" />
+ *
+ * @example
+ * // With form control
+ * <FormField
+ *   control={form.control}
+ *   name="message"
+ *   render={({ field }) => (
+ *     <FormItem>
+ *       <FormLabel>Message</FormLabel>
+ *       <FormControl>
+ *         <Textarea {...field} placeholder="Type your message here" />
+ *       </FormControl>
+ *       <FormMessage />
+ *     </FormItem>
+ *   )}
+ * />
+ */
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, ...props }, ref) => {
     const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);

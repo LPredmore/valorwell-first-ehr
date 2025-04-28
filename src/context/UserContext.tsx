@@ -1,21 +1,60 @@
 
+/**
+ * @context UserContext
+ * @description Context for managing user authentication state and profile information.
+ * Provides user role, client status, loading state, and user ID throughout the application.
+ */
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+/**
+ * @interface UserContextType
+ * @description Type definition for the user context value
+ */
 type UserContextType = {
+  /**
+   * The role of the authenticated user (e.g., 'client', 'clinician', 'admin')
+   */
   userRole: string | null;
+  
+  /**
+   * The status of the client (e.g., 'active', 'inactive', 'pending')
+   */
   clientStatus: string | null;
+  
+  /**
+   * Whether the user data is currently being loaded
+   */
   isLoading: boolean;
+  
+  /**
+   * The ID of the authenticated user
+   */
   userId: string | null;
 };
 
-const UserContext = createContext<UserContextType>({ 
-  userRole: null, 
+/**
+ * Context for providing user authentication and profile information
+ */
+const UserContext = createContext<UserContextType>({
+  userRole: null,
   clientStatus: null,
   isLoading: true,
   userId: null
 });
 
+/**
+ * @component UserProvider
+ * @description Provider component for the UserContext.
+ * Manages user authentication state and fetches user profile information.
+ *
+ * @example
+ * // Wrap your application with the UserProvider
+ * <UserProvider>
+ *   <App />
+ * </UserProvider>
+ */
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [clientStatus, setClientStatus] = useState<string | null>(null);
@@ -95,4 +134,24 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+/**
+ * @hook useUser
+ * @description Hook for accessing the user context values.
+ *
+ * @returns {UserContextType} The user context value containing userRole, clientStatus, isLoading, and userId
+ *
+ * @example
+ * // Using the hook in a component
+ * const { userRole, clientStatus, isLoading, userId } = useUser();
+ *
+ * if (isLoading) {
+ *   return <LoadingSpinner />;
+ * }
+ *
+ * if (!userId) {
+ *   return <Redirect to="/login" />;
+ * }
+ *
+ * return userRole === 'clinician' ? <ClinicianDashboard /> : <ClientDashboard />;
+ */
 export const useUser = () => useContext(UserContext);

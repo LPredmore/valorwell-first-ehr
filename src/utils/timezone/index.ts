@@ -1,4 +1,30 @@
 
+/**
+ * @module TimeZoneService
+ * @description A comprehensive service for handling timezone operations throughout the application.
+ * This is the official source of truth for all timezone-related functionality.
+ *
+ * The service is organized into three main categories:
+ * 1. Core functions - Basic timezone conversion and manipulation
+ * 2. Formatting functions - Display and formatting of dates and times
+ * 3. Calendar functions - Calendar-specific timezone operations
+ *
+ * @example
+ * // Converting between timezones
+ * import { TimeZoneService } from '@/utils/timezone';
+ *
+ * // Create a datetime in a specific timezone
+ * const appointmentTime = TimeZoneService.createDateTime('2025-04-28', '14:30', 'America/New_York');
+ *
+ * // Convert to user's timezone
+ * const userTimeZone = 'America/Los_Angeles';
+ * const localTime = TimeZoneService.convertDateTime(appointmentTime, 'America/New_York', userTimeZone);
+ *
+ * // Format for display
+ * const displayTime = TimeZoneService.formatDateTime(localTime, 'full');
+ * // "Monday, April 28, 2025, 11:30 AM PDT"
+ */
+
 import { DateTime } from 'luxon';
 import { CalendarEvent } from '@/types/calendar';
 import * as Core from './core';
@@ -7,13 +33,17 @@ import * as Calendar from './calendar';
 import { TimeZoneError } from './TimeZoneError';
 
 export type { DateTimeFormat } from './formatting';
+/**
+ * @typedef TimeUnit
+ * @description Time units that can be used for duration calculations
+ */
 export type TimeUnit = 'years' | 'quarters' | 'months' | 'weeks' | 'days' | 'hours' | 'minutes' | 'seconds' | 'milliseconds';
 
 export { TimeZoneError } from './TimeZoneError';
 
 /**
- * TimeZoneService Interface
- * This interface defines all methods available in the TimeZoneService
+ * @interface TimeZoneServiceInterface
+ * @description Defines all methods available in the TimeZoneService
  */
 export interface TimeZoneServiceInterface {
   // Constants
@@ -53,7 +83,48 @@ export interface TimeZoneServiceInterface {
 }
 
 /**
- * TimeZoneService - THE OFFICIAL SOURCE OF TRUTH for all timezone operations
+ * @const TimeZoneService
+ * @description THE OFFICIAL SOURCE OF TRUTH for all timezone operations in the application.
+ * Provides a unified API for working with timezones, dates, and times.
+ *
+ * Key features:
+ * - Consistent timezone handling across the application
+ * - Robust error handling with detailed error messages
+ * - Support for formatting dates and times in various formats
+ * - Calendar-specific timezone operations
+ * - Conversion between different timezone representations
+ *
+ * @example
+ * // Basic usage
+ * import { TimeZoneService } from '@/utils/timezone';
+ *
+ * // Get current time in user's timezone
+ * const now = TimeZoneService.getCurrentDateTime('America/Chicago');
+ *
+ * // Format for display
+ * const formattedDate = TimeZoneService.formatDateTime(now, 'full');
+ *
+ * @example
+ * // Working with calendar events
+ * import { TimeZoneService } from '@/utils/timezone';
+ *
+ * // Convert a calendar event from server timezone to user timezone
+ * const localEvent = TimeZoneService.convertEventToUserTimeZone(
+ *   serverEvent,
+ *   'America/Chicago'
+ * );
+ *
+ * @example
+ * // Error handling
+ * import { TimeZoneService, TimeZoneError } from '@/utils/timezone';
+ *
+ * try {
+ *   const dateTime = TimeZoneService.parseWithZone('2025-04-28T14:30:00', 'Invalid/Zone');
+ * } catch (error) {
+ *   if (error instanceof TimeZoneError) {
+ *     console.error(`TimeZone error: ${error.message}, Code: ${error.code}`);
+ *   }
+ * }
  */
 export const TimeZoneService: TimeZoneServiceInterface = {
   // Constants

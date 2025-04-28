@@ -1,4 +1,10 @@
 
+/**
+ * @file useSessionNoteState.tsx
+ * @description Manages the state for session note forms
+ * @module @valorwell/core/hooks/sessionNote
+ */
+
 import { useState, useEffect } from 'react';
 import { SessionNoteFormData } from '../../types/sessionNote';
 

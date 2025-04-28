@@ -16,11 +16,10 @@ import { useAvailability } from '@/hooks/useAvailability';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useDialogs } from '@/context/DialogContext';
 
 // Add permissionLevel to the props
 interface AvailabilitySettingsDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
   clinicianId: string;
   onSettingsSaved?: () => void;
   permissionLevel?: 'full' | 'limited' | 'none';
@@ -28,13 +27,12 @@ interface AvailabilitySettingsDialogProps {
 }
 
 const AvailabilitySettingsDialog: React.FC<AvailabilitySettingsDialogProps> = ({
-  isOpen,
-  onClose,
   clinicianId,
   onSettingsSaved,
   permissionLevel = 'full',
   error
 }) => {
+  const { isAvailabilitySettingsOpen: isOpen, closeAvailabilitySettings: onClose } = useDialogs();
   const [defaultSlotDuration, setDefaultSlotDuration] = useState(60);
   const [minNoticeDays, setMinNoticeDays] = useState(1);
   const [maxAdvanceDays, setMaxAdvanceDays] = useState(30);
@@ -106,7 +104,7 @@ const AvailabilitySettingsDialog: React.FC<AvailabilitySettingsDialogProps> = ({
   // ... keep existing code (useEffect, other functions)
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={() => onClose()}>
       <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Availability Settings</DialogTitle>

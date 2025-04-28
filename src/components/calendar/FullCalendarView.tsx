@@ -1,17 +1,19 @@
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
-import { CalendarApi, EventClickArg } from '@fullcalendar/core';
+import { CalendarApi, EventClickArg, EventSourceFunc } from '@fullcalendar/core';
 import { toast } from '@/hooks/use-toast';
 import { CalendarViewType, CalendarEvent, FullCalendarProps } from '@/types/calendar';
+import { componentMonitor } from '@/utils/performance/componentMonitor';
 import { Loader2 } from 'lucide-react';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import CalendarAvailabilityHandler from './CalendarAvailabilityHandler';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { componentMonitor } from '@/utils/performance/componentMonitor';
 
 const FullCalendarView: React.FC<FullCalendarProps> = ({
   clinicianId,
@@ -20,25 +22,43 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   height = '700px',
   showAvailability = false,
   onAvailabilityClick,
+  testEvents,
 }) => {
+  // Performance monitoring
+  const renderStartTime = React.useRef(performance.now());
+  
+  useEffect(() => {
+    const renderTime = performance.now() - renderStartTime.current;
+    componentMonitor.recordRender('FullCalendarView', renderTime, {
+      props: { clinicianId, userTimeZone, view, showAvailability }
+    });
+  });
+
   const calendarRef = useRef<CalendarApi | null>(null);
   const [availabilityEvents, setAvailabilityEvents] = useState<CalendarEvent[]>([]);
   const [hasAvailabilityError, setHasAvailabilityError] = useState(false);
+  const [visibleRange, setVisibleRange] = useState<{start: Date, end: Date} | null>(null);
 
   // Memoize the timezone to prevent unnecessary re-renders
-  const validTimeZone = useMemo(() => 
-    TimeZoneService.ensureIANATimeZone(userTimeZone), 
+  const validTimeZone = useMemo(() =>
+    TimeZoneService.ensureIANATimeZone(userTimeZone),
     [userTimeZone]
   );
 
+  // Use test events if provided (for performance testing), otherwise fetch from API
   const {
     events: appointmentEvents,
     isLoading: isLoadingAppointments,
     error: appointmentsError,
-  } = useCalendarEvents({
-    clinicianId,
-    userTimeZone: validTimeZone,
-  });
+    refetch: refetchEvents
+  } = testEvents ?
+    { events: testEvents, isLoading: false, error: null, refetch: () => {} } :
+    useCalendarEvents({
+      clinicianId,
+      userTimeZone: validTimeZone,
+      startDate: visibleRange?.start,
+      endDate: visibleRange?.end
+    });
 
   useEffect(() => {
     if (appointmentsError) {
@@ -67,18 +87,37 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     }
   };
 
+  // Handle calendar view range changes for lazy loading
+  const handleDatesSet = useCallback(({ start, end }: { start: Date, end: Date }) => {
+    setVisibleRange({ start, end });
+  }, []);
+
   // Memoize combinedEvents to prevent unnecessary re-renders
-  const combinedEvents = useMemo(() => 
-    [...appointmentEvents, ...availabilityEvents], 
+  const combinedEvents = useMemo(() =>
+    [...appointmentEvents, ...availabilityEvents],
     [appointmentEvents, availabilityEvents]
   );
 
-  console.log('[FullCalendarView] Combined events:', {
-    appointments: appointmentEvents.length,
-    availability: availabilityEvents.length,
-    total: combinedEvents.length,
-    hasAvailabilityError
-  });
+  // Use windowing technique - only process events that are in the visible range
+  const visibleEvents = useMemo(() => {
+    if (!visibleRange) return combinedEvents;
+    
+    return combinedEvents.filter(event => {
+      const eventStart = new Date(event.start);
+      const eventEnd = new Date(event.end);
+      return eventStart <= visibleRange.end && eventEnd >= visibleRange.start;
+    });
+  }, [combinedEvents, visibleRange]);
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[FullCalendarView] Events stats:', {
+      appointments: appointmentEvents.length,
+      availability: availabilityEvents.length,
+      total: combinedEvents.length,
+      visible: visibleEvents.length,
+      hasAvailabilityError
+    });
+  }
 
   const handleEventClick = (info: EventClickArg) => {
     const eventType = info.event.extendedProps?.eventType;
@@ -107,7 +146,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   }
 
   // Memoized event class names function
-  const getEventClassNames = (arg: any) => {
+  const getEventClassNames = useMemo(() => (arg: any) => {
     const eventType = arg.event.extendedProps?.eventType;
     
     if (eventType === 'availability') {
@@ -117,7 +156,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     } else {
       return ['bg-blue-100', 'text-blue-800', 'border-blue-200'];
     }
-  };
+  }, []);
 
   try {
     return (
@@ -139,7 +178,8 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
           }}
-          events={combinedEvents}
+          events={visibleEvents}
+          datesSet={handleDatesSet}
           height={height}
           eventClick={handleEventClick}
           timeZone={validTimeZone}

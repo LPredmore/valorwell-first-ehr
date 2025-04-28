@@ -12,6 +12,7 @@ export interface FullCalendarProps {
   height?: string | number;
   showAvailability?: boolean;
   onAvailabilityClick?: (event: any) => void;
+  testEvents?: CalendarEvent[]; // For performance testing
 }
 
 export interface CalendarEvent {

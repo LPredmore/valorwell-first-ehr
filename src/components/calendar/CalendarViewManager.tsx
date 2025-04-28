@@ -1,10 +1,11 @@
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import FullCalendarView from './FullCalendarView';
 import CalendarErrorBoundary from './CalendarErrorBoundary';
 import CalendarError from './CalendarError';
 import { Loader2 } from 'lucide-react';
+import { componentMonitor } from '@/utils/performance/componentMonitor';
 
 interface CalendarViewManagerProps {
   clinicianId: string | null;
@@ -21,10 +22,21 @@ const CalendarViewManager: React.FC<CalendarViewManagerProps> = ({
   onAvailabilityClick,
   onError,
 }) => {
+  // Performance monitoring
+  const renderStartTime = React.useRef(performance.now());
+  
+  useEffect(() => {
+    const renderTime = performance.now() - renderStartTime.current;
+    componentMonitor.recordRender('CalendarViewManager', renderTime, {
+      props: { clinicianId, timeZone, showAvailability }
+    });
+  });
+
   const [calendarKey, setCalendarKey] = useState<number>(0);
   const [calendarError, setCalendarError] = useState<Error | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
+  // Memoize callbacks with proper dependency arrays
   const handleCalendarRefresh = useCallback(() => {
     console.log('[CalendarViewManager] Refreshing calendar with new key');
     setCalendarKey(prev => prev + 1);
@@ -37,6 +49,16 @@ const CalendarViewManager: React.FC<CalendarViewManagerProps> = ({
     setCalendarError(error);
     if (onError) onError(error);
   }, [onError]);
+  
+  // Memoize the calendar view props to prevent unnecessary re-renders
+  const calendarViewProps = useMemo(() => ({
+    clinicianId,
+    userTimeZone: timeZone,
+    view: 'timeGridWeek' as const,
+    height: "700px",
+    showAvailability,
+    onAvailabilityClick
+  }), [clinicianId, timeZone, showAvailability, onAvailabilityClick]);
 
   if (!clinicianId) {
     return (
@@ -60,14 +82,9 @@ const CalendarViewManager: React.FC<CalendarViewManagerProps> = ({
       }
     >
       <Card className="p-4">
-        <FullCalendarView 
-          key={calendarKey} 
-          clinicianId={clinicianId} 
-          userTimeZone={timeZone} 
-          view='timeGridWeek'
-          height="700px" 
-          showAvailability={showAvailability}
-          onAvailabilityClick={onAvailabilityClick}
+        <FullCalendarView
+          key={calendarKey}
+          {...calendarViewProps}
         />
       </Card>
     </CalendarErrorBoundary>

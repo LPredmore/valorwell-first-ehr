@@ -14,18 +14,16 @@ import { AlertCircle, CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { calendarPermissionDebug } from '@/utils/calendarPermissionDebug';
 import { useCalendarAuth } from '@/hooks/useCalendarAuth';
 import { authDebugUtils } from '@/utils/authDebugUtils';
+import { useDialogs } from '@/context/DialogContext';
 
 interface CalendarDiagnosticDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
   selectedClinicianId: string | null;
 }
 
 const CalendarDiagnosticDialog: React.FC<CalendarDiagnosticDialogProps> = ({
-  isOpen,
-  onClose,
   selectedClinicianId
 }) => {
+  const { isDiagnosticOpen: isOpen, closeDiagnosticDialog: onClose } = useDialogs();
   const { currentUserId } = useCalendarAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [diagnosticResults, setDiagnosticResults] = useState<Record<string, any> | null>(null);
@@ -106,7 +104,7 @@ const CalendarDiagnosticDialog: React.FC<CalendarDiagnosticDialogProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={() => onClose()}>
       <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Calendar Permissions Diagnostic</DialogTitle>
@@ -165,7 +163,7 @@ const CalendarDiagnosticDialog: React.FC<CalendarDiagnosticDialogProps> = ({
             Run Again
           </Button>
           
-          <Button onClick={onClose}>Close</Button>
+          <Button onClick={() => onClose()}>Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

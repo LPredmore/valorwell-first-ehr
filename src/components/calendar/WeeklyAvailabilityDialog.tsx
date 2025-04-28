@@ -1,48 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { DayOfWeek, AvailabilitySlot } from '@/types/availability';
+import { DayOfWeek } from '@/types/availability';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { useAvailability } from '@/hooks/useAvailability';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Trash2, AlertCircle, Info } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { useDialogs } from '@/context/DialogContext';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { DateTime } from 'luxon';
+
+// Import our new components
+import AvailabilitySlotList from './AvailabilitySlotList';
+import AvailabilityForm from './AvailabilityForm';
+import DeleteConfirmationDialog from './DeleteConfirmationDialog';
+import DayTabs from './DayTabs';
 
 interface WeeklyAvailabilityDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
   clinicianId: string;
   onAvailabilityUpdated?: () => void;
-  initialActiveTab?: string;
   permissionLevel?: 'full' | 'limited' | 'none';
 }
 
+/**
+ * WeeklyAvailabilityDialog - A dialog for managing weekly availability
+ * 
+ * This component allows users to view and manage availability slots for each day
+ * of the week. It has been refactored to use smaller, more focused components
+ * for better maintainability and testability.
+ */
 const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
-  isOpen,
-  onClose,
   clinicianId,
   onAvailabilityUpdated,
-  initialActiveTab = 'monday',
   permissionLevel = 'full'
 }) => {
+  const { state, closeDialog } = useDialogs();
+  const isOpen = state.type === 'weeklyAvailability';
+  const onClose = closeDialog;
+  const selectedDate = state.props.selectedDate;
+  const initialActiveTab = selectedDate || 'monday';
   const [activeTab, setActiveTab] = useState<DayOfWeek>((initialActiveTab || 'monday') as DayOfWeek);
-  const [newStartTime, setNewStartTime] = useState('09:00');
-  const [newEndTime, setNewEndTime] = useState('10:00');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
@@ -84,113 +81,6 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       }
     }
   }, [isOpen]);
-
-  const formatTimeDisplay = (timeStr: string): string => {
-    if (!timeStr) return '';
-    return TimeZoneService.formatTime(timeStr, 'h:mm a', timeZone);
-  };
-
-  const handleAddSlot = async () => {
-    setFormError(null);
-    
-    if (!newStartTime || !newEndTime) {
-      const errorMessage = "Please provide both start and end time";
-      setFormError(errorMessage);
-      toast({
-        title: "Missing Information",
-        description: errorMessage,
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (newStartTime >= newEndTime) {
-      const errorMessage = "End time must be later than start time";
-      setFormError(errorMessage);
-      toast({
-        title: "Invalid Time Range",
-        description: errorMessage,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (permissionLevel === 'none') {
-      const errorMessage = "You do not have permission to create availability slots";
-      setFormError(errorMessage);
-      toast({
-        title: "Permission Denied",
-        description: errorMessage,
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
-    try {
-      const byDay = getDayCode(activeTab);
-      const recurrenceRule = `FREQ=WEEKLY;BYDAY=${byDay}`;
-      
-      console.log('[WeeklyAvailabilityDialog] Creating slot with:', {
-        activeTab,
-        newStartTime,
-        newEndTime,
-        timeZone,
-        specificDate,
-        permissionLevel
-      });
-      
-      const result = await createSlot(
-        activeTab,
-        newStartTime,
-        newEndTime,
-        true,
-        recurrenceRule,
-        timeZone,
-        specificDate
-      );
-      
-      if (result.success) {
-        toast({
-          title: "Success",
-          description: `Weekly availability added for ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`,
-        });
-        
-        await refreshAvailability();
-        onAvailabilityUpdated?.();
-        setRetryCount(0);
-        setFormError(null);
-        setNewStartTime('09:00');
-        setNewEndTime('10:00');
-      } else {
-        const errorMessage = result.error ? 
-          String(result.error) : 
-          "Failed to add availability. Please try again.";
-        
-        setFormError(errorMessage);
-        setRetryCount(prev => prev + 1);
-        
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive"
-        });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-      console.error('[WeeklyAvailabilityDialog] Error adding availability slot:', err);
-      setFormError(errorMessage);
-      setRetryCount(prev => prev + 1);
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleDeleteSlot = (slotId: string, isRecurring: boolean = false) => {
     if (permissionLevel === 'none') {
@@ -277,71 +167,6 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     return indices[day];
   };
 
-  const renderSlotList = (slots: AvailabilitySlot[] = []) => {
-    const availabilitySlots = slots.filter(slot => !slot.isAppointment);
-    const appointmentSlots = slots.filter(slot => slot.isAppointment);
-    
-    if (availabilitySlots.length === 0 && appointmentSlots.length === 0) {
-      return (
-        <div className="text-center text-gray-500 py-4">
-          No availability slots set for this day.
-        </div>
-      );
-    }
-    
-    return (
-      <>
-        {availabilitySlots.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-sm font-medium mb-2">Available Times</h4>
-            <ul className="space-y-2">
-              {availabilitySlots.map(slot => (
-                <li key={slot.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md border">
-                  <span className="text-sm">
-                    {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteSlot(slot.id, slot.isRecurring)}
-                    title={slot.isRecurring ? "Delete this recurring availability slot" : "Delete this availability slot"}
-                  >
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        
-        {appointmentSlots.length > 0 && (
-          <div>
-            <h4 className="text-sm font-medium mb-2 text-blue-600">Scheduled Appointments</h4>
-            <ul className="space-y-2">
-              {appointmentSlots.map(slot => (
-                <li key={slot.id} className="p-2 bg-blue-50 rounded-md border border-blue-100">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">
-                      {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
-                    </span>
-                    <span className="text-xs px-2 py-1 bg-blue-100 rounded-full">
-                      Appointment
-                    </span>
-                  </div>
-                  {slot.clientName && (
-                    <div className="text-xs text-gray-600 mt-1">
-                      Client: {slot.clientName}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </>
-    );
-  };
-
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -360,8 +185,8 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
               {error instanceof Error ? error.message : String(error)}
             </AlertDescription>
           </Alert>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="mt-2"
             onClick={handleRetry}
           >
@@ -372,99 +197,149 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
     }
     
     return (
-      <Tabs defaultValue={activeTab} onValueChange={(value) => setActiveTab(value as DayOfWeek)}>
-        <TabsList className="grid grid-cols-7">
-          <TabsTrigger value="monday">Mon</TabsTrigger>
-          <TabsTrigger value="tuesday">Tue</TabsTrigger>
-          <TabsTrigger value="wednesday">Wed</TabsTrigger>
-          <TabsTrigger value="thursday">Thu</TabsTrigger>
-          <TabsTrigger value="friday">Fri</TabsTrigger>
-          <TabsTrigger value="saturday">Sat</TabsTrigger>
-          <TabsTrigger value="sunday">Sun</TabsTrigger>
-        </TabsList>
-        
-        {permissionLevel !== 'full' && (
-          <Alert variant="warning" className="mt-4">
-            <Info className="h-4 w-4" />
-            <AlertDescription>
-              You may have limited permissions to manage this calendar.
-              {permissionLevel === 'none' ? " You can only view availability." : " Some actions may be restricted."}
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {weeklyAvailability && Object.keys(weeklyAvailability).map((day) => (
-          <TabsContent key={day} value={day} className="p-4 bg-white border rounded-md mt-4">
-            <h3 className="text-lg font-semibold mb-4 capitalize">{day}</h3>
-            
-            {renderSlotList(weeklyAvailability[day as DayOfWeek])}
-            
-            {permissionLevel !== 'none' && (
-              <div className="mt-4 p-3 border border-dashed rounded-md">
-                <h4 className="text-sm font-medium mb-2">Add New Availability Slot</h4>
-                
-                {formError && (
-                  <Alert variant="destructive" className="mb-3">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{formError}</AlertDescription>
-                  </Alert>
-                )}
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor={`${day}-start`}>Start Time</Label>
-                    <Input
-                      id={`${day}-start`}
-                      type="time"
-                      value={newStartTime}
-                      onChange={(e) => setNewStartTime(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor={`${day}-end`}>End Time</Label>
-                    <Input
-                      id={`${day}-end`}
-                      type="time"
-                      value={newEndTime}
-                      onChange={(e) => setNewEndTime(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <Button 
-                  onClick={handleAddSlot} 
-                  className="mt-3 w-full"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Plus className="h-4 w-4 mr-2" />
-                  )}
-                  Add Time Slot
-                </Button>
-
-                {retryCount > 1 && (
-                  <div className="mt-3 p-2 bg-gray-50 rounded-md text-xs text-gray-600">
-                    <p className="font-medium">Troubleshooting Tips:</p>
-                    <ul className="list-disc list-inside mt-1">
-                      <li>Ensure the start time is before the end time</li>
-                      <li>Check for time slot conflicts</li>
-                      <li>Verify your timezone settings in profile</li>
-                      <li>Try refreshing the page if the issue persists</li>
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-          </TabsContent>
-        ))}
-      </Tabs>
+      <DayTabs
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        weeklyAvailability={weeklyAvailability}
+        timeZone={timeZone || ''}
+        onDeleteSlot={handleDeleteSlot}
+        onAddSlot={handleAddSlotWrapper}
+        isSubmitting={isSubmitting}
+        formError={formError}
+        retryCount={retryCount}
+        permissionLevel={permissionLevel}
+      />
     );
+  };
+
+  // Wrapper function to handle adding a slot
+  const handleAddSlotWrapper = async (startTime: string, endTime: string) => {
+    setFormError(null);
+    
+    if (!startTime || !endTime) {
+      const errorMessage = "Please provide both start and end time";
+      setFormError(errorMessage);
+      toast({
+        title: "Missing Information",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (startTime >= endTime) {
+      const errorMessage = "End time must be later than start time";
+      setFormError(errorMessage);
+      toast({
+        title: "Invalid Time Range",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (permissionLevel === 'none') {
+      const errorMessage = "You do not have permission to create availability slots";
+      setFormError(errorMessage);
+      toast({
+        title: "Permission Denied",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      const byDay = getDayCode(activeTab);
+      const recurrenceRule = `FREQ=WEEKLY;BYDAY=${byDay}`;
+      
+      console.log('[WeeklyAvailabilityDialog] Creating slot with:', {
+        activeTab,
+        startTime,
+        endTime,
+        timeZone,
+        specificDate,
+        permissionLevel
+      });
+      
+      // Validate time zone before proceeding
+      if (!timeZone) {
+        throw new Error("Time zone is not set. Please check your profile settings.");
+      }
+      
+      const result = await createSlot(
+        activeTab,
+        startTime,
+        endTime,
+        true,
+        recurrenceRule,
+        timeZone,
+        specificDate
+      );
+      
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `Weekly availability added for ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`,
+        });
+        
+        await refreshAvailability();
+        onAvailabilityUpdated?.();
+        setRetryCount(0);
+        setFormError(null);
+      } else {
+        let errorMessage = result.error ?
+          String(result.error) :
+          "Failed to add availability. Please try again.";
+        
+        // Improve error messages
+        if (errorMessage.includes("overlapping")) {
+          errorMessage = "This time slot overlaps with an existing availability slot. Please choose a different time.";
+        } else if (errorMessage.includes("permission")) {
+          errorMessage = "You don't have permission to create availability for this clinician.";
+        } else if (errorMessage.includes("timezone")) {
+          errorMessage = "There was an issue with the time zone. Please check your profile settings.";
+        }
+        
+        setFormError(errorMessage);
+        setRetryCount(prev => prev + 1);
+        
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
+      }
+    } catch (err) {
+      let errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
+      
+      // Improve error messages
+      if (errorMessage.includes("overlapping")) {
+        errorMessage = "This time slot overlaps with an existing availability slot. Please choose a different time.";
+      } else if (errorMessage.includes("permission")) {
+        errorMessage = "You don't have permission to create availability for this clinician.";
+      } else if (errorMessage.includes("timezone")) {
+        errorMessage = "There was an issue with the time zone. Please check your profile settings.";
+      }
+      
+      console.error('[WeeklyAvailabilityDialog] Error adding availability slot:', err);
+      setFormError(errorMessage);
+      setRetryCount(prev => prev + 1);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={isOpen} onOpenChange={() => onClose()}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Weekly Availability Schedule</DialogTitle>
@@ -488,33 +363,13 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
         </DialogContent>
       </Dialog>
       
-      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {isDeleteAll ? "Delete Recurring Availability" : "Delete Availability Slot"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {isDeleteAll
-                ? "This will delete all instances of this recurring availability slot. Are you sure?"
-                : "Are you sure you want to delete this availability slot?"}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                "Delete"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmationDialog
+        isOpen={isDeleteConfirmOpen}
+        onOpenChange={setIsDeleteConfirmOpen}
+        onConfirm={confirmDelete}
+        isRecurring={isDeleteAll}
+        isSubmitting={isSubmitting}
+      />
     </>
   );
 };

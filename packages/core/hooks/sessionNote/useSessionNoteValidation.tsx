@@ -1,4 +1,10 @@
 
+/**
+ * @file useSessionNoteValidation.tsx
+ * @description Validates session note form data against a schema
+ * @module @valorwell/core/hooks/sessionNote
+ */
+
 import { useState, useEffect } from 'react';
 import { sessionNoteSchema } from '../../types/sessionNote';
 

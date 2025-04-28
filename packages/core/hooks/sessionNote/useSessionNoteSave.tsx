@@ -1,4 +1,10 @@
 
+/**
+ * @file useSessionNoteSave.tsx
+ * @description Handles saving session notes to the database
+ * @module @valorwell/core/hooks/sessionNote
+ */
+
 import { useState } from 'react';
 import { supabase } from '../../api/supabase';
 import { SessionNoteFormData } from '../../types/sessionNote';
