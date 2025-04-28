@@ -1,6 +1,53 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { authDebugUtils } from './authDebugUtils';
+import { isValidUUID, formatAsUUID } from './validation/uuidUtils';
+import { formatAsClinicianID, clinicianIDExists } from './validation/clinicianUtils';
+
+/**
+ * Specialized utility for debugging calendar permission issues
+ */
+/**
+ * Interface for diagnostic test results
+ */
+interface DiagnosticTestResult {
+  success: boolean;
+  message: string;
+  error?: string;
+  [key: string]: any;
+}
+
+/**
+ * Interface for the complete diagnostic results
+ */
+interface DiagnosticResults {
+  timestamp: string;
+  success: boolean;
+  summary: string;
+  tests: Record<string, DiagnosticTestResult>;
+  idAnalysis?: IdAnalysisResult;
+  error?: string;
+}
+
+/**
+ * Interface for ID analysis results
+ */
+interface IdAnalysisResult {
+  userId: {
+    original: string;
+    formatted: string;
+    isValid: boolean;
+    exists: boolean;
+  };
+  clinicianId: {
+    original: string;
+    formatted: string;
+    isValid: boolean;
+    exists: boolean;
+  };
+  match: boolean;
+  issues: string[];
+}
 
 /**
  * Specialized utility for debugging calendar permission issues
@@ -9,14 +56,21 @@ export const calendarPermissionDebug = {
   /**
    * Run a full diagnostic on calendar permissions
    */
-  async runDiagnostic(currentUserId: string | null, selectedClinicianId: string | null) {
-    const results: Record<string, any> = {
+  async runDiagnostic(currentUserId: string | null, selectedClinicianId: string | null): Promise<DiagnosticResults> {
+    const results: DiagnosticResults = {
       timestamp: new Date().toISOString(),
+      success: false,
+      summary: '',
       tests: {}
     };
     
     try {
       console.group('[CalendarPermissionDebug] Running diagnostic tests');
+      
+      // Test 0: Analyze IDs for format issues
+      if (currentUserId && selectedClinicianId) {
+        results.idAnalysis = await this.analyzeIds(currentUserId, selectedClinicianId);
+      }
       
       // Test 1: Check authentication
       results.tests.auth = await this.checkAuthentication();
@@ -34,8 +88,13 @@ export const calendarPermissionDebug = {
       // Test 4: Check calendar_events permissions
       results.tests.calendarPermissions = await this.checkCalendarPermissions(currentUserId, selectedClinicianId);
       
+      // Test 5: Check database-level ID consistency
+      if (currentUserId && selectedClinicianId) {
+        results.tests.idConsistency = await this.checkIdConsistency(currentUserId, selectedClinicianId);
+      }
+      
       // Overall result
-      results.success = Object.values(results.tests).every((test: any) => test.success);
+      results.success = Object.values(results.tests).every((test) => test.success);
       results.summary = this.generateSummary(results);
       
       console.log('[CalendarPermissionDebug] Diagnostic results:', results);
@@ -49,6 +108,7 @@ export const calendarPermissionDebug = {
       return {
         timestamp: new Date().toISOString(),
         success: false,
+        summary: `Error running diagnostics: ${String(error)}`,
         error: String(error),
         tests: results.tests
       };
@@ -372,5 +432,190 @@ export const calendarPermissionDebug = {
     }
     
     return steps;
+  },
+
+  /**
+   * Analyze user and clinician IDs for format issues
+   */
+  async analyzeIds(userId: string, clinicianId: string): Promise<IdAnalysisResult> {
+    console.log('[CalendarPermissionDebug] Analyzing IDs:', { userId, clinicianId });
+    
+    const result: IdAnalysisResult = {
+      userId: {
+        original: userId,
+        formatted: userId,
+        isValid: isValidUUID(userId),
+        exists: false
+      },
+      clinicianId: {
+        original: clinicianId,
+        formatted: clinicianId,
+        isValid: isValidUUID(clinicianId),
+        exists: false
+      },
+      match: userId === clinicianId,
+      issues: []
+    };
+    
+    // Format IDs if needed
+    if (!result.userId.isValid) {
+      const formatted = formatAsUUID(userId);
+      if (formatted !== userId) {
+        result.userId.formatted = formatted;
+        result.userId.isValid = isValidUUID(formatted);
+        result.issues.push('User ID format is non-standard');
+      } else {
+        result.issues.push('User ID is not a valid UUID and cannot be formatted');
+      }
+    }
+    
+    if (!result.clinicianId.isValid) {
+      const formatted = formatAsClinicianID(clinicianId);
+      if (formatted !== clinicianId) {
+        result.clinicianId.formatted = formatted;
+        result.clinicianId.isValid = isValidUUID(formatted);
+        result.issues.push('Clinician ID format is non-standard');
+      } else {
+        result.issues.push('Clinician ID is not a valid UUID and cannot be formatted');
+      }
+    }
+    
+    // Check if IDs exist in database
+    try {
+      // Check user ID
+      const { data: userData } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', result.userId.formatted)
+        .maybeSingle();
+        
+      result.userId.exists = !!userData;
+      
+      if (!result.userId.exists) {
+        result.issues.push('User ID does not exist in profiles table');
+      }
+      
+      // Check clinician ID
+      result.clinicianId.exists = await clinicianIDExists(result.clinicianId.formatted);
+      
+      if (!result.clinicianId.exists) {
+        result.issues.push('Clinician ID does not exist in profiles table');
+      }
+    } catch (error) {
+      console.error('[CalendarPermissionDebug] Error checking ID existence:', error);
+      result.issues.push(`Error checking ID existence: ${String(error)}`);
+    }
+    
+    // Check if formatted IDs match
+    if (result.userId.formatted === result.clinicianId.formatted && result.userId.original !== result.clinicianId.original) {
+      result.issues.push('IDs match after formatting but not in original form - this indicates a format inconsistency');
+    }
+    
+    return result;
+  },
+  
+  /**
+   * Check database-level ID consistency
+   */
+  async checkIdConsistency(userId: string, clinicianId: string): Promise<DiagnosticTestResult> {
+    try {
+      console.log('[CalendarPermissionDebug] Checking ID consistency in database');
+      
+      // Format IDs for comparison
+      const formattedUserId = isValidUUID(userId) ? userId : formatAsUUID(userId);
+      const formattedClinicianId = isValidUUID(clinicianId) ? clinicianId : formatAsClinicianID(clinicianId);
+      
+      // Check for inconsistent ID formats in calendar_events table
+      const { data: inconsistentEvents, error: eventsError } = await supabase
+        .from('calendar_events')
+        .select('id, clinician_id')
+        .eq('clinician_id', clinicianId)
+        .limit(10);
+        
+      if (eventsError) {
+        return {
+          success: false,
+          message: 'Failed to check calendar events for ID consistency',
+          error: eventsError.message
+        };
+      }
+      
+      // Check for inconsistent ID formats in profiles table
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .or(`id.eq.${userId},id.eq.${clinicianId}`)
+        .limit(2);
+        
+      if (profileError) {
+        return {
+          success: false,
+          message: 'Failed to check profiles for ID consistency',
+          error: profileError.message
+        };
+      }
+      
+      // Analyze results
+      const issues: string[] = [];
+      
+      if (inconsistentEvents && inconsistentEvents.length > 0) {
+        const nonStandardIds = inconsistentEvents.filter(event =>
+          event.clinician_id && !isValidUUID(event.clinician_id.toString())
+        );
+        
+        if (nonStandardIds.length > 0) {
+          issues.push(`Found ${nonStandardIds.length} calendar events with non-standard clinician IDs`);
+        }
+      }
+      
+      if (profileData && profileData.length < 2 && userId !== clinicianId) {
+        issues.push('One or both IDs not found in profiles table');
+      }
+      
+      return {
+        success: issues.length === 0,
+        message: issues.length === 0
+          ? 'ID formats are consistent in database'
+          : 'Found ID inconsistencies in database',
+        issues,
+        formattedUserId,
+        formattedClinicianId
+      };
+    } catch (error) {
+      console.error('[CalendarPermissionDebug] Error checking ID consistency:', error);
+      return {
+        success: false,
+        message: 'Error checking ID consistency',
+        error: String(error)
+      };
+    }
+  },
+  
+  /**
+   * Log detailed permission diagnostics
+   */
+  logPermissionDiagnostics(userId: string, clinicianId: string, context: string = 'general'): void {
+    console.group(`[CalendarPermissionDebug] Permission diagnostics (${context})`);
+    console.log('User ID:', userId);
+    console.log('Clinician ID:', clinicianId);
+    console.log('IDs match:', userId === clinicianId);
+    
+    // Log ID format information
+    console.log('User ID format valid:', isValidUUID(userId));
+    console.log('Clinician ID format valid:', isValidUUID(clinicianId));
+    
+    if (!isValidUUID(userId)) {
+      const formatted = formatAsUUID(userId);
+      console.log('Formatted user ID:', formatted);
+      console.log('Formatted user ID valid:', isValidUUID(formatted));
+    }
+    
+    if (!isValidUUID(clinicianId)) {
+      const formatted = formatAsClinicianID(clinicianId);
+      console.log('Formatted clinician ID:', formatted);
+      console.log('Formatted clinician ID valid:', isValidUUID(formatted));
+    }
+    
+    console.groupEnd();
   }
 };
