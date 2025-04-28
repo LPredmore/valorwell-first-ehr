@@ -1,167 +1,180 @@
-import React from 'react';
-import { useDialogs, DialogType } from '@/context/DialogContext';
 
-// Import all dialog components
-import AppointmentDialog from '@/components/calendar/AppointmentDialog';
-import AvailabilitySettingsDialog from '@/components/calendar/AvailabilitySettingsDialog';
-import WeeklyAvailabilityDialog from '@/components/calendar/WeeklyAvailabilityDialog';
-import SingleAvailabilityDialog from '@/components/calendar/SingleAvailabilityDialog';
-import CalendarDiagnosticDialog from '@/components/calendar/CalendarDiagnosticDialog';
-import AppointmentDetailsDialog from '@/components/calendar/AppointmentDetailsDialog';
-import EditAppointmentDialog from '@/components/calendar/EditAppointmentDialog';
-import BookAppointmentDialog from '@/components/calendar/BookAppointmentDialog';
-import { SessionDidNotOccurDialog } from '@/components/dashboard/SessionDidNotOccurDialog';
-import { DocumentationDialog } from '@/components/dashboard/DocumentationDialog';
-import ViewAvailabilityDialog from '@/components/patient/ViewAvailabilityDialog';
-import AppointmentBookingDialog from '@/components/patient/AppointmentBookingDialog';
+import React from 'react';
+import { useDialogs } from '@/context/DialogContext';
+import NewAppointmentDialog from '@/components/calendar/appointment/NewAppointmentDialog';
+import AppointmentDetailsDialog from '@/components/calendar/appointment/AppointmentDetailsDialog';
+import AvailabilitySettingsDialog from '@/components/calendar/availability/AvailabilitySettingsDialog';
+import WeeklyAvailabilityDialog from '@/components/calendar/availability/WeeklyAvailabilityDialog';
+import SingleAvailabilityDialog from '@/components/calendar/availability/SingleAvailabilityDialog';
+import BookAppointmentDialog from '@/components/calendar/appointment/BookAppointmentDialog';
+import ViewAvailabilityDialog from '@/components/calendar/availability/ViewAvailabilityDialog';
+import AppointmentBookingDialog from '@/components/calendar/appointment/AppointmentBookingDialog';
+import DiagnosticDialog from '@/components/calendar/DiagnosticDialog';
 
 /**
- * DialogManager component
- * 
- * This component is responsible for rendering the appropriate dialog based on the current
- * dialog state in the DialogContext. It centralizes all dialog rendering logic in one place,
- * making it easier to manage and update dialogs across the application.
+ * DialogManager is responsible for rendering all dialogs in the application
+ * It uses the DialogContext to determine which dialog to show
  */
 const DialogManager: React.FC = () => {
-  const { state, closeDialog } = useDialogs();
-  const { type, isOpen, props } = state;
-
-  // If no dialog is open, don't render anything
-  if (!isOpen || !type) {
+  const { 
+    activeDialog,
+    dialogProps,
+    closeDialog 
+  } = useDialogs();
+  
+  // Early return if no active dialog
+  if (!activeDialog) {
     return null;
   }
 
-  // Render the appropriate dialog based on the dialog type
-  const renderDialog = () => {
-    switch (type) {
-      case 'appointment':
-        return (
-          <AppointmentDialog
-            clients={props.clients || []}
-            loadingClients={props.loadingClients || false}
-            selectedClinicianId={props.selectedClinicianId || null}
-            onAppointmentCreated={props.onAppointmentCreated || (() => {})}
-          />
-        );
-      
-      case 'availabilitySettings':
-        return (
-          <AvailabilitySettingsDialog
-            clinicianId={props.clinicianId || ''}
-            onSettingsSaved={props.onSettingsSaved || (() => {})}
-            permissionLevel={props.permissionLevel || 'full'}
-          />
-        );
-      
-      case 'weeklyAvailability':
-        return (
-          <WeeklyAvailabilityDialog
-            clinicianId={props.clinicianId || ''}
-            onAvailabilityUpdated={props.onAvailabilityUpdated || (() => {})}
-            permissionLevel={props.permissionLevel || 'full'}
-          />
-        );
-      
-      case 'singleAvailability':
-        return (
-          <SingleAvailabilityDialog
-            clinicianId={props.clinicianId || ''}
-            onAvailabilityCreated={props.onAvailabilityCreated || (() => {})}
-            permissionLevel={props.permissionLevel || 'full'}
-          />
-        );
-      
-      case 'diagnostic':
-        return (
-          <CalendarDiagnosticDialog
-            selectedClinicianId={props.selectedClinicianId || null}
-          />
-        );
-      
-      case 'appointmentDetails':
-        return (
-          <AppointmentDetailsDialog
-            isOpen={true}
-            onClose={closeDialog}
-            appointment={props.appointment || null}
-            onAppointmentUpdated={props.onAppointmentUpdated || (() => {})}
-            onDelete={props.onDelete || (() => {})}
-          />
-        );
-      
-      case 'editAppointment':
-        return (
-          <EditAppointmentDialog
-            isOpen={true}
-            onClose={closeDialog}
-            appointment={props.appointment || null}
-            onAppointmentUpdated={props.onAppointmentUpdated || (() => {})}
-          />
-        );
-      
-      case 'bookAppointment':
-        return (
-          <BookAppointmentDialog
-            isOpen={true}
-            onClose={closeDialog}
-            slot={props.slot || null}
-            clinicianId={props.clinicianId || ''}
-            clientId={props.clientId || ''}
-            onAppointmentBooked={props.onAppointmentBooked || (() => {})}
-          />
-        );
-      
-      case 'sessionDidNotOccur':
-        return (
-          <SessionDidNotOccurDialog
-            isOpen={true}
-            onClose={closeDialog}
-            appointmentId={props.appointmentId || ''}
-            onStatusUpdate={props.onStatusUpdate || (() => {})}
-          />
-        );
-      
-      case 'documentation':
-        return (
-          <DocumentationDialog
-            isOpen={true}
-            onOpenChange={(open) => !open && closeDialog()}
-            sessionId={props.sessionId || ''}
-            onDocumentationSelected={props.onDocumentationSelected || (() => {})}
-          />
-        );
-      
-      case 'viewAvailability':
-        return (
-          <ViewAvailabilityDialog
-            open={true}
-            onOpenChange={(open) => !open && closeDialog()}
-            clinicianId={props.clinicianId || ''}
-            clinicianName={props.clinicianName || ''}
-            onBookSlot={props.onBookSlot || (() => {})}
-            timeZone={props.timeZone}
-          />
-        );
-      
-      case 'appointmentBooking':
-        return (
-          <AppointmentBookingDialog
-            open={true}
-            onOpenChange={(open) => !open && closeDialog()}
-            clinicianId={props.clinicianId || ''}
-            clinicianName={props.clinicianName || ''}
-            clientId={props.clientId || ''}
-            onAppointmentBooked={props.onAppointmentBooked || (() => {})}
-            preferredTimeZone={props.preferredTimeZone}
-          />
-        );
-      
-      default:
-        return null;
+  const handleCloseDialog = () => {
+    closeDialog();
+  };
+  
+  // Common props that all dialogs should have
+  const commonProps = {
+    open: true,
+    onOpenChange: (open: boolean) => {
+      if (!open) handleCloseDialog();
     }
   };
 
-  return renderDialog();
+  // Render the appropriate dialog based on activeDialog
+  switch (activeDialog) {
+    case 'availabilitySettings':
+      if (!dialogProps?.clinicianId) return null;
+      
+      return (
+        <AvailabilitySettingsDialog
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) handleCloseDialog();
+            if (!open && dialogProps?.onSettingsSaved) dialogProps.onSettingsSaved();
+          }}
+          clinicianId={dialogProps.clinicianId}
+          permissionLevel={dialogProps.permissionLevel || 'none'}
+        />
+      );
+      
+    case 'weeklyAvailability':
+      if (!dialogProps?.clinicianId) return null;
+      
+      return (
+        <WeeklyAvailabilityDialog
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) handleCloseDialog();
+            if (!open && dialogProps?.onAvailabilityUpdated) dialogProps.onAvailabilityUpdated();
+          }}
+          clinicianId={dialogProps.clinicianId}
+          permissionLevel={dialogProps.permissionLevel || 'none'}
+          selectedDate={dialogProps.selectedDate}
+        />
+      );
+      
+    case 'singleAvailability':
+      if (!dialogProps?.clinicianId) return null;
+      
+      return (
+        <SingleAvailabilityDialog
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) handleCloseDialog();
+            if (!open && dialogProps?.onAvailabilityCreated) dialogProps.onAvailabilityCreated();
+          }}
+          clinicianId={dialogProps.clinicianId}
+          userTimeZone={dialogProps.userTimeZone || 'UTC'}
+          permissionLevel={dialogProps.permissionLevel || 'none'}
+        />
+      );
+      
+    case 'appointment':
+      if (!dialogProps?.clinicianId) return null;
+      
+      return (
+        <NewAppointmentDialog
+          isOpen={true}
+          onClose={() => {
+            handleCloseDialog();
+            if (dialogProps?.onAppointmentCreated) dialogProps.onAppointmentCreated();
+          }}
+          clients={dialogProps.clients || []}
+          loadingClients={dialogProps.loadingClients || false}
+          clinicianId={dialogProps.clinicianId}
+          initialDate={dialogProps.initialDate}
+          preselectedClient={dialogProps.preselectedClient}
+        />
+      );
+      
+    case 'appointmentDetails':
+      if (!dialogProps?.appointment) return null;
+      
+      return (
+        <AppointmentDetailsDialog
+          isOpen={true}
+          onClose={() => {
+            handleCloseDialog();
+            if (dialogProps?.onAppointmentUpdated) dialogProps.onAppointmentUpdated();
+          }}
+          appointment={dialogProps.appointment}
+          onAppointmentUpdated={dialogProps.onAppointmentUpdated}
+          onDeleteAppointment={dialogProps.onDelete} // Renamed for compatibility
+        />
+      );
+      
+    case 'bookAppointment':
+      if (!dialogProps?.clinicianId) return null;
+      
+      return (
+        <BookAppointmentDialog
+          isOpen={true}
+          onClose={() => {
+            handleCloseDialog();
+            if (dialogProps?.onAppointmentBooked) dialogProps.onAppointmentBooked();
+          }}
+          availabilitySlot={dialogProps.slot} // Renamed for compatibility
+          clinicianId={dialogProps.clinicianId}
+          onAppointmentBooked={dialogProps.onAppointmentBooked}
+        />
+      );
+      
+    case 'viewAvailability':
+      if (!dialogProps?.clinicianId) return null;
+      
+      return (
+        <ViewAvailabilityDialog
+          {...commonProps}
+          clinicianId={dialogProps.clinicianId}
+          clinicianName={dialogProps.clinicianName || 'Clinician'}
+          onSlotSelected={dialogProps.onBookSlot} // Renamed for compatibility
+        />
+      );
+      
+    case 'appointmentBooking':
+      if (!dialogProps?.clinicianId || !dialogProps?.clientId) return null;
+      
+      return (
+        <AppointmentBookingDialog
+          {...commonProps}
+          clinicianId={dialogProps.clinicianId}
+          clinicianName={dialogProps.clinicianName || 'Clinician'}
+          clientId={dialogProps.clientId}
+          onSuccess={dialogProps.onAppointmentBooked}
+          userTimeZone={dialogProps.preferredTimeZone || 'UTC'} // Renamed for compatibility
+        />
+      );
+      
+    case 'diagnostic':
+      return (
+        <DiagnosticDialog
+          {...commonProps}
+          clinicianId={dialogProps?.selectedClinicianId}
+        />
+      );
+      
+    default:
+      return null;
+  }
 };
 
 export default DialogManager;
