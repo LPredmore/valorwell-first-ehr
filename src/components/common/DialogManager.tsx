@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useDialogs, DialogType } from '@/context/DialogContext';
 
@@ -106,7 +107,6 @@ const DialogManager: React.FC = () => {
             onClose={closeDialog}
             slot={props.slot || null}
             clinicianId={props.clinicianId || ''}
-            clientId={props.clientId || ''}
             onAppointmentBooked={props.onAppointmentBooked || (() => {})}
           />
         );
@@ -139,7 +139,6 @@ const DialogManager: React.FC = () => {
             clinicianId={props.clinicianId || ''}
             clinicianName={props.clinicianName || ''}
             onBookSlot={props.onBookSlot || (() => {})}
-            timeZone={props.timeZone}
           />
         );
       

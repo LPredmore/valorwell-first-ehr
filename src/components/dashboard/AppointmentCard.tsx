@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Calendar, Clock, UserCircle, Video, FileText, XCircle } from 'lucide-react';
 import { formatTime, formatDate } from '@/utils/dateFormatUtils';
@@ -58,14 +59,14 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
             label: 'Document Session',
             icon: FileText,
             onClick: () => onDocumentSession(appointment),
-            variant: 'default'
+            variant: "default"
           },
           ...(onSessionDidNotOccur ? [
             {
               label: 'Session Did Not Occur',
               icon: XCircle,
               onClick: () => onSessionDidNotOccur(appointment),
-              variant: 'outline',
+              variant: "outline",
               destructive: true
             }
           ] : [])
@@ -105,7 +106,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
           label: 'Start Session',
           icon: Video,
           onClick: () => onStartSession(appointment),
-          variant: 'default'
+          variant: "default"
         }
       ] : []}
     >

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,18 +7,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 export interface DocumentationDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedStatus: string | undefined;
-  onStatusChange: (value: string) => void;
-  onProvideDocumentation: () => Promise<void>;
+  sessionId?: string;
+  onDocumentationSelected?: () => void;
 }
 
 export const DocumentationDialog: React.FC<DocumentationDialogProps> = ({
   isOpen,
   onOpenChange,
-  selectedStatus,
-  onStatusChange,
-  onProvideDocumentation
+  sessionId,
+  onDocumentationSelected
 }) => {
+  const [selectedStatus, setSelectedStatus] = useState<string>();
+
+  const onStatusChange = (value: string) => {
+    setSelectedStatus(value);
+  };
+
+  const onProvideDocumentation = async () => {
+    if (onDocumentationSelected) {
+      onDocumentationSelected();
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">

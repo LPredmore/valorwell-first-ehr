@@ -54,3 +54,17 @@ export type WeeklyAvailability = {
   [key in DayOfWeek]: AvailabilitySlot[];
 };
 
+// Define the type for availability events from the database
+export interface AvailabilityEvent {
+  id: string;
+  clinician_id: string;
+  start_time: string;
+  end_time: string;
+  time_zone: string;
+  availability_type: string;
+  is_active: boolean;
+  recurrence_rule?: string;
+  event_type: string;
+  client_name?: string;
+  status?: string;
+}
