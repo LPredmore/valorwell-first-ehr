@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Calendar, Clock, UserCircle, Video, FileText, XCircle } from 'lucide-react';
 import { formatTime, formatDate } from '@/utils/dateFormatUtils';
@@ -106,7 +105,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
           label: 'Start Session',
           icon: Video,
           onClick: () => onStartSession(appointment),
-          variant: 'default' as const // Explicitly type as const to match the expected type
+          variant: 'default'
         }
       ] : []}
     >
