@@ -5,7 +5,6 @@
  */
 
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { DateTime } from 'luxon';
 
 /**
  * Get the current date and time in a specific timezone
@@ -24,9 +23,7 @@ export const formatDate = (
   format: string = 'yyyy-MM-dd',
   timezone?: string
 ): string => {
-  // Ensure we're working with a proper DateTime or string
-  const dateTime = date instanceof Date ? DateTime.fromJSDate(date) : date;
-  return TimeZoneService.formatDate(dateTime, format);
+  return TimeZoneService.formatDate(date, format);
 };
 
 /**
@@ -38,9 +35,7 @@ export const formatDateTime = (
   format: string = 'yyyy-MM-dd HH:mm',
   timezone?: string
 ): string => {
-  // Ensure we're working with a proper DateTime or string
-  const dt = dateTime instanceof Date ? DateTime.fromJSDate(dateTime) : dateTime;
-  return TimeZoneService.formatDateTime(dt, format, timezone);
+  return TimeZoneService.formatDateTime(dateTime, format, timezone);
 };
 
 /**

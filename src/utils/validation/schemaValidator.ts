@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 import { ValidationError } from '@/utils/errors';
 
@@ -6,7 +5,7 @@ import { ValidationError } from '@/utils/errors';
  * Type for validation error details
  */
 export interface ValidationErrorDetail {
-  path: (string | number)[];
+  path: string[];
   message: string;
   code?: string;
 }
@@ -81,7 +80,7 @@ export class SchemaValidator {
           path: err.path,
           message: err.message,
           code: err.code
-        })) as ValidationErrorDetail[];
+        }));
         
         // Create a validation result with errors
         const result: ValidationResult<T> = {
@@ -164,7 +163,7 @@ export class SchemaValidator {
           path: err.path,
           message: err.message,
           code: err.code
-        })) as ValidationErrorDetail[];
+        }));
         
         // Create a validation result with errors
         const result: ValidationResult<T> = {
@@ -231,7 +230,7 @@ export class SchemaValidator {
     options: SchemaValidationOptions = {}
   ): ValidationResult<Partial<T>> {
     // Create a partial schema by making all properties optional
-    const partialSchema = schema.optional() as z.ZodType<Partial<T>>;
+    const partialSchema = schema.partial() as z.ZodType<Partial<T>>;
     
     // Validate with the partial schema
     return this.validate(partialSchema, data, options);
