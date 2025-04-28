@@ -9,7 +9,7 @@ import CalendarLoading from '@/components/calendar/CalendarLoading';
 import CalendarAuthError from '@/components/calendar/CalendarAuthError';
 import DialogManager from '@/components/common/DialogManager';
 import { getWeekdayName } from '@/utils/dateFormatUtils';
-import { DateTime } from 'luxus';
+import { DateTime } from 'luxon';
 import { useCalendarAuth } from '@/hooks/useCalendarAuth';
 import { useDialogs } from '@/context/DialogContext';
 import CalendarHeader from '@/components/calendar/CalendarHeader';

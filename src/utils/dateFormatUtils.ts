@@ -5,6 +5,7 @@
  */
 
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { DateTime } from 'luxon';
 
 /**
  * Get the current date and time in a specific timezone
@@ -35,7 +36,12 @@ export const formatDateTime = (
   format: string = 'yyyy-MM-dd HH:mm',
   timezone?: string
 ): string => {
-  return TimeZoneService.formatDateTime(dateTime, format, timezone);
+  // Convert string or Date to DateTime before passing to TimeZoneService
+  const dt = typeof dateTime === 'string' ? 
+    DateTime.fromISO(dateTime) : 
+    DateTime.fromJSDate(dateTime);
+    
+  return TimeZoneService.formatDateTime(dt, format, timezone);
 };
 
 /**
@@ -68,7 +74,12 @@ export const addDuration = (
  * @deprecated Use TimeZoneService.getWeekdayName instead
  */
 export const getWeekdayName = (date: string | Date): string => {
-  return TimeZoneService.getWeekdayName(date);
+  // Convert to DateTime if needed
+  const dt = typeof date === 'string' ? 
+    DateTime.fromISO(date) : 
+    DateTime.fromJSDate(date);
+    
+  return TimeZoneService.getWeekdayName(dt);
 };
 
 /**
@@ -80,7 +91,12 @@ export const formatInTimezone = (
   format: string,
   timezone?: string
 ): string => {
-  return TimeZoneService.formatDateTime(date, format, timezone);
+  // Convert to DateTime if needed
+  const dt = typeof date === 'string' ? 
+    DateTime.fromISO(date) : 
+    DateTime.fromJSDate(date);
+    
+  return TimeZoneService.formatDateTime(dt, format, timezone);
 };
 
 /**
@@ -88,7 +104,12 @@ export const formatInTimezone = (
  * @deprecated Use TimeZoneService.getMonthName instead
  */
 export const getMonthName = (date: string | Date): string => {
-  return TimeZoneService.getMonthName(date);
+  // Convert to DateTime if needed
+  const dt = typeof date === 'string' ? 
+    DateTime.fromISO(date) : 
+    DateTime.fromJSDate(date);
+    
+  return TimeZoneService.getMonthName(dt);
 };
 
 /**
@@ -96,7 +117,16 @@ export const getMonthName = (date: string | Date): string => {
  * @deprecated Use TimeZoneService.isSameDay instead
  */
 export const isSameDay = (date1: string | Date, date2: string | Date): boolean => {
-  return TimeZoneService.isSameDay(date1, date2);
+  // Convert to DateTime objects if needed
+  const dt1 = typeof date1 === 'string' ? 
+    DateTime.fromISO(date1) : 
+    DateTime.fromJSDate(date1);
+  
+  const dt2 = typeof date2 === 'string' ? 
+    DateTime.fromISO(date2) : 
+    DateTime.fromJSDate(date2);
+    
+  return TimeZoneService.isSameDay(dt1, dt2);
 };
 
 /**

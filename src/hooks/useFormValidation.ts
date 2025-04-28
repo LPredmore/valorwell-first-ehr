@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { z } from 'zod';
 import { SchemaValidator, ValidationErrorDetail, ValidationResult } from '@/utils/validation/schemaValidator';
@@ -103,6 +104,19 @@ export interface FormValidationOptions<T> {
 }
 
 /**
+ * Helper function to create a partial schema for field validation
+ * Compatible with newer versions of Zod
+ */
+function createPartialSchema<T>(schema: z.ZodType<T>, fieldPath: string): z.ZodType<any> {
+  // In newer Zod versions, we need to construct a new schema just for this field
+  const partialSchema = z.object({
+    [fieldPath]: z.any()
+  }).partial();
+  
+  return partialSchema;
+}
+
+/**
  * Hook for form validation using Zod schemas
  * 
  * @param schema The Zod schema to validate against
@@ -168,11 +182,15 @@ export function useFormValidation<T>(
    * Validate a specific field
    */
   const validateField = useCallback(async (fieldPath: string): Promise<boolean> => {
-    // Create a partial schema for the field
-    const fieldSchema = schema.pick({ [fieldPath]: true } as any);
-    
     try {
-      const result = await SchemaValidator.validateAsync(fieldSchema, { [fieldPath]: values[fieldPath as keyof T] });
+      // Create a partial schema just for this field
+      // Use our helper function that's compatible with newer Zod versions
+      const partialSchema = createPartialSchema(schema, fieldPath);
+      
+      const result = await SchemaValidator.validateAsync(
+        partialSchema, 
+        { [fieldPath]: values[fieldPath as keyof T] }
+      );
       
       if (result.success) {
         // Remove error for this field
