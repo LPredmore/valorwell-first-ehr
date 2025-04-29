@@ -366,6 +366,31 @@ export class AvailabilityQueryService {
     console.log(`[AvailabilityQueryService] Invalidated availability cache for clinician: ${clinicianId}`);
   }
 
+  static async getAvailabilityForDate(clinicianId: string, date: string): Promise<{
+    data: AvailabilityEvent[];
+    error: any;
+  }> {
+    try {
+      const result = await supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('clinician_id', clinicianId)
+        .eq('event_type', 'availability')
+        .eq('is_active', true)
+        .gte('start_time', `${date}T00:00:00`)
+        .lt('start_time', `${date}T23:59:59`)
+        .order('start_time', { ascending: true });
+      
+      return { 
+        data: result.data as AvailabilityEvent[] || [], 
+        error: result.error 
+      };
+    } catch (error) {
+      console.error('[AvailabilityQueryService] Error fetching availability:', error);
+      return { data: [], error };
+    }
+  }
+
   private static timeToMinutes(time: string): number {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;

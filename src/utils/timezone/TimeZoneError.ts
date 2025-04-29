@@ -1,27 +1,22 @@
 
 /**
- * Specialized error class for timezone operations
+ * Custom error class for TimeZone related errors
  */
 export class TimeZoneError extends Error {
-  context?: Record<string, any>;
   code: string;
+  details: Record<string, any>;
 
-  constructor(message: string, code: string = 'TIMEZONE_ERROR', context?: Record<string, any>) {
+  constructor(
+    message: string,
+    code: string = 'TIMEZONE_ERROR',
+    details: Record<string, any> = {}
+  ) {
     super(message);
     this.name = 'TimeZoneError';
     this.code = code;
-    this.context = context;
-  }
-
-  /**
-   * Creates a user-friendly error message
-   */
-  static createUserFriendlyMessage(error: unknown): string {
-    if (error instanceof TimeZoneError) {
-      return `Timezone error: ${error.message}`;
-    } else if (error instanceof Error) {
-      return `Error processing timezone: ${error.message}`;
-    }
-    return 'An unknown error occurred while processing timezone data';
+    this.details = details;
+    
+    // Ensure proper prototype chain for instanceof checks
+    Object.setPrototypeOf(this, TimeZoneError.prototype);
   }
 }

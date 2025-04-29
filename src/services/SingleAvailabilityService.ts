@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySlot } from '@/types/availability';
+import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timezone';
 import { ensureClinicianID } from '@/utils/validation/clinicianUtils';
 
@@ -25,6 +26,14 @@ export class SingleAvailabilityService {
         end: endDt.toISO(),
         timezone: validTimeZone
       });
+
+      // Ensure we have valid ISO strings
+      const startIso = startDt.toISO();
+      const endIso = endDt.toISO();
+
+      if (!startIso || !endIso) {
+        throw new Error('Invalid start or end DateTime');
+      }
 
       const { data, error } = await supabase
         .from('calendar_events')

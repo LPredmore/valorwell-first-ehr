@@ -1,6 +1,6 @@
-
 import { useState, useEffect } from 'react';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { DateTime } from 'luxon';
+import { TimeZoneService } from '@/utils/timezone';
 import { supabase } from '@/integrations/supabase/client';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { useToast } from '@/hooks/use-toast';
@@ -23,7 +23,8 @@ export const useTimeZoneSync = ({ userId }: UseTimeZoneSyncProps): UseTimeZoneSy
   const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
 
-  const browserTimeZone = TimeZoneService.getUserTimeZone();
+  // Use Intl API directly instead of relying on getUserTimeZone
+  const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const timeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
 
   // Synchronize time zone when component mounts

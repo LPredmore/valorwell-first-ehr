@@ -1,7 +1,7 @@
-
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { WeeklyAvailability, DayOfWeek } from '@/types/availability';
 import { CalendarEvent, WeekdayNumbers } from '@/types/calendar';
+import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timezone';
 import { weekdayNameToNumber } from '@/utils/calendarWeekdayUtils';
 import { componentMonitor } from '@/utils/performance/componentMonitor';
@@ -32,7 +32,8 @@ export const useAvailabilityEvents = ({ userTimeZone, weeksToShow = 8 }: UseAvai
     console.log('[useAvailabilityEvents] Converting availability to events with timezone:', validTimeZone);
     
     const events: CalendarEvent[] = [];
-    const now = TimeZoneService.getCurrentDateTime(validTimeZone);
+    // Use DateTime directly instead of relying on getCurrentDateTime
+    const now = DateTime.now().setZone(validTimeZone);
     
     // Process each day's availability slots
     for (const [day, slots] of Object.entries(weeklyAvailability)) {

@@ -2068,6 +2068,10 @@ export type Database = {
           operation: string
           record_id: string
         }
+        Returns: boolean
+      }
+      fix_calendar_permissions: {
+        Args: Record<PropertyKey, never>
         Returns: Json
       }
       is_admin: {

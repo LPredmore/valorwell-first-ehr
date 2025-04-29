@@ -1,8 +1,10 @@
 
 /**
- * @deprecated Use the new modular TimeZoneService from @/utils/timezone instead
- * This file is maintained for backward compatibility with existing code
+ * @module TimeZoneService
+ * 
+ * This file re-exports the TimeZoneService from the modular timezone directory.
+ * It serves as the backward compatibility layer for existing code that imports from this path.
  */
 
-// Re-export everything from the new modular structure
+// Re-export everything from the modular timezone structure
 export * from './timezone';
