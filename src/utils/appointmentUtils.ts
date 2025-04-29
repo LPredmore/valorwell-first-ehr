@@ -12,8 +12,9 @@ export const getAppointmentInUserTimeZone = (
     const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
     
     // Ensure we have a valid clientName
+    // If client property doesn't exist or client_first_name/client_last_name are missing, use clientName or "Unnamed Client"
     const clientName = appointment.clientName || 
-                      (appointment.client ? 
+                      (appointment.client && typeof appointment.client === 'object' ? 
                         `${appointment.client.client_first_name || ''} ${appointment.client.client_last_name || ''}`.trim() : 
                         'Unnamed Client');
     

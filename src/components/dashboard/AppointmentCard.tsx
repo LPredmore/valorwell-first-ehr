@@ -41,8 +41,11 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({
   const appointmentDate = appointment.date ? new Date(appointment.date) : new Date();
   const formattedDate = format(appointmentDate, 'EEEE, MMMM d, yyyy');
 
-  // Ensure we have a valid clientName
+  // Ensure we have a valid clientName and handle the case where it might be undefined
   const clientName = appointment.clientName || 'Unknown Client';
+  
+  // Safe initials for avatar fallback
+  const initials = clientName ? clientName.substring(0, 2) : 'UN';
 
   const formatTime = (timeString: string) => {
     try {
@@ -86,7 +89,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({
         <div className="flex items-center space-x-4">
           <Avatar>
             <AvatarImage src={`https://avatar.vercel.sh/${clientName}.png`} />
-            <AvatarFallback>{clientName.substring(0, 2)}</AvatarFallback>
+            <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
           <div className="space-y-1">
             <h4 className="text-sm font-semibold">

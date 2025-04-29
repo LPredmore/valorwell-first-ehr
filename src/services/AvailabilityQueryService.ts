@@ -1,11 +1,11 @@
-
 // Add this at the top of the file to fix the PostgrestFilterBuilder to Promise conversion
 import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
-import { AvailabilitySlot, AvailabilityEvent, WeeklyAvailability as AppointmentWeeklyAvailability, CalculatedAvailableSlot } from '@/types/appointment';
+import { AvailabilityEvent, CalculatedAvailableSlot } from '@/types/appointment';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timezone';
 import { DateTime } from 'luxon';
 import { AvailabilitySettings, WeeklyAvailability as AvailabilityWeeklyAvailability, DayOfWeek } from '@/types/availability';
+import { AvailabilitySlot as AppointmentAvailabilitySlot, WeeklyAvailability as AppointmentWeeklyAvailability } from '@/types/appointment';
 
 // Convert between the two WeeklyAvailability formats
 const convertToAvailabilityWeeklyAvailability = (weeklySlots: AppointmentWeeklyAvailability): AvailabilityWeeklyAvailability => {
@@ -112,7 +112,7 @@ export class AvailabilityQueryService {
    * @param clinicianId The clinician ID
    * @returns Array of availability slot objects
    */
-  public static async getAvailabilitySlots(clinicianId: string): Promise<AvailabilitySlot[]> {
+  public static async getAvailabilitySlots(clinicianId: string): Promise<AppointmentAvailabilitySlot[]> {
     try {
       const { data, error } = await supabase
         .from('availability_slots')
@@ -134,7 +134,7 @@ export class AvailabilityQueryService {
   /**
    * Transform a database calendar event into an AvailabilitySlot
    */
-  private static transformDatabaseEventToAvailabilityEvent(event: any): AvailabilitySlot {
+  private static transformDatabaseEventToAvailabilityEvent(event: any): AppointmentAvailabilitySlot {
     // Check if this is already in the format we need
     if (event.dayOfWeek || event.day_of_week) {
       return {
@@ -143,7 +143,8 @@ export class AvailabilityQueryService {
         endTime: event.end_time || event.endTime,
         dayOfWeek: event.dayOfWeek || event.day_of_week,
         isRecurring: event.is_recurring || event.isRecurring || false,
-        excludeDates: event.exclude_dates || event.excludeDates || []
+        excludeDates: event.exclude_dates || event.excludeDates || [],
+        clinicianId: event.clinician_id || '' // Ensure clinicianId is added
       };
     }
     
@@ -157,7 +158,8 @@ export class AvailabilityQueryService {
       endTime: event.end_time,
       dayOfWeek,
       isRecurring: event.availability_type === 'recurring',
-      excludeDates: []
+      excludeDates: [],
+      clinicianId: event.clinician_id || '' // Ensure clinicianId is added
     };
   }
 
@@ -217,7 +219,7 @@ export class AvailabilityQueryService {
    * @param slotId The ID of the availability slot
    * @returns Availability slot object
    */
-  public static async getAvailabilitySlotById(slotId: string): Promise<AvailabilitySlot | null> {
+  public static async getAvailabilitySlotById(slotId: string): Promise<AppointmentAvailabilitySlot | null> {
     try {
       const { data, error } = await supabase
         .from('availability_slots')
@@ -242,7 +244,7 @@ export class AvailabilityQueryService {
    * @param slot The availability slot object to create
    * @returns The created availability slot object
    */
-  public static async createAvailabilitySlot(slot: AvailabilitySlot): Promise<AvailabilitySlot | null> {
+  public static async createAvailabilitySlot(slot: AppointmentAvailabilitySlot): Promise<AppointmentAvailabilitySlot | null> {
     try {
       const { data, error } = await supabase
         .from('availability_slots')
@@ -268,7 +270,7 @@ export class AvailabilityQueryService {
    * @param slot The updated availability slot object
    * @returns The updated availability slot object
    */
-  public static async updateAvailabilitySlot(slotId: string, slot: AvailabilitySlot): Promise<AvailabilitySlot | null> {
+  public static async updateAvailabilitySlot(slotId: string, slot: AppointmentAvailabilitySlot): Promise<AppointmentAvailabilitySlot | null> {
     try {
       const { data, error } = await supabase
         .from('availability_slots')

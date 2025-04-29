@@ -48,13 +48,13 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
         
         // Convert from DayOfWeek-indexed to string-indexed for the hooks/useAvailabilityEvents
         const convertedAvailability = {
-          Monday: weeklyAvailability.monday,
-          Tuesday: weeklyAvailability.tuesday,
-          Wednesday: weeklyAvailability.wednesday,
-          Thursday: weeklyAvailability.thursday,
-          Friday: weeklyAvailability.friday,
-          Saturday: weeklyAvailability.saturday,
-          Sunday: weeklyAvailability.sunday
+          Monday: weeklyAvailability.monday || [],
+          Tuesday: weeklyAvailability.tuesday || [],
+          Wednesday: weeklyAvailability.wednesday || [],
+          Thursday: weeklyAvailability.thursday || [],
+          Friday: weeklyAvailability.friday || [],
+          Saturday: weeklyAvailability.saturday || [],
+          Sunday: weeklyAvailability.sunday || []
         };
         
         // Convert to calendar events format
