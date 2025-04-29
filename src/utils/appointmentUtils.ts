@@ -1,8 +1,8 @@
-
 import { format } from 'date-fns';
 import { DateTime } from 'luxon';
 import { BaseAppointment, AppointmentWithLuxon } from '@/types/appointment';
 import { TimeZoneService } from '@/utils/timezone';
+import { getClientNameFromAppointment } from './clientDataUtils';
 
 export const getAppointmentInUserTimeZone = (
   appointment: BaseAppointment, 
@@ -11,12 +11,8 @@ export const getAppointmentInUserTimeZone = (
   try {
     const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
     
-    // Ensure we have a valid clientName
-    // If client property doesn't exist or client_first_name/client_last_name are missing, use clientName or "Unnamed Client"
-    const clientName = appointment.clientName || 
-                      (appointment.client && typeof appointment.client === 'object' ? 
-                        `${appointment.client.client_first_name || ''} ${appointment.client.client_last_name || ''}`.trim() : 
-                        'Unnamed Client');
+    // Use the helper function to safely get client name
+    const clientName = appointment.clientName || getClientNameFromAppointment(appointment);
     
     if (appointment.appointment_datetime && appointment.appointment_end_datetime) {
       console.log(`Converting appointment from UTC to ${validTimeZone}:`, {

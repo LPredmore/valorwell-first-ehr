@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { BaseAppointment } from '@/types/appointment';
+import { getClientNameFromAppointment } from '@/utils/clientDataUtils';
 
 interface InfoCardAction {
   label: string;
@@ -42,7 +43,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({
   const formattedDate = format(appointmentDate, 'EEEE, MMMM d, yyyy');
 
   // Ensure we have a valid clientName and handle the case where it might be undefined
-  const clientName = appointment.clientName || 'Unknown Client';
+  const clientName = appointment.clientName || getClientNameFromAppointment(appointment);
   
   // Safe initials for avatar fallback
   const initials = clientName ? clientName.substring(0, 2) : 'UN';
