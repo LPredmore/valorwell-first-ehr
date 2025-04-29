@@ -1,4 +1,5 @@
 
+
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { WeeklyAvailability, DayOfWeek } from '@/types/availability';
 import { CalendarEvent, WeekdayNumbers } from '@/types/calendar';
@@ -14,6 +15,7 @@ type StringIndexedWeeklyAvailability = {
     startTime: string;
     endTime: string;
     dayOfWeek: string;
+    clinicianId: string; // Ensure this is required to match both interfaces
     isRecurring?: boolean;
     isAppointment?: boolean;
     clientName?: string;

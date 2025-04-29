@@ -1,3 +1,4 @@
+
 // Add this at the top of the file to fix the PostgrestFilterBuilder to Promise conversion
 import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 import { AvailabilityEvent, CalculatedAvailableSlot } from '@/types/appointment';
@@ -24,7 +25,7 @@ const convertToAvailabilityWeeklyAvailability = (weeklySlots: AppointmentWeeklyA
   if (weeklySlots['Monday']) {
     result.monday = weeklySlots['Monday'].map(slot => ({
       ...slot,
-      clinicianId: slot.clinicianId || '', // Add required clinicianId field
+      clinicianId: slot.clinicianId, // Use the existing clinicianId value
       dayOfWeek: 'monday' // Ensure the correct enum value is used
     }));
   }
@@ -32,7 +33,7 @@ const convertToAvailabilityWeeklyAvailability = (weeklySlots: AppointmentWeeklyA
   if (weeklySlots['Tuesday']) {
     result.tuesday = weeklySlots['Tuesday'].map(slot => ({
       ...slot,
-      clinicianId: slot.clinicianId || '',
+      clinicianId: slot.clinicianId,
       dayOfWeek: 'tuesday'
     }));
   }
@@ -40,7 +41,7 @@ const convertToAvailabilityWeeklyAvailability = (weeklySlots: AppointmentWeeklyA
   if (weeklySlots['Wednesday']) {
     result.wednesday = weeklySlots['Wednesday'].map(slot => ({
       ...slot,
-      clinicianId: slot.clinicianId || '',
+      clinicianId: slot.clinicianId,
       dayOfWeek: 'wednesday'
     }));
   }
@@ -48,7 +49,7 @@ const convertToAvailabilityWeeklyAvailability = (weeklySlots: AppointmentWeeklyA
   if (weeklySlots['Thursday']) {
     result.thursday = weeklySlots['Thursday'].map(slot => ({
       ...slot,
-      clinicianId: slot.clinicianId || '',
+      clinicianId: slot.clinicianId,
       dayOfWeek: 'thursday'
     }));
   }
@@ -56,7 +57,7 @@ const convertToAvailabilityWeeklyAvailability = (weeklySlots: AppointmentWeeklyA
   if (weeklySlots['Friday']) {
     result.friday = weeklySlots['Friday'].map(slot => ({
       ...slot,
-      clinicianId: slot.clinicianId || '',
+      clinicianId: slot.clinicianId,
       dayOfWeek: 'friday'
     }));
   }
@@ -64,7 +65,7 @@ const convertToAvailabilityWeeklyAvailability = (weeklySlots: AppointmentWeeklyA
   if (weeklySlots['Saturday']) {
     result.saturday = weeklySlots['Saturday'].map(slot => ({
       ...slot,
-      clinicianId: slot.clinicianId || '',
+      clinicianId: slot.clinicianId,
       dayOfWeek: 'saturday'
     }));
   }
@@ -72,7 +73,7 @@ const convertToAvailabilityWeeklyAvailability = (weeklySlots: AppointmentWeeklyA
   if (weeklySlots['Sunday']) {
     result.sunday = weeklySlots['Sunday'].map(slot => ({
       ...slot,
-      clinicianId: slot.clinicianId || '',
+      clinicianId: slot.clinicianId,
       dayOfWeek: 'sunday'
     }));
   }
@@ -144,7 +145,7 @@ export class AvailabilityQueryService {
         dayOfWeek: event.dayOfWeek || event.day_of_week,
         isRecurring: event.is_recurring || event.isRecurring || false,
         excludeDates: event.exclude_dates || event.excludeDates || [],
-        clinicianId: event.clinician_id || event.clinicianId || '' // Ensure clinicianId is added
+        clinicianId: event.clinician_id || event.clinicianId || '' // Ensure clinicianId is added with proper fallbacks
       };
     }
     

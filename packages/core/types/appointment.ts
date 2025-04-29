@@ -1,4 +1,5 @@
 
+
 export interface AppointmentType {
   id: string;
   client_id: string;
@@ -56,6 +57,7 @@ export interface AvailabilitySlot {
   startTime: string;
   endTime: string;
   dayOfWeek: string;
+  clinicianId: string; // Added this required property to match the interface in src/types/appointment.d.ts
   isRecurring?: boolean;
   excludeDates?: string[];
 }
