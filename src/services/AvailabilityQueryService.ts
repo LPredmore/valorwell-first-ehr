@@ -1,22 +1,24 @@
+
 // Add this at the top of the file to fix the PostgrestFilterBuilder to Promise conversion
 import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
-import { AvailabilitySlot, AvailabilityEvent, WeeklyAvailability, CalculatedAvailableSlot } from '@/types/appointment';
+import { AvailabilitySlot, AvailabilityEvent, WeeklyAvailability as AppointmentWeeklyAvailability, CalculatedAvailableSlot } from '@/types/appointment';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timezone';
 import { DateTime } from 'luxon';
-import { AvailabilitySettings } from '@/types/availability';
+import { AvailabilitySettings, WeeklyAvailability as AvailabilityWeeklyAvailability, DayOfWeek } from '@/types/availability';
 
-// Define the interface for the AvailabilityEvent if not already defined
-interface AvailabilityEvent {
-  id: string;
-  clinician_id: string;
-  start_time: string;
-  end_time: string;
-  time_zone?: string;
-  dayOfWeek?: string; 
-  isRecurring?: boolean;
-  excludeDates?: string[];
-}
+// Convert between the two WeeklyAvailability formats
+const convertToAvailabilityWeeklyAvailability = (weeklySlots: AppointmentWeeklyAvailability): AvailabilityWeeklyAvailability => {
+  return {
+    monday: weeklySlots['Monday'] || [],
+    tuesday: weeklySlots['Tuesday'] || [],
+    wednesday: weeklySlots['Wednesday'] || [],
+    thursday: weeklySlots['Thursday'] || [],
+    friday: weeklySlots['Friday'] || [],
+    saturday: weeklySlots['Saturday'] || [],
+    sunday: weeklySlots['Sunday'] || []
+  };
+};
 
 export class AvailabilityQueryService {
 
@@ -104,7 +106,7 @@ export class AvailabilityQueryService {
    */
   public static async getWeeklyAvailability(
     clinicianId: string
-  ): Promise<WeeklyAvailability> {
+  ): Promise<AvailabilityWeeklyAvailability> {
     console.log(`[AvailabilityQueryService] Getting weekly availability for clinician: ${clinicianId}`);
     
     try {
@@ -124,7 +126,7 @@ export class AvailabilityQueryService {
       console.log(`[AvailabilityQueryService] Retrieved ${availabilityEvents.length} availability events`);
       
       // Process events into weekly slots
-      const weeklySlots: WeeklyAvailability = {
+      const weeklySlots: AppointmentWeeklyAvailability = {
         Sunday: [],
         Monday: [],
         Tuesday: [],
@@ -142,7 +144,8 @@ export class AvailabilityQueryService {
         }
       }
       
-      return weeklySlots;
+      // Convert to the expected WeeklyAvailability format from the availability.ts type
+      return convertToAvailabilityWeeklyAvailability(weeklySlots);
     } catch (error) {
       console.error('[AvailabilityQueryService] Error in getWeeklyAvailability:', error);
       throw error;

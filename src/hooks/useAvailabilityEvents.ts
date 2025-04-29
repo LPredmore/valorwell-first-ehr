@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { WeeklyAvailability, DayOfWeek } from '@/types/availability';
 import { CalendarEvent, WeekdayNumbers } from '@/types/calendar';
@@ -5,6 +6,21 @@ import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timezone';
 import { weekdayNameToNumber } from '@/utils/calendarWeekdayUtils';
 import { componentMonitor } from '@/utils/performance/componentMonitor';
+
+// Define the type that the hook actually uses internally
+type StringIndexedWeeklyAvailability = {
+  [key: string]: {
+    id?: string;
+    startTime: string;
+    endTime: string;
+    dayOfWeek: string;
+    isRecurring?: boolean;
+    isAppointment?: boolean;
+    clientName?: string;
+    appointmentStatus?: string;
+    excludeDates?: string[];
+  }[];
+};
 
 interface UseAvailabilityEventsProps {
   userTimeZone: string;
@@ -24,7 +40,7 @@ export const useAvailabilityEvents = ({ userTimeZone, weeksToShow = 8 }: UseAvai
   const conversionStartTime = useRef(0);
 
   // Optimized conversion function with memoization for recurring events
-  const convertAvailabilityToEvents = useCallback((weeklyAvailability: WeeklyAvailability): CalendarEvent[] => {
+  const convertAvailabilityToEvents = useCallback((weeklyAvailability: StringIndexedWeeklyAvailability): CalendarEvent[] => {
     // Start performance monitoring
     conversionStartTime.current = performance.now();
     

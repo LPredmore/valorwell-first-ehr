@@ -4,6 +4,7 @@ import { AvailabilityQueryService } from '@/services/AvailabilityQueryService';
 import { CalendarEvent } from '@/types/calendar';
 import { TimeZoneService } from '@/utils/timezone';
 import { useAvailabilityEvents } from '@/hooks/useAvailabilityEvents';
+import { WeeklyAvailability as AvailabilityWeeklyAvailability } from '@/types/availability';
 
 interface CalendarAvailabilityHandlerProps {
   clinicianId: string;
@@ -45,8 +46,19 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
         // Get availability exclusively from calendar_events table
         const weeklyAvailability = await AvailabilityQueryService.getWeeklyAvailability(clinicianId);
         
+        // Convert from DayOfWeek-indexed to string-indexed for the hooks/useAvailabilityEvents
+        const convertedAvailability = {
+          Monday: weeklyAvailability.monday,
+          Tuesday: weeklyAvailability.tuesday,
+          Wednesday: weeklyAvailability.wednesday,
+          Thursday: weeklyAvailability.thursday,
+          Friday: weeklyAvailability.friday,
+          Saturday: weeklyAvailability.saturday,
+          Sunday: weeklyAvailability.sunday
+        };
+        
         // Convert to calendar events format
-        const events = convertAvailabilityToEvents(weeklyAvailability);
+        const events = convertAvailabilityToEvents(convertedAvailability);
         
         console.log(`[CalendarAvailabilityHandler] Retrieved ${events.length} availability events`);
         onEventsChange(events);

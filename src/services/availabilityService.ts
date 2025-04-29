@@ -41,6 +41,7 @@ class AvailabilityService {
    */
   async getWeeklyAvailabilityForClinician(clinicianId: string): Promise<WeeklyAvailability> {
     try {
+      // The AvailabilityQueryService now returns the correct type
       return await AvailabilityQueryService.getWeeklyAvailability(clinicianId);
     } catch (error) {
       console.error('Error getting weekly availability:', error);
