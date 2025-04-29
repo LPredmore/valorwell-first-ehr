@@ -1,7 +1,10 @@
 // Add this at the top of the file to fix the PostgrestFilterBuilder to Promise conversion
 import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
-import { AvailabilitySlot, AvailabilityEvent, WeeklyAvailability } from '@/types/appointment';
+import { AvailabilitySlot, AvailabilityEvent, WeeklyAvailability, CalculatedAvailableSlot } from '@/types/appointment';
 import { supabase } from '@/integrations/supabase/client';
+import { TimeZoneService } from '@/utils/timezone';
+import { DateTime } from 'luxon';
+import { AvailabilitySettings } from '@/types/availability';
 
 // Define the interface for the AvailabilityEvent if not already defined
 interface AvailabilityEvent {
@@ -244,6 +247,111 @@ export class AvailabilityQueryService {
     } catch (error) {
       console.error('Error in deleteAvailabilitySlot:', error);
       return false;
+    }
+  }
+
+  /**
+   * Calculate available time slots for a specific date based on availability settings
+   * @param settings The availability settings
+   * @param date The date to calculate slots for (YYYY-MM-DD format)
+   * @param existingAppointments Array of existing appointments for the date
+   * @returns Array of available slot objects
+   */
+  public static async calculateAvailableSlots(
+    settings: AvailabilitySettings,
+    date: string,
+    existingAppointments: any[] = []
+  ): Promise<CalculatedAvailableSlot[]> {
+    try {
+      console.log(`[AvailabilityQueryService] Calculating available slots for date: ${date}`);
+      
+      const dateObj = DateTime.fromISO(date, { zone: settings.timeZone });
+      const dayOfWeek = dateObj.toFormat('cccc'); // Full day name: Monday, Tuesday, etc.
+      
+      // Get the day's availability slots
+      const { data: availabilityEvents, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('clinician_id', settings.clinicianId)
+        .eq('event_type', 'availability')
+        .eq('is_active', true);
+        
+      if (error) {
+        console.error('[AvailabilityQueryService] Error fetching availability events:', error);
+        return [];
+      }
+      
+      if (!availabilityEvents || availabilityEvents.length === 0) {
+        console.log(`[AvailabilityQueryService] No availability events found for date: ${date}`);
+        return [];
+      }
+      
+      // Filter events for the specified day
+      const dayEvents = availabilityEvents.filter((event) => {
+        const eventDate = DateTime.fromISO(event.start_time);
+        const eventDayOfWeek = eventDate.toFormat('cccc');
+        
+        return (
+          (event.availability_type === 'recurring' && eventDayOfWeek === dayOfWeek) ||
+          (event.availability_type === 'single' && eventDate.toISODate() === date)
+        );
+      });
+      
+      if (dayEvents.length === 0) {
+        console.log(`[AvailabilityQueryService] No availability for ${dayOfWeek} on ${date}`);
+        return [];
+      }
+      
+      // Calculate available time slots based on settings
+      const slots: CalculatedAvailableSlot[] = [];
+      const slotDuration = settings.defaultSlotDuration;
+      
+      for (const event of dayEvents) {
+        const startDateTime = DateTime.fromISO(event.start_time, { zone: settings.timeZone });
+        const endDateTime = DateTime.fromISO(event.end_time, { zone: settings.timeZone });
+        
+        // Skip if event is not for the requested date (could happen with recurring events)
+        if (startDateTime.toISODate() !== date && event.availability_type === 'single') {
+          continue;
+        }
+        
+        // Calculate slots within this availability period
+        let currentStartTime = startDateTime;
+        while (currentStartTime.plus({ minutes: slotDuration }) <= endDateTime) {
+          const currentEndTime = currentStartTime.plus({ minutes: slotDuration });
+          
+          // Check if slot overlaps with any existing appointment
+          const isOverlapping = existingAppointments.some(appointment => {
+            const apptStart = DateTime.fromISO(appointment.appointment_datetime, { zone: settings.timeZone });
+            const apptEnd = DateTime.fromISO(appointment.appointment_end_datetime, { zone: settings.timeZone });
+            
+            return (
+              (currentStartTime >= apptStart && currentStartTime < apptEnd) || // Start time is within appointment
+              (currentEndTime > apptStart && currentEndTime <= apptEnd) || // End time is within appointment
+              (currentStartTime <= apptStart && currentEndTime >= apptEnd) // Appointment is within slot
+            );
+          });
+          
+          // If not overlapping, add as available
+          if (!isOverlapping) {
+            slots.push({
+              start: currentStartTime.toISO(),
+              end: currentEndTime.toISO(),
+              slotId: event.id,
+              isRecurring: event.availability_type === 'recurring'
+            });
+          }
+          
+          // Move to next slot
+          currentStartTime = currentEndTime;
+        }
+      }
+      
+      console.log(`[AvailabilityQueryService] Calculated ${slots.length} available slots for ${date}`);
+      return slots;
+    } catch (error) {
+      console.error('[AvailabilityQueryService] Error calculating available slots:', error);
+      return [];
     }
   }
 }

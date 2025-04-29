@@ -9,6 +9,7 @@ export interface ViewAvailabilityDialogProps {
   clinicianName: string;
   timeZone?: string; // Used in DialogManager
   userTimeZone?: string; // Added for consistency
+  disabled?: boolean; // Added for consistency with AppointmentBookingDialog
 }
 
 const ViewAvailabilityDialog: React.FC<ViewAvailabilityDialogProps> = ({
@@ -17,7 +18,8 @@ const ViewAvailabilityDialog: React.FC<ViewAvailabilityDialogProps> = ({
   clinicianId,
   clinicianName,
   timeZone,
-  userTimeZone
+  userTimeZone,
+  disabled
 }) => {
   // Use either timeZone or userTimeZone, with timeZone taking precedence
   const actualTimeZone = timeZone || userTimeZone;
@@ -32,6 +34,7 @@ const ViewAvailabilityDialog: React.FC<ViewAvailabilityDialogProps> = ({
           {/* Content */}
           <p>Viewing availability for clinician ID: {clinicianId}</p>
           {actualTimeZone && <p>Using time zone: {actualTimeZone}</p>}
+          {disabled && <p className="text-red-500">This feature is currently disabled.</p>}
         </div>
       </DialogContent>
     </Dialog>

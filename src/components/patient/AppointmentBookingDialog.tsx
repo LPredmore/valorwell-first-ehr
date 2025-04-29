@@ -11,6 +11,7 @@ export interface AppointmentBookingDialogProps {
   onAppointmentBooked: () => void;
   timeZone?: string; // Used in DialogManager
   userTimeZone?: string; // Added for consistency with other components
+  disabled?: boolean; // Added the disabled prop
 }
 
 const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
@@ -21,7 +22,8 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   clientId,
   onAppointmentBooked,
   timeZone,
-  userTimeZone
+  userTimeZone,
+  disabled
 }) => {
   // Use either timeZone or userTimeZone, with timeZone taking precedence
   const actualTimeZone = timeZone || userTimeZone;
@@ -37,6 +39,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           <p>Booking appointment with clinician ID: {clinicianId}</p>
           <p>For client ID: {clientId}</p>
           {actualTimeZone && <p>Using time zone: {actualTimeZone}</p>}
+          {disabled && <p className="text-red-500">Booking is currently disabled. Please complete required documents first.</p>}
         </div>
       </DialogContent>
     </Dialog>

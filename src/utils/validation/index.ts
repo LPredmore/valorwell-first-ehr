@@ -6,9 +6,14 @@
 
 // Define the ValidationUtils interface to fix export issues
 export interface ValidationUtils {
-  validateNonEmptyString: (value: string) => boolean;
-  validateClinicianID: (clinicianID: string) => boolean;
-  validateAvailabilitySlot: (slot: any) => boolean;
+  validateNonEmptyString: (value: string, fieldName: string) => string;
+  validateClinicianID: (clinicianID: string) => string;
+  validateAvailabilitySlot: (date: string | Date, startTime: string, endTime: string, timeZone: string) => {
+    date: Date;
+    startTime: string;
+    endTime: string;
+    timeZone: string;
+  };
 }
 
 // Re-export all validation utilities
@@ -20,8 +25,8 @@ export * from './uuidUtils';
 import { validateAvailabilitySlot, validateNonEmptyString, validateClinicianID } from './validationUtils';
 import { SchemaValidator } from './schemaValidator';
 
-// Create a ValidationUtils object to export
-const ValidationUtils: ValidationUtils = {
+// Create a ValidationUtils object to export with corrected types
+const ValidationUtils = {
   validateAvailabilitySlot,
   validateNonEmptyString,
   validateClinicianID

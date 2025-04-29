@@ -81,3 +81,40 @@ export function getAppointmentProperty<K extends keyof BaseAppointment>(
 ): BaseAppointment[K] {
   return appointment[property];
 }
+
+/**
+ * Calendar availability interfaces
+ */
+export interface AvailabilitySlot {
+  id?: string;
+  startTime: string;
+  endTime: string;
+  dayOfWeek: string;
+  isRecurring?: boolean;
+  isAppointment?: boolean;
+  clientName?: string;
+  appointmentStatus?: string;
+  excludeDates?: string[];
+}
+
+export interface WeeklyAvailability {
+  [key: string]: AvailabilitySlot[];
+}
+
+export interface CalculatedAvailableSlot {
+  start: string;
+  end: string;
+  slotId?: string;
+  isRecurring?: boolean;
+}
+
+export interface AvailabilityEvent {
+  id: string;
+  clinician_id: string;
+  start_time: string;
+  end_time: string;
+  time_zone?: string;
+  dayOfWeek?: string; 
+  isRecurring?: boolean;
+  excludeDates?: string[];
+}
