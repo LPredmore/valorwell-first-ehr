@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 import { AvailabilityQueryService } from '@/services/AvailabilityQueryService';
 import { CalendarEvent } from '@/types/calendar';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 import { useAvailabilityEvents } from '@/hooks/useAvailabilityEvents';
 
 interface CalendarAvailabilityHandlerProps {

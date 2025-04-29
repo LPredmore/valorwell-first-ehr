@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { cachedSupabase } from '@/integrations/supabase/cacheClient';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability, TimeSlot } from '@/types/availability';
@@ -394,7 +395,7 @@ export class AvailabilityQueryService {
   /**
    * Get availability events for a clinician within a date range
    */
-  async function getAvailabilityEvents(
+  static async getAvailabilityEvents(
     clinicianId: string,
     startDate: string | Date,
     endDate: string | Date,
@@ -471,7 +472,13 @@ export class AvailabilityQueryService {
   }
 }
 
-function transformDatabaseEventToAvailabilityEvent(event, validTimeZone) {
+/**
+ * Transform a database event record into an AvailabilityEvent object
+ * @param event The raw database record
+ * @param validTimeZone The timezone to use for formatting
+ * @returns A properly formatted AvailabilitySlot object
+ */
+function transformDatabaseEventToAvailabilityEvent(event: any, validTimeZone: string): AvailabilitySlot {
   const startDt = DateTime.fromISO(event.start_time).setZone(validTimeZone);
   const endDt = DateTime.fromISO(event.end_time).setZone(validTimeZone);
   
