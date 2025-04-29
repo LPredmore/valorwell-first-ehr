@@ -1,5 +1,3 @@
-
-
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { WeeklyAvailability, DayOfWeek } from '@/types/availability';
 import { CalendarEvent, WeekdayNumbers } from '@/types/calendar';
@@ -7,21 +5,12 @@ import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timezone';
 import { weekdayNameToNumber } from '@/utils/calendarWeekdayUtils';
 import { componentMonitor } from '@/utils/performance/componentMonitor';
+import { AvailabilitySlot } from '@/packages/core/types/appointment';
 
 // Define the type that the hook actually uses internally
+// Now it's based on the core type
 type StringIndexedWeeklyAvailability = {
-  [key: string]: {
-    id?: string;
-    startTime: string;
-    endTime: string;
-    dayOfWeek: string;
-    clinicianId: string; // Ensure this is required to match both interfaces
-    isRecurring?: boolean;
-    isAppointment?: boolean;
-    clientName?: string;
-    appointmentStatus?: string;
-    excludeDates?: string[];
-  }[];
+  [key: string]: AvailabilitySlot[];
 };
 
 interface UseAvailabilityEventsProps {

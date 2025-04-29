@@ -1,22 +1,11 @@
-
 import { DateTime } from 'luxon';
+import { AvailabilitySlot as CoreAvailabilitySlot } from '@/packages/core/types/appointment';
 
 export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 
-export interface AvailabilitySlot {
-  id?: string;
-  clinicianId: string;
-  dayOfWeek: DayOfWeek;
-  startTime: string;
-  endTime: string;
-  isRecurring?: boolean;
-  recurrenceRule?: string;
-  timeZone?: string;
-  isActive?: boolean;
-  // Add these properties to resolve previous build errors
-  isAppointment?: boolean;
-  clientName?: string;
-  appointmentStatus?: string;
+// Re-export the core AvailabilitySlot type but extend it with our specific needs
+export interface AvailabilitySlot extends CoreAvailabilitySlot {
+  dayOfWeek: DayOfWeek; // Override to be more specific
 }
 
 export interface TimeSlot {
@@ -53,4 +42,3 @@ export interface ClientData {
 export type WeeklyAvailability = {
   [key in DayOfWeek]: AvailabilitySlot[];
 };
-

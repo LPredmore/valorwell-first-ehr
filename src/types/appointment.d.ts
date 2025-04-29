@@ -1,70 +1,23 @@
 
-// Define the AvailabilitySettings interface with updated properties
-export interface AvailabilitySettings {
-  id: string;
-  clinicianId: string;
-  defaultSlotDuration: number;
-  minNoticeDays: number;
-  maxAdvanceDays: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
+// Import the core types
+import { 
+  AppointmentType as CoreAppointmentType, 
+  Appointment as CoreAppointment,
+  BaseAppointment as CoreBaseAppointment,
+  AppointmentWithLuxon as CoreAppointmentWithLuxon,
+  AvailabilitySettings as CoreAvailabilitySettings,
+  AvailabilitySlot as CoreAvailabilitySlot,
+  WeeklyAvailability as CoreWeeklyAvailability,
+  CalculatedAvailableSlot as CoreCalculatedAvailableSlot
+} from '@/packages/core/types/appointment';
 
-// Re-export types that other components are trying to import
-export type AppointmentType = {
-  id: string;
-  client_id: string;
-  clinician_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  type: string;
-  status: string;
-  notes?: string;
-  appointment_datetime?: string;
-  appointment_end_datetime?: string;
-  source_time_zone: string;
-  client?: {
-    client_first_name: string;
-    client_last_name: string;
-  };
-  display_date?: string;
-  display_start_time?: string;
-  display_end_time?: string;
-  video_room_url?: string;
-  recurring_group_id?: string;
-  appointment_recurring?: string;
-  clientName?: string;
-};
+// Re-export the core types
+export type AppointmentType = CoreAppointmentType;
+export type Appointment = CoreAppointment;
+export type BaseAppointment = CoreBaseAppointment;
+export type AppointmentWithLuxon = CoreAppointmentWithLuxon;
+export type AvailabilitySettings = CoreAvailabilitySettings;
+export type AvailabilitySlot = CoreAvailabilitySlot;
+export type WeeklyAvailability = CoreWeeklyAvailability;
+export type CalculatedAvailableSlot = CoreCalculatedAvailableSlot;
 
-export type Appointment = AppointmentType;
-export type BaseAppointment = AppointmentType;
-
-export interface AppointmentWithLuxon extends AppointmentType {
-  _luxon_start?: any;
-  _luxon_end?: any;
-}
-
-export interface AvailabilitySlot {
-  id?: string;
-  startTime: string;
-  endTime: string;
-  dayOfWeek: string;
-  clinicianId: string; // Changed from optional to required to match the usage
-  isRecurring?: boolean;
-  isAppointment?: boolean;
-  clientName?: string;
-  appointmentStatus?: string;
-  excludeDates?: string[];
-}
-
-export interface WeeklyAvailability {
-  [key: string]: AvailabilitySlot[];
-}
-
-export interface CalculatedAvailableSlot {
-  start: string;
-  end: string;
-  slotId?: string;
-  isRecurring?: boolean;
-}

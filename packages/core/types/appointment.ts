@@ -1,5 +1,3 @@
-
-
 export interface AppointmentType {
   id: string;
   client_id: string;
@@ -52,13 +50,17 @@ export interface AvailabilitySettings {
   updatedAt: string;
 }
 
+// Define a unified consistent AvailabilitySlot interface that will be used everywhere
 export interface AvailabilitySlot {
   id?: string;
   startTime: string;
   endTime: string;
   dayOfWeek: string;
-  clinicianId: string; // Added this required property to match the interface in src/types/appointment.d.ts
+  clinicianId: string;
   isRecurring?: boolean;
+  isAppointment?: boolean;
+  clientName?: string;
+  appointmentStatus?: string;
   excludeDates?: string[];
 }
 
@@ -68,8 +70,8 @@ export interface WeeklyAvailability {
 
 // Add: Slot calculation result interface
 export interface CalculatedAvailableSlot {
-  start: string;       // ISO date-time of slot start (in clinician's tz)
-  end: string;         // ISO date-time of slot end (in clinician's tz)
+  start: string;
+  end: string;
   slotId?: string;
   isRecurring?: boolean;
 }
