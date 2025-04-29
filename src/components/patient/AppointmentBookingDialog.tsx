@@ -9,7 +9,8 @@ export interface AppointmentBookingDialogProps {
   clinicianName: string;
   clientId: string;
   onAppointmentBooked: () => void;
-  timeZone?: string; // Added to match DialogManager usage
+  timeZone?: string; // Used in DialogManager
+  userTimeZone?: string; // Added for consistency with other components
 }
 
 const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
@@ -19,8 +20,12 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   clinicianName,
   clientId,
   onAppointmentBooked,
-  timeZone
+  timeZone,
+  userTimeZone
 }) => {
+  // Use either timeZone or userTimeZone, with timeZone taking precedence
+  const actualTimeZone = timeZone || userTimeZone;
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
@@ -31,7 +36,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           {/* Content */}
           <p>Booking appointment with clinician ID: {clinicianId}</p>
           <p>For client ID: {clientId}</p>
-          {timeZone && <p>Using time zone: {timeZone}</p>}
+          {actualTimeZone && <p>Using time zone: {actualTimeZone}</p>}
         </div>
       </DialogContent>
     </Dialog>

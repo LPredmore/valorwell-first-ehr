@@ -25,8 +25,14 @@ export const getAppointmentInUserTimeZone = (
         return {
           ...appointment,
           display_date: appointment.date,
-          display_start_time: appointment.startTime,
-          display_end_time: appointment.endTime
+          display_start_time: appointment.startTime || appointment.start_time,
+          display_end_time: appointment.endTime || appointment.end_time,
+          // Ensure all required properties exist
+          startTime: appointment.startTime || appointment.start_time,
+          endTime: appointment.endTime || appointment.end_time,
+          clientName: appointment.clientName,
+          clientId: appointment.clientId || appointment.client_id,
+          clinician_id: appointment.clinician_id
         };
       }
       
@@ -40,7 +46,13 @@ export const getAppointmentInUserTimeZone = (
           display_start_time: startDateTime.toFormat('HH:mm'),
           display_end_time: endDateTime.toFormat('HH:mm'),
           _luxon_start: startDateTime,
-          _luxon_end: endDateTime
+          _luxon_end: endDateTime,
+          // Ensure all required properties exist
+          startTime: appointment.startTime || appointment.start_time,
+          endTime: appointment.endTime || appointment.end_time,
+          clientName: appointment.clientName,
+          clientId: appointment.clientId || appointment.client_id,
+          clinician_id: appointment.clinician_id
         };
       } catch (error) {
         console.error('Error using Luxon for time conversion:', error);
@@ -51,8 +63,14 @@ export const getAppointmentInUserTimeZone = (
     return {
       ...appointment,
       display_date: appointment.date,
-      display_start_time: appointment.startTime,
-      display_end_time: appointment.endTime
+      display_start_time: appointment.startTime || appointment.start_time,
+      display_end_time: appointment.endTime || appointment.end_time,
+      // Ensure all required properties exist
+      startTime: appointment.startTime || appointment.start_time,
+      endTime: appointment.endTime || appointment.end_time,
+      clientName: appointment.clientName,
+      clientId: appointment.clientId || appointment.client_id,
+      clinician_id: appointment.clinician_id
     };
   } catch (error) {
     console.error('Error converting appointment to user time zone:', error);

@@ -7,7 +7,8 @@ export interface ViewAvailabilityDialogProps {
   onOpenChange: (open: boolean) => void;
   clinicianId: string;
   clinicianName: string;
-  timeZone?: string; // Added to match DialogManager usage
+  timeZone?: string; // Used in DialogManager
+  userTimeZone?: string; // Added for consistency
 }
 
 const ViewAvailabilityDialog: React.FC<ViewAvailabilityDialogProps> = ({
@@ -15,8 +16,12 @@ const ViewAvailabilityDialog: React.FC<ViewAvailabilityDialogProps> = ({
   onOpenChange,
   clinicianId,
   clinicianName,
-  timeZone
+  timeZone,
+  userTimeZone
 }) => {
+  // Use either timeZone or userTimeZone, with timeZone taking precedence
+  const actualTimeZone = timeZone || userTimeZone;
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
@@ -26,7 +31,7 @@ const ViewAvailabilityDialog: React.FC<ViewAvailabilityDialogProps> = ({
         <div>
           {/* Content */}
           <p>Viewing availability for clinician ID: {clinicianId}</p>
-          {timeZone && <p>Using time zone: {timeZone}</p>}
+          {actualTimeZone && <p>Using time zone: {actualTimeZone}</p>}
         </div>
       </DialogContent>
     </Dialog>

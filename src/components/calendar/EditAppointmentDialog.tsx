@@ -68,7 +68,9 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
     if (appointment) {
       setSelectedDate(appointment.date ? new Date(appointment.date) : new Date());
       
-      if (appointment.start_time) {
+      if (appointment.startTime || appointment.start_time) {
+        const startTimeToUse = appointment.startTime || appointment.start_time;
+        
         if (appointment.appointment_datetime) {
           const localTime = TimeZoneService
             .fromUTCTimestamp(appointment.appointment_datetime, clinicianTimeZone)
@@ -77,8 +79,8 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
           console.log('Converted from UTC to display time:', displayTime);
           setStartTime(displayTime);
         } else {
-          console.log('Using legacy time field:', appointment.start_time);
-          setStartTime(appointment.start_time.substring(0, 5));
+          console.log('Using legacy time field:', startTimeToUse);
+          setStartTime(startTimeToUse.substring(0, 5));
         }
       } else {
         setStartTime('09:00');

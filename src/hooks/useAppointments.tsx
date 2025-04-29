@@ -140,7 +140,7 @@ export const useAppointments = (userId: string | null) => {
   };
 
   const openSessionTemplate = async (appointment: AppointmentType) => {
-    if (!appointment || !appointment.client_id) {
+    if (!appointment || !appointment.clientId) {
       toast({
         title: 'Error',
         description: 'Could not find client information for this appointment.',
@@ -156,7 +156,7 @@ export const useAppointments = (userId: string | null) => {
       const { data, error } = await supabase
         .from('clients')
         .select('*')
-        .eq('id', appointment.client_id)
+        .eq('id', appointment.clientId || appointment.client_id)
         .single();
         
       if (error) {

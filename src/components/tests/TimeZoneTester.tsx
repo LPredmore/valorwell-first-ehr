@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,11 +41,11 @@ const TimeZoneTester: React.FC = () => {
         
         const appointment: Partial<AppointmentType> = {
           id: 'test-appointment-id',
-          client_id: 'test-client-id',
+          clientId: 'test-client-id',
           clinician_id: 'test-clinician-id',
           date: appointmentDate,
-          start_time: appointmentTime,
-          end_time: appointmentEndTime,
+          startTime: appointmentTime,
+          endTime: appointmentEndTime,
           appointment_datetime: new Date(`${appointmentDate}T${appointmentTime}:00Z`).toISOString(),
           appointment_end_datetime: new Date(`${appointmentDate}T${appointmentEndTime}:00Z`).toISOString(),
           source_time_zone: PST_TIME_ZONE,
@@ -66,13 +67,15 @@ const TimeZoneTester: React.FC = () => {
         );
         setClinicianView(clinicianAppointment);
         
-        if (clientAppointment.display_start_time === appointmentTime && 
-            clinicianAppointment.display_start_time === appointmentTime) {
+        if ((clientAppointment.display_start_time === appointmentTime || 
+             clientAppointment.startTime === appointmentTime) && 
+            (clinicianAppointment.display_start_time === appointmentTime || 
+             clinicianAppointment.startTime === appointmentTime)) {
           setTestResult('success');
           setTestMessage('PST to PST conversion test passed! Appointments display at the correct time.');
         } else {
           setTestResult('failure');
-          setTestMessage(`PST to PST conversion test failed! Client sees ${clientAppointment.display_start_time}, Clinician sees ${clinicianAppointment.display_start_time}, Expected: ${appointmentTime}`);
+          setTestMessage(`PST to PST conversion test failed! Client sees ${clientAppointment.display_start_time || clientAppointment.startTime}, Clinician sees ${clinicianAppointment.display_start_time || clinicianAppointment.startTime}, Expected: ${appointmentTime}`);
         }
       } catch (error) {
         console.error('Error in time zone test:', error);
@@ -110,22 +113,22 @@ const TimeZoneTester: React.FC = () => {
                   <h3 className="font-medium mb-2">Test Configuration</h3>
                   <p><span className="font-medium">Client Time Zone:</span> {TimeZoneService.formatTimeZoneDisplay(clientTimeZone)}</p>
                   <p><span className="font-medium">Clinician Time Zone:</span> {TimeZoneService.formatTimeZoneDisplay(clinicianTimeZone)}</p>
-                  <p><span className="font-medium">Original Appointment Time:</span> {testAppointment?.start_time}</p>
+                  <p><span className="font-medium">Original Appointment Time:</span> {testAppointment?.startTime || testAppointment?.start_time}</p>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="border rounded-md p-4">
                     <h3 className="font-medium mb-2">Client View</h3>
                     <p><span className="text-muted-foreground">Date:</span> {clientView?.display_date || clientView?.date}</p>
-                    <p><span className="text-muted-foreground">Start Time:</span> {clientView?.display_start_time || clientView?.start_time}</p>
-                    <p><span className="text-muted-foreground">End Time:</span> {clientView?.display_end_time || clientView?.end_time}</p>
+                    <p><span className="text-muted-foreground">Start Time:</span> {clientView?.display_start_time || clientView?.startTime || clientView?.start_time}</p>
+                    <p><span className="text-muted-foreground">End Time:</span> {clientView?.display_end_time || clientView?.endTime || clientView?.end_time}</p>
                   </div>
                   
                   <div className="border rounded-md p-4">
                     <h3 className="font-medium mb-2">Clinician View</h3>
                     <p><span className="text-muted-foreground">Date:</span> {clinicianView?.display_date || clinicianView?.date}</p>
-                    <p><span className="text-muted-foreground">Start Time:</span> {clinicianView?.display_start_time || clinicianView?.start_time}</p>
-                    <p><span className="text-muted-foreground">End Time:</span> {clinicianView?.display_end_time || clinicianView?.end_time}</p>
+                    <p><span className="text-muted-foreground">Start Time:</span> {clinicianView?.display_start_time || clinicianView?.startTime || clinicianView?.start_time}</p>
+                    <p><span className="text-muted-foreground">End Time:</span> {clinicianView?.display_end_time || clinicianView?.endTime || clinicianView?.end_time}</p>
                   </div>
                 </div>
                 
