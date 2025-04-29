@@ -1,6 +1,6 @@
 
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 import { DateTime } from 'luxon';
 
 /**

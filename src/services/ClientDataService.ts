@@ -1,6 +1,6 @@
 
 import { ClientData } from '@/types/availability';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 
 export class ClientDataService {
   static formatClientName(client: any, fallback: string = 'Unknown Client'): string {

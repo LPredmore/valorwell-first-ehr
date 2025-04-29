@@ -223,33 +223,50 @@ export function getUserTimeZone(): string {
  * 1. (dateTime: Date | string, timeZone: string)
  * 2. (dateStr: string, timeStr: string, timeZone: string)
  */
-export function toUTCTimestamp(dateOrDateStr: Date | string, timeOrTimeZone: string, timeZone?: string): string {
+/**
+ * Convert date/time to UTC timestamp
+ * Implementation of the first overload: (dateTime: Date | string, timeZone: string)
+ */
+export function toUTCTimestamp(dateTime: Date | string, timeZone: string): string;
+/**
+ * Convert date/time to UTC timestamp
+ * Implementation of the second overload: (dateStr: string, timeStr: string, timeZone: string)
+ */
+export function toUTCTimestamp(dateStr: string, timeStr: string, timeZone: string): string;
+/**
+ * Implementation that handles both overloads
+ */
+export function toUTCTimestamp(
+  dateTimeOrDateStr: Date | string,
+  timeZoneOrTimeStr: string,
+  optionalTimeZone?: string
+): string {
   try {
-    // Case 1: dateStr, timeStr, timeZone
-    if (typeof dateOrDateStr === 'string' && timeZone) {
-      const validTimeZone = ensureIANATimeZone(timeZone);
-      return createDateTime(dateOrDateStr, timeOrTimeZone, validTimeZone)
+    // Case 1: (dateStr: string, timeStr: string, timeZone: string)
+    if (typeof dateTimeOrDateStr === 'string' && optionalTimeZone) {
+      const validTimeZone = ensureIANATimeZone(optionalTimeZone);
+      return createDateTime(dateTimeOrDateStr, timeZoneOrTimeStr, validTimeZone)
         .toUTC()
         .toISO() || '';
     }
     
-    // Case 2: date/dateStr, timeZone
+    // Case 2: (dateTime: Date | string, timeZone: string)
     let dt: DateTime;
-    if (dateOrDateStr instanceof Date) {
-      dt = DateTime.fromJSDate(dateOrDateStr);
+    if (dateTimeOrDateStr instanceof Date) {
+      dt = DateTime.fromJSDate(dateTimeOrDateStr);
     } else {
-      dt = DateTime.fromISO(dateOrDateStr);
+      dt = DateTime.fromISO(dateTimeOrDateStr);
     }
     
     // Set to the specified timezone before converting to UTC
-    const validTimeZone = ensureIANATimeZone(timeOrTimeZone);
+    const validTimeZone = ensureIANATimeZone(timeZoneOrTimeStr);
     return dt.setZone(validTimeZone).toUTC().toISO() || '';
   } catch (error) {
     console.error('[TimeZoneService] Error converting to UTC timestamp:', error);
     throw new TimeZoneError(
       'Failed to convert to UTC timestamp',
       'UTC_TIMESTAMP_ERROR',
-      { dateOrDateStr, timeOrTimeZone, timeZone }
+      { dateTimeOrDateStr, timeZoneOrTimeStr, optionalTimeZone }
     );
   }
 }

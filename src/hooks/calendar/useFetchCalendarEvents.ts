@@ -3,7 +3,7 @@ import { useState, useRef, useCallback, useMemo } from 'react';
 import { CalendarService } from '@/services/calendar/CalendarFacade';
 import { CalendarEvent } from '@/types/calendar';
 import { useToast } from '@/hooks/use-toast';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 import { CalendarErrorHandler } from '@/services/calendar/CalendarFacade';
 import { componentMonitor } from '@/utils/performance/componentMonitor';
 

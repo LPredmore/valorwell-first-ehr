@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { DateTime } from 'luxon';
 import { ValidationError } from '@/utils/errors';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 import { ClinicianIDUtils, isValidClinicianID, ensureClinicianID } from './clinicianUtils';
 
 /**

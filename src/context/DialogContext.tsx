@@ -15,9 +15,18 @@ export type DialogType =
   | 'viewAvailability'
   | 'appointmentBooking';
 
-// Dialog props interface
+// Dialog props interface with stronger typing
 export interface DialogProps {
   [key: string]: any;
+  selectedDate?: string | null;
+  eventId?: string;
+  clinicianId?: string;
+  clientId?: string;
+  appointmentId?: string;
+  recurrenceId?: string;
+  startTime?: string;
+  endTime?: string;
+  timeZone?: string;
 }
 
 // Dialog state interface
@@ -80,13 +89,26 @@ const dialogReducer = (state: DialogState, action: DialogAction): DialogState =>
         history: state.history
       };
     case 'PUSH_DIALOG':
+      // Only push the current dialog to the stack if there is one
+      if (state.type === null) {
+        // If no current dialog, just open the new one (same as OPEN_DIALOG)
+        return {
+          ...state,
+          type: action.payload.dialogType,
+          isOpen: true,
+          props: action.payload.props || {},
+          history: [...state.history, { type: action.payload.dialogType, props: action.payload.props || {} }],
+          stack: []
+        };
+      }
+      
       return {
         ...state,
         type: action.payload.dialogType,
         isOpen: true,
         props: action.payload.props || {},
         history: [...state.history, { type: action.payload.dialogType, props: action.payload.props || {} }],
-        stack: [...state.stack, { type: state.type!, props: state.props }]
+        stack: [...state.stack, { type: state.type, props: state.props }]
       };
     case 'POP_DIALOG':
       if (state.stack.length === 0) {
@@ -173,12 +195,56 @@ interface DialogProviderProps {
 // Dialog provider component
 export const DialogProvider: React.FC<DialogProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(dialogReducer, initialDialogState);
-  const [selectedAvailabilityDate, setSelectedAvailabilityDate] = useState<string | null>(null);
+  // Remove separate state for selectedAvailabilityDate and use the reducer state instead
 
   // Dialog actions
-  const openDialog = useCallback((dialogType: DialogType, props?: DialogProps) => {
-    dispatch({ type: 'OPEN_DIALOG', payload: { dialogType, props } });
+  // Helper function to validate dialog props
+  const validateDialogProps = useCallback((dialogType: DialogType, props?: DialogProps): DialogProps => {
+    const validatedProps = props ? { ...props } : {};
+    
+    // Validate specific props based on dialog type
+    switch (dialogType) {
+      case 'appointment':
+      case 'editAppointment':
+      case 'appointmentDetails':
+        // Ensure clinicianId is a string if provided
+        if (validatedProps.clinicianId !== undefined && typeof validatedProps.clinicianId !== 'string') {
+          console.warn(`[DialogContext] Invalid clinicianId for ${dialogType} dialog:`, validatedProps.clinicianId);
+          validatedProps.clinicianId = String(validatedProps.clinicianId);
+        }
+        break;
+        
+      case 'weeklyAvailability':
+        // Ensure selectedDate is a string or null
+        if (validatedProps.selectedDate !== undefined &&
+            validatedProps.selectedDate !== null &&
+            typeof validatedProps.selectedDate !== 'string') {
+          console.warn(`[DialogContext] Invalid selectedDate for ${dialogType} dialog:`, validatedProps.selectedDate);
+          validatedProps.selectedDate = String(validatedProps.selectedDate);
+        }
+        break;
+        
+      case 'bookAppointment':
+        // Validate time-related props
+        if (validatedProps.startTime && typeof validatedProps.startTime !== 'string') {
+          console.warn(`[DialogContext] Invalid startTime for ${dialogType} dialog:`, validatedProps.startTime);
+          validatedProps.startTime = String(validatedProps.startTime);
+        }
+        
+        if (validatedProps.endTime && typeof validatedProps.endTime !== 'string') {
+          console.warn(`[DialogContext] Invalid endTime for ${dialogType} dialog:`, validatedProps.endTime);
+          validatedProps.endTime = String(validatedProps.endTime);
+        }
+        break;
+    }
+    
+    return validatedProps;
   }, []);
+
+  const openDialog = useCallback((dialogType: DialogType, props?: DialogProps) => {
+    const validatedProps = validateDialogProps(dialogType, props);
+    dispatch({ type: 'OPEN_DIALOG', payload: { dialogType, props: validatedProps } });
+  }, [validateDialogProps]);
 
   const closeDialog = useCallback(() => {
     dispatch({ type: 'CLOSE_DIALOG' });
@@ -189,16 +255,19 @@ export const DialogProvider: React.FC<DialogProviderProps> = ({ children }) => {
   }, []);
 
   const pushDialog = useCallback((dialogType: DialogType, props?: DialogProps) => {
-    dispatch({ type: 'PUSH_DIALOG', payload: { dialogType, props } });
-  }, []);
+    const validatedProps = validateDialogProps(dialogType, props);
+    dispatch({ type: 'PUSH_DIALOG', payload: { dialogType, props: validatedProps } });
+  }, [validateDialogProps]);
 
   const popDialog = useCallback(() => {
     dispatch({ type: 'POP_DIALOG' });
   }, []);
 
   const updateDialogProps = useCallback((props: DialogProps) => {
-    dispatch({ type: 'UPDATE_DIALOG_PROPS', payload: { props } });
-  }, []);
+    // Validate props based on current dialog type
+    const validatedProps = state.type ? validateDialogProps(state.type, props) : props;
+    dispatch({ type: 'UPDATE_DIALOG_PROPS', payload: { props: validatedProps } });
+  }, [state.type, validateDialogProps]);
 
   const goBack = useCallback(() => {
     dispatch({ type: 'GO_BACK' });
@@ -228,12 +297,10 @@ export const DialogProvider: React.FC<DialogProviderProps> = ({ children }) => {
   }, [closeDialog]);
 
   const openWeeklyAvailability = useCallback((date: string | null = null) => {
-    setSelectedAvailabilityDate(date);
     openDialog('weeklyAvailability', { selectedDate: date });
   }, [openDialog]);
 
   const closeWeeklyAvailability = useCallback(() => {
-    setSelectedAvailabilityDate(null);
     localStorage.removeItem('selectedAvailabilitySlotId');
     localStorage.removeItem('selectedAvailabilityDate');
     closeDialog();
@@ -271,7 +338,8 @@ export const DialogProvider: React.FC<DialogProviderProps> = ({ children }) => {
     isWeeklyAvailabilityOpen,
     isSingleAvailabilityOpen,
     isDiagnosticOpen,
-    selectedAvailabilityDate,
+    // Get selectedAvailabilityDate from state.props instead of separate state
+    selectedAvailabilityDate: state.type === 'weeklyAvailability' ? state.props.selectedDate : null,
     openAppointmentDialog,
     closeAppointmentDialog,
     openAvailabilitySettings,

@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 import { ensureClinicianID } from '@/utils/validation/clinicianUtils';
 import { RecurrenceService } from './RecurrenceService';
 import { CalendarErrorHandler } from './calendar/CalendarErrorHandler';

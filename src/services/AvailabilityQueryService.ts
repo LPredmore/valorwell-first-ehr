@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cachedSupabase } from '@/integrations/supabase/cacheClient';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability, TimeSlot } from '@/types/availability';
 import { createEmptyWeeklyAvailability } from '@/utils/availabilityUtils';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 import { CalendarErrorHandler } from '@/services/calendar/CalendarErrorHandler';
 import { DateTime } from 'luxon';
 

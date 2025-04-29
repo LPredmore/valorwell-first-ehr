@@ -2,7 +2,7 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { WeeklyAvailability, DayOfWeek } from '@/types/availability';
 import { CalendarEvent, WeekdayNumbers } from '@/types/calendar';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 import { weekdayNameToNumber } from '@/utils/calendarWeekdayUtils';
 import { componentMonitor } from '@/utils/performance/componentMonitor';
 

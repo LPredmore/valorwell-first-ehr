@@ -2,7 +2,7 @@ import { DateTime } from 'luxon';
 import { RRule, RRuleSet, rrulestr } from 'rrule';
 import { supabase } from '@/integrations/supabase/client';
 import { cachedSupabase } from '@/integrations/supabase/cacheClient';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 import { CalendarEvent } from '@/types/calendar';
 import { DatabaseCalendarEvent } from '@/types/calendarTypes';
 import { CalendarErrorHandler } from './calendar/CalendarErrorHandler';

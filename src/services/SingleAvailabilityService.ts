@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySlot } from '@/types/availability';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 import { ensureClinicianID } from '@/utils/validation/clinicianUtils';
 
 export class SingleAvailabilityService {

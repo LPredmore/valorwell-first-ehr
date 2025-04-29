@@ -4,7 +4,7 @@
  * but should be replaced with the standardized TimeZoneService.
  */
 
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 
 /**
  * Format a date and time in a specific timezone with timezone indicator

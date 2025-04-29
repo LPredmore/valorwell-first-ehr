@@ -4,7 +4,8 @@
  * This file is maintained for backward compatibility with existing code
  */
 
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
+import { DateTime } from 'luxon';
 
 /**
  * Get the current date and time in a specific timezone
@@ -23,7 +24,12 @@ export const formatDate = (
   format: string = 'yyyy-MM-dd',
   timezone?: string
 ): string => {
-  return TimeZoneService.formatDate(date, format);
+  // Convert string or Date to DateTime before passing to TimeZoneService
+  const dateTime = date instanceof Date
+    ? DateTime.fromJSDate(date)
+    : DateTime.fromISO(date);
+    
+  return TimeZoneService.formatDate(dateTime, format);
 };
 
 /**
@@ -35,6 +41,7 @@ export const formatDateTime = (
   format: string = 'yyyy-MM-dd HH:mm',
   timezone?: string
 ): string => {
+  // No need to convert here as TimeZoneService.formatDateTime accepts string | Date | DateTime
   return TimeZoneService.formatDateTime(dateTime, format, timezone);
 };
 
@@ -60,7 +67,12 @@ export const addDuration = (
   unit: any,
   timezone?: string
 ): any => {
-  return TimeZoneService.addDuration(date, amount, unit);
+  // Convert string or Date to DateTime before passing to TimeZoneService
+  const dateTime = date instanceof Date
+    ? DateTime.fromJSDate(date)
+    : DateTime.fromISO(date);
+    
+  return TimeZoneService.addDuration(dateTime, amount, unit);
 };
 
 /**
@@ -68,7 +80,12 @@ export const addDuration = (
  * @deprecated Use TimeZoneService.getWeekdayName instead
  */
 export const getWeekdayName = (date: string | Date): string => {
-  return TimeZoneService.getWeekdayName(date);
+  // Convert string or Date to DateTime before passing to TimeZoneService
+  const dateTime = date instanceof Date
+    ? DateTime.fromJSDate(date)
+    : DateTime.fromISO(date);
+    
+  return TimeZoneService.getWeekdayName(dateTime);
 };
 
 /**
@@ -80,6 +97,7 @@ export const formatInTimezone = (
   format: string,
   timezone?: string
 ): string => {
+  // No need to convert here as TimeZoneService.formatDateTime accepts string | Date | DateTime
   return TimeZoneService.formatDateTime(date, format, timezone);
 };
 
@@ -88,7 +106,12 @@ export const formatInTimezone = (
  * @deprecated Use TimeZoneService.getMonthName instead
  */
 export const getMonthName = (date: string | Date): string => {
-  return TimeZoneService.getMonthName(date);
+  // Convert string or Date to DateTime before passing to TimeZoneService
+  const dateTime = date instanceof Date
+    ? DateTime.fromJSDate(date)
+    : DateTime.fromISO(date);
+    
+  return TimeZoneService.getMonthName(dateTime);
 };
 
 /**
@@ -96,7 +119,16 @@ export const getMonthName = (date: string | Date): string => {
  * @deprecated Use TimeZoneService.isSameDay instead
  */
 export const isSameDay = (date1: string | Date, date2: string | Date): boolean => {
-  return TimeZoneService.isSameDay(date1, date2);
+  // Convert string or Date to DateTime before passing to TimeZoneService
+  const dateTime1 = date1 instanceof Date
+    ? DateTime.fromJSDate(date1)
+    : DateTime.fromISO(date1);
+    
+  const dateTime2 = date2 instanceof Date
+    ? DateTime.fromJSDate(date2)
+    : DateTime.fromISO(date2);
+    
+  return TimeZoneService.isSameDay(dateTime1, dateTime2);
 };
 
 /**

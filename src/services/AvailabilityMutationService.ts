@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { DayOfWeek } from '@/types/availability';
 import { PermissionService } from '@/services/PermissionService';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 import { ensureUUID } from '@/utils/validation/uuidUtils';
 import { ensureClinicianID } from '@/utils/validation/clinicianUtils';
 import { DateTime } from 'luxon';

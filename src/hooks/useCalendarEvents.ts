@@ -4,7 +4,7 @@ import { CalendarEvent } from '@/types/calendar';
 import { useFetchCalendarEvents } from './calendar/useFetchCalendarEvents';
 import { useCalendarMutations } from './calendar/useCalendarMutations';
 import { useEffect } from 'react';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 
 interface UseCalendarEventsProps {
   clinicianId: string | null;

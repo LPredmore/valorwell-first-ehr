@@ -7,7 +7,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { cachedSupabase } from '@/integrations/supabase/cacheClient';
 import { CalendarEvent } from '@/types/calendar';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 import { calendarTransformer } from '@/utils/calendarTransformer';
 import { DatabaseCalendarEvent } from '@/types/calendarTypes';
 import { CalendarErrorHandler } from './CalendarErrorHandler';

@@ -1,7 +1,7 @@
 
 import { CalendarEvent } from '@/types/calendar';
 import { DatabaseCalendarEvent, CalendarEventTransform } from '@/types/calendarTypes';
-import { TimeZoneService } from './timezone';
+import { TimeZoneService } from '@/utils/timezone';
 import { DateTime } from 'luxon';
 import { CalendarErrorHandler } from '@/services/calendar/CalendarErrorHandler';
 

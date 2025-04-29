@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { DateTime } from 'luxon';
 import { AppointmentType, BaseAppointment, AppointmentWithLuxon } from '../types/appointment';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 
 export const getAppointmentInUserTimeZone = (
   appointment: AppointmentType, 

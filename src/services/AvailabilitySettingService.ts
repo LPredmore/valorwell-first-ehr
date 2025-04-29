@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySettings } from '@/types/availability';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 import { CalendarErrorHandler } from './calendar/CalendarErrorHandler';
 
 export class AvailabilitySettingService {

@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { availabilityService } from '@/services/availabilityService';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 import { CalendarErrorHandler } from '@/services/calendar/CalendarErrorHandler';
 import { DateTime } from 'luxon';
 
