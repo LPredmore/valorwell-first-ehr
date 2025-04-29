@@ -1,5 +1,4 @@
-
-import { ZodError, ZodType, ZodTypeDef } from 'zod';
+import { ZodError, ZodType } from 'zod';
 
 /**
  * Validation result type
@@ -70,9 +69,10 @@ export class SchemaValidator {
    * Validate data synchronously against a schema
    * @param schema The Zod schema to validate against
    * @param data The data to validate
+   * @param options Optional validation options
    * @returns Validation result
    */
-  static validate<T>(schema: ZodType<T>, data: unknown): ValidationResult<T> {
+  static validate<T>(schema: ZodType<T>, data: unknown, options?: { throwOnError?: boolean }): ValidationResult<T> {
     try {
       const validatedData = schema.parse(data);
       return {
@@ -87,13 +87,19 @@ export class SchemaValidator {
           code: err.code
         }));
         
-        return {
+        const result = {
           success: false,
           errors: validationErrors
         };
+        
+        if (options?.throwOnError) {
+          throw error;
+        }
+        
+        return result;
       }
       
-      return {
+      const result = {
         success: false,
         errors: [
           {
@@ -103,6 +109,12 @@ export class SchemaValidator {
           }
         ]
       };
+      
+      if (options?.throwOnError && error instanceof Error) {
+        throw error;
+      }
+      
+      return result;
     }
   }
   
@@ -246,3 +258,13 @@ export class SchemaValidator {
     };
   }
 }
+
+// Export default for backward compatibility
+export default {
+  validate: SchemaValidator.validate,
+  validateAsync: SchemaValidator.validateAsync,
+  validateSubset: SchemaValidator.validateSubset,
+  formatErrors: SchemaValidator.formatErrors,
+  createError: SchemaValidator.createError,
+  errorToResult: SchemaValidator.errorToResult
+};

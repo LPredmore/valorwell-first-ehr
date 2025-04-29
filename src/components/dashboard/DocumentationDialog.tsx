@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 export interface DocumentationDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedStatus: string | undefined;
+  selectedStatus?: string;
   onStatusChange: (value: string) => void;
   onProvideDocumentation: () => Promise<void>;
 }

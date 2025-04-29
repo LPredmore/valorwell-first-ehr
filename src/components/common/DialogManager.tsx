@@ -110,7 +110,7 @@ const DialogManager: React.FC = () => {
           <BookAppointmentDialog
             isOpen={true}
             onClose={closeDialog}
-            slot={props.appointmentData || props.slot || {}}
+            appointmentData={props.appointmentData || props.slot || {}}
             clinicianId={props.clinicianId || ''}
             clientId={props.clientId || ''}
             onAppointmentBooked={props.onAppointmentBooked || (() => {})}
@@ -132,8 +132,9 @@ const DialogManager: React.FC = () => {
           <DocumentationDialog
             isOpen={true}
             onOpenChange={(open) => !open && closeDialog()}
-            sessionId={props.appointmentId || props.sessionId || ''}
-            onDocumentationSelected={props.onDocumentationSelected || (() => {})}
+            selectedStatus={props.selectedStatus}
+            onStatusChange={props.onStatusChange || (() => {})}
+            onProvideDocumentation={props.onProvideDocumentation || (async () => {})}
           />
         );
       
@@ -144,7 +145,7 @@ const DialogManager: React.FC = () => {
             onOpenChange={(open) => !open && closeDialog()}
             clinicianId={props.clinicianId || ''}
             clinicianName={props.clinicianName || ''}
-            preferredTimeZone={props.timeZone}
+            timeZone={props.timeZone}
           />
         );
       
@@ -157,7 +158,7 @@ const DialogManager: React.FC = () => {
             clinicianName={props.clinicianName || ''}
             clientId={props.clientId || ''}
             onAppointmentBooked={props.onAppointmentBooked || (() => {})}
-            preferredTimeZone={props.timeZone}
+            timeZone={props.timeZone}
           />
         );
       

@@ -1,10 +1,11 @@
+
 import { format } from 'date-fns';
 import { DateTime } from 'luxon';
-import { AppointmentType, BaseAppointment, AppointmentWithLuxon } from '../types/appointment';
+import { BaseAppointment, AppointmentWithLuxon } from '@/types/appointment';
 import { TimeZoneService } from '@/utils/timezone';
 
 export const getAppointmentInUserTimeZone = (
-  appointment: AppointmentType, 
+  appointment: BaseAppointment, 
   userTimeZone: string
 ): AppointmentWithLuxon => {
   try {
@@ -24,8 +25,8 @@ export const getAppointmentInUserTimeZone = (
         return {
           ...appointment,
           display_date: appointment.date,
-          display_start_time: appointment.start_time,
-          display_end_time: appointment.end_time
+          display_start_time: appointment.startTime,
+          display_end_time: appointment.endTime
         };
       }
       
@@ -43,19 +44,19 @@ export const getAppointmentInUserTimeZone = (
         };
       } catch (error) {
         console.error('Error using Luxon for time conversion:', error);
-        return appointment;
+        return appointment as AppointmentWithLuxon;
       }
     }
     
     return {
       ...appointment,
       display_date: appointment.date,
-      display_start_time: appointment.start_time,
-      display_end_time: appointment.end_time
+      display_start_time: appointment.startTime,
+      display_end_time: appointment.endTime
     };
   } catch (error) {
     console.error('Error converting appointment to user time zone:', error);
-    return appointment;
+    return appointment as AppointmentWithLuxon;
   }
 };
 
@@ -66,9 +67,9 @@ export const getAppointmentInUserTimeZone = (
  * @returns Array of appointments with display fields added for the user's time zone
  */
 export const getAppointmentsInUserTimeZone = (
-  appointments: AppointmentType[],
+  appointments: BaseAppointment[],
   userTimeZone: string
-): AppointmentType[] => {
+): BaseAppointment[] => {
   return appointments.map(appointment => getAppointmentInUserTimeZone(appointment, userTimeZone));
 };
 
@@ -77,7 +78,7 @@ export const getAppointmentsInUserTimeZone = (
  * @param appointment The appointment to check
  * @returns Boolean indicating if the appointment has time zone information
  */
-export const hasTimeZoneInfo = (appointment: AppointmentType): boolean => {
+export const hasTimeZoneInfo = (appointment: BaseAppointment): boolean => {
   return !!(appointment.appointment_datetime && appointment.appointment_end_datetime);
 };
 
@@ -88,12 +89,12 @@ export const hasTimeZoneInfo = (appointment: AppointmentType): boolean => {
  * @returns Formatted time string with time zone indicator
  */
 export const formatAppointmentTimeWithTimeZone = (
-  appointment: AppointmentType,
+  appointment: BaseAppointment,
   userTimeZone: string
 ): string => {
   try {
     const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
-    const displayTime = appointment.display_start_time || appointment.start_time;
+    const displayTime = appointment.display_start_time || appointment.startTime;
     const timeZoneName = validTimeZone.split('/').pop()?.replace('_', ' ') || validTimeZone;
     
     const [hours, minutes] = displayTime.split(':');
@@ -104,7 +105,7 @@ export const formatAppointmentTimeWithTimeZone = (
     return `${formattedHour}:${minutes} ${ampm} (${timeZoneName})`;
   } catch (error) {
     console.error('Error formatting appointment time with time zone:', error);
-    return `${appointment.start_time} (${userTimeZone})`;
+    return `${appointment.startTime} (${userTimeZone})`;
   }
 };
 
@@ -120,7 +121,7 @@ export const formatAppointmentTimeWithLuxon = (
 ): string => {
   try {
     const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
-    const displayTime = appointment.display_start_time || appointment.start_time;
+    const displayTime = appointment.display_start_time || appointment.startTime;
     
     if (appointment._luxon_start && appointment._luxon_start instanceof DateTime) {
       return appointment._luxon_start.toFormat('h:mm a ZZZZ');
@@ -136,6 +137,6 @@ export const formatAppointmentTimeWithLuxon = (
     return dateTime.toFormat('h:mm a ZZZZ');
   } catch (error) {
     console.error('Error formatting appointment time with Luxon:', error);
-    return `${appointment.start_time} (${userTimeZone})`;
+    return `${appointment.startTime} (${userTimeZone})`;
   }
 };

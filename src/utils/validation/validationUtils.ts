@@ -1,5 +1,7 @@
 
 import { z } from 'zod';
+import { DateTime } from 'luxon';
+import { TimeZoneService } from '@/utils/timezone';
 
 /**
  * Utility functions for common validation patterns
@@ -226,3 +228,97 @@ export const ValidationUtils = {
     });
   }
 };
+
+/**
+ * Validates an availability time slot
+ * @param date The date for the slot
+ * @param startTime The start time (HH:MM format)
+ * @param endTime The end time (HH:MM format)
+ * @param timeZone The time zone for the slot
+ * @returns Validated date, start time, end time, and time zone
+ */
+export function validateAvailabilitySlot(
+  date: Date | string,
+  startTime: string,
+  endTime: string,
+  timeZone: string
+) {
+  // Ensure valid time zone
+  const validTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
+  
+  // Convert date to proper format if needed
+  let formattedDate: Date;
+  if (typeof date === 'string') {
+    formattedDate = new Date(date);
+  } else {
+    formattedDate = date;
+  }
+  
+  if (isNaN(formattedDate.getTime())) {
+    throw new Error('Invalid date format');
+  }
+  
+  // Validate time formats
+  const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+  if (!timeRegex.test(startTime)) {
+    throw new Error('Invalid start time format. Use HH:MM format.');
+  }
+  
+  if (!timeRegex.test(endTime)) {
+    throw new Error('Invalid end time format. Use HH:MM format.');
+  }
+  
+  // Validate end time is after start time
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const [endHour, endMinute] = endTime.split(':').map(Number);
+  
+  if (endHour < startHour || (endHour === startHour && endMinute <= startMinute)) {
+    throw new Error('End time must be after start time');
+  }
+  
+  return {
+    date: formattedDate,
+    startTime,
+    endTime,
+    timeZone: validTimeZone
+  };
+}
+
+/**
+ * Validates a non-empty string
+ * @param value The string to validate
+ * @param fieldName The name of the field for error messages
+ */
+export function validateNonEmptyString(value: string, fieldName: string): string {
+  if (!value || value.trim() === '') {
+    throw new Error(`${fieldName} cannot be empty`);
+  }
+  return value.trim();
+}
+
+/**
+ * Validates and formats a clinician ID
+ * @param clinicianId The clinician ID to validate
+ * @returns The validated and formatted clinician ID
+ */
+export function validateClinicianID(clinicianId: string): string {
+  const value = validateNonEmptyString(clinicianId, 'Clinician ID');
+  
+  // Check if it's a valid UUID format
+  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  if (!uuidRegex.test(value)) {
+    throw new Error('Invalid clinician ID format');
+  }
+  
+  return value;
+}
+
+// Export default for backward compatibility
+const ValidationUtilsExport = {
+  ...ValidationUtils,
+  validateAvailabilitySlot,
+  validateNonEmptyString,
+  validateClinicianID
+};
+
+export default ValidationUtilsExport;

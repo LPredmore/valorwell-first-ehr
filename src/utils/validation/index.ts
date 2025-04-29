@@ -1,3 +1,4 @@
+
 /**
  * Validation utilities index
  * Exports all validation-related utilities for easy importing
@@ -8,13 +9,16 @@ export * from './validationUtils';
 export * from './schemaValidator';
 export * from './uuidUtils';
 
-// Export default objects for convenience
-import ValidationUtils from './validationUtils';
-import SchemaValidator from './schemaValidator';
-import UUIDUtils from './uuidUtils';
+// Import named exports for combining into default export
+import { ValidationUtils } from './validationUtils';
+import { SchemaValidator } from './schemaValidator';
+import { validateAvailabilitySlot, validateNonEmptyString, validateClinicianID } from './validationUtils';
 
+// Export combined default object for convenience
 export default {
-  ...ValidationUtils,
-  ...SchemaValidator,
-  ...UUIDUtils
+  ValidationUtils,
+  SchemaValidator,
+  validateAvailabilitySlot,
+  validateNonEmptyString,
+  validateClinicianID
 };

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { DayOfWeek } from '@/types/availability';
 import { PermissionService } from '@/services/PermissionService';
@@ -118,8 +117,7 @@ export class AvailabilityMutationService {
           isRecurring,
           recurrenceRule,
           timeZone
-        },
-        { throwOnError: true }
+        }
       );
       
       // Ensure clinicianId is a valid clinician ID
