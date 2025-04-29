@@ -144,7 +144,7 @@ export class AvailabilityQueryService {
         dayOfWeek: event.dayOfWeek || event.day_of_week,
         isRecurring: event.is_recurring || event.isRecurring || false,
         excludeDates: event.exclude_dates || event.excludeDates || [],
-        clinicianId: event.clinician_id || '' // Ensure clinicianId is added
+        clinicianId: event.clinician_id || event.clinicianId || '' // Ensure clinicianId is added
       };
     }
     

@@ -50,7 +50,7 @@ export interface AvailabilitySlot {
   startTime: string;
   endTime: string;
   dayOfWeek: string;
-  clinicianId?: string; // Add the missing clinicianId property
+  clinicianId: string; // Changed from optional to required to match the usage
   isRecurring?: boolean;
   isAppointment?: boolean;
   clientName?: string;
