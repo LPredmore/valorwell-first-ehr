@@ -9,15 +9,75 @@ import { AvailabilitySettings, WeeklyAvailability as AvailabilityWeeklyAvailabil
 
 // Convert between the two WeeklyAvailability formats
 const convertToAvailabilityWeeklyAvailability = (weeklySlots: AppointmentWeeklyAvailability): AvailabilityWeeklyAvailability => {
-  return {
-    monday: weeklySlots['Monday'] || [],
-    tuesday: weeklySlots['Tuesday'] || [],
-    wednesday: weeklySlots['Wednesday'] || [],
-    thursday: weeklySlots['Thursday'] || [],
-    friday: weeklySlots['Friday'] || [],
-    saturday: weeklySlots['Saturday'] || [],
-    sunday: weeklySlots['Sunday'] || []
+  // Create empty result object with the expected structure
+  const result: AvailabilityWeeklyAvailability = {
+    monday: [],
+    tuesday: [],
+    wednesday: [],
+    thursday: [],
+    friday: [],
+    saturday: [],
+    sunday: []
   };
+  
+  // For each day, convert the slot types adding the required clinicianId field
+  if (weeklySlots['Monday']) {
+    result.monday = weeklySlots['Monday'].map(slot => ({
+      ...slot,
+      clinicianId: slot.clinicianId || '', // Add required clinicianId field
+      dayOfWeek: 'monday' // Ensure the correct enum value is used
+    }));
+  }
+  
+  if (weeklySlots['Tuesday']) {
+    result.tuesday = weeklySlots['Tuesday'].map(slot => ({
+      ...slot,
+      clinicianId: slot.clinicianId || '',
+      dayOfWeek: 'tuesday'
+    }));
+  }
+  
+  if (weeklySlots['Wednesday']) {
+    result.wednesday = weeklySlots['Wednesday'].map(slot => ({
+      ...slot,
+      clinicianId: slot.clinicianId || '',
+      dayOfWeek: 'wednesday'
+    }));
+  }
+  
+  if (weeklySlots['Thursday']) {
+    result.thursday = weeklySlots['Thursday'].map(slot => ({
+      ...slot,
+      clinicianId: slot.clinicianId || '',
+      dayOfWeek: 'thursday'
+    }));
+  }
+  
+  if (weeklySlots['Friday']) {
+    result.friday = weeklySlots['Friday'].map(slot => ({
+      ...slot,
+      clinicianId: slot.clinicianId || '',
+      dayOfWeek: 'friday'
+    }));
+  }
+  
+  if (weeklySlots['Saturday']) {
+    result.saturday = weeklySlots['Saturday'].map(slot => ({
+      ...slot,
+      clinicianId: slot.clinicianId || '',
+      dayOfWeek: 'saturday'
+    }));
+  }
+  
+  if (weeklySlots['Sunday']) {
+    result.sunday = weeklySlots['Sunday'].map(slot => ({
+      ...slot,
+      clinicianId: slot.clinicianId || '',
+      dayOfWeek: 'sunday'
+    }));
+  }
+  
+  return result;
 };
 
 export class AvailabilityQueryService {

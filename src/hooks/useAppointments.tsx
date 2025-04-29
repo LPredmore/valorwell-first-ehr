@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { format, isToday, isFuture, parseISO, isBefore } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
@@ -6,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { AppointmentType } from '@/types/appointment';
 import { getAppointmentsInUserTimeZone } from '@/utils/appointmentUtils';
+import { formatClientName } from '@/utils/clientDataUtils';
 
 export type { AppointmentType };
 
@@ -62,10 +64,18 @@ export const useAppointments = (userId: string | null) => {
         console.log(`[useAppointments] Retrieved ${data?.length || 0} appointments for clinician ID: "${userId}"`);
         
         // Convert appointments to user's time zone
-        const appointmentsWithClient = data.map((appointment: any) => ({
-          ...appointment,
-          client: appointment.clients
-        })) as AppointmentType[];
+        const appointmentsWithClient = data.map((appointment: any) => {
+          const clientName = appointment.clients ? 
+            `${appointment.clients.client_first_name || ''} ${appointment.clients.client_last_name || ''}`.trim() : 
+            'Unnamed Client';
+          
+          return {
+            ...appointment,
+            client: appointment.clients,
+            clientName,
+            clientId: appointment.client_id
+          };
+        }) as AppointmentType[];
         
         // Apply time zone conversion to all appointments
         const convertedAppointments = getAppointmentsInUserTimeZone(appointmentsWithClient, userTimeZone);

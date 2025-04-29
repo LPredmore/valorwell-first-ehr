@@ -41,6 +41,9 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({
   const appointmentDate = appointment.date ? new Date(appointment.date) : new Date();
   const formattedDate = format(appointmentDate, 'EEEE, MMMM d, yyyy');
 
+  // Ensure we have a valid clientName
+  const clientName = appointment.clientName || 'Unknown Client';
+
   const formatTime = (timeString: string) => {
     try {
       const [hours, minutes] = timeString.split(':').map(Number);
@@ -82,8 +85,8 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex items-center space-x-4">
           <Avatar>
-            <AvatarImage src={`https://avatar.vercel.sh/${appointment.clientName}.png`} />
-            <AvatarFallback>{appointment.clientName.substring(0, 2)}</AvatarFallback>
+            <AvatarImage src={`https://avatar.vercel.sh/${clientName}.png`} />
+            <AvatarFallback>{clientName.substring(0, 2)}</AvatarFallback>
           </Avatar>
           <div className="space-y-1">
             <h4 className="text-sm font-semibold">
@@ -96,10 +99,10 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({
                     console.log(`Navigating to client profile with ID: ${appointment.clientId}`);
                   }}
                 >
-                  {appointment.clientName}
+                  {clientName}
                 </Link>
               ) : (
-                <span>{appointment.clientName}</span>
+                <span>{clientName}</span>
               )}
             </h4>
             <p className="text-xs text-gray-500">

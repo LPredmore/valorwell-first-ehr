@@ -11,6 +11,12 @@ export const getAppointmentInUserTimeZone = (
   try {
     const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
     
+    // Ensure we have a valid clientName
+    const clientName = appointment.clientName || 
+                      (appointment.client ? 
+                        `${appointment.client.client_first_name || ''} ${appointment.client.client_last_name || ''}`.trim() : 
+                        'Unnamed Client');
+    
     if (appointment.appointment_datetime && appointment.appointment_end_datetime) {
       console.log(`Converting appointment from UTC to ${validTimeZone}:`, {
         id: appointment.id,
@@ -30,7 +36,7 @@ export const getAppointmentInUserTimeZone = (
           // Ensure all required properties exist
           startTime: appointment.startTime || appointment.start_time,
           endTime: appointment.endTime || appointment.end_time,
-          clientName: appointment.clientName,
+          clientName,
           clientId: appointment.clientId || appointment.client_id,
           clinician_id: appointment.clinician_id
         };
@@ -50,13 +56,18 @@ export const getAppointmentInUserTimeZone = (
           // Ensure all required properties exist
           startTime: appointment.startTime || appointment.start_time,
           endTime: appointment.endTime || appointment.end_time,
-          clientName: appointment.clientName,
+          clientName,
           clientId: appointment.clientId || appointment.client_id,
           clinician_id: appointment.clinician_id
         };
       } catch (error) {
         console.error('Error using Luxon for time conversion:', error);
-        return appointment as AppointmentWithLuxon;
+        return {
+          ...appointment,
+          clientName,
+          startTime: appointment.startTime || appointment.start_time,
+          endTime: appointment.endTime || appointment.end_time
+        } as AppointmentWithLuxon;
       }
     }
     
@@ -68,13 +79,18 @@ export const getAppointmentInUserTimeZone = (
       // Ensure all required properties exist
       startTime: appointment.startTime || appointment.start_time,
       endTime: appointment.endTime || appointment.end_time,
-      clientName: appointment.clientName,
+      clientName,
       clientId: appointment.clientId || appointment.client_id,
       clinician_id: appointment.clinician_id
     };
   } catch (error) {
     console.error('Error converting appointment to user time zone:', error);
-    return appointment as AppointmentWithLuxon;
+    return {
+      ...appointment,
+      clientName: appointment.clientName || 'Unnamed Client',
+      startTime: appointment.startTime || appointment.start_time,
+      endTime: appointment.endTime || appointment.end_time
+    } as AppointmentWithLuxon;
   }
 };
 
