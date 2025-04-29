@@ -8,3 +8,7 @@
 
 // Re-export everything from the modular timezone structure
 export * from './timezone';
+
+// For backward compatibility, also export the TimeZoneService as default
+import { TimeZoneService } from './timezone';
+export default TimeZoneService;

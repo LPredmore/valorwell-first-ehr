@@ -15,6 +15,7 @@ import { SessionDidNotOccurDialog } from '@/components/dashboard/SessionDidNotOc
 import { DocumentationDialog } from '@/components/dashboard/DocumentationDialog';
 import ViewAvailabilityDialog from '@/components/patient/ViewAvailabilityDialog';
 import AppointmentBookingDialog from '@/components/patient/AppointmentBookingDialog';
+import { TimeZoneService } from '@/utils/timezone';
 
 /**
  * DialogManager component
@@ -26,6 +27,8 @@ import AppointmentBookingDialog from '@/components/patient/AppointmentBookingDia
 const DialogManager: React.FC = () => {
   const { state, closeDialog } = useDialogs();
   const { type, isOpen, props } = state;
+  
+  const userTimeZone = props.timeZone || TimeZoneService.getUserTimeZone();
 
   // If no dialog is open, don't render anything
   if (!isOpen || !type) {
@@ -69,6 +72,7 @@ const DialogManager: React.FC = () => {
             clinicianId={props.clinicianId || ''}
             onAvailabilityCreated={props.onAvailabilityCreated || (() => {})}
             permissionLevel={props.permissionLevel || 'full'}
+            userTimeZone={userTimeZone} // Added missing required prop
           />
         );
       
@@ -86,7 +90,7 @@ const DialogManager: React.FC = () => {
             onClose={closeDialog}
             appointment={props.appointment || null}
             onAppointmentUpdated={props.onAppointmentUpdated || (() => {})}
-            onDelete={props.onDelete || (() => {})}
+            // Removed invalid onDelete prop
           />
         );
       
@@ -105,7 +109,8 @@ const DialogManager: React.FC = () => {
           <BookAppointmentDialog
             isOpen={true}
             onClose={closeDialog}
-            slot={props.slot || null}
+            // Removed invalid slot prop
+            appointmentData={props.appointmentData || {}} // Use appointmentData instead of slot
             clinicianId={props.clinicianId || ''}
             clientId={props.clientId || ''}
             onAppointmentBooked={props.onAppointmentBooked || (() => {})}
@@ -127,7 +132,8 @@ const DialogManager: React.FC = () => {
           <DocumentationDialog
             isOpen={true}
             onOpenChange={(open) => !open && closeDialog()}
-            sessionId={props.sessionId || ''}
+            // Changed sessionId to appointmentId
+            appointmentId={props.appointmentId || props.sessionId || ''}
             onDocumentationSelected={props.onDocumentationSelected || (() => {})}
           />
         );
@@ -139,7 +145,7 @@ const DialogManager: React.FC = () => {
             onOpenChange={(open) => !open && closeDialog()}
             clinicianId={props.clinicianId || ''}
             clinicianName={props.clinicianName || ''}
-            onBookSlot={props.onBookSlot || (() => {})}
+            // Removed invalid onBookSlot prop
             timeZone={props.timeZone}
           />
         );
@@ -153,7 +159,8 @@ const DialogManager: React.FC = () => {
             clinicianName={props.clinicianName || ''}
             clientId={props.clientId || ''}
             onAppointmentBooked={props.onAppointmentBooked || (() => {})}
-            preferredTimeZone={props.preferredTimeZone}
+            // Changed preferredTimeZone to timeZone
+            timeZone={props.preferredTimeZone || props.timeZone}
           />
         );
       

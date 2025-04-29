@@ -301,5 +301,40 @@ export class SchemaValidator {
   }
 }
 
+/**
+ * Convert Zod errors to our validation error format
+ */
+function convertZodErrorToValidationError(error: z.ZodError): ValidationError {
+  const details = error.errors.map(err => {
+    return {
+      path: err.path.map(p => String(p)), // Convert all path elements to string
+      message: err.message,
+      code: err.code
+    } as ValidationErrorDetail;
+  });
+
+  return {
+    message: 'Schema validation failed',
+    errors: details
+  };
+}
+
+/**
+ * Extract field-specific validation errors from a validation error object
+ */
+export function extractFieldErrors(error: ValidationError): Record<string, string> {
+  const fieldErrors: Record<string, string> = {};
+  
+  error.errors.forEach(err => {
+    const path = err.path.map(p => String(p)); // Convert all path elements to string
+    if (path.length > 0) {
+      const fieldPath = path.join('.');
+      fieldErrors[fieldPath] = err.message;
+    }
+  });
+  
+  return fieldErrors;
+}
+
 // Export a default instance for convenience
 export default SchemaValidator;

@@ -55,7 +55,7 @@ export function useCalendarEvents({
       userId
     });
 
-    if (!isUserLoading) {
+    if (!isUserLoading && clinicianId) {
       fetchEvents();
     }
   }, [clinicianId, validTimeZone, startDate, endDate, fetchEvents, isUserLoading, userId]);

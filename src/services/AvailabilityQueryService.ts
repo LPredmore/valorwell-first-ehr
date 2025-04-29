@@ -391,6 +391,53 @@ export class AvailabilityQueryService {
     }
   }
 
+  /**
+   * Get availability events for a clinician within a date range
+   */
+  async function getAvailabilityEvents(
+    clinicianId: string,
+    startDate: string | Date,
+    endDate: string | Date,
+    timezone: string
+  ): Promise<{ data: AvailabilityEvent[]; error: any }> {
+    try {
+      const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
+      console.log('[AvailabilityQueryService] Fetching availability with timezone:', validTimeZone);
+      
+      // Format dates for database query if they're Date objects
+      const startDateStr = typeof startDate === 'string' 
+        ? startDate 
+        : DateTime.fromJSDate(startDate).toISO();
+        
+      const endDateStr = typeof endDate === 'string'
+        ? endDate
+        : DateTime.fromJSDate(endDate).toISO();
+
+      const result = await supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('clinician_id', clinicianId)
+        .eq('event_type', 'availability')
+        .eq('is_active', true)
+        .gte('start_time', startDateStr)
+        .lte('end_time', endDateStr);
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      // Transform database events to AvailabilityEvent objects
+      const availabilityEvents = (result.data || []).map(event => {
+        return transformDatabaseEventToAvailabilityEvent(event, validTimeZone);
+      });
+
+      return { data: availabilityEvents, error: null };
+    } catch (error) {
+      console.error('[AvailabilityQueryService] Error fetching availability:', error);
+      return { data: [], error };
+    }
+  }
+
   private static timeToMinutes(time: string): number {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
@@ -422,4 +469,27 @@ export class AvailabilityQueryService {
   static validateTimeGranularity(granularity: string): 'hour' | 'halfhour' {
     return granularity === 'halfhour' ? 'halfhour' : 'hour';
   }
+}
+
+function transformDatabaseEventToAvailabilityEvent(event, validTimeZone) {
+  const startDt = DateTime.fromISO(event.start_time).setZone(validTimeZone);
+  const endDt = DateTime.fromISO(event.end_time).setZone(validTimeZone);
+  
+  const day = startDt.weekdayLong.toLowerCase() as DayOfWeek;
+  const slot: AvailabilitySlot = {
+    id: event.id,
+    clinicianId: event.clinician_id,
+    dayOfWeek: day,
+    startTime: startDt.toFormat('HH:mm'),
+    endTime: endDt.toFormat('HH:mm'),
+    isRecurring: event.availability_type === 'recurring',
+    timeZone: event.time_zone || 'UTC',
+    isActive: event.is_active,
+    recurrenceRule: event.recurrence_rule,
+    isAppointment: event.event_type === 'appointment',
+    clientName: event.client_name,
+    appointmentStatus: event.status
+  };
+  
+  return slot;
 }

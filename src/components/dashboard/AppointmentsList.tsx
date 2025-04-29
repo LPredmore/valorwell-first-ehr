@@ -3,7 +3,7 @@ import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { AppointmentCard } from './AppointmentCard';
+import AppointmentCard from './AppointmentCard'; // Fixed: Changed from named to default import
 import { BaseAppointment } from '@/types/appointment';
 
 interface AppointmentsListProps {
