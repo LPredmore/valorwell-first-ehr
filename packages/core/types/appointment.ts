@@ -1,3 +1,4 @@
+
 export interface AppointmentType {
   id: string;
   client_id: string;
@@ -63,6 +64,9 @@ export interface AvailabilitySlot {
   appointmentStatus?: string;
   excludeDates?: string[];
 }
+
+// Define AppointmentAvailabilitySlot type that was being used in AvailabilityQueryService
+export type AppointmentAvailabilitySlot = AvailabilitySlot;
 
 export interface WeeklyAvailability {
   [key: string]: AvailabilitySlot[];

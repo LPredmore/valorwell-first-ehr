@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
-import { AvailabilitySlot } from '@/types/availability';
+import { AvailabilitySlot } from '@/packages/core/types/appointment';
 import { TimeZoneService } from '@/utils/timeZoneService';
 
 export interface AvailabilitySlotListProps {

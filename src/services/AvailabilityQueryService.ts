@@ -1,11 +1,12 @@
+
 // Add this at the top of the file to fix the PostgrestFilterBuilder to Promise conversion
 import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
-import { CalculatedAvailableSlot, AvailabilitySlot } from '@/packages/core/types/appointment';
+import { CalculatedAvailableSlot, AvailabilitySlot, AppointmentAvailabilitySlot } from '@/packages/core/types/appointment';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timezone';
 import { DateTime } from 'luxon';
 import { AvailabilitySettings, WeeklyAvailability as AvailabilityWeeklyAvailability, DayOfWeek } from '@/types/availability';
-import { WeeklyAvailability as AppointmentWeeklyAvailability } from '@/types/appointment';
+import { WeeklyAvailability as AppointmentWeeklyAvailability } from '@/packages/core/types/appointment';
 
 // Convert between the two WeeklyAvailability formats
 const convertToAvailabilityWeeklyAvailability = (weeklySlots: AppointmentWeeklyAvailability): AvailabilityWeeklyAvailability => {
