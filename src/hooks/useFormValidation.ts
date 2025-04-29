@@ -168,11 +168,12 @@ export function useFormValidation<T>(
    * Validate a specific field
    */
   const validateField = useCallback(async (fieldPath: string): Promise<boolean> => {
-    // Create a partial schema for the field
-    const fieldSchema = schema.pick({ [fieldPath]: true } as any);
-    
     try {
-      const result = await SchemaValidator.validateAsync(fieldSchema, { [fieldPath]: values[fieldPath as keyof T] });
+      // Create a subset object with just the field to validate
+      const fieldData = { [fieldPath]: values[fieldPath as keyof T] };
+      
+      // Validate just this field
+      const result = await SchemaValidator.validateSubset(schema, fieldData, [fieldPath]);
       
       if (result.success) {
         // Remove error for this field
@@ -314,10 +315,62 @@ export function useFormValidation<T>(
     validatedData,
     validate,
     validateField,
-    setFieldValue,
-    touchField,
-    reset,
-    getFieldProps
+    setFieldValue: (fieldPath: string, value: any) => {
+      setValues(prev => {
+        const newValues = { ...prev, [fieldPath]: value };
+        return newValues;
+      });
+      
+      setIsDirty(true);
+      
+      if (validateOnChange) {
+        validateField(fieldPath);
+      }
+    },
+    touchField: (fieldPath: string) => {
+      setTouchedFields(prev => {
+        const newTouched = new Set(prev);
+        newTouched.add(fieldPath);
+        return newTouched;
+      });
+      
+      if (validateOnBlur) {
+        validateField(fieldPath);
+      }
+    },
+    reset: () => {
+      setValues(initialValues);
+      setErrors({});
+      setErrorDetails([]);
+      setTouchedFields(new Set());
+      setIsDirty(false);
+      setIsValid(false);
+      setValidatedData(undefined);
+    },
+    getFieldProps: (fieldPath: string) => {
+      return {
+        value: values[fieldPath as keyof T] ?? '',
+        onChange: (e: any) => {
+          const value = e.target?.value !== undefined ? e.target.value : e;
+          setValues(prev => ({ ...prev, [fieldPath]: value }));
+          setIsDirty(true);
+          if (validateOnChange) {
+            validateField(fieldPath);
+          }
+        },
+        onBlur: () => {
+          setTouchedFields(prev => {
+            const newTouched = new Set(prev);
+            newTouched.add(fieldPath);
+            return newTouched;
+          });
+          if (validateOnBlur) {
+            validateField(fieldPath);
+          }
+        },
+        error: errors[fieldPath]
+      };
+    }
   };
 }
 

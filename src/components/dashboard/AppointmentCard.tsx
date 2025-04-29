@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -6,17 +7,7 @@ import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
-
-interface Appointment {
-  id: string;
-  clientName: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  location: string;
-  status: string;
-  clientId: string;
-}
+import { BaseAppointment } from '@/types/appointment';
 
 interface InfoCardAction {
   label: string;
@@ -27,10 +18,10 @@ interface InfoCardAction {
 }
 
 interface AppointmentCardProps {
-  appointment: Appointment;
-  onStartSession: (appointment: Appointment) => void;
-  onDocumentSession?: (appointment: Appointment) => void;
-  onSessionDidNotOccur?: (appointment: Appointment) => void;
+  appointment: BaseAppointment;
+  onStartSession?: (appointment: BaseAppointment) => void;
+  onDocumentSession?: (appointment: BaseAppointment) => void;
+  onSessionDidNotOccur?: (appointment: BaseAppointment) => void;
   timeZoneDisplay: string;
   userTimeZone: string;
   showStartButton?: boolean;
@@ -66,21 +57,21 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({
     {
       label: 'Start Session',
       icon: Video,
-      onClick: () => onStartSession(appointment),
-      variant: 'default', // Changed from string to specific type
+      onClick: () => onStartSession && onStartSession(appointment),
+      variant: 'default', 
       destructive: false
     },
     {
       label: 'Document Session',
       icon: CheckCircle,
-      onClick: () => onDocumentSession?.(appointment),
+      onClick: () => onDocumentSession && onDocumentSession(appointment),
       variant: 'outline',
       destructive: false
     },
     {
       label: 'Session Did Not Occur',
       icon: AlertTriangle,
-      onClick: () => onSessionDidNotOccur?.(appointment),
+      onClick: () => onSessionDidNotOccur && onSessionDidNotOccur(appointment),
       variant: 'destructive',
       destructive: true
     }
@@ -134,7 +125,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({
       </CardContent>
       <CardFooter className="flex justify-between items-center">
         <div>
-          {showStartButton && (
+          {showStartButton && onStartSession && (
             <Button size="sm" onClick={() => onStartSession(appointment)}>
               <Video className="h-4 w-4 mr-2" />
               Start Session

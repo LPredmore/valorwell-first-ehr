@@ -72,7 +72,7 @@ const DialogManager: React.FC = () => {
             clinicianId={props.clinicianId || ''}
             onAvailabilityCreated={props.onAvailabilityCreated || (() => {})}
             permissionLevel={props.permissionLevel || 'full'}
-            userTimeZone={userTimeZone} // Added missing required prop
+            userTimeZone={userTimeZone}
           />
         );
       
@@ -90,7 +90,8 @@ const DialogManager: React.FC = () => {
             onClose={closeDialog}
             appointment={props.appointment || null}
             onAppointmentUpdated={props.onAppointmentUpdated || (() => {})}
-            // Removed invalid onDelete prop
+            userTimeZone={userTimeZone}
+            clientTimeZone={props.clientTimeZone || userTimeZone}
           />
         );
       
@@ -109,8 +110,7 @@ const DialogManager: React.FC = () => {
           <BookAppointmentDialog
             isOpen={true}
             onClose={closeDialog}
-            // Removed invalid slot prop
-            appointmentData={props.appointmentData || {}} // Use appointmentData instead of slot
+            slot={props.appointmentData || props.slot || {}}
             clinicianId={props.clinicianId || ''}
             clientId={props.clientId || ''}
             onAppointmentBooked={props.onAppointmentBooked || (() => {})}
@@ -132,8 +132,7 @@ const DialogManager: React.FC = () => {
           <DocumentationDialog
             isOpen={true}
             onOpenChange={(open) => !open && closeDialog()}
-            // Changed sessionId to appointmentId
-            appointmentId={props.appointmentId || props.sessionId || ''}
+            sessionId={props.appointmentId || props.sessionId || ''}
             onDocumentationSelected={props.onDocumentationSelected || (() => {})}
           />
         );
@@ -145,8 +144,7 @@ const DialogManager: React.FC = () => {
             onOpenChange={(open) => !open && closeDialog()}
             clinicianId={props.clinicianId || ''}
             clinicianName={props.clinicianName || ''}
-            // Removed invalid onBookSlot prop
-            timeZone={props.timeZone}
+            preferredTimeZone={props.timeZone}
           />
         );
       
@@ -159,8 +157,7 @@ const DialogManager: React.FC = () => {
             clinicianName={props.clinicianName || ''}
             clientId={props.clientId || ''}
             onAppointmentBooked={props.onAppointmentBooked || (() => {})}
-            // Changed preferredTimeZone to timeZone
-            timeZone={props.preferredTimeZone || props.timeZone}
+            preferredTimeZone={props.timeZone}
           />
         );
       

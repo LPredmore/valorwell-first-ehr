@@ -1,5 +1,40 @@
 
 /**
- * Re-export all types from appointment.d.ts to ensure consistency
+ * Base appointment interface used across the application
  */
-export * from './appointment.d';
+export interface BaseAppointment {
+  id: string;
+  clientName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  status: string;
+  clientId: string;
+}
+
+/**
+ * Extended appointment interface for API responses
+ */
+export interface AppointmentDetail extends BaseAppointment {
+  clinician_id: string;
+  appointment_datetime?: string;
+  appointment_end_datetime?: string;
+  type?: string;
+  notes?: string;
+  video_room_url?: string;
+  recurring_group_id?: string;
+  appointment_recurring?: string;
+  source_time_zone?: string;
+}
+
+/**
+ * Type guard to check if an object is a BaseAppointment
+ */
+export function isBaseAppointment(obj: any): obj is BaseAppointment {
+  return obj && 
+    typeof obj.id === 'string' && 
+    typeof obj.clientName === 'string' && 
+    typeof obj.startTime === 'string' && 
+    typeof obj.endTime === 'string';
+}

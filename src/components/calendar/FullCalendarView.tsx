@@ -5,14 +5,14 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
-import { CalendarApi, EventClickArg, EventSourceFunc } from '@fullcalendar/core';
+import { CalendarApi, EventClickArg } from '@fullcalendar/core';
 import { toast } from '@/hooks/use-toast';
 import { CalendarViewType, CalendarEvent, FullCalendarProps } from '@/types/calendar';
 import { componentMonitor } from '@/utils/performance/componentMonitor';
 import { Loader2 } from 'lucide-react';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import CalendarAvailabilityHandler from './CalendarAvailabilityHandler';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 
 const FullCalendarView: React.FC<FullCalendarProps> = ({
   clinicianId,

@@ -1,8 +1,9 @@
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useEntityState } from './useEntityState';
 import { useAsyncState } from './useAsyncState';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 import { ClientData } from '@/types/availability';
 import { componentMonitor } from '@/utils/performance/componentMonitor';
 
