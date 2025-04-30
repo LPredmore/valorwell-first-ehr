@@ -10,14 +10,14 @@ export * from './CalendarHealthService';
  * Consolidated calendar services export
  * Provides a single entry point for all calendar-related functionality
  */
-import { CalendarFacade } from './CalendarFacade';
+import { CalendarService } from './CalendarFacade';
 import { CalendarQueryService } from './CalendarQueryService';
 import { CalendarMutationService } from './CalendarMutationService';
 import { CalendarErrorHandler } from './CalendarErrorHandler';
 import { CalendarHealthService } from './CalendarHealthService';
 
 export const CalendarServices = {
-  Facade: CalendarFacade,
+  Facade: CalendarService,
   Query: CalendarQueryService,
   Mutation: CalendarMutationService,
   ErrorHandler: CalendarErrorHandler,

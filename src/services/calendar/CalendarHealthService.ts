@@ -40,7 +40,10 @@ export class CalendarHealthService {
       throw new AppError(
         'Failed to run calendar health check', 
         'HEALTH_CHECK_ERROR',
-        { originalError: error }
+        { 
+          context: { originalError: error },
+          userVisible: false 
+        }
       );
     }
   }
@@ -74,7 +77,10 @@ export class CalendarHealthService {
       throw new AppError(
         'Failed to fix calendar issues', 
         'CALENDAR_FIX_ERROR',
-        { originalError: error }
+        { 
+          context: { originalError: error },
+          userVisible: false 
+        }
       );
     }
   }
