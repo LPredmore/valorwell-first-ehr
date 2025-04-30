@@ -10,7 +10,7 @@ import {
   WeeklyAvailability as CoreWeeklyAvailability,
   CalculatedAvailableSlot as CoreCalculatedAvailableSlot,
   AppointmentAvailabilitySlot as CoreAppointmentAvailabilitySlot
-} from '@/packages/core/types/appointment';
+} from '../packages/core/types/appointment';
 
 // Re-export the core types
 export type AppointmentType = CoreAppointmentType;

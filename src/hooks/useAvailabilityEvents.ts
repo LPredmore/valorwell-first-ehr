@@ -6,7 +6,7 @@ import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timezone';
 import { weekdayNameToNumber } from '@/utils/calendarWeekdayUtils';
 import { componentMonitor } from '@/utils/performance/componentMonitor';
-import { AvailabilitySlot } from '@/packages/core/types/appointment';
+import { AvailabilitySlot } from '@/types/appointment';
 
 // Define the type that the hook actually uses internally
 // Now it's based on the core type

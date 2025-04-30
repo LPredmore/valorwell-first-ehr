@@ -90,6 +90,7 @@ export interface AvailabilitySlot {
   startTime: string;
   endTime: string;
   dayOfWeek: string;
+  clinicianId: string;
   isRecurring?: boolean;
   isAppointment?: boolean;
   clientName?: string;
@@ -118,3 +119,6 @@ export interface AvailabilityEvent {
   isRecurring?: boolean;
   excludeDates?: string[];
 }
+
+// Define AppointmentAvailabilitySlot type that was being used in AvailabilityQueryService
+export type AppointmentAvailabilitySlot = AvailabilitySlot;

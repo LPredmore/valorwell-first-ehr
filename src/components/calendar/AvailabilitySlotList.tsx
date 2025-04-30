@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
-import { AvailabilitySlot } from '@/packages/core/types/appointment';
+import { AvailabilitySlot } from '@/types/appointment';
 import { TimeZoneService } from '@/utils/timeZoneService';
 
 export interface AvailabilitySlotListProps {

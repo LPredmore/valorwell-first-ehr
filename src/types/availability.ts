@@ -1,6 +1,6 @@
 
 import { DateTime } from 'luxon';
-import { AvailabilitySlot as CoreAvailabilitySlot } from '@/packages/core/types/appointment';
+import { AvailabilitySlot as CoreAvailabilitySlot } from '@/types/appointment';
 
 export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 

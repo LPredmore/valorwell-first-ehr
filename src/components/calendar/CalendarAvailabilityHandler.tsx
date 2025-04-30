@@ -5,7 +5,7 @@ import { CalendarEvent } from '@/types/calendar';
 import { TimeZoneService } from '@/utils/timezone';
 import { useAvailabilityEvents } from '@/hooks/useAvailabilityEvents';
 import { WeeklyAvailability as AvailabilityWeeklyAvailability } from '@/types/availability';
-import { WeeklyAvailability as AppointmentWeeklyAvailability, AvailabilitySlot } from '@/packages/core/types/appointment';
+import { WeeklyAvailability as AppointmentWeeklyAvailability, AvailabilitySlot } from '@/types/appointment';
 
 interface CalendarAvailabilityHandlerProps {
   clinicianId: string;
