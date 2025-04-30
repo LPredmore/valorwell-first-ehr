@@ -3,15 +3,18 @@ import { useUser } from '@/context/UserContext';
 import { CalendarEvent } from '@/types/calendar';
 import { useFetchCalendarEvents } from './calendar/useFetchCalendarEvents';
 import { useCalendarMutations } from './calendar/useCalendarMutations';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { TimeZoneService } from '@/utils/timezone';
 import { formatAsUUID } from '@/utils/validation/uuidUtils';
+import { AppError } from '@/utils/errors/AppError';
 
 interface UseCalendarEventsProps {
   clinicianId: string | null;
   userTimeZone: string;
   startDate?: Date;
   endDate?: Date;
+  authRetryDelay?: number;
+  maxAuthRetries?: number;
 }
 
 export function useCalendarEvents({
@@ -19,14 +22,20 @@ export function useCalendarEvents({
   userTimeZone,
   startDate,
   endDate,
+  authRetryDelay = 1000,
+  maxAuthRetries = 5
 }: UseCalendarEventsProps) {
   const { isLoading: isUserLoading, userId } = useUser();
   const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
+  const initialFetchAttempted = useRef(false);
   
   // Format clinician ID to ensure consistent UUID format
   const formattedClinicianId = useMemo(() => {
     if (!clinicianId) return null;
-    return formatAsUUID(clinicianId);
+    return formatAsUUID(clinicianId, {
+      strictMode: true,
+      logLevel: 'warn'
+    });
   }, [clinicianId]);
   
   const {
@@ -40,7 +49,9 @@ export function useCalendarEvents({
     userId,
     isUserLoading,
     startDate,
-    endDate
+    endDate,
+    authRetryDelay,
+    maxAuthRetries
   });
 
   const {
@@ -60,13 +71,35 @@ export function useCalendarEvents({
       startDate,
       endDate,
       isUserLoading,
-      userId
+      userId,
+      initialFetchAttempted: initialFetchAttempted.current
     });
 
-    if (!isUserLoading && formattedClinicianId) {
-      fetchEvents();
+    // Only proceed if we have a clinician ID
+    if (!formattedClinicianId) {
+      console.log('[useCalendarEvents] No clinician ID, skipping fetch');
+      return;
     }
-  }, [formattedClinicianId, validTimeZone, startDate, endDate, fetchEvents, isUserLoading, userId, clinicianId]);
+
+    // Authentication check with better logging
+    if (isUserLoading) {
+      console.log('[useCalendarEvents] User authentication still loading, will retry when complete');
+      return;
+    }
+
+    if (!userId) {
+      console.log('[useCalendarEvents] No authenticated user, cannot fetch events');
+      return;
+    }
+
+    // Track that we've attempted an initial fetch
+    initialFetchAttempted.current = true;
+    
+    // All conditions met, fetch events
+    console.log('[useCalendarEvents] Authentication complete and clinician ID available, fetching events');
+    fetchEvents();
+    
+  }, [formattedClinicianId, validTimeZone, startDate, endDate, fetchEvents, isUserLoading, userId]);
 
   return {
     events,
@@ -78,6 +111,8 @@ export function useCalendarEvents({
     },
     createEvent,
     updateEvent,
-    deleteEvent
+    deleteEvent,
+    isAuthenticated: !isUserLoading && !!userId,
+    isInitialized: initialFetchAttempted.current
   };
 }

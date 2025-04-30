@@ -34,7 +34,10 @@ export class PermissionService {
         console.log('[PermissionService] Attempting to format user ID:', userId);
         
         // Try to format the ID if possible
-        const formattedUserId = formatAsUUID(userId);
+        const formattedUserId = formatAsUUID(userId, {
+          strictMode: true,
+          logLevel: 'info'
+        });
         if (formattedUserId !== userId) {
           console.log('[PermissionService] Reformatted user ID:', { original: userId, formatted: formattedUserId });
           validUserId = formattedUserId;
@@ -129,7 +132,10 @@ export class PermissionService {
         console.error('[PermissionService] Invalid user ID format in canEditAvailability:', error);
         
         // Try to format the ID if possible
-        const formattedUserId = formatAsUUID(userId);
+        const formattedUserId = formatAsUUID(userId, {
+          strictMode: true,
+          logLevel: 'info'
+        });
         if (formattedUserId !== userId) {
           console.log('[PermissionService] Reformatted user ID:', { original: userId, formatted: formattedUserId });
           validUserId = formattedUserId;
@@ -203,7 +209,10 @@ export class PermissionService {
         console.error('[PermissionService] Invalid user ID format in hasAdminAccess:', error);
         
         // Try to format the ID if possible
-        const formattedUserId = formatAsUUID(userId);
+        const formattedUserId = formatAsUUID(userId, {
+          strictMode: true,
+          logLevel: 'info'
+        });
         if (formattedUserId !== userId) {
           console.log('[PermissionService] Reformatted user ID:', { original: userId, formatted: formattedUserId });
           validUserId = formattedUserId;
@@ -278,7 +287,10 @@ export class PermissionService {
         console.error('[PermissionService] Invalid user ID format in getPermissionLevel:', error);
         
         // Try to format the ID if possible
-        const formattedUserId = formatAsUUID(userId);
+        const formattedUserId = formatAsUUID(userId, {
+          strictMode: true,
+          logLevel: 'info'
+        });
         if (formattedUserId !== userId) {
           console.log('[PermissionService] Reformatted user ID:', { original: userId, formatted: formattedUserId });
           validUserId = formattedUserId;
@@ -294,7 +306,10 @@ export class PermissionService {
         console.error('[PermissionService] Invalid resource ID format in getPermissionLevel:', error);
         
         // Try to format the ID if possible
-        const formattedResourceId = formatAsUUID(resourceId);
+        const formattedResourceId = formatAsUUID(resourceId, {
+          strictMode: true,
+          logLevel: 'info'
+        });
         if (formattedResourceId !== resourceId) {
           console.log('[PermissionService] Reformatted resource ID:', { original: resourceId, formatted: formattedResourceId });
           validResourceId = formattedResourceId;
@@ -394,7 +409,10 @@ export class PermissionService {
       
       // Try to format the IDs if they're not in standard format
       if (!isValidUUID(currentUserId)) {
-        const formatted = formatAsUUID(currentUserId);
+        const formatted = formatAsUUID(currentUserId, {
+          strictMode: true,
+          logLevel: 'info'
+        });
         if (formatted !== currentUserId) {
           console.log('[PermissionService] Reformatted current user ID:', {
             original: currentUserId,
@@ -405,7 +423,10 @@ export class PermissionService {
       }
       
       if (!isValidUUID(targetUserId)) {
-        const formatted = formatAsUUID(targetUserId);
+        const formatted = formatAsUUID(targetUserId, {
+          strictMode: true,
+          logLevel: 'info'
+        });
         if (formatted !== targetUserId) {
           console.log('[PermissionService] Reformatted target user ID:', {
             original: targetUserId,

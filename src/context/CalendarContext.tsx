@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { CalendarEvent, CalendarViewType } from '@/types/calendar';
 import { useAsyncState } from '@/hooks/useAsyncState';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { useUser } from '@/context/UserContext';
 import { useToast } from '@/hooks/use-toast';
 import { CalendarErrorHandler, CalendarService } from '@/services/calendar/CalendarFacade';
+import { AppError } from '@/utils/errors/AppError';
 
 // Define the context state type
 interface CalendarContextState {
@@ -16,6 +17,8 @@ interface CalendarContextState {
   currentDate: Date;
   selectedClinicianId: string | null;
   showAvailability: boolean;
+  isAuthenticated: boolean;
+  authenticationPending: boolean;
   
   // Actions
   setView: (view: CalendarViewType) => void;
@@ -55,14 +58,29 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
   // External hooks
   const { userTimeZone } = useTimeZone();
   const { toast } = useToast();
-  const { userId } = useUser();
+  const { userId, isLoading: isUserLoading } = useUser();
+  const authRetryTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [authRetryCount, setAuthRetryCount] = useState(0);
+  const maxAuthRetries = 5;
+  const authRetryDelay = 1000; // Base delay in ms
   
+  // Clear any existing auth retry timer when component unmounts
+  useEffect(() => {
+    return () => {
+      if (authRetryTimerRef.current) {
+        clearTimeout(authRetryTimerRef.current);
+        authRetryTimerRef.current = null;
+      }
+    };
+  }, []);
+
   // Calendar service parameters
   const calendarParams = useMemo(() => ({
     clinicianId: selectedClinicianId,
     userTimeZone,
-    userId
-  }), [selectedClinicianId, userTimeZone, userId]);
+    userId,
+    isAuthenticated: !isUserLoading && !!userId
+  }), [selectedClinicianId, userTimeZone, userId, isUserLoading]);
   
   // Fetch events using useAsyncState
   const {
@@ -72,15 +90,65 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
     execute: fetchEvents
   } = useAsyncState<CalendarEvent[], []>({
     asyncFunction: async () => {
+      // Check authentication state first
+      if (isUserLoading) {
+        console.log('[CalendarContext] User authentication still loading, deferring fetch');
+        
+        // If we're already at max retries, throw an error
+        if (authRetryCount >= maxAuthRetries) {
+          console.error(`[CalendarContext] Max auth retries (${maxAuthRetries}) reached`);
+          throw new AppError('Authentication timeout', 'AUTH_TIMEOUT', {
+            userVisible: true,
+            userMessage: 'Authentication is taking longer than expected. Please refresh the page.'
+          });
+        }
+        
+        // Set up exponential backoff for auth retry
+        return new Promise((resolve, reject) => {
+          const nextRetryDelay = Math.min(authRetryDelay * Math.pow(2, authRetryCount), 30000); // Max 30 seconds
+          console.log(`[CalendarContext] Scheduling auth retry #${authRetryCount + 1} in ${nextRetryDelay}ms`);
+          
+          // Clear any existing timer
+          if (authRetryTimerRef.current) {
+            clearTimeout(authRetryTimerRef.current);
+          }
+          
+          // Set new timer for retry
+          authRetryTimerRef.current = setTimeout(() => {
+            setAuthRetryCount(prev => prev + 1);
+            fetchEvents().then(resolve).catch(reject);
+          }, nextRetryDelay);
+        });
+      }
+      
+      // Reset auth retry count once user is loaded
+      if (authRetryCount > 0) {
+        setAuthRetryCount(0);
+      }
+      
+      // Clear any pending auth retry timer
+      if (authRetryTimerRef.current) {
+        clearTimeout(authRetryTimerRef.current);
+        authRetryTimerRef.current = null;
+      }
+      
+      if (!userId) {
+        console.log('[CalendarContext] No authenticated user, skipping fetch');
+        throw new AppError('Authentication required', 'AUTH_REQUIRED', {
+          userVisible: true,
+          userMessage: 'You must be logged in to view calendar events.'
+        });
+      }
+      
       if (!selectedClinicianId) {
         console.log('[CalendarContext] No clinician selected, returning empty events array');
         return [];
       }
       
       console.log('[CalendarContext] Fetching events for clinician:', selectedClinicianId);
-      return await CalendarService.getEvents(selectedClinicianId || '', userTimeZone);
+      return await CalendarService.getEvents(selectedClinicianId, userTimeZone);
     },
-    immediate: !!selectedClinicianId,
+    immediate: !!selectedClinicianId && !isUserLoading && !!userId
   });
   
   // Refresh events function
@@ -130,12 +198,13 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
     }
   }, [CalendarService, refreshEvents]);
   
-  // Refresh events when clinician changes
+  // Refresh events when clinician changes or authentication completes
   useEffect(() => {
-    if (selectedClinicianId) {
+    if (selectedClinicianId && !isUserLoading && userId) {
+      console.log('[CalendarContext] Authentication complete and clinician selected, refreshing events');
       refreshEvents();
     }
-  }, [selectedClinicianId, refreshEvents]);
+  }, [selectedClinicianId, refreshEvents, isUserLoading, userId, userTimeZone, authRetryCount]);
   
   // Notify on errors
   useEffect(() => {
@@ -167,6 +236,8 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
     currentDate,
     selectedClinicianId,
     showAvailability,
+    isAuthenticated: !isUserLoading && !!userId,
+    authenticationPending: isUserLoading,
     
     // Actions
     setView,
@@ -185,6 +256,8 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
     currentDate,
     selectedClinicianId,
     showAvailability,
+    isUserLoading,
+    userId,
     setView,
     setCurrentDate,
     setSelectedClinicianId,

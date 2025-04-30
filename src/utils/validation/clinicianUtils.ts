@@ -43,7 +43,7 @@ export function isValidClinicianID(id: string | null | undefined): boolean {
     
     // If not valid as standard UUID, check if it could be a UUID with formatting
     if (couldBeUUID(idStr)) {
-      const formattedId = formatAsUUID(idStr);
+      const formattedId = formatAsUUID(idStr, { logLevel: 'debug' });
       if (isValidUUID(formattedId)) {
         console.debug(`[Clinician Debug] Clinician ID validation (after formatting): "${idStr}" => "${formattedId}" => VALID`);
         return true;
@@ -85,7 +85,10 @@ export function ensureClinicianID(id: string | null | undefined): string {
     }
     
     // If not valid, try to format it
-    const formattedId = formatAsUUID(idStr);
+    const formattedId = formatAsUUID(idStr, {
+      strictMode: true,
+      logLevel: 'info'
+    });
     if (formattedId && formattedId !== idStr && isValidUUID(formattedId)) {
       console.info(`[Clinician Debug] Recovered invalid clinician ID through formatting: "${idStr}" → "${formattedId}"`);
       return formattedId;
@@ -135,7 +138,10 @@ export function formatAsClinicianID(id: string | null | undefined): string {
     }
     
     // Try to format as UUID
-    const formattedId = formatAsUUID(cleanId);
+    const formattedId = formatAsUUID(cleanId, {
+      strictMode: true,
+      logLevel: 'debug'
+    });
     console.debug(`[Clinician Debug] After UUID formatting: "${cleanId}" → "${formattedId}"`);
     
     // If formatting succeeded and produced a valid UUID, return it

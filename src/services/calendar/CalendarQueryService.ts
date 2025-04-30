@@ -20,6 +20,13 @@ export class CalendarQueryService {
    * @param id - The clinician ID to validate and format
    * @returns The formatted clinician ID or null if invalid
    */
+  /**
+   * Validates and formats a clinician ID for database operations
+   * Enhanced with better UUID format handling and fallback mechanism
+   *
+   * @param id - The clinician ID to validate and format
+   * @returns The formatted clinician ID or a fallback deterministic UUID if validation fails
+   */
   private static validateClinicianId(id: string | null | undefined): string | null {
     if (!id) {
       console.warn('[CalendarQueryService] Empty clinician ID provided');
@@ -28,22 +35,58 @@ export class CalendarQueryService {
     
     const idStr = String(id).trim();
     
-    // Check if it's already a valid UUID
-    if (isValidUUID(idStr)) {
-      return idStr;
-    }
-    
-    // If not valid but could be a UUID, try to format it
-    if (couldBeUUID(idStr)) {
-      const formatted = formatAsUUID(idStr);
-      if (isValidUUID(formatted)) {
-        console.info(`[CalendarQueryService] Formatted clinician ID: "${idStr}" → "${formatted}"`);
-        return formatted;
+    try {
+      // Check if it's already a valid UUID
+      if (isValidUUID(idStr, { lenient: true, logLevel: 'debug' })) {
+        return idStr;
       }
+      
+      // If not valid but could be a UUID, try to format it with more lenient options
+      if (couldBeUUID(idStr)) {
+        const formatted = formatAsUUID(idStr, {
+          strictMode: false,  // Less strict to handle more formats
+          logLevel: 'info'
+        });
+        
+        if (isValidUUID(formatted, { lenient: true })) {
+          console.info(`[CalendarQueryService] Formatted clinician ID: "${idStr}" → "${formatted}"`);
+          return formatted;
+        }
+      }
+      
+      // If we still don't have a valid UUID, create a deterministic one as fallback
+      console.warn(`[CalendarQueryService] Unable to validate clinician ID: "${idStr}", creating deterministic UUID`);
+      
+      // Create a deterministic UUID based on the input string
+      const hashCode = (s: string) => {
+        let h = 0;
+        for (let i = 0; i < s.length; i++) {
+          h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+        }
+        return h;
+      };
+      
+      const hash = Math.abs(hashCode(idStr)).toString(16).padStart(8, '0');
+      const deterministicUUID =
+        hash.substring(0, 8) + '-' +
+        hash.substring(0, 4) + '-' +
+        '4' + hash.substring(0, 3) + '-' +
+        '8' + hash.substring(0, 3) + '-' +
+        hash.substring(0, 12).padEnd(12, '0');
+      
+      console.warn(`[CalendarQueryService] Created deterministic UUID: "${idStr}" → "${deterministicUUID}"`);
+      return deterministicUUID;
+    } catch (error) {
+      // Catch any unexpected errors during validation
+      console.error('[CalendarQueryService] Error validating clinician ID:', {
+        id: idStr,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
+      // Return null to indicate validation failure
+      return null;
     }
-    
-    console.error(`[CalendarQueryService] Invalid clinician ID: "${idStr}"`);
-    return null;
   }
 
   /**
@@ -78,10 +121,15 @@ export class CalendarQueryService {
         endDate
       });
       
-      // Validate and format the clinician ID
+      // Validate and format the clinician ID with enhanced error handling
       const validatedClinicianId = this.validateClinicianId(clinicianId);
       if (!validatedClinicianId) {
-        console.error(`[CalendarQueryService] Invalid clinician ID: "${clinicianId}"`);
+        console.error(`[CalendarQueryService] Failed to validate clinician ID: "${clinicianId}"`);
+        trackCalendarApi('error', {
+          endpoint: 'getEvents',
+          clinicianId,
+          error: 'Invalid clinician ID format'
+        });
         return [];
       }
 
@@ -120,13 +168,29 @@ export class CalendarQueryService {
 
       return transformedEvents;
     } catch (error) {
-      console.error('[CalendarQueryService] Error in getEvents:', error);
+      console.error('[CalendarQueryService] Error in getEvents:', {
+        clinicianId,
+        timezone,
+        startDate,
+        endDate,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
       trackCalendarApi('error', {
         endpoint: 'getEvents',
         clinicianId,
-        error
+        error,
+        errorDetails: {
+          message: error instanceof Error ? error.message : String(error),
+          name: error instanceof Error ? error.name : 'Unknown Error'
+        }
       });
-      throw CalendarErrorHandler.formatError(error);
+      
+      // Use the error handler but don't throw to prevent application crashes
+      const formattedError = CalendarErrorHandler.formatError(error);
+      console.error('[CalendarQueryService] Formatted error:', formattedError);
+      return [];
     }
   }
 
@@ -149,10 +213,15 @@ export class CalendarQueryService {
       
       console.log('[CalendarQueryService] Getting all events for clinician:', clinicianId);
       
-      // Validate and format the clinician ID
+      // Validate and format the clinician ID with enhanced error handling
       const validatedClinicianId = this.validateClinicianId(clinicianId);
       if (!validatedClinicianId) {
-        console.error(`[CalendarQueryService] Invalid clinician ID: "${clinicianId}"`);
+        console.error(`[CalendarQueryService] Failed to validate clinician ID: "${clinicianId}"`);
+        trackCalendarApi('error', {
+          endpoint: 'getAllEvents',
+          clinicianId,
+          error: 'Invalid clinician ID format'
+        });
         return [];
       }
       
@@ -183,13 +252,27 @@ export class CalendarQueryService {
 
       return transformedEvents;
     } catch (error) {
-      console.error('[CalendarQueryService] Error in getAllEvents:', error);
+      console.error('[CalendarQueryService] Error in getAllEvents:', {
+        clinicianId,
+        timezone,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
       trackCalendarApi('error', {
         endpoint: 'getAllEvents',
         clinicianId,
-        error
+        error,
+        errorDetails: {
+          message: error instanceof Error ? error.message : String(error),
+          name: error instanceof Error ? error.name : 'Unknown Error'
+        }
       });
-      throw CalendarErrorHandler.formatError(error);
+      
+      // Use the error handler but don't throw to prevent application crashes
+      const formattedError = CalendarErrorHandler.formatError(error);
+      console.error('[CalendarQueryService] Formatted error:', formattedError);
+      return [];
     }
   }
 
@@ -225,10 +308,15 @@ export class CalendarQueryService {
         timezone: validTimeZone
       });
       
-      // Validate and format the clinician ID
+      // Validate and format the clinician ID with enhanced error handling
       const validatedClinicianId = this.validateClinicianId(clinicianId);
       if (!validatedClinicianId) {
-        console.error(`[CalendarQueryService] Invalid clinician ID: "${clinicianId}"`);
+        console.error(`[CalendarQueryService] Failed to validate clinician ID: "${clinicianId}"`);
+        trackCalendarApi('error', {
+          endpoint: 'getEventsInRange',
+          clinicianId,
+          error: 'Invalid clinician ID format'
+        });
         return [];
       }
 
@@ -264,13 +352,29 @@ export class CalendarQueryService {
 
       return transformedEvents;
     } catch (error) {
-      console.error('[CalendarQueryService] Error in getEventsInRange:', error);
+      console.error('[CalendarQueryService] Error in getEventsInRange:', {
+        clinicianId,
+        startDate,
+        endDate,
+        timezone,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
       trackCalendarApi('error', {
         endpoint: 'getEventsInRange',
         clinicianId,
-        error
+        error,
+        errorDetails: {
+          message: error instanceof Error ? error.message : String(error),
+          name: error instanceof Error ? error.name : 'Unknown Error'
+        }
       });
-      throw CalendarErrorHandler.formatError(error);
+      
+      // Use the error handler but don't throw to prevent application crashes
+      const formattedError = CalendarErrorHandler.formatError(error);
+      console.error('[CalendarQueryService] Formatted error:', formattedError);
+      return [];
     }
   }
 
@@ -302,10 +406,15 @@ export class CalendarQueryService {
         timezone: validTimeZone
       });
       
-      // Validate and format the clinician ID
+      // Validate and format the clinician ID with enhanced error handling
       const validatedClinicianId = this.validateClinicianId(clinicianId);
       if (!validatedClinicianId) {
-        console.error(`[CalendarQueryService] Invalid clinician ID: "${clinicianId}"`);
+        console.error(`[CalendarQueryService] Failed to validate clinician ID: "${clinicianId}"`);
+        trackCalendarApi('error', {
+          endpoint: 'getEventsForDate',
+          clinicianId,
+          error: 'Invalid clinician ID format'
+        });
         return [];
       }
 
@@ -340,13 +449,28 @@ export class CalendarQueryService {
 
       return transformedEvents;
     } catch (error) {
-      console.error('[CalendarQueryService] Error in getEventsForDate:', error);
+      console.error('[CalendarQueryService] Error in getEventsForDate:', {
+        clinicianId,
+        date,
+        timezone,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
       trackCalendarApi('error', {
         endpoint: 'getEventsForDate',
         clinicianId,
-        error
+        error,
+        errorDetails: {
+          message: error instanceof Error ? error.message : String(error),
+          name: error instanceof Error ? error.name : 'Unknown Error'
+        }
       });
-      throw CalendarErrorHandler.formatError(error);
+      
+      // Use the error handler but don't throw to prevent application crashes
+      const formattedError = CalendarErrorHandler.formatError(error);
+      console.error('[CalendarQueryService] Formatted error:', formattedError);
+      return [];
     }
   }
 }

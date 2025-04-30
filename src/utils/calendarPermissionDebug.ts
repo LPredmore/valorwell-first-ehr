@@ -459,7 +459,7 @@ export const calendarPermissionDebug = {
     
     // Format IDs if needed
     if (!result.userId.isValid) {
-      const formatted = formatAsUUID(userId);
+      const formatted = formatAsUUID(userId, { logLevel: 'info' });
       if (formatted !== userId) {
         result.userId.formatted = formatted;
         result.userId.isValid = isValidUUID(formatted);
@@ -522,7 +522,7 @@ export const calendarPermissionDebug = {
       console.log('[CalendarPermissionDebug] Checking ID consistency in database');
       
       // Format IDs for comparison
-      const formattedUserId = isValidUUID(userId) ? userId : formatAsUUID(userId);
+      const formattedUserId = isValidUUID(userId) ? userId : formatAsUUID(userId, { strictMode: true });
       const formattedClinicianId = isValidUUID(clinicianId) ? clinicianId : formatAsClinicianID(clinicianId);
       
       // Check for inconsistent ID formats in calendar_events table
@@ -605,7 +605,7 @@ export const calendarPermissionDebug = {
     console.log('Clinician ID format valid:', isValidUUID(clinicianId));
     
     if (!isValidUUID(userId)) {
-      const formatted = formatAsUUID(userId);
+      const formatted = formatAsUUID(userId, { logLevel: 'info' });
       console.log('Formatted user ID:', formatted);
       console.log('Formatted user ID valid:', isValidUUID(formatted));
     }

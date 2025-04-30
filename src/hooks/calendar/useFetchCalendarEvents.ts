@@ -1,5 +1,5 @@
 
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { CalendarService } from '@/services/calendar/CalendarFacade';
 import { CalendarEvent } from '@/types/calendar';
 import { useToast } from '@/hooks/use-toast';
@@ -8,6 +8,7 @@ import { CalendarErrorHandler } from '@/services/calendar/CalendarFacade';
 import { componentMonitor } from '@/utils/performance/componentMonitor';
 import { debugUuidValidation, trackCalendarApi } from '@/utils/calendarDebugUtils';
 import { formatAsUUID, isValidUUID } from '@/utils/validation/uuidUtils';
+import { AppError } from '@/utils/errors/AppError';
 
 interface UseFetchCalendarEventsProps {
   clinicianId: string | null;
@@ -16,6 +17,8 @@ interface UseFetchCalendarEventsProps {
   isUserLoading: boolean;
   startDate?: Date;
   endDate?: Date;
+  authRetryDelay?: number;
+  maxAuthRetries?: number;
 }
 
 export function useFetchCalendarEvents({
@@ -24,13 +27,17 @@ export function useFetchCalendarEvents({
   userId,
   isUserLoading,
   startDate,
-  endDate
+  endDate,
+  authRetryDelay = 1000,
+  maxAuthRetries = 5
 }: UseFetchCalendarEventsProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [authRetryCount, setAuthRetryCount] = useState(0);
   const fetchInProgress = useRef(false);
+  const authRetryTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const maxRetries = 3;
   
@@ -93,19 +100,73 @@ export function useFetchCalendarEvents({
     return null;
   }, [getCacheKey]);
 
-  const fetchEvents = useCallback(async (retry: boolean = false) => {
+  // Clear any existing auth retry timer when component unmounts
+  useEffect(() => {
+    return () => {
+      if (authRetryTimerRef.current) {
+        clearTimeout(authRetryTimerRef.current);
+        authRetryTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const fetchEvents = useCallback(async (retry: boolean = false, isAuthRetry: boolean = false) => {
     // Start performance monitoring
     fetchStartTime.current = performance.now();
     
+    // Handle authentication loading state
     if (isUserLoading) {
       console.log('[useFetchCalendarEvents] User authentication still loading, deferring fetch');
+      
+      // If we're already at max retries, set an error
+      if (authRetryCount >= maxAuthRetries) {
+        console.error(`[useFetchCalendarEvents] Max auth retries (${maxAuthRetries}) reached`);
+        setError(new AppError('Authentication timeout', 'AUTH_TIMEOUT', {
+          userVisible: true,
+          userMessage: 'Authentication is taking longer than expected. Please refresh the page.'
+        }));
+        setIsLoading(false);
+        return;
+      }
+      
+      // Set up exponential backoff for auth retry
+      if (!isAuthRetry) {
+        const nextRetryDelay = Math.min(authRetryDelay * Math.pow(2, authRetryCount), 30000); // Max 30 seconds
+        console.log(`[useFetchCalendarEvents] Scheduling auth retry #${authRetryCount + 1} in ${nextRetryDelay}ms`);
+        
+        // Clear any existing timer
+        if (authRetryTimerRef.current) {
+          clearTimeout(authRetryTimerRef.current);
+        }
+        
+        // Set new timer for retry
+        authRetryTimerRef.current = setTimeout(() => {
+          setAuthRetryCount(prev => prev + 1);
+          fetchEvents(false, true);
+        }, nextRetryDelay);
+      }
+      
       return;
+    }
+    
+    // Reset auth retry count once user is loaded
+    if (authRetryCount > 0) {
+      setAuthRetryCount(0);
+    }
+    
+    // Clear any pending auth retry timer
+    if (authRetryTimerRef.current) {
+      clearTimeout(authRetryTimerRef.current);
+      authRetryTimerRef.current = null;
     }
     
     if (!userId) {
       console.log('[useFetchCalendarEvents] No authenticated user, skipping fetch');
       setEvents([]);
-      setError(new Error('Authentication required'));
+      setError(new AppError('Authentication required', 'AUTH_REQUIRED', {
+        userVisible: true,
+        userMessage: 'You must be logged in to view calendar events.'
+      }));
       setIsLoading(false);
       return;
     }
@@ -130,7 +191,10 @@ export function useFetchCalendarEvents({
     });
 
     // Ensure clinician ID is formatted properly
-    let validClinicianId = formatAsUUID(clinicianId);
+    let validClinicianId = formatAsUUID(clinicianId, {
+      strictMode: true,
+      logLevel: 'warn'
+    });
     
     // Check cache first
     const cachedEvents = getValidCachedEvents(validClinicianId, startDate, endDate);
@@ -259,7 +323,10 @@ export function useFetchCalendarEvents({
     userId,
     isUserLoading,
     getValidCachedEvents,
-    getCacheKey
+    getCacheKey,
+    authRetryCount,
+    maxAuthRetries,
+    authRetryDelay
   ]);
 
   return {
