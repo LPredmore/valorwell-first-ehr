@@ -1,4 +1,3 @@
-
 // Add this at the top of the file to fix the PostgrestFilterBuilder to Promise conversion
 import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 import { CalculatedAvailableSlot, AvailabilitySlot, AppointmentAvailabilitySlot } from '@/types/appointment';

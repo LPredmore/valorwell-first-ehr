@@ -1,4 +1,3 @@
-
 import { DateTime } from 'luxon';
 import { AvailabilitySlot as CoreAvailabilitySlot } from '@/types/appointment';
 

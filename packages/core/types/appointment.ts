@@ -1,4 +1,33 @@
+// Define a unified consistent AvailabilitySlot interface that will be used everywhere
+export interface AvailabilitySlot {
+  id?: string;
+  startTime: string;
+  endTime: string;
+  dayOfWeek: string;
+  clinicianId: string;
+  isRecurring?: boolean;
+  isAppointment?: boolean;
+  clientName?: string;
+  appointmentStatus?: string;
+  excludeDates?: string[];
+}
 
+// Define AppointmentAvailabilitySlot type that was being used in AvailabilityQueryService
+export type AppointmentAvailabilitySlot = AvailabilitySlot;
+
+export interface WeeklyAvailability {
+  [key: string]: AvailabilitySlot[];
+}
+
+// Add: Slot calculation result interface
+export interface CalculatedAvailableSlot {
+  start: string;
+  end: string;
+  slotId?: string;
+  isRecurring?: boolean;
+}
+
+// Other appointment types
 export interface AppointmentType {
   id: string;
   client_id: string;
@@ -49,33 +78,4 @@ export interface AvailabilitySettings {
   maxAdvanceDays: number;
   createdAt: string;
   updatedAt: string;
-}
-
-// Define a unified consistent AvailabilitySlot interface that will be used everywhere
-export interface AvailabilitySlot {
-  id?: string;
-  startTime: string;
-  endTime: string;
-  dayOfWeek: string;
-  clinicianId: string;
-  isRecurring?: boolean;
-  isAppointment?: boolean;
-  clientName?: string;
-  appointmentStatus?: string;
-  excludeDates?: string[];
-}
-
-// Define AppointmentAvailabilitySlot type that was being used in AvailabilityQueryService
-export type AppointmentAvailabilitySlot = AvailabilitySlot;
-
-export interface WeeklyAvailability {
-  [key: string]: AvailabilitySlot[];
-}
-
-// Add: Slot calculation result interface
-export interface CalculatedAvailableSlot {
-  start: string;
-  end: string;
-  slotId?: string;
-  isRecurring?: boolean;
 }
