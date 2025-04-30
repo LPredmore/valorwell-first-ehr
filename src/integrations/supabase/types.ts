@@ -2044,6 +2044,10 @@ export type Database = {
       }
     }
     Functions: {
+      check_calendar_data_health: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       check_table_exists: {
         Args: { check_table_name: string }
         Returns: boolean

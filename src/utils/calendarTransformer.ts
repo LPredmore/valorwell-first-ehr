@@ -4,6 +4,7 @@ import { DatabaseCalendarEvent, CalendarEventTransform } from '@/types/calendarT
 import { TimeZoneService } from '@/utils/timezone';
 import { DateTime } from 'luxon';
 import { CalendarErrorHandler } from '@/services/calendar/CalendarErrorHandler';
+import { formatAsUUID } from '@/utils/validation/uuidUtils';
 
 /**
  * Validates a DatabaseCalendarEvent object to ensure it has the required fields
@@ -34,6 +35,14 @@ const validateDatabaseEvent = (event: DatabaseCalendarEvent): void => {
   if (!event.clinician_id) {
     throw new Error('Database event must have a clinician ID');
   }
+  
+  // Additional validation: Make sure clinician_id is a valid UUID format
+  try {
+    formatAsUUID(event.clinician_id, { strictMode: true });
+  } catch (error) {
+    console.error('[calendarTransformer] Invalid clinician_id format:', event.clinician_id);
+    throw new Error(`Invalid clinician ID format: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 };
 
 /**
@@ -61,6 +70,14 @@ const validateCalendarEvent = (event: CalendarEvent): void => {
   if (!event.extendedProps?.clinicianId) {
     throw new Error('Calendar event must have a clinician ID');
   }
+  
+  // Additional validation: Make sure clinicianId is a valid UUID format or can be converted to one
+  try {
+    formatAsUUID(event.extendedProps.clinicianId, { strictMode: true });
+  } catch (error) {
+    console.error('[calendarTransformer] Invalid clinicianId format:', event.extendedProps.clinicianId);
+    throw new Error(`Invalid clinician ID format: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 };
 
 export const calendarTransformer: CalendarEventTransform = {
@@ -82,6 +99,12 @@ export const calendarTransformer: CalendarEventTransform = {
         throw new Error(`Invalid end time: ${endInUserTz.invalidReason}`);
       }
       
+      // Format clinician ID to ensure consistent UUID format
+      const formattedClinicianId = formatAsUUID(dbEvent.clinician_id, {
+        strictMode: true,
+        logLevel: 'warn'
+      });
+      
       // Create the calendar event with improved timezone handling
       return {
         id: dbEvent.id,
@@ -95,7 +118,7 @@ export const calendarTransformer: CalendarEventTransform = {
           isAvailability: dbEvent.event_type === 'availability',
           isActive: dbEvent.is_active,
           timezone: validTimeZone,
-          clinicianId: dbEvent.clinician_id,
+          clinicianId: formattedClinicianId,
           recurrenceId: dbEvent.recurrence_id,
           displayStart: startInUserTz.toFormat('h:mm a'),
           displayEnd: endInUserTz.toFormat('h:mm a'),
@@ -124,6 +147,12 @@ export const calendarTransformer: CalendarEventTransform = {
       // Validate the calendar event
       validateCalendarEvent(event);
       
+      // Format clinician ID to ensure consistent UUID format
+      const formattedClinicianId = formatAsUUID(event.extendedProps?.clinicianId || '', {
+        strictMode: true,
+        logLevel: 'warn'
+      });
+      
       // Improved UTC conversion with proper error handling
       let startUtc: string;
       let endUtc: string;
@@ -147,7 +176,7 @@ export const calendarTransformer: CalendarEventTransform = {
         description: event.extendedProps?.description,
         event_type: event.extendedProps?.eventType || 'general',
         is_active: event.extendedProps?.isActive ?? true,
-        clinician_id: event.extendedProps?.clinicianId || '',
+        clinician_id: formattedClinicianId,
         time_zone: validTimeZone,
         source_time_zone: event.extendedProps?.sourceTimeZone || validTimeZone,
         all_day: event.allDay,
@@ -158,11 +187,7 @@ export const calendarTransformer: CalendarEventTransform = {
         event,
         timezone: validTimeZone
       });
-      throw CalendarErrorHandler.createError(
-        `Failed to transform to database format: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'CALENDAR_CONVERSION_ERROR',
-        { event, timezone: validTimeZone }
-      );
+      throw CalendarErrorHandler.formatError(error);
     }
   }
 };

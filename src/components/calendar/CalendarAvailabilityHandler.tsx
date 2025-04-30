@@ -7,6 +7,7 @@ import { useAvailabilityEvents } from '@/hooks/useAvailabilityEvents';
 import { WeeklyAvailability as AvailabilityWeeklyAvailability } from '@/types/availability';
 import { WeeklyAvailability as AppointmentWeeklyAvailability, AvailabilitySlot } from '@/types/appointment';
 import { formatAsUUID } from '@/utils/validation/uuidUtils';
+import { queryMonitor } from '@/utils/performance/queryMonitor';
 
 interface CalendarAvailabilityHandlerProps {
   clinicianId: string;
@@ -42,6 +43,12 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
         return;
       }
       
+      // Start performance monitoring
+      const endTimer = queryMonitor.startTimer('fetchAvailability', { 
+        source: 'CalendarAvailabilityHandler', 
+        params: { clinicianId } 
+      });
+      
       try {
         // Format clinician ID to ensure consistent UUID format
         const formattedClinicianId = formatAsUUID(clinicianId, {
@@ -70,15 +77,27 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
         
         console.log(`[CalendarAvailabilityHandler] Retrieved ${events.length} availability events`);
         onEventsChange(events);
+        endTimer({ fromCache: false }); // End timer with success result
       } catch (error) {
+        // Detailed error logging for diagnosis
         console.error('[CalendarAvailabilityHandler] Error fetching availability:', error);
+        console.error('Error details:', {
+          clinicianId,
+          formattedId: formatAsUUID(clinicianId, { strictMode: false, logLevel: 'error' }),
+          userTimeZone: validTimeZone,
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          errorStack: error instanceof Error ? error.stack : undefined
+        });
+        
+        endTimer(); // End timer on error
+        
         if (onError) onError(error as Error);
         onEventsChange([]); // Send empty array so calendar still renders without availability
       }
     };
 
     fetchAvailability();
-  }, [clinicianId, showAvailability, convertAvailabilityToEvents, onEventsChange, onError]);
+  }, [clinicianId, showAvailability, convertAvailabilityToEvents, onEventsChange, onError, validTimeZone]);
 
   return null;
 };
