@@ -6,6 +6,8 @@ import { useToast } from '@/hooks/use-toast';
 import { TimeZoneService } from '@/utils/timezone';
 import { CalendarErrorHandler } from '@/services/calendar/CalendarFacade';
 import { componentMonitor } from '@/utils/performance/componentMonitor';
+import { debugUuidValidation, trackCalendarApi } from '@/utils/calendarDebugUtils';
+import { formatAsUUID, isValidUUID } from '@/utils/validation/uuidUtils';
 
 interface UseFetchCalendarEventsProps {
   clinicianId: string | null;
@@ -119,6 +121,14 @@ export function useFetchCalendarEvents({
       return;
     }
     
+    // Debug UUID validation
+    debugUuidValidation(clinicianId, 'useFetchCalendarEvents.fetchEvents', {
+      userId,
+      timeZone: userTimeZone,
+      startDate: startDate?.toISOString(),
+      endDate: endDate?.toISOString()
+    });
+
     // Check cache first
     const cachedEvents = getValidCachedEvents(clinicianId, startDate, endDate);
     if (cachedEvents) {
@@ -140,23 +150,41 @@ export function useFetchCalendarEvents({
         userTimeZone,
         startDate,
         endDate,
-        userId
+        userId,
+        rawClinicianIdType: typeof clinicianId
       });
       
       setIsLoading(true);
       setError(null);
       fetchInProgress.current = true;
 
-      const validClinicianId = clinicianId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
-        ? clinicianId
-        : null;
-
-      if (!validClinicianId) {
+      // Try to format the clinicianId to ensure it's a valid UUID
+      let validClinicianId = clinicianId;
+      
+      if (!isValidUUID(clinicianId)) {
         console.warn('[useFetchCalendarEvents] Invalid UUID format for clinicianId:', clinicianId);
-        setEvents([]);
-        setError(new Error('Invalid clinician ID format'));
-        return;
+        const formattedId = formatAsUUID(clinicianId);
+        
+        if (isValidUUID(formattedId)) {
+          console.info(`[useFetchCalendarEvents] Formatted clinicianId: "${clinicianId}" → "${formattedId}"`);
+          validClinicianId = formattedId;
+        } else {
+          console.error(`[useFetchCalendarEvents] Unable to format clinicianId as valid UUID: "${clinicianId}"`);
+          setEvents([]);
+          setError(new Error(`Invalid clinician ID format: ${clinicianId}`));
+          setIsLoading(false);
+          fetchInProgress.current = false;
+          return;
+        }
       }
+
+      trackCalendarApi('request', {
+        endpoint: 'fetchCalendarEvents',
+        clinicianId: validClinicianId,
+        userTimeZone,
+        startDate,
+        endDate
+      });
 
       const fetchedEvents = await CalendarService.getEvents(
         validClinicianId,
@@ -170,7 +198,7 @@ export function useFetchCalendarEvents({
       ) || [];
       
       // Update cache
-      const cacheKey = getCacheKey(clinicianId, startDate, endDate);
+      const cacheKey = getCacheKey(validClinicianId, startDate, endDate);
       eventsCache.current[cacheKey] = {
         events: convertedEvents,
         timestamp: Date.now(),
@@ -183,10 +211,16 @@ export function useFetchCalendarEvents({
       setEvents(convertedEvents);
       if (retryCount > 0) setRetryCount(0);
       
+      trackCalendarApi('success', {
+        endpoint: 'fetchCalendarEvents',
+        clinicianId: validClinicianId,
+        resultCount: convertedEvents.length
+      });
+      
       // Record performance
       const fetchTime = performance.now() - fetchStartTime.current;
       componentMonitor.recordRender('useFetchCalendarEvents (network)', fetchTime, {
-        props: { clinicianId, eventCount: convertedEvents.length }
+        props: { clinicianId: validClinicianId, eventCount: convertedEvents.length }
       });
       
     } catch (err) {
@@ -194,6 +228,12 @@ export function useFetchCalendarEvents({
       const errorMessage = CalendarErrorHandler.getUserFriendlyMessage(err);
       const fetchError = err instanceof Error ? err : new Error(errorMessage);
       setError(fetchError);
+      
+      trackCalendarApi('error', {
+        endpoint: 'fetchCalendarEvents',
+        clinicianId,
+        error: err
+      });
       
       if (retry && retryCount < maxRetries) {
         setRetryCount(prev => prev + 1);

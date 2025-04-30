@@ -25,8 +25,11 @@ import {
   diagnoseCalendarIssues,
   trackCalendarInitialization,
   logDetailedCalendarState,
-  logCalendarEvents
+  logCalendarEvents,
+  trackClinicianSelection,
+  debugUuidValidation
 } from '@/utils/calendarDebugUtils';
+import { formatAsUUID } from '@/utils/validation/uuidUtils';
 
 const CalendarPage: React.FC = () => {
   const { userRole, isLoading: isUserLoading, userId } = useUser();
@@ -35,6 +38,12 @@ const CalendarPage: React.FC = () => {
   // Track initialization start
   useEffect(() => {
     trackCalendarInitialization('start', { userId, isUserLoading });
+    console.log('[CalendarPage] Calendar page initialization', {
+      userId,
+      isUserLoading,
+      currentUserId,
+      isAuthLoading
+    });
   }, []);
   
   // Pass the currentUserId as the initialClinicianId to useCalendarState
@@ -69,21 +78,81 @@ const CalendarPage: React.FC = () => {
   
   const [showAvailability, setShowAvailability] = useState(true);
   
+  // Debug the different IDs to spot data type or format issues
+  useEffect(() => {
+    debugUuidValidation(currentUserId, 'CalendarPage: currentUserId');
+    debugUuidValidation(selectedClinicianId, 'CalendarPage: selectedClinicianId');
+    debugUuidValidation(userId, 'CalendarPage: userId');
+    
+    console.log('[CalendarPage] ID comparison', {
+      currentUserId: {
+        value: currentUserId,
+        type: typeof currentUserId,
+        formatted: currentUserId ? formatAsUUID(currentUserId) : null
+      },
+      selectedClinicianId: {
+        value: selectedClinicianId,
+        type: typeof selectedClinicianId,
+        formatted: selectedClinicianId ? formatAsUUID(selectedClinicianId) : null
+      },
+      userId: {
+        value: userId,
+        type: typeof userId,
+        formatted: userId ? formatAsUUID(userId) : null
+      }
+    });
+  }, [currentUserId, selectedClinicianId, userId]);
+  
   // Ensure selectedClinicianId is set to currentUserId when it becomes available
   useEffect(() => {
     if (currentUserId && !selectedClinicianId) {
+      // Track before setting
+      trackClinicianSelection('auto-select', {
+        source: 'currentUserId',
+        selectedClinicianId: null,
+        previousClinicianId: selectedClinicianId,
+        userId: currentUserId,
+        availableClinicians: clinicians?.map(c => ({
+          id: c.id,
+          name: c.clinician_professional_name
+        }))
+      });
+      
       console.log('[Calendar] Setting selectedClinicianId to currentUserId:', currentUserId);
-      setSelectedClinicianId(currentUserId);
+      const formattedId = formatAsUUID(currentUserId);
+      console.log(`[Calendar] Using formatted ID: "${currentUserId}" → "${formattedId}"`);
+      
+      setSelectedClinicianId(formattedId);
       trackCalendarInitialization('clinician-selected', {
-        selectedClinicianId: currentUserId,
+        selectedClinicianId: formattedId,
+        originalId: currentUserId,
         source: 'auto-selection'
+      });
+      
+      // Track after setting
+      trackClinicianSelection('applied', {
+        source: 'currentUserId',
+        selectedClinicianId: formattedId,
+        previousClinicianId: selectedClinicianId,
+        userId: currentUserId
       });
     } else if (currentUserId && selectedClinicianId && currentUserId !== selectedClinicianId) {
       console.log('[Calendar] Note: currentUserId and selectedClinicianId differ:', {
         currentUserId,
         selectedClinicianId,
-        userRole
+        userRole,
+        formattedCurrentUserId: formatAsUUID(currentUserId),
+        formattedSelectedClinicianId: formatAsUUID(selectedClinicianId)
       });
+      
+      // Check if the IDs might be the same but in different formats
+      const formattedCurrentUserId = formatAsUUID(currentUserId);
+      const formattedSelectedClinicianId = formatAsUUID(selectedClinicianId);
+      
+      if (formattedCurrentUserId === formattedSelectedClinicianId) {
+        console.log('[Calendar] IDs are the same after formatting, updating selectedClinicianId');
+        setSelectedClinicianId(formattedCurrentUserId);
+      }
       
       // Diagnose potential issues
       const { hasIssues, issues } = diagnoseCalendarIssues(
@@ -99,7 +168,7 @@ const CalendarPage: React.FC = () => {
     } else if (!currentUserId) {
       console.log('[Calendar] Waiting for currentUserId to become available');
     }
-  }, [currentUserId, selectedClinicianId, setSelectedClinicianId, userRole, permissionLevel]);
+  }, [currentUserId, selectedClinicianId, setSelectedClinicianId, userRole, permissionLevel, clinicians]);
   const [calendarKey, setCalendarKey] = useState<number>(0);
   const [permissionWarning, setPermissionWarning] = useState<string | null>(null);
   const { toast } = useToast();
@@ -226,7 +295,7 @@ const CalendarPage: React.FC = () => {
         variant: 'destructive',
       });
     }
-  }, [syncedTimeZone, toast, openWeeklyAvailability, permissionLevel]);
+  }, [syncedTimeZone, toast, openDialog, permissionLevel, selectedClinicianId, handleCalendarRefresh]);
 
   // Log detailed calendar state when all data is loaded
   useEffect(() => {
@@ -237,6 +306,7 @@ const CalendarPage: React.FC = () => {
         timeZone: syncedTimeZone
       });
       
+      // Add detailed state debugging info
       logDetailedCalendarState({
         currentUserId,
         userRole,
@@ -246,7 +316,9 @@ const CalendarPage: React.FC = () => {
         permissionLevel,
         permissionError,
         canManageAvailability: permissionLevel !== 'none',
-        timeZone: syncedTimeZone
+        timeZone: syncedTimeZone,
+        formattedClinicianId: selectedClinicianId ? formatAsUUID(selectedClinicianId) : null,
+        firstClinicianId: clinicians?.[0]?.id || 'none'
       });
     }
   }, [
@@ -285,7 +357,15 @@ const CalendarPage: React.FC = () => {
             canSelectDifferentClinician={canSelectDifferentClinician}
             canManageAvailability={canManageAvailability}
             timeZone={syncedTimeZone}
-            onClinicianSelect={setSelectedClinicianId}
+            onClinicianSelect={(id) => {
+              trackClinicianSelection('user-select', {
+                source: 'dropdown',
+                selectedClinicianId: id,
+                previousClinicianId: selectedClinicianId,
+                userId
+              });
+              setSelectedClinicianId(id);
+            }}
             onNewAppointment={() => openDialog('appointment', {
               clients,
               loadingClients,
@@ -337,6 +417,18 @@ const CalendarPage: React.FC = () => {
               </AlertDescription>
             </Alert>
           )}
+          
+          {/* Debug information panel */}
+          <Alert variant="default" className="mt-2 bg-gray-50 border-gray-300">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex justify-between items-center text-xs">
+              <div>
+                <strong>Debug:</strong> Clinician ID: {selectedClinicianId || 'none'} |
+                User ID: {userId || 'none'} |
+                Current User ID: {currentUserId || 'none'}
+              </div>
+            </AlertDescription>
+          </Alert>
 
           <CalendarViewManager
             key={calendarKey}
