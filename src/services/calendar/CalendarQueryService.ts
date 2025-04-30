@@ -1,3 +1,4 @@
+
 /**
  * CalendarQueryService - Responsible for all calendar event read operations
  * Handles fetching events from the database and transforming them into usable formats

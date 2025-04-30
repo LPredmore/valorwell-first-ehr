@@ -1,3 +1,4 @@
+
 import { UUIDValidationError, isValidUUID, ensureUUID, formatAsUUID } from './uuidUtils';
 import { ValidationError } from '@/utils/errors';
 import { supabase } from '@/integrations/supabase/client';
@@ -161,44 +162,33 @@ export async function validateClinicianID(id: string | null | undefined): Promis
   }
   
   try {
-    // Try to format the ID if it's not already a valid UUID
-    const formattedId = isValidClinicianID(id) ? id : formatAsClinicianID(id);
+    // Try to format the ID if it's not already a valid 
+    const formattedId = formatAsClinicianID(id);
     
-    // Ensure it's a valid UUID
-    const validID = ensureClinicianID(formattedId);
-    
-    // Then check if it exists in the database
-    const exists = await clinicianIDExists(validID);
-    if (!exists) {
-      throw new ClinicianIDValidationError(`Clinician ID ${validID} does not exist in the database`);
+    // Check if it's a valid UUID
+    if (!isValidClinicianID(formattedId)) {
+      throw new ClinicianIDValidationError(`Invalid clinician ID format: ${id}`);
     }
     
-    return validID;
+    // Check if it exists in the database
+    const exists = await clinicianIDExists(formattedId);
+    if (!exists) {
+      throw new ClinicianIDValidationError(`Clinician ID does not exist: ${formattedId}`);
+    }
+    
+    return formattedId;
   } catch (error) {
     if (error instanceof ClinicianIDValidationError) {
       throw error;
     }
     
+    console.error('[Clinician Validation] Error validating clinician ID:', error);
     throw new ClinicianIDValidationError(
       `Error validating clinician ID: ${(error as Error).message}`,
       {
         cause: error instanceof Error ? error : undefined,
-        context: { originalId: id, error }
+        context: { originalError: error }
       }
     );
   }
 }
-
-/**
- * Utility module for clinician ID validation
- */
-export const ClinicianIDUtils = {
-  isValidClinicianID,
-  ensureClinicianID,
-  formatAsClinicianID,
-  clinicianIDExists,
-  validateClinicianID
-};
-
-// Default export for convenience
-export default ClinicianIDUtils;
