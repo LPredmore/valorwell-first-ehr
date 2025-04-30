@@ -10,10 +10,42 @@ import { TimeZoneService } from '@/utils/timezone';
 import { calendarTransformer } from '@/utils/calendarTransformer';
 import { DatabaseCalendarEvent } from '@/types/calendarTypes';
 import { CalendarErrorHandler } from './CalendarErrorHandler';
-import { formatAsUUID, isValidUUID } from '@/utils/validation/uuidUtils';
+import { formatAsUUID, isValidUUID, couldBeUUID } from '@/utils/validation/uuidUtils';
 import { debugUuidValidation, trackCalendarApi } from '@/utils/calendarDebugUtils';
 
 export class CalendarQueryService {
+  /**
+   * Validates and formats a clinician ID for database operations
+   * 
+   * @param id - The clinician ID to validate and format
+   * @returns The formatted clinician ID or null if invalid
+   */
+  private static validateClinicianId(id: string | null | undefined): string | null {
+    if (!id) {
+      console.warn('[CalendarQueryService] Empty clinician ID provided');
+      return null;
+    }
+    
+    const idStr = String(id).trim();
+    
+    // Check if it's already a valid UUID
+    if (isValidUUID(idStr)) {
+      return idStr;
+    }
+    
+    // If not valid but could be a UUID, try to format it
+    if (couldBeUUID(idStr)) {
+      const formatted = formatAsUUID(idStr);
+      if (isValidUUID(formatted)) {
+        console.info(`[CalendarQueryService] Formatted clinician ID: "${idStr}" → "${formatted}"`);
+        return formatted;
+      }
+    }
+    
+    console.error(`[CalendarQueryService] Invalid clinician ID: "${idStr}"`);
+    return null;
+  }
+
   /**
    * Get calendar events for a specific clinician and time range
    */
@@ -46,18 +78,11 @@ export class CalendarQueryService {
         endDate
       });
       
-      // Try to format the clinician ID if it's not a valid UUID
-      let validatedClinicianId = clinicianId;
-      if (!isValidUUID(clinicianId)) {
-        console.warn(`[CalendarQueryService] Clinician ID is not a valid UUID: "${clinicianId}"`);
-        const formattedId = formatAsUUID(clinicianId);
-        if (isValidUUID(formattedId)) {
-          console.info(`[CalendarQueryService] Formatted clinician ID: "${clinicianId}" → "${formattedId}"`);
-          validatedClinicianId = formattedId;
-        } else {
-          console.error(`[CalendarQueryService] Failed to format clinician ID as UUID: "${clinicianId}"`);
-          return [];  // Early return if we can't get a valid UUID
-        }
+      // Validate and format the clinician ID
+      const validatedClinicianId = this.validateClinicianId(clinicianId);
+      if (!validatedClinicianId) {
+        console.error(`[CalendarQueryService] Invalid clinician ID: "${clinicianId}"`);
+        return [];
       }
 
       let query = supabase
@@ -124,18 +149,11 @@ export class CalendarQueryService {
       
       console.log('[CalendarQueryService] Getting all events for clinician:', clinicianId);
       
-      // Try to format the clinician ID if it's not a valid UUID
-      let validatedClinicianId = clinicianId;
-      if (!isValidUUID(clinicianId)) {
-        console.warn(`[CalendarQueryService] Clinician ID is not a valid UUID: "${clinicianId}"`);
-        const formattedId = formatAsUUID(clinicianId);
-        if (isValidUUID(formattedId)) {
-          console.info(`[CalendarQueryService] Formatted clinician ID: "${clinicianId}" → "${formattedId}"`);
-          validatedClinicianId = formattedId;
-        } else {
-          console.error(`[CalendarQueryService] Failed to format clinician ID as UUID: "${clinicianId}"`);
-          return [];  // Early return if we can't get a valid UUID
-        }
+      // Validate and format the clinician ID
+      const validatedClinicianId = this.validateClinicianId(clinicianId);
+      if (!validatedClinicianId) {
+        console.error(`[CalendarQueryService] Invalid clinician ID: "${clinicianId}"`);
+        return [];
       }
       
       const { data, error } = await supabase
@@ -207,18 +225,11 @@ export class CalendarQueryService {
         timezone: validTimeZone
       });
       
-      // Try to format the clinician ID if it's not a valid UUID
-      let validatedClinicianId = clinicianId;
-      if (!isValidUUID(clinicianId)) {
-        console.warn(`[CalendarQueryService] Clinician ID is not a valid UUID: "${clinicianId}"`);
-        const formattedId = formatAsUUID(clinicianId);
-        if (isValidUUID(formattedId)) {
-          console.info(`[CalendarQueryService] Formatted clinician ID: "${clinicianId}" → "${formattedId}"`);
-          validatedClinicianId = formattedId;
-        } else {
-          console.error(`[CalendarQueryService] Failed to format clinician ID as UUID: "${clinicianId}"`);
-          return [];  // Early return if we can't get a valid UUID
-        }
+      // Validate and format the clinician ID
+      const validatedClinicianId = this.validateClinicianId(clinicianId);
+      if (!validatedClinicianId) {
+        console.error(`[CalendarQueryService] Invalid clinician ID: "${clinicianId}"`);
+        return [];
       }
 
       const startDateISO = typeof startDate === 'string' ? startDate : startDate.toISOString();
@@ -291,18 +302,11 @@ export class CalendarQueryService {
         timezone: validTimeZone
       });
       
-      // Try to format the clinician ID if it's not a valid UUID
-      let validatedClinicianId = clinicianId;
-      if (!isValidUUID(clinicianId)) {
-        console.warn(`[CalendarQueryService] Clinician ID is not a valid UUID: "${clinicianId}"`);
-        const formattedId = formatAsUUID(clinicianId);
-        if (isValidUUID(formattedId)) {
-          console.info(`[CalendarQueryService] Formatted clinician ID: "${clinicianId}" → "${formattedId}"`);
-          validatedClinicianId = formattedId;
-        } else {
-          console.error(`[CalendarQueryService] Failed to format clinician ID as UUID: "${clinicianId}"`);
-          return [];  // Early return if we can't get a valid UUID
-        }
+      // Validate and format the clinician ID
+      const validatedClinicianId = this.validateClinicianId(clinicianId);
+      if (!validatedClinicianId) {
+        console.error(`[CalendarQueryService] Invalid clinician ID: "${clinicianId}"`);
+        return [];
       }
 
       const dateISO = typeof date === 'string' ? date : date.toISOString();

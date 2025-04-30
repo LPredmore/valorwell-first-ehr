@@ -29,20 +29,21 @@ import {
   trackClinicianSelection,
   debugUuidValidation
 } from '@/utils/calendarDebugUtils';
-import { formatAsUUID } from '@/utils/validation/uuidUtils';
+import { formatAsUUID, isValidUUID } from '@/utils/validation/uuidUtils';
 
 const CalendarPage: React.FC = () => {
-  const { userRole, isLoading: isUserLoading, userId } = useUser();
+  const { userRole, isLoading: isUserLoading, userId, isClinician } = useUser();
   const { isAuthenticated, isLoading: isAuthLoading, currentUserId } = useCalendarAuth();
   
   // Track initialization start
   useEffect(() => {
-    trackCalendarInitialization('start', { userId, isUserLoading });
+    trackCalendarInitialization('start', { userId, isUserLoading, isClinician });
     console.log('[CalendarPage] Calendar page initialization', {
       userId,
       isUserLoading,
       currentUserId,
-      isAuthLoading
+      isAuthLoading,
+      isClinician
     });
   }, []);
   
@@ -55,7 +56,8 @@ const CalendarPage: React.FC = () => {
     clients,
     loadingClients,
     timeZone
-  } = useCalendarState(currentUserId);
+  } = useCalendarState(isClinician ? currentUserId : null);
+  
   const { timeZone: syncedTimeZone, isLoading: isTimeZoneLoading } = useTimeZoneSync({ userId });
   const {
     checkPermissionLevel,
@@ -71,12 +73,14 @@ const CalendarPage: React.FC = () => {
         currentUserId,
         userId,
         isAuthenticated,
-        userRole
+        userRole,
+        isClinician
       });
     }
-  }, [isAuthLoading, isUserLoading, currentUserId, userId, isAuthenticated, userRole]);
+  }, [isAuthLoading, isUserLoading, currentUserId, userId, isAuthenticated, userRole, isClinician]);
   
   const [showAvailability, setShowAvailability] = useState(true);
+  const [forceRefreshKey, setForceRefreshKey] = useState(0); // Added force refresh key
   
   // Debug the different IDs to spot data type or format issues
   useEffect(() => {
@@ -99,16 +103,18 @@ const CalendarPage: React.FC = () => {
         value: userId,
         type: typeof userId,
         formatted: userId ? formatAsUUID(userId) : null
-      }
+      },
+      isClinician
     });
-  }, [currentUserId, selectedClinicianId, userId]);
+  }, [currentUserId, selectedClinicianId, userId, isClinician]);
   
-  // Ensure selectedClinicianId is set to currentUserId when it becomes available
+  // Ensure selectedClinicianId is set to currentUserId when it becomes available for clinicians
   useEffect(() => {
-    if (currentUserId && !selectedClinicianId) {
+    // If the user is a clinician and we have their ID but no selected clinician
+    if (isClinician && currentUserId && !selectedClinicianId) {
       // Track before setting
       trackClinicianSelection('auto-select', {
-        source: 'currentUserId',
+        source: 'currentUserId-clinician',
         selectedClinicianId: null,
         previousClinicianId: selectedClinicianId,
         userId: currentUserId,
@@ -118,7 +124,7 @@ const CalendarPage: React.FC = () => {
         }))
       });
       
-      console.log('[Calendar] Setting selectedClinicianId to currentUserId:', currentUserId);
+      console.log('[Calendar] Setting selectedClinicianId to currentUserId (clinician):', currentUserId);
       const formattedId = formatAsUUID(currentUserId);
       console.log(`[Calendar] Using formatted ID: "${currentUserId}" → "${formattedId}"`);
       
@@ -131,13 +137,16 @@ const CalendarPage: React.FC = () => {
       
       // Track after setting
       trackClinicianSelection('applied', {
-        source: 'currentUserId',
+        source: 'currentUserId-clinician',
         selectedClinicianId: formattedId,
         previousClinicianId: selectedClinicianId,
         userId: currentUserId
       });
-    } else if (currentUserId && selectedClinicianId && currentUserId !== selectedClinicianId) {
-      console.log('[Calendar] Note: currentUserId and selectedClinicianId differ:', {
+      
+      // Force refresh the calendar
+      setForceRefreshKey(prev => prev + 1);
+    } else if (currentUserId && selectedClinicianId && currentUserId !== selectedClinicianId && isClinician) {
+      console.log('[Calendar] Note: currentUserId and selectedClinicianId differ for clinician:', {
         currentUserId,
         selectedClinicianId,
         userRole,
@@ -152,23 +161,18 @@ const CalendarPage: React.FC = () => {
       if (formattedCurrentUserId === formattedSelectedClinicianId) {
         console.log('[Calendar] IDs are the same after formatting, updating selectedClinicianId');
         setSelectedClinicianId(formattedCurrentUserId);
+        setForceRefreshKey(prev => prev + 1);
+      } else if (isClinician) {
+        // If user is a clinician, their ID should be the selected clinician ID
+        console.log('[Calendar] User is a clinician but viewing different calendar, updating to their own');
+        setSelectedClinicianId(formattedCurrentUserId);
+        setForceRefreshKey(prev => prev + 1);
       }
-      
-      // Diagnose potential issues
-      const { hasIssues, issues } = diagnoseCalendarIssues(
-        currentUserId,
-        selectedClinicianId,
-        userRole,
-        permissionLevel
-      );
-      
-      if (hasIssues) {
-        console.warn('[Calendar] Potential issues detected:', issues);
-      }
-    } else if (!currentUserId) {
-      console.log('[Calendar] Waiting for currentUserId to become available');
+    } else if (!currentUserId && isClinician) {
+      console.log('[Calendar] Clinician user but waiting for currentUserId to become available');
     }
-  }, [currentUserId, selectedClinicianId, setSelectedClinicianId, userRole, permissionLevel, clinicians]);
+  }, [currentUserId, selectedClinicianId, setSelectedClinicianId, userRole, isClinician, clinicians]);
+  
   const [calendarKey, setCalendarKey] = useState<number>(0);
   const [permissionWarning, setPermissionWarning] = useState<string | null>(null);
   const { toast } = useToast();
@@ -194,11 +198,18 @@ const CalendarPage: React.FC = () => {
         currentUserId,
         selectedClinicianId,
         userRole,
-        userId
+        userId,
+        isClinician
       });
       
       // Reset warning first
       setPermissionWarning(null);
+      
+      // If user is a clinician viewing their own calendar, they have full permission
+      if (isClinician && formatAsUUID(currentUserId) === formatAsUUID(selectedClinicianId)) {
+        console.log('[Calendar] Clinician viewing own calendar, full permission granted');
+        return;
+      }
       
       // Use the centralized permission service to check permission level
       await checkPermissionLevel('calendar', selectedClinicianId);
@@ -214,7 +225,7 @@ const CalendarPage: React.FC = () => {
     };
     
     checkPermissions();
-  }, [selectedClinicianId, currentUserId, userRole, userId, checkPermissionLevel, permissionLevel, permissionError]);
+  }, [selectedClinicianId, currentUserId, userRole, userId, isClinician, checkPermissionLevel, permissionLevel, permissionError]);
 
   const handleCalendarRefresh = useCallback(() => {
     console.log('[Calendar] Refreshing calendar with new key');
@@ -303,7 +314,8 @@ const CalendarPage: React.FC = () => {
       trackCalendarInitialization('complete', {
         selectedClinicianId,
         currentUserId,
-        timeZone: syncedTimeZone
+        timeZone: syncedTimeZone,
+        isClinician
       });
       
       // Add detailed state debugging info
@@ -318,14 +330,24 @@ const CalendarPage: React.FC = () => {
         canManageAvailability: permissionLevel !== 'none',
         timeZone: syncedTimeZone,
         formattedClinicianId: selectedClinicianId ? formatAsUUID(selectedClinicianId) : null,
-        firstClinicianId: clinicians?.[0]?.id || 'none'
+        firstClinicianId: clinicians?.[0]?.id || 'none',
+        isClinician
       });
     }
   }, [
     isUserLoading, isAuthLoading, isTimeZoneLoading, loadingClinicians,
     selectedClinicianId, currentUserId, syncedTimeZone, userRole,
-    isAuthenticated, clinicians, permissionLevel, permissionError
+    isAuthenticated, clinicians, permissionLevel, permissionError,
+    isClinician
   ]);
+
+  // Force refresh the calendar when needed
+  useEffect(() => {
+    if (forceRefreshKey > 0) {
+      console.log('[Calendar] Forcing calendar refresh');
+      setCalendarKey(prev => prev + 1);
+    }
+  }, [forceRefreshKey]);
 
   if (isUserLoading || isAuthLoading || isTimeZoneLoading) {
     return (
@@ -343,8 +365,8 @@ const CalendarPage: React.FC = () => {
     );
   }
 
-  const canSelectDifferentClinician = userRole === 'admin';
-  const canManageAvailability = permissionLevel !== 'none';
+  const canSelectDifferentClinician = userRole === 'admin' || !isClinician;
+  const canManageAvailability = isClinician || permissionLevel !== 'none';
 
   return (
     <Layout>
@@ -365,6 +387,8 @@ const CalendarPage: React.FC = () => {
                 userId
               });
               setSelectedClinicianId(id);
+              // Force refresh after selection
+              setForceRefreshKey(prev => prev + 1);
             }}
             onNewAppointment={() => openDialog('appointment', {
               clients,
@@ -425,13 +449,27 @@ const CalendarPage: React.FC = () => {
               <div>
                 <strong>Debug:</strong> Clinician ID: {selectedClinicianId || 'none'} |
                 User ID: {userId || 'none'} |
-                Current User ID: {currentUserId || 'none'}
+                Current User ID: {currentUserId || 'none'} |
+                Is Clinician: {isClinician ? 'Yes' : 'No'}
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setForceRefreshKey(prev => prev + 1);
+                  toast({
+                    title: "Calendar Refreshed",
+                    description: "Forcing a complete calendar refresh",
+                  });
+                }}
+              >
+                Force Refresh
+              </Button>
             </AlertDescription>
           </Alert>
 
           <CalendarViewManager
-            key={calendarKey}
+            key={`${calendarKey}-${forceRefreshKey}`}
             clinicianId={selectedClinicianId}
             timeZone={syncedTimeZone}
             showAvailability={showAvailability}

@@ -6,61 +6,15 @@ import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 import { TimeZoneService } from '@/utils/timezone';
 import { ClientData } from '@/types/availability';
 import { componentMonitor } from '@/utils/performance/componentMonitor';
+import { useUser } from '@/context/UserContext';
+import { formatAsUUID, isValidUUID } from '@/utils/validation/uuidUtils';
+import { trackClinicianSelection } from '@/utils/calendarDebugUtils';
 
 /**
  * @hook useCalendarState
  * @description Hook for managing calendar state including clinician selection, client data,
  * appointment refresh state, and timezone handling. Provides a centralized state management
  * solution for calendar-related components.
- *
- * @param {string | null} initialClinicianId - Optional initial clinician ID to pre-select
- * @returns {object} Calendar state and actions
- * @returns {string | null} .selectedClinicianId - Currently selected clinician ID
- * @returns {function} .setSelectedClinicianId - Function to update the selected clinician
- * @returns {Array} .clinicians - List of available clinicians
- * @returns {boolean} .loadingClinicians - Whether clinicians are currently loading
- * @returns {Array<ClientData>} .clients - Normalized client data for the selected clinician
- * @returns {boolean} .loadingClients - Whether clients are currently loading
- * @returns {number} .appointmentRefreshTrigger - Counter to trigger appointment refresh
- * @returns {function} .refreshAppointments - Function to trigger appointment refresh
- * @returns {boolean} .isDialogOpen - Whether the calendar dialog is open
- * @returns {function} .setIsDialogOpen - Function to control dialog visibility
- * @returns {string} .timeZone - Current timezone in IANA format
- * @returns {function} .refreshClients - Function to refresh client data
- *
- * @example
- * // Basic usage in a calendar component
- * const {
- *   selectedClinicianId,
- *   setSelectedClinicianId,
- *   clinicians,
- *   clients,
- *   timeZone,
- *   refreshAppointments
- * } = useCalendarState();
- *
- * // Using the state to render a clinician selector
- * return (
- *   <div>
- *     <select
- *       value={selectedClinicianId || ''}
- *       onChange={(e) => setSelectedClinicianId(e.target.value || null)}
- *     >
- *       {clinicians.map(clinician => (
- *         <option key={clinician.id} value={clinician.id}>
- *           {clinician.clinician_professional_name}
- *         </option>
- *       ))}
- *     </select>
- *
- *     <CalendarView
- *       clinicianId={selectedClinicianId}
- *       clients={clients}
- *       timeZone={timeZone}
- *       onAppointmentChange={refreshAppointments}
- *     />
- *   </div>
- * );
  */
 export const useCalendarState = (initialClinicianId: string | null = null) => {
   // Performance monitoring
@@ -73,8 +27,11 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     };
   }, []);
 
+  // User context to get current user data
+  const { userId, isClinician } = useUser();
+  
   // Local state
-  const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(initialClinicianId);
+  const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(null);
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   
@@ -82,18 +39,29 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   useEffect(() => {
     console.log('[useCalendarState] Initialized with:', {
       initialClinicianId,
+      userId,
+      isClinician,
       selectedClinicianId: selectedClinicianId
     });
-  }, [initialClinicianId]);
-  
-  // Track when selectedClinicianId changes
-  useEffect(() => {
-    console.log('[useCalendarState] Selected clinician changed:', {
-      previousId: initialClinicianId,
-      currentId: selectedClinicianId,
-      wasExplicitlySet: initialClinicianId !== selectedClinicianId
-    });
-  }, [selectedClinicianId, initialClinicianId]);
+    
+    // Format any IDs to ensure consistent UUID format
+    if (initialClinicianId && initialClinicianId !== selectedClinicianId) {
+      const formattedId = isValidUUID(initialClinicianId) 
+        ? initialClinicianId 
+        : formatAsUUID(initialClinicianId);
+        
+      if (formattedId) {
+        trackClinicianSelection('init', {
+          source: 'initialClinicianId',
+          selectedClinicianId: formattedId,
+          previousClinicianId: null,
+          userId
+        });
+        
+        setSelectedClinicianId(formattedId);
+      }
+    }
+  }, []);
   
   // Get user timezone
   const { timeZone } = useUserTimeZone(selectedClinicianId);
@@ -138,13 +106,79 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
       return normalizedClient;
     });
   }, [clientsRaw]);
-  
-  // Auto-select first clinician if needed
+
+  // Initialize clinician ID selection with proper priority
   useEffect(() => {
-    if (clinicians.length > 0 && !selectedClinicianId) {
-      setSelectedClinicianId(clinicians[0].id);
+    // Only proceed if we don't have a selected clinician ID yet
+    if (!selectedClinicianId) {
+      // If the user is a clinician, use their ID
+      if (isClinician && userId) {
+        const formattedId = isValidUUID(userId) ? userId : formatAsUUID(userId);
+        if (formattedId) {
+          console.log(`[useCalendarState] Setting clinician ID to current user (clinician): ${formattedId}`);
+          
+          trackClinicianSelection('auto-select', {
+            source: 'currentUserIsClinician',
+            selectedClinicianId: formattedId,
+            previousClinicianId: selectedClinicianId,
+            userId
+          });
+          
+          setSelectedClinicianId(formattedId);
+          return;
+        }
+      }
+      
+      // If we have an initialClinicianId, use that
+      if (initialClinicianId) {
+        const formattedId = isValidUUID(initialClinicianId) ? initialClinicianId : formatAsUUID(initialClinicianId);
+        if (formattedId) {
+          console.log(`[useCalendarState] Setting clinician ID to initialClinicianId: ${formattedId}`);
+          
+          trackClinicianSelection('auto-select', {
+            source: 'initialClinicianId',
+            selectedClinicianId: formattedId,
+            previousClinicianId: selectedClinicianId,
+            userId
+          });
+          
+          setSelectedClinicianId(formattedId);
+          return;
+        }
+      }
+      
+      // If clinicians are loaded and there's at least one, use the first one
+      if (!loadingClinicians && clinicians.length > 0) {
+        const firstClinicianId = clinicians[0].id;
+        const formattedId = isValidUUID(firstClinicianId) ? firstClinicianId : formatAsUUID(firstClinicianId);
+        
+        if (formattedId) {
+          console.log(`[useCalendarState] Setting clinician ID to first available clinician: ${formattedId}`);
+          
+          trackClinicianSelection('auto-select', {
+            source: 'firstAvailableClinician',
+            selectedClinicianId: formattedId,
+            previousClinicianId: selectedClinicianId,
+            userId,
+            availableClinicians: clinicians.map(c => ({
+              id: c.id,
+              name: c.clinician_professional_name
+            }))
+          });
+          
+          setSelectedClinicianId(formattedId);
+          return;
+        }
+      }
+    } else {
+      // We have a selected clinician ID, but let's make sure it's formatted properly
+      const formattedId = isValidUUID(selectedClinicianId) ? selectedClinicianId : formatAsUUID(selectedClinicianId);
+      if (formattedId && formattedId !== selectedClinicianId) {
+        console.log(`[useCalendarState] Reformatting clinician ID: ${selectedClinicianId} → ${formattedId}`);
+        setSelectedClinicianId(formattedId);
+      }
     }
-  }, [clinicians, selectedClinicianId]);
+  }, [userId, isClinician, initialClinicianId, clinicians, loadingClinicians, selectedClinicianId]);
   
   // Update clients query when clinician changes
   useEffect(() => {
@@ -155,6 +189,22 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     }
   }, [selectedClinicianId, setClientsQuery]);
   
+  // Custom setter for selectedClinicianId that ensures UUID format
+  const setFormattedClinicianId = useCallback((id: string | null) => {
+    if (!id) {
+      setSelectedClinicianId(null);
+      return;
+    }
+    
+    const formattedId = isValidUUID(id) ? id : formatAsUUID(id);
+    
+    if (formattedId && formattedId !== id) {
+      console.log(`[useCalendarState] Formatted clinician ID during set: ${id} → ${formattedId}`);
+    }
+    
+    setSelectedClinicianId(formattedId || id);
+  }, []);
+  
   // Memoized refresh function
   const refreshAppointments = useCallback(() => {
     setAppointmentRefreshTrigger(prev => prev + 1);
@@ -163,7 +213,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   // Memoize return values to prevent unnecessary re-renders
   const calendarState = useMemo(() => ({
     selectedClinicianId,
-    setSelectedClinicianId,
+    setSelectedClinicianId: setFormattedClinicianId,
     clinicians,
     loadingClinicians,
     clients,
@@ -173,11 +223,14 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     isDialogOpen,
     setIsDialogOpen,
     timeZone: TimeZoneService.ensureIANATimeZone(timeZone || 'UTC'),
+    isClinician,
+    userId,
     
     // Add additional methods for refreshing data
     refreshClients,
   }), [
     selectedClinicianId,
+    setFormattedClinicianId,
     clinicians,
     loadingClinicians,
     clients,
@@ -186,7 +239,9 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     refreshAppointments,
     isDialogOpen,
     timeZone,
-    refreshClients
+    refreshClients,
+    isClinician,
+    userId
   ]);
   
   return calendarState;

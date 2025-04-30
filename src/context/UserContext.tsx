@@ -32,6 +32,11 @@ type UserContextType = {
    * The ID of the authenticated user
    */
   userId: string | null;
+  
+  /**
+   * Whether the user is a clinician
+   */
+  isClinician: boolean;
 };
 
 /**
@@ -41,7 +46,8 @@ const UserContext = createContext<UserContextType>({
   userRole: null,
   clientStatus: null,
   isLoading: true,
-  userId: null
+  userId: null,
+  isClinician: false
 });
 
 /**
@@ -60,6 +66,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [clientStatus, setClientStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isClinician, setIsClinician] = useState(false);
 
   useEffect(() => {
     console.log("[UserContext] Initializing user context");
@@ -74,36 +81,101 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("[UserContext] Setting userId:", user.id);
           setUserId(user.id);
           
-          console.log("[UserContext] Fetching client data for user:", user.id);
-          const { data: clientData, error: clientError } = await supabase
-            .from('clients')
-            .select('role, client_status')
+          // First check profiles table for role information (single source of truth)
+          console.log("[UserContext] Fetching profile data for user:", user.id);
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('role, email')
             .eq('id', user.id)
             .maybeSingle();
             
-          if (clientError) {
-            console.error("[UserContext] Error fetching client:", clientError.message);
-            throw clientError;
+          if (profileError) {
+            console.error("[UserContext] Error fetching profile:", profileError.message);
           }
 
-          if (clientData) {
-            console.log("[UserContext] Client data:", clientData);
-            setUserRole(clientData.role);
-            setClientStatus(clientData.client_status);
+          if (profileData) {
+            console.log("[UserContext] Profile data:", profileData);
+            setUserRole(profileData.role);
+            
+            // If role is clinician, set the flag
+            if (profileData.role === 'clinician') {
+              setIsClinician(true);
+              console.log("[UserContext] User is a clinician");
+              // Clinicians don't have a client status
+              setClientStatus(null);
+            } else {
+              setIsClinician(false);
+              
+              // If not clinician, check client status from clients table
+              console.log("[UserContext] Fetching client data for user:", user.id);
+              const { data: clientData, error: clientError } = await supabase
+                .from('clients')
+                .select('client_status')
+                .eq('id', user.id)
+                .maybeSingle();
+                
+              if (clientError) {
+                console.error("[UserContext] Error fetching client:", clientError.message);
+              }
+
+              if (clientData) {
+                console.log("[UserContext] Client data:", clientData);
+                setClientStatus(clientData.client_status);
+              } else {
+                console.log("[UserContext] No client data found");
+                setClientStatus(null);
+              }
+            }
           } else {
-            console.log("[UserContext] No client data found");
-            setUserRole(null);
-            setClientStatus(null);
+            console.log("[UserContext] No profile data found, checking clinicians table");
+            
+            // Check clinicians table as fallback
+            const { data: clinicianData, error: clinicianError } = await supabase
+              .from('clinicians')
+              .select('id, clinician_status')
+              .eq('id', user.id)
+              .maybeSingle();
+              
+            if (clinicianData) {
+              console.log("[UserContext] Clinician data found:", clinicianData);
+              setUserRole('clinician');
+              setIsClinician(true);
+              setClientStatus(null);
+            } else {
+              console.log("[UserContext] No clinician data found, checking clients table");
+              
+              // Check clients table as final fallback
+              const { data: clientData, error: clientError } = await supabase
+                .from('clients')
+                .select('role, client_status')
+                .eq('id', user.id)
+                .maybeSingle();
+                
+              if (clientData) {
+                console.log("[UserContext] Client data found:", clientData);
+                setUserRole(clientData.role);
+                setClientStatus(clientData.client_status);
+                setIsClinician(false);
+              } else {
+                console.log("[UserContext] No user data found in any table");
+                setUserRole(null);
+                setClientStatus(null);
+                setIsClinician(false);
+              }
+            }
           }
         } else {
           console.log("[UserContext] No authenticated user found");
           setUserRole(null);
           setClientStatus(null);
+          setUserId(null);
+          setIsClinician(false);
         }
       } catch (error) {
         console.error("[UserContext] Error in fetchUserData:", error);
         setUserRole(null);
         setClientStatus(null);
+        setIsClinician(false);
       } finally {
         console.log("[UserContext] Setting isLoading to false");
         setIsLoading(false);
@@ -128,7 +200,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <UserContext.Provider value={{ userRole, clientStatus, isLoading, userId }}>
+    <UserContext.Provider value={{ userRole, clientStatus, isLoading, userId, isClinician }}>
       {children}
     </UserContext.Provider>
   );
@@ -138,11 +210,11 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
  * @hook useUser
  * @description Hook for accessing the user context values.
  *
- * @returns {UserContextType} The user context value containing userRole, clientStatus, isLoading, and userId
+ * @returns {UserContextType} The user context value containing userRole, clientStatus, isLoading, userId, and isClinician
  *
  * @example
  * // Using the hook in a component
- * const { userRole, clientStatus, isLoading, userId } = useUser();
+ * const { userRole, clientStatus, isLoading, userId, isClinician } = useUser();
  *
  * if (isLoading) {
  *   return <LoadingSpinner />;
@@ -152,6 +224,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
  *   return <Redirect to="/login" />;
  * }
  *
- * return userRole === 'clinician' ? <ClinicianDashboard /> : <ClientDashboard />;
+ * return isClinician ? <ClinicianDashboard /> : <ClientDashboard />;
  */
 export const useUser = () => useContext(UserContext);
