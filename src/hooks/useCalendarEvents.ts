@@ -29,13 +29,18 @@ export function useCalendarEvents({
   const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
   const initialFetchAttempted = useRef(false);
   
-  // Format clinician ID to ensure consistent UUID format
+  // Format clinician ID to ensure consistent UUID format using our enhanced formatAsUUID function
   const formattedClinicianId = useMemo(() => {
     if (!clinicianId) return null;
-    return formatAsUUID(clinicianId, {
-      strictMode: true,
-      logLevel: 'warn'
-    });
+    try {
+      return formatAsUUID(clinicianId, {
+        strictMode: true,
+        logLevel: 'warn'
+      });
+    } catch (error) {
+      console.error('[useCalendarEvents] Invalid clinician ID format:', error);
+      return null;
+    }
   }, [clinicianId]);
   
   const {

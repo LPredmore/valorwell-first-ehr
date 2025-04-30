@@ -6,6 +6,7 @@ import { TimeZoneService } from '@/utils/timezone';
 import { useAvailabilityEvents } from '@/hooks/useAvailabilityEvents';
 import { WeeklyAvailability as AvailabilityWeeklyAvailability } from '@/types/availability';
 import { WeeklyAvailability as AppointmentWeeklyAvailability, AvailabilitySlot } from '@/types/appointment';
+import { formatAsUUID } from '@/utils/validation/uuidUtils';
 
 interface CalendarAvailabilityHandlerProps {
   clinicianId: string;
@@ -42,10 +43,16 @@ const CalendarAvailabilityHandler: React.FC<CalendarAvailabilityHandlerProps> = 
       }
       
       try {
-        console.log('[CalendarAvailabilityHandler] Fetching availability for clinician:', clinicianId);
+        // Format clinician ID to ensure consistent UUID format
+        const formattedClinicianId = formatAsUUID(clinicianId, {
+          strictMode: true,
+          logLevel: 'warn'
+        });
+        
+        console.log('[CalendarAvailabilityHandler] Fetching availability for clinician:', formattedClinicianId);
         
         // Get availability exclusively from calendar_events table
-        const weeklyAvailability = await AvailabilityQueryService.getWeeklyAvailability(clinicianId);
+        const weeklyAvailability = await AvailabilityQueryService.getWeeklyAvailability(formattedClinicianId);
         
         // Convert from DayOfWeek-indexed to string-indexed for the hooks/useAvailabilityEvents
         const convertedAvailability: {[key: string]: AvailabilitySlot[]} = {

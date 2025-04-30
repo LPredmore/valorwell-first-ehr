@@ -30,10 +30,18 @@ const CalendarViewManager: React.FC<CalendarViewManagerProps> = ({
   // User context for authentication status
   const { userId, isClinician, isLoading: isUserLoading } = useUser();
   
-  // Format clinician ID to ensure consistent UUID format
+  // Format clinician ID to ensure consistent UUID format using formatAsUUID
   const formattedClinicianId = useMemo(() => {
     if (!clinicianId) return null;
-    return formatAsUUID(clinicianId);
+    try {
+      return formatAsUUID(clinicianId, {
+        strictMode: false, // Use false here to be more forgiving in the UI
+        logLevel: 'warn'
+      });
+    } catch (error) {
+      console.error('[CalendarViewManager] Invalid clinician ID format:', error);
+      return null;
+    }
   }, [clinicianId]);
   
   useEffect(() => {

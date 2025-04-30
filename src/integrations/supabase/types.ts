@@ -75,6 +75,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "appointments_clinician_id_fkey"
+            columns: ["clinician_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       availability_settings: {
@@ -186,6 +193,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "calendar_events_clinician_id_fkey"
+            columns: ["clinician_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "calendar_events_recurrence_id_fkey"
             columns: ["recurrence_id"]
@@ -1816,36 +1830,6 @@ export type Database = {
         }
         Relationships: []
       }
-      temp_policy_backup: {
-        Row: {
-          cmd: string | null
-          policyname: unknown | null
-          qual: string | null
-          roles: unknown[] | null
-          schemaname: unknown | null
-          tablename: unknown | null
-          with_check: string | null
-        }
-        Insert: {
-          cmd?: string | null
-          policyname?: unknown | null
-          qual?: string | null
-          roles?: unknown[] | null
-          schemaname?: unknown | null
-          tablename?: unknown | null
-          with_check?: string | null
-        }
-        Update: {
-          cmd?: string | null
-          policyname?: unknown | null
-          qual?: string | null
-          roles?: unknown[] | null
-          schemaname?: unknown | null
-          tablename?: unknown | null
-          with_check?: string | null
-        }
-        Relationships: []
-      }
       template_settings: {
         Row: {
           created_at: string
@@ -2028,6 +2012,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "calendar_events_clinician_id_fkey"
+            columns: ["clinician_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "calendar_events_recurrence_id_fkey"
             columns: ["recurrence_id"]
             isOneToOne: false
@@ -2077,6 +2068,10 @@ export type Database = {
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      standardize_uuid: {
+        Args: { input_id: string }
+        Returns: string
       }
     }
     Enums: {
