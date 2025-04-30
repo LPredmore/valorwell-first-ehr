@@ -6,6 +6,8 @@ import CalendarErrorBoundary from './CalendarErrorBoundary';
 import CalendarError from './CalendarError';
 import { Loader2 } from 'lucide-react';
 import { componentMonitor } from '@/utils/performance/componentMonitor';
+import { useUser } from '@/context/UserContext';
+import { formatAsUUID } from '@/utils/validation/uuidUtils';
 
 interface CalendarViewManagerProps {
   clinicianId: string | null;
@@ -25,12 +27,32 @@ const CalendarViewManager: React.FC<CalendarViewManagerProps> = ({
   // Performance monitoring
   const renderStartTime = React.useRef(performance.now());
   
+  // User context for authentication status
+  const { userId, isClinician, isLoading: isUserLoading } = useUser();
+  
+  // Format clinician ID to ensure consistent UUID format
+  const formattedClinicianId = useMemo(() => {
+    if (!clinicianId) return null;
+    return formatAsUUID(clinicianId);
+  }, [clinicianId]);
+  
   useEffect(() => {
     const renderTime = performance.now() - renderStartTime.current;
     componentMonitor.recordRender('CalendarViewManager', renderTime, {
-      props: { clinicianId, timeZone, showAvailability }
+      props: { clinicianId: formattedClinicianId, timeZone, showAvailability }
     });
-  });
+    
+    // Log the component props for debugging
+    console.log('[CalendarViewManager] Rendering with:', {
+      clinicianId: clinicianId,
+      formattedClinicianId,
+      timeZone,
+      showAvailability,
+      userId,
+      isClinician,
+      isUserLoading
+    });
+  }, [formattedClinicianId, timeZone, showAvailability, userId, isClinician, isUserLoading]);
 
   const [calendarKey, setCalendarKey] = useState<number>(0);
   const [calendarError, setCalendarError] = useState<Error | null>(null);
@@ -52,15 +74,27 @@ const CalendarViewManager: React.FC<CalendarViewManagerProps> = ({
   
   // Memoize the calendar view props to prevent unnecessary re-renders
   const calendarViewProps = useMemo(() => ({
-    clinicianId,
+    clinicianId: formattedClinicianId,
     userTimeZone: timeZone,
     view: 'timeGridWeek' as const,
     height: "700px",
     showAvailability,
     onAvailabilityClick
-  }), [clinicianId, timeZone, showAvailability, onAvailabilityClick]);
+  }), [formattedClinicianId, timeZone, showAvailability, onAvailabilityClick]);
 
-  if (!clinicianId) {
+  // Show loading state when user authentication is still loading
+  if (isUserLoading) {
+    return (
+      <Card className="p-8 text-center">
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+          <p className="text-gray-500">Loading authentication data...</p>
+        </div>
+      </Card>
+    );
+  }
+
+  if (!formattedClinicianId) {
     return (
       <Card className="p-8 text-center">
         <p className="text-gray-500">

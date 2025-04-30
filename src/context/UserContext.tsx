@@ -7,6 +7,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { formatAsUUID } from '@/utils/validation/uuidUtils';
 
 /**
  * @interface UserContextType
@@ -37,6 +38,11 @@ type UserContextType = {
    * Whether the user is a clinician
    */
   isClinician: boolean;
+
+  /**
+   * Manually refresh the user context
+   */
+  refreshUserContext: () => Promise<void>;
 };
 
 /**
@@ -47,7 +53,8 @@ const UserContext = createContext<UserContextType>({
   clientStatus: null,
   isLoading: true,
   userId: null,
-  isClinician: false
+  isClinician: false,
+  refreshUserContext: async () => {}
 });
 
 /**
@@ -68,129 +75,140 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [userId, setUserId] = useState<string | null>(null);
   const [isClinician, setIsClinician] = useState(false);
 
-  useEffect(() => {
-    console.log("[UserContext] Initializing user context");
-    
-    const fetchUserData = async () => {
-      try {
-        console.log("[UserContext] Fetching user data");
-        const { data: { user } } = await supabase.auth.getUser();
-        console.log("[UserContext] Auth user data:", user ? "User found" : "No user found");
+  // Fetch user data and set appropriate states
+  const fetchUserData = async () => {
+    try {
+      console.log("[UserContext] Fetching user data");
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log("[UserContext] Auth user data:", user ? "User found" : "No user found");
+      
+      if (user) {
+        // Format the user ID to ensure consistent UUID format
+        const formattedUserId = formatAsUUID(user.id);
+        console.log("[UserContext] Setting userId:", formattedUserId, "(original:", user.id, ")");
+        setUserId(formattedUserId);
         
-        if (user) {
-          console.log("[UserContext] Setting userId:", user.id);
-          setUserId(user.id);
+        // First check profiles table for role information (single source of truth)
+        console.log("[UserContext] Fetching profile data for user:", formattedUserId);
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('role, email')
+          .eq('id', formattedUserId)
+          .maybeSingle();
           
-          // First check profiles table for role information (single source of truth)
-          console.log("[UserContext] Fetching profile data for user:", user.id);
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('role, email')
-            .eq('id', user.id)
-            .maybeSingle();
-            
-          if (profileError) {
-            console.error("[UserContext] Error fetching profile:", profileError.message);
-          }
+        if (profileError) {
+          console.error("[UserContext] Error fetching profile:", profileError.message);
+        }
 
-          if (profileData) {
-            console.log("[UserContext] Profile data:", profileData);
-            setUserRole(profileData.role);
-            
-            // If role is clinician, set the flag
-            if (profileData.role === 'clinician') {
-              setIsClinician(true);
-              console.log("[UserContext] User is a clinician");
-              // Clinicians don't have a client status
-              setClientStatus(null);
-            } else {
-              setIsClinician(false);
-              
-              // If not clinician, check client status from clients table
-              console.log("[UserContext] Fetching client data for user:", user.id);
-              const { data: clientData, error: clientError } = await supabase
-                .from('clients')
-                .select('client_status')
-                .eq('id', user.id)
-                .maybeSingle();
-                
-              if (clientError) {
-                console.error("[UserContext] Error fetching client:", clientError.message);
-              }
-
-              if (clientData) {
-                console.log("[UserContext] Client data:", clientData);
-                setClientStatus(clientData.client_status);
-              } else {
-                console.log("[UserContext] No client data found");
-                setClientStatus(null);
-              }
-            }
+        if (profileData) {
+          console.log("[UserContext] Profile data:", profileData);
+          setUserRole(profileData.role);
+          
+          // If role is clinician, set the flag
+          if (profileData.role === 'clinician') {
+            setIsClinician(true);
+            console.log("[UserContext] User is a clinician");
+            // Clinicians don't have a client status
+            setClientStatus(null);
           } else {
-            console.log("[UserContext] No profile data found, checking clinicians table");
+            setIsClinician(false);
             
-            // Check clinicians table as fallback
-            const { data: clinicianData, error: clinicianError } = await supabase
-              .from('clinicians')
-              .select('id, clinician_status')
-              .eq('id', user.id)
+            // If not clinician, check client status from clients table
+            console.log("[UserContext] Fetching client data for user:", formattedUserId);
+            const { data: clientData, error: clientError } = await supabase
+              .from('clients')
+              .select('client_status')
+              .eq('id', formattedUserId)
               .maybeSingle();
               
-            if (clinicianData) {
-              console.log("[UserContext] Clinician data found:", clinicianData);
-              setUserRole('clinician');
-              setIsClinician(true);
-              setClientStatus(null);
+            if (clientError) {
+              console.error("[UserContext] Error fetching client:", clientError.message);
+            }
+
+            if (clientData) {
+              console.log("[UserContext] Client data:", clientData);
+              setClientStatus(clientData.client_status);
             } else {
-              console.log("[UserContext] No clinician data found, checking clients table");
-              
-              // Check clients table as final fallback
-              const { data: clientData, error: clientError } = await supabase
-                .from('clients')
-                .select('role, client_status')
-                .eq('id', user.id)
-                .maybeSingle();
-                
-              if (clientData) {
-                console.log("[UserContext] Client data found:", clientData);
-                setUserRole(clientData.role);
-                setClientStatus(clientData.client_status);
-                setIsClinician(false);
-              } else {
-                console.log("[UserContext] No user data found in any table");
-                setUserRole(null);
-                setClientStatus(null);
-                setIsClinician(false);
-              }
+              console.log("[UserContext] No client data found");
+              setClientStatus(null);
             }
           }
         } else {
-          console.log("[UserContext] No authenticated user found");
-          setUserRole(null);
-          setClientStatus(null);
-          setUserId(null);
-          setIsClinician(false);
+          console.log("[UserContext] No profile data found, checking clinicians table");
+          
+          // Check clinicians table as fallback
+          const { data: clinicianData, error: clinicianError } = await supabase
+            .from('clinicians')
+            .select('id, clinician_status')
+            .eq('id', formattedUserId)
+            .maybeSingle();
+            
+          if (clinicianData) {
+            console.log("[UserContext] Clinician data found:", clinicianData);
+            setUserRole('clinician');
+            setIsClinician(true);
+            setClientStatus(null);
+          } else {
+            console.log("[UserContext] No clinician data found, checking clients table");
+            
+            // Check clients table as final fallback
+            const { data: clientData, error: clientError } = await supabase
+              .from('clients')
+              .select('role, client_status')
+              .eq('id', formattedUserId)
+              .maybeSingle();
+              
+            if (clientData) {
+              console.log("[UserContext] Client data found:", clientData);
+              setUserRole(clientData.role);
+              setClientStatus(clientData.client_status);
+              setIsClinician(false);
+            } else {
+              console.log("[UserContext] No user data found in any table");
+              setUserRole(null);
+              setClientStatus(null);
+              setIsClinician(false);
+            }
+          }
         }
-      } catch (error) {
-        console.error("[UserContext] Error in fetchUserData:", error);
+      } else {
+        console.log("[UserContext] No authenticated user found");
         setUserRole(null);
         setClientStatus(null);
+        setUserId(null);
         setIsClinician(false);
-      } finally {
-        console.log("[UserContext] Setting isLoading to false");
-        setIsLoading(false);
       }
-    };
+    } catch (error) {
+      console.error("[UserContext] Error in fetchUserData:", error);
+      setUserRole(null);
+      setClientStatus(null);
+      setIsClinician(false);
+    } finally {
+      console.log("[UserContext] Setting isLoading to false");
+      setIsLoading(false);
+    }
+  };
 
-    // First set up the auth state listener
-    console.log("[UserContext] Setting up auth state listener");
+  // Make fetchUserData available through the context
+  const refreshUserContext = async () => {
+    setIsLoading(true);
+    await fetchUserData();
+  };
+
+  // First set up the auth state listener
+  useEffect(() => {
+    console.log("[UserContext] Initializing user context and setting up auth state listener");
+    
+    // Subscribe to auth changes - set up before checking existing session
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("[UserContext] Auth state changed:", event, session ? "Session exists" : "No session");
-      fetchUserData();
+      // Use setTimeout to prevent potential auth callback deadlocks
+      setTimeout(() => {
+        fetchUserData();
+      }, 0);
     });
 
     // Then check for existing session
-    console.log("[UserContext] Checking for existing session");
     fetchUserData();
 
     return () => {
@@ -199,8 +217,18 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
+  // Create enhanced context value with refresh function
+  const contextValue: UserContextType = {
+    userRole,
+    clientStatus,
+    isLoading,
+    userId,
+    isClinician,
+    refreshUserContext
+  };
+
   return (
-    <UserContext.Provider value={{ userRole, clientStatus, isLoading, userId, isClinician }}>
+    <UserContext.Provider value={contextValue}>
       {children}
     </UserContext.Provider>
   );

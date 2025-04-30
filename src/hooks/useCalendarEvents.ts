@@ -3,8 +3,9 @@ import { useUser } from '@/context/UserContext';
 import { CalendarEvent } from '@/types/calendar';
 import { useFetchCalendarEvents } from './calendar/useFetchCalendarEvents';
 import { useCalendarMutations } from './calendar/useCalendarMutations';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { TimeZoneService } from '@/utils/timezone';
+import { formatAsUUID } from '@/utils/validation/uuidUtils';
 
 interface UseCalendarEventsProps {
   clinicianId: string | null;
@@ -22,13 +23,19 @@ export function useCalendarEvents({
   const { isLoading: isUserLoading, userId } = useUser();
   const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
   
+  // Format clinician ID to ensure consistent UUID format
+  const formattedClinicianId = useMemo(() => {
+    if (!clinicianId) return null;
+    return formatAsUUID(clinicianId);
+  }, [clinicianId]);
+  
   const {
     events,
     isLoading,
     error,
     fetchEvents
   } = useFetchCalendarEvents({
-    clinicianId,
+    clinicianId: formattedClinicianId,
     userTimeZone: validTimeZone,
     userId,
     isUserLoading,
@@ -48,6 +55,7 @@ export function useCalendarEvents({
   useEffect(() => {
     console.log('[useCalendarEvents] Effect triggered:', {
       clinicianId,
+      formattedClinicianId,
       userTimeZone: validTimeZone,
       startDate,
       endDate,
@@ -55,10 +63,10 @@ export function useCalendarEvents({
       userId
     });
 
-    if (!isUserLoading && clinicianId) {
+    if (!isUserLoading && formattedClinicianId) {
       fetchEvents();
     }
-  }, [clinicianId, validTimeZone, startDate, endDate, fetchEvents, isUserLoading, userId]);
+  }, [formattedClinicianId, validTimeZone, startDate, endDate, fetchEvents, isUserLoading, userId, clinicianId]);
 
   return {
     events,

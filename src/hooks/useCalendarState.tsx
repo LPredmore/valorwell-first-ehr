@@ -28,12 +28,13 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   }, []);
 
   // User context to get current user data
-  const { userId, isClinician } = useUser();
+  const { userId, isClinician, isLoading: isUserLoading } = useUser();
   
   // Local state
   const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(null);
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   
   // Log initialization with initial clinician ID
   useEffect(() => {
@@ -41,26 +42,9 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
       initialClinicianId,
       userId,
       isClinician,
-      selectedClinicianId: selectedClinicianId
+      isUserLoading,
+      selectedClinicianId
     });
-    
-    // Format any IDs to ensure consistent UUID format
-    if (initialClinicianId && initialClinicianId !== selectedClinicianId) {
-      const formattedId = isValidUUID(initialClinicianId) 
-        ? initialClinicianId 
-        : formatAsUUID(initialClinicianId);
-        
-      if (formattedId) {
-        trackClinicianSelection('init', {
-          source: 'initialClinicianId',
-          selectedClinicianId: formattedId,
-          previousClinicianId: null,
-          userId
-        });
-        
-        setSelectedClinicianId(formattedId);
-      }
-    }
   }, []);
   
   // Get user timezone
@@ -109,80 +93,100 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
 
   // Initialize clinician ID selection with proper priority
   useEffect(() => {
-    // Only proceed if we don't have a selected clinician ID yet
-    if (!selectedClinicianId) {
-      // If the user is a clinician, use their ID
-      if (isClinician && userId) {
-        const formattedId = isValidUUID(userId) ? userId : formatAsUUID(userId);
-        if (formattedId) {
-          console.log(`[useCalendarState] Setting clinician ID to current user (clinician): ${formattedId}`);
-          
-          trackClinicianSelection('auto-select', {
-            source: 'currentUserIsClinician',
-            selectedClinicianId: formattedId,
-            previousClinicianId: selectedClinicianId,
-            userId
-          });
-          
-          setSelectedClinicianId(formattedId);
-          return;
-        }
-      }
-      
-      // If we have an initialClinicianId, use that
-      if (initialClinicianId) {
-        const formattedId = isValidUUID(initialClinicianId) ? initialClinicianId : formatAsUUID(initialClinicianId);
-        if (formattedId) {
-          console.log(`[useCalendarState] Setting clinician ID to initialClinicianId: ${formattedId}`);
-          
-          trackClinicianSelection('auto-select', {
-            source: 'initialClinicianId',
-            selectedClinicianId: formattedId,
-            previousClinicianId: selectedClinicianId,
-            userId
-          });
-          
-          setSelectedClinicianId(formattedId);
-          return;
-        }
-      }
-      
-      // If clinicians are loaded and there's at least one, use the first one
-      if (!loadingClinicians && clinicians.length > 0) {
-        const firstClinicianId = clinicians[0].id;
-        const formattedId = isValidUUID(firstClinicianId) ? firstClinicianId : formatAsUUID(firstClinicianId);
-        
-        if (formattedId) {
-          console.log(`[useCalendarState] Setting clinician ID to first available clinician: ${formattedId}`);
-          
-          trackClinicianSelection('auto-select', {
-            source: 'firstAvailableClinician',
-            selectedClinicianId: formattedId,
-            previousClinicianId: selectedClinicianId,
-            userId,
-            availableClinicians: clinicians.map(c => ({
-              id: c.id,
-              name: c.clinician_professional_name
-            }))
-          });
-          
-          setSelectedClinicianId(formattedId);
-          return;
-        }
-      }
-    } else {
-      // We have a selected clinician ID, but let's make sure it's formatted properly
-      const formattedId = isValidUUID(selectedClinicianId) ? selectedClinicianId : formatAsUUID(selectedClinicianId);
-      if (formattedId && formattedId !== selectedClinicianId) {
-        console.log(`[useCalendarState] Reformatting clinician ID: ${selectedClinicianId} → ${formattedId}`);
-        setSelectedClinicianId(formattedId);
-      }
+    // Skip initialization if user context is still loading
+    if (isUserLoading) {
+      console.log('[useCalendarState] User context still loading, deferring clinician initialization');
+      return;
     }
-  }, [userId, isClinician, initialClinicianId, clinicians, loadingClinicians, selectedClinicianId]);
+    
+    // Skip if we've already initialized
+    if (!initializing) return;
+    
+    console.log('[useCalendarState] Running clinician initialization', {
+      userId,
+      isClinician,
+      initialClinicianId,
+      selectedClinicianId,
+      cliniciansLoaded: !loadingClinicians && clinicians.length > 0
+    });
+    
+    // PRIORITY 1: If the user is a clinician, use their ID
+    if (isClinician && userId) {
+      const formattedId = formatAsUUID(userId);
+      console.log('[useCalendarState] Setting clinician ID to current user (clinician):', formattedId);
+      
+      trackClinicianSelection('auto-select', {
+        source: 'currentUserIsClinician',
+        selectedClinicianId: formattedId,
+        previousClinicianId: selectedClinicianId,
+        userId
+      });
+      
+      setSelectedClinicianId(formattedId);
+      setInitializing(false);
+      return;
+    }
+    
+    // PRIORITY 2: If we have an initialClinicianId, use that
+    if (initialClinicianId) {
+      const formattedId = formatAsUUID(initialClinicianId);
+      console.log('[useCalendarState] Setting clinician ID to initialClinicianId:', formattedId);
+      
+      trackClinicianSelection('auto-select', {
+        source: 'initialClinicianId',
+        selectedClinicianId: formattedId,
+        previousClinicianId: selectedClinicianId,
+        userId
+      });
+      
+      setSelectedClinicianId(formattedId);
+      setInitializing(false);
+      return;
+    }
+    
+    // PRIORITY 3: If clinicians are loaded and there's at least one, use the first one
+    if (!loadingClinicians && clinicians.length > 0) {
+      const firstClinicianId = clinicians[0].id;
+      const formattedId = formatAsUUID(firstClinicianId);
+      
+      console.log('[useCalendarState] Setting clinician ID to first available clinician:', formattedId);
+      
+      trackClinicianSelection('auto-select', {
+        source: 'firstAvailableClinician',
+        selectedClinicianId: formattedId,
+        previousClinicianId: selectedClinicianId,
+        userId,
+        availableClinicians: clinicians.map(c => ({
+          id: c.id,
+          name: c.clinician_professional_name
+        }))
+      });
+      
+      setSelectedClinicianId(formattedId);
+      setInitializing(false);
+      return;
+    }
+    
+    // If we've loaded clinicians but there aren't any, mark as initialized
+    if (!loadingClinicians) {
+      setInitializing(false);
+    }
+    
+  }, [
+    userId, 
+    isClinician, 
+    initialClinicianId, 
+    clinicians, 
+    loadingClinicians, 
+    selectedClinicianId, 
+    isUserLoading, 
+    initializing
+  ]);
   
   // Update clients query when clinician changes
   useEffect(() => {
     if (selectedClinicianId) {
+      console.log(`[useCalendarState] Updating clients query for clinician: ${selectedClinicianId}`);
       setClientsQuery({ client_assigned_therapist: selectedClinicianId });
     } else {
       setClientsQuery({});
@@ -192,21 +196,20 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   // Custom setter for selectedClinicianId that ensures UUID format
   const setFormattedClinicianId = useCallback((id: string | null) => {
     if (!id) {
+      console.log('[useCalendarState] Setting clinician ID to null');
       setSelectedClinicianId(null);
       return;
     }
     
-    const formattedId = isValidUUID(id) ? id : formatAsUUID(id);
+    const formattedId = formatAsUUID(id);
     
-    if (formattedId && formattedId !== id) {
-      console.log(`[useCalendarState] Formatted clinician ID during set: ${id} → ${formattedId}`);
-    }
-    
-    setSelectedClinicianId(formattedId || id);
+    console.log(`[useCalendarState] Setting clinician ID: ${id} → ${formattedId}`);
+    setSelectedClinicianId(formattedId);
   }, []);
   
   // Memoized refresh function
   const refreshAppointments = useCallback(() => {
+    console.log('[useCalendarState] Triggering appointment refresh');
     setAppointmentRefreshTrigger(prev => prev + 1);
   }, []);
   
@@ -225,6 +228,8 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     timeZone: TimeZoneService.ensureIANATimeZone(timeZone || 'UTC'),
     isClinician,
     userId,
+    isUserLoading,
+    initializing,
     
     // Add additional methods for refreshing data
     refreshClients,
@@ -241,7 +246,9 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     timeZone,
     refreshClients,
     isClinician,
-    userId
+    userId,
+    isUserLoading,
+    initializing
   ]);
   
   return calendarState;

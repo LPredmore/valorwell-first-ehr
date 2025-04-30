@@ -129,8 +129,11 @@ export function useFetchCalendarEvents({
       endDate: endDate?.toISOString()
     });
 
+    // Ensure clinician ID is formatted properly
+    let validClinicianId = formatAsUUID(clinicianId);
+    
     // Check cache first
-    const cachedEvents = getValidCachedEvents(clinicianId, startDate, endDate);
+    const cachedEvents = getValidCachedEvents(validClinicianId, startDate, endDate);
     if (cachedEvents) {
       console.log('[useFetchCalendarEvents] Using cached events:', cachedEvents.length);
       setEvents(cachedEvents);
@@ -138,7 +141,7 @@ export function useFetchCalendarEvents({
       // Record performance
       const fetchTime = performance.now() - fetchStartTime.current;
       componentMonitor.recordRender('useFetchCalendarEvents (cached)', fetchTime, {
-        props: { clinicianId, eventCount: cachedEvents.length }
+        props: { clinicianId: validClinicianId, eventCount: cachedEvents.length }
       });
       
       return;
@@ -147,6 +150,7 @@ export function useFetchCalendarEvents({
     try {
       console.log('[useFetchCalendarEvents] Starting fetch:', {
         clinicianId,
+        validClinicianId,
         userTimeZone,
         startDate,
         endDate,
@@ -157,26 +161,6 @@ export function useFetchCalendarEvents({
       setIsLoading(true);
       setError(null);
       fetchInProgress.current = true;
-
-      // Try to format the clinicianId to ensure it's a valid UUID
-      let validClinicianId = clinicianId;
-      
-      if (!isValidUUID(clinicianId)) {
-        console.warn('[useFetchCalendarEvents] Invalid UUID format for clinicianId:', clinicianId);
-        const formattedId = formatAsUUID(clinicianId);
-        
-        if (isValidUUID(formattedId)) {
-          console.info(`[useFetchCalendarEvents] Formatted clinicianId: "${clinicianId}" → "${formattedId}"`);
-          validClinicianId = formattedId;
-        } else {
-          console.error(`[useFetchCalendarEvents] Unable to format clinicianId as valid UUID: "${clinicianId}"`);
-          setEvents([]);
-          setError(new Error(`Invalid clinician ID format: ${clinicianId}`));
-          setIsLoading(false);
-          fetchInProgress.current = false;
-          return;
-        }
-      }
 
       trackCalendarApi('request', {
         endpoint: 'fetchCalendarEvents',
@@ -231,7 +215,7 @@ export function useFetchCalendarEvents({
       
       trackCalendarApi('error', {
         endpoint: 'fetchCalendarEvents',
-        clinicianId,
+        clinicianId: validClinicianId,
         error: err
       });
       
@@ -259,7 +243,7 @@ export function useFetchCalendarEvents({
       // Record performance for error case
       const fetchTime = performance.now() - fetchStartTime.current;
       componentMonitor.recordRender('useFetchCalendarEvents (error)', fetchTime, {
-        props: { clinicianId, error: errorMessage }
+        props: { clinicianId: validClinicianId, error: errorMessage }
       });
     } finally {
       setIsLoading(false);
