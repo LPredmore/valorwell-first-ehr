@@ -84,105 +84,6 @@ export type Database = {
           },
         ]
       }
-      availability_blocks_new: {
-        Row: {
-          availability_type: string
-          clinician_id: string
-          created_at: string
-          end_time: string
-          id: string
-          is_active: boolean
-          recurrence_pattern_id: string | null
-          start_time: string
-          time_zone: string
-          updated_at: string
-        }
-        Insert: {
-          availability_type: string
-          clinician_id: string
-          created_at?: string
-          end_time: string
-          id?: string
-          is_active?: boolean
-          recurrence_pattern_id?: string | null
-          start_time: string
-          time_zone?: string
-          updated_at?: string
-        }
-        Update: {
-          availability_type?: string
-          clinician_id?: string
-          created_at?: string
-          end_time?: string
-          id?: string
-          is_active?: boolean
-          recurrence_pattern_id?: string | null
-          start_time?: string
-          time_zone?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "availability_blocks_new_clinician_id_fkey"
-            columns: ["clinician_id"]
-            isOneToOne: false
-            referencedRelation: "clinicians"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "availability_blocks_new_recurrence_pattern_id_fkey"
-            columns: ["recurrence_pattern_id"]
-            isOneToOne: false
-            referencedRelation: "recurrence_patterns_new"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      availability_exceptions_new: {
-        Row: {
-          availability_block_id: string
-          created_at: string
-          exception_date: string
-          id: string
-          is_cancelled: boolean | null
-          replacement_block_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          availability_block_id: string
-          created_at?: string
-          exception_date: string
-          id?: string
-          is_cancelled?: boolean | null
-          replacement_block_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          availability_block_id?: string
-          created_at?: string
-          exception_date?: string
-          id?: string
-          is_cancelled?: boolean | null
-          replacement_block_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "availability_exceptions_new_availability_block_id_fkey"
-            columns: ["availability_block_id"]
-            isOneToOne: false
-            referencedRelation: "availability_blocks_new"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "availability_exceptions_new_replacement_block_id_fkey"
-            columns: ["replacement_block_id"]
-            isOneToOne: false
-            referencedRelation: "availability_blocks_new"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       availability_settings: {
         Row: {
           clinician_id: string
@@ -363,50 +264,6 @@ export type Database = {
             columns: ["replacement_event_id"]
             isOneToOne: false
             referencedRelation: "calendar_events_with_rules"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      calendar_settings_new: {
-        Row: {
-          clinician_id: string
-          created_at: string
-          default_slot_duration: number
-          id: string
-          is_active: boolean | null
-          max_advance_days: number
-          min_notice_days: number
-          time_zone: string
-          updated_at: string
-        }
-        Insert: {
-          clinician_id: string
-          created_at?: string
-          default_slot_duration?: number
-          id?: string
-          is_active?: boolean | null
-          max_advance_days?: number
-          min_notice_days?: number
-          time_zone?: string
-          updated_at?: string
-        }
-        Update: {
-          clinician_id?: string
-          created_at?: string
-          default_slot_duration?: number
-          id?: string
-          is_active?: boolean | null
-          max_advance_days?: number
-          min_notice_days?: number
-          time_zone?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "calendar_settings_new_clinician_id_fkey"
-            columns: ["clinician_id"]
-            isOneToOne: false
-            referencedRelation: "clinicians"
             referencedColumns: ["id"]
           },
         ]
@@ -1601,27 +1458,6 @@ export type Database = {
         }
         Relationships: []
       }
-      recurrence_patterns_new: {
-        Row: {
-          created_at: string
-          id: string
-          rrule: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          rrule: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          rrule?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       recurrence_rules: {
         Row: {
           created_at: string
@@ -2060,50 +1896,6 @@ export type Database = {
         }
         Relationships: []
       }
-      time_off_new: {
-        Row: {
-          all_day: boolean | null
-          clinician_id: string
-          created_at: string
-          end_time: string
-          id: string
-          reason: string | null
-          start_time: string
-          time_zone: string
-          updated_at: string
-        }
-        Insert: {
-          all_day?: boolean | null
-          clinician_id: string
-          created_at?: string
-          end_time: string
-          id?: string
-          reason?: string | null
-          start_time: string
-          time_zone?: string
-          updated_at?: string
-        }
-        Update: {
-          all_day?: boolean | null
-          clinician_id?: string
-          created_at?: string
-          end_time?: string
-          id?: string
-          reason?: string | null
-          start_time?: string
-          time_zone?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "time_off_new_clinician_id_fkey"
-            columns: ["clinician_id"]
-            isOneToOne: false
-            referencedRelation: "clinicians"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       treatment_plans: {
         Row: {
           client_dob: string | null
@@ -2236,21 +2028,6 @@ export type Database = {
         ]
       }
       unified_calendar_view: {
-        Row: {
-          all_day: boolean | null
-          clinician_id: string | null
-          end_time: string | null
-          event_type: string | null
-          id: string | null
-          is_active: boolean | null
-          recurrence_id: string | null
-          source_table: string | null
-          start_time: string | null
-          title: string | null
-        }
-        Relationships: []
-      }
-      unified_calendar_view_new: {
         Row: {
           all_day: boolean | null
           clinician_id: string | null
