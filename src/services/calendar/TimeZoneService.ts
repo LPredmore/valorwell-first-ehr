@@ -1,4 +1,3 @@
-
 /**
  * TimeZoneService - Responsible for all timezone operations in the calendar system
  * This is the official source of truth for all timezone-related functionality
@@ -6,7 +5,7 @@
 
 import { DateTime } from 'luxon';
 import { CalendarEvent } from '@/types/calendar';
-import { TimeZoneError } from './CalendarErrorHandler';
+import { CalendarError } from './CalendarErrorHandler';
 
 // Constants for supported timezone formats and display
 export const TIMEZONE_OPTIONS = [
@@ -35,7 +34,7 @@ export class TimeZoneService {
    * 
    * @param timeZone - The timezone to validate
    * @returns The validated timezone string
-   * @throws TimeZoneError if the timezone is invalid
+   * @throws CalendarError if the timezone is invalid
    */
   static ensureIANATimeZone(timeZone?: string): string {
     // If no timezone provided, use default
@@ -48,7 +47,7 @@ export class TimeZoneService {
       const now = DateTime.now().setZone(timeZone);
       
       if (!now.isValid) {
-        throw new TimeZoneError(`Invalid timezone: ${timeZone}`, 'INVALID_TIMEZONE');
+        throw new CalendarError(`Invalid timezone: ${timeZone}`, 'INVALID_TIMEZONE');
       }
       
       return timeZone;
@@ -89,7 +88,7 @@ export class TimeZoneService {
     const dateTime = DateTime.fromISO(dateTimeStr, { zone: validTimeZone });
     
     if (!dateTime.isValid) {
-      throw new TimeZoneError(
+      throw new CalendarError(
         `Invalid date/time: ${dateTimeStr} in timezone: ${validTimeZone}`,
         'INVALID_DATETIME'
       );
@@ -122,7 +121,7 @@ export class TimeZoneService {
     const utcDateTime = DateTime.fromISO(utcStr, { zone: 'utc' });
     
     if (!utcDateTime.isValid) {
-      throw new TimeZoneError(`Invalid UTC datetime: ${utcStr}`, 'INVALID_DATETIME');
+      throw new CalendarError(`Invalid UTC datetime: ${utcStr}`, 'INVALID_DATETIME');
     }
     
     // Convert to target timezone
@@ -169,7 +168,7 @@ export class TimeZoneService {
     const dateTime = DateTime.fromISO(dateTimeStr, { zone: validTimeZone });
     
     if (!dateTime.isValid) {
-      throw new TimeZoneError(
+      throw new CalendarError(
         `Invalid datetime string: ${dateTimeStr} with timezone: ${validTimeZone}`,
         'INVALID_DATETIME'
       );
@@ -290,7 +289,7 @@ export class TimeZoneService {
     } else if (typeof dateTime === 'string') {
       dt = DateTime.fromISO(dateTime);
     } else {
-      throw new TimeZoneError('Invalid datetime input', 'INVALID_DATETIME');
+      throw new CalendarError('Invalid datetime input', 'INVALID_DATETIME');
     }
     
     // Set the timezone if provided
