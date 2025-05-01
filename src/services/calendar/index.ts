@@ -1,4 +1,3 @@
-
 /**
  * Calendar Services Index
  * 
