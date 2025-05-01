@@ -1,237 +1,297 @@
+
 import { DateTime } from 'luxon';
-import { TimeZoneService as CoreTimeZoneService } from '@/utils/timezone';
-import { TimeZoneError } from '@/utils/timezone/TimeZoneError';
-import { CalendarError } from './CalendarErrorHandler';
+import { CalendarErrorHandler } from './CalendarErrorHandler';
 
 /**
- * TimeZoneService
- * 
- * A specialized service for handling time zones in the calendar system.
- * This service extends the core TimeZoneService with calendar-specific functionality.
+ * Service for handling timezone operations throughout the calendar system.
+ * This is the single source of truth for all timezone operations.
  */
 export class TimeZoneService {
   /**
-   * Validates a timezone string and returns a valid IANA timezone
-   * 
-   * @param timeZone - The timezone string to validate
+   * Ensure the timezone is in a valid IANA format.
+   * @param timezone The timezone string to validate
    * @returns A valid IANA timezone string
-   * @throws CalendarError if the timezone is invalid
+   * @throws Error if the timezone is invalid
    */
-  static validateTimeZone(timeZone: string): string {
+  static ensureIANATimeZone(timezone: string | null | undefined): string {
     try {
-      return CoreTimeZoneService.ensureIANATimeZone(timeZone);
-    } catch (error) {
-      if (error instanceof TimeZoneError) {
-        throw new CalendarError(
-          `Invalid timezone: ${timeZone}`,
-          'CALENDAR_TIMEZONE_ERROR',
-          { originalTimeZone: timeZone }
-        );
+      // Default to UTC if no timezone is provided
+      if (!timezone) return 'UTC';
+      
+      // Check if the timezone is valid
+      const dt = DateTime.now().setZone(timezone);
+      if (!dt.isValid) {
+        console.error(`[TimeZoneService] Invalid timezone: ${timezone}, reason: ${dt.invalidReason}. Using UTC.`);
+        return 'UTC';
       }
-      throw error;
+      
+      return timezone;
+    } catch (error) {
+      console.error(`[TimeZoneService] Error validating timezone ${timezone}:`, error);
+      return 'UTC'; // Default to UTC on error
     }
   }
 
   /**
-   * Converts a date from one timezone to another
-   * 
-   * @param date - The date to convert
-   * @param fromTimeZone - The source timezone
-   * @param toTimeZone - The target timezone
-   * @returns The converted date
+   * Convert a datetime from one timezone to another.
+   * @param dateTime The datetime to convert (ISO string or DateTime object)
+   * @param sourceZone The source timezone
+   * @param targetZone The target timezone
+   * @returns A DateTime object in the target timezone
    */
-  static convertTimeZone(date: Date | string, fromTimeZone: string, toTimeZone: string): Date {
+  static convertDateTime(
+    dateTime: string | DateTime, 
+    sourceZone: string, 
+    targetZone: string
+  ): DateTime {
     try {
-      const validFromTimeZone = this.validateTimeZone(fromTimeZone);
-      const validToTimeZone = this.validateTimeZone(toTimeZone);
-
-      let dateTime: DateTime;
-      if (typeof date === 'string') {
-        dateTime = CoreTimeZoneService.parseWithZone(date, validFromTimeZone);
+      const validSourceZone = this.ensureIANATimeZone(sourceZone);
+      const validTargetZone = this.ensureIANATimeZone(targetZone);
+      
+      let dt: DateTime;
+      if (typeof dateTime === 'string') {
+        dt = DateTime.fromISO(dateTime, { zone: validSourceZone });
       } else {
-        dateTime = DateTime.fromJSDate(date).setZone(validFromTimeZone);
+        dt = dateTime.setZone(validSourceZone);
       }
-
-      return dateTime.setZone(validToTimeZone).toJSDate();
+      
+      if (!dt.isValid) {
+        throw new Error(`Invalid datetime: ${dt.invalidReason}`);
+      }
+      
+      return dt.setZone(validTargetZone);
     } catch (error) {
-      if (error instanceof CalendarError) {
-        throw error;
-      }
-      throw new CalendarError(
-        'Failed to convert between timezones',
-        'CALENDAR_TIMEZONE_ERROR',
-        { 
-          date, 
-          fromTimeZone, 
-          toTimeZone, 
-          originalError: error 
-        }
+      console.error('[TimeZoneService] Error converting datetime:', error);
+      throw CalendarErrorHandler.createError(
+        `Failed to convert datetime: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'TIMEZONE_CONVERSION_ERROR'
       );
     }
   }
 
   /**
-   * Formats a date for display with timezone information
-   * 
-   * @param date - The date to format
-   * @param format - The format string (optional)
-   * @param timeZone - The timezone to use (optional)
-   * @returns The formatted date string
+   * Format a datetime for display according to the specified format in the target timezone.
+   * @param dateTime The datetime to format (ISO string or DateTime object)
+   * @param format The format to use (e.g., 'yyyy-MM-dd HH:mm:ss')
+   * @param timezone The target timezone
+   * @returns A formatted string
    */
-  static formatDateTime(date: Date | string, format?: string, timeZone?: string): string {
+  static formatDateTime(
+    dateTime: string | DateTime,
+    format: string,
+    timezone: string
+  ): string {
     try {
-      return CoreTimeZoneService.formatDateTime(
-        date, 
-        format || 'yyyy-MM-dd HH:mm', 
-        timeZone ? this.validateTimeZone(timeZone) : undefined
-      );
-    } catch (error) {
-      if (error instanceof CalendarError) {
-        throw error;
+      const validTimeZone = this.ensureIANATimeZone(timezone);
+      
+      let dt: DateTime;
+      if (typeof dateTime === 'string') {
+        dt = DateTime.fromISO(dateTime, { zone: validTimeZone });
+      } else {
+        dt = dateTime.setZone(validTimeZone);
       }
-      throw new CalendarError(
-        'Failed to format date with timezone',
-        'CALENDAR_TIMEZONE_ERROR',
-        { 
-          date, 
-          format, 
-          timeZone, 
-          originalError: error 
-        }
+      
+      if (!dt.isValid) {
+        throw new Error(`Invalid datetime: ${dt.invalidReason}`);
+      }
+      
+      return dt.toFormat(format);
+    } catch (error) {
+      console.error('[TimeZoneService] Error formatting datetime:', error);
+      return 'Invalid Date';
+    }
+  }
+
+  /**
+   * Convert a datetime from UTC to the target timezone.
+   * @param utcDateTime The UTC datetime string
+   * @param timezone The target timezone
+   * @returns A DateTime object in the target timezone
+   */
+  static fromUTCTimestamp(utcDateTime: string, timezone: string): DateTime {
+    try {
+      const validTimeZone = this.ensureIANATimeZone(timezone);
+      const dt = DateTime.fromISO(utcDateTime, { zone: 'UTC' });
+      
+      if (!dt.isValid) {
+        throw new Error(`Invalid UTC datetime: ${dt.invalidReason}`);
+      }
+      
+      return dt.setZone(validTimeZone);
+    } catch (error) {
+      console.error('[TimeZoneService] Error converting from UTC:', error);
+      throw CalendarErrorHandler.createError(
+        `Failed to convert from UTC: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'TIMEZONE_CONVERSION_ERROR'
       );
     }
   }
 
   /**
-   * Creates a DateTime object from date and time strings in a specific timezone
-   * 
-   * @param dateStr - The date string (YYYY-MM-DD)
-   * @param timeStr - The time string (HH:MM)
-   * @param timeZone - The timezone
+   * Convert a datetime from the source timezone to UTC.
+   * @param dateTime The datetime string in the source timezone
+   * @param timezone The source timezone
+   * @returns A UTC timestamp string
+   */
+  static toUTCTimestamp(dateTime: string, timezone: string): string {
+    try {
+      const validTimeZone = this.ensureIANATimeZone(timezone);
+      const dt = DateTime.fromISO(dateTime, { zone: validTimeZone });
+      
+      if (!dt.isValid) {
+        throw new Error(`Invalid datetime: ${dt.invalidReason}`);
+      }
+      
+      return dt.toUTC().toISO();
+    } catch (error) {
+      console.error('[TimeZoneService] Error converting to UTC:', error);
+      throw CalendarErrorHandler.createError(
+        `Failed to convert to UTC: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'TIMEZONE_CONVERSION_ERROR'
+      );
+    }
+  }
+
+  /**
+   * Parse a datetime string with timezone information.
+   * @param dateTimeStr The datetime string to parse
+   * @param defaultZone The default timezone to use if none is specified
    * @returns A DateTime object
    */
-  static createDateTime(dateStr: string, timeStr: string, timeZone: string): DateTime {
+  static parseWithZone(dateTimeStr: string, defaultZone: string = 'UTC'): DateTime {
     try {
-      const validTimeZone = this.validateTimeZone(timeZone);
-      return CoreTimeZoneService.createDateTime(dateStr, timeStr, validTimeZone);
-    } catch (error) {
-      if (error instanceof CalendarError) {
-        throw error;
+      const validTimeZone = this.ensureIANATimeZone(defaultZone);
+      const dt = DateTime.fromISO(dateTimeStr, { zone: validTimeZone });
+      
+      if (!dt.isValid) {
+        throw new Error(`Invalid datetime string: ${dt.invalidReason}`);
       }
-      throw new CalendarError(
-        'Failed to create date time with timezone',
-        'CALENDAR_TIMEZONE_ERROR',
-        { 
-          dateStr, 
-          timeStr, 
-          timeZone, 
-          originalError: error 
-        }
+      
+      return dt;
+    } catch (error) {
+      console.error('[TimeZoneService] Error parsing datetime with zone:', error);
+      throw CalendarErrorHandler.createError(
+        `Failed to parse datetime: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'TIMEZONE_PARSE_ERROR'
       );
     }
   }
 
   /**
-   * Gets the current date and time in a specific timezone
-   * 
-   * @param timeZone - The timezone
-   * @returns The current date and time
+   * Format a timezone for display
+   * @param timezone The timezone to format
+   * @returns A formatted timezone string
    */
-  static getCurrentDateTime(timeZone: string): DateTime {
+  static formatTimeZoneDisplay(timezone: string | null | undefined): string {
     try {
-      const validTimeZone = this.validateTimeZone(timeZone);
-      return CoreTimeZoneService.getCurrentDateTime(validTimeZone);
-    } catch (error) {
-      if (error instanceof CalendarError) {
-        throw error;
+      const validTimeZone = this.ensureIANATimeZone(timezone);
+      const now = DateTime.now().setZone(validTimeZone);
+      
+      if (!now.isValid) {
+        return 'UTC';
       }
-      throw new CalendarError(
-        'Failed to get current date time with timezone',
-        'CALENDAR_TIMEZONE_ERROR',
-        { 
-          timeZone, 
-          originalError: error 
-        }
+      
+      const offset = now.toFormat('ZZ');
+      const abbreviation = now.toFormat('ZZZZ');
+      
+      return `${validTimeZone} (${abbreviation}, ${offset})`;
+    } catch (error) {
+      console.error('[TimeZoneService] Error formatting timezone display:', error);
+      return 'UTC';
+    }
+  }
+
+  /**
+   * Get user's timezone from the browser
+   * @returns The user's timezone string
+   */
+  static getUserTimeZone(): string {
+    try {
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      return this.ensureIANATimeZone(timeZone);
+    } catch (error) {
+      console.error('[TimeZoneService] Error getting user timezone:', error);
+      return 'UTC';
+    }
+  }
+
+  /**
+   * Create a DateTime object from date and time strings
+   * @param dateStr The date string (e.g., '2023-05-01')
+   * @param timeStr The time string (e.g., '14:30')
+   * @param timezone The timezone
+   * @returns A DateTime object
+   */
+  static createDateTime(dateStr: string, timeStr: string, timezone: string): DateTime {
+    try {
+      const validTimeZone = this.ensureIANATimeZone(timezone);
+      const combinedStr = `${dateStr}T${timeStr}`;
+      const dt = DateTime.fromISO(combinedStr, { zone: validTimeZone });
+      
+      if (!dt.isValid) {
+        throw new Error(`Invalid date/time: ${dt.invalidReason}`);
+      }
+      
+      return dt;
+    } catch (error) {
+      console.error('[TimeZoneService] Error creating DateTime:', error);
+      throw CalendarErrorHandler.createError(
+        `Failed to create datetime: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'DATETIME_CREATION_ERROR'
       );
     }
   }
 
   /**
-   * Converts a date to UTC
-   * 
-   * @param date - The date to convert
-   * @param timeZone - The source timezone
-   * @returns The UTC date string
+   * Convert an event to user's timezone
+   * @param event The event object
+   * @param userTimeZone The user's timezone
+   * @returns The event with times converted to user's timezone
    */
-  static toUTC(date: Date | string, timeZone: string): string {
+  static convertEventToUserTimeZone(event: any, userTimeZone: string): any {
+    if (!event) return null;
+    
+    const validTimeZone = this.ensureIANATimeZone(userTimeZone);
+    const sourceTimeZone = event.extendedProps?.sourceTimeZone || 'UTC';
+    
     try {
-      const validTimeZone = this.validateTimeZone(timeZone);
-      return CoreTimeZoneService.toUTCTimestamp(date, validTimeZone);
-    } catch (error) {
-      if (error instanceof CalendarError) {
-        throw error;
+      // Convert start and end times
+      let convertedStart = null;
+      let convertedEnd = null;
+      
+      if (event.start) {
+        convertedStart = this.convertDateTime(
+          event.start, 
+          sourceTimeZone, 
+          validTimeZone
+        );
       }
-      throw new CalendarError(
-        'Failed to convert date to UTC',
-        'CALENDAR_TIMEZONE_ERROR',
-        { 
-          date, 
-          timeZone, 
-          originalError: error 
-        }
-      );
-    }
-  }
-
-  /**
-   * Converts a UTC date string to a date in a specific timezone
-   * 
-   * @param utcStr - The UTC date string
-   * @param timeZone - The target timezone
-   * @returns The date in the target timezone
-   */
-  static fromUTC(utcStr: string, timeZone: string): Date {
-    try {
-      const validTimeZone = this.validateTimeZone(timeZone);
-      return CoreTimeZoneService.fromUTC(utcStr, validTimeZone).toJSDate();
-    } catch (error) {
-      if (error instanceof CalendarError) {
-        throw error;
+      
+      if (event.end) {
+        convertedEnd = this.convertDateTime(
+          event.end, 
+          sourceTimeZone, 
+          validTimeZone
+        );
       }
-      throw new CalendarError(
-        'Failed to convert UTC date to timezone',
-        'CALENDAR_TIMEZONE_ERROR',
-        { 
-          utcStr, 
-          timeZone, 
-          originalError: error 
+      
+      // Create a new event object with converted times
+      return {
+        ...event,
+        start: convertedStart ? convertedStart.toISO() : event.start,
+        end: convertedEnd ? convertedEnd.toISO() : event.end,
+        extendedProps: {
+          ...event.extendedProps,
+          timezone: validTimeZone,
+          displayStart: convertedStart ? convertedStart.toFormat('h:mm a') : undefined,
+          displayEnd: convertedEnd ? convertedEnd.toFormat('h:mm a') : undefined,
+          displayDay: convertedStart ? convertedStart.toFormat('ccc') : undefined,
+          displayDate: convertedStart ? convertedStart.toFormat('MMM d') : undefined
         }
-      );
-    }
-  }
-
-  /**
-   * Gets a user-friendly display name for a timezone
-   * 
-   * @param timeZone - The timezone
-   * @returns The display name
-   */
-  static getTimeZoneDisplayName(timeZone: string): string {
-    try {
-      const validTimeZone = this.validateTimeZone(timeZone);
-      return CoreTimeZoneService.formatTimeZoneDisplay(validTimeZone);
+      };
     } catch (error) {
-      if (error instanceof CalendarError) {
-        throw error;
-      }
-      throw new CalendarError(
-        'Failed to get timezone display name',
-        'CALENDAR_TIMEZONE_ERROR',
-        { 
-          timeZone, 
-          originalError: error 
-        }
-      );
+      console.error('[TimeZoneService] Error converting event to user timezone:', error);
+      return event; // Return original event on error
     }
   }
 }

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, AlertCircle } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
@@ -11,7 +12,7 @@ import { SessionDidNotOccurDialog } from '@/components/dashboard/SessionDidNotOc
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import GoogleCalendarIntegration from '@/components/calendar/GoogleCalendarIntegration';
-import { TimeZoneService } from '@/utils/timezone';
+import { TimeZoneService } from '@/services/calendar/TimeZoneService';
 
 const ClinicianDashboard: React.FC = () => {
   const { userRole, userId } = useUser();
