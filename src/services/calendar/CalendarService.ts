@@ -5,6 +5,7 @@ import { AppointmentService } from './AppointmentService';
 import { TimeOffService } from './TimeOffService';
 import { RecurrenceService } from './RecurrenceService';
 import { CalendarError } from './CalendarErrorHandler';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * CalendarService
@@ -31,15 +32,47 @@ export class CalendarService {
     try {
       const validTimeZone = TimeZoneService.validateTimeZone(timeZone);
       
-      // Get events from each service in parallel
-      const [availability, appointments, timeOff] = await Promise.all([
-        this.getAvailabilityEvents(clinicianId, validTimeZone, startDate, endDate),
-        this.getAppointmentEvents(clinicianId, validTimeZone, startDate, endDate),
-        this.getTimeOffEvents(clinicianId, validTimeZone, startDate, endDate)
-      ]);
+      // Use the unified_calendar_view to get all events in one query
+      const { data, error } = await supabase
+        .from('unified_calendar_view')
+        .select('*')
+        .eq('clinician_id', clinicianId);
       
-      // Combine all events
-      return [...availability, ...appointments, ...timeOff];
+      if (error) {
+        throw new CalendarError(
+          'Failed to get calendar events from unified view',
+          'CALENDAR_DB_ERROR',
+          { clinicianId, timeZone, startDate, endDate, error }
+        );
+      }
+      
+      // Filter by date range if provided
+      let filteredData = data || [];
+      if (startDate && endDate) {
+        const startDateObj = typeof startDate === 'string' ? new Date(startDate) : startDate;
+        const endDateObj = typeof endDate === 'string' ? new Date(endDate) : endDate;
+        
+        filteredData = filteredData.filter(event => {
+          const eventEnd = new Date(event.end_time);
+          const eventStart = new Date(event.start_time);
+          return eventStart <= endDateObj && eventEnd >= startDateObj;
+        });
+      }
+      
+      // Convert to calendar events based on event_type
+      return filteredData.map(event => {
+        switch (event.event_type) {
+          case 'availability':
+            return this.convertToCalendarEvent(event, validTimeZone, 'availability');
+          case 'appointment':
+            return this.convertToCalendarEvent(event, validTimeZone, 'appointment');
+          case 'time_off':
+            return this.convertToCalendarEvent(event, validTimeZone, 'time_off');
+          default:
+            console.warn(`Unknown event type: ${event.event_type}`);
+            return this.convertToCalendarEvent(event, validTimeZone, 'general');
+        }
+      });
     } catch (error) {
       if (error instanceof CalendarError) {
         throw error;
@@ -850,6 +883,98 @@ export class CalendarService {
           replacementEvent, 
           originalError: error 
         }
+      );
+    }
+  }
+
+  /**
+   * Converts a unified calendar view event to a calendar event
+   *
+   * @param event - The unified calendar view event
+   * @param timeZone - The timezone to convert to
+   * @param eventType - The type of event
+   * @returns A calendar event
+   */
+  private static convertToCalendarEvent(
+    event: any,
+    timeZone: string,
+    eventType: CalendarEventType
+  ): CalendarEvent {
+    try {
+      const validTimeZone = TimeZoneService.validateTimeZone(timeZone);
+      
+      // Convert start and end times to the user's timezone
+      const start = TimeZoneService.convertTimeZone(
+        event.start_time,
+        event.time_zone || 'UTC',
+        validTimeZone
+      );
+      
+      const end = TimeZoneService.convertTimeZone(
+        event.end_time,
+        event.time_zone || 'UTC',
+        validTimeZone
+      );
+      
+      // Base calendar event properties
+      const calendarEvent: CalendarEvent = {
+        id: event.id,
+        title: event.title || 'Event',
+        start,
+        end,
+        allDay: event.all_day || false,
+        extendedProps: {
+          clinicianId: event.clinician_id,
+          eventType: eventType,
+          isActive: event.is_active,
+          recurrenceId: event.recurrence_id,
+          isRecurring: !!event.recurrence_id,
+          sourceTable: event.source_table,
+          timezone: validTimeZone,
+          sourceTimeZone: event.time_zone || 'UTC'
+        }
+      };
+      
+      // Add event type specific properties
+      switch (eventType) {
+        case 'availability':
+          calendarEvent.backgroundColor = '#4CAF50'; // Green
+          calendarEvent.borderColor = '#388E3C';
+          calendarEvent.textColor = '#FFFFFF';
+          calendarEvent.extendedProps.isAvailability = true;
+          break;
+        case 'appointment':
+          calendarEvent.backgroundColor = '#2196F3'; // Blue
+          calendarEvent.borderColor = '#1976D2';
+          calendarEvent.textColor = '#FFFFFF';
+          calendarEvent.extendedProps.status = event.status;
+          calendarEvent.extendedProps.clientId = event.client_id;
+          calendarEvent.extendedProps.description = event.notes;
+          calendarEvent.extendedProps.isAvailability = false;
+          break;
+        case 'time_off':
+          calendarEvent.backgroundColor = '#FF9800'; // Orange
+          calendarEvent.borderColor = '#F57C00';
+          calendarEvent.textColor = '#FFFFFF';
+          calendarEvent.extendedProps.description = event.reason;
+          calendarEvent.extendedProps.isAvailability = false;
+          break;
+        default:
+          calendarEvent.backgroundColor = '#9E9E9E'; // Grey
+          calendarEvent.borderColor = '#757575';
+          calendarEvent.textColor = '#FFFFFF';
+          calendarEvent.extendedProps.isAvailability = false;
+      }
+      
+      return calendarEvent;
+    } catch (error) {
+      if (error instanceof CalendarError) {
+        throw error;
+      }
+      throw new CalendarError(
+        'Failed to convert unified calendar view event to calendar event',
+        'CALENDAR_CONVERSION_ERROR',
+        { event, timeZone, eventType, originalError: error }
       );
     }
   }

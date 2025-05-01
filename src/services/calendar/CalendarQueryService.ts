@@ -134,7 +134,7 @@ export class CalendarQueryService {
       }
 
       let query = supabase
-        .from('calendar_events')
+        .from('unified_calendar_view')
         .select('*')
         .eq('clinician_id', validatedClinicianId)
         .eq('is_active', true);
@@ -142,7 +142,7 @@ export class CalendarQueryService {
       if (startDate && endDate) {
         const startISO = startDate.toISOString();
         const endISO = endDate.toISOString();
-        query = query.gte('start_time', startISO).lte('end_time', endISO);
+        query = query.gte('end_time', startISO).lte('start_time', endISO);
       }
 
       const { data, error } = await query;
@@ -226,7 +226,7 @@ export class CalendarQueryService {
       }
       
       const { data, error } = await supabase
-        .from('calendar_events')
+        .from('unified_calendar_view')
         .select('*')
         .eq('clinician_id', validatedClinicianId)
         .eq('is_active', true);
@@ -324,7 +324,7 @@ export class CalendarQueryService {
       const endDateISO = typeof endDate === 'string' ? endDate : endDate.toISOString();
 
       const { data, error } = await supabase
-        .from('calendar_events')
+        .from('unified_calendar_view')
         .select('*')
         .eq('clinician_id', validatedClinicianId)
         .gte('end_time', startDateISO)
@@ -421,7 +421,7 @@ export class CalendarQueryService {
       const dateISO = typeof date === 'string' ? date : date.toISOString();
 
       const { data, error } = await supabase
-        .from('calendar_events')
+        .from('unified_calendar_view')
         .select('*')
         .eq('clinician_id', validatedClinicianId)
         .gte('end_time', dateISO)
