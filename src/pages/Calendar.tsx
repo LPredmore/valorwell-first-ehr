@@ -14,6 +14,8 @@ import { useCalendarAuth } from '@/hooks/useCalendarAuth';
 import { useDialogs } from '@/context/DialogContext';
 import CalendarHeader from '@/components/calendar/CalendarHeader';
 import CalendarViewManager from '@/components/calendar/CalendarViewManager';
+import CalendarSidebar from '@/components/calendar/CalendarSidebar';
+import CalendarMainView from '@/components/calendar/CalendarMainView';
 import { useTimeZoneSync } from '@/hooks/useTimeZoneSync';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Info, AlertTriangle } from 'lucide-react';
@@ -31,6 +33,12 @@ import {
 } from '@/utils/calendarDebugUtils';
 import { formatAsUUID, isValidUUID } from '@/utils/validation/uuidUtils';
 
+/**
+ * CalendarPage
+ *
+ * Main container component for the calendar functionality.
+ * Implements the new calendar system architecture with improved component hierarchy.
+ */
 const CalendarPage: React.FC = () => {
   const { userRole, isLoading: isUserLoading, userId, isClinician } = useUser();
   const { isAuthenticated, isLoading: isAuthLoading, currentUserId } = useCalendarAuth();
@@ -372,7 +380,8 @@ const CalendarPage: React.FC = () => {
     <Layout>
       <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
         <div className="flex flex-col space-y-4">
-          <CalendarHeader 
+          {/* Header with navigation controls and clinician selector */}
+          <CalendarHeader
             clinicians={clinicians}
             selectedClinicianId={selectedClinicianId}
             loadingClinicians={loadingClinicians}
@@ -415,6 +424,7 @@ const CalendarPage: React.FC = () => {
             })}
           />
 
+          {/* Permission warnings and alerts */}
           {permissionWarning && (
             <Alert variant="warning" className="mt-2">
               <AlertTriangle className="h-4 w-4" />
@@ -468,13 +478,32 @@ const CalendarPage: React.FC = () => {
             </AlertDescription>
           </Alert>
 
-          <CalendarViewManager
-            key={`${calendarKey}-${forceRefreshKey}`}
-            clinicianId={selectedClinicianId}
-            timeZone={syncedTimeZone}
-            showAvailability={showAvailability}
-            onAvailabilityClick={handleAvailabilityClick}
-          />
+          {/* Main calendar content with sidebar and calendar view */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Sidebar with filters and legend */}
+            <div className="md:col-span-1">
+              <CalendarSidebar
+                showAvailability={showAvailability}
+                showAppointments={true}
+                showTimeOff={true}
+                setShowAvailability={setShowAvailability}
+                setShowAppointments={() => {}}
+                setShowTimeOff={() => {}}
+              />
+            </div>
+            
+            {/* Main calendar view */}
+            <div className="md:col-span-3">
+              <CalendarMainView
+                key={`${calendarKey}-${forceRefreshKey}`}
+                clinicianId={selectedClinicianId}
+                timeZone={syncedTimeZone}
+                showAvailability={showAvailability}
+                showAppointments={true}
+                showTimeOff={true}
+              />
+            </div>
+          </div>
         </div>
       </div>
 

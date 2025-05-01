@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
 import AvailabilitySlotList from './AvailabilitySlotList';
 import AvailabilityForm from './AvailabilityForm';
+import { PermissionLevel } from '@/services/PermissionService';
 
 export interface DayTabsProps {
   activeTab: DayOfWeek;
@@ -16,7 +17,7 @@ export interface DayTabsProps {
   isSubmitting: boolean;
   formError: string | null;
   retryCount: number;
-  permissionLevel?: 'full' | 'limited' | 'none';
+  permissionLevel?: PermissionLevel;
 }
 
 /**
@@ -35,7 +36,7 @@ const DayTabs: React.FC<DayTabsProps> = ({
   isSubmitting,
   formError,
   retryCount,
-  permissionLevel = 'full'
+  permissionLevel = 'admin'
 }) => {
   return (
     <Tabs defaultValue={activeTab} onValueChange={(value) => onTabChange(value as DayOfWeek)}>
@@ -49,12 +50,14 @@ const DayTabs: React.FC<DayTabsProps> = ({
         <TabsTrigger value="sunday">Sun</TabsTrigger>
       </TabsList>
       
-      {permissionLevel !== 'full' && (
+      {permissionLevel !== 'admin' && (
         <Alert variant="warning" className="mt-4">
           <Info className="h-4 w-4" />
           <AlertDescription>
             You may have limited permissions to manage this calendar.
-            {permissionLevel === 'none' ? " You can only view availability." : " Some actions may be restricted."}
+            {permissionLevel === 'none' ? " You can only view availability." :
+             permissionLevel === 'read' ? " You can only view availability." :
+             " Some actions may be restricted."}
           </AlertDescription>
         </Alert>
       )}
@@ -63,21 +66,21 @@ const DayTabs: React.FC<DayTabsProps> = ({
         <TabsContent key={day} value={day} className="p-4 bg-white border rounded-md mt-4">
           <h3 className="text-lg font-semibold mb-4 capitalize">{day}</h3>
           
-          <AvailabilitySlotList 
-            slots={weeklyAvailability[day as DayOfWeek]} 
+          <AvailabilitySlotList
+            slots={weeklyAvailability[day as DayOfWeek]}
             timeZone={timeZone}
             onDeleteSlot={onDeleteSlot}
-            permissionLevel={permissionLevel}
+            permissionLevel={permissionLevel as any}
           />
           
-          <AvailabilityForm 
+          <AvailabilityForm
             day={day as DayOfWeek}
             onAddSlot={onAddSlot}
             isSubmitting={isSubmitting}
             formError={formError}
             retryCount={retryCount}
             timeZone={timeZone}
-            permissionLevel={permissionLevel}
+            permissionLevel={permissionLevel as any}
           />
         </TabsContent>
       ))}

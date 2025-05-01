@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useReducer } from 'react';
 
 // Dialog types
-export type DialogType = 
+export type DialogType =
   | 'appointment'
   | 'availabilitySettings'
   | 'weeklyAvailability'
@@ -13,7 +13,9 @@ export type DialogType =
   | 'sessionDidNotOccur'
   | 'documentation'
   | 'viewAvailability'
-  | 'appointmentBooking';
+  | 'appointmentBooking'
+  | 'timeOff'
+  | 'eventTypeSelector';
 
 // Dialog props interface with stronger typing
 export interface DialogProps {

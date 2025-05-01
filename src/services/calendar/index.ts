@@ -1,27 +1,40 @@
+/**
+ * Calendar Services Index
+ * 
+ * This file exports all calendar-related services for easier imports.
+ */
 
-// Re-export all calendar services for easier imports
-export * from './CalendarFacade';
-export * from './CalendarQueryService';
-export * from './CalendarMutationService';
-export * from './CalendarErrorHandler';
-export * from './CalendarHealthService';
+// Export all services
+export { TimeZoneService } from './TimeZoneService';
+export { RecurrenceService } from './RecurrenceService';
+export { AvailabilityService } from './AvailabilityService';
+export { AppointmentService } from './AppointmentService';
+export { TimeOffService } from './TimeOffService';
+export { CalendarService } from './CalendarService';
+export { CalendarError, CalendarErrorHandler, type CalendarErrorCode } from './CalendarErrorHandler';
+
+// Export a default object with all services
+import { TimeZoneService } from './TimeZoneService';
+import { RecurrenceService } from './RecurrenceService';
+import { AvailabilityService } from './AvailabilityService';
+import { AppointmentService } from './AppointmentService';
+import { TimeOffService } from './TimeOffService';
+import { CalendarService } from './CalendarService';
+import { CalendarErrorHandler } from './CalendarErrorHandler';
 
 /**
- * Consolidated calendar services export
- * Provides a single entry point for all calendar-related functionality
+ * Calendar Services
+ * 
+ * A consolidated export of all calendar-related services.
  */
-import { CalendarService } from './CalendarFacade';
-import { CalendarQueryService } from './CalendarQueryService';
-import { CalendarMutationService } from './CalendarMutationService';
-import { CalendarErrorHandler } from './CalendarErrorHandler';
-import { CalendarHealthService } from './CalendarHealthService';
-
-export const CalendarServices = {
-  Facade: CalendarService,
-  Query: CalendarQueryService,
-  Mutation: CalendarMutationService,
-  ErrorHandler: CalendarErrorHandler,
-  Health: CalendarHealthService,
+const CalendarServices = {
+  Calendar: CalendarService,
+  TimeZone: TimeZoneService,
+  Recurrence: RecurrenceService,
+  Availability: AvailabilityService,
+  Appointment: AppointmentService,
+  TimeOff: TimeOffService,
+  ErrorHandler: CalendarErrorHandler
 };
 
 export default CalendarServices;

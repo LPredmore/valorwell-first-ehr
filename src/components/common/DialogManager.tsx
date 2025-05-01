@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useDialogs, DialogType } from '@/context/DialogContext';
+import { PermissionLevel } from '@/services/PermissionService';
 
 // Import all dialog components
 import AppointmentDialog from '@/components/calendar/AppointmentDialog';
@@ -11,6 +12,8 @@ import CalendarDiagnosticDialog from '@/components/calendar/CalendarDiagnosticDi
 import AppointmentDetailsDialog from '@/components/calendar/AppointmentDetailsDialog';
 import EditAppointmentDialog from '@/components/calendar/EditAppointmentDialog';
 import BookAppointmentDialog from '@/components/calendar/BookAppointmentDialog';
+import TimeOffDialog from '@/components/calendar/TimeOffDialog';
+import EventTypeSelector from '@/components/calendar/EventTypeSelector';
 import { SessionDidNotOccurDialog } from '@/components/dashboard/SessionDidNotOccurDialog';
 import { DocumentationDialog } from '@/components/dashboard/DocumentationDialog';
 import ViewAvailabilityDialog from '@/components/patient/ViewAvailabilityDialog';
@@ -53,7 +56,7 @@ const DialogManager: React.FC = () => {
           <AvailabilitySettingsDialog
             clinicianId={props.clinicianId || ''}
             onSettingsSaved={props.onSettingsSaved || (() => {})}
-            permissionLevel={props.permissionLevel || 'full'}
+            permissionLevel={mapPermissionLevel(props.permissionLevel) as any}
           />
         );
       
@@ -62,7 +65,7 @@ const DialogManager: React.FC = () => {
           <WeeklyAvailabilityDialog
             clinicianId={props.clinicianId || ''}
             onAvailabilityUpdated={props.onAvailabilityUpdated || (() => {})}
-            permissionLevel={props.permissionLevel || 'full'}
+            permissionLevel={mapPermissionLevel(props.permissionLevel) as any}
           />
         );
       
@@ -71,7 +74,7 @@ const DialogManager: React.FC = () => {
           <SingleAvailabilityDialog
             clinicianId={props.clinicianId || ''}
             onAvailabilityCreated={props.onAvailabilityCreated || (() => {})}
-            permissionLevel={props.permissionLevel || 'full'}
+            permissionLevel={mapPermissionLevel(props.permissionLevel) as any}
             userTimeZone={userTimeZone}
           />
         );
@@ -162,12 +165,65 @@ const DialogManager: React.FC = () => {
           />
         );
       
+      case 'timeOff':
+        return (
+          <TimeOffDialog
+            isOpen={true}
+            onClose={closeDialog}
+            timeOffId={props.timeOffId}
+            clinicianId={props.clinicianId || ''}
+            startTime={props.startTime ? new Date(props.startTime) : undefined}
+            endTime={props.endTime ? new Date(props.endTime) : undefined}
+            userTimeZone={userTimeZone}
+            onTimeOffCreated={props.onTimeOffCreated || (() => {})}
+            onTimeOffUpdated={props.onTimeOffUpdated || (() => {})}
+            onTimeOffDeleted={props.onTimeOffDeleted || (() => {})}
+          />
+        );
+      
+      case 'eventTypeSelector':
+        return (
+          <EventTypeSelector
+            isOpen={true}
+            onClose={closeDialog}
+            startTime={props.startTime ? new Date(props.startTime) : new Date()}
+            endTime={props.endTime ? new Date(props.endTime) : new Date()}
+            clinicianId={props.clinicianId || ''}
+            allDay={props.allDay || false}
+            onEventCreated={props.onEventCreated || (() => {})}
+          />
+        );
+      
       default:
         return null;
     }
   };
 
   return renderDialog();
+};
+
+/**
+ * Maps the old permission level format to the new PermissionLevel type
+ * @param oldPermissionLevel The old permission level ('full', 'limited', 'none')
+ * @returns The new permission level ('admin', 'write', 'read', 'none')
+ */
+const mapPermissionLevel = (oldPermissionLevel?: string): PermissionLevel => {
+  if (!oldPermissionLevel) return 'admin';
+  
+  switch (oldPermissionLevel) {
+    case 'full':
+      return 'admin';
+    case 'limited':
+      return 'write';
+    case 'none':
+      return 'none';
+    default:
+      // If it's already a valid PermissionLevel, return it
+      if (['admin', 'write', 'read', 'none'].includes(oldPermissionLevel)) {
+        return oldPermissionLevel as PermissionLevel;
+      }
+      return 'admin'; // Default to admin if unknown
+  }
 };
 
 export default DialogManager;

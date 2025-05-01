@@ -5,6 +5,25 @@ import { ensureUUID, formatAsUUID, isValidUUID } from '@/utils/validation/uuidUt
 import { ensureClinicianID, formatAsClinicianID } from '@/utils/validation/clinicianUtils';
 
 /**
+ * Permission levels for the application
+ * - none: No access to the resource
+ * - read: Can view the resource but not modify it
+ * - write: Can view and modify the resource
+ * - admin: Full control over the resource
+ */
+export type PermissionLevel = 'none' | 'read' | 'write' | 'admin';
+
+/**
+ * Resource types that can have permissions
+ */
+export type ResourceType = 'availability' | 'appointment' | 'timeOff';
+
+/**
+ * Actions that can be performed on resources
+ */
+export type PermissionAction = 'read' | 'create' | 'update' | 'delete';
+
+/**
  * Centralized service for handling permission checks throughout the application.
  * This service abstracts permission logic that was previously duplicated across
  * components and services.
@@ -260,26 +279,26 @@ export class PermissionService {
   /**
    * Gets the permission level for a user on a specific resource
    * @param userId The ID of the user making the request
-   * @param resourceType The type of resource being accessed (e.g., 'calendar', 'availability')
-   * @param resourceId The ID of the resource being accessed
-   * @returns Promise resolving to the permission level ('full', 'limited', or 'none')
+   * @param resourceType The type of resource being accessed
+   * @param resourceOwnerId The ID of the resource owner
+   * @returns Promise resolving to the permission level ('none', 'read', 'write', or 'admin')
    */
   static async getPermissionLevel(
     userId: string,
-    resourceType: string,
-    resourceId: string
-  ): Promise<'full' | 'limited' | 'none'> {
+    resourceType: ResourceType,
+    resourceOwnerId: string
+  ): Promise<PermissionLevel> {
     try {
-      if (!userId || !resourceType || !resourceId) {
+      if (!userId || !resourceType || !resourceOwnerId) {
         console.warn('[PermissionService] Missing required parameters for getPermissionLevel check', {
-          userId, resourceType, resourceId
+          userId, resourceType, resourceOwnerId
         });
         return 'none';
       }
 
       // Ensure IDs are valid UUIDs with better error handling
       let validUserId: string;
-      let validResourceId: string;
+      let validResourceOwnerId: string;
       
       try {
         validUserId = ensureUUID(userId, 'User');
@@ -301,79 +320,60 @@ export class PermissionService {
       }
       
       try {
-        validResourceId = ensureUUID(resourceId, 'Resource');
+        validResourceOwnerId = ensureUUID(resourceOwnerId, 'Resource');
       } catch (error) {
-        console.error('[PermissionService] Invalid resource ID format in getPermissionLevel:', error);
+        console.error('[PermissionService] Invalid resource owner ID format in getPermissionLevel:', error);
         
         // Try to format the ID if possible
-        const formattedResourceId = formatAsUUID(resourceId, {
+        const formattedResourceOwnerId = formatAsUUID(resourceOwnerId, {
           strictMode: true,
           logLevel: 'info'
         });
-        if (formattedResourceId !== resourceId) {
-          console.log('[PermissionService] Reformatted resource ID:', { original: resourceId, formatted: formattedResourceId });
-          validResourceId = formattedResourceId;
+        if (formattedResourceOwnerId !== resourceOwnerId) {
+          console.log('[PermissionService] Reformatted resource owner ID:', { original: resourceOwnerId, formatted: formattedResourceOwnerId });
+          validResourceOwnerId = formattedResourceOwnerId;
         } else {
-          console.error('[PermissionService] Could not format resource ID, using original value');
-          validResourceId = resourceId;
+          console.error('[PermissionService] Could not format resource owner ID, using original value');
+          validResourceOwnerId = resourceOwnerId;
         }
       }
 
       // Log the IDs being compared for debugging purposes
       console.log('[PermissionService] Comparing IDs for permission level check:', {
         userId: validUserId,
-        resourceId: validResourceId,
+        resourceOwnerId: validResourceOwnerId,
         resourceType,
-        match: validUserId === validResourceId
+        match: validUserId === validResourceOwnerId
       });
 
-      // If user is accessing their own resource, they have full access
-      if (validUserId === validResourceId) {
-        console.log('[PermissionService] User is accessing their own resource - full access granted');
-        return 'full';
+      // If user is the resource owner, they have admin access
+      if (validUserId === validResourceOwnerId) {
+        console.log('[PermissionService] User is the resource owner - admin access granted');
+        return 'admin';
       }
 
       // Check if user has admin role
       const isAdmin = await this.hasAdminAccess(validUserId);
       if (isAdmin) {
-        console.log('[PermissionService] User has admin role - full access granted');
-        return 'full';
+        console.log('[PermissionService] User has admin role - admin access granted');
+        return 'admin';
       }
 
-      // Handle specific resource types
+      // Default permissions based on resource type
       switch (resourceType) {
-        case 'calendar':
-          // Check database-level permissions
-          const canAccessCalendar = await authDebugUtils.checkPermissions('calendar_events', 'select');
-          if (!canAccessCalendar) {
-            console.log('[PermissionService] User cannot access calendar_events table');
-            return 'none';
-          }
-
-          // Run full diagnostic to check specific permissions
-          const diagnosticResults = await calendarPermissionDebug.runDiagnostic(
-            validUserId,
-            validResourceId
-          );
-
-          if (diagnosticResults.success) {
-            if (diagnosticResults.tests.calendarPermissions?.success) {
-              const canInsert = diagnosticResults.tests.calendarPermissions.canInsert;
-              return canInsert ? 'full' : 'limited';
-            } else {
-              return 'none';
-            }
-          } else {
-            // If diagnostic failed but we know they can access the calendar, give limited permissions
-            console.warn('[PermissionService] Permission diagnostic failed:', diagnosticResults.summary);
-            return 'limited';
-          }
-
         case 'availability':
-          // For availability, we only support full or none permissions currently
-          const canEdit = await this.canEditAvailability(validUserId, validResourceId);
-          return canEdit ? 'full' : 'none';
-
+          // Only owners and admins can manage availability
+          return 'read';
+          
+        case 'appointment':
+          // Clinicians can write to appointments they're involved in
+          const isInvolved = await this.isUserInvolvedInAppointment(validUserId, validResourceOwnerId);
+          return isInvolved ? 'write' : 'read';
+          
+        case 'timeOff':
+          // Only owners and admins can manage time off
+          return 'read';
+          
         default:
           console.warn(`[PermissionService] Unknown resource type: ${resourceType}`);
           return 'none';
@@ -382,6 +382,65 @@ export class PermissionService {
       console.error('[PermissionService] Error in getPermissionLevel:', error);
       // Default to limited permissions if there's an error but we're authenticated
       return 'none';
+    }
+  }
+
+  /**
+   * Check if a user is involved in an appointment (as client or clinician)
+   */
+  private static async isUserInvolvedInAppointment(
+    userId: string,
+    appointmentId: string
+  ): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('client_id, clinician_id')
+        .eq('id', appointmentId)
+        .single();
+        
+      if (error || !data) {
+        return false;
+      }
+      
+      return data.client_id === userId || data.clinician_id === userId;
+    } catch (error) {
+      console.error('[PermissionService] Error checking appointment involvement:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if a user can perform an action on a resource
+   * @param userId The ID of the user making the request
+   * @param resourceType The type of resource being accessed
+   * @param resourceOwnerId The ID of the resource owner
+   * @param action The action being performed
+   * @returns Promise resolving to a boolean indicating if the action is allowed
+   */
+  static async canPerformAction(
+    userId: string,
+    resourceType: ResourceType,
+    resourceOwnerId: string,
+    action: PermissionAction
+  ): Promise<boolean> {
+    try {
+      const permissionLevel = await this.getPermissionLevel(userId, resourceType, resourceOwnerId);
+      
+      switch (action) {
+        case 'read':
+          return permissionLevel !== 'none';
+        case 'create':
+        case 'update':
+          return permissionLevel === 'write' || permissionLevel === 'admin';
+        case 'delete':
+          return permissionLevel === 'admin';
+        default:
+          return false;
+      }
+    } catch (error) {
+      console.error('[PermissionService] Error in canPerformAction:', error);
+      return false;
     }
   }
 
@@ -461,26 +520,35 @@ export class PermissionService {
   /**
    * Throws an error if the user doesn't have permission for the specified action
    * @param userId The ID of the user making the request
-   * @param targetId The ID of the resource being accessed
+   * @param resourceType The type of resource being accessed
+   * @param resourceOwnerId The ID of the resource owner
    * @param action The action being performed
    * @throws Error if the user doesn't have permission
    */
   static async enforcePermission(
     userId: string,
-    targetId: string,
-    action: 'view' | 'edit' | 'delete'
+    resourceType: ResourceType,
+    resourceOwnerId: string,
+    action: PermissionAction
   ): Promise<void> {
     try {
-      const hasPermission = await this.verifyCurrentUserPermission(targetId, action);
+      const hasPermission = await this.canPerformAction(userId, resourceType, resourceOwnerId, action);
       
       if (!hasPermission) {
         const actionMap = {
-          view: 'view',
-          edit: 'edit',
+          read: 'view',
+          create: 'create',
+          update: 'edit',
           delete: 'delete'
         };
         
-        throw new Error(`Permission denied: You don't have permission to ${actionMap[action]} this resource.`);
+        const resourceTypeMap = {
+          availability: 'availability',
+          appointment: 'appointment',
+          timeOff: 'time off'
+        };
+        
+        throw new Error(`Permission denied: You don't have permission to ${actionMap[action]} this ${resourceTypeMap[resourceType]}.`);
       }
     } catch (error) {
       console.error('[PermissionService] Error enforcing permission:', error);
@@ -488,14 +556,15 @@ export class PermissionService {
       // Add detailed diagnostic information to the error
       const diagnosticInfo = {
         userId,
-        targetId,
+        resourceOwnerId,
+        resourceType,
         action,
         timestamp: new Date().toISOString()
       };
       
       // Run a permission diagnostic if possible
       try {
-        const diagnostic = await calendarPermissionDebug.runDiagnostic(userId, targetId);
+        const diagnostic = await calendarPermissionDebug.runDiagnostic(userId, resourceOwnerId);
         throw new Error(`Permission denied: ${(error as Error).message}\nDiagnostic: ${diagnostic.summary}`);
       } catch (diagError) {
         // If diagnostic fails, throw the original error with basic info

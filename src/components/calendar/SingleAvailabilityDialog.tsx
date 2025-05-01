@@ -25,12 +25,13 @@ import {
   ConflictError,
   formatErrorForUser
 } from '@/utils/errors';
+import { PermissionLevel } from '@/services/PermissionService';
 
 interface SingleAvailabilityDialogProps {
   clinicianId: string;
   userTimeZone: string;
   onAvailabilityCreated: () => void;
-  permissionLevel?: 'full' | 'limited' | 'none';
+  permissionLevel?: PermissionLevel;
 }
 
 // Define the form schema for availability
@@ -59,7 +60,7 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
   clinicianId,
   userTimeZone,
   onAvailabilityCreated,
-  permissionLevel = 'full'
+  permissionLevel = 'admin'
 }) => {
   const { state, closeDialog } = useDialogs();
   const isOpen = state.type === 'singleAvailability';
@@ -155,7 +156,7 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
       }
 
       // Permission check
-      if (permissionLevel === 'none') {
+      if (permissionLevel === 'none' || permissionLevel === 'read') {
         throw new PermissionError('You do not have permission to create availability slots', {
           userMessage: 'You do not have permission to create availability slots',
           resource: 'availability',
@@ -163,7 +164,7 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
         });
       }
 
-      if (clinicianId !== currentUserId && permissionLevel !== 'full') {
+      if (clinicianId !== currentUserId && permissionLevel !== 'admin') {
         console.warn('[SingleAvailabilityDialog] User may have limited permissions', {
           currentUserId,
           clinicianId,
@@ -220,7 +221,7 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
-          {permissionLevel !== 'full' && clinicianId !== currentUserId && (
+          {permissionLevel !== 'admin' && clinicianId !== currentUserId && (
             <Alert variant="warning">
               <Info className="h-4 w-4" />
               <AlertDescription>
@@ -299,9 +300,9 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
         
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onClose()} disabled={isSubmitting}>Cancel</Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={isSubmitting || permissionLevel === 'none'}
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || permissionLevel === 'none' || permissionLevel === 'read'}
           >
             {isSubmitting ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />

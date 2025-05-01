@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogFooter
@@ -17,19 +17,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useDialogs } from '@/context/DialogContext';
+import { PermissionLevel } from '@/services/PermissionService';
 
-// Add permissionLevel to the props
 interface AvailabilitySettingsDialogProps {
   clinicianId: string;
   onSettingsSaved?: () => void;
-  permissionLevel?: 'full' | 'limited' | 'none';
+  permissionLevel?: PermissionLevel;
   error?: string | null;
 }
 
 const AvailabilitySettingsDialog: React.FC<AvailabilitySettingsDialogProps> = ({
   clinicianId,
   onSettingsSaved,
-  permissionLevel = 'full',
+  permissionLevel = 'admin',
   error
 }) => {
   const { isAvailabilitySettingsOpen: isOpen, closeAvailabilitySettings: onClose } = useDialogs();
@@ -68,7 +68,7 @@ const AvailabilitySettingsDialog: React.FC<AvailabilitySettingsDialogProps> = ({
 
   // Add permission check to handleSave
   const handleSave = async () => {
-    if (permissionLevel === 'none') {
+    if (permissionLevel === 'none' || permissionLevel === 'read') {
       return;
     }
     
@@ -113,12 +113,14 @@ const AvailabilitySettingsDialog: React.FC<AvailabilitySettingsDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
         
-        {permissionLevel !== 'full' && (
+        {permissionLevel !== 'admin' && (
           <Alert variant="warning" className="mt-2">
             <Info className="h-4 w-4" />
             <AlertDescription>
               You may have limited permissions to manage these settings.
-              {permissionLevel === 'none' ? " You can only view the settings." : " Some actions may be restricted."}
+              {permissionLevel === 'none' || permissionLevel === 'read' ?
+                " You can only view the settings." :
+                " Some actions may be restricted."}
             </AlertDescription>
           </Alert>
         )}
@@ -144,10 +146,10 @@ const AvailabilitySettingsDialog: React.FC<AvailabilitySettingsDialogProps> = ({
                 <div className="col-span-3">
                   <Select 
                     value={settings.timeZone} 
-                    onValueChange={(value) => 
+                    onValueChange={(value) =>
                       setSettings({...settings, timeZone: value})
                     }
-                    disabled={permissionLevel === 'none'}
+                    disabled={permissionLevel === 'none' || permissionLevel === 'read'}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select time zone" />
@@ -175,7 +177,7 @@ const AvailabilitySettingsDialog: React.FC<AvailabilitySettingsDialogProps> = ({
                     step={15}
                     value={settings.defaultSlotDuration}
                     onChange={(e) => setSettings({...settings, defaultSlotDuration: Number(e.target.value)})}
-                    disabled={permissionLevel === 'none'}
+                    disabled={permissionLevel === 'none' || permissionLevel === 'read'}
                   />
                   <p className="text-xs text-gray-500">
                     Default length of time for appointment slots (in minutes)
@@ -194,7 +196,7 @@ const AvailabilitySettingsDialog: React.FC<AvailabilitySettingsDialogProps> = ({
                     min={0}
                     value={settings.minNoticeDays}
                     onChange={(e) => setSettings({...settings, minNoticeDays: Number(e.target.value)})}
-                    disabled={permissionLevel === 'none'}
+                    disabled={permissionLevel === 'none' || permissionLevel === 'read'}
                   />
                   <p className="text-xs text-gray-500">
                     Minimum number of days in advance clients must schedule
@@ -213,7 +215,7 @@ const AvailabilitySettingsDialog: React.FC<AvailabilitySettingsDialogProps> = ({
                     min={1}
                     value={settings.maxAdvanceDays}
                     onChange={(e) => setSettings({...settings, maxAdvanceDays: Number(e.target.value)})}
-                    disabled={permissionLevel === 'none'}
+                    disabled={permissionLevel === 'none' || permissionLevel === 'read'}
                   />
                   <p className="text-xs text-gray-500">
                     Maximum number of days in advance clients can schedule
@@ -231,9 +233,9 @@ const AvailabilitySettingsDialog: React.FC<AvailabilitySettingsDialogProps> = ({
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                disabled={isSubmitting || permissionLevel === 'none'}
+              <Button
+                type="submit"
+                disabled={isSubmitting || permissionLevel === 'none' || permissionLevel === 'read'}
               >
                 {isSubmitting ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />

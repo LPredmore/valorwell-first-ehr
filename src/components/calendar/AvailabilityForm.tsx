@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Loader2, Plus } from 'lucide-react';
 import { DayOfWeek } from '@/types/availability';
+import { PermissionLevel } from '@/services/PermissionService';
 
 export interface AvailabilityFormProps {
   day: DayOfWeek;
@@ -13,7 +14,7 @@ export interface AvailabilityFormProps {
   formError: string | null;
   retryCount: number;
   timeZone: string;
-  permissionLevel?: 'full' | 'limited' | 'none';
+  permissionLevel?: PermissionLevel;
 }
 
 /**
@@ -30,7 +31,7 @@ const AvailabilityForm: React.FC<AvailabilityFormProps> = ({
   formError,
   retryCount,
   timeZone,
-  permissionLevel = 'full'
+  permissionLevel = 'admin'
 }) => {
   const [newStartTime, setNewStartTime] = useState('09:00');
   const [newEndTime, setNewEndTime] = useState('10:00');
@@ -39,7 +40,7 @@ const AvailabilityForm: React.FC<AvailabilityFormProps> = ({
     await onAddSlot(newStartTime, newEndTime);
   };
 
-  if (permissionLevel === 'none') {
+  if (permissionLevel === 'none' || permissionLevel === 'read') {
     return null;
   }
 

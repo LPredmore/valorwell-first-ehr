@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { AvailabilitySlot } from '@/types/appointment';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { PermissionLevel } from '@/services/PermissionService';
 
 export interface AvailabilitySlotListProps {
   slots: AvailabilitySlot[];
   timeZone: string;
   onDeleteSlot: (slotId: string, isRecurring: boolean) => void;
-  permissionLevel?: 'full' | 'limited' | 'none';
+  permissionLevel?: PermissionLevel;
 }
 
 /**
@@ -23,7 +24,7 @@ const AvailabilitySlotList: React.FC<AvailabilitySlotListProps> = ({
   slots = [],
   timeZone,
   onDeleteSlot,
-  permissionLevel = 'full'
+  permissionLevel = 'admin'
 }) => {
   const formatTimeDisplay = (timeStr: string): string => {
     if (!timeStr) return '';
@@ -52,7 +53,7 @@ const AvailabilitySlotList: React.FC<AvailabilitySlotListProps> = ({
                 <span className="text-sm">
                   {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
                 </span>
-                {permissionLevel !== 'none' && (
+                {(permissionLevel === 'write' || permissionLevel === 'admin') && (
                   <Button
                     variant="ghost"
                     size="sm"

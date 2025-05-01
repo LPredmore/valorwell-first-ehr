@@ -16,10 +16,12 @@ import AvailabilityForm from './AvailabilityForm';
 import DeleteConfirmationDialog from './DeleteConfirmationDialog';
 import DayTabs from './DayTabs';
 
+import { PermissionLevel } from '@/services/PermissionService';
+
 interface WeeklyAvailabilityDialogProps {
   clinicianId: string;
   onAvailabilityUpdated?: () => void;
-  permissionLevel?: 'full' | 'limited' | 'none';
+  permissionLevel?: PermissionLevel;
 }
 
 /**
@@ -32,7 +34,7 @@ interface WeeklyAvailabilityDialogProps {
 const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   clinicianId,
   onAvailabilityUpdated,
-  permissionLevel = 'full'
+  permissionLevel = 'admin'
 }) => {
   const { state, closeDialog } = useDialogs();
   const isOpen = state.type === 'weeklyAvailability';
@@ -83,7 +85,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   }, [isOpen]);
 
   const handleDeleteSlot = (slotId: string, isRecurring: boolean = false) => {
-    if (permissionLevel === 'none') {
+    if (permissionLevel === 'none' || permissionLevel === 'read') {
       toast({
         title: "Permission Denied",
         description: "You don't have permission to delete availability slots",
@@ -238,7 +240,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       return;
     }
 
-    if (permissionLevel === 'none') {
+    if (permissionLevel === 'none' || permissionLevel === 'read') {
       const errorMessage = "You do not have permission to create availability slots";
       setFormError(errorMessage);
       toast({
