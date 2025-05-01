@@ -1,0 +1,223 @@
+-- Table Definition
+CREATE TABLE public.appointments (
+    id uuid NOT NULL DEFAULT gen_random_uuid(),
+    client_id uuid NOT NULL,
+    clinician_id uuid NOT NULL,
+    date date NOT NULL,
+    start_time time without time zone NOT NULL,
+    end_time time without time zone NOT NULL,
+    type text NOT NULL,
+    notes text,
+    status text NOT NULL DEFAULT 'scheduled'::text,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    updated_at timestamp with time zone NOT NULL DEFAULT now(),
+    video_room_url text,
+    appointment_recurring text,
+    recurring_group_id uuid,
+    appointment_datetime timestamp with time zone,
+    appointment_end_datetime timestamp with time zone,
+    source_time_zone text NOT NULL DEFAULT 'America/Chicago'::text
+);
+
+-- Primary Key Constraint (identified from the index)
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT appointments_pkey PRIMARY KEY (id);
+
+-- Enable Row Level Security
+ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
+
+-- Indexes
+CREATE INDEX idx_appointments_datetime ON public.appointments USING btree (appointment_datetime);
+CREATE INDEX idx_appointments_recurring_group_id ON public.appointments USING btree (recurring_group_id);
+CREATE INDEX appointments_clinician_date_idx ON public.appointments USING btree (clinician_id, date);
+CREATE INDEX appointments_date_time_idx ON public.appointments USING btree (date, start_time, end_time);
+
+-- Foreign Key Constraints
+-- Note: No foreign key constraints were explicitly defined in the database,
+-- but based on column names, there are implicit relationships to:
+-- - client_id likely references clients.id
+-- - clinician_id likely references profiles.id or clinicians.id
+
+-- Triggers
+CREATE TRIGGER validate_clinician_id_appointments BEFORE INSERT OR UPDATE ON public.appointments 
+FOR EACH ROW EXECUTE FUNCTION public.validate_clinician_id();
+
+-- Related Functions
+-- Function: validate_clinician_id
+CREATE OR REPLACE FUNCTION public.validate_clinician_id()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $function$
+BEGIN
+  -- Attempt to format the clinician_id using our standardize_uuid function
+  -- This will raise an exception if the ID is not a valid UUID or cannot be formatted as one
+  IF NEW.clinician_id IS NOT NULL THEN
+    NEW.clinician_id = standardize_uuid(NEW.clinician_id::text);
+    
+    -- Verify the clinician exists in the profiles table
+    IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = NEW.clinician_id) THEN
+      RAISE WARNING 'Clinician ID % does not exist in profiles table', NEW.clinician_id;
+      -- We don't throw an error here, just log a warning to prevent blocking operations
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$function$;
+
+-- Function: standardize_uuid
+CREATE OR REPLACE FUNCTION public.standardize_uuid(input_id text)
+RETURNS uuid
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+  clean_id TEXT;
+  formatted_uuid TEXT;
+BEGIN
+  -- Return NULL if input is NULL
+  IF input_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+  
+  -- If already a valid UUID, return it
+  IF input_id ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
+    RETURN input_id::UUID;
+  END IF;
+  
+  -- Remove all non-alphanumeric characters
+  clean_id := regexp_replace(lower(input_id), '[^a-f0-9]', '', 'g');
+  
+  -- Check if we have exactly 32 hex characters
+  IF length(clean_id) = 32 THEN
+    -- Insert hyphens in the correct positions
+    formatted_uuid := 
+      substring(clean_id from 1 for 8) || '-' || 
+      substring(clean_id from 9 for 4) || '-' || 
+      substring(clean_id from 13 for 4) || '-' || 
+      substring(clean_id from 17 for 4) || '-' || 
+      substring(clean_id from 21 for 12);
+    
+    -- Verify the formatted string is a valid UUID
+    IF formatted_uuid ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
+      RETURN formatted_uuid::UUID;
+    END IF;
+  END IF;
+  
+  -- If we couldn't format it as a UUID, raise an exception
+  RAISE EXCEPTION 'Invalid UUID format: %', input_id;
+END;
+$function$;
+
+-- Related Views
+-- View: unified_calendar_view
+CREATE OR REPLACE VIEW public.unified_calendar_view AS
+  -- Calendar events (availability, etc.)
+  SELECT
+    id,
+    clinician_id,
+    event_type,
+    title,
+    start_time,
+    end_time,
+    is_active,
+    recurrence_id,
+    all_day,
+    'calendar_event' as source_table
+  FROM 
+    public.calendar_events
+  
+  UNION ALL
+  
+  -- Appointments
+  SELECT
+    id,
+    clinician_id,
+    'appointment' as event_type,
+    COALESCE(type, 'Appointment') as title,
+    COALESCE(appointment_datetime, (date || ' ' || start_time)::timestamp) as start_time,
+    COALESCE(appointment_end_datetime, (date || ' ' || end_time)::timestamp) as end_time,
+    (status = 'scheduled') as is_active,
+    recurring_group_id as recurrence_id,
+    false as all_day,
+    'appointments' as source_table
+  FROM 
+    public.appointments
+  
+  UNION ALL
+  
+  -- Time off
+  SELECT
+    id,
+    clinician_id,
+    'time_off' as event_type,
+    COALESCE(reason, 'Time Off') as title,
+    (date || ' ' || start_time)::timestamp as start_time,
+    (date || ' ' || end_time)::timestamp as end_time,
+    true as is_active,
+    NULL as recurrence_id,
+    all_day,
+    'time_off' as source_table
+  FROM 
+    public.time_off;
+
+
+
+
+
+
+
+
+
+
+Table Structure Explanation
+The appointments table is designed to store appointment information in a clinic or healthcare setting. Here's a detailed explanation of its structure and components:
+
+Core Table Definition
+Basic Columns:
+
+id (UUID): Primary key with auto-generation using gen_random_uuid()
+client_id (UUID): References the client/patient for the appointment
+clinician_id (UUID): References the healthcare provider for the appointment
+date (Date): The appointment date
+start_time and end_time (Time): The scheduled start and end times
+type (Text): The type of appointment (e.g., "Initial Consultation", "Follow-up")
+notes (Text, Nullable): Optional notes for the appointment
+status (Text): Status of the appointment, defaults to "scheduled"
+Advanced Features:
+
+video_room_url (Text, Nullable): For telehealth/virtual appointments
+appointment_recurring (Text, Nullable): Information about recurring appointments
+recurring_group_id (UUID, Nullable): Groups recurring appointment instances
+Timestamp Fields:
+
+created_at and updated_at: Standard audit timestamps
+appointment_datetime and appointment_end_datetime: Full timestamp representations of start and end times
+source_time_zone (Text): Default "America/Chicago", tracks the original timezone
+Database Constraints and Indexes
+Primary Key: The id column is the primary key
+Row Level Security: Enabled on this table, but no specific policies were found
+Indexes:
+appointments_pkey: Primary key index on id
+idx_appointments_datetime: Index on appointment_datetime for efficient date searches
+idx_appointments_recurring_group_id: Index for grouping recurring appointments
+appointments_clinician_date_idx: Compound index on (clinician_id, date) for filtering by provider and date
+appointments_date_time_idx: Compound index on (date, start_time, end_time) for time range queries
+Triggers and Data Validation
+The table has a validate_clinician_id_appointments trigger that executes the validate_clinician_id() function before INSERT or UPDATE operations. This trigger:
+
+Ensures clinician_id is a valid UUID format using the standardize_uuid() function
+Issues a warning (but doesn't prevent the operation) if the clinician ID doesn't exist in the profiles table
+Integration with Other Components
+Unified Calendar View: The appointments table is integrated into the unified_calendar_view view, which provides a unified representation of calendar events from three sources:
+
+calendar_events table
+appointments table
+time_off table
+This view standardizes the data model across these sources, allowing for unified calendar operations and displays.
+
+Usage Considerations
+Time Zone Handling: The table stores both separate date/time fields and full timestamps, with a source timezone field for conversion purposes
+UUID Validation: Strong validation for clinician IDs improves data integrity
+Recurring Appointments: Support for recurring appointments through recurring_group_id
+Performance: Multiple indexes support various query patterns
+This comprehensive structure supports a wide range of appointment management functionality while maintaining data integrity through constraints, triggers, and appropriate indexing.

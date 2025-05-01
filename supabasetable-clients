@@ -1,0 +1,204 @@
+-- Table Definition
+CREATE TABLE public.clients (
+    id UUID NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    client_first_name TEXT,
+    client_last_name TEXT,
+    client_preferred_name TEXT,
+    client_email TEXT,
+    client_phone TEXT,
+    client_date_of_birth DATE,
+    client_age INTEGER,
+    client_gender TEXT,
+    client_gender_identity TEXT,
+    client_state TEXT,
+    client_time_zone TEXT,
+    client_minor TEXT,
+    client_status TEXT DEFAULT 'Waiting'::text,
+    client_assigned_therapist TEXT,
+    client_referral_source TEXT,
+    client_self_goal TEXT,
+    role app_role NOT NULL DEFAULT 'client'::app_role,
+    client_diagnosis TEXT[] DEFAULT '{}'::text[],
+    client_relationship TEXT,
+    client_is_profile_complete TEXT,
+
+    -- Insurance-related fields: Primary
+    client_insurance_company_primary TEXT,
+    client_policy_number_primary TEXT,
+    client_group_number_primary TEXT,
+    client_subscriber_name_primary TEXT,
+    client_insurance_type_primary TEXT,
+    client_subscriber_dob_primary DATE,
+    client_subscriber_relationship_primary TEXT,
+
+    -- Insurance-related fields: Secondary
+    client_insurance_company_secondary TEXT,
+    client_policy_number_secondary TEXT,
+    client_group_number_secondary TEXT,
+    client_subscriber_name_secondary TEXT,
+    client_insurance_type_secondary TEXT,
+    client_subscriber_dob_secondary DATE,
+    client_subscriber_relationship_secondary TEXT,
+
+    -- Insurance-related fields: Tertiary
+    client_insurance_company_tertiary TEXT,
+    client_policy_number_tertiary TEXT,
+    client_group_number_tertiary TEXT,
+    client_subscriber_name_tertiary TEXT,
+    client_insurance_type_tertiary TEXT,
+    client_subscriber_dob_tertiary DATE,
+    client_subscriber_relationship_tertiary TEXT,
+
+    -- VA and military insurance fields
+    client_vacoverage TEXT,
+    client_champva TEXT,
+    client_tricare_beneficiary_category TEXT,
+    client_tricare_sponsor_name TEXT,
+    client_tricare_sponsor_branch TEXT,
+    client_tricare_sponsor_id TEXT,
+    client_tricare_plan TEXT,
+    client_tricare_region TEXT,
+    client_tricare_policy_id TEXT,
+    client_tricare_has_referral TEXT,
+    client_tricare_referral_number TEXT,
+    client_branchOS TEXT,
+    client_recentdischarge TEXT,
+    client_disabilityrating TEXT,
+
+    -- Treatment plan fields
+    client_planlength TEXT,
+    client_treatmentfrequency TEXT,
+    client_problem TEXT,
+    client_treatmentgoal TEXT,
+    client_primaryobjective TEXT,
+    client_secondaryobjective TEXT,
+    client_tertiaryobjective TEXT,
+    client_intervention1 TEXT,
+    client_intervention2 TEXT,
+    client_intervention3 TEXT,
+    client_intervention4 TEXT,
+    client_intervention5 TEXT,
+    client_intervention6 TEXT,
+    client_nexttreatmentplanupdate DATE,
+    client_treatmentplan_startdate DATE,
+    client_privatenote TEXT,
+
+    -- Clinical assessment fields (mental status exam)
+    client_appearance TEXT,
+    client_attitude TEXT,
+    client_behavior TEXT,
+    client_speech TEXT,
+    client_affect TEXT,
+    client_thoughtprocess TEXT,
+    client_perception TEXT,
+    client_orientation TEXT,
+    client_memoryconcentration TEXT,
+    client_insightjudgement TEXT,
+    client_mood TEXT,
+    client_substanceabuserisk TEXT,
+    client_suicidalideation TEXT,
+    client_homicidalideation TEXT,
+    client_functioning TEXT,
+    client_prognosis TEXT,
+    client_progress TEXT,
+    client_sessionnarrative TEXT,
+    client_medications TEXT,
+    client_personsinattendance TEXT,
+    client_currentsymptoms TEXT,
+    client_temppassword TEXT,
+
+    PRIMARY KEY (id)
+);
+
+-- Triggers
+CREATE TRIGGER set_updated_at_timestamp
+BEFORE UPDATE ON public.clients
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Comment
+COMMENT ON TABLE public.clients IS 'Detailed client information including personal, insurance, and treatment data';
+
+
+
+
+
+
+
+
+
+
+Clients Table Structure
+The clients table has the following key characteristics:
+
+Primary Identification
+
+id: UUID that serves as the primary key
+This appears to link to the auth.users and/or profiles table based on application code
+Basic Client Information
+
+Personal details: first_name, last_name, preferred_name, email, phone
+Demographic data: date_of_birth, age, gender, gender_identity, state
+Status fields: client_status (default 'Waiting'), client_minor, client_time_zone
+Healthcare Relationship Management
+
+client_assigned_therapist: Links to a clinician (presumably by ID)
+client_referral_source: Tracks how the client was referred
+client_self_goal: Client's personal goals for therapy
+client_relationship: Relationship status or type
+Insurance Information
+
+Structured in three tiers: primary, secondary, and tertiary insurance
+Each tier includes company, policy number, group number, subscriber information
+Specific fields for VA/military insurance: TRICARE, CHAMPVA, etc.
+Clinical Documentation
+
+Treatment plan fields: problem statement, goals, objectives, interventions
+Mental status examination components: appearance, behavior, mood, etc.
+Risk assessment fields: substance abuse risk, suicidal/homicidal ideation
+Progress tracking: functioning, prognosis, progress notes
+Timestamps and System Fields
+
+created_at and updated_at: Standard timestamps
+role: Uses the app_role enum (default 'client')
+client_temppassword: Temporary password field
+Table Relationships
+The clients table has several implied relationships based on field names:
+
+Relationship with Users/Profiles
+
+The id field likely links to auth.users or profiles
+This creates a one-to-one relationship between a user account and client record
+Relationship with Clinicians
+
+client_assigned_therapist appears to reference a clinician ID
+Creates a many-to-one relationship (many clients can have one therapist)
+Relationship with Appointments
+
+Referenced by the appointments table through client_id
+Enables tracking of client appointments
+Relationship with Clinical Documents
+
+Referenced by various clinical document tables
+Allows for storage of treatment plans, session notes, etc.
+Data Organization and Design
+The table design reveals several interesting aspects:
+
+Comprehensive Single-Table Approach
+
+Combines demographic, insurance, and clinical data in one table
+This approach simplifies queries but results in a wide table with many columns
+Flexible Schema with Nullable Fields
+
+Most fields are nullable, allowing for incremental data collection
+Supports various client scenarios and specializations
+Domain-Specific Field Organization
+
+Fields are logically grouped by domain (personal, insurance, clinical)
+Uses consistent naming conventions with "client_" prefix
+Integrated Treatment Planning
+
+Contains fields for treatment objectives and interventions
+Supports up to 6 interventions and 3 treatment objectives
