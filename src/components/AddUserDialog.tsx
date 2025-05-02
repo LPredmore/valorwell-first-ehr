@@ -1,110 +1,142 @@
-import React, { useState } from 'react';
+
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import { useToast } from "@/hooks/use-toast"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { generateRandomPassword } from '@/utils/passwordUtils';
 
 interface AddUserDialogProps {
   open: boolean;
-  onClose: () => void;
+  onOpenChange: (open: boolean) => void;
+  onUserAdded: () => void;
 }
 
-interface FormValues {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  role: string;
-  password?: string;
-}
-
-const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose }) => {
+export const AddUserDialog = ({ open, onOpenChange, onUserAdded }: AddUserDialogProps) => {
+  const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [role, setRole] = useState('client');
+  const [phone, setPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [signupError, setSignupError] = useState<string | null>(null);
-  const { toast } = useToast();
 
-  const signUp = async (userData: FormValues) => {
+  const resetForm = () => {
+    setEmail('');
+    setFirstName('');
+    setLastName('');
+    setRole('client');
+    setPhone('');
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onOpenChange(false);
+  };
+
+  const validateForm = () => {
+    if (!email.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Email is required',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    if (!firstName.trim()) {
+      toast({
+        title: 'Error',
+        description: 'First name is required',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    if (!lastName.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Last name is required',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+    
     setIsSubmitting(true);
     
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password || generateRandomPassword(),
-        options: {
-          data: {
-            first_name: userData.firstName,
-            last_name: userData.lastName,
-            phone: userData.phone,
-            role: userData.role
-          }
+      // Generate a random password for the user
+      const tempPassword = Math.random().toString(36).slice(-8);
+      
+      // Create the user in Supabase Auth
+      const { data, error } = await supabase.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          first_name: firstName,
+          last_name: lastName,
+          role,
+          phone,
+          temp_password: tempPassword
         }
       });
-
+      
       if (error) {
-        setSignupError(error.message);
-        toast({
-          title: "Error",
-          description: `Failed to create user: ${error.message}`,
-          variant: "destructive",
-        });
-        return;
+        throw error;
       }
       
       toast({
-        title: "Success",
-        description: `Created user ${userData.email}`,
+        title: 'Success',
+        description: `User ${firstName} ${lastName} has been created successfully`,
       });
       
-      onClose();
+      onUserAdded();
+      handleClose();
     } catch (error: any) {
-      setSignupError(error.message || "An unknown error occurred");
+      console.error('Error adding user:', error);
       toast({
-        title: "Error",
-        description: `Failed to create user: ${error.message}`,
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to add user. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    const form = event.target as HTMLFormElement;
-    const formData = new FormData(form);
-
-    const userData: FormValues = {
-      firstName: formData.get('firstName') as string,
-      lastName: formData.get('lastName') as string,
-      email: formData.get('email') as string,
-      phone: formData.get('phone') as string,
-      role: formData.get('role') as string,
-    };
-
-    await signUp(userData);
-  };
-
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add User</DialogTitle>
+          <DialogTitle>Add New User</DialogTitle>
           <DialogDescription>
-            Create a new user account.
+            Enter the details for the new user. A temporary password will be generated.
           </DialogDescription>
         </DialogHeader>
+        
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
@@ -112,72 +144,81 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose }) => {
                 First Name
               </Label>
               <Input
-                type="text"
                 id="firstName"
-                name="firstName"
                 className="col-span-3"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
                 required
               />
             </div>
+            
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="lastName" className="text-right">
                 Last Name
               </Label>
               <Input
-                type="text"
                 id="lastName"
-                name="lastName"
                 className="col-span-3"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
                 required
               />
             </div>
+            
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="email" className="text-right">
                 Email
               </Label>
               <Input
-                type="email"
                 id="email"
-                name="email"
+                type="email"
                 className="col-span-3"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
+            
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="phone" className="text-right">
                 Phone
               </Label>
               <Input
-                type="tel"
                 id="phone"
-                name="phone"
+                type="tel"
                 className="col-span-3"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
               />
             </div>
+            
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="role" className="text-right">
                 Role
               </Label>
-              <Select name="role">
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select a role" />
+              <Select
+                value={role}
+                onValueChange={setRole}
+              >
+                <SelectTrigger id="role" className="col-span-3">
+                  <SelectValue placeholder="Select Role" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="clinician">Clinician</SelectItem>
-                  <SelectItem value="patient">Patient</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            {signupError && (
-              <div className="text-red-500 col-span-4 text-center">
-                {signupError}
-              </div>
-            )}
           </div>
+          
           <DialogFooter>
+            <Button type="button" variant="outline" onClick={handleClose}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create User"}
+              {isSubmitting ? 'Creating...' : 'Create User'}
             </Button>
           </DialogFooter>
         </form>
@@ -185,5 +226,3 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose }) => {
     </Dialog>
   );
 };
-
-export default AddUserDialog;

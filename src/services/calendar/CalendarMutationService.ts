@@ -1,19 +1,20 @@
 
 /**
  * CalendarMutationService - Responsible for all calendar event write operations
- * Handles creating, updating, and deleting events
+ * Currently implemented as a mock service until database tables are recreated
  */
 
 import { supabase } from '@/integrations/supabase/client';
 import { CalendarEvent } from '@/types/calendar';
-import { TimeZoneService } from '@/utils/timezone';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { calendarTransformer } from '@/utils/calendarTransformer';
-import { DatabaseCalendarEvent } from '@/types/calendarTypes';
 import { CalendarErrorHandler } from './CalendarErrorHandler';
 import { queryMonitor } from '@/utils/performance/queryMonitor';
 import { formatAsUUID } from '@/utils/validation/uuidUtils';
 
 export class CalendarMutationService {
+  static useMockData = true; // Set to true to use mock data
+
   /**
    * Create a new calendar event
    */
@@ -25,6 +26,29 @@ export class CalendarMutationService {
     
     try {
       const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
+      
+      // If using mock data, simulate a successful creation
+      if (this.useMockData) {
+        const mockEvent = {
+          ...event,
+          id: `mock-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`,
+          extendedProps: {
+            ...(event.extendedProps || {}),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+        };
+        
+        console.log('[CalendarMutationService] Mock created event:', mockEvent);
+        endTimer({ fromCache: false });
+        
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        return TimeZoneService.convertEventToUserTimeZone(mockEvent, validTimeZone);
+      }
+      
+      // Real database implementation
       const dbEvent = calendarTransformer.toDatabase(event, validTimeZone);
 
       // Ensure clinician ID is properly formatted
@@ -51,7 +75,7 @@ export class CalendarMutationService {
         throw CalendarErrorHandler.handleDatabaseError(error);
       }
 
-      const result = data ? calendarTransformer.fromDatabase(data as DatabaseCalendarEvent, validTimeZone) : null;
+      const result = data ? calendarTransformer.fromDatabase(data, validTimeZone) : null;
       endTimer({ fromCache: false });
       return result;
     } catch (error) {
@@ -79,6 +103,26 @@ export class CalendarMutationService {
       }
       
       const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
+      
+      // If using mock data, simulate a successful update
+      if (this.useMockData) {
+        const mockEvent = {
+          ...event,
+          extendedProps: {
+            ...(event.extendedProps || {}),
+            updatedAt: new Date().toISOString(),
+          }
+        };
+        
+        console.log('[CalendarMutationService] Mock updated event:', mockEvent);
+        endTimer({ fromCache: false });
+        
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        return TimeZoneService.convertEventToUserTimeZone(mockEvent, validTimeZone);
+      }
+      
       const dbEvent = calendarTransformer.toDatabase(event, validTimeZone);
 
       // Ensure clinician ID is properly formatted
@@ -107,7 +151,7 @@ export class CalendarMutationService {
         throw CalendarErrorHandler.handleDatabaseError(error);
       }
 
-      const result = data ? calendarTransformer.fromDatabase(data as DatabaseCalendarEvent, validTimeZone) : null;
+      const result = data ? calendarTransformer.fromDatabase(data, validTimeZone) : null;
       endTimer({ fromCache: false });
       return result;
     } catch (error) {
@@ -134,6 +178,17 @@ export class CalendarMutationService {
         );
       }
       
+      // If using mock data, simulate a successful deletion
+      if (this.useMockData) {
+        console.log('[CalendarMutationService] Mock deleted event:', eventId);
+        endTimer({ fromCache: false });
+        
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        return true;
+      }
+      
       console.log('[CalendarMutationService] Deleting event:', eventId);
       
       const { error } = await supabase
@@ -155,38 +210,6 @@ export class CalendarMutationService {
       // We don't re-throw here as delete failures can often be ignored
       // but we do return false to indicate failure
       return false;
-    }
-  }
-  
-  /**
-   * Run a calendar health check
-   */
-  static async checkCalendarHealth(): Promise<{
-    status: string;
-    issues_found: boolean;
-    details: Record<string, any>;
-  }> {
-    const endTimer = queryMonitor.startTimer('checkCalendarHealth', { 
-      source: 'CalendarMutationService' 
-    });
-    
-    try {
-      console.log('[CalendarMutationService] Running calendar health check');
-      
-      const { data, error } = await supabase
-        .rpc('check_calendar_data_health');
-
-      if (error) {
-        console.error('[CalendarMutationService] Error running health check:', error);
-        throw CalendarErrorHandler.handleDatabaseError(error);
-      }
-      
-      endTimer({ fromCache: false });
-      return data;
-    } catch (error) {
-      endTimer();
-      console.error('[CalendarMutationService] Error in checkCalendarHealth:', error);
-      throw CalendarErrorHandler.formatError(error);
     }
   }
 }
