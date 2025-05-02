@@ -3,6 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { CalendarErrorHandler } from './calendar/CalendarErrorHandler';
 import { ensureUUID } from '@/utils/validation/uuidUtils';
 
+// Define the types that are referenced in other files
+export type PermissionLevel = 'none' | 'read' | 'write' | 'admin';
+export type ResourceType = 'availability' | 'appointment' | 'timeOff' | 'client' | 'clinician' | 'document' | 'analytics' | 'settings';
+export type PermissionAction = 'read' | 'create' | 'update' | 'delete' | 'manage' | 'view';
+
 /**
  * Service for handling permission checks
  */
@@ -128,6 +133,17 @@ export class PermissionService {
       console.error('[PermissionService] Error checking calendar permissions:', error);
       return false;
     }
+  }
+  
+  /**
+   * Check if a user has permission to edit a clinician's availability
+   * @param userId The user ID to check
+   * @param clinicianId The clinician ID to check access for
+   * @returns Whether the user has permission to edit the clinician's availability
+   */
+  static async canEditAvailability(userId: string, clinicianId: string): Promise<boolean> {
+    // Similar logic to canManageCalendar for now
+    return this.canManageCalendar(userId, clinicianId);
   }
   
   /**
@@ -322,6 +338,15 @@ export class PermissionService {
   }
   
   /**
+   * Check if a user has admin access (alias for isAdmin)
+   * @param userId The user ID to check
+   * @returns Whether the user has admin access
+   */
+  static async hasAdminAccess(userId: string): Promise<boolean> {
+    return this.isAdmin(userId);
+  }
+  
+  /**
    * Check if a user is a clinician
    * @param userId The user ID to check
    * @returns Whether the user is a clinician
@@ -389,6 +414,142 @@ export class PermissionService {
       return data?.role === 'client';
     } catch (error) {
       console.error('[PermissionService] Error checking client status:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Get permission level for a user on a resource
+   * @param userId The user ID to check
+   * @param resourceType The type of resource
+   * @param resourceOwnerId The ID of the resource or resource owner
+   * @returns Permission level: none, read, write, or admin
+   */
+  static async getPermissionLevel(
+    userId: string, 
+    resourceType: ResourceType, 
+    resourceOwnerId: string
+  ): Promise<PermissionLevel> {
+    if (!userId || !resourceType || !resourceOwnerId) {
+      console.warn('[PermissionService] Missing parameters for permission check');
+      return 'none';
+    }
+    
+    try {
+      // Check if user is the resource owner (e.g., clinician checking their own availability)
+      if (userId === resourceOwnerId) {
+        return 'admin';
+      }
+      
+      // Check if user has admin role
+      const isUserAdmin = await this.isAdmin(userId);
+      if (isUserAdmin) {
+        return 'admin';
+      }
+      
+      // Resource-specific permission checks
+      if (resourceType === 'availability') {
+        // For availability, non-owners can view but not modify
+        return 'read';
+      }
+      
+      if (resourceType === 'appointment') {
+        // For appointments, check if user is involved (client or clinician)
+        if (resourceOwnerId.includes('-')) {  // If it's an appointment ID
+          const { data, error } = await supabase
+            .from('appointments')
+            .select('client_id, clinician_id')
+            .eq('id', resourceOwnerId)
+            .maybeSingle();
+            
+          if (error || !data) {
+            console.error('[PermissionService] Error checking appointment:', error);
+            return 'none';
+          }
+          
+          // If user is client or clinician for this appointment
+          if (data.client_id === userId || data.clinician_id === userId) {
+            return 'write';
+          }
+        }
+        return 'read';
+      }
+      
+      if (resourceType === 'timeOff') {
+        // For time off, only the clinician or admin can modify
+        return 'read';
+      }
+      
+      // Default to no access for unhandled resource types
+      return 'none';
+    } catch (error) {
+      console.error('[PermissionService] Error checking permission level:', error);
+      return 'none';
+    }
+  }
+  
+  /**
+   * Check if a user can perform a specific action on a resource
+   * @param userId The user ID to check
+   * @param resourceType The type of resource
+   * @param resourceOwnerId The ID of the resource or resource owner
+   * @param action The action to check permission for
+   * @returns Whether the user can perform the action
+   */
+  static async canPerformAction(
+    userId: string,
+    resourceType: ResourceType,
+    resourceOwnerId: string,
+    action: PermissionAction
+  ): Promise<boolean> {
+    const permissionLevel = await this.getPermissionLevel(userId, resourceType, resourceOwnerId);
+    
+    // Map the action to required permission levels
+    switch (action) {
+      case 'read':
+      case 'view':
+        return ['read', 'write', 'admin'].includes(permissionLevel);
+      case 'create':
+      case 'update':
+        return ['write', 'admin'].includes(permissionLevel);
+      case 'delete':
+      case 'manage':
+        return permissionLevel === 'admin';
+      default:
+        return false;
+    }
+  }
+  
+  /**
+   * Verify if the current authenticated user has permission for an action
+   * @param targetUserId The ID of the user to check against
+   * @param action The action to verify
+   * @returns Whether the current user has permission
+   */
+  static async verifyCurrentUserPermission(
+    targetUserId: string,
+    action: 'view' | 'edit' | 'delete'
+  ): Promise<boolean> {
+    try {
+      // Get current user from auth
+      const { data, error } = await supabase.auth.getUser();
+      
+      if (error || !data?.user) {
+        console.error('[PermissionService] Auth error:', error);
+        return false;
+      }
+      
+      const currentUserId = data.user.id;
+      
+      // If user is checking their own data, always allow
+      if (currentUserId === targetUserId) {
+        return true;
+      }
+      
+      // Check if user is admin
+      return await this.isAdmin(currentUserId);
+    } catch (error) {
+      console.error('[PermissionService] Error verifying current user permission:', error);
       return false;
     }
   }
