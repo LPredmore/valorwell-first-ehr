@@ -278,6 +278,78 @@ const MyPortal: React.FC<MyPortalProps> = ({
 
   const showBookingButtons = clientData?.client_status !== 'Profile Complete' || !hasAssignedDocuments;
   
+  const videoCall = async () => {
+    try {
+      if (!clinician) {
+        console.error("No clinician selected");
+        toast({
+          title: "Error",
+          description: "Please select a clinician first.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', clinician)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error checking clinician:", error);
+        toast({
+          title: "Error",
+          description: "Failed to validate clinician.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!data) {
+        toast({
+          title: "Error",
+          description: "Selected clinician not found.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create daily room
+      const response = await fetch('/api/create-daily-room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clinicianId: clinician,
+          patientId: userId
+        }),
+      });
+      
+      const responseData = await response.json();
+      
+      if (response.ok && responseData.url) {
+        // Set video call URL and open dialog
+        setVideoCallUrl(responseData.url);
+        setVideoToken(responseData.token);
+        setVideoCallDialogOpen(true);
+      } else {
+        console.error("Error creating video call:", responseData);
+        toast({
+          title: "Error",
+          description: responseData.error || "Failed to create video call.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("Video call error:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return <div className="grid grid-cols-1 gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

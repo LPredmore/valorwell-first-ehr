@@ -1,212 +1,189 @@
-import { useState } from "react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "@/hooks/use-toast";
-import { supabase, createUser } from "@/integrations/supabase/client";
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-
-const userFormSchema = z.object({
-  firstName: z.string().min(2, { message: "First name is required" }),
-  lastName: z.string().min(2, { message: "Last name is required" }),
-  email: z.string().email({ message: "Invalid email address" }),
-  phone: z.string().optional(),
-  role: z.enum(["admin", "client", "clinician"], {
-    required_error: "Please select a role",
-  }),
-});
-
-type UserFormValues = z.infer<typeof userFormSchema>;
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { useToast } from "@/hooks/use-toast"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { supabase } from '@/integrations/supabase/client';
+import { generateRandomPassword } from '@/utils/passwordUtils';
 
 interface AddUserDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onUserAdded: () => void;
+  onClose: () => void;
 }
 
-export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialogProps) {
+interface FormValues {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  role: string;
+  password?: string;
+}
+
+const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [signupError, setSignupError] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const form = useForm<UserFormValues>({
-    resolver: zodResolver(userFormSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      role: "client",
-    },
-  });
-
-  async function onSubmit(data: UserFormValues) {
+  const signUp = async (userData: FormValues) => {
     setIsSubmitting(true);
-    console.log("Submitting user data:", data);
-
+    
     try {
-      // User metadata to be saved
-      const userData = {
-        first_name: data.firstName,
-        last_name: data.lastName,
-        phone: data.phone || "",
-        role: data.role
-      };
-      
-      console.log("User metadata to be saved:", userData);
-      
-      // Create user using our helper function
-      const { data: authData, error: authError } = await createUser(data.email, userData);
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password || generateRandomPassword(),
+        options: {
+          data: {
+            first_name: userData.firstName,
+            last_name: userData.lastName,
+            phone: userData.phone,
+            role: userData.role
+          }
+        }
+      });
 
-      if (authError) {
-        console.error("Auth error:", authError);
-        throw authError;
+      if (error) {
+        setSignupError(error.message);
+        toast({
+          title: "Error",
+          description: `Failed to create user: ${error.message}`,
+          variant: "destructive",
+        });
+        return;
       }
-
-      console.log("User created successfully:", authData);
       
       toast({
         title: "Success",
-        description: "User added successfully with default password: temppass1234. Please note they will need to confirm their email before logging in.",
+        description: `Created user ${userData.email}`,
       });
-
-      form.reset();
-      onUserAdded();
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Error adding user:", error);
+      
+      onClose();
+    } catch (error: any) {
+      setSignupError(error.message || "An unknown error occurred");
       toast({
         title: "Error",
-        description: `Failed to add user: ${error.message || "Please try again."}`,
+        description: `Failed to create user: ${error.message}`,
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
     }
-  }
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const form = event.target as HTMLFormElement;
+    const formData = new FormData(form);
+
+    const userData: FormValues = {
+      firstName: formData.get('firstName') as string,
+      lastName: formData.get('lastName') as string,
+      email: formData.get('email') as string,
+      phone: formData.get('phone') as string,
+      role: formData.get('role') as string,
+    };
+
+    await signUp(userData);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New User</DialogTitle>
+          <DialogTitle>Add User</DialogTitle>
           <DialogDescription>
-            Enter user details below. A default password of "temppass1234" will be assigned. The user will need to confirm their email before logging in.
+            Create a new user account.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="firstName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>First Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter first name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="lastName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Last Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter last name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="Enter email address" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Phone (Optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter phone number" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>User Role</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="client">Client</SelectItem>
-                      <SelectItem value="clinician">Clinician</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <Button
-                type="button" 
-                variant="outline" 
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Adding..." : "Add User"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+        <form onSubmit={handleSubmit}>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="firstName" className="text-right">
+                First Name
+              </Label>
+              <Input
+                type="text"
+                id="firstName"
+                name="firstName"
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="lastName" className="text-right">
+                Last Name
+              </Label>
+              <Input
+                type="text"
+                id="lastName"
+                name="lastName"
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">
+                Email
+              </Label>
+              <Input
+                type="email"
+                id="email"
+                name="email"
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="phone" className="text-right">
+                Phone
+              </Label>
+              <Input
+                type="tel"
+                id="phone"
+                name="phone"
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="role" className="text-right">
+                Role
+              </Label>
+              <Select name="role">
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="clinician">Clinician</SelectItem>
+                  <SelectItem value="patient">Patient</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {signupError && (
+              <div className="text-red-500 col-span-4 text-center">
+                {signupError}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Creating..." : "Create User"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
-}
+};
+
+export default AddUserDialog;

@@ -1,308 +1,136 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Calendar, Eye, FileText, FileX, FilePlus2, CheckCircle2 } from 'lucide-react';
-import { format } from 'date-fns';
-import { fetchClinicalDocuments, getDocumentDownloadURL, supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/router';
 import { useUser } from '@/context/UserContext';
-import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
-interface Document {
-  id: string;
-  document_title: string;
-  document_type: string;
-  document_date: string;
-  file_path: string;
-  created_at: string;
-}
-
-interface AssignedDocument {
-  id: string;
-  document_name: string;
-  status: 'not_started' | 'in_progress' | 'completed';
-  created_at: string;
-  filePath?: string;
-  route?: string;
-}
-
-const MyDocuments = () => {
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [assignedDocuments, setAssignedDocuments] = useState<AssignedDocument[]>([]);
-  const [isLoadingAssignedDocs, setIsLoadingAssignedDocs] = useState(false);
-  
-  const { toast } = useToast();
+const MyDocuments: React.FC = () => {
+  const router = useRouter();
   const { userId } = useUser();
-  const navigate = useNavigate();
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadDocuments = async () => {
-      if (!userId) return;
-      
-      setIsLoading(true);
-      try {
-        const docs = await fetchClinicalDocuments(userId);
-        setDocuments(docs);
-      } catch (error) {
+    fetchDocuments();
+  }, [userId]);
+
+  const fetchDocuments = async () => {
+    if (!userId) return;
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('document_assignments')
+        .select('*')
+        .eq('client_id', userId);
+
+      if (error) {
         console.error('Error fetching documents:', error);
         toast({
-          title: "Error",
-          description: "Failed to load your documents",
-          variant: "destructive"
+          title: 'Error',
+          description: 'Failed to fetch documents',
+          variant: 'destructive',
         });
-      } finally {
-        setIsLoading(false);
+        return;
       }
-      
-      setIsLoadingAssignedDocs(true);
-      try {
-        const { data: assignments, error: assignmentsError } = await supabase
-          .from('document_assignments')
-          .select('*')
-          .eq('client_id', userId);
-          
-        if (assignmentsError) throw assignmentsError;
-        
-        const assignedDocs: AssignedDocument[] = [];
-        
-        if (assignments && assignments.length > 0) {
-          assignments.forEach(assignment => {
-            let route: string | undefined = undefined;
-            
-            if (assignment.document_name.toLowerCase().includes('client history')) {
-              route = '/client-history-form';
-            } else if (assignment.document_name.toLowerCase().includes('informed consent')) {
-              route = '/informed-consent';
-            }
-            
-            assignedDocs.push({
-              id: assignment.id,
-              document_name: assignment.document_name,
-              status: (assignment.status as 'not_started' | 'in_progress' | 'completed') || 'not_started',
-              created_at: assignment.created_at,
-              filePath: assignment.pdf_url,
-              route
-            });
-          });
-        }
-        
-        setAssignedDocuments(assignedDocs);
-      } catch (error) {
-        console.error('Error fetching document assignments:', error);
-        setAssignedDocuments([]);
-      } finally {
-        setIsLoadingAssignedDocs(false);
-      }
-    };
-    
-    loadDocuments();
-  }, [userId, toast]);
 
-  const handleViewDocument = async (filePath: string, documentType?: string) => {
-    try {
-      const url = await getDocumentDownloadURL(filePath, documentType);
-      if (url) {
-        window.open(url, '_blank');
-      } else {
-        toast({
-          title: "Error",
-          description: "Could not retrieve document URL",
-          variant: "destructive"
-        });
-      }
+      setDocuments(data || []);
     } catch (error) {
-      console.error('Error viewing document:', error);
+      console.error('Error in fetching documents:', error);
       toast({
-        title: "Error",
-        description: "Failed to open document",
-        variant: "destructive"
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const docSubmit = async (documentName: string) => {
+    if (!router || !userId) return;
+
+    try {
+      // Update the document status
+      const { data, error } = await supabase
+        .from('document_assignments')
+        .update({ status: 'completed' })
+        .eq('client_id', userId)
+        .eq('document_name', documentName);
+
+      if (error) {
+        console.error('Error updating document status:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to update document status',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Refresh document list
+      fetchDocuments();
+      
+      toast({
+        title: 'Success',
+        description: 'Document submitted successfully',
+      });
+    } catch (error) {
+      console.error('Error in document submission:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
       });
     }
-  };
-
-  const handleFillOutForm = (doc: AssignedDocument) => {
-    if (doc.route) {
-      navigate(doc.route);
-    } else {
-      toast({
-        title: "Coming Soon",
-        description: "This form will be available soon."
-      });
-    }
-  };
-
-  const getClinicalNotes = () => {
-    return documents.filter(doc => 
-      doc.document_type === 'treatment_plan' || 
-      doc.document_type === 'session_note'
-    );
-  };
-
-  const getCompletedForms = () => {
-    return documents.filter(doc => 
-      doc.document_type !== 'treatment_plan' && 
-      doc.document_type !== 'session_note'
-    );
-  };
-
-  const renderDocumentsTable = (docs: Document[], emptyMessage: string) => {
-    if (docs.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-          <FileText className="h-12 w-12 text-gray-300 mb-3" />
-          <h3 className="text-lg font-medium">No documents found</h3>
-          <p className="text-sm text-gray-500 mt-1">{emptyMessage}</p>
-        </div>
-      );
-    }
-    
-    return (
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {docs.map(doc => (
-              <TableRow key={doc.id}>
-                <TableCell className="font-medium">{doc.document_title}</TableCell>
-                <TableCell>{doc.document_type}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    {format(new Date(doc.document_date), 'MMM d, yyyy')}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="outline" size="sm" className="ml-2" onClick={() => handleViewDocument(doc.file_path, doc.document_type)}>
-                    <Eye className="h-4 w-4 mr-1" />
-                    View
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    );
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FilePlus2 className="h-5 w-5 text-valorwell-600" />
-            Assigned Documents
-          </CardTitle>
-          <CardDescription>Forms and documents that need your attention</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoadingAssignedDocs ? (
-            <div className="flex justify-center py-8">
-              <p>Loading assigned documents...</p>
-            </div>
-          ) : assignedDocuments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <CheckCircle2 className="h-12 w-12 text-green-500 mb-3" />
-              <h3 className="text-lg font-medium">Great job! You're all caught up.</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                There are currently no forms or documents assigned to you
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Form Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {assignedDocuments.map(doc => (
-                    <TableRow key={doc.id}>
-                      <TableCell className="font-medium">{doc.document_name}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium 
-                          ${doc.status === 'completed' ? 'bg-green-100 text-green-800' : 
-                            doc.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : 
-                            'bg-blue-100 text-blue-800'}`}>
-                          {doc.status === 'completed' ? 'Completed' : 
-                           doc.status === 'in_progress' ? 'In Progress' : 'Not Started'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {doc.status === 'completed' ? (
-                          <Button variant="outline" size="sm" onClick={() => doc.filePath && handleViewDocument(doc.filePath)}>
-                            <Eye className="h-4 w-4 mr-1" /> View
-                          </Button>
-                        ) : (
-                          <Button variant="default" size="sm" onClick={() => handleFillOutForm(doc)}>
-                            Fill Out
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-valorwell-600" />
-            Clinical Notes
-          </CardTitle>
-          <CardDescription>View your treatment plans and session notes</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <p>Loading clinical notes...</p>
-            </div>
-          ) : (
-            renderDocumentsTable(
-              getClinicalNotes(), 
-              "No clinical notes have been created for your account yet"
-            )
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-valorwell-600" />
-            Completed Forms
-          </CardTitle>
-          <CardDescription>View your completed assessment forms and other documentation</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <p>Loading completed forms...</p>
-            </div>
-          ) : (
-            renderDocumentsTable(
-              getCompletedForms(), 
-              "No completed forms have been found for your account yet"
-            )
-          )}
-        </CardContent>
-      </Card>
+    <div>
+      <h2 className="text-2xl font-bold mb-4">My Documents</h2>
+      {isLoading ? (
+        <p>Loading documents...</p>
+      ) : (
+        <div className="container mx-auto">
+          <Table>
+            <TableCaption>A list of documents assigned to you.</TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[100px]">Name</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {documents.map((document) => (
+                <TableRow key={document.document_name}>
+                  <TableCell className="font-medium">{document.document_name}</TableCell>
+                  <TableCell>{document.description}</TableCell>
+                  <TableCell>{document.status}</TableCell>
+                  <TableCell className="text-right">
+                    {document.status !== 'completed' ? (
+                      <Button onClick={() => docSubmit(document.document_name)}>Submit</Button>
+                    ) : (
+                      <span>Completed</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 };

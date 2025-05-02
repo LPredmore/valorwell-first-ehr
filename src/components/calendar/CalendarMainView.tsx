@@ -1,7 +1,8 @@
+
 import React, { useState, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import FullCalendarView from './FullCalendarView';
-import { CalendarEvent, CalendarViewType } from '@/types/calendar';
+import { CalendarViewType } from '@/types/calendar';
 import { useCalendarView } from '@/hooks/calendar/useCalendarView';
 import { useDialogs } from '@/context/DialogContext';
 import { DateTime } from 'luxon';
@@ -183,7 +184,7 @@ const CalendarMainView: React.FC<CalendarMainViewProps> = ({
         key={calendarKey}
         clinicianId={clinicianId}
         userTimeZone={timeZone}
-        view={view}
+        view={view as "dayGridMonth" | "timeGridWeek" | "timeGridDay" | "listWeek"}
         height="700px"
         showAvailability={showAvailability}
         onAvailabilityClick={handleEventClick}
