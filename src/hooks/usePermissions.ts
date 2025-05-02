@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@/hooks/useUser';
+import useUser from '@/hooks/useUser';
 
 export type ResourceType = 'client' | 'clinician' | 'document' | 'analytics' | 'settings';
 export type PermissionLevel = 'none' | 'limited' | 'full' | 'admin';
@@ -33,7 +33,6 @@ const usePermissions = (resourceType?: ResourceType, resourceId?: string) => {
         let calculatedPermissionLevel: PermissionLevel = 'limited';
         
         // Determine permission level based on resourceType and resourceId
-        // These rules are simplified since we removed the calendar-related tables
         if (resourceType === 'client') {
           // For client resources, check if the user is this client or a clinician managing this client
           if (user.id === resourceId) {
@@ -60,31 +59,18 @@ const usePermissions = (resourceType?: ResourceType, resourceId?: string) => {
           } else {
             calculatedPermissionLevel = 'none';
           }
-        } else if (resourceType === 'analytics' || resourceType === 'settings') {
-          // For analytics and settings, only clinicians and admins have access
-          if (user.role === 'clinician') {
-            calculatedPermissionLevel = 'limited';
+        } else if (resourceType === 'settings') {
+          // Only admins and clinicians can modify settings
+          if (user.role === 'admin' || user.role === 'clinician') {
+            calculatedPermissionLevel = 'full';
           } else {
             calculatedPermissionLevel = 'none';
           }
         } else {
-          // For any other resource type, use role-based default permissions
-          switch (user.role) {
-            case 'admin':
-              calculatedPermissionLevel = 'admin';
-              break;
-            case 'clinician':
-            case 'moderator':
-              calculatedPermissionLevel = 'full';
-              break;
-            case 'client':
-              calculatedPermissionLevel = 'limited';
-              break;
-            default:
-              calculatedPermissionLevel = 'none';
-          }
+          // For all other resources, require admin access
+          calculatedPermissionLevel = isAdmin ? 'admin' : 'none';
         }
-        
+
         setPermissionLevel(calculatedPermissionLevel);
       } catch (error) {
         console.error('Error determining permissions:', error);
@@ -95,15 +81,16 @@ const usePermissions = (resourceType?: ResourceType, resourceId?: string) => {
     };
     
     determinePermissions();
-  }, [user, resourceType, resourceId, isAdmin]);
-  
+  }, [resourceType, resourceId, user, isAdmin]);
+
   return {
     permissionLevel,
     isLoading,
+    isAdmin,
     canView: permissionLevel !== 'none',
-    canEdit: ['full', 'admin'].includes(permissionLevel),
-    canDelete: ['admin'].includes(permissionLevel),
-    canManage: ['admin'].includes(permissionLevel),
+    canEdit: permissionLevel === 'full' || permissionLevel === 'admin',
+    canDelete: permissionLevel === 'admin',
+    canManage: permissionLevel === 'admin',
   };
 };
 

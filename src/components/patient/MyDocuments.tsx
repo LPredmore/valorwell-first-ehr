@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ import {
 } from "@/components/ui/table"
 
 const MyDocuments: React.FC = () => {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { userId } = useUser();
   const [documents, setDocuments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,7 +59,7 @@ const MyDocuments: React.FC = () => {
   };
 
   const docSubmit = async (documentName: string) => {
-    if (!router || !userId) return;
+    if (!navigate || !userId) return;
 
     try {
       // Update the document status

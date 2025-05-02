@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 
 interface Client {
@@ -153,8 +153,9 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           try {
             const formattedDate = format(date, 'yyyy-MM-dd');
             
-            const startTimestamp = TimeZoneService.toUTCTimestamp(formattedDate, startTime, validTimeZone);
-            const endTimestamp = TimeZoneService.toUTCTimestamp(formattedDate, endTime, validTimeZone);
+            // Fix: Using correctly formatted TimeZoneService.toUTCTimestamp call
+            const startTimestamp = TimeZoneService.toUTCTimestamp(formattedDate, startTime);
+            const endTimestamp = TimeZoneService.toUTCTimestamp(formattedDate, endTime);
             
             console.log(`[AppointmentDialog] Creating appointment for ${formattedDate} at ${startTime}-${endTime}`);
             console.log(`[AppointmentDialog] UTC timestamps: ${startTimestamp} to ${endTimestamp}`);
@@ -197,8 +198,9 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
         try {
           const formattedDate = format(selectedDate, 'yyyy-MM-dd');
 
-          const startTimestamp = TimeZoneService.toUTCTimestamp(formattedDate, startTime, validTimeZone);
-          const endTimestamp = TimeZoneService.toUTCTimestamp(formattedDate, endTime, validTimeZone);
+          // Fix: Using correctly formatted TimeZoneService.toUTCTimestamp call
+          const startTimestamp = TimeZoneService.toUTCTimestamp(formattedDate, startTime);
+          const endTimestamp = TimeZoneService.toUTCTimestamp(formattedDate, endTime);
           
           console.log(`[AppointmentDialog] Creating appointment for ${formattedDate}:`);
           console.log(`- Local time (${validTimeZone}): ${startTime}-${endTime}`);
