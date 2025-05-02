@@ -175,3 +175,16 @@ export type CalendarResourceType = 'calendar' | 'availability' | 'appointment' |
  * Calendar action type
  */
 export type CalendarActionType = 'view' | 'create' | 'edit' | 'delete';
+
+/**
+ * Props for the FullCalendarView component
+ */
+export interface FullCalendarProps {
+  clinicianId: string;
+  userTimeZone: string;
+  view?: 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay' | 'listWeek';
+  height?: string;
+  showAvailability?: boolean;
+  onAvailabilityClick?: (event: any) => void;
+  testEvents?: CalendarEvent[];
+}

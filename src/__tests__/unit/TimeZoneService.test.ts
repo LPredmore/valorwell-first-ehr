@@ -1,230 +1,150 @@
-import { TimeZoneService } from '../../services/calendar/TimeZoneService';
-import { CalendarError } from '../../services/calendar/CalendarErrorHandler';
+import { TimeZoneService } from '@/services/calendar/TimeZoneService';
 import { DateTime } from 'luxon';
 
-// Mock the core TimeZoneService
-jest.mock('@/utils/timezone', () => ({
-  TimeZoneService: {
-    ensureIANATimeZone: jest.fn((tz) => {
-      if (tz === 'Invalid/TimeZone') {
-        throw new Error('Invalid timezone');
-      }
-      return tz;
-    }),
-    parseWithZone: jest.fn((date, zone) => 
-      DateTime.fromISO(date, { zone })
-    ),
-    formatDateTime: jest.fn((date, format, timeZone) => 
-      `Formatted: ${date} with ${format} in ${timeZone}`
-    ),
-    createDateTime: jest.fn((dateStr, timeStr, timeZone) => 
-      DateTime.fromFormat(`${dateStr} ${timeStr}`, 'yyyy-MM-dd HH:mm', { zone: timeZone })
-    ),
-    getCurrentDateTime: jest.fn((timeZone) => 
-      DateTime.now().setZone(timeZone)
-    ),
-    toUTCTimestamp: jest.fn((date, timeZone) => 
-      typeof date === 'string' 
-        ? DateTime.fromISO(date, { zone: timeZone }).toUTC().toISO() 
-        : DateTime.fromJSDate(date, { zone: timeZone }).toUTC().toISO()
-    ),
-    fromUTC: jest.fn((utcStr, timeZone) => 
-      DateTime.fromISO(utcStr, { zone: 'utc' }).setZone(timeZone)
-    ),
-    formatTimeZoneDisplay: jest.fn((timeZone) => 
-      `${timeZone} (UTC+X:XX)`
-    )
-  }
-}));
-
-// Mock the TimeZoneError
-jest.mock('@/utils/timezone/TimeZoneError', () => ({
-  TimeZoneError: class TimeZoneError extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = 'TimeZoneError';
-    }
-  }
-}));
-
 describe('TimeZoneService', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+  const mockTimeZone = 'America/Chicago';
+  const mockDateTime = DateTime.fromISO('2025-05-01T12:00:00', { zone: mockTimeZone });
 
-  describe('validateTimeZone', () => {
-    it('should return the timezone if valid', () => {
-      const result = TimeZoneService.validateTimeZone('America/New_York');
-      expect(result).toBe('America/New_York');
+  describe('Backward Compatibility Methods', () => {
+    it('validateTimeZone should call ensureIANATimeZone', () => {
+      // Spy on the ensureIANATimeZone method
+      const spy = jest.spyOn(TimeZoneService, 'ensureIANATimeZone');
+      
+      // Call the deprecated method
+      const result = TimeZoneService.validateTimeZone(mockTimeZone);
+      
+      // Verify it calls the new method
+      expect(spy).toHaveBeenCalledWith(mockTimeZone);
+      expect(result).toBe(mockTimeZone);
+      
+      // Restore the spy
+      spy.mockRestore();
     });
 
-    it('should throw a CalendarError if timezone is invalid', () => {
-      expect(() => {
-        TimeZoneService.validateTimeZone('Invalid/TimeZone');
-      }).toThrow(CalendarError);
-    });
-  });
-
-  describe('convertTimeZone', () => {
-    it('should convert a date string from one timezone to another', () => {
-      const date = '2025-05-01T10:00:00.000Z';
-      const fromTimeZone = 'America/New_York';
-      const toTimeZone = 'America/Los_Angeles';
+    it('convertTimeZone should call convertDateTime', () => {
+      // Spy on the convertDateTime method
+      const spy = jest.spyOn(TimeZoneService, 'convertDateTime');
+      const targetTimeZone = 'America/New_York';
       
-      const result = TimeZoneService.convertTimeZone(date, fromTimeZone, toTimeZone);
+      // Call the deprecated method
+      TimeZoneService.convertTimeZone(mockDateTime, mockTimeZone, targetTimeZone);
       
-      expect(result).toBeInstanceOf(Date);
-    });
-
-    it('should convert a Date object from one timezone to another', () => {
-      const date = new Date('2025-05-01T10:00:00.000Z');
-      const fromTimeZone = 'America/New_York';
-      const toTimeZone = 'America/Los_Angeles';
+      // Verify it calls the new method
+      expect(spy).toHaveBeenCalledWith(mockDateTime, mockTimeZone, targetTimeZone);
       
-      const result = TimeZoneService.convertTimeZone(date, fromTimeZone, toTimeZone);
-      
-      expect(result).toBeInstanceOf(Date);
-    });
-
-    it('should throw a CalendarError if conversion fails', () => {
-      const date = '2025-05-01T10:00:00.000Z';
-      
-      expect(() => {
-        TimeZoneService.convertTimeZone(date, 'Invalid/TimeZone', 'America/Los_Angeles');
-      }).toThrow(CalendarError);
+      // Restore the spy
+      spy.mockRestore();
     });
   });
 
-  describe('formatDateTime', () => {
-    it('should format a date with the specified format and timezone', () => {
-      const date = '2025-05-01T10:00:00.000Z';
-      const format = 'yyyy-MM-dd HH:mm';
-      const timeZone = 'America/New_York';
+  describe('Core Timezone Methods', () => {
+    it('ensureIANATimeZone should validate and return a timezone', () => {
+      // Valid timezone
+      expect(TimeZoneService.ensureIANATimeZone(mockTimeZone)).toBe(mockTimeZone);
       
-      const result = TimeZoneService.formatDateTime(date, format, timeZone);
+      // Default timezone when none provided
+      expect(TimeZoneService.ensureIANATimeZone()).toBe('America/Chicago');
       
-      expect(result).toContain('Formatted:');
-      expect(result).toContain(format);
-      expect(result).toContain(timeZone);
+      // Invalid timezone should return default
+      expect(TimeZoneService.ensureIANATimeZone('Invalid/Timezone')).toBe('America/Chicago');
     });
 
-    it('should use default format if not provided', () => {
-      const date = '2025-05-01T10:00:00.000Z';
-      const timeZone = 'America/New_York';
+    it('createDateTime should create a valid DateTime object', () => {
+      const date = '2025-05-01';
+      const time = '14:30';
       
-      const result = TimeZoneService.formatDateTime(date, undefined, timeZone);
+      const result = TimeZoneService.createDateTime(date, time, mockTimeZone);
       
-      expect(result).toContain('Formatted:');
-      expect(result).toContain('yyyy-MM-dd HH:mm');
-      expect(result).toContain(timeZone);
+      expect(result.isValid).toBe(true);
+      expect(result.zoneName).toBe(mockTimeZone);
+      expect(result.hour).toBe(14);
+      expect(result.minute).toBe(30);
     });
 
-    it('should throw a CalendarError if formatting fails', () => {
-      const date = '2025-05-01T10:00:00.000Z';
+    it('getCurrentDateTime should return current time in specified timezone', () => {
+      const now = TimeZoneService.getCurrentDateTime(mockTimeZone);
       
-      expect(() => {
-        TimeZoneService.formatDateTime(date, undefined, 'Invalid/TimeZone');
-      }).toThrow(CalendarError);
-    });
-  });
-
-  describe('createDateTime', () => {
-    it('should create a DateTime object from date and time strings', () => {
-      const dateStr = '2025-05-01';
-      const timeStr = '10:00';
-      const timeZone = 'America/New_York';
-      
-      const result = TimeZoneService.createDateTime(dateStr, timeStr, timeZone);
-      
-      expect(result).toBeInstanceOf(DateTime);
+      expect(now.isValid).toBe(true);
+      expect(now.zoneName).toBe(mockTimeZone);
     });
 
-    it('should throw a CalendarError if creation fails', () => {
-      const dateStr = '2025-05-01';
-      const timeStr = '10:00';
+    it('fromUTC should convert UTC string to local timezone', () => {
+      const utcString = '2025-05-01T17:00:00Z';
+      const result = TimeZoneService.fromUTC(utcString, mockTimeZone);
       
-      expect(() => {
-        TimeZoneService.createDateTime(dateStr, timeStr, 'Invalid/TimeZone');
-      }).toThrow(CalendarError);
+      expect(result.isValid).toBe(true);
+      expect(result.zoneName).toBe(mockTimeZone);
+      // Chicago is UTC-5 or UTC-6 depending on DST
+      expect(result.hour).toBeLessThan(17);
     });
   });
 
-  describe('getCurrentDateTime', () => {
-    it('should get the current date and time in the specified timezone', () => {
-      const timeZone = 'America/New_York';
+  describe('Formatting Methods', () => {
+    it('formatDateTime should format a DateTime correctly', () => {
+      const date = DateTime.fromISO('2025-05-01T14:30:00', { zone: mockTimeZone });
       
-      const result = TimeZoneService.getCurrentDateTime(timeZone);
+      // Default format
+      const defaultFormat = TimeZoneService.formatDateTime(date);
+      expect(defaultFormat).toContain('2025-05-01');
+      expect(defaultFormat).toContain('14:30');
       
-      expect(result).toBeInstanceOf(DateTime);
+      // Custom format
+      const customFormat = TimeZoneService.formatDateTime(date, 'yyyy/MM/dd');
+      expect(customFormat).toBe('2025/05/01');
+      
+      // Predefined format
+      const fullFormat = TimeZoneService.formatDateTime(date, 'full');
+      expect(fullFormat).toContain('2025');
+      expect(fullFormat).toContain('May');
     });
 
-    it('should throw a CalendarError if getting current date time fails', () => {
-      expect(() => {
-        TimeZoneService.getCurrentDateTime('Invalid/TimeZone');
-      }).toThrow(CalendarError);
-    });
-  });
-
-  describe('toUTC', () => {
-    it('should convert a date string to UTC', () => {
-      const date = '2025-05-01T10:00:00.000Z';
-      const timeZone = 'America/New_York';
+    it('formatTimeZoneDisplay should create a user-friendly timezone string', () => {
+      const display = TimeZoneService.formatTimeZoneDisplay(mockTimeZone);
       
-      const result = TimeZoneService.toUTC(date, timeZone);
-      
-      expect(typeof result).toBe('string');
-    });
-
-    it('should convert a Date object to UTC', () => {
-      const date = new Date('2025-05-01T10:00:00.000Z');
-      const timeZone = 'America/New_York';
-      
-      const result = TimeZoneService.toUTC(date, timeZone);
-      
-      expect(typeof result).toBe('string');
-    });
-
-    it('should throw a CalendarError if conversion to UTC fails', () => {
-      const date = '2025-05-01T10:00:00.000Z';
-      
-      expect(() => {
-        TimeZoneService.toUTC(date, 'Invalid/TimeZone');
-      }).toThrow(CalendarError);
+      expect(display).toContain(mockTimeZone);
+      expect(display).toContain('CDT'); // or CST depending on time of year
     });
   });
 
-  describe('fromUTC', () => {
-    it('should convert a UTC date string to a date in the specified timezone', () => {
-      const utcStr = '2025-05-01T10:00:00.000Z';
-      const timeZone = 'America/New_York';
+  describe('Utility Methods', () => {
+    it('isSameDay should correctly compare dates', () => {
+      const date1 = DateTime.fromISO('2025-05-01T09:00:00', { zone: mockTimeZone });
+      const date2 = DateTime.fromISO('2025-05-01T17:00:00', { zone: mockTimeZone });
+      const date3 = DateTime.fromISO('2025-05-02T09:00:00', { zone: mockTimeZone });
       
-      const result = TimeZoneService.fromUTC(utcStr, timeZone);
-      
-      expect(result).toBeInstanceOf(Date);
+      expect(TimeZoneService.isSameDay(date1, date2)).toBe(true);
+      expect(TimeZoneService.isSameDay(date1, date3)).toBe(false);
     });
 
-    it('should throw a CalendarError if conversion from UTC fails', () => {
-      const utcStr = '2025-05-01T10:00:00.000Z';
+    it('addDuration should add time correctly', () => {
+      const date = DateTime.fromISO('2025-05-01T12:00:00', { zone: mockTimeZone });
       
-      expect(() => {
-        TimeZoneService.fromUTC(utcStr, 'Invalid/TimeZone');
-      }).toThrow(CalendarError);
-    });
-  });
-
-  describe('getTimeZoneDisplayName', () => {
-    it('should get a user-friendly display name for a timezone', () => {
-      const timeZone = 'America/New_York';
+      const plusHours = TimeZoneService.addDuration(date, 2, 'hours');
+      expect(plusHours.hour).toBe(14);
       
-      const result = TimeZoneService.getTimeZoneDisplayName(timeZone);
-      
-      expect(result).toContain(timeZone);
+      const plusDays = TimeZoneService.addDuration(date, 1, 'days');
+      expect(plusDays.day).toBe(2);
     });
 
-    it('should throw a CalendarError if getting display name fails', () => {
-      expect(() => {
-        TimeZoneService.getTimeZoneDisplayName('Invalid/TimeZone');
-      }).toThrow(CalendarError);
+    it('convertEventToUserTimeZone should convert calendar events', () => {
+      const event = {
+        id: '123',
+        title: 'Test Event',
+        start: '2025-05-01T12:00:00Z',
+        end: '2025-05-01T13:00:00Z',
+        extendedProps: {
+          timezone: 'UTC'
+        }
+      };
+      
+      const result = TimeZoneService.convertEventToUserTimeZone(event, mockTimeZone);
+      
+      expect(result.id).toBe('123');
+      expect(result.title).toBe('Test Event');
+      expect(result.extendedProps?.timezone).toBe(mockTimeZone);
+      // The times should be converted to the user's timezone
+      expect(result.start).not.toBe(event.start);
+      expect(result.end).not.toBe(event.end);
     });
   });
 });

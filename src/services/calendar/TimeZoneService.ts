@@ -6,7 +6,15 @@
 
 import { DateTime } from 'luxon';
 import { CalendarEvent } from '@/types/calendar';
-import { TimeZoneError } from './CalendarErrorHandler';
+import { CalendarError } from './CalendarErrorHandler';
+
+// Define TimeZoneError for backward compatibility
+class TimeZoneError extends CalendarError {
+  constructor(message: string, code: string) {
+    super(message, 'CALENDAR_TIMEZONE_ERROR');
+    this.name = 'TimeZoneError';
+  }
+}
 
 // Constants for supported timezone formats and display
 export const TIMEZONE_OPTIONS = [
@@ -432,8 +440,18 @@ export class TimeZoneService {
   }
 
   /**
+   * Get a user-friendly display name for a timezone
+   *
+   * @param timeZone - The IANA timezone
+   * @returns A user-friendly display name
+   */
+  static getTimeZoneDisplayName(timeZone: string): string {
+    return this.getDisplayNameFromIANA(timeZone);
+  }
+
+  /**
    * Get the IANA timezone from a display name
-   * 
+   *
    * @param displayName - The display name
    * @returns The IANA timezone
    */
@@ -476,7 +494,7 @@ export class TimeZoneService {
    */
   static convertEventToUserTimeZone(event: CalendarEvent, userTimeZone: string): CalendarEvent {
     const validTimeZone = this.ensureIANATimeZone(userTimeZone);
-    const sourceTimeZone = event.extendedProps?.timeZone || 'America/Chicago';
+    const sourceTimeZone = event.extendedProps?.timezone || event.extendedProps?.sourceTimeZone || 'America/Chicago';
     
     // Parse start and end as DateTime objects in the source timezone
     const startDt = DateTime.fromISO(event.start.toString(), { zone: sourceTimeZone });
@@ -493,8 +511,9 @@ export class TimeZoneService {
       end: localEndDt.toJSDate(),
       extendedProps: {
         ...event.extendedProps,
-        originalTimeZone: sourceTimeZone,
-        userTimeZone: validTimeZone
+        sourceTimeZone: sourceTimeZone,
+        timezone: validTimeZone,
+        displayTimeZone: validTimeZone
       }
     };
   }

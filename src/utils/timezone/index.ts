@@ -30,6 +30,7 @@ import { CalendarEvent } from '@/types/calendar';
 import * as Core from './core';
 import * as Formatting from './formatting';
 import * as Calendar from './calendar';
+import * as DateTimeUtils from './dateTimeUtils';
 import { TimeZoneError } from './TimeZoneError';
 
 export type { DateTimeFormat } from './formatting';
@@ -40,6 +41,15 @@ export type { DateTimeFormat } from './formatting';
 export type TimeUnit = 'years' | 'quarters' | 'months' | 'weeks' | 'days' | 'hours' | 'minutes' | 'seconds' | 'milliseconds';
 
 export { TimeZoneError } from './TimeZoneError';
+export {
+  ensureDateTime,
+  toISOString,
+  safeToDateTime,
+  calendarDateToDateTime,
+  areDateTimesEqual,
+  toAPIDateTime,
+  toDisplayDateTime
+} from './dateTimeUtils';
 
 /**
  * @interface TimeZoneServiceInterface
@@ -80,6 +90,15 @@ export interface TimeZoneServiceInterface {
   toUTCTimestamp(dateTime: Date | string, timeZone: string): string;
   toUTCTimestamp(dateStr: string, timeStr: string, timeZone: string): string;
   fromUTCTimestamp(timestamp: string, timeZone: string): DateTime;
+  
+  // DateTime utility functions
+  ensureDateTime(value: DateTime | Date | string, timeZone: string): DateTime;
+  toISOString(dateTime: DateTime | Date | string, timeZone: string): string;
+  safeToDateTime(value: any, timeZone: string): DateTime | null;
+  calendarDateToDateTime(date: string | Date, timeZone: string): DateTime;
+  areDateTimesEqual(a: DateTime | Date | string, b: DateTime | Date | string, timeZone: string): boolean;
+  toAPIDateTime(value: DateTime | Date | string, timeZone: string): string;
+  toDisplayDateTime(value: DateTime | Date | string, timeZone: string, format?: 'datetime' | 'date' | 'time'): string;
 }
 
 /**
@@ -159,6 +178,15 @@ export const TimeZoneService: TimeZoneServiceInterface = {
   
   // UTC timestamp conversion
   toUTCTimestamp: Core.toUTCTimestamp,
-  fromUTCTimestamp: Core.fromUTCTimestamp
+  fromUTCTimestamp: Core.fromUTCTimestamp,
+  
+  // DateTime utility functions
+  ensureDateTime: DateTimeUtils.ensureDateTime,
+  toISOString: DateTimeUtils.toISOString,
+  safeToDateTime: DateTimeUtils.safeToDateTime,
+  calendarDateToDateTime: DateTimeUtils.calendarDateToDateTime,
+  areDateTimesEqual: DateTimeUtils.areDateTimesEqual,
+  toAPIDateTime: DateTimeUtils.toAPIDateTime,
+  toDisplayDateTime: DateTimeUtils.toDisplayDateTime
 };
 

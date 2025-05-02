@@ -48,8 +48,8 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
   const handleTimeOffClick = () => {
     onClose();
     openDialog('timeOff', {
-      startTime,
-      endTime,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
       clinicianId,
       allDay,
       onTimeOffCreated: onEventCreated
