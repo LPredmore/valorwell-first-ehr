@@ -47,7 +47,7 @@ const DialogManager: React.FC = () => {
   const userTimeZone = TimeZoneService.getLocalTimeZone();
   
   // Render different dialog based on the current state.type
-  switch (state.type) {
+  switch (state.type as DialogType) {
     case 'addClinician':
       return (
         <AddClinicianDialog 
@@ -77,12 +77,18 @@ const DialogManager: React.FC = () => {
       );
       
     case 'appointment':
+      if (!state.props) return null;
       return (
         <AppointmentDialog 
-          clinicianId={state.props?.clinicianId} 
-          startTime={state.props?.startTime}
-          endTime={state.props?.endTime}
-          onAppointmentCreated={state.props?.onAppointmentCreated}
+          appointment={{
+            clinicianId: state.props.clinicianId,
+            startTime: state.props.startTime,
+            endTime: state.props.endTime,
+            allDay: state.props.allDay,
+          }}
+          onAppointmentCreated={state.props.onAppointmentCreated}
+          isOpen={true}
+          onClose={closeDialog}
         />
       );
       
@@ -91,17 +97,24 @@ const DialogManager: React.FC = () => {
         <EditAppointmentDialog 
           appointment={state.props?.appointment}
           onAppointmentUpdated={state.props?.onAppointmentUpdated}
+          isOpen={true}
+          onClose={closeDialog}
         />
       );
       
     case 'timeOff':
+      if (!state.props) return null;
       return (
         <TimeOffDialog 
-          clinicianId={state.props?.clinicianId} 
-          startTime={state.props?.startTime}
-          endTime={state.props?.endTime}
-          allDay={state.props?.allDay}
-          onTimeOffCreated={state.props?.onTimeOffCreated}
+          timeOffRequest={{
+            clinicianId: state.props.clinicianId,
+            startTime: state.props.startTime,
+            endTime: state.props.endTime,
+            allDay: state.props.allDay,
+          }}
+          onTimeOffCreated={state.props.onTimeOffCreated}
+          isOpen={true}
+          onClose={closeDialog}
         />
       );
       
@@ -119,9 +132,13 @@ const DialogManager: React.FC = () => {
       return (
         <SingleAvailabilityDialog 
           clinicianId={state.props?.clinicianId}
-          date={state.props?.date}
+          date={state.props?.date instanceof Date 
+            ? state.props?.date 
+            : new Date(state.props?.date || new Date())}
           userTimeZone={userTimeZone}
           onAvailabilityCreated={state.props?.onAvailabilityCreated}
+          isOpen={true}
+          onClose={closeDialog}
         />
       );
       
@@ -129,7 +146,9 @@ const DialogManager: React.FC = () => {
       return (
         <WeeklyAvailabilityDialog 
           clinicianId={state.props?.clinicianId}
-          onAvailabilityCreated={state.props?.onAvailabilityCreated}
+          onAvailabilityUpdated={state.props?.onAvailabilityCreated || state.props?.onAvailabilityUpdated}
+          isOpen={true}
+          onClose={closeDialog}
         />
       );
       
@@ -138,8 +157,8 @@ const DialogManager: React.FC = () => {
         <EventTypeSelector 
           isOpen={true}
           onClose={closeDialog}
-          startTime={new Date(state.props?.startTime)}
-          endTime={new Date(state.props?.endTime)}
+          startTime={state.props?.startTime}
+          endTime={state.props?.endTime}
           clinicianId={state.props?.clinicianId}
           allDay={state.props?.allDay}
           onEventCreated={state.props?.onEventCreated}

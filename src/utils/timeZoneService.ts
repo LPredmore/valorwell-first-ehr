@@ -309,10 +309,77 @@ export class TimeZoneService {
   }
 
   /**
+   * Parse a date string to a DateTime object with timezone
+   * @param dateString Date string
+   * @param timezone Timezone
+   */
+  static parseWithZone(dateString: string, timezone: string): DateTime {
+    const validTimeZone = this.ensureIANATimeZone(timezone);
+    return DateTime.fromISO(dateString, { zone: validTimeZone });
+  }
+
+  /**
+   * Convert a timestamp to UTC format
+   * @param timestamp Timestamp string
+   * @param timezone Source timezone
+   */
+  static toUTCTimestamp(timestamp: string | Date, timezone: string): string {
+    const validTimeZone = this.ensureIANATimeZone(timezone);
+    
+    if (timestamp instanceof Date) {
+      return DateTime.fromJSDate(timestamp)
+        .setZone(validTimeZone)
+        .toUTC()
+        .toISO();
+    }
+    
+    return DateTime.fromISO(timestamp, { zone: validTimeZone })
+      .toUTC()
+      .toISO();
+  }
+
+  /**
+   * Format a date with a specific format in a timezone
+   * @param date DateTime, Date or string to format
+   * @param format Format string
+   * @param timezone Timezone to use
+   */
+  static formatDate(date: DateTime | Date | string, format: string = 'yyyy-MM-dd', timezone?: string): string {
+    let dt: DateTime;
+    
+    const validTimeZone = timezone ? this.ensureIANATimeZone(timezone) : undefined;
+    
+    if (date instanceof DateTime) {
+      dt = validTimeZone ? date.setZone(validTimeZone) : date;
+    } else if (date instanceof Date) {
+      dt = validTimeZone 
+        ? DateTime.fromJSDate(date).setZone(validTimeZone)
+        : DateTime.fromJSDate(date);
+    } else {
+      dt = validTimeZone 
+        ? DateTime.fromISO(date).setZone(validTimeZone)
+        : DateTime.fromISO(date);
+    }
+    
+    return dt.toFormat(format);
+  }
+
+  /**
+   * Check if two dates are the same day
+   */
+  static isSameDay(date1: DateTime, date2: DateTime): boolean {
+    return date1.hasSame(date2, 'day');
+  }
+
+  /**
+   * Add duration to a date
+   */
+  static addDuration(date: DateTime, amount: number, unit: string): DateTime {
+    return date.plus({ [unit]: amount });
+  }
+
+  /**
    * Get weekday name from DateTime
-   * @param date DateTime object
-   * @param format Format (long or short)
-   * @returns Weekday name
    */
   static getWeekdayName(date: DateTime, format: 'long' | 'short' = 'long'): string {
     return date.toFormat(format === 'long' ? 'EEEE' : 'EEE');
@@ -320,23 +387,9 @@ export class TimeZoneService {
 
   /**
    * Get month name from DateTime
-   * @param date DateTime object
-   * @param format Format (long or short)
-   * @returns Month name
    */
   static getMonthName(date: DateTime, format: 'long' | 'short' = 'long'): string {
     return date.toFormat(format === 'long' ? 'MMMM' : 'MMM');
-  }
-
-  /**
-   * Parse a datetime string with timezone
-   * @param dateTimeStr Datetime string
-   * @param timeZone Timezone to parse with
-   * @returns DateTime object
-   */
-  static parseWithZone(dateTimeStr: string, timeZone: string): DateTime {
-    const validTimeZone = this.ensureIANATimeZone(timeZone);
-    return DateTime.fromISO(dateTimeStr, { zone: validTimeZone });
   }
 }
 
