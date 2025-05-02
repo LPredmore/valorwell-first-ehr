@@ -7,7 +7,7 @@
  */
 export const formatAsUUID = (input: string | null | undefined, options: {
   strictMode?: boolean;
-  logLevel?: 'none' | 'warn' | 'error';
+  logLevel?: 'none' | 'warn' | 'error' | 'info';
 } = {}): string => {
   const { strictMode = false, logLevel = 'none' } = options;
   
@@ -17,6 +17,7 @@ export const formatAsUUID = (input: string | null | undefined, options: {
       const error = new Error('UUID cannot be null or undefined');
       if (logLevel === 'error') console.error(error);
       else if (logLevel === 'warn') console.warn(error);
+      else if (logLevel === 'info') console.info(error);
       throw error;
     }
     return '';
@@ -47,6 +48,7 @@ export const formatAsUUID = (input: string | null | undefined, options: {
     const error = new Error(`Invalid UUID format: ${input}`);
     if (logLevel === 'error') console.error(error);
     else if (logLevel === 'warn') console.warn(error);
+    else if (logLevel === 'info') console.info(error);
     throw error;
   }
   
@@ -62,4 +64,15 @@ export const isValidUUID = (uuid: string): boolean => {
   return regex.test(uuid);
 };
 
-export default { formatAsUUID, isValidUUID };
+/**
+ * Ensures a string is a valid UUID or throws an error
+ * Similar to formatAsUUID but with a different name for clearer intention
+ */
+export const ensureUUID = (input: string | null | undefined, options: {
+  strictMode?: boolean;
+  logLevel?: 'none' | 'warn' | 'error' | 'info';
+} = {}): string => {
+  return formatAsUUID(input, { strictMode: true, ...options });
+};
+
+export default { formatAsUUID, isValidUUID, ensureUUID };

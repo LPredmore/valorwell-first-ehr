@@ -6,9 +6,8 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
 import { CalendarApi, EventClickArg } from '@fullcalendar/core';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { CalendarViewType, CalendarEvent, FullCalendarProps } from '@/types/calendar';
-import { componentMonitor } from '@/utils/performance/componentMonitor';
 import { Loader2 } from 'lucide-react';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import CalendarAvailabilityHandler from './CalendarAvailabilityHandler';
@@ -28,11 +27,10 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
   
   useEffect(() => {
     const renderTime = performance.now() - renderStartTime.current;
-    componentMonitor.recordRender('FullCalendarView', renderTime, {
-      props: { clinicianId, userTimeZone, view, showAvailability }
-    });
+    console.log(`[FullCalendarView] Render time: ${renderTime}ms`);
   });
 
+  const { toast } = useToast();
   const calendarRef = useRef<CalendarApi | null>(null);
   const [availabilityEvents, setAvailabilityEvents] = useState<CalendarEvent[]>([]);
   const [hasAvailabilityError, setHasAvailabilityError] = useState(false);
@@ -68,7 +66,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
         variant: 'destructive',
       });
     }
-  }, [appointmentsError]);
+  }, [appointmentsError, toast]);
 
   const handleAvailabilityEvents = (events: CalendarEvent[], error?: Error) => {
     if (error) {
@@ -108,15 +106,13 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     });
   }, [combinedEvents, visibleRange]);
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[FullCalendarView] Events stats:', {
-      appointments: appointmentEvents.length,
-      availability: availabilityEvents.length,
-      total: combinedEvents.length,
-      visible: visibleEvents.length,
-      hasAvailabilityError
-    });
-  }
+  console.log('[FullCalendarView] Events stats:', {
+    appointments: appointmentEvents.length,
+    availability: availabilityEvents.length,
+    total: combinedEvents.length,
+    visible: visibleEvents.length,
+    hasAvailabilityError
+  });
 
   const handleEventClick = (info: EventClickArg) => {
     const eventType = info.event.extendedProps?.eventType;

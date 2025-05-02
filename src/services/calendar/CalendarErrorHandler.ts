@@ -13,6 +13,9 @@ export class CalendarError extends Error {
     this.name = 'CalendarError';
     this.code = code;
     this.details = details;
+    
+    // Ensure proper prototype chain for instanceof checks
+    Object.setPrototypeOf(this, CalendarError.prototype);
   }
 }
 
@@ -142,6 +145,15 @@ export class CalendarErrorHandler {
       return new CalendarError(
         'Authentication or permission error',
         'AUTH_ERROR',
+        error
+      );
+    }
+    
+    // Handle validation errors
+    if (error?.message?.includes('validate') || error?.message?.includes('invalid')) {
+      return new CalendarError(
+        error.message || 'Validation error',
+        'VALIDATION_ERROR',
         error
       );
     }

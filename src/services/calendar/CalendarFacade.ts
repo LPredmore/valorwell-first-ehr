@@ -1,70 +1,96 @@
 
 /**
- * CalendarFacade - Simplified interface to the calendar services
- * Acts as a migration path for existing code to use the new service structure
+ * Calendar Facade
+ * 
+ * Provides a simplified interface for calendar operations,
+ * hiding the complexity of the underlying services
  */
+import { CalendarEvent, CalendarEventType } from '@/types/calendar';
+import { CalendarService } from './CalendarService';
+import { CalendarHealthService } from './CalendarHealthService';
+import { TimeZoneService } from '@/utils/timezone';
 
-import { CalendarEvent } from '@/types/calendar';
-import { CalendarQueryService } from './CalendarQueryService';
-import { CalendarMutationService } from './CalendarMutationService';
-import { CalendarErrorHandler } from './CalendarErrorHandler';
-
-/**
- * CalendarFacade provides a simplified interface to calendar services
- * This helps with the migration from the monolithic CalendarService
- */
-export class CalendarService {
-  // Query operations
-  static getEvents(
+export class CalendarFacade {
+  /**
+   * Get all calendar events for a clinician in a date range
+   */
+  static async getEvents(
     clinicianId: string,
-    timezone: string,
-    startDate?: Date,
-    endDate?: Date
+    startDate: Date | string,
+    endDate: Date | string,
+    timezone?: string
   ): Promise<CalendarEvent[]> {
-    return CalendarQueryService.getEvents(clinicianId, timezone, startDate, endDate);
+    const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
+    
+    const events = await CalendarService.getEvents(
+      clinicianId,
+      validTimeZone,
+      startDate,
+      endDate
+    );
+    
+    return events;
   }
-
-  static getAllEvents(clinicianId: string, timezone: string): Promise<CalendarEvent[]> {
-    return CalendarQueryService.getAllEvents(clinicianId, timezone);
+  
+  /**
+   * Create a new calendar event
+   */
+  static async createEvent(
+    event: CalendarEvent,
+    timezone?: string
+  ): Promise<CalendarEvent> {
+    const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
+    
+    // Validate event timing
+    CalendarHealthService.validateEventTiming(event, validTimeZone);
+    
+    const result = await CalendarService.createEvent(event, validTimeZone);
+    return result;
   }
-
-  static getEventsInRange(
-    clinicianId: string, 
-    startDate: Date | string, 
-    endDate: Date | string, 
-    timezone: string
-  ): Promise<CalendarEvent[]> {
-    return CalendarQueryService.getEventsInRange(clinicianId, startDate, endDate, timezone);
+  
+  /**
+   * Update an existing calendar event
+   */
+  static async updateEvent(
+    event: CalendarEvent,
+    timezone?: string
+  ): Promise<CalendarEvent> {
+    const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
+    
+    // Validate event timing
+    CalendarHealthService.validateEventTiming(event, validTimeZone);
+    
+    const result = await CalendarService.updateEvent(event, validTimeZone);
+    return result;
   }
-
-  static getEventsForDate(
-    clinicianId: string, 
-    date: Date | string, 
-    timezone: string
-  ): Promise<CalendarEvent[]> {
-    return CalendarQueryService.getEventsForDate(clinicianId, date, timezone);
+  
+  /**
+   * Delete a calendar event
+   */
+  static async deleteEvent(
+    eventId: string,
+    eventType: CalendarEventType
+  ): Promise<boolean> {
+    return CalendarService.deleteEvent(eventId, eventType);
   }
-
-  // Mutation operations
-  static createEvent(event: CalendarEvent, timezone: string): Promise<CalendarEvent | null> {
-    return CalendarMutationService.createEvent(event, timezone);
-  }
-
-  static updateEvent(event: CalendarEvent, timezone: string): Promise<CalendarEvent | null> {
-    return CalendarMutationService.updateEvent(event, timezone);
-  }
-
-  static deleteEvent(eventId: string): Promise<boolean> {
-    return CalendarMutationService.deleteEvent(eventId);
-  }
-
-  // Error handling
-  static formatError(error: unknown): string {
-    return CalendarErrorHandler.getUserFriendlyMessage(error);
+  
+  /**
+   * Run diagnostic tests on the calendar data
+   */
+  static async runDiagnostics(
+    clinicianId: string,
+    startDate: Date | string,
+    endDate: Date | string,
+    timezone?: string
+  ) {
+    const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
+    
+    // Get events for diagnostic
+    const events = await this.getEvents(clinicianId, startDate, endDate, validTimeZone);
+    
+    // Generate diagnostic report
+    return CalendarHealthService.generateDiagnosticReport(events, validTimeZone);
   }
 }
 
-// Re-export everything from the specialized services
-export { CalendarQueryService } from './CalendarQueryService';
-export { CalendarMutationService } from './CalendarMutationService';
-export { CalendarErrorHandler, CalendarError, type CalendarErrorCode } from './CalendarErrorHandler';
+export default CalendarFacade;
