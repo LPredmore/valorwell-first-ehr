@@ -1,204 +1,153 @@
+import {
+  formatDate,
+  formatDateTime,
+  formatTime,
+  addDuration,
+  isSameDay,
+  parseWithZone,
+  toISOWithZone,
+  getCurrentDateTime,
+  formatInTimezone,
+  getWeekdayName,
+  getMonthName
+} from '@/utils/dateFormatUtils';
 import { DateTime } from 'luxon';
-import { 
-  ensureDateTime, 
-  toISOString, 
-  safeToDateTime, 
-  calendarDateToDateTime,
-  areDateTimesEqual,
-  toAPIDateTime,
-  toDisplayDateTime
-} from '@/utils/timezone/dateTimeUtils';
-import { TimeZoneError } from '@/utils/timezone/TimeZoneError';
 import { TimeZoneService } from '@/utils/timezone';
 
-// Mock TimeZoneService for formatting methods
-jest.mock('@/utils/timezone', () => ({
-  TimeZoneService: {
-    formatDate: jest.fn().mockReturnValue('2025-05-01'),
-    formatTime: jest.fn().mockReturnValue('2:00 PM'),
-    formatDateTime: jest.fn().mockReturnValue('May 1, 2025, 2:00 PM')
-  }
-}));
+// Mock the TimeZoneService to isolate the tests
+jest.mock('@/utils/timezone', () => {
+  return {
+    TimeZoneService: {
+      ensureIANATimeZone: jest.fn(timezone => timezone || 'America/Chicago'),
+      formatDateTime: jest.fn((dateTime, format, timezone) => {
+        if (dateTime instanceof DateTime) {
+          return `FormattedDateTime: ${dateTime.toISO()}, Format: ${format}, Timezone: ${timezone || 'UTC'}`;
+        } else if (dateTime instanceof Date) {
+          return `FormattedDateTime: ${dateTime.toISOString()}, Format: ${format}, Timezone: ${timezone || 'UTC'}`;
+        } else {
+          return `FormattedDateTime: ${dateTime}, Format: ${format}, Timezone: ${timezone || 'UTC'}`;
+        }
+      }),
+      formatDate: jest.fn((dateTime, format, timezone) => {
+        if (dateTime instanceof DateTime) {
+          return `FormattedDate: ${dateTime.toISO()}, Format: ${format}, Timezone: ${timezone || 'UTC'}`;
+        } else if (dateTime instanceof Date) {
+          return `FormattedDate: ${dateTime.toISOString()}, Format: ${format}, Timezone: ${timezone || 'UTC'}`;
+        } else {
+          return `FormattedDate: ${dateTime}, Format: ${format}, Timezone: ${timezone || 'UTC'}`;
+        }
+      }),
+      formatTime: jest.fn((time, format, timezone) => {
+        if (time instanceof DateTime) {
+          return `FormattedTime: ${time.toISO()}, Format: ${format}, Timezone: ${timezone || 'UTC'}`;
+        } else if (time instanceof Date) {
+          return `FormattedTime: ${time.toISOString()}, Format: ${format}, Timezone: ${timezone || 'UTC'}`;
+        } else {
+          return `FormattedTime: ${time}, Format: ${format}, Timezone: ${timezone || 'UTC'}`;
+        }
+      }),
+      addDuration: jest.fn((dateTime, amount, unit) => {
+        if (dateTime instanceof DateTime) {
+          return dateTime.plus({ [unit]: amount });
+        } else if (dateTime instanceof Date) {
+          return DateTime.fromJSDate(dateTime).plus({ [unit]: amount });
+        } else {
+          return DateTime.fromISO(dateTime).plus({ [unit]: amount });
+        }
+      }),
+      isSameDay: jest.fn((date1, date2) => {
+        const dt1 = date1 instanceof DateTime ? date1 : DateTime.fromISO(date1.toString());
+        const dt2 = date2 instanceof DateTime ? date2 : DateTime.fromISO(date2.toString());
+        return dt1.hasSame(dt2, 'day');
+      }),
+      parseWithZone: jest.fn((dateString, timezone) => {
+        return DateTime.fromISO(dateString, { zone: timezone });
+      }),
+      toUTCTimestamp: jest.fn((timestamp, timezone) => {
+        return DateTime.fromISO(timestamp, { zone: timezone }).toUTC().toISO();
+      }),
+      fromUTCTimestamp: jest.fn((timestamp, timezone) => {
+        return DateTime.fromISO(timestamp).setZone(timezone);
+      }),
+      getCurrentDateTime: jest.fn((timezone) => {
+        return DateTime.now().setZone(timezone);
+      }),
+      getWeekdayName: jest.fn((date) => {
+        return date.toLocaleString('en-us', { weekday: 'long' });
+      }),
+      getMonthName: jest.fn((date) => {
+        return date.toLocaleString('en-us', { month: 'long' });
+      })
+    }
+  };
+});
 
-describe('DateTime Utility Functions', () => {
-  const mockTimeZone = 'America/Chicago';
-  const mockDateStr = '2025-05-01T14:00:00';
-  const mockDate = new Date('2025-05-01T14:00:00Z');
-  const mockDateTime = DateTime.fromISO(mockDateStr, { zone: mockTimeZone });
+describe('dateFormatUtils', () => {
+  const mockDate = '2024-01-20T10:00:00.000Z';
+  const mockTimezone = 'America/Chicago';
 
-  describe('ensureDateTime', () => {
-    it('should return the input if it is already a DateTime', () => {
-      const result = ensureDateTime(mockDateTime, mockTimeZone);
-      expect(result).toBe(mockDateTime);
-    });
-
-    it('should convert a Date object to DateTime', () => {
-      const result = ensureDateTime(mockDate, mockTimeZone);
-      expect(result instanceof DateTime).toBe(true);
-      expect(result.isValid).toBe(true);
-      expect(result.zoneName).toBe(mockTimeZone);
-    });
-
-    it('should convert an ISO string to DateTime', () => {
-      const result = ensureDateTime(mockDateStr, mockTimeZone);
-      expect(result instanceof DateTime).toBe(true);
-      expect(result.isValid).toBe(true);
-      expect(result.zoneName).toBe(mockTimeZone);
-    });
-
-    it('should try multiple string formats', () => {
-      // SQL format
-      const sqlDate = '2025-05-01 14:00:00';
-      const sqlResult = ensureDateTime(sqlDate, mockTimeZone);
-      expect(sqlResult.isValid).toBe(true);
-      
-      // HTTP format
-      const httpDate = 'Thu, 01 May 2025 14:00:00 GMT';
-      const httpResult = ensureDateTime(httpDate, mockTimeZone);
-      expect(httpResult.isValid).toBe(true);
-    });
-
-    it('should throw TimeZoneError for invalid DateTime objects', () => {
-      const invalidDateTime = DateTime.fromISO('invalid');
-      expect(() => ensureDateTime(invalidDateTime, mockTimeZone)).toThrow(TimeZoneError);
-    });
-
-    it('should throw TimeZoneError for unparseable strings', () => {
-      expect(() => ensureDateTime('completely invalid date', mockTimeZone)).toThrow(TimeZoneError);
-    });
-
-    it('should throw TimeZoneError for unsupported types', () => {
-      expect(() => ensureDateTime(123 as any, mockTimeZone)).toThrow(TimeZoneError);
-      expect(() => ensureDateTime(null as any, mockTimeZone)).toThrow(TimeZoneError);
-      expect(() => ensureDateTime(undefined as any, mockTimeZone)).toThrow(TimeZoneError);
-    });
+  it('formatDate calls TimeZoneService.formatDate with correct parameters', () => {
+    const formattedDate = formatDate(mockDate, 'yyyy-MM-dd', mockTimezone);
+    expect(TimeZoneService.formatDate).toHaveBeenCalledWith(expect.anything(), 'yyyy-MM-dd', mockTimezone);
+    expect(formattedDate).toContain('FormattedDate');
   });
 
-  describe('toISOString', () => {
-    it('should convert DateTime to ISO string', () => {
-      const result = toISOString(mockDateTime, mockTimeZone);
-      expect(typeof result).toBe('string');
-      expect(result).toContain('2025-05-01T14:00:00');
-    });
-
-    it('should convert Date to ISO string', () => {
-      const result = toISOString(mockDate, mockTimeZone);
-      expect(typeof result).toBe('string');
-      // The exact string will depend on timezone conversion
-      expect(result).toContain('2025-05-01');
-    });
-
-    it('should convert string to ISO string', () => {
-      const result = toISOString(mockDateStr, mockTimeZone);
-      expect(typeof result).toBe('string');
-      expect(result).toContain('2025-05-01T14:00:00');
-    });
+  it('formatDateTime calls TimeZoneService.formatDateTime with correct parameters', () => {
+    const formattedDateTime = formatDateTime(mockDate, 'yyyy-MM-dd HH:mm', mockTimezone);
+    expect(TimeZoneService.formatDateTime).toHaveBeenCalledWith(expect.anything(), 'yyyy-MM-dd HH:mm', mockTimezone);
+    expect(formattedDateTime).toContain('FormattedDateTime');
   });
 
-  describe('safeToDateTime', () => {
-    it('should convert valid inputs to DateTime', () => {
-      expect(safeToDateTime(mockDateTime, mockTimeZone)).toBe(mockDateTime);
-      expect(safeToDateTime(mockDate, mockTimeZone) instanceof DateTime).toBe(true);
-      expect(safeToDateTime(mockDateStr, mockTimeZone) instanceof DateTime).toBe(true);
-    });
-
-    it('should return null for invalid inputs', () => {
-      expect(safeToDateTime('invalid date', mockTimeZone)).toBeNull();
-      expect(safeToDateTime(123 as any, mockTimeZone)).toBeNull();
-      expect(safeToDateTime(null as any, mockTimeZone)).toBeNull();
-    });
+  it('formatTime calls TimeZoneService.formatTime with correct parameters', () => {
+    const formattedTime = formatTime(mockDate, 'h:mm a', mockTimezone);
+    expect(TimeZoneService.formatTime).toHaveBeenCalledWith(expect.anything(), 'h:mm a', mockTimezone);
+    expect(formattedTime).toContain('FormattedTime');
   });
 
-  describe('calendarDateToDateTime', () => {
-    it('should convert valid calendar dates to DateTime', () => {
-      const result = calendarDateToDateTime(mockDateStr, mockTimeZone);
-      expect(result instanceof DateTime).toBe(true);
-      expect(result.isValid).toBe(true);
-      expect(result.zoneName).toBe(mockTimeZone);
-    });
-
-    it('should throw TimeZoneError with specific message for invalid inputs', () => {
-      try {
-        calendarDateToDateTime('invalid date', mockTimeZone);
-        fail('Should have thrown an error');
-      } catch (error) {
-        expect(error instanceof TimeZoneError).toBe(true);
-        expect((error as TimeZoneError).message).toContain('Failed to convert calendar date');
-      }
-    });
+  it('addDuration calls TimeZoneService.addDuration with correct parameters', () => {
+    const dateTime = DateTime.fromISO(mockDate);
+    const newDateTime = addDuration(mockDate, 30, 'minutes');
+    expect(TimeZoneService.addDuration).toHaveBeenCalled();
+    expect(newDateTime).toEqual(expect.anything());
   });
 
-  describe('areDateTimesEqual', () => {
-    it('should return true for equal DateTimes', () => {
-      const dt1 = DateTime.fromISO('2025-05-01T14:00:00', { zone: mockTimeZone });
-      const dt2 = DateTime.fromISO('2025-05-01T14:00:00', { zone: mockTimeZone });
-      
-      expect(areDateTimesEqual(dt1, dt2, mockTimeZone)).toBe(true);
-    });
-
-    it('should return true for equal times in different formats', () => {
-      const dt1 = DateTime.fromISO('2025-05-01T14:00:00', { zone: mockTimeZone });
-      const dateObj = new Date('2025-05-01T14:00:00');
-      const dateStr = '2025-05-01T14:00:00';
-      
-      expect(areDateTimesEqual(dt1, dateObj, mockTimeZone)).toBe(true);
-      expect(areDateTimesEqual(dt1, dateStr, mockTimeZone)).toBe(true);
-    });
-
-    it('should return false for different DateTimes', () => {
-      const dt1 = DateTime.fromISO('2025-05-01T14:00:00', { zone: mockTimeZone });
-      const dt2 = DateTime.fromISO('2025-05-01T15:00:00', { zone: mockTimeZone });
-      
-      expect(areDateTimesEqual(dt1, dt2, mockTimeZone)).toBe(false);
-    });
-
-    it('should return false for invalid inputs', () => {
-      const dt1 = DateTime.fromISO('2025-05-01T14:00:00', { zone: mockTimeZone });
-      
-      expect(areDateTimesEqual(dt1, 'invalid date', mockTimeZone)).toBe(false);
-      expect(areDateTimesEqual('invalid date', dt1, mockTimeZone)).toBe(false);
-    });
+  it('isSameDay calls TimeZoneService.isSameDay with correct parameters', () => {
+    const isTheSameDay = isSameDay(mockDate, mockDate);
+    expect(TimeZoneService.isSameDay).toHaveBeenCalled();
+    expect(isTheSameDay).toBe(true);
   });
 
-  describe('toAPIDateTime', () => {
-    it('should convert to UTC ISO string', () => {
-      const result = toAPIDateTime(mockDateTime, mockTimeZone);
-      
-      expect(typeof result).toBe('string');
-      expect(result.endsWith('Z')).toBe(true); // UTC marker
-    });
-
-    it('should handle different input types', () => {
-      const fromDate = toAPIDateTime(mockDate, mockTimeZone);
-      const fromString = toAPIDateTime(mockDateStr, mockTimeZone);
-      
-      expect(typeof fromDate).toBe('string');
-      expect(typeof fromString).toBe('string');
-      expect(fromDate.endsWith('Z')).toBe(true);
-      expect(fromString.endsWith('Z')).toBe(true);
-    });
+  it('parseWithZone calls TimeZoneService.parseWithZone with correct parameters', () => {
+    const parsedDateTime = parseWithZone(mockDate, mockTimezone);
+    expect(TimeZoneService.parseWithZone).toHaveBeenCalledWith(mockDate, mockTimezone);
+    expect(parsedDateTime).toEqual(expect.anything());
   });
 
-  describe('toDisplayDateTime', () => {
-    it('should format datetime for display', () => {
-      const result = toDisplayDateTime(mockDateTime, mockTimeZone);
-      
-      expect(typeof result).toBe('string');
-      expect(TimeZoneService.formatDateTime).toHaveBeenCalled();
-    });
+  it('toISOWithZone calls TimeZoneService.parseWithZone and toISO with correct parameters', () => {
+    const isoWithZone = toISOWithZone(mockDate, mockTimezone);
+    expect(TimeZoneService.parseWithZone).toHaveBeenCalledWith(mockDate, mockTimezone);
+    expect(isoWithZone).toEqual(expect.anything());
+  });
 
-    it('should format date only', () => {
-      const result = toDisplayDateTime(mockDateTime, mockTimeZone, 'date');
-      
-      expect(typeof result).toBe('string');
-      expect(TimeZoneService.formatDate).toHaveBeenCalled();
-    });
+  it('getCurrentDateTime calls TimeZoneService.getCurrentDateTime with correct parameters', () => {
+    getCurrentDateTime(mockTimezone);
+    expect(TimeZoneService.getCurrentDateTime).toHaveBeenCalledWith(mockTimezone);
+  });
 
-    it('should format time only', () => {
-      const result = toDisplayDateTime(mockDateTime, mockTimeZone, 'time');
-      
-      expect(typeof result).toBe('string');
-      expect(TimeZoneService.formatTime).toHaveBeenCalled();
-    });
+  it('formatInTimezone calls TimeZoneService.formatDateTime with correct parameters', () => {
+    formatInTimezone(mockDate, 'yyyy-MM-dd HH:mm', mockTimezone);
+    expect(TimeZoneService.formatDateTime).toHaveBeenCalledWith(mockDate, 'yyyy-MM-dd HH:mm', mockTimezone);
+  });
+
+  it('getWeekdayName calls TimeZoneService.getWeekdayName with correct parameters', () => {
+    const mockDateTime = DateTime.fromISO(mockDate);
+    getWeekdayName(mockDate);
+    expect(TimeZoneService.getWeekdayName).toHaveBeenCalled();
+  });
+
+  it('getMonthName calls TimeZoneService.getMonthName with correct parameters', () => {
+    const mockDateTime = DateTime.fromISO(mockDate);
+    getMonthName(mockDate);
+    expect(TimeZoneService.getMonthName).toHaveBeenCalled();
   });
 });

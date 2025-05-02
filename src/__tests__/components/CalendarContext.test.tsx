@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, act, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom'; // Import this to make toHaveTextContent available
 import { CalendarProvider, useCalendar } from '../../context/CalendarContext';
 import { CalendarService } from '../../services/calendar/CalendarService';
 import { DateTime } from 'luxon';

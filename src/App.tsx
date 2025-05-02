@@ -45,6 +45,9 @@ import NotFound from '@/pages/NotFound';
 // Create a client
 const queryClient = new QueryClient();
 
+// Import the mock data initializer
+import '@/utils/mockDataInitializer';
+
 const App: React.FC = () => {
   return (
     <React.StrictMode>
