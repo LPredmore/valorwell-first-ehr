@@ -1,3 +1,4 @@
+
 // Import Jest DOM extensions for DOM testing
 import '@testing-library/jest-dom';
 
@@ -41,6 +42,25 @@ jest.mock('@/integrations/supabase/client', () => ({
     }))
   }
 }));
+
+// Mock the TimeZoneService
+jest.mock('@/utils/timezone', () => {
+  const originalModule = jest.requireActual('@/utils/timezone');
+  
+  return {
+    __esModule: true,
+    ...originalModule,
+    TimeZoneService: {
+      ensureIANATimeZone: jest.fn(timezone => timezone || 'America/Chicago'),
+      fromUTCTimestamp: jest.fn(timestamp => DateTime.fromISO(timestamp).setZone('America/Chicago')),
+      toUTCTimestamp: jest.fn((timestamp, timezone) => DateTime.fromISO(timestamp).toUTC().toISO()),
+      convertEventToUserTimeZone: jest.fn(event => event),
+      formatTimeZoneDisplay: jest.fn(timezone => `${timezone} (Test)`),
+      getCurrentTimeIn: jest.fn(timezone => DateTime.now().setZone(timezone || 'America/Chicago')),
+      convertDateTime: jest.fn((dt, from, to) => dt)
+    }
+  };
+});
 
 // Set timezone for tests
 process.env.TZ = 'America/Chicago';

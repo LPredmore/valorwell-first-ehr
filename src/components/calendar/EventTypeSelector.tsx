@@ -1,8 +1,10 @@
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, UserPlus, CalendarX } from 'lucide-react';
 import { useDialogs, DialogType } from '@/context/DialogContext';
+import { TimeZoneService } from '@/utils/timezone';
 
 interface EventTypeSelectorProps {
   isOpen: boolean;
@@ -25,11 +27,30 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
 }) => {
   const { openDialog } = useDialogs();
 
+  // Convert Date objects to ISO strings using TimeZoneService
+  const startTimeISO = TimeZoneService.getCurrentTimeIn('UTC')
+    .set({
+      year: startTime.getFullYear(),
+      month: startTime.getMonth() + 1,
+      day: startTime.getDate(),
+      hour: startTime.getHours(),
+      minute: startTime.getMinutes()
+    }).toISO();
+  
+  const endTimeISO = TimeZoneService.getCurrentTimeIn('UTC')
+    .set({
+      year: endTime.getFullYear(),
+      month: endTime.getMonth() + 1,
+      day: endTime.getDate(),
+      hour: endTime.getHours(),
+      minute: endTime.getMinutes()
+    }).toISO();
+
   const handleAppointmentClick = () => {
     onClose();
     openDialog('appointment', {
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
+      startTime: startTimeISO,
+      endTime: endTimeISO,
       clinicianId,
       onAppointmentCreated: onEventCreated
     });
@@ -38,8 +59,8 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
   const handleAvailabilityClick = () => {
     onClose();
     openDialog('singleAvailability', {
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
+      startTime: startTimeISO,
+      endTime: endTimeISO,
       clinicianId,
       onAvailabilityCreated: onEventCreated
     });
@@ -48,8 +69,8 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
   const handleTimeOffClick = () => {
     onClose();
     openDialog('timeOff', {
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
+      startTime: startTimeISO,
+      endTime: endTimeISO,
       clinicianId,
       allDay,
       onTimeOffCreated: onEventCreated
