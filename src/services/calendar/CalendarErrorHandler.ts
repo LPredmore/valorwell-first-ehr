@@ -44,3 +44,21 @@ export class CalendarErrorHandler {
     );
   }
 }
+
+/**
+ * CalendarError - Standard error class for calendar operations
+ * This is for backward compatibility with existing code that relies on CalendarError
+ */
+export class CalendarError extends Error {
+  code: string;
+  details?: any;
+  
+  constructor(message: string, code: string = 'CALENDAR_ERROR', details?: any) {
+    super(message);
+    this.name = 'CalendarError';
+    this.code = code;
+    this.details = details;
+  }
+}
+
+export default CalendarErrorHandler;

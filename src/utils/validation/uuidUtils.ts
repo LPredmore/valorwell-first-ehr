@@ -75,3 +75,62 @@ export function isValidUUID(id: string | null | undefined): boolean {
   const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   return regex.test(id);
 }
+
+/**
+ * Check if a string could potentially be formatted as a UUID
+ * @param id The string to check
+ * @returns True if the string could potentially be a UUID
+ */
+export function couldBeUUID(id: string | null | undefined): boolean {
+  if (!id) return false;
+  
+  // Remove all non-hex characters
+  const cleanId = id.toLowerCase().replace(/[^a-f0-9]/g, '');
+  
+  // Check if we have exactly 32 hex characters (a UUID without hyphens)
+  return cleanId.length === 32;
+}
+
+/**
+ * UUID validation error class
+ */
+export class UUIDValidationError extends Error {
+  constructor(message: string, context?: Record<string, any>) {
+    super(message);
+    this.name = 'UUIDValidationError';
+    
+    // Add context properties if provided
+    if (context) {
+      Object.assign(this, context);
+    }
+  }
+}
+
+/**
+ * Ensures a string is a valid UUID, throws an error if not
+ * @param id The string to validate
+ * @returns The validated UUID
+ */
+export function ensureUUID(id: string | null | undefined): string {
+  if (!id) {
+    throw new UUIDValidationError('UUID is required');
+  }
+  
+  if (!isValidUUID(id)) {
+    try {
+      // Try to format it as a UUID
+      const formatted = formatAsUUID(id, { strictMode: true });
+      if (isValidUUID(formatted)) {
+        return formatted;
+      }
+      throw new UUIDValidationError(`Invalid UUID format: ${id}`);
+    } catch (error) {
+      if (error instanceof UUIDValidationError) {
+        throw error;
+      }
+      throw new UUIDValidationError(`Failed to validate UUID: ${id}`, { cause: error });
+    }
+  }
+  
+  return id;
+}
