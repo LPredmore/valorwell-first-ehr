@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -18,7 +19,6 @@ import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 
 // Core pages
-import Calendar from '@/pages/Calendar';
 import Clients from '@/pages/Clients';
 import ClientDetails from '@/pages/ClientDetails';
 import Activity from '@/pages/Activity';
@@ -44,9 +44,6 @@ import NotFound from '@/pages/NotFound';
 
 // Create a client
 const queryClient = new QueryClient();
-
-// Import the mock data initializer
-import '@/utils/mockDataInitializer';
 
 const App: React.FC = () => {
   return (
@@ -126,12 +123,6 @@ const App: React.FC = () => {
                   <Route path="/my-clients" element={
                     <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
                       <MyClients />
-                    </ProtectedRoute>
-                  } />
-                  
-                  <Route path="/calendar" element={
-                    <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
-                      <Calendar />
                     </ProtectedRoute>
                   } />
                   
