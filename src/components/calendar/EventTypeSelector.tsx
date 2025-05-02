@@ -48,8 +48,8 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
     
     try {
       // Convert to Date objects if strings
-      const startDate = startTime instanceof Date ? startTime : new Date(startTime);
-      const endDate = endTime instanceof Date ? endTime : new Date(endTime);
+      const startDate = startTime instanceof Date ? startTime : new Date(String(startTime));
+      const endDate = endTime instanceof Date ? endTime : new Date(String(endTime));
       
       // Use TimeZoneService to format the dates
       const formattedDate = DateTime.fromJSDate(startDate).toFormat('ccc, LLL d');
@@ -83,8 +83,8 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
     setTimeout(() => {
       openDialog('appointment', {
         clinicianId,
-        startTime,
-        endTime,
+        startTime: startTime instanceof Date ? startTime : String(startTime),
+        endTime: endTime instanceof Date ? endTime : String(endTime),
         allDay,
         onAppointmentCreated: onEventCreated || state.props?.onEventCreated
       });
@@ -98,8 +98,8 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
     setTimeout(() => {
       openDialog('timeOff', {
         clinicianId,
-        startTime,
-        endTime,
+        startTime: startTime instanceof Date ? startTime : String(startTime),
+        endTime: endTime instanceof Date ? endTime : String(endTime),
         allDay,
         onTimeOffCreated: onEventCreated || state.props?.onEventCreated
       });

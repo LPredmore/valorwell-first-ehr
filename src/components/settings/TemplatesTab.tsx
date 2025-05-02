@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -34,6 +34,18 @@ interface TemplateSettings {
   template_name: string;
   is_assignable: boolean;
 }
+
+interface TreatmentPlanTemplateProps {
+  clinicianName?: string;
+  onClose?: () => void;
+}
+
+const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
+  clinicianName,
+  onClose
+}) => {
+  return <div>Treatment Plan Template (placeholder)</div>;
+};
 
 const TemplatesTab = () => {
   const { toast } = useToast();
@@ -248,7 +260,7 @@ const TemplatesTab = () => {
   return (
     <div className="p-6 animate-fade-in">
       {showTreatmentPlanTemplate ? (
-        <TreatmentPlanTemplate onClose={() => setShowTreatmentPlanTemplate(false)} />
+        <TreatmentPlanTemplate onClose={() => setShowTreatmentPlanTemplate(false)} clinicianName="" />
       ) : showSessionNoteTemplate ? (
         <SessionNoteTemplate onClose={() => setShowSessionNoteTemplate(false)} />
       ) : showPHQ9Template ? (
