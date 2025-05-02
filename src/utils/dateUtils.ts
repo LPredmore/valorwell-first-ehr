@@ -45,6 +45,17 @@ export const getRelativeTimeFromNow = (date: Date | string): string => {
 };
 
 /**
+ * Format a time string relative to now (e.g. "2 days ago")
+ * This is used by the DocumentationTab component
+ * @param timestamp The timestamp to format
+ * @returns Formatted time string
+ */
+export const timeAgo = (timestamp: string | Date): string => {
+  const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+  return getRelativeTimeFromNow(date);
+};
+
+/**
  * Check if a date is in the past
  * @param date Date to check
  */

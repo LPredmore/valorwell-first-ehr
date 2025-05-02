@@ -1,66 +1,58 @@
 
 /**
- * CalendarErrorHandler - Standardizes error handling for calendar-related operations
- */
-export class CalendarErrorHandler {
-  /**
-   * Create a standardized error object
-   */
-  static createError(message: string, code: string, details?: any): Error {
-    const error = new Error(message);
-    (error as any).code = code;
-    (error as any).details = details;
-    return error;
-  }
-
-  /**
-   * Handle database errors from Supabase
-   */
-  static handleDatabaseError(error: any): Error {
-    // Extract useful info from Supabase error format
-    const message = error.message || 'Database operation failed';
-    const code = error.code || 'UNKNOWN_ERROR';
-    const details = {
-      hint: error.hint,
-      details: error.details,
-      originalError: error
-    };
-    
-    return this.createError(message, code, details);
-  }
-
-  /**
-   * Format any type of error into a standardized error
-   */
-  static formatError(error: unknown): Error {
-    if (error instanceof Error) {
-      return error;
-    }
-    
-    return this.createError(
-      typeof error === 'string' ? error : 'Unknown error occurred',
-      'UNKNOWN_ERROR',
-      { originalError: error }
-    );
-  }
-}
-
-/**
- * CalendarError - Standard error class for calendar operations
- * This is for backward compatibility with existing code that relies on CalendarError
+ * Calendar Error Handler
+ * 
+ * Centralizes error handling for calendar operations
  */
 export class CalendarError extends Error {
   code: string;
   details?: any;
-  
+
   constructor(message: string, code: string = 'CALENDAR_ERROR', details?: any) {
     super(message);
     this.name = 'CalendarError';
     this.code = code;
     this.details = details;
+  }
+}
+
+export class CalendarErrorHandler {
+  /**
+   * Gets a user-friendly error message based on the error
+   * @param error The error to process
+   * @returns A user-friendly error message
+   */
+  static getUserFriendlyMessage(error: any): string {
+    if (error instanceof CalendarError) {
+      switch (error.code) {
+        case 'INVALID_TIME_RANGE':
+          return 'The selected time range is invalid. Please ensure the start time is before the end time.';
+        case 'OVERLAPPING_EVENT':
+          return 'This time slot overlaps with another event. Please choose a different time.';
+        case 'INVALID_TIMEZONE':
+          return 'The selected timezone is invalid. Please choose a valid timezone.';
+        case 'INSUFFICIENT_PERMISSIONS':
+          return 'You do not have permission to perform this action.';
+        case 'EVENT_NOT_FOUND':
+          return 'The requested event could not be found.';
+        case 'DATABASE_ERROR':
+          return 'There was a problem connecting to the database. Please try again later.';
+        default:
+          return error.message || 'An unexpected calendar error occurred.';
+      }
+    }
     
-    // Ensure proper prototype chain for instanceof checks
-    Object.setPrototypeOf(this, CalendarError.prototype);
+    // Handle database errors
+    if (error?.message?.includes('duplicate key value')) {
+      return 'This event conflicts with an existing event. Please try a different time.';
+    }
+    
+    // Handle network errors
+    if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
+      return 'There was a network issue. Please check your connection and try again.';
+    }
+    
+    return error?.message || 'An unexpected error occurred. Please try again later.';
   }
 }
 

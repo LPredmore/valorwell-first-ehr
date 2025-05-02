@@ -38,7 +38,7 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
   
   useEffect(() => {
     // Get the current timezone
-    const timezone = TimeZoneService.getLocalTimeZone();
+    const timezone = TimeZoneService.getUserTimeZone();
     setSelectedTimeZone(timezone);
   }, []);
   
@@ -113,7 +113,8 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
     setTimeout(() => {
       openDialog('singleAvailability', {
         clinicianId,
-        date: startTime instanceof Date ? startTime : new Date(startTime as string),
+        date: startTime instanceof Date ? startTime : new Date(startTime),
+        userTimeZone: selectedTimeZone,
         onAvailabilityCreated: onEventCreated || state.props?.onEventCreated
       });
     }, 100);

@@ -1,10 +1,12 @@
 
 export interface CPTCode {
-  id: string;
+  id?: string;
   code: string;
-  description: string;
+  description?: string;
   rate?: number;
   duration?: number;
-  name?: string;
+  name: string;
   clinical_type?: string;
+  fee: number;
+  status?: string;
 }
