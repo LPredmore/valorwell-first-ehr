@@ -1,61 +1,39 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
-import Layout from '../components/layout/Layout';
-import { useCalendarState } from '../hooks/useCalendarState';
+import React, { useState, useEffect } from 'react';
+import Layout from '@/components/layout/Layout';
+import { useCalendarState } from '@/hooks/useCalendarState';
 import { useUser } from '@/context/UserContext';
 import { useToast } from '@/hooks/use-toast';
-import { usePermissions } from '@/hooks/usePermissions';
+import usePermissions from '@/hooks/usePermissions';
 import CalendarLoading from '@/components/calendar/CalendarLoading';
 import CalendarAuthError from '@/components/calendar/CalendarAuthError';
 import DialogManager from '@/components/common/DialogManager';
-import { getWeekdayName } from '@/utils/dateFormatUtils';
-import { DateTime } from 'luxon';
 import { useCalendarAuth } from '@/hooks/useCalendarAuth';
 import { useDialogs } from '@/context/DialogContext';
-import CalendarHeader from '@/components/calendar/CalendarHeader';
-import CalendarViewManager from '@/components/calendar/CalendarViewManager';
-import CalendarSidebar from '@/components/calendar/CalendarSidebar';
-import CalendarMainView from '@/components/calendar/CalendarMainView';
 import { useTimeZoneSync } from '@/hooks/useTimeZoneSync';
+import { formatAsUUID } from '@/utils/validation/uuidUtils';
+import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CalendarViewType } from '@/types/calendar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Info, AlertTriangle } from 'lucide-react';
-import { authDebugUtils } from '@/utils/authDebugUtils';
-import { calendarPermissionDebug } from '@/utils/calendarPermissionDebug';
+import { Calendar, ChevronDown, ChevronLeft, ChevronRight, Clock, List, Plus, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  logCalendarState,
-  diagnoseCalendarIssues,
-  trackCalendarInitialization,
-  logDetailedCalendarState,
-  logCalendarEvents,
-  trackClinicianSelection,
-  debugUuidValidation
-} from '@/utils/calendarDebugUtils';
-import { formatAsUUID, isValidUUID } from '@/utils/validation/uuidUtils';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DateTime } from 'luxon';
+import { TimeZoneService } from '@/utils/timezone';
 
 /**
- * CalendarPage
- *
- * Main container component for the calendar functionality.
- * Implements the new calendar system architecture with improved component hierarchy.
+ * Redesigned Calendar Page
+ * 
+ * A modern, user-friendly implementation of the calendar functionality
+ * with improved component hierarchy and visual design.
  */
 const CalendarPage: React.FC = () => {
-  const { userRole, isLoading: isUserLoading, userId, isClinician } = useUser();
+  // Core hooks for calendar functionality
+  const { userId, isLoading: isUserLoading, isClinician } = useUser();
   const { isAuthenticated, isLoading: isAuthLoading, currentUserId } = useCalendarAuth();
   
-  // Track initialization start
-  useEffect(() => {
-    trackCalendarInitialization('start', { userId, isUserLoading, isClinician });
-    console.log('[CalendarPage] Calendar page initialization', {
-      userId,
-      isUserLoading,
-      currentUserId,
-      isAuthLoading,
-      isClinician
-    });
-  }, []);
-  
-  // Pass the currentUserId as the initialClinicianId to useCalendarState
+  // Calendar state management
   const {
     selectedClinicianId,
     setSelectedClinicianId,
@@ -63,300 +41,93 @@ const CalendarPage: React.FC = () => {
     loadingClinicians,
     clients,
     loadingClients,
-    timeZone
+    timeZone: calendarTimeZone
   } = useCalendarState(isClinician ? currentUserId : null);
   
+  // Get user timezone
   const { timeZone: syncedTimeZone, isLoading: isTimeZoneLoading } = useTimeZoneSync({ userId });
+  
+  // Permission management
   const {
-    checkPermissionLevel,
     permissionLevel,
     permissionError,
     isCheckingPermission
   } = usePermissions();
   
-  // Track auth loaded state
-  useEffect(() => {
-    if (!isAuthLoading && !isUserLoading) {
-      trackCalendarInitialization('auth-loaded', {
-        currentUserId,
-        userId,
-        isAuthenticated,
-        userRole,
-        isClinician
-      });
-    }
-  }, [isAuthLoading, isUserLoading, currentUserId, userId, isAuthenticated, userRole, isClinician]);
-  
+  // UI state
+  const [activeView, setActiveView] = useState<CalendarViewType>('timeGridWeek');
   const [showAvailability, setShowAvailability] = useState(true);
-  const [forceRefreshKey, setForceRefreshKey] = useState(0); // Added force refresh key
-  
-  // Debug the different IDs to spot data type or format issues
-  useEffect(() => {
-    debugUuidValidation(currentUserId, 'CalendarPage: currentUserId');
-    debugUuidValidation(selectedClinicianId, 'CalendarPage: selectedClinicianId');
-    debugUuidValidation(userId, 'CalendarPage: userId');
-    
-    console.log('[CalendarPage] ID comparison', {
-      currentUserId: {
-        value: currentUserId,
-        type: typeof currentUserId,
-        formatted: currentUserId ? formatAsUUID(currentUserId) : null
-      },
-      selectedClinicianId: {
-        value: selectedClinicianId,
-        type: typeof selectedClinicianId,
-        formatted: selectedClinicianId ? formatAsUUID(selectedClinicianId) : null
-      },
-      userId: {
-        value: userId,
-        type: typeof userId,
-        formatted: userId ? formatAsUUID(userId) : null
-      },
-      isClinician
-    });
-  }, [currentUserId, selectedClinicianId, userId, isClinician]);
-  
-  // Ensure selectedClinicianId is set to currentUserId when it becomes available for clinicians
-  useEffect(() => {
-    // If the user is a clinician and we have their ID but no selected clinician
-    if (isClinician && currentUserId && !selectedClinicianId) {
-      // Track before setting
-      trackClinicianSelection('auto-select', {
-        source: 'currentUserId-clinician',
-        selectedClinicianId: null,
-        previousClinicianId: selectedClinicianId,
-        userId: currentUserId,
-        availableClinicians: clinicians?.map(c => ({
-          id: c.id,
-          name: c.clinician_professional_name
-        }))
-      });
-      
-      console.log('[Calendar] Setting selectedClinicianId to currentUserId (clinician):', currentUserId);
-      const formattedId = formatAsUUID(currentUserId);
-      console.log(`[Calendar] Using formatted ID: "${currentUserId}" → "${formattedId}"`);
-      
-      setSelectedClinicianId(formattedId);
-      trackCalendarInitialization('clinician-selected', {
-        selectedClinicianId: formattedId,
-        originalId: currentUserId,
-        source: 'auto-selection'
-      });
-      
-      // Track after setting
-      trackClinicianSelection('applied', {
-        source: 'currentUserId-clinician',
-        selectedClinicianId: formattedId,
-        previousClinicianId: selectedClinicianId,
-        userId: currentUserId
-      });
-      
-      // Force refresh the calendar
-      setForceRefreshKey(prev => prev + 1);
-    } else if (currentUserId && selectedClinicianId && currentUserId !== selectedClinicianId && isClinician) {
-      console.log('[Calendar] Note: currentUserId and selectedClinicianId differ for clinician:', {
-        currentUserId,
-        selectedClinicianId,
-        userRole,
-        formattedCurrentUserId: formatAsUUID(currentUserId),
-        formattedSelectedClinicianId: formatAsUUID(selectedClinicianId)
-      });
-      
-      // Check if the IDs might be the same but in different formats
-      const formattedCurrentUserId = formatAsUUID(currentUserId);
-      const formattedSelectedClinicianId = formatAsUUID(selectedClinicianId);
-      
-      if (formattedCurrentUserId === formattedSelectedClinicianId) {
-        console.log('[Calendar] IDs are the same after formatting, updating selectedClinicianId');
-        setSelectedClinicianId(formattedCurrentUserId);
-        setForceRefreshKey(prev => prev + 1);
-      } else if (isClinician) {
-        // If user is a clinician, their ID should be the selected clinician ID
-        console.log('[Calendar] User is a clinician but viewing different calendar, updating to their own');
-        setSelectedClinicianId(formattedCurrentUserId);
-        setForceRefreshKey(prev => prev + 1);
-      }
-    } else if (!currentUserId && isClinician) {
-      console.log('[Calendar] Clinician user but waiting for currentUserId to become available');
-    }
-  }, [currentUserId, selectedClinicianId, setSelectedClinicianId, userRole, isClinician, clinicians]);
-  
+  const [showAppointments, setShowAppointments] = useState(true);
+  const [showTimeOff, setShowTimeOff] = useState(true);
   const [calendarKey, setCalendarKey] = useState<number>(0);
-  const [permissionWarning, setPermissionWarning] = useState<string | null>(null);
+  const [currentDate, setCurrentDate] = useState<DateTime>(DateTime.now());
+  
+  // Dialog management
   const { toast } = useToast();
+  const { openDialog } = useDialogs();
 
-  const {
-    openDialog,
-    openAppointmentDialog,
-    openAvailabilitySettings,
-    openWeeklyAvailability,
-    openSingleAvailability,
-    openDiagnosticDialog
-  } = useDialogs();
+  // Format clinician ID to ensure consistent UUID format
+  const formattedClinicianId = selectedClinicianId ? formatAsUUID(selectedClinicianId) : null;
 
-  // Verify permission to manage the selected clinician's calendar
-  useEffect(() => {
-    const checkPermissions = async () => {
-      if (!selectedClinicianId || !currentUserId) {
-        setPermissionWarning(null);
-        return;
+  // Calculate the calendar title based on current view and date
+  const getCalendarTitle = () => {
+    switch(activeView) {
+      case 'dayGridMonth':
+        return currentDate.toFormat('MMMM yyyy');
+      case 'timeGridWeek': {
+        const weekStart = currentDate.startOf('week');
+        const weekEnd = currentDate.endOf('week');
+        return `${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('d, yyyy')}`;
       }
+      case 'timeGridDay':
+        return currentDate.toFormat('EEEE, MMMM d, yyyy');
+      default:
+        return currentDate.toFormat('MMMM yyyy');
+    }
+  };
 
-      console.log('[Calendar] Checking calendar permissions:', {
-        currentUserId,
-        selectedClinicianId,
-        userRole,
-        userId,
-        isClinician
-      });
-      
-      // Reset warning first
-      setPermissionWarning(null);
-      
-      // If user is a clinician viewing their own calendar, they have full permission
-      if (isClinician && formatAsUUID(currentUserId) === formatAsUUID(selectedClinicianId)) {
-        console.log('[Calendar] Clinician viewing own calendar, full permission granted');
-        return;
-      }
-      
-      // Use the centralized permission service to check permission level
-      await checkPermissionLevel('calendar', selectedClinicianId);
-      
-      // Set warning based on permission level and any errors
-      if (permissionLevel === 'none') {
-        setPermissionWarning("You don't have permission to view this clinician's calendar.");
-      } else if (permissionLevel === 'limited') {
-        setPermissionWarning("You have limited access to this calendar. Some features may be unavailable.");
-      } else if (permissionError) {
-        setPermissionWarning("Unable to verify full calendar permissions. Some features may be unavailable.");
-      }
-    };
-    
-    checkPermissions();
-  }, [selectedClinicianId, currentUserId, userRole, userId, isClinician, checkPermissionLevel, permissionLevel, permissionError]);
-
-  const handleCalendarRefresh = useCallback(() => {
-    console.log('[Calendar] Refreshing calendar with new key');
+  // Navigation functions
+  const goToNextPeriod = () => {
+    switch(activeView) {
+      case 'dayGridMonth':
+        setCurrentDate(currentDate.plus({ months: 1 }));
+        break;
+      case 'timeGridWeek':
+        setCurrentDate(currentDate.plus({ weeks: 1 }));
+        break;
+      case 'timeGridDay':
+        setCurrentDate(currentDate.plus({ days: 1 }));
+        break;
+    }
     setCalendarKey(prev => prev + 1);
-  }, []);
+  };
 
-  const handleAvailabilityClick = useCallback((event: any) => {
-    if (!event || !event.start) {
-      console.error('[Calendar] Invalid event data in availability click handler', event);
-      return;
+  const goToPreviousPeriod = () => {
+    switch(activeView) {
+      case 'dayGridMonth':
+        setCurrentDate(currentDate.minus({ months: 1 }));
+        break;
+      case 'timeGridWeek':
+        setCurrentDate(currentDate.minus({ weeks: 1 }));
+        break;
+      case 'timeGridDay':
+        setCurrentDate(currentDate.minus({ days: 1 }));
+        break;
     }
-    
-    try {
-      const eventStart = event.start;
-      let dayOfWeek: string;
-      let specificDate: string | null = null;
-      
-      if (eventStart instanceof DateTime) {
-        dayOfWeek = eventStart.weekdayLong.toLowerCase();
-        specificDate = eventStart.toISODate();
-      } 
-      else if (eventStart instanceof Date) {
-        const dateTime = DateTime.fromJSDate(eventStart).setZone(syncedTimeZone);
-        dayOfWeek = dateTime.weekdayLong.toLowerCase();
-        specificDate = dateTime.toISODate();
-      } 
-      else {
-        dayOfWeek = getWeekdayName(eventStart);
-        try {
-          const parsed = DateTime.fromISO(eventStart);
-          if (parsed.isValid) {
-            specificDate = parsed.toISODate();
-          }
-        } catch (err) {
-          console.log('[Calendar] Could not parse specific date from event start:', eventStart);
-        }
-      }
-      
-      const slotId = event.extendedProps?.id;
-      
-      console.log('[Calendar] Availability click handler:', {
-        date: event.start,
-        dayOfWeek,
-        specificDate,
-        slotId,
-        eventData: event,
-        permissionLevel
-      });
-      
-      if (permissionLevel === 'none') {
-        toast({
-          title: 'Permission Denied',
-          description: 'You do not have permission to manage this calendar.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      if (slotId) {
-        localStorage.setItem('selectedAvailabilitySlotId', slotId);
-      }
-      
-      if (specificDate) {
-        localStorage.setItem('selectedAvailabilityDate', specificDate);
-      }
-      
-      openDialog('weeklyAvailability', {
-        clinicianId: selectedClinicianId,
-        onAvailabilityUpdated: handleCalendarRefresh,
-        permissionLevel: permissionLevel,
-        selectedDate: dayOfWeek
-      });
-    } catch (error) {
-      console.error('[Calendar] Error in availability click handler:', error);
-      toast({
-        title: 'Error',
-        description: 'Could not process availability slot. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  }, [syncedTimeZone, toast, openDialog, permissionLevel, selectedClinicianId, handleCalendarRefresh]);
+    setCalendarKey(prev => prev + 1);
+  };
 
-  // Log detailed calendar state when all data is loaded
-  useEffect(() => {
-    if (!isUserLoading && !isAuthLoading && !isTimeZoneLoading && !loadingClinicians) {
-      trackCalendarInitialization('complete', {
-        selectedClinicianId,
-        currentUserId,
-        timeZone: syncedTimeZone,
-        isClinician
-      });
-      
-      // Add detailed state debugging info
-      logDetailedCalendarState({
-        currentUserId,
-        userRole,
-        isAuthenticated,
-        selectedClinicianId,
-        clinicians: clinicians?.length,
-        permissionLevel,
-        permissionError,
-        canManageAvailability: permissionLevel !== 'none',
-        timeZone: syncedTimeZone,
-        formattedClinicianId: selectedClinicianId ? formatAsUUID(selectedClinicianId) : null,
-        firstClinicianId: clinicians?.[0]?.id || 'none',
-        isClinician
-      });
-    }
-  }, [
-    isUserLoading, isAuthLoading, isTimeZoneLoading, loadingClinicians,
-    selectedClinicianId, currentUserId, syncedTimeZone, userRole,
-    isAuthenticated, clinicians, permissionLevel, permissionError,
-    isClinician
-  ]);
+  const goToToday = () => {
+    setCurrentDate(DateTime.now());
+    setCalendarKey(prev => prev + 1);
+  };
 
-  // Force refresh the calendar when needed
-  useEffect(() => {
-    if (forceRefreshKey > 0) {
-      console.log('[Calendar] Forcing calendar refresh');
-      setCalendarKey(prev => prev + 1);
-    }
-  }, [forceRefreshKey]);
+  // Handle calendar refresh
+  const handleCalendarRefresh = () => {
+    setCalendarKey(prev => prev + 1);
+  };
 
+  // Loading state
   if (isUserLoading || isAuthLoading || isTimeZoneLoading) {
     return (
       <Layout>
@@ -365,6 +136,7 @@ const CalendarPage: React.FC = () => {
     );
   }
 
+  // Authentication error state
   if (!isAuthenticated || !userId) {
     return (
       <Layout>
@@ -373,141 +145,284 @@ const CalendarPage: React.FC = () => {
     );
   }
 
-  const canSelectDifferentClinician = userRole === 'admin' || !isClinician;
+  const canSelectDifferentClinician = permissionLevel === 'admin' || !isClinician;
   const canManageAvailability = isClinician || permissionLevel !== 'none';
+  const timezone = TimeZoneService.ensureIANATimeZone(syncedTimeZone || 'UTC');
 
   return (
     <Layout>
-      <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
-        <div className="flex flex-col space-y-4">
-          {/* Header with navigation controls and clinician selector */}
-          <CalendarHeader
-            clinicians={clinicians}
-            selectedClinicianId={selectedClinicianId}
-            loadingClinicians={loadingClinicians}
-            canSelectDifferentClinician={canSelectDifferentClinician}
-            canManageAvailability={canManageAvailability}
-            timeZone={syncedTimeZone}
-            onClinicianSelect={(id) => {
-              trackClinicianSelection('user-select', {
-                source: 'dropdown',
-                selectedClinicianId: id,
-                previousClinicianId: selectedClinicianId,
-                userId
-              });
-              setSelectedClinicianId(id);
-              // Force refresh after selection
-              setForceRefreshKey(prev => prev + 1);
-            }}
-            onNewAppointment={() => openDialog('appointment', {
-              clients,
-              loadingClients,
-              selectedClinicianId,
-              onAppointmentCreated: handleCalendarRefresh
-            })}
-            onRefresh={handleCalendarRefresh}
-            onSettingsClick={() => openDialog('availabilitySettings', {
-              clinicianId: selectedClinicianId,
-              onSettingsSaved: handleCalendarRefresh,
-              permissionLevel
-            })}
-            onWeeklyScheduleClick={() => openDialog('weeklyAvailability', {
-              clinicianId: selectedClinicianId,
-              onAvailabilityUpdated: handleCalendarRefresh,
-              permissionLevel
-            })}
-            onSingleDayClick={() => openDialog('singleAvailability', {
-              clinicianId: selectedClinicianId,
-              userTimeZone: syncedTimeZone,
-              onAvailabilityCreated: handleCalendarRefresh,
-              permissionLevel
-            })}
-          />
-
-          {/* Permission warnings and alerts */}
-          {permissionWarning && (
-            <Alert variant="warning" className="mt-2">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription className="flex justify-between items-center">
-                <span>{permissionWarning}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openDialog('diagnostic', {
-                    selectedClinicianId
-                  })}
-                >
-                  Troubleshoot
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {selectedClinicianId && currentUserId && selectedClinicianId !== currentUserId && permissionLevel === 'full' && (
-            <Alert variant="default" className="mt-2 bg-blue-50">
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                You are viewing another clinician's calendar with admin access.
-              </AlertDescription>
-            </Alert>
-          )}
+      <div className="max-w-7xl mx-auto px-4 py-6 animate-fade-in">
+        {/* Top controls section with clinician selector and action buttons */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <div className="flex flex-col w-full md:w-auto">
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">Calendar</h1>
+            <p className="text-sm text-gray-500">
+              {TimeZoneService.formatTimeZoneDisplay(timezone)}
+            </p>
+          </div>
           
-          {/* Debug information panel */}
-          <Alert variant="default" className="mt-2 bg-gray-50 border-gray-300">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="flex justify-between items-center text-xs">
-              <div>
-                <strong>Debug:</strong> Clinician ID: {selectedClinicianId || 'none'} |
-                User ID: {userId || 'none'} |
-                Current User ID: {currentUserId || 'none'} |
-                Is Clinician: {isClinician ? 'Yes' : 'No'}
-              </div>
-              <Button
+          <div className="flex flex-wrap gap-3 w-full md:w-auto">
+            {/* Clinician selector */}
+            {canSelectDifferentClinician && (
+              <Select
+                disabled={loadingClinicians}
+                value={selectedClinicianId || ''}
+                onValueChange={(value) => setSelectedClinicianId(value)}
+              >
+                <SelectTrigger className="w-full md:w-[240px] bg-white">
+                  <SelectValue placeholder="Select a clinician" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Clinicians</SelectLabel>
+                    {clinicians.map((clinician) => (
+                      <SelectItem key={clinician.id} value={clinician.id}>
+                        {clinician.clinician_professional_name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            )}
+            
+            {/* Action buttons */}
+            <div className="flex gap-2">
+              <Button 
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setForceRefreshKey(prev => prev + 1);
-                  toast({
-                    title: "Calendar Refreshed",
-                    description: "Forcing a complete calendar refresh",
-                  });
-                }}
+                onClick={() => openDialog('appointment', {
+                  clients,
+                  loadingClients,
+                  selectedClinicianId: formattedClinicianId,
+                  onAppointmentCreated: handleCalendarRefresh
+                })}
               >
-                Force Refresh
+                <Plus className="h-4 w-4 mr-1" />
+                New Appointment
               </Button>
-            </AlertDescription>
-          </Alert>
-
-          {/* Main calendar content with sidebar and calendar view */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Sidebar with filters and legend */}
-            <div className="md:col-span-1">
-              <CalendarSidebar
-                showAvailability={showAvailability}
-                showAppointments={true}
-                showTimeOff={true}
-                setShowAvailability={setShowAvailability}
-                setShowAppointments={() => {}}
-                setShowTimeOff={() => {}}
-              />
-            </div>
-            
-            {/* Main calendar view */}
-            <div className="md:col-span-3">
-              <CalendarMainView
-                key={`${calendarKey}-${forceRefreshKey}`}
-                clinicianId={selectedClinicianId}
-                timeZone={syncedTimeZone}
-                showAvailability={showAvailability}
-                showAppointments={true}
-                showTimeOff={true}
-              />
+              
+              {canManageAvailability && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => openDialog('weeklyAvailability', {
+                    clinicianId: formattedClinicianId,
+                    onAvailabilityUpdated: handleCalendarRefresh,
+                    permissionLevel
+                  })}
+                >
+                  <Clock className="h-4 w-4 mr-1" />
+                  Schedule
+                </Button>
+              )}
+              
+              {canManageAvailability && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => openDialog('availabilitySettings', {
+                    clinicianId: formattedClinicianId,
+                    onSettingsSaved: handleCalendarRefresh,
+                    permissionLevel
+                  })}
+                >
+                  <Settings className="h-4 w-4 mr-1" />
+                  Settings
+                </Button>
+              )}
             </div>
           </div>
         </div>
+        
+        {/* Calendar navigation controls */}
+        <Card className="p-4 mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={goToPreviousPeriod}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={goToToday}
+              >
+                Today
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={goToNextPeriod}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              
+              <h2 className="text-lg font-medium ml-2">{getCalendarTitle()}</h2>
+            </div>
+            
+            {/* View selection tabs */}
+            <div className="flex rounded-lg border bg-white">
+              <Button
+                variant={activeView === 'dayGridMonth' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveView('dayGridMonth')}
+                className="rounded-r-none"
+              >
+                <Calendar className="h-4 w-4 mr-1" />
+                Month
+              </Button>
+              
+              <Button
+                variant={activeView === 'timeGridWeek' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveView('timeGridWeek')}
+                className="rounded-none border-x"
+              >
+                <List className="h-4 w-4 mr-1" />
+                Week
+              </Button>
+              
+              <Button
+                variant={activeView === 'timeGridDay' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveView('timeGridDay')}
+                className="rounded-l-none"
+              >
+                <Clock className="h-4 w-4 mr-1" />
+                Day
+              </Button>
+            </div>
+          </div>
+        </Card>
+        
+        {/* Calendar display area */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Sidebar with filters */}
+          <div className="lg:col-span-1">
+            <Card className="p-4">
+              <h3 className="font-medium text-lg mb-4">Filters</h3>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium flex items-center">
+                    <div className="h-3 w-3 bg-green-300 rounded-full mr-2"></div>
+                    Availability
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={showAvailability}
+                    onChange={(e) => setShowAvailability(e.target.checked)}
+                    className="form-checkbox h-5 w-5 text-blue-600 rounded"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium flex items-center">
+                    <div className="h-3 w-3 bg-blue-300 rounded-full mr-2"></div>
+                    Appointments
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={showAppointments}
+                    onChange={(e) => setShowAppointments(e.target.checked)}
+                    className="form-checkbox h-5 w-5 text-blue-600 rounded"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium flex items-center">
+                    <div className="h-3 w-3 bg-amber-300 rounded-full mr-2"></div>
+                    Time Off
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={showTimeOff}
+                    onChange={(e) => setShowTimeOff(e.target.checked)}
+                    className="form-checkbox h-5 w-5 text-blue-600 rounded"
+                  />
+                </div>
+              </div>
+              
+              <div className="mt-6 pt-4 border-t">
+                <h3 className="font-medium text-lg mb-3">Legend</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center text-sm">
+                    <div className="h-3 w-3 bg-green-300 rounded-full mr-2"></div>
+                    <span>Available Time Slots</span>
+                  </div>
+                  <div className="flex items-center text-sm">
+                    <div className="h-3 w-3 bg-blue-300 rounded-full mr-2"></div>
+                    <span>Scheduled Appointments</span>
+                  </div>
+                  <div className="flex items-center text-sm">
+                    <div className="h-3 w-3 bg-amber-300 rounded-full mr-2"></div>
+                    <span>Time Off</span>
+                  </div>
+                  <div className="flex items-center text-sm">
+                    <div className="h-3 w-3 bg-red-300 rounded-full mr-2"></div>
+                    <span>Cancelled</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-6 pt-4 border-t">
+                <Button 
+                  className="w-full" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleCalendarRefresh}
+                >
+                  Refresh Calendar
+                </Button>
+              </div>
+            </Card>
+          </div>
+          
+          {/* Main calendar */}
+          <div className="lg:col-span-3">
+            <Card className="p-4">
+              {!formattedClinicianId ? (
+                <div className="text-center py-10 text-gray-500">
+                  {loadingClinicians ? (
+                    <p>Loading clinician data...</p>
+                  ) : (
+                    <p>Please select a clinician to view their calendar</p>
+                  )}
+                </div>
+              ) : (
+                <div className="min-h-[700px]">
+                  <import fullCalendarView from '@/components/calendar/FullCalendarView' />
+                  <FullCalendarView
+                    key={calendarKey}
+                    clinicianId={formattedClinicianId}
+                    userTimeZone={timezone}
+                    view={activeView}
+                    height="700px"
+                    showAvailability={showAvailability}
+                    onAvailabilityClick={(event) => {
+                      const dayOfWeek = DateTime.fromJSDate(event.start).weekdayLong.toLowerCase();
+                      
+                      openDialog('weeklyAvailability', {
+                        clinicianId: formattedClinicianId,
+                        onAvailabilityUpdated: handleCalendarRefresh,
+                        selectedDate: dayOfWeek,
+                        availabilityId: event.id
+                      });
+                    }}
+                  />
+                </div>
+              )}
+            </Card>
+          </div>
+        </div>
       </div>
-
-      {/* Use the centralized DialogManager to handle all dialogs */}
+      
+      {/* Dialog manager for all calendar-related dialogs */}
       <DialogManager />
     </Layout>
   );

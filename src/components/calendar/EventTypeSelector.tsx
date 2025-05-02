@@ -1,136 +1,156 @@
 
-import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, UserPlus, CalendarX } from 'lucide-react';
-import { useDialogs, DialogType } from '@/context/DialogContext';
+import { useDialogs } from '@/context/DialogContext';
+import { CalendarPlus, Clock, AlertTriangle } from 'lucide-react';
 import { TimeZoneService } from '@/utils/timezone';
+import { DateTime } from 'luxon';
 
 interface EventTypeSelectorProps {
-  isOpen: boolean;
-  onClose: () => void;
-  startTime: Date;
-  endTime: Date;
-  clinicianId: string;
+  clinicianId?: string | null;
+  startTime?: Date;
+  endTime?: Date;
   allDay?: boolean;
-  onEventCreated?: () => void;
 }
 
-const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
-  isOpen,
-  onClose,
-  startTime,
-  endTime,
-  clinicianId,
-  allDay = false,
-  onEventCreated,
-}) => {
-  const { openDialog } = useDialogs();
-
-  // Convert Date objects to ISO strings using TimeZoneService
-  const startTimeISO = TimeZoneService.getCurrentTimeIn('UTC')
-    .set({
-      year: startTime.getFullYear(),
-      month: startTime.getMonth() + 1,
-      day: startTime.getDate(),
-      hour: startTime.getHours(),
-      minute: startTime.getMinutes()
-    }).toISO();
+/**
+ * EventTypeSelector Dialog
+ * Allows the user to choose what type of event to create when selecting a time slot on the calendar
+ */
+const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({ clinicianId = null, startTime, endTime, allDay = false }) => {
+  const { state, closeDialog, openDialog } = useDialogs();
+  const [selectedTimeZone, setSelectedTimeZone] = useState<string>('');
+  const isOpen = state.type === 'eventTypeSelector';
   
-  const endTimeISO = TimeZoneService.getCurrentTimeIn('UTC')
-    .set({
-      year: endTime.getFullYear(),
-      month: endTime.getMonth() + 1,
-      day: endTime.getDate(),
-      hour: endTime.getHours(),
-      minute: endTime.getMinutes()
-    }).toISO();
-
-  const handleAppointmentClick = () => {
-    onClose();
-    openDialog('appointment', {
-      startTime: startTimeISO,
-      endTime: endTimeISO,
-      clinicianId,
-      onAppointmentCreated: onEventCreated
-    });
+  useEffect(() => {
+    // Get the current timezone
+    const timezone = TimeZoneService.getLocalTimeZone();
+    setSelectedTimeZone(timezone);
+  }, []);
+  
+  // Format the selected time range
+  const formatTimeRange = () => {
+    if (!startTime || !endTime) return 'No time selected';
+    
+    try {
+      // Use Luxon to format the dates
+      const startDateTime = TimeZoneService.getCurrentDateTime(selectedTimeZone);
+      const formattedDate = DateTime.fromJSDate(startTime).toFormat('ccc, LLL d');
+      
+      if (allDay) {
+        return `${formattedDate} (All day)`;
+      }
+      
+      const formattedStartTime = DateTime.fromJSDate(startTime).toFormat('h:mm a');
+      const formattedEndTime = DateTime.fromJSDate(endTime).toFormat('h:mm a');
+      
+      return `${formattedDate}, ${formattedStartTime} - ${formattedEndTime}`;
+    } catch (err) {
+      console.error('Error formatting time range:', err);
+      return 'Invalid time selection';
+    }
   };
-
-  const handleAvailabilityClick = () => {
-    onClose();
-    openDialog('singleAvailability', {
-      startTime: startTimeISO,
-      endTime: endTimeISO,
-      clinicianId,
-      onAvailabilityCreated: onEventCreated
-    });
+  
+  const handleCreateAppointment = () => {
+    closeDialog();
+    
+    // Wait a moment to allow the previous dialog to close
+    setTimeout(() => {
+      openDialog('appointment', {
+        clinicianId,
+        startTime,
+        endTime,
+        allDay,
+        onAppointmentCreated: state.props.onEventCreated
+      });
+    }, 100);
   };
-
-  const handleTimeOffClick = () => {
-    onClose();
-    openDialog('timeOff', {
-      startTime: startTimeISO,
-      endTime: endTimeISO,
-      clinicianId,
-      allDay,
-      onTimeOffCreated: onEventCreated
-    });
+  
+  const handleCreateTimeOff = () => {
+    closeDialog();
+    
+    // Wait a moment to allow the previous dialog to close
+    setTimeout(() => {
+      openDialog('timeOff', {
+        clinicianId,
+        startTime,
+        endTime,
+        allDay,
+        onTimeOffCreated: state.props.onEventCreated
+      });
+    }, 100);
   };
-
+  
+  const handleCreateAvailability = () => {
+    closeDialog();
+    
+    // Wait a moment to allow the previous dialog to close
+    setTimeout(() => {
+      openDialog('singleAvailability', {
+        clinicianId,
+        date: startTime,
+        onAvailabilityCreated: state.props.onEventCreated
+      });
+    }, 100);
+  };
+  
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[400px]">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && closeDialog()}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create Event</DialogTitle>
         </DialogHeader>
-
-        <div className="grid grid-cols-1 gap-4 py-4">
-          <p className="text-sm text-gray-500 mb-2">
-            Select the type of event you want to create:
+        
+        <div className="py-4">
+          <p className="text-muted-foreground mb-4">
+            Selected time: <span className="font-medium text-foreground">{formatTimeRange()}</span>
           </p>
-
-          <Button
-            variant="outline"
-            className="flex justify-start items-center h-16"
-            onClick={handleAppointmentClick}
-          >
-            <UserPlus className="h-5 w-5 mr-3 text-blue-500" />
-            <div className="text-left">
-              <div className="font-medium">Appointment</div>
-              <div className="text-xs text-gray-500">Schedule a client appointment</div>
-            </div>
-          </Button>
-
-          <Button
-            variant="outline"
-            className="flex justify-start items-center h-16"
-            onClick={handleAvailabilityClick}
-          >
-            <Calendar className="h-5 w-5 mr-3 text-green-500" />
-            <div className="text-left">
-              <div className="font-medium">Availability</div>
-              <div className="text-xs text-gray-500">Set available time for appointments</div>
-            </div>
-          </Button>
-
-          <Button
-            variant="outline"
-            className="flex justify-start items-center h-16"
-            onClick={handleTimeOffClick}
-          >
-            <CalendarX className="h-5 w-5 mr-3 text-amber-500" />
-            <div className="text-left">
-              <div className="font-medium">Time Off</div>
-              <div className="text-xs text-gray-500">Block time for vacation or personal time</div>
-            </div>
-          </Button>
+          
+          <div className="space-y-3">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start h-auto py-4 hover:bg-blue-50"
+              onClick={handleCreateAppointment}
+            >
+              <div className="flex items-start">
+                <CalendarPlus className="h-5 w-5 mr-2 text-blue-600" />
+                <div className="text-left">
+                  <div className="font-medium">New Appointment</div>
+                  <div className="text-sm text-muted-foreground">Schedule a client session</div>
+                </div>
+              </div>
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full justify-start h-auto py-4 hover:bg-amber-50"
+              onClick={handleCreateTimeOff}
+            >
+              <div className="flex items-start">
+                <AlertTriangle className="h-5 w-5 mr-2 text-amber-600" />
+                <div className="text-left">
+                  <div className="font-medium">Time Off</div>
+                  <div className="text-sm text-muted-foreground">Mark as unavailable</div>
+                </div>
+              </div>
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full justify-start h-auto py-4 hover:bg-green-50"
+              onClick={handleCreateAvailability}
+            >
+              <div className="flex items-start">
+                <Clock className="h-5 w-5 mr-2 text-green-600" />
+                <div className="text-left">
+                  <div className="font-medium">Add Availability</div>
+                  <div className="text-sm text-muted-foreground">Mark as available for bookings</div>
+                </div>
+              </div>
+            </Button>
+          </div>
         </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

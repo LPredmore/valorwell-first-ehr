@@ -152,8 +152,10 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
       return ['bg-green-200', 'text-green-900', 'border-green-300', 'hover:bg-green-300', 'cursor-pointer'];
     } else if (arg.event.extendedProps?.status === 'cancelled') {
       return ['bg-red-100', 'text-red-800', 'border-red-200', 'line-through', 'opacity-70'];
+    } else if (eventType === 'time_off') {
+      return ['bg-amber-200', 'text-amber-800', 'border-amber-300'];
     } else {
-      return ['bg-blue-100', 'text-blue-800', 'border-blue-200'];
+      return ['bg-blue-200', 'text-blue-800', 'border-blue-300'];
     }
   }, []);
 
@@ -172,11 +174,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
           }}
           plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
           initialView={view}
-          headerToolbar={{
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
-          }}
+          headerToolbar={false} // We're handling the header in the parent component
           events={visibleEvents}
           datesSet={handleDatesSet}
           height={height}

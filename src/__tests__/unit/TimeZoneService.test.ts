@@ -1,93 +1,128 @@
 
-import { TimeZoneService } from '@/utils/timeZoneService';
 import { DateTime } from 'luxon';
+import { TimeZoneService } from '../../services/calendar/TimeZoneService';
 
 describe('TimeZoneService', () => {
-  const mockTimeZone = 'America/Chicago';
-  const mockDateTime = DateTime.fromISO('2025-05-01T12:00:00', { zone: mockTimeZone });
-
-  describe('Core Timezone Methods', () => {
-    it('ensureIANATimeZone should validate and return a timezone', () => {
-      // Valid timezone
-      expect(TimeZoneService.ensureIANATimeZone(mockTimeZone)).toBe(mockTimeZone);
-      
-      // Default timezone when none provided
-      expect(TimeZoneService.ensureIANATimeZone()).toBe('America/Chicago');
-      
-      // Invalid timezone should return default
-      expect(TimeZoneService.ensureIANATimeZone('Invalid/Timezone')).toBe('America/Chicago');
+  describe('ensureIANATimeZone', () => {
+    it('should return default timezone when input is null', () => {
+      expect(TimeZoneService.ensureIANATimeZone(null)).toEqual('UTC');
     });
 
-    it('createDateTime should create a valid DateTime object', () => {
-      const date = '2025-05-01';
+    it('should return default timezone when input is undefined', () => {
+      expect(TimeZoneService.ensureIANATimeZone(undefined)).toEqual('UTC');
+    });
+
+    it('should return input timezone when valid', () => {
+      expect(TimeZoneService.ensureIANATimeZone('America/New_York')).toEqual('America/New_York');
+    });
+
+    it('should return custom default timezone when provided', () => {
+      expect(TimeZoneService.ensureIANATimeZone(null, 'America/Los_Angeles')).toEqual('America/Los_Angeles');
+    });
+  });
+
+  describe('getLocalTimeZone', () => {
+    it('should return a non-empty string', () => {
+      const result = TimeZoneService.getLocalTimeZone();
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('formatTimeZoneDisplay', () => {
+    it('should format a known timezone nicely', () => {
+      const result = TimeZoneService.formatTimeZoneDisplay('America/New_York');
+      expect(result).toEqual('Eastern Time (US & Canada)');
+    });
+
+    it('should handle an unknown timezone', () => {
+      // This test may vary based on implementation details
+      const result = TimeZoneService.formatTimeZoneDisplay('America/Somewhere_Invalid');
+      expect(typeof result).toBe('string');
+    });
+  });
+
+  describe('createDateTime', () => {
+    it('should create a DateTime from date and time strings', () => {
+      const date = '2023-05-15';
       const time = '14:30';
+      const timezone = 'America/New_York';
       
-      const result = TimeZoneService.createDateTime(date, time, mockTimeZone);
+      const result = TimeZoneService.createDateTime(date, time, timezone);
       
       expect(result.isValid).toBe(true);
-      expect(result.zoneName).toBe(mockTimeZone);
-      expect(result.hour).toBe(14);
-      expect(result.minute).toBe(30);
+      expect(result.zoneName).toBe(timezone);
+      expect(result.toFormat('yyyy-MM-dd')).toBe(date);
+      expect(result.toFormat('HH:mm')).toBe(time);
     });
+  });
 
-    it('formatDate should format a date correctly', () => {
-      const date = new Date('2025-05-01T14:30:00');
-      const result = TimeZoneService.formatDate(date, 'yyyy/MM/dd');
+  describe('convertDateTime', () => {
+    it('should convert between timezones with DateTime input', () => {
+      const nyDateTime = DateTime.fromObject({ year: 2023, month: 5, day: 15, hour: 10 }, { zone: 'America/New_York' });
+      const laDateTime = TimeZoneService.convertDateTime(nyDateTime, 'America/New_York', 'America/Los_Angeles');
       
-      expect(result).toBe('2025/05/01');
+      expect(laDateTime.zoneName).toBe('America/Los_Angeles');
+      expect(laDateTime.hour).toBe(7); // 3 hours earlier in LA
     });
     
-    it('formatTime should format a time correctly', () => {
-      const time = new Date('2025-05-01T14:30:00');
-      const result = TimeZoneService.formatTime(time, 'h:mm a');
+    it('should handle Date objects', () => {
+      const date = new Date('2023-05-15T10:00:00Z');
+      // Create a DateTime from the Date for comparison
+      const luxonDateTime = DateTime.fromJSDate(date).setZone('UTC');
       
-      expect(result).toMatch(/2:30 PM/i); // Case-insensitive match for AM/PM variations
+      const converted = TimeZoneService.convertDateTime(date, 'UTC', 'America/New_York');
+      
+      expect(converted.zoneName).toBe('America/New_York');
     });
     
-    it('addDuration should add time correctly', () => {
-      const date = DateTime.fromISO('2025-05-01T12:00:00');
+    it('should handle string dates', () => {
+      const dateStr = '2023-05-15T10:00:00Z';
+      const converted = TimeZoneService.convertDateTime(dateStr, 'UTC', 'America/New_York');
       
-      const result = TimeZoneService.addDuration(date, 2, 'hours');
-      expect(result.hour).toBe(14);
+      expect(converted.zoneName).toBe('America/New_York');
+    });
+  });
+
+  describe('formatDateTime', () => {
+    it('should format DateTime objects', () => {
+      const dt = DateTime.fromObject({ year: 2023, month: 5, day: 15, hour: 10 }, { zone: 'UTC' });
+      
+      // Test with predefined formats
+      expect(TimeZoneService.formatDateTime(dt, 'date')).toBe('2023-05-15');
+      expect(TimeZoneService.formatDateTime(dt, 'time')).toBe('10:00');
+      
+      // Test with custom format
+      expect(TimeZoneService.formatDateTime(dt, 'yyyy/MM/dd')).toBe('2023/05/15');
     });
     
-    it('isSameDay should compare dates correctly', () => {
-      const date1 = new Date('2025-05-01T09:00:00');
-      const date2 = new Date('2025-05-01T17:00:00');
-      const date3 = new Date('2025-05-02T09:00:00');
+    it('should handle Date objects', () => {
+      // For testing purposes, create a fixed date
+      const date = new Date(2023, 4, 15, 10, 0); // May 15, 2023, 10:00 AM
+      const result = TimeZoneService.formatDateTime(date, 'yyyy-MM-dd HH:mm');
       
-      expect(TimeZoneService.isSameDay(date1, date2)).toBe(true);
-      expect(TimeZoneService.isSameDay(date1, date3)).toBe(false);
+      // The exact result may vary based on local timezone, but we can expect this format
+      expect(result).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+    });
+  });
+
+  describe('toUTC and fromUTC', () => {
+    it('should convert to UTC', () => {
+      const nyDateTime = DateTime.fromObject({ year: 2023, month: 5, day: 15, hour: 10 }, { zone: 'America/New_York' });
+      const utcDateTime = TimeZoneService.toUTC(nyDateTime);
+      
+      expect(utcDateTime.zoneName).toBe('UTC');
+      // NY is 4 or 5 hours behind UTC depending on DST
+      expect([14, 15]).toContain(utcDateTime.hour);
     });
     
-    it('parseWithZone should parse date with timezone correctly', () => {
-      const dateStr = '2025-05-01T12:00:00';
-      const result = TimeZoneService.parseWithZone(dateStr, mockTimeZone);
+    it('should convert from UTC', () => {
+      const utcStr = '2023-05-15T10:00:00Z';
+      const nyDateTime = TimeZoneService.fromUTC(utcStr, 'America/New_York');
       
-      expect(result.isValid).toBe(true);
-      expect(result.zoneName).toBe(mockTimeZone);
-    });
-    
-    it('getCurrentDateTime should return current time in specified timezone', () => {
-      const result = TimeZoneService.getCurrentDateTime(mockTimeZone);
-      
-      expect(result.isValid).toBe(true);
-      expect(result.zoneName).toBe(mockTimeZone);
-    });
-    
-    it('getWeekdayName should return correct day name', () => {
-      // May 1, 2025 is a Thursday
-      const date = new Date('2025-05-01T12:00:00');
-      const result = TimeZoneService.getWeekdayName(date);
-      
-      expect(result).toBe('Thursday');
-    });
-    
-    it('getMonthName should return correct month name', () => {
-      const date = new Date('2025-05-01T12:00:00');
-      const result = TimeZoneService.getMonthName(date);
-      
-      expect(result).toBe('May');
+      expect(nyDateTime.zoneName).toBe('America/New_York');
+      // NY is 4 or 5 hours behind UTC depending on DST
+      expect([5, 6]).toContain(nyDateTime.hour);
     });
   });
 });

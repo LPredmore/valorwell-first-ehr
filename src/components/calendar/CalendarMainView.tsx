@@ -187,10 +187,7 @@ const CalendarMainView: React.FC<CalendarMainViewProps> = ({
         view={view as "dayGridMonth" | "timeGridWeek" | "timeGridDay" | "listWeek"}
         height="700px"
         showAvailability={showAvailability}
-        availabilityClickHandler={handleEventClick}
-        eventClickHandler={handleEventClick}
-        dateSelectHandler={handleDateSelect}
-        date={currentDate.toJSDate()}
+        onAvailabilityClick={handleEventClick}
       />
     </Card>
   );
