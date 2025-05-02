@@ -113,7 +113,7 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
     setTimeout(() => {
       openDialog('singleAvailability', {
         clinicianId,
-        date: startTime instanceof Date ? startTime : new Date(startTime),
+        date: startTime instanceof Date ? startTime : new Date(String(startTime)),
         userTimeZone: selectedTimeZone,
         onAvailabilityCreated: onEventCreated || state.props?.onEventCreated
       });

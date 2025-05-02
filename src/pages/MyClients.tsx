@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -35,20 +34,21 @@ const MyClients = () => {
   const currentClients = clients.slice(indexOfFirstItem, indexOfLastItem);
 
   useEffect(() => {
-    const getClinicianInfo = async () => {
-      try {
-        const user = await getCurrentUser();
-        if (!user) {
-          console.error('No authenticated user found');
-          return;
-        }
-        
+    const fetchClinicianInfo = async () => {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('Error fetching user data:', userError);
+        return;
+      }
+      
+      if (userData?.user?.email) {
         const { data, error } = await supabase
           .from('clinicians')
-          .select('id')
-          .eq('clinician_email', user.email)
-          .maybeSingle();
-          
+          .select('*')
+          .eq('clinician_email', userData.user.email)
+          .single();
+        
         if (error) {
           console.error('Error fetching clinician:', error);
           return;
@@ -62,13 +62,10 @@ const MyClients = () => {
           console.error('No clinician found for current user');
           setLoading(false);
         }
-      } catch (error) {
-        console.error('Error getting clinician info:', error);
-        setLoading(false);
       }
     };
     
-    getClinicianInfo();
+    fetchClinicianInfo();
   }, []);
 
   const fetchClients = async (clinicianId: string) => {

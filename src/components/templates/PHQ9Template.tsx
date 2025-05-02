@@ -1,311 +1,385 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from 'react';
+import { toast } from '@/hooks/use-toast';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { ClientDetails } from "@/types/client";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Form, FormField, FormItem, FormControl } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { X } from "lucide-react";
-import { savePHQ9Assessment, supabase } from "@/integrations/supabase/client";
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useUser } from '@/context/UserContext';
 
-interface PHQ9TemplateProps {
-  onClose: () => void;
-  clinicianName: string;
-  clientData?: ClientDetails | null;
-  onComplete?: () => void;
-  appointmentId?: string | number | null;
-}
+const formSchema = z.object({
+  littleInterest: z.string().optional(),
+  feelingDown: z.string().optional(),
+  troubleSleeping: z.string().optional(),
+  feelingTired: z.string().optional(),
+  poorAppetite: z.string().optional(),
+  feelingBad: z.string().optional(),
+  troubleConcentrating: z.string().optional(),
+  movingOrSpeaking: z.string().optional(),
+  thoughtsYouWouldBeBetterOffDead: z.string().optional(),
+})
 
-const phq9Questions = [
-  "Little interest or pleasure in doing things",
-  "Feeling down, depressed, or hopeless",
-  "Trouble falling or staying asleep, or sleeping too much",
-  "Feeling tired or having little energy",
-  "Poor appetite or overeating",
-  "Feeling bad about yourself - or that you are a failure or have let yourself or your family down",
-  "Trouble concentrating on things, such as reading the newspaper or watching television",
-  "Moving or speaking so slowly that other people could have noticed. Or the opposite - being so fidgety or restless that you have been moving around a lot more than usual",
-  "Thoughts that you would be better off dead, or of hurting yourself in some way"
-];
+const PHQ9Template = () => {
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [assessmentDate, setAssessmentDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { userId } = useUser();
 
-const answerOptions = [
-  { value: 0, label: "Not at all" },
-  { value: 1, label: "Several days" },
-  { value: 2, label: "More than half the days" },
-  { value: 3, label: "Nearly every day" }
-];
-
-const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, clientData, onComplete, appointmentId }) => {
-  const { toast } = useToast();
-  const [scores, setScores] = useState<number[]>(new Array(9).fill(0));
-  const [additionalNotes, setAdditionalNotes] = useState("");
-  const [isOpen, setIsOpen] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  
-  const form = useForm({
-    defaultValues: {
-      date: format(new Date(), "yyyy-MM-dd"),
-      clinicianName: clinicianName,
-      patientName: clientData ? `${clientData.client_first_name} ${clientData.client_last_name}` : "",
+  useEffect(() => {
+    if (id) {
+      setClientId(id);
     }
-  });
+  }, [id]);
 
-  const totalScore = scores.reduce((sum, score) => sum + score, 0);
-  
-  const getSeverity = (score: number) => {
-    if (score >= 0 && score <= 4) return "None-minimal";
-    if (score >= 5 && score <= 9) return "Mild";
-    if (score >= 10 && score <= 14) return "Moderate";
-    if (score >= 15 && score <= 19) return "Moderately severe";
-    return "Severe";
-  };
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      littleInterest: "",
+      feelingDown: "",
+      troubleSleeping: "",
+      feelingTired: "",
+      poorAppetite: "",
+      feelingBad: "",
+      troubleConcentrating: "",
+      movingOrSpeaking: "",
+      thoughtsYouWouldBeBetterOffDead: "",
+    },
+  })
 
-  const handleScoreChange = (index: number, value: number) => {
-    const newScores = [...scores];
-    newScores[index] = value;
-    setScores(newScores);
-  };
+  const assessmentData = form.watch();
 
-  const handleSubmit = async () => {
-    try {
-      setIsSaving(true);
-      
-      if (clientData && clientData.id) {
-        const assessmentData = {
-          client_id: clientData.id,
-          assessment_date: form.getValues().date,
-          question_1: scores[0],
-          question_2: scores[1],
-          question_3: scores[2],
-          question_4: scores[3],
-          question_5: scores[4],
-          question_6: scores[5],
-          question_7: scores[6],
-          question_8: scores[7],
-          question_9: scores[8],
-          total_score: totalScore,
-          additional_notes: additionalNotes,
-          appointment_id: appointmentId ? appointmentId.toString() : null
-        };
-        
-        const result = await savePHQ9Assessment(assessmentData);
-        
-        if (!result.success) {
-          console.error('Failed to save PHQ-9 assessment:', result.error);
-          toast({
-            title: "Warning",
-            description: "The assessment was completed but there was an issue saving the data.",
-            variant: "destructive"
-          });
-        } else {
-          console.log('PHQ-9 assessment saved successfully:', result.data);
-          
-          const severity = getSeverity(totalScore);
-          const phq9_narrative = `Patient completed PHQ-9 assessment with a total score of ${totalScore} (${severity} depression severity). ${additionalNotes ? `Additional notes: ${additionalNotes}` : ''}`;
-          
-          if (result.data && result.data.id) {
-            try {
-              const { error: updateError } = await supabase
-                .from('phq9_assessments')
-                .update({ phq9_narrative })
-                .eq('id', result.data.id);
-                
-              if (updateError) {
-                console.error('Error updating PHQ-9 narrative:', updateError);
-              }
-            } catch (narrativeError) {
-              console.error('Error saving PHQ-9 narrative:', narrativeError);
-            }
-          }
-        }
-      } else {
-        console.warn('Cannot save PHQ-9 assessment: Missing client data or ID');
-        toast({
-          title: "Warning",
-          description: "Could not save assessment: missing client information.",
-          variant: "destructive"
-        });
-      }
-      
-      toast({
-        title: "Assessment Saved",
-        description: "PHQ-9 assessment has been saved successfully.",
-      });
-      
-    } catch (error) {
-      console.error('Error in PHQ-9 submission:', error);
+  const submitPHQ9 = async () => {
+    if (!clientId) {
       toast({
         title: "Error",
-        description: "There was an issue saving your assessment. The session will continue.",
+        description: "Client ID is missing. Please ensure you are viewing this form from a client's profile.",
         variant: "destructive"
       });
-    } finally {
-      setIsSaving(false);
-      handleClose();
-      
-      if (onComplete) {
-        onComplete();
-      }
+      return;
     }
+
+    const assessmentData = {
+      client_id: clientId,
+      assessment_date: assessmentDate,
+      little_interest: form.getValues("littleInterest"),
+      feeling_down: form.getValues("feelingDown"),
+      trouble_sleeping: form.getValues("troubleSleeping"),
+      feeling_tired: form.getValues("feelingTired"),
+      poor_appetite: form.getValues("poorAppetite"),
+      feeling_bad: form.getValues("feelingBad"),
+      trouble_concentrating: form.getValues("troubleConcentrating"),
+      moving_or_speaking: form.getValues("movingOrSpeaking"),
+      thoughts_you_would_be_better_off_dead: form.getValues("thoughtsYouWouldBeBetterOffDead"),
+      created_by: userId,
+    };
+    
+    const { data, error } = await supabase
+      .from('phq9_assessments')
+      .insert([assessmentData])
+      .select();
+
+    if (error) {
+      console.error('Error submitting PHQ9:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save PHQ-9 assessment",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    toast({
+      title: "Success",
+      description: "PHQ-9 assessment saved successfully",
+      variant: "default"
+    });
+
+    navigate(`/clientdetails/${clientId}`);
   };
-
-  const handleClose = () => {
-    setIsOpen(false);
-    onClose();
-  };
-
-  const renderFormContent = () => (
-    <Form {...form}>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <FormField
-          control={form.control}
-          name="date"
-          render={({ field }) => (
-            <FormItem>
-              <Label>Date</Label>
-              <FormControl>
-                <Input type="date" {...field} />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="clinicianName"
-          render={({ field }) => (
-            <FormItem>
-              <Label>Clinician</Label>
-              <FormControl>
-                <Input {...field} readOnly />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="patientName"
-          render={({ field }) => (
-            <FormItem>
-              <Label>Patient</Label>
-              <FormControl>
-                <Input {...field} readOnly />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-      </div>
-
-      <div className="mb-6">
-        <h3 className="font-medium text-lg mb-4">
-          Over the last 2 weeks, how often have you been bothered by any of the following problems?
-        </h3>
-        
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-1/2">Question</TableHead>
-              {answerOptions.map((option) => (
-                <TableHead key={option.value} className="text-center">
-                  {option.label}<br />
-                  <span className="text-sm font-normal">({option.value})</span>
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {phq9Questions.map((question, index) => (
-              <TableRow key={index}>
-                <TableCell>{question}</TableCell>
-                {answerOptions.map((option) => (
-                  <TableCell key={`${index}-${option.value}`} className="text-center">
-                    <input
-                      type="radio"
-                      name={`question-${index}`}
-                      value={option.value}
-                      checked={scores[index] === option.value}
-                      onChange={() => handleScoreChange(index, option.value)}
-                      className="h-4 w-4"
-                    />
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      <div className="mb-6">
-        <div className="bg-gray-100 p-4 rounded-md">
-          <h3 className="font-medium mb-2">Score Interpretation</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p><strong>Total Score:</strong> {totalScore}</p>
-              <p><strong>Severity:</strong> {getSeverity(totalScore)}</p>
-            </div>
-            <div>
-              <p><strong>PHQ-9 Score Ranges:</strong></p>
-              <ul className="text-sm">
-                <li>0-4: None-minimal</li>
-                <li>5-9: Mild</li>
-                <li>10-14: Moderate</li>
-                <li>15-19: Moderately severe</li>
-                <li>20-27: Severe</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-6">
-        <Label htmlFor="additionalNotes">Additional Notes</Label>
-        <Textarea 
-          id="additionalNotes" 
-          value={additionalNotes} 
-          onChange={(e) => setAdditionalNotes(e.target.value)}
-          className="mt-1"
-          rows={4}
-        />
-      </div>
-
-      <div className="flex justify-end gap-4 mt-6">
-        <Button variant="outline" onClick={handleClose} disabled={isSaving}>
-          Cancel
-        </Button>
-        <Button onClick={handleSubmit} disabled={isSaving}>
-          {isSaving ? "Saving..." : "Start Session"}
-        </Button>
-      </div>
-    </Form>
-  );
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex justify-between items-center">
-            <span>PHQ-9 Depression Screener</span>
-            <Button variant="ghost" size="icon" onClick={handleClose} className="h-6 w-6 rounded-full">
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogTitle>
-        </DialogHeader>
-        {renderFormContent()}
-      </DialogContent>
-    </Dialog>
+    <Card className="w-[80%] mx-auto">
+      <CardHeader>
+        <CardTitle>PHQ-9 Assessment</CardTitle>
+        <CardDescription>
+          Patient Health Questionnaire-9 (PHQ-9)
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="assessment-date">Assessment Date</Label>
+            <Input
+              type="date"
+              id="assessment-date"
+              value={assessmentDate}
+              onChange={(e) => setAssessmentDate(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <Form {...form}>
+          <form className="space-y-8">
+            <FormField
+              control={form.control}
+              name="littleInterest"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    1. Little interest or pleasure in doing things?
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="0">Not at all</SelectItem>
+                      <SelectItem value="1">Several days</SelectItem>
+                      <SelectItem value="2">More than half the days</SelectItem>
+                      <SelectItem value="3">Nearly every day</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="feelingDown"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>2. Feeling down, depressed, or hopeless?</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="0">Not at all</SelectItem>
+                      <SelectItem value="1">Several days</SelectItem>
+                      <SelectItem value="2">More than half the days</SelectItem>
+                      <SelectItem value="3">Nearly every day</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="troubleSleeping"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    3. Trouble falling or staying asleep, or sleeping too much?
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="0">Not at all</SelectItem>
+                      <SelectItem value="1">Several days</SelectItem>
+                      <SelectItem value="2">More than half the days</SelectItem>
+                      <SelectItem value="3">Nearly every day</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="feelingTired"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>4. Feeling tired or having little energy?</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="0">Not at all</SelectItem>
+                      <SelectItem value="1">Several days</SelectItem>
+                      <SelectItem value="2">More than half the days</SelectItem>
+                      <SelectItem value="3">Nearly every day</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="poorAppetite"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>5. Poor appetite or overeating?</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="0">Not at all</SelectItem>
+                      <SelectItem value="1">Several days</SelectItem>
+                      <SelectItem value="2">More than half the days</SelectItem>
+                      <SelectItem value="3">Nearly every day</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="feelingBad"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    6. Feeling bad about yourself - or that you're a failure or
+                    have let yourself or your family down?
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="0">Not at all</SelectItem>
+                      <SelectItem value="1">Several days</SelectItem>
+                      <SelectItem value="2">More than half the days</SelectItem>
+                      <SelectItem value="3">Nearly every day</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="troubleConcentrating"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    7. Trouble concentrating on things, such as reading the
+                    newspaper or watching television?
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="0">Not at all</SelectItem>
+                      <SelectItem value="1">Several days</SelectItem>
+                      <SelectItem value="2">More than half the days</SelectItem>
+                      <SelectItem value="3">Nearly every day</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="movingOrSpeaking"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    8. Moving or speaking so slowly that other people could have
+                    noticed? Or the opposite - being so fidgety or restless that
+                    you have been moving around a lot more than usual?
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="0">Not at all</SelectItem>
+                      <SelectItem value="1">Several days</SelectItem>
+                      <SelectItem value="2">More than half the days</SelectItem>
+                      <SelectItem value="3">Nearly every day</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="thoughtsYouWouldBeBetterOffDead"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    9. Thoughts that you would be better off dead or of hurting
+                    yourself in some way?
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="0">Not at all</SelectItem>
+                      <SelectItem value="1">Several days</SelectItem>
+                      <SelectItem value="2">More than half the days</SelectItem>
+                      <SelectItem value="3">Nearly every day</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </form>
+        </Form>
+      </CardContent>
+      <CardFooter className="flex justify-between">
+        <Button variant="outline" onClick={() => navigate(`/clientdetails/${clientId}`)}>Cancel</Button>
+        <Button onClick={submitPHQ9}>Submit</Button>
+      </CardFooter>
+    </Card>
   );
 };
 

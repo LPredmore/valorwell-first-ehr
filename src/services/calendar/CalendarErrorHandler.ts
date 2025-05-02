@@ -54,6 +54,51 @@ export class CalendarErrorHandler {
     
     return error?.message || 'An unexpected error occurred. Please try again later.';
   }
+
+  /**
+   * Formats an error object for consistent error handling
+   * @param error The error to format
+   * @returns A formatted CalendarError or the original error if already formatted
+   */
+  static formatError(error: any): Error {
+    if (error instanceof CalendarError) {
+      return error;
+    }
+    
+    // Handle Supabase errors
+    if (error?.code && typeof error.code === 'string') {
+      return new CalendarError(
+        error.message || 'A database error occurred',
+        `DATABASE_${error.code}`,
+        error
+      );
+    }
+    
+    // Handle network errors
+    if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
+      return new CalendarError(
+        'Network connection issue. Please check your connection.',
+        'NETWORK_ERROR',
+        error
+      );
+    }
+    
+    // Handle authentication errors
+    if (error?.message?.includes('auth') || error?.message?.includes('permission')) {
+      return new CalendarError(
+        'Authentication or permission error',
+        'AUTH_ERROR',
+        error
+      );
+    }
+    
+    // Generic error
+    return new CalendarError(
+      error?.message || 'An unexpected error occurred',
+      'UNKNOWN_ERROR',
+      error
+    );
+  }
 }
 
 export default CalendarErrorHandler;
