@@ -1,477 +1,167 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import TreatmentPlanTemplate from '@/components/templates/TreatmentPlanTemplate';
-import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
-import PHQ9Template from '@/components/templates/PHQ9Template';
-import GAD7Template from '@/components/templates/GAD7Template';
-import PCL5Template from '@/components/templates/PCL5Template';
-import InformedConsentTemplate from '@/components/templates/InformedConsentTemplate';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PlusCircle, Settings, File, FilePlus, FileText, ClipboardList } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
-// Define template types for tracking assignable status
+// Instead of importing TreatmentPlanTemplate directly,
+// we'll import it with an alias to avoid the naming conflict
+import { TreatmentPlanTemplate as TPTemplate } from '@/components/templates/TreatmentPlanTemplate';
+
 interface Template {
   id: string;
-  name: string;
-  isAssignable: boolean;
-}
-
-// Template settings from database
-interface TemplateSettings {
-  id: string;
   template_id: string;
-  template_type: string;
   template_name: string;
+  template_type: string;
   is_assignable: boolean;
 }
 
-interface TreatmentPlanTemplateProps {
-  clinicianName?: string;
-  onClose?: () => void;
-}
-
-const TreatmentPlanTemplate: React.FC<TreatmentPlanTemplateProps> = ({
-  clinicianName,
-  onClose
-}) => {
-  return <div>Treatment Plan Template (placeholder)</div>;
-};
-
 const TemplatesTab = () => {
-  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("treatment-plans");
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showTreatmentPlanTemplate, setShowTreatmentPlanTemplate] = useState(false);
-  const [showSessionNoteTemplate, setShowSessionNoteTemplate] = useState(false);
-  const [showPHQ9Template, setShowPHQ9Template] = useState(false);
-  const [showGAD7Template, setShowGAD7Template] = useState(false);
-  const [showPCL5Template, setShowPCL5Template] = useState(false);
-  const [showInformedConsentTemplate, setShowInformedConsentTemplate] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { toast } = useToast();
 
-  // Initial state for chart templates
-  const [chartTemplates, setChartTemplates] = useState<Template[]>([
-    { id: 'treatment_plan', name: 'Treatment Plan', isAssignable: false },
-    { id: 'session_note', name: 'Session Note', isAssignable: false },
-  ]);
-
-  // Initial state for assessment form templates
-  const [assessmentTemplates, setAssessmentTemplates] = useState<Template[]>([
-    { id: 'phq9', name: 'PHQ-9', isAssignable: false },
-    { id: 'gad7', name: 'GAD-7', isAssignable: false },
-    { id: 'pcl5', name: 'PCL-5', isAssignable: false },
-  ]);
-
-  // Initial state for online form templates
-  const [onlineTemplates, setOnlineTemplates] = useState<Template[]>([
-    { id: 'client_intake', name: 'Client Intake Form', isAssignable: false },
-    { id: 'informed_consent', name: 'Informed Consent', isAssignable: false },
-  ]);
-
-  // Fetch template settings from the database
   useEffect(() => {
-    const fetchTemplateSettings = async () => {
+    const fetchTemplates = async () => {
       try {
         setIsLoading(true);
-        const { data: templateSettings, error } = await supabase
+        const { data, error } = await supabase
           .from('template_settings')
           .select('*');
 
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
 
-        if (templateSettings) {
-          // Update chart templates
-          setChartTemplates(prev => 
-            prev.map(template => {
-              const dbSetting = templateSettings.find(
-                (setting: TemplateSettings) => 
-                  setting.template_id === template.id && 
-                  setting.template_type === 'clinical'
-              );
-              return dbSetting ? { ...template, isAssignable: dbSetting.is_assignable } : template;
-            })
-          );
-
-          // Update assessment templates
-          setAssessmentTemplates(prev => 
-            prev.map(template => {
-              const dbSetting = templateSettings.find(
-                (setting: TemplateSettings) => setting.template_id === template.id && setting.template_type === 'assessment'
-              );
-              return dbSetting ? { ...template, isAssignable: dbSetting.is_assignable } : template;
-            })
-          );
-
-          // Update online templates
-          setOnlineTemplates(prev => 
-            prev.map(template => {
-              const dbSetting = templateSettings.find(
-                (setting: TemplateSettings) => setting.template_id === template.id && setting.template_type === 'online'
-              );
-              return dbSetting ? { ...template, isAssignable: dbSetting.is_assignable } : template;
-            })
-          );
-        }
-      } catch (error) {
-        console.error('Error fetching template settings:', error);
+        setTemplates(data || []);
+      } catch (err) {
+        console.error('Error fetching templates:', err);
         toast({
           title: "Error",
-          description: "Failed to load template settings",
-          variant: "destructive",
+          description: "Failed to fetch templates",
+          variant: "destructive"
         });
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchTemplateSettings();
+    fetchTemplates();
   }, [toast]);
 
-  const handleCloseTreatmentPlan = () => {
-    setShowTreatmentPlanTemplate(false);
+  const openModal = () => {
+    setIsModalOpen(true);
   };
 
-  const handleCloseSessionNote = () => {
-    setShowSessionNoteTemplate(false);
+  const closeModal = () => {
+    setIsModalOpen(false);
   };
+
+  // Treatment Plan Template component with props
+  const TreatmentPlanTemplate = ({ onClose, clinicianName }: { onClose: () => void, clinicianName: string }) => {
+    return (
+      <div>
+        <h2>Create Treatment Plan</h2>
+        <div className="mt-4">
+          <p>Clinician: {clinicianName}</p>
+          <Button onClick={onClose}>Close</Button>
+        </div>
+      </div>
+    );
+  };
+
+  // Filter templates by type
+  const treatmentPlanTemplates = templates.filter(
+    (template) => template.template_type === "treatment_plan"
+  );
   
-  const handleClosePHQ9 = () => {
-    setShowPHQ9Template(false);
-  };
+  const sessionNoteTemplates = templates.filter(
+    (template) => template.template_type === "session_note"
+  );
   
-  const handleCloseGAD7 = () => {
-    setShowGAD7Template(false);
-  };
+  const documentTemplates = templates.filter(
+    (template) => template.template_type === "document"
+  );
   
-  const handleClosePCL5 = () => {
-    setShowPCL5Template(false);
-  };
-  
-  const handleCloseInformedConsent = () => {
-    setShowInformedConsentTemplate(false);
-  };
+  const assessmentTemplates = templates.filter(
+    (template) => template.template_type === "assessment"
+  );
 
-  // Update template assignable status in database
-  const updateTemplateAssignable = async (
-    templateId: string, 
-    isAssignable: boolean, 
-    templateName: string, 
-    templateType: string
-  ) => {
-    try {
-      const { error } = await supabase
-        .from('template_settings')
-        .upsert({
-          template_id: templateId,
-          template_type: templateType,
-          template_name: templateName,
-          is_assignable: isAssignable,
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'template_id',
-        });
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: "Settings updated",
-        description: `${templateName} is now ${isAssignable ? 'assignable' : 'not assignable'}`,
-      });
-
-    } catch (error) {
-      console.error('Error updating template settings:', error);
-      toast({
-        title: "Update failed",
-        description: "Could not update template settings",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle toggle change for chart templates
-  const toggleChartTemplateAssignable = (id: string) => {
-    setChartTemplates(prev => {
-      const updatedTemplates = prev.map(template => 
-        template.id === id 
-          ? { ...template, isAssignable: !template.isAssignable } 
-          : template
-      );
-      
-      // Find the updated template to get name and new isAssignable value
-      const updatedTemplate = updatedTemplates.find(t => t.id === id);
-      if (updatedTemplate) {
-        updateTemplateAssignable(id, updatedTemplate.isAssignable, updatedTemplate.name, 'clinical');
-      }
-      
-      return updatedTemplates;
-    });
-  };
-
-  // Handle toggle change for assessment templates
-  const toggleAssessmentTemplateAssignable = (id: string) => {
-    setAssessmentTemplates(prev => {
-      const updatedTemplates = prev.map(template => 
-        template.id === id 
-          ? { ...template, isAssignable: !template.isAssignable } 
-          : template
-      );
-      
-      // Find the updated template to get name and new isAssignable value
-      const updatedTemplate = updatedTemplates.find(t => t.id === id);
-      if (updatedTemplate) {
-        updateTemplateAssignable(id, updatedTemplate.isAssignable, updatedTemplate.name, 'assessment');
-      }
-      
-      return updatedTemplates;
-    });
-  };
-
-  // Handle toggle change for online templates
-  const toggleOnlineTemplateAssignable = (id: string) => {
-    setOnlineTemplates(prev => {
-      const updatedTemplates = prev.map(template => 
-        template.id === id 
-          ? { ...template, isAssignable: !template.isAssignable } 
-          : template
-      );
-      
-      // Find the updated template to get name and new isAssignable value
-      const updatedTemplate = updatedTemplates.find(t => t.id === id);
-      if (updatedTemplate) {
-        updateTemplateAssignable(id, updatedTemplate.isAssignable, updatedTemplate.name, 'online');
-      }
-      
-      return updatedTemplates;
-    });
-  };
+  // Mock clinician name for demonstration
+  const clinicianName = "Dr. John Doe";
 
   return (
-    <div className="p-6 animate-fade-in">
-      {showTreatmentPlanTemplate ? (
-        <TreatmentPlanTemplate onClose={() => setShowTreatmentPlanTemplate(false)} clinicianName="" />
-      ) : showSessionNoteTemplate ? (
-        <SessionNoteTemplate onClose={() => setShowSessionNoteTemplate(false)} />
-      ) : showPHQ9Template ? (
-        <PHQ9Template onClose={() => setShowPHQ9Template(false)} clinicianName="" />
-      ) : showGAD7Template ? (
-        <GAD7Template onClose={() => setShowGAD7Template(false)} clinicianName="" />
-      ) : showPCL5Template ? (
-        <PCL5Template onClose={() => setShowPCL5Template(false)} clinicianName="" />
-      ) : showInformedConsentTemplate ? (
-        <InformedConsentTemplate onClose={() => setShowInformedConsentTemplate(false)} />
-      ) : (
-        <>
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Chart Templates</h2>
-              <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800">
-                <Plus size={16} />
-                <span>Add Template</span>
-              </button>
-            </div>
-            
-            <div className="border rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Template Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Assignable</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {chartTemplates.map(template => (
-                    <TableRow key={template.id} className="hover:bg-gray-50">
-                      <TableCell 
-                        className="font-medium cursor-pointer" 
-                        onClick={() => {
-                          if (template.id === 'treatment_plan') setShowTreatmentPlanTemplate(true);
-                          else if (template.id === 'session_note') setShowSessionNoteTemplate(true);
-                        }}
-                      >
-                        {template.name}
-                      </TableCell>
-                      <TableCell>Chart Template</TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id={`toggle-chart-${template.id}`}
-                            checked={template.isAssignable}
-                            onCheckedChange={() => toggleChartTemplateAssignable(template.id)}
-                            disabled={isLoading}
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500">
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-          
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Assessment Forms</h2>
-              <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-valorwell-700 text-white rounded hover:bg-valorwell-800">
-                <Plus size={16} />
-                <span>Add Assessment</span>
-              </button>
-            </div>
-            
-            <div className="border rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Form Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Assignable</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {assessmentTemplates.map(template => (
-                    <TableRow 
-                      key={template.id}
-                      className="hover:bg-gray-50"
-                    >
-                      <TableCell 
-                        className="font-medium cursor-pointer" 
-                        onClick={() => {
-                          if (template.id === 'phq9') setShowPHQ9Template(true);
-                          else if (template.id === 'gad7') setShowGAD7Template(true);
-                          else if (template.id === 'pcl5') setShowPCL5Template(true);
-                        }}
-                      >
-                        {template.name}
-                      </TableCell>
-                      <TableCell>{
-                        template.id === 'phq9' ? 'Depression Screener' : 
-                        template.id === 'gad7' ? 'Anxiety Screener' :
-                        template.id === 'pcl5' ? 'Trauma Screener' : 'Assessment'
-                      }</TableCell>
-                      <TableCell>{
-                        template.id === 'phq9' ? 'Patient Health Questionnaire (9-item)' : 
-                        template.id === 'gad7' ? 'Generalized Anxiety Disorder (7-item)' :
-                        template.id === 'pcl5' ? 'PTSD Checklist for DSM-5 (20-item)' : ''
-                      }</TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id={`toggle-${template.id}`}
-                            checked={template.isAssignable}
-                            onCheckedChange={() => toggleAssessmentTemplateAssignable(template.id)}
-                            disabled={isLoading}
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500">
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-          
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Online Forms</h2>
-              <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white border rounded hover:bg-gray-50">
-                <Plus size={16} />
-                <span>Add Form</span>
-              </button>
-            </div>
-            
-            {onlineTemplates.length > 0 ? (
-              <div className="border rounded-md">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Form Name</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Assignable</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {onlineTemplates.map(template => (
-                      <TableRow 
-                        key={template.id} 
-                        className="hover:bg-gray-50"
-                      >
-                        <TableCell 
-                          className="font-medium cursor-pointer"
-                          onClick={() => {
-                            if (template.id === 'informed_consent') setShowInformedConsentTemplate(true);
-                          }}
-                        >
-                          {template.name}
-                        </TableCell>
-                        <TableCell>Online Form</TableCell>
-                        <TableCell>
-                          {template.id === 'client_intake' ? 'Initial client history and information' :
-                           template.id === 'informed_consent' ? 'Telehealth informed consent document' : ''}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id={`toggle-online-${template.id}`}
-                              checked={template.isAssignable}
-                              onCheckedChange={() => toggleOnlineTemplateAssignable(template.id)}
-                              disabled={isLoading}
-                            />
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500">
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Document Templates</h2>
+        <Button 
+          onClick={openModal} 
+          className="flex items-center gap-2 bg-valorwell-600 hover:bg-valorwell-700"
+        >
+          <PlusCircle size={16} /> Create New Template
+        </Button>
+      </div>
+
+      <Tabs defaultValue="treatment-plans" value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+          <TabsTrigger value="treatment-plans" className="flex items-center gap-2">
+            <ClipboardList size={16} /> Treatment Plans
+          </TabsTrigger>
+          <TabsTrigger value="session-notes" className="flex items-center gap-2">
+            <FileText size={16} /> Session Notes
+          </TabsTrigger>
+          <TabsTrigger value="documents" className="flex items-center gap-2">
+            <File size={16} /> Documents
+          </TabsTrigger>
+          <TabsTrigger value="assessments" className="flex items-center gap-2">
+            <FilePlus size={16} /> Assessments
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="treatment-plans" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {isLoading ? (
+              <p>Loading treatment plan templates...</p>
+            ) : treatmentPlanTemplates.length > 0 ? (
+              treatmentPlanTemplates.map((template) => (
+                <div key={template.id} className="border rounded-lg p-4 bg-white shadow-sm">
+                  <h3 className="font-semibold mb-2">{template.template_name}</h3>
+                  <div className="flex justify-between items-center mt-4">
+                    <span className={`px-2 py-1 rounded text-xs ${template.is_assignable ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {template.is_assignable ? 'Assignable' : 'Not Assignable'}
+                    </span>
+                    <Button variant="outline" size="sm">
+                      <Settings size={14} className="mr-1" /> Manage
+                    </Button>
+                  </div>
+                </div>
+              ))
             ) : (
-              <div className="text-center py-10 border rounded bg-gray-50 text-gray-500">
-                No online forms available. Click the button above to create your first form.
-              </div>
+              <p className="text-gray-500 col-span-full">No treatment plan templates found.</p>
             )}
           </div>
-        </>
-      )}
+        </TabsContent>
+        
+        {/* Use our imported template component with the correct props */}
+        {isModalOpen && <TPTemplate onClose={closeModal} clinicianName={clinicianName} />}
+        
+        {/* Other tab contents */}
+        <TabsContent value="session-notes" className="mt-6">
+          {/* Session notes templates here */}
+          <p>Session notes templates will be displayed here.</p>
+        </TabsContent>
+        
+        <TabsContent value="documents" className="mt-6">
+          {/* Document templates here */}
+          <p>Document templates will be displayed here.</p>
+        </TabsContent>
+        
+        <TabsContent value="assessments" className="mt-6">
+          {/* Assessment templates here */}
+          <p>Assessment templates will be displayed here.</p>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

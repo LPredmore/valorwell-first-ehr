@@ -1,165 +1,110 @@
 
-import { CalendarEvent } from '@/types/calendar';
+import { CalendarEvent, CalendarEventType } from '@/types/calendar';
 import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timeZoneService';
 
-export type DatabaseCalendarEvent = {
-  id: string;
-  clinician_id: string;
-  title: string;
-  start_time: string;
-  end_time: string;
-  all_day?: boolean;
-  event_type: string;
-  source_table?: string;
-  status?: string;
-  is_active?: boolean;
-  [key: string]: any;
-};
-
 /**
- * CalendarTransformer - Utility for transforming between database and frontend event formats
+ * Utility to transform calendar events between database and application formats
  */
 export const calendarTransformer = {
   /**
-   * Convert a database calendar event to a frontend CalendarEvent
+   * Convert a database record to a CalendarEvent
    */
-  fromDatabase(dbEvent: DatabaseCalendarEvent, timeZone: string): CalendarEvent {
-    const sourceTimeZone = dbEvent.time_zone || dbEvent.source_time_zone || 'UTC';
-    const validTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
+  fromDatabase: (dbEvent: any, timezone: string): CalendarEvent => {
+    // Ensure we have a valid timezone
+    const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
     
-    // Parse dates with the original timezone
-    let startTime: DateTime;
-    let endTime: DateTime;
+    // Parse start and end times
+    const startTime = DateTime.fromISO(dbEvent.start_time || dbEvent.start, { zone: 'UTC' });
+    const endTime = DateTime.fromISO(dbEvent.end_time || dbEvent.end, { zone: 'UTC' });
     
-    try {
-      startTime = DateTime.fromISO(dbEvent.start_time, { zone: sourceTimeZone });
-      endTime = DateTime.fromISO(dbEvent.end_time, { zone: sourceTimeZone });
-      
-      // Handle invalid dates
-      if (!startTime.isValid || !endTime.isValid) {
-        throw new Error(`Invalid date format: ${dbEvent.start_time} or ${dbEvent.end_time}`);
-      }
-    } catch (error) {
-      console.error('[calendarTransformer] Error parsing dates:', error);
-      // Fallback to current time
-      startTime = DateTime.now().setZone(sourceTimeZone);
-      endTime = startTime.plus({ hours: 1 });
-    }
+    // Determine event type and color
+    const eventType = dbEvent.event_type || dbEvent.type || 'general';
+    const backgroundColor = getEventColor(eventType as CalendarEventType);
+    const textColor = '#ffffff';
     
-    // Set color based on event type
-    let backgroundColor = '#93C5FD'; // Default blue
-    let borderColor = '#3B82F6';
-    let textColor = '#000000';
-    
-    switch (dbEvent.event_type) {
-      case 'appointment':
-        backgroundColor = dbEvent.status === 'cancelled' ? '#FCA5A5' : '#93C5FD';
-        borderColor = dbEvent.status === 'cancelled' ? '#EF4444' : '#3B82F6';
-        break;
-      case 'availability':
-        backgroundColor = '#A7F3D0'; // Green
-        borderColor = '#10B981';
-        break;
-      case 'time_off':
-        backgroundColor = '#FDE68A'; // Yellow
-        borderColor = '#F59E0B';
-        break;
-    }
-    
-    // Create the calendar event
+    // Build the calendar event
     const event: CalendarEvent = {
       id: dbEvent.id,
-      title: dbEvent.title,
+      title: dbEvent.title || 'Untitled Event',
       start: startTime.toJSDate(),
       end: endTime.toJSDate(),
-      allDay: dbEvent.all_day || false,
+      allDay: !!dbEvent.all_day,
       backgroundColor,
-      borderColor,
+      borderColor: backgroundColor,
       textColor,
       extendedProps: {
+        eventType: eventType as CalendarEventType,
         clinicianId: dbEvent.clinician_id,
-        eventType: dbEvent.event_type,
-        sourceTable: dbEvent.source_table,
+        clientId: dbEvent.client_id,
+        sourceTimeZone: dbEvent.timezone || 'UTC',
         status: dbEvent.status,
-        isActive: dbEvent.is_active !== false,
-        isAvailability: dbEvent.event_type === 'availability',
-        timezone: sourceTimeZone,
-        sourceTimeZone,
-        // Include any other fields
-        ...Object.keys(dbEvent)
-          .filter(key => !['id', 'title', 'start_time', 'end_time', 'all_day', 'event_type'].includes(key))
-          .reduce((obj, key) => {
-            obj[key] = dbEvent[key];
-            return obj;
-          }, {} as Record<string, any>)
+        description: dbEvent.description,
       }
+    };
+    
+    // Add display properties
+    const displayStart = TimeZoneService.formatTime(startTime, 'h:mm a', validTimeZone);
+    const displayEnd = TimeZoneService.formatTime(endTime, 'h:mm a', validTimeZone);
+    const displayDay = startTime.setZone(validTimeZone).toFormat('cccc');
+    const displayDate = startTime.setZone(validTimeZone).toFormat('MMM d, yyyy');
+    
+    event.extendedProps = {
+      ...event.extendedProps,
+      displayStart,
+      displayEnd,
+      displayDay,
+      displayDate,
     };
     
     return event;
   },
-
+  
   /**
-   * Convert a frontend CalendarEvent to a database format
+   * Convert a CalendarEvent to database format
    */
-  toDatabase(event: CalendarEvent, timeZone: string): any {
-    const validTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
-    const sourceTimeZone = event.extendedProps?.sourceTimeZone || event.extendedProps?.timezone || validTimeZone;
+  toDatabase: (event: CalendarEvent, timezone: string): any => {
+    // Ensure we have a valid timezone
+    const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
     
-    // Parse dates with the original timezone
-    let startTime: DateTime;
-    let endTime: DateTime;
+    // Convert dates to ISO strings in UTC
+    const startTime = typeof event.start === 'string'
+      ? event.start
+      : TimeZoneService.toUTC(event.start).toISO();
     
-    try {
-      if (typeof event.start === 'string') {
-        startTime = DateTime.fromISO(event.start, { zone: sourceTimeZone });
-      } else {
-        startTime = DateTime.fromJSDate(event.start, { zone: sourceTimeZone });
-      }
-      
-      if (typeof event.end === 'string') {
-        endTime = DateTime.fromISO(event.end, { zone: sourceTimeZone });
-      } else {
-        endTime = DateTime.fromJSDate(event.end, { zone: sourceTimeZone });
-      }
-    } catch (error) {
-      console.error('[calendarTransformer] Error parsing dates:', error);
-      // Fallback to current time
-      startTime = DateTime.now().setZone(sourceTimeZone);
-      endTime = startTime.plus({ hours: 1 });
-    }
+    const endTime = typeof event.end === 'string'
+      ? event.end
+      : TimeZoneService.toUTC(event.end).toISO();
     
-    // Create the database object
-    const dbEvent: any = {
+    // Build the database record
+    return {
+      id: event.id,
       title: event.title,
-      start_time: startTime.toISO(),
-      end_time: endTime.toISO(),
-      all_day: event.allDay || false,
-      clinician_id: event.extendedProps?.clinicianId,
-      event_type: event.extendedProps?.eventType,
-      time_zone: sourceTimeZone,
-      source_time_zone: sourceTimeZone,
+      start_time: startTime,
+      end_time: endTime,
+      all_day: !!event.allDay,
+      clinician_id: event.extendedProps?.clinicianId || event.clinician_id,
+      client_id: event.extendedProps?.clientId,
+      event_type: event.extendedProps?.eventType || event.type,
+      status: event.extendedProps?.status,
+      description: event.extendedProps?.description || event.description,
+      timezone: event.extendedProps?.sourceTimeZone || validTimeZone,
     };
-    
-    // Include ID if present
-    if (event.id) {
-      dbEvent.id = event.id;
-    }
-    
-    // Include any other extended props that might be needed
-    if (event.extendedProps) {
-      if (event.extendedProps.description) dbEvent.description = event.extendedProps.description;
-      if (event.extendedProps.status) dbEvent.status = event.extendedProps.status;
-      if (event.extendedProps.isActive !== undefined) dbEvent.is_active = event.extendedProps.isActive;
-      
-      // For appointment specific fields
-      if (event.extendedProps.clientId) dbEvent.client_id = event.extendedProps.clientId;
-      
-      // For availability specific fields
-      if (event.extendedProps.recurrenceId) dbEvent.recurrence_id = event.extendedProps.recurrenceId;
-      if (event.extendedProps.availabilityType) dbEvent.availability_type = event.extendedProps.availabilityType;
-    }
-    
-    return dbEvent;
   }
 };
+
+// Helper function to get event color based on type
+function getEventColor(eventType: CalendarEventType): string {
+  switch (eventType) {
+    case 'appointment':
+      return '#4f46e5'; // Indigo
+    case 'availability':
+      return '#10b981'; // Green
+    case 'time_off':
+      return '#f59e0b'; // Amber
+    default:
+      return '#6b7280'; // Gray
+  }
+}
+
+export default calendarTransformer;

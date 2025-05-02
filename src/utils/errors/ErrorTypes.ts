@@ -1,339 +1,176 @@
+
 import { AppError } from './AppError';
 
 /**
- * Error thrown when input validation fails
+ * Validation error - used when input data fails validation
  */
 export class ValidationError extends AppError {
-  constructor(
-    message: string,
-    options: {
-      context?: Record<string, any>;
-      userMessage?: string;
-      field?: string;
-      value?: any;
-      cause?: Error;
-    } = {}
-  ) {
+  constructor(message: string, options: any = {}) {
     super(message, 'VALIDATION_ERROR', {
-      ...options,
       statusCode: 400,
       userVisible: true,
-      userMessage: options.userMessage || 'The provided data is invalid.',
-      context: {
-        ...options.context,
-        field: options.field,
-        value: options.value
-      }
-    });
-  }
-
-  /**
-   * Create a validation error for a specific field
-   */
-  static forField(
-    field: string,
-    message: string,
-    value?: any,
-    userMessage?: string
-  ): ValidationError {
-    return new ValidationError(message, {
-      field,
-      value,
-      userMessage
+      userMessage: options.userMessage || message,
+      ...options
     });
   }
 }
 
 /**
- * Error thrown when a user doesn't have permission to perform an action
+ * Authentication error - used for login/authentication issues
+ */
+export class AuthenticationError extends AppError {
+  constructor(message: string, options: any = {}) {
+    super(message, options.code || 'AUTHENTICATION_ERROR', {
+      statusCode: 401,
+      userVisible: true,
+      userMessage: options.userMessage || 'Authentication error. Please sign in again.',
+      ...options
+    });
+  }
+}
+
+/**
+ * Permission error - used when a user lacks required permissions
  */
 export class PermissionError extends AppError {
-  constructor(
-    message: string,
-    options: {
-      context?: Record<string, any>;
-      userMessage?: string;
-      resource?: string;
-      action?: string;
-      cause?: Error;
-    } = {}
-  ) {
-    super(message, 'PERMISSION_DENIED', {
-      ...options,
+  constructor(message: string, options: any = {}) {
+    super(message, 'PERMISSION_ERROR', {
       statusCode: 403,
       userVisible: true,
       userMessage: options.userMessage || 'You do not have permission to perform this action.',
-      context: {
-        ...options.context,
-        resource: options.resource,
-        action: options.action
-      }
+      ...options
     });
   }
 }
 
 /**
- * Error thrown when a requested resource is not found
+ * Not found error - used when a resource cannot be found
  */
 export class NotFoundError extends AppError {
-  constructor(
-    message: string,
-    options: {
-      context?: Record<string, any>;
-      userMessage?: string;
-      resource?: string;
-      identifier?: string | number;
-      cause?: Error;
-    } = {}
-  ) {
+  constructor(message: string, options: any = {}) {
     super(message, 'NOT_FOUND', {
-      ...options,
       statusCode: 404,
       userVisible: true,
-      userMessage: options.userMessage || 'The requested resource was not found.',
-      context: {
-        ...options.context,
-        resource: options.resource,
-        identifier: options.identifier
-      }
+      userMessage: options.userMessage || 'The requested resource could not be found.',
+      ...options
     });
-  }
-
-  /**
-   * Create a not found error for a specific resource type
-   */
-  static forResource(
-    resourceType: string,
-    identifier?: string | number,
-    userMessage?: string
-  ): NotFoundError {
-    return new NotFoundError(
-      `${resourceType} not found${identifier ? ` with identifier: ${identifier}` : ''}`,
-      {
-        resource: resourceType,
-        identifier,
-        userMessage
-      }
-    );
   }
 }
 
 /**
- * Error thrown when there's a network-related issue
+ * Network error - used for communication/fetch failures
  */
 export class NetworkError extends AppError {
-  constructor(
-    message: string,
-    options: {
-      context?: Record<string, any>;
-      userMessage?: string;
-      url?: string;
-      status?: number;
-      cause?: Error;
-    } = {}
-  ) {
-    super(message, 'NETWORK_ERROR', {
-      ...options,
-      statusCode: options.status || 500,
+  url?: string;
+  status?: number;
+  
+  constructor(message: string, options: any = {}) {
+    super(message, options.code || 'NETWORK_ERROR', {
+      statusCode: options.status || 0,
       userVisible: true,
-      userMessage: options.userMessage || 'A network error occurred. Please check your connection and try again.',
-      context: {
-        ...options.context,
-        url: options.url,
-        status: options.status
-      }
+      userMessage: options.userMessage || 'Network error. Please check your connection and try again.',
+      ...options
     });
+    
+    this.url = options.url;
+    this.status = options.status;
   }
 }
 
 /**
- * Error thrown when there's a database-related issue
+ * Database error - used for database operation failures
  */
 export class DatabaseError extends AppError {
-  constructor(
-    message: string,
-    options: {
-      context?: Record<string, any>;
-      userMessage?: string;
-      operation?: string;
-      table?: string;
-      code?: string;
-      cause?: Error;
-    } = {}
-  ) {
+  table?: string;
+  operation?: string;
+  
+  constructor(message: string, options: any = {}) {
     super(message, options.code || 'DATABASE_ERROR', {
-      ...options,
       statusCode: 500,
-      userVisible: false,
-      userMessage: options.userMessage || 'An error occurred while accessing the database.',
-      context: {
-        ...options.context,
-        operation: options.operation,
-        table: options.table
-      }
+      userVisible: options.userMessage !== undefined,
+      userMessage: options.userMessage || 'A database error occurred. Please try again later.',
+      ...options
     });
+    
+    this.table = options.table;
+    this.operation = options.operation;
   }
 }
 
 /**
- * Error thrown when there's an authentication-related issue
- */
-export class AuthenticationError extends AppError {
-  constructor(
-    message: string,
-    options: {
-      context?: Record<string, any>;
-      userMessage?: string;
-      code?: string;
-      cause?: Error;
-    } = {}
-  ) {
-    super(message, options.code || 'AUTHENTICATION_ERROR', {
-      ...options,
-      statusCode: 401,
-      userVisible: true,
-      userMessage: options.userMessage || 'Authentication failed. Please check your credentials and try again.'
-    });
-  }
-}
-
-/**
- * Error thrown when there's an issue with external service integration
+ * Integration error - used for third-party service failures
  */
 export class IntegrationError extends AppError {
-  constructor(
-    message: string,
-    options: {
-      context?: Record<string, any>;
-      userMessage?: string;
-      service?: string;
-      operation?: string;
-      cause?: Error;
-    } = {}
-  ) {
-    super(message, 'INTEGRATION_ERROR', {
-      ...options,
+  service?: string;
+  
+  constructor(message: string, options: any = {}) {
+    super(message, options.code || 'INTEGRATION_ERROR', {
       statusCode: 502,
-      userVisible: true,
-      userMessage: options.userMessage || 'An error occurred with an external service.',
-      context: {
-        ...options.context,
-        service: options.service,
-        operation: options.operation
-      }
+      userVisible: options.userMessage !== undefined,
+      userMessage: options.userMessage || 'An external service error occurred. Please try again later.',
+      ...options
     });
+    
+    this.service = options.service;
   }
 }
 
 /**
- * Error thrown when there's a timeout
+ * Timeout error - used when operations time out
  */
 export class TimeoutError extends AppError {
-  constructor(
-    message: string,
-    options: {
-      context?: Record<string, any>;
-      userMessage?: string;
-      operation?: string;
-      timeoutMs?: number;
-      cause?: Error;
-    } = {}
-  ) {
-    super(message, 'TIMEOUT_ERROR', {
-      ...options,
+  timeoutMs?: number;
+  
+  constructor(message: string, options: any = {}) {
+    super(message, 'TIMEOUT', {
       statusCode: 504,
       userVisible: true,
-      userMessage: options.userMessage || 'The operation timed out. Please try again.',
-      context: {
-        ...options.context,
-        operation: options.operation,
-        timeoutMs: options.timeoutMs
-      }
+      userMessage: options.userMessage || 'The operation timed out. Please try again later.',
+      ...options
     });
+    
+    this.timeoutMs = options.timeoutMs;
   }
 }
 
 /**
- * Error thrown when there's a conflict with the current state
+ * Conflict error - used for resource conflicts
  */
 export class ConflictError extends AppError {
-  constructor(
-    message: string,
-    options: {
-      context?: Record<string, any>;
-      userMessage?: string;
-      resource?: string;
-      conflictReason?: string;
-      cause?: Error;
-    } = {}
-  ) {
-    super(message, 'CONFLICT_ERROR', {
-      ...options,
+  constructor(message: string, options: any = {}) {
+    super(message, 'CONFLICT', {
       statusCode: 409,
       userVisible: true,
-      userMessage: options.userMessage || 'This operation conflicts with the current state.',
-      context: {
-        ...options.context,
-        resource: options.resource,
-        conflictReason: options.conflictReason
-      }
+      userMessage: options.userMessage || 'This operation conflicts with existing data.',
+      ...options
     });
   }
 }
 
 /**
- * Error thrown for calendar-specific issues
+ * Calendar error - used for calendar-specific issues
  */
 export class CalendarError extends AppError {
-  constructor(
-    message: string,
-    options: {
-      context?: Record<string, any>;
-      userMessage?: string;
-      code?: string;
-      cause?: Error;
-    } = {}
-  ) {
+  constructor(message: string, options: any = {}) {
     super(message, options.code || 'CALENDAR_ERROR', {
-      ...options,
       statusCode: 400,
       userVisible: true,
-      userMessage: options.userMessage || 'An error occurred with the calendar operation.'
+      userMessage: options.userMessage || message,
+      ...options
     });
   }
 }
 
 /**
- * Error thrown for timezone-related issues
- * This extends the existing TimeZoneError functionality
+ * TimeZone error - used for timezone-related issues
  */
 export class TimeZoneError extends AppError {
-  constructor(
-    message: string,
-    options: {
-      context?: Record<string, any>;
-      userMessage?: string;
-      code?: string;
-      cause?: Error;
-    } = {}
-  ) {
+  constructor(message: string, options: any = {}) {
     super(message, options.code || 'TIMEZONE_ERROR', {
-      ...options,
       statusCode: 400,
       userVisible: true,
-      userMessage: options.userMessage || 'An error occurred with timezone processing.'
+      userMessage: options.userMessage || 'Invalid or unsupported timezone.',
+      ...options
     });
-  }
-
-  /**
-   * Creates a user-friendly error message
-   */
-  static createUserFriendlyMessage(error: unknown): string {
-    if (error instanceof TimeZoneError) {
-      return error.getUserMessage();
-    } else if (error instanceof Error) {
-      return `Error processing timezone: ${error.message}`;
-    }
-    return 'An unknown error occurred while processing timezone data';
   }
 }

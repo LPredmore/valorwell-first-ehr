@@ -83,8 +83,9 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
     setTimeout(() => {
       openDialog('appointment', {
         clinicianId,
-        startTime: startTime instanceof Date ? startTime : String(startTime),
-        endTime: endTime instanceof Date ? endTime : String(endTime),
+        // Convert Date objects to ISO strings to ensure compatibility
+        startTime: startTime instanceof Date ? startTime.toISOString() : startTime,
+        endTime: endTime instanceof Date ? endTime.toISOString() : endTime,
         allDay,
         onAppointmentCreated: onEventCreated || state.props?.onEventCreated
       });
@@ -98,8 +99,9 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
     setTimeout(() => {
       openDialog('timeOff', {
         clinicianId,
-        startTime: startTime instanceof Date ? startTime : String(startTime),
-        endTime: endTime instanceof Date ? endTime : String(endTime),
+        // Convert Date objects to ISO strings to ensure compatibility
+        startTime: startTime instanceof Date ? startTime.toISOString() : startTime,
+        endTime: endTime instanceof Date ? endTime.toISOString() : endTime,
         allDay,
         onTimeOffCreated: onEventCreated || state.props?.onEventCreated
       });
@@ -113,7 +115,8 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
     setTimeout(() => {
       openDialog('singleAvailability', {
         clinicianId,
-        date: startTime instanceof Date ? startTime : new Date(String(startTime)),
+        // If startTime is a Date, convert it to ISO string for consistent handling
+        date: startTime instanceof Date ? startTime.toISOString() : startTime,
         userTimeZone: selectedTimeZone,
         onAvailabilityCreated: onEventCreated || state.props?.onEventCreated
       });

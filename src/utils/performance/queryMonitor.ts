@@ -1,41 +1,62 @@
 
+interface TimerOptions {
+  source?: string;
+  params?: Record<string, any>;
+}
+
+interface TimerResult {
+  fromCache?: boolean;
+  duration?: number;
+  result?: any;
+}
+
 /**
- * QueryMonitor - A utility for monitoring query performance
+ * Simple query performance monitoring utility
  */
 export const queryMonitor = {
   /**
-   * Start timing a query operation
+   * Start a timer for a query or operation
    */
-  startTimer(operation: string, metadata?: Record<string, any>) {
+  startTimer: (operation: string, options: TimerOptions = {}) => {
     const startTime = performance.now();
-    const id = Math.random().toString(36).substring(2, 10);
+    const { source, params } = options;
     
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`[QueryMonitor] Starting ${operation}`, metadata);
-    }
+    console.log(`[QueryMonitor] Started: ${operation}`, {
+      source,
+      params,
+      timestamp: new Date().toISOString()
+    });
     
-    return (additionalMetadata?: Record<string, any>) => {
-      const endTime = performance.now();
-      const duration = endTime - startTime;
+    return (result: TimerResult = {}) => {
+      const duration = performance.now() - startTime;
+      const { fromCache } = result;
       
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`[QueryMonitor] ${operation} completed in ${duration.toFixed(2)}ms`, {
-          ...metadata,
-          ...additionalMetadata,
-          duration,
-        });
-      }
+      console.log(`[QueryMonitor] Completed: ${operation} in ${duration.toFixed(2)}ms`, {
+        duration,
+        fromCache,
+        source,
+        params,
+        timestamp: new Date().toISOString()
+      });
+      
+      return duration;
     };
   },
-
+  
   /**
-   * Log query information without timing
+   * Measure the performance of an async function
    */
-  logQuery(operation: string, metadata?: Record<string, any>) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`[QueryMonitor] ${operation}`, metadata);
+  measure: async <T>(name: string, fn: () => Promise<T>, options: TimerOptions = {}): Promise<T> => {
+    const endTimer = queryMonitor.startTimer(name, options);
+    try {
+      const result = await fn();
+      endTimer({ result });
+      return result;
+    } catch (error) {
+      endTimer({ result: error });
+      throw error;
     }
   }
 };
 
-export type QueryEndTimer = ReturnType<typeof queryMonitor.startTimer>;
+export default queryMonitor;

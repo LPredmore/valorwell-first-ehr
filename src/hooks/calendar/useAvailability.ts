@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useMemo } from 'react';
 import { CalendarEvent } from '@/types/calendar';
 import { useCalendar } from '@/context/CalendarContext';
@@ -153,6 +154,7 @@ export function useAvailability(): UseAvailabilityResult {
         // If no conflicts, add slot to available slots
         if (!hasAppointmentConflict && !hasTimeOffConflict) {
           availableSlots.push({
+            id: `slot-${slotStart.toMillis()}`,  // Adding an ID to fix the "id is required" error
             title: 'Available',
             start: slotStart.toJSDate(),
             end: slotEnd.toJSDate(),

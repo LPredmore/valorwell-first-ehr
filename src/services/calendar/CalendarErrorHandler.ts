@@ -16,6 +16,16 @@ export class CalendarError extends Error {
   }
 }
 
+export type CalendarErrorCode = 
+  | 'INVALID_TIME_RANGE'
+  | 'OVERLAPPING_EVENT'
+  | 'INVALID_TIMEZONE'
+  | 'INSUFFICIENT_PERMISSIONS'
+  | 'EVENT_NOT_FOUND'
+  | 'DATABASE_ERROR'
+  | 'CALENDAR_ERROR'
+  | 'UNKNOWN_ERROR';
+
 export class CalendarErrorHandler {
   /**
    * Gets a user-friendly error message based on the error
@@ -53,6 +63,50 @@ export class CalendarErrorHandler {
     }
     
     return error?.message || 'An unexpected error occurred. Please try again later.';
+  }
+
+  /**
+   * Handles database errors by converting them to CalendarError objects
+   * @param error The database error to handle
+   * @returns A formatted CalendarError
+   */
+  static handleDatabaseError(error: any): CalendarError {
+    console.error('[CalendarErrorHandler] Database error:', error);
+    
+    // Check for specific PostgreSQL error codes
+    if (error?.code === '23505') {
+      return new CalendarError(
+        'This event conflicts with an existing event.',
+        'OVERLAPPING_EVENT',
+        error
+      );
+    }
+    
+    if (error?.code === '23503') {
+      return new CalendarError(
+        'Referenced record does not exist.',
+        'DATABASE_ERROR',
+        error
+      );
+    }
+    
+    // Generic database error
+    return new CalendarError(
+      error?.message || 'A database error occurred.',
+      'DATABASE_ERROR',
+      error
+    );
+  }
+
+  /**
+   * Creates a new CalendarError with the specified message and code
+   * @param message Error message
+   * @param code Error code
+   * @param details Additional error details
+   * @returns A new CalendarError object
+   */
+  static createError(message: string, code: string = 'CALENDAR_ERROR', details?: any): CalendarError {
+    return new CalendarError(message, code, details);
   }
 
   /**

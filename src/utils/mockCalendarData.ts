@@ -1,120 +1,119 @@
 
+import { CalendarEvent, CalendarEventType } from '@/types/calendar';
 import { DateTime } from 'luxon';
-import { CalendarEvent } from '@/types/calendar';
-import { TimeZoneService } from '@/utils/timeZoneService';
 
 /**
- * Generate mock calendar data for testing and development
+ * Generate mock calendar events for testing or when database is unavailable
  */
 export const generateMockCalendarEvents = (
   clinicianId: string, 
-  count: number = 10,
-  timeZone: string = 'America/Chicago',
+  eventCount: number = 10,
+  timezone: string = 'UTC',
   startDate?: Date,
   endDate?: Date
 ): CalendarEvent[] => {
-  const events: CalendarEvent[] = [];
-  const startDateTime = startDate ? DateTime.fromJSDate(startDate) : DateTime.now().minus({ days: 7 });
-  const endDateTime = endDate ? DateTime.fromJSDate(endDate) : DateTime.now().plus({ days: 30 });
-  const validTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
+  // Default date range to current month if not specified
+  const start = startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const end = endDate || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
   
-  const eventTypes = ['appointment', 'availability', 'time_off'];
-  const clientNames = [
-    'John Doe', 'Jane Smith', 'Michael Johnson', 'Emma Williams',
-    'Robert Brown', 'Olivia Jones', 'William Davis', 'Sophia Miller',
-  ];
+  const startDateTime = DateTime.fromJSDate(start);
+  const endDateTime = DateTime.fromJSDate(end);
+  const totalDays = endDateTime.diff(startDateTime, 'days').days;
 
-  // Calculate the number of days in the range
-  const daysDiff = endDateTime.diff(startDateTime, 'days').days;
+  const result: CalendarEvent[] = [];
+  const eventTypes: CalendarEventType[] = ['appointment', 'availability', 'time_off'];
   
   // Generate random events
-  for (let i = 0; i < count; i++) {
-    // Determine a random day within the range
-    const randomDayOffset = Math.floor(Math.random() * daysDiff);
-    const randomDay = startDateTime.plus({ days: randomDayOffset });
+  for (let i = 0; i < eventCount; i++) {
+    // Pick a random day within the range
+    const randomDayOffset = Math.floor(Math.random() * totalDays);
+    const eventDay = startDateTime.plus({ days: randomDayOffset });
     
-    // Pick a random hour between 8 AM and 5 PM
-    const randomHour = 8 + Math.floor(Math.random() * 9); // 8 AM to 5 PM
+    // Random hour between 8 AM and 6 PM
+    const hour = 8 + Math.floor(Math.random() * 10);
+    const minute = Math.floor(Math.random() * 4) * 15; // 0, 15, 30, or 45
     
-    // Create start and end times (appointments are 1 hour by default)
-    const startTime = randomDay.set({
-      hour: randomHour,
-      minute: 0,
-      second: 0,
-      millisecond: 0
-    }).setZone(validTimeZone);
+    // Create event start and end times
+    const eventStartDateTime = eventDay.set({ hour, minute });
+    const durationHours = Math.floor(Math.random() * 3) + 1; // 1-3 hours
+    const eventEndDateTime = eventStartDateTime.plus({ hours: durationHours });
     
-    const endTime = startTime.plus({ hours: 1 });
-    
-    // Determine event type
+    // Pick a random event type
     const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
     
-    // Generate event based on type
-    const eventId = `mock-${eventType}-${i}-${Date.now()}`;
-    let event: CalendarEvent;
+    // Generate a mock event
+    const event: CalendarEvent = {
+      id: `mock-${i}-${eventStartDateTime.toMillis()}`,
+      title: getEventTitle(eventType),
+      start: eventStartDateTime.toJSDate(),
+      end: eventEndDateTime.toJSDate(),
+      backgroundColor: getEventColor(eventType),
+      borderColor: getEventColor(eventType),
+      textColor: '#ffffff',
+      extendedProps: {
+        eventType,
+        clinicianId,
+        sourceTimeZone: timezone,
+        displayStart: eventStartDateTime.toFormat('h:mm a'),
+        displayEnd: eventEndDateTime.toFormat('h:mm a'),
+        displayDay: eventStartDateTime.toFormat('cccc'),
+        displayDate: eventStartDateTime.toFormat('MMM d, yyyy'),
+      }
+    };
     
+    // Add appointment-specific properties
     if (eventType === 'appointment') {
-      const clientName = clientNames[Math.floor(Math.random() * clientNames.length)];
-      const status = Math.random() > 0.9 ? 'cancelled' : 'scheduled';
-      
-      event = {
-        id: eventId,
-        title: `${clientName} - Appointment`,
-        start: startTime.toJSDate(),
-        end: endTime.toJSDate(),
-        backgroundColor: status === 'cancelled' ? '#FCA5A5' : '#93C5FD',
-        borderColor: status === 'cancelled' ? '#EF4444' : '#3B82F6',
-        textColor: '#000000',
-        extendedProps: {
-          eventType,
-          clinicianId,
-          clientId: `mock-client-${i}`,
-          description: `Session with ${clientName}`,
-          status,
-          timezone: validTimeZone,
-          sourceTimeZone: validTimeZone,
-        }
-      };
-    } else if (eventType === 'availability') {
-      event = {
-        id: eventId,
-        title: 'Available',
-        start: startTime.toJSDate(),
-        end: endTime.toJSDate(),
-        backgroundColor: '#A7F3D0',
-        borderColor: '#10B981',
-        textColor: '#000000',
-        extendedProps: {
-          eventType,
-          clinicianId,
-          isAvailability: true,
-          description: 'Available for booking',
-          timezone: validTimeZone,
-          sourceTimeZone: validTimeZone,
-        }
-      };
-    } else { // time_off
-      event = {
-        id: eventId,
-        title: 'Time Off',
-        start: startTime.toJSDate(),
-        end: endTime.toJSDate(),
-        backgroundColor: '#FDE68A',
-        borderColor: '#F59E0B',
-        textColor: '#000000',
-        extendedProps: {
-          eventType,
-          clinicianId,
-          description: 'Not available',
-          timezone: validTimeZone,
-          sourceTimeZone: validTimeZone,
-        }
-      };
+      event.extendedProps!.clientId = `mock-client-${Math.floor(Math.random() * 1000)}`;
+      event.extendedProps!.clientName = getRandomName();
+      event.extendedProps!.status = getRandomStatus();
     }
     
-    events.push(event);
+    result.push(event);
   }
   
-  // Convert all events to the specified timezone
-  return events.map(event => TimeZoneService.convertEventToUserTimeZone(event, timeZone));
+  return result;
 };
+
+// Helper functions
+function getEventTitle(eventType: CalendarEventType): string {
+  switch (eventType) {
+    case 'appointment':
+      return `Appointment with ${getRandomName()}`;
+    case 'availability':
+      return 'Available';
+    case 'time_off':
+      return 'Time Off';
+    default:
+      return 'Calendar Event';
+  }
+}
+
+function getEventColor(eventType: CalendarEventType): string {
+  switch (eventType) {
+    case 'appointment':
+      return '#4f46e5'; // Indigo
+    case 'availability':
+      return '#10b981'; // Green
+    case 'time_off':
+      return '#f59e0b'; // Amber
+    default:
+      return '#6b7280'; // Gray
+  }
+}
+
+function getRandomName(): string {
+  const firstNames = ['James', 'Emma', 'Michael', 'Sarah', 'John', 'Olivia', 'David', 'Sophia'];
+  const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis'];
+  
+  const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+  const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+  
+  return `${firstName} ${lastName}`;
+}
+
+function getRandomStatus(): string {
+  const statuses = ['confirmed', 'pending', 'cancelled', 'completed'];
+  return statuses[Math.floor(Math.random() * statuses.length)];
+}
+
+export default generateMockCalendarEvents;
