@@ -28,7 +28,7 @@ const AvailabilitySlotList: React.FC<AvailabilitySlotListProps> = ({
 }) => {
   const formatTimeDisplay = (timeStr: string): string => {
     if (!timeStr) return '';
-    return TimeZoneService.formatTime(timeStr, 'h:mm a', timeZone);
+    return TimeZoneService.formatTime(timeStr);
   };
 
   const availabilitySlots = slots.filter(slot => !slot.isAppointment);

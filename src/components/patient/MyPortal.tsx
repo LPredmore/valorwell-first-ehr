@@ -136,7 +136,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
 
               let formattedTime = '';
               try {
-                formattedTime = TimeZoneService.formatTime(
+                formattedTime = formatTime(
                   appointment.start_time, 
                   'h:mm a'
                 );
@@ -146,7 +146,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
                   time: appointment.start_time,
                   timezone: clientTimeZone
                 });
-                formattedTime = TimeZoneService.formatTime(appointment.start_time) || 'Time unavailable';
+                formattedTime = formatTime(appointment.start_time) || 'Time unavailable';
               }
               
               return {
@@ -516,3 +516,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
 };
 
 export default MyPortal;
+
+const formatTime = (time: string) => {
+  return TimeZoneService.formatTime(time);
+};

@@ -16,12 +16,90 @@ export class CalendarQueryService {
   static useMockData = true; // Set to true to use mock data instead of real database
   
   /**
+   * Get all calendar events for a clinician
+   * @deprecated Use getEventsInRange instead
+   */
+  static async getEvents(
+    clinicianId: string,
+    timeZone: string,
+    options: any = {}
+  ): Promise<CalendarEvent[]> {
+    console.warn('getEvents is deprecated, use getEventsInRange instead');
+    // Get events for the current month as a fallback
+    const today = new Date();
+    const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    return this.getEventsInRange(
+      clinicianId,
+      startDate,
+      endDate,
+      timeZone,
+      options
+    );
+  }
+  
+  /**
+   * Get all calendar events regardless of date range
+   * @deprecated Use getEventsInRange with a wide date range instead
+   */
+  static async getAllEvents(
+    clinicianId: string,
+    timeZone: string,
+    options: any = {}
+  ): Promise<CalendarEvent[]> {
+    console.warn('getAllEvents is deprecated, use getEventsInRange with a wide range instead');
+    // Use a very wide date range to get all events
+    const startDate = new Date(2000, 0, 1);
+    const endDate = new Date(2050, 11, 31);
+    
+    return this.getEventsInRange(
+      clinicianId,
+      startDate,
+      endDate,
+      timeZone,
+      options
+    );
+  }
+  
+  /**
+   * Get calendar events for a specific date
+   * @deprecated Use getEventsInRange instead
+   */
+  static async getEventsForDate(
+    clinicianId: string,
+    date: Date | string,
+    timeZone: string,
+    options: any = {}
+  ): Promise<CalendarEvent[]> {
+    console.warn('getEventsForDate is deprecated, use getEventsInRange instead');
+    
+    // Convert string date to Date object if needed
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    
+    // Set start to beginning of day and end to end of day
+    const startDate = new Date(dateObj);
+    startDate.setHours(0, 0, 0, 0);
+    
+    const endDate = new Date(dateObj);
+    endDate.setHours(23, 59, 59, 999);
+    
+    return this.getEventsInRange(
+      clinicianId,
+      startDate,
+      endDate,
+      timeZone,
+      options
+    );
+  }
+  
+  /**
    * Get calendar events for a specific date range
    */
   static async getEventsInRange(
     clinicianId: string,
-    startDate: Date,
-    endDate: Date,
+    startDate: Date | string,
+    endDate: Date | string,
     timeZone: string,
     options: {
       includeAppointments?: boolean;
@@ -34,8 +112,8 @@ export class CalendarQueryService {
       source: 'CalendarQueryService',
       params: { 
         clinicianId, 
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
+        startDate: typeof startDate === 'string' ? startDate : startDate.toISOString(),
+        endDate: typeof endDate === 'string' ? endDate : endDate.toISOString(),
         timeZone,
         options
       }
@@ -49,8 +127,8 @@ export class CalendarQueryService {
           clinicianId, 
           15, 
           timeZone,
-          startDate,
-          endDate
+          typeof startDate === 'string' ? new Date(startDate) : startDate,
+          typeof endDate === 'string' ? new Date(endDate) : endDate
         );
         endTimer({ fromCache: false });
         return events;
@@ -67,8 +145,8 @@ export class CalendarQueryService {
       const fetchStartTime = performance.now();
       
       // Format dates for database query
-      const formattedStartDate = startDate.toISOString();
-      const formattedEndDate = endDate.toISOString();
+      const formattedStartDate = typeof startDate === 'string' ? startDate : startDate.toISOString();
+      const formattedEndDate = typeof endDate === 'string' ? endDate : endDate.toISOString();
       
       // Perform the actual database query
       const { data, error } = await supabase
@@ -103,8 +181,8 @@ export class CalendarQueryService {
         clinicianId, 
         15, 
         timeZone,
-        startDate,
-        endDate
+        typeof startDate === 'string' ? new Date(startDate) : startDate,
+        typeof endDate === 'string' ? new Date(endDate) : endDate
       );
       return events;
     }

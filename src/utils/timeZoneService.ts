@@ -1,3 +1,4 @@
+
 import { DateTime } from 'luxon';
 
 /**
@@ -72,6 +73,14 @@ export class TimeZoneService {
    */
   static getLocalTimeZone(): string {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  }
+
+  /**
+   * Gets the user's timezone, alias for getLocalTimeZone
+   * Added for compatibility with existing code
+   */
+  static getUserTimeZone(): string {
+    return this.getLocalTimeZone();
   }
 
   /**
@@ -197,15 +206,25 @@ export class TimeZoneService {
    * @param timeStr Time string in 24h format (HH:mm)
    * @returns Formatted time string (e.g. "2:30 PM")
    */
-  static formatTime(timeStr: string): string {
+  static formatTime(timeStr: string, format: string = 'h:mm a', timeZone?: string): string {
     try {
-      // Create a DateTime object from the time string
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      const dt = DateTime.fromObject({ hour: hours, minute: minutes });
-      return dt.toFormat('h:mm a');
+      // Handle time-only strings (e.g., "14:30")
+      if (typeof timeStr === 'string' && timeStr.includes(':') && !timeStr.includes('T')) {
+        // Create a DateTime object from the time string
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        const dt = DateTime.fromObject({ hour: hours, minute: minutes });
+        
+        // Apply timezone if specified
+        const dateTimeWithZone = timeZone ? dt.setZone(this.ensureIANATimeZone(timeZone)) : dt;
+        
+        return dateTimeWithZone.toFormat(format);
+      }
+      
+      // For other cases, use formatDateTime
+      return this.formatDateTime(timeStr, format, timeZone);
     } catch (error) {
       console.error('[TimeZoneService] Error formatting time:', error);
-      return timeStr; // Return the original if there's an error
+      return String(timeStr); // Return the original if there's an error
     }
   }
 
@@ -238,6 +257,22 @@ export class TimeZoneService {
     } catch (error) {
       console.error('[TimeZoneService] Error converting to UTC timestamp:', error);
       throw new Error(`Failed to convert date and time to UTC: ${dateStr} ${timeStr}`);
+    }
+  }
+
+  /**
+   * Convert UTC timestamp to local date and time
+   * @param timestamp UTC timestamp string
+   * @param targetTimeZone Target timezone
+   * @returns DateTime in target timezone
+   */
+  static fromUTCTimestamp(timestamp: string, targetTimeZone: string = 'UTC'): DateTime {
+    try {
+      const validTimeZone = this.ensureIANATimeZone(targetTimeZone);
+      return DateTime.fromISO(timestamp, { zone: 'UTC' }).setZone(validTimeZone);
+    } catch (error) {
+      console.error('[TimeZoneService] Error converting from UTC timestamp:', error);
+      throw new Error(`Failed to convert UTC timestamp to local time: ${timestamp}`);
     }
   }
 
@@ -343,6 +378,15 @@ export class TimeZoneService {
     }
     
     return dt.toFormat('LLLL');
+  }
+
+  /**
+   * Format a date to 12-hour time format
+   * @param date Date to format
+   * @returns Formatted time string
+   */
+  static formatDateToTime12Hour(date: Date | string | DateTime): string {
+    return this.formatDateTime(date, 'h:mm a');
   }
 
   /**

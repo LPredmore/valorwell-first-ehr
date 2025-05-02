@@ -58,6 +58,9 @@ export class CalendarError extends Error {
     this.name = 'CalendarError';
     this.code = code;
     this.details = details;
+    
+    // Ensure proper prototype chain for instanceof checks
+    Object.setPrototypeOf(this, CalendarError.prototype);
   }
 }
 

@@ -12,16 +12,29 @@ interface EventTypeSelectorProps {
   startTime?: Date;
   endTime?: Date;
   allDay?: boolean;
+  isOpen?: boolean;
+  onClose?: () => void;
+  onEventCreated?: (event: any) => void;
 }
 
 /**
  * EventTypeSelector Dialog
  * Allows the user to choose what type of event to create when selecting a time slot on the calendar
  */
-const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({ clinicianId = null, startTime, endTime, allDay = false }) => {
+const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({ 
+  clinicianId = null, 
+  startTime, 
+  endTime, 
+  allDay = false,
+  isOpen: propIsOpen,
+  onClose: propOnClose,
+  onEventCreated
+}) => {
   const { state, closeDialog, openDialog } = useDialogs();
   const [selectedTimeZone, setSelectedTimeZone] = useState<string>('');
-  const isOpen = state.type === 'eventTypeSelector';
+  
+  // Use either the prop-based isOpen or the dialog state
+  const isOpen = propIsOpen !== undefined ? propIsOpen : state.type === 'eventTypeSelector';
   
   useEffect(() => {
     // Get the current timezone
@@ -34,8 +47,7 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({ clinicianId = nul
     if (!startTime || !endTime) return 'No time selected';
     
     try {
-      // Use Luxon to format the dates
-      const startDateTime = TimeZoneService.getCurrentDateTime(selectedTimeZone);
+      // Use TimeZoneService to format the dates
       const formattedDate = DateTime.fromJSDate(startTime).toFormat('ccc, LLL d');
       
       if (allDay) {
@@ -52,8 +64,16 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({ clinicianId = nul
     }
   };
   
+  const handleClose = () => {
+    if (propOnClose) {
+      propOnClose();
+    } else {
+      closeDialog();
+    }
+  };
+  
   const handleCreateAppointment = () => {
-    closeDialog();
+    handleClose();
     
     // Wait a moment to allow the previous dialog to close
     setTimeout(() => {
@@ -62,13 +82,13 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({ clinicianId = nul
         startTime,
         endTime,
         allDay,
-        onAppointmentCreated: state.props.onEventCreated
+        onAppointmentCreated: onEventCreated || state.props?.onEventCreated
       });
     }, 100);
   };
   
   const handleCreateTimeOff = () => {
-    closeDialog();
+    handleClose();
     
     // Wait a moment to allow the previous dialog to close
     setTimeout(() => {
@@ -77,26 +97,26 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({ clinicianId = nul
         startTime,
         endTime,
         allDay,
-        onTimeOffCreated: state.props.onEventCreated
+        onTimeOffCreated: onEventCreated || state.props?.onEventCreated
       });
     }, 100);
   };
   
   const handleCreateAvailability = () => {
-    closeDialog();
+    handleClose();
     
     // Wait a moment to allow the previous dialog to close
     setTimeout(() => {
       openDialog('singleAvailability', {
         clinicianId,
         date: startTime,
-        onAvailabilityCreated: state.props.onEventCreated
+        onAvailabilityCreated: onEventCreated || state.props?.onEventCreated
       });
     }, 100);
   };
   
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && closeDialog()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create Event</DialogTitle>
