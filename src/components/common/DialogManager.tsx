@@ -17,6 +17,21 @@ import ConfirmationDialog from '@/components/common/ConfirmationDialog';
 import PhoneNumberDialog from '@/components/client/PhoneNumberDialog';
 import AddClientDialog from '@/components/admin/AddClientDialog';
 
+// Define the allowed dialog types
+type DialogType = 
+  'addClinician' | 
+  'editClinician' | 
+  'addClient' | 
+  'appointment' | 
+  'editAppointment' | 
+  'timeOff' | 
+  'editTimeOff' | 
+  'singleAvailability' | 
+  'weeklyAvailability' | 
+  'eventTypeSelector' | 
+  'confirmation' | 
+  'phoneNumber';
+
 /**
  * DialogManager Component
  * 
@@ -64,8 +79,6 @@ const DialogManager: React.FC = () => {
     case 'appointment':
       return (
         <AppointmentDialog 
-          isOpen={true} 
-          onClose={closeDialog} 
           clinicianId={state.props?.clinicianId} 
           startTime={state.props?.startTime}
           endTime={state.props?.endTime}
@@ -76,8 +89,6 @@ const DialogManager: React.FC = () => {
     case 'editAppointment':
       return (
         <EditAppointmentDialog 
-          isOpen={true} 
-          onClose={closeDialog} 
           appointment={state.props?.appointment}
           onAppointmentUpdated={state.props?.onAppointmentUpdated}
         />
@@ -86,8 +97,6 @@ const DialogManager: React.FC = () => {
     case 'timeOff':
       return (
         <TimeOffDialog 
-          isOpen={true} 
-          onClose={closeDialog} 
           clinicianId={state.props?.clinicianId} 
           startTime={state.props?.startTime}
           endTime={state.props?.endTime}
@@ -109,10 +118,9 @@ const DialogManager: React.FC = () => {
     case 'singleAvailability':
       return (
         <SingleAvailabilityDialog 
-          isOpen={true} 
-          onClose={closeDialog} 
           clinicianId={state.props?.clinicianId}
           date={state.props?.date}
+          userTimeZone={userTimeZone}
           onAvailabilityCreated={state.props?.onAvailabilityCreated}
         />
       );
@@ -120,8 +128,6 @@ const DialogManager: React.FC = () => {
     case 'weeklyAvailability':
       return (
         <WeeklyAvailabilityDialog 
-          isOpen={true} 
-          onClose={closeDialog} 
           clinicianId={state.props?.clinicianId}
           onAvailabilityCreated={state.props?.onAvailabilityCreated}
         />
@@ -132,8 +138,8 @@ const DialogManager: React.FC = () => {
         <EventTypeSelector 
           isOpen={true}
           onClose={closeDialog}
-          startTime={state.props?.startTime}
-          endTime={state.props?.endTime}
+          startTime={new Date(state.props?.startTime)}
+          endTime={new Date(state.props?.endTime)}
           clinicianId={state.props?.clinicianId}
           allDay={state.props?.allDay}
           onEventCreated={state.props?.onEventCreated}

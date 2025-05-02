@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { AvailabilityMutationService } from '@/services/AvailabilityMutationServ
 import { useCalendarAuth } from '@/hooks/useCalendarAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Loader2, Info } from 'lucide-react';
-import { useDialogs, DialogType } from '@/context/DialogContext';
+import { useDialogs } from '@/context/DialogContext';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { z } from 'zod';
@@ -29,8 +30,11 @@ import { PermissionLevel } from '@/services/PermissionService';
 interface SingleAvailabilityDialogProps {
   clinicianId: string;
   userTimeZone: string;
+  date?: Date | string | null;
   onAvailabilityCreated: () => void;
   permissionLevel?: PermissionLevel;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 // Define the form schema for availability
@@ -58,12 +62,15 @@ type AvailabilityFormValues = z.infer<typeof availabilityFormSchema>;
 const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
   clinicianId,
   userTimeZone,
+  date,
   onAvailabilityCreated,
-  permissionLevel = 'admin'
+  permissionLevel = 'admin',
+  isOpen: propIsOpen,
+  onClose: propOnClose
 }) => {
   const { state, closeDialog } = useDialogs();
-  const isOpen = state.type === 'singleAvailability';
-  const onClose = closeDialog;
+  const isOpen = propIsOpen !== undefined ? propIsOpen : state.type === 'singleAvailability';
+  const onClose = propOnClose || closeDialog;
   const { currentUserId, refreshAuth } = useCalendarAuth();
   const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
   
@@ -94,13 +101,20 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
     availabilityFormSchema,
     {
       initialValues: {
-        selectedDate: undefined,
+        selectedDate: date instanceof Date ? date : undefined,
         startTime: '09:00',
         endTime: '17:00'
       },
       validateOnBlur: true
     }
   );
+  
+  useEffect(() => {
+    if (date && !getFieldProps('selectedDate').value) {
+      const selectedDate = date instanceof Date ? date : new Date(date);
+      setFieldValue('selectedDate', selectedDate);
+    }
+  }, [date]);
   
   // Computed form error from error handler
   const formError = isErrorVisible ? errorMessage : null;
@@ -214,7 +228,7 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
       onRetry={() => clearErrors()}
     >
       <Dialog open={isOpen} onOpenChange={() => onClose()}>
-        <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Single Day Availability</DialogTitle>
         </DialogHeader>

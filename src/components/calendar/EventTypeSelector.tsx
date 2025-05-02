@@ -9,8 +9,8 @@ import { DateTime } from 'luxon';
 
 interface EventTypeSelectorProps {
   clinicianId?: string | null;
-  startTime?: Date;
-  endTime?: Date;
+  startTime?: Date | string;
+  endTime?: Date | string;
   allDay?: boolean;
   isOpen?: boolean;
   onClose?: () => void;
@@ -47,15 +47,19 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
     if (!startTime || !endTime) return 'No time selected';
     
     try {
+      // Convert to Date objects if strings
+      const startDate = startTime instanceof Date ? startTime : new Date(startTime);
+      const endDate = endTime instanceof Date ? endTime : new Date(endTime);
+      
       // Use TimeZoneService to format the dates
-      const formattedDate = DateTime.fromJSDate(startTime).toFormat('ccc, LLL d');
+      const formattedDate = DateTime.fromJSDate(startDate).toFormat('ccc, LLL d');
       
       if (allDay) {
         return `${formattedDate} (All day)`;
       }
       
-      const formattedStartTime = DateTime.fromJSDate(startTime).toFormat('h:mm a');
-      const formattedEndTime = DateTime.fromJSDate(endTime).toFormat('h:mm a');
+      const formattedStartTime = DateTime.fromJSDate(startDate).toFormat('h:mm a');
+      const formattedEndTime = DateTime.fromJSDate(endDate).toFormat('h:mm a');
       
       return `${formattedDate}, ${formattedStartTime} - ${formattedEndTime}`;
     } catch (err) {
@@ -109,7 +113,7 @@ const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
     setTimeout(() => {
       openDialog('singleAvailability', {
         clinicianId,
-        date: startTime,
+        date: startTime instanceof Date ? startTime : new Date(startTime as string),
         onAvailabilityCreated: onEventCreated || state.props?.onEventCreated
       });
     }, 100);
