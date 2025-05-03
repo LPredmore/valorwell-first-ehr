@@ -15,7 +15,7 @@ interface AvailabilityBlock {
   end_time: string;
   availability_type?: string;
   time_zone?: string;
-  all_day?: boolean;
+  allDay?: boolean; // Changed all_day to allDay for consistency
 }
 
 // Define Appointment interface with required id property
@@ -26,9 +26,9 @@ interface Appointment {
   start_time: string;
   end_time: string;
   title?: string;
-  client_name?: string;
-  all_day?: boolean;
-  appointment_type?: string;
+  clientName?: string; // Changed client_name to clientName for consistency
+  allDay?: boolean; // Changed all_day to allDay for consistency
+  appointmentType?: string; // Changed appointment_type to appointmentType for consistency
   time_zone?: string;
 }
 
@@ -40,7 +40,7 @@ interface TimeOff {
   end_time: string;
   time_zone?: string;
   reason?: string;
-  all_day?: boolean;
+  allDay?: boolean; // Changed all_day to allDay for consistency
 }
 
 /**
@@ -129,7 +129,7 @@ export class CalendarService {
           end_time: block.end_time,
           availability_type: block.availability_type,
           time_zone: block.time_zone,
-          all_day: block.all_day
+          allDay: block.allDay
         };
         return this.convertAvailabilityToCalendarEvent(validBlock, timezone);
       });
@@ -170,9 +170,9 @@ export class CalendarService {
           start_time: appt.start_time,
           end_time: appt.end_time,
           title: appt.title,
-          client_name: appt.client_name,
-          all_day: appt.all_day,
-          appointment_type: appt.appointment_type,
+          clientName: appt.clientName || appt.client_name,
+          allDay: appt.allDay || appt.all_day,
+          appointmentType: appt.appointmentType || appt.appointment_type,
           time_zone: appt.time_zone
         };
         return this.convertAppointmentToCalendarEvent(validAppointment, timezone);
@@ -201,9 +201,9 @@ export class CalendarService {
         clinicianId: appt.clinician_id,
         clientId: appt.client_id,
         eventType: 'appointment',
-        clientName: appt.client_name,
-        allDay: appt.all_day || false,
-        appointmentType: appt.appointment_type,
+        clientName: appt.clientName,
+        allDay: appt.allDay || false,
+        appointmentType: appt.appointmentType,
         sourceTimeZone: appt.time_zone || timezone
       }
     };
@@ -221,7 +221,7 @@ export class CalendarService {
       extendedProps: {
         clinicianId: block.clinician_id,
         eventType: 'availability',
-        allDay: block.all_day || false,
+        allDay: block.allDay || false,
         sourceTimeZone: block.time_zone || timezone
       }
     };
@@ -240,7 +240,7 @@ export class CalendarService {
         clinicianId: timeOff.clinician_id,
         eventType: 'time_off',
         sourceTimeZone: timeOff.time_zone || timezone,
-        allDay: timeOff.all_day || false
+        allDay: timeOff.allDay || false
       }
     };
   }
@@ -261,7 +261,7 @@ export class CalendarService {
       const events: CalendarEvent[] = timeOffEvents.map(event => {
         // If it's already a CalendarEvent, just apply colors
         if (event.title && event.start && event.end) {
-          return this.applyEventColors(event);
+          return this.applyEventColors(event as CalendarEvent);
         }
         
         // Otherwise, convert from TimeOff type
@@ -271,7 +271,7 @@ export class CalendarService {
           start_time: event.start_time || (typeof event.start === 'string' ? event.start : event.start?.toISOString()),
           end_time: event.end_time || (typeof event.end === 'string' ? event.end : event.end?.toISOString()),
           reason: event.reason || event.title,
-          all_day: event.all_day,
+          allDay: event.allDay || event.all_day,
           time_zone: event.time_zone || timezone
         };
         
@@ -307,17 +307,17 @@ export class CalendarService {
       switch (eventType) {
         case 'appointment': {
           const appointmentData = this.prepareAppointmentData(event, validTimeZone);
-          result = await AppointmentService.createAppointment(event.id, appointmentData);
+          result = await AppointmentService.createAppointment(appointmentData);
           break;
         }
         case 'availability': {
           const availabilityData = this.prepareAvailabilityData(event, validTimeZone);
-          result = await AvailabilityService.createAvailability(event.id, availabilityData);
+          result = await AvailabilityService.createAvailability(availabilityData);
           break;
         }
         case 'time_off': {
           const timeOffData = this.prepareTimeOffData(event, validTimeZone);
-          result = await TimeOffService.createTimeOff(event.id, timeOffData);
+          result = await TimeOffService.createTimeOff(timeOffData);
           break;
         }
         default:
@@ -354,8 +354,8 @@ export class CalendarService {
       title: event.title,
       start_time: start.toISOString(),
       end_time: end.toISOString(),
-      all_day: event.allDay || false,
-      appointment_type: event.extendedProps?.appointmentType,
+      allDay: event.allDay || false,
+      appointmentType: event.extendedProps?.appointmentType,
       time_zone: timezone
     };
     
@@ -375,7 +375,7 @@ export class CalendarService {
       clinician_id: event.extendedProps?.clinicianId,
       start_time: start.toISOString(),
       end_time: end.toISOString(),
-      all_day: event.allDay || false,
+      allDay: event.allDay || false,
       availability_type: event.title,
       time_zone: timezone
     };
@@ -397,7 +397,7 @@ export class CalendarService {
       start_time: start.toISOString(),
       end_time: end.toISOString(),
       reason: event.title,
-      all_day: event.allDay || false,
+      allDay: event.allDay || false,
       time_zone: timezone
     };
     
@@ -428,35 +428,12 @@ export class CalendarService {
       switch (eventType) {
         case 'appointment': {
           const appointmentData = this.prepareAppointmentData(event, validTimeZone);
-          // Ensure appointmentData has required properties
-          const validAppointment: Appointment = {
-            id: appointmentData.id || event.id,
-            clinician_id: appointmentData.clinician_id || '',
-            start_time: appointmentData.start_time || '',
-            end_time: appointmentData.end_time || '',
-            title: appointmentData.title,
-            client_id: appointmentData.client_id,
-            client_name: appointmentData.client_name,
-            all_day: appointmentData.all_day,
-            appointment_type: appointmentData.appointment_type,
-            time_zone: appointmentData.time_zone
-          };
-          result = await AppointmentService.updateAppointment(event.id, validAppointment);
+          result = await AppointmentService.updateAppointment(event.id, appointmentData);
           break;
         }
         case 'availability': {
           const availabilityData = this.prepareAvailabilityData(event, validTimeZone);
-          // Ensure availabilityData has required properties
-          const validAvailability: AvailabilityBlock = {
-            id: availabilityData.id || event.id,
-            clinician_id: availabilityData.clinician_id || '',
-            start_time: availabilityData.start_time || '',
-            end_time: availabilityData.end_time || '',
-            availability_type: availabilityData.availability_type,
-            time_zone: availabilityData.time_zone,
-            all_day: availabilityData.all_day
-          };
-          result = await AvailabilityService.updateAvailability(event.id, validAvailability);
+          result = await AvailabilityService.updateAvailability(event.id, availabilityData);
           break;
         }
         case 'time_off': {
@@ -529,32 +506,35 @@ export class CalendarService {
    * Apply event colors based on event type
    */
   static applyEventColors(event: CalendarEvent): CalendarEvent {
-    const eventType = event.extendedProps?.eventType || 'general';
+    // Add default styles based on the event type
+    const eventType = event.extendedProps?.eventType || '';
     
-    let backgroundColor: string;
-    let textColor = '#ffffff';
+    // Create a clone of the event to avoid modifying the original
+    const styledEvent: CalendarEvent = { ...event };
     
-    // Set color based on event type
     switch (eventType) {
       case 'appointment':
-        backgroundColor = '#4f46e5'; // Indigo
+        styledEvent.backgroundColor = '#4f46e5'; // Indigo
+        styledEvent.textColor = '#ffffff';
+        styledEvent.borderColor = '#4338ca';
         break;
       case 'availability':
-        backgroundColor = '#10b981'; // Green
+        styledEvent.backgroundColor = '#22c55e'; // Green
+        styledEvent.textColor = '#ffffff';
+        styledEvent.borderColor = '#16a34a';
         break;
       case 'time_off':
-        backgroundColor = '#f59e0b'; // Amber
+        styledEvent.backgroundColor = '#ef4444'; // Red
+        styledEvent.textColor = '#ffffff';
+        styledEvent.borderColor = '#dc2626';
         break;
       default:
-        backgroundColor = '#6b7280'; // Gray
+        styledEvent.backgroundColor = '#6b7280'; // Gray
+        styledEvent.textColor = '#ffffff';
+        styledEvent.borderColor = '#4b5563';
     }
     
-    return {
-      ...event,
-      backgroundColor,
-      borderColor: backgroundColor,
-      textColor
-    };
+    return styledEvent;
   }
   
   /**
@@ -601,9 +581,9 @@ export class CalendarService {
       start_time: startTime.toISOString(),
       end_time: endTime.toISOString(),
       title: 'Mock Appointment',
-      client_name: 'Mock Client',
-      all_day: false,
-      appointment_type: 'Initial Consultation',
+      clientName: 'Mock Client',
+      allDay: false,
+      appointmentType: 'Initial Consultation',
       time_zone: 'UTC'
     };
   }
@@ -629,7 +609,7 @@ export class CalendarService {
       end_time: endTime.toISOString(),
       availability_type: 'Standard Hours',
       time_zone: 'UTC',
-      all_day: false
+      allDay: false
     };
   }
   
@@ -654,7 +634,7 @@ export class CalendarService {
       end_time: endTime.toISOString(),
       reason: 'Vacation Day',
       time_zone: 'UTC',
-      all_day: true
+      allDay: true
     };
   }
 }

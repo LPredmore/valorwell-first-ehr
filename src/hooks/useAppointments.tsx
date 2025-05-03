@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { format, isToday, isFuture, parseISO, isBefore } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
@@ -12,10 +13,10 @@ import { appointmentService } from '@/services/appointmentService';
 export type { AppointmentType };
 
 // Define a base appointment type that matches what getAppointmentsInUserTimeZone expects
-interface BaseAppointment {
+interface LocalBaseAppointment {
   id: string;
   clientId?: string;
-  clientName?: string;
+  clientName: string; // Make sure this is required to match the expected type
   startTime: string;
   endTime: string;
   date: string;
@@ -77,7 +78,7 @@ export const useAppointments = (userId: string | null) => {
         }
 
         // Transform the data to match the expected BaseAppointment type
-        const transformedData: BaseAppointment[] = (data || []).map(item => ({
+        const transformedData: LocalBaseAppointment[] = (data || []).map(item => ({
           id: item.id,
           clientId: item.client_id,
           clientName: item.clients?.[0] ? `${item.clients[0].client_first_name} ${item.clients[0].client_last_name}` : 'Unknown',

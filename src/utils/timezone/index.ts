@@ -9,6 +9,11 @@
 
 import { DateTime, IANAZone, Zone } from 'luxon';
 import { CalendarEvent } from '@/types/calendar';
+import { TimeUnit, DateTimeFormat } from './types';
+
+// Export the types
+export type { TimeUnit, DateTimeFormat };
+export type { CalendarEventType } from './types';
 
 /**
  * Map of common timezone display names to IANA format

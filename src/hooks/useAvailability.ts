@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { availabilityService } from '@/services/availabilityService';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
@@ -113,7 +114,7 @@ export const useAvailability = (clinicianId: string | null) => {
 
       await fetchWeeklyAvailability();
       
-      // Fix the type safety issue for the result - add null check
+      // Add proper null check
       let slotId: string | undefined;
       
       if (result) {
@@ -121,12 +122,12 @@ export const useAvailability = (clinicianId: string | null) => {
           slotId = result.id;
         } else if (typeof result === 'string') {
           slotId = result;
-        } else {
+        } else if (result) {
           slotId = String(result);
         }
       }
       
-      return { success: true, slotId };
+      return { success: !!result, slotId };
     } catch (err) {
       const error = CalendarErrorHandler.formatError(err);
       console.error('[useAvailability] Error creating slot:', error);

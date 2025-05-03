@@ -1,24 +1,26 @@
 
-// Import the core types
+// Import the types directly from the local file
 import { 
-  AppointmentType as CoreAppointmentType, 
-  Appointment as CoreAppointment,
-  BaseAppointment as CoreBaseAppointment,
-  AppointmentWithLuxon as CoreAppointmentWithLuxon,
-  AvailabilitySettings as CoreAvailabilitySettings,
-  AvailabilitySlot as CoreAvailabilitySlot,
-  WeeklyAvailability as CoreWeeklyAvailability,
-  CalculatedAvailableSlot as CoreCalculatedAvailableSlot,
-  AppointmentAvailabilitySlot as CoreAppointmentAvailabilitySlot
-} from '../packages/core/types/appointment';
+  AppointmentType,
+  Appointment,
+  BaseAppointment,
+  AppointmentWithLuxon,
+  AvailabilitySettings,
+  AvailabilitySlot,
+  WeeklyAvailability,
+  CalculatedAvailableSlot,
+  AppointmentAvailabilitySlot
+} from './appointment';
 
-// Re-export the core types
-export type AppointmentType = CoreAppointmentType;
-export type Appointment = CoreAppointment;
-export type BaseAppointment = CoreBaseAppointment;
-export type AppointmentWithLuxon = CoreAppointmentWithLuxon;
-export type AvailabilitySettings = CoreAvailabilitySettings;
-export type AvailabilitySlot = CoreAvailabilitySlot;
-export type WeeklyAvailability = CoreWeeklyAvailability;
-export type CalculatedAvailableSlot = CoreCalculatedAvailableSlot;
-export type AppointmentAvailabilitySlot = CoreAppointmentAvailabilitySlot;
+// Re-export the types
+export type {
+  AppointmentType,
+  Appointment,
+  BaseAppointment,
+  AppointmentWithLuxon,
+  AvailabilitySettings,
+  AvailabilitySlot,
+  WeeklyAvailability,
+  CalculatedAvailableSlot,
+  AppointmentAvailabilitySlot
+};
