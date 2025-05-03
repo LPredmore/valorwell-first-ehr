@@ -1,32 +1,31 @@
-
 import mockCalendarService from '@/services/mock/MockCalendarService';
-import mockAvailabilityService from '@/services/mock/MockAvailabilityService';
+import MockAvailabilityService from '@/services/mock/MockAvailabilityService';
 
 /**
  * Initialize mock data for a clinician
  * This can be called early in the application lifecycle to ensure data is available
  */
-export function initializeMockCalendarData(clinicianId: string) {
+export const initializeMockCalendarData = async (clinicianId: string) => {
   try {
-    console.log('[MockDataInitializer] Initializing mock calendar data for clinician:', clinicianId);
+    console.log(`Initializing mock calendar data for clinician: ${clinicianId}`);
     
-    // Store the clinician ID for future use
-    localStorage.setItem('last_clinician_id', clinicianId);
+    // Get or generate weekly availability
+    const weeklyAvailability = await MockAvailabilityService.getWeeklyAvailabilityForClinician(clinicianId);
+    console.log('Generated mock weekly availability:', weeklyAvailability);
     
-    // Initialize calendar events
-    mockCalendarService.initializeSampleData(clinicianId);
+    // Get or generate availability settings
+    const settings = await MockAvailabilityService.getSettingsForClinician(clinicianId);
+    console.log('Generated mock availability settings:', settings);
     
-    // Initialize availability data
-    mockAvailabilityService.getWeeklyAvailabilityForClinician(clinicianId);
-    mockAvailabilityService.getSettingsForClinician(clinicianId);
-    
-    console.log('[MockDataInitializer] Mock calendar data initialized successfully');
-    return true;
+    return {
+      weeklyAvailability,
+      settings
+    };
   } catch (error) {
-    console.error('[MockDataInitializer] Error initializing mock calendar data:', error);
-    return false;
+    console.error('Error initializing mock calendar data:', error);
+    throw error;
   }
-}
+};
 
 /**
  * Get current timezone or set a default

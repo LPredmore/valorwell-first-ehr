@@ -127,15 +127,22 @@ export const useAppointments = (userId: string | null) => {
         setIsVideoOpen(true);
       } else {
         console.log("Creating new video room for appointment:", appointment.id);
+        // Get or create video room
         const result = await getOrCreateVideoRoom(appointment.id);
         console.log("Video room creation result:", result);
         
-        if (result.success && result.url) {
-          setCurrentVideoUrl(result.url);
+        if (result && typeof result === 'object' && 'url' in result) {
+          // Handle as object with URL property
+          setCurrentVideoUrl(result.url as string);
+          setIsVideoOpen(true);
+          refetch();
+        } else if (typeof result === 'string') {
+          // Handle as direct URL string
+          setCurrentVideoUrl(result);
           setIsVideoOpen(true);
           refetch();
         } else {
-          console.error("Failed to create video room:", result.error);
+          console.error("Invalid result from video room creation:", result);
           throw new Error('Failed to create video room');
         }
       }

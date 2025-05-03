@@ -67,17 +67,25 @@ class AvailabilityService {
       const validatedTimeZone = TimeZoneService.ensureIANATimeZone(timeZone || 'UTC');
       console.log('[AvailabilityService] Creating slot with validated timezone:', validatedTimeZone);
 
-      // Use updateAvailability method if createAvailabilitySlot is not available
-      return await AvailabilityMutationService.createAvailability({
-        clinicianId,
-        dayOfWeek,
-        startTime,
-        endTime,
-        isRecurring,
-        recurrenceRule,
-        timeZone: validatedTimeZone,
-        specificDate
-      });
+      // Choose the right method based on whether it's recurring or not
+      if (isRecurring) {
+        return await AvailabilityMutationService.createRecurringAvailability(
+          clinicianId,
+          dayOfWeek,
+          startTime,
+          endTime,
+          recurrenceRule,
+          validatedTimeZone
+        );
+      } else {
+        return await AvailabilityMutationService.createSingleAvailability(
+          clinicianId,
+          specificDate || new Date(),
+          startTime,
+          endTime,
+          validatedTimeZone
+        );
+      }
     } catch (error) {
       console.error('Error creating availability slot:', error);
       throw CalendarErrorHandler.formatError(error);

@@ -2,6 +2,7 @@
 import { CalendarEvent, DayOfWeek, AvailabilitySlot } from '@/types/calendar';
 import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timezone';
+import { AvailabilitySettings } from '@/types/availability';
 
 /**
  * Service for generating mock availability data
@@ -180,6 +181,124 @@ export class MockAvailabilityService {
    */
   static getPreferredDays(): DayOfWeek[] {
     return ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+  }
+
+  /**
+   * Get availability settings for a clinician
+   */
+  static getSettingsForClinician(clinicianId: string): Promise<AvailabilitySettings> {
+    return Promise.resolve({
+      clinicianId,
+      preferredDays: this.getPreferredDays(),
+      slotDuration: 60,
+      bufferBetweenAppointments: 15,
+      maxAppointmentsPerDay: 8,
+      workDayStart: '08:00',
+      workDayEnd: '17:00',
+      timezone: 'America/Chicago',
+      isActive: true
+    });
+  }
+
+  /**
+   * Update settings for a clinician
+   */
+  static updateSettings(clinicianId: string, settings: Partial<AvailabilitySettings>): Promise<AvailabilitySettings> {
+    return Promise.resolve({
+      clinicianId,
+      preferredDays: settings.preferredDays || this.getPreferredDays(),
+      slotDuration: settings.slotDuration || 60,
+      bufferBetweenAppointments: settings.bufferBetweenAppointments || 15,
+      maxAppointmentsPerDay: settings.maxAppointmentsPerDay || 8,
+      workDayStart: settings.workDayStart || '08:00',
+      workDayEnd: settings.workDayEnd || '17:00',
+      timezone: settings.timezone || 'America/Chicago',
+      isActive: settings.isActive !== undefined ? settings.isActive : true
+    });
+  }
+
+  /**
+   * Get weekly availability for a clinician
+   */
+  static getWeeklyAvailabilityForClinician(clinicianId: string): Promise<any> {
+    const slots = this.generateDefaultWeeklyAvailability(clinicianId);
+    const weeklyAvailability = {
+      monday: slots.filter(s => s.dayOfWeek === 'monday'),
+      tuesday: slots.filter(s => s.dayOfWeek === 'tuesday'),
+      wednesday: slots.filter(s => s.dayOfWeek === 'wednesday'),
+      thursday: slots.filter(s => s.dayOfWeek === 'thursday'),
+      friday: slots.filter(s => s.dayOfWeek === 'friday'),
+      saturday: slots.filter(s => s.dayOfWeek === 'saturday'),
+      sunday: slots.filter(s => s.dayOfWeek === 'sunday')
+    };
+    return Promise.resolve(weeklyAvailability);
+  }
+
+  /**
+   * Create an availability slot
+   */
+  static createAvailabilitySlot(
+    clinicianId: string,
+    dayOfWeek: DayOfWeek,
+    startTime: string,
+    endTime: string,
+    isRecurring: boolean = true,
+    recurrenceRule?: string,
+    timeZone?: string,
+    specificDate?: string | Date | DateTime
+  ): Promise<AvailabilitySlot> {
+    const newSlot: AvailabilitySlot = {
+      id: `mock-slot-${Date.now()}`,
+      clinicianId,
+      dayOfWeek,
+      startTime,
+      endTime,
+      isRecurring,
+      sourceTimeZone: timeZone || 'America/Chicago',
+      isAppointment: false
+    };
+    return Promise.resolve(newSlot);
+  }
+
+  /**
+   * Update an availability slot
+   */
+  static updateAvailabilitySlot(slotId: string, updates: Partial<AvailabilitySlot>): Promise<AvailabilitySlot> {
+    const updatedSlot: AvailabilitySlot = {
+      id: slotId,
+      clinicianId: updates.clinicianId || 'mock-clinician',
+      dayOfWeek: updates.dayOfWeek || 'monday',
+      startTime: updates.startTime || '09:00',
+      endTime: updates.endTime || '10:00',
+      isRecurring: updates.isRecurring !== undefined ? updates.isRecurring : true,
+      sourceTimeZone: updates.sourceTimeZone || 'America/Chicago',
+      isAppointment: updates.isAppointment || false
+    };
+    return Promise.resolve(updatedSlot);
+  }
+
+  /**
+   * Delete an availability slot
+   */
+  static deleteAvailabilitySlot(slotId: string): Promise<boolean> {
+    return Promise.resolve(true);
+  }
+
+  /**
+   * Calculate available slots for a specific date
+   */
+  static calculateAvailableSlots(
+    clinicianId: string,
+    date: string,
+    timezone: string
+  ): Promise<AvailabilitySlot[]> {
+    const dt = DateTime.fromISO(date, { zone: timezone });
+    const dayOfWeek = this.daysOfWeek[dt.weekday % 7];
+    
+    const slots = this.generateDefaultWeeklyAvailability(clinicianId)
+      .filter(slot => slot.dayOfWeek === dayOfWeek);
+    
+    return Promise.resolve(slots);
   }
 }
 

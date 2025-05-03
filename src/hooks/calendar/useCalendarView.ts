@@ -50,7 +50,7 @@ export function useCalendarView(): UseCalendarViewResult {
   const visibleRange = useMemo(() => {
     const date = currentDate;
     
-    switch (view) {
+    switch (view as CalendarViewType) {
       case 'dayGridMonth':
         return {
           start: date.startOf('month'),
@@ -147,7 +147,7 @@ export function useCalendarView(): UseCalendarViewResult {
   }, [setCurrentDate]);
   
   return {
-    view,
+    view: view as CalendarViewType,
     currentDate,
     visibleRange,
     title,

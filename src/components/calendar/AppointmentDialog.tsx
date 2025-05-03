@@ -46,10 +46,18 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
     
     // Convert times to UTC if needed
     if (appointment?.startTime && appointment?.endTime) {
-      // Use the corrected toUTCTimestamp for UTC conversion
+      // Use the TimeZoneService for UTC conversion, ensuring proper type handling
       const timezone = TimeZoneService.getLocalTimeZone();
-      updatedAppointment.start = TimeZoneService.toUTC(appointment.startTime);
-      updatedAppointment.end = TimeZoneService.toUTC(appointment.endTime);
+      
+      // Convert to DateTime first and then to JSDate to ensure proper type handling
+      const startDateTime = TimeZoneService.toUTC(appointment.startTime instanceof Date ? 
+        appointment.startTime : new Date(appointment.startTime)).toJSDate();
+      
+      const endDateTime = TimeZoneService.toUTC(appointment.endTime instanceof Date ? 
+        appointment.endTime : new Date(appointment.endTime)).toJSDate();
+      
+      updatedAppointment.start = startDateTime;
+      updatedAppointment.end = endDateTime;
     }
     
     if (onAppointmentCreated) {

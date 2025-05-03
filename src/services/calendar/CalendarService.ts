@@ -1,3 +1,4 @@
+
 import { DateTime } from 'luxon';
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
 import { TimeZoneService } from '@/utils/timezone';
@@ -23,6 +24,15 @@ interface Appointment {
   id: string;
   clinician_id: string;
   client_id?: string;
+  start_time: string;
+  end_time: string;
+  // Add other required properties
+}
+
+// Define TimeOff interface if needed
+interface TimeOff {
+  id: string;
+  clinician_id: string;
   start_time: string;
   end_time: string;
   // Add other required properties
@@ -108,8 +118,8 @@ export class CalendarService {
       const events: CalendarEvent[] = availabilityBlocks.map(block => ({
         id: block.id,
         title: block.availability_type || 'Available',
-        start: block.start_time,
-        end: block.end_time,
+        start: new Date(block.start_time),
+        end: new Date(block.end_time),
         extendedProps: {
           clinicianId: block.clinician_id,
           eventType: 'availability',
@@ -147,8 +157,8 @@ export class CalendarService {
       const events: CalendarEvent[] = appointments.map(appt => ({
         id: appt.id,
         title: 'Appointment',
-        start: appt.start_time,
-        end: appt.end_time,
+        start: new Date(appt.start_time),
+        end: new Date(appt.end_time),
         extendedProps: {
           clinicianId: appt.clinician_id,
           clientId: appt.client_id,
@@ -220,13 +230,13 @@ export class CalendarService {
       
       switch (eventType) {
         case 'appointment':
-          result = await AppointmentService.createAppointment(event, validTimeZone);
+          result = await AppointmentService.createAppointment(event.id, { ...event, timezone: validTimeZone });
           break;
         case 'availability':
-          result = await AvailabilityService.createAvailability(event, validTimeZone);
+          result = await AvailabilityService.createAvailability(event.id, { ...event, timezone: validTimeZone });
           break;
         case 'time_off':
-          result = await TimeOffService.createTimeOff(event, validTimeZone);
+          result = await TimeOffService.createTimeOff(event.id, { ...event, timezone: validTimeZone });
           break;
         default:
           throw CalendarErrorHandler.createError(`Unknown event type: ${eventType}`, 'INVALID_EVENT_TYPE');
@@ -268,13 +278,13 @@ export class CalendarService {
       
       switch (eventType) {
         case 'appointment':
-          result = await AppointmentService.updateAppointment(event, validTimeZone);
+          result = await AppointmentService.updateAppointment(event.id, { ...event, timezone: validTimeZone });
           break;
         case 'availability':
-          result = await AvailabilityService.updateAvailability(event, validTimeZone);
+          result = await AvailabilityService.updateAvailability(event.id, { ...event, timezone: validTimeZone });
           break;
         case 'time_off':
-          result = await TimeOffService.updateTimeOff(event, validTimeZone);
+          result = await TimeOffService.updateTimeOff(event.id, { ...event, timezone: validTimeZone });
           break;
         default:
           throw CalendarErrorHandler.createError(`Unknown event type: ${eventType}`, 'INVALID_EVENT_TYPE');
@@ -343,13 +353,13 @@ export class CalendarService {
       
       switch (eventType) {
         case 'appointment':
-          result = await AppointmentService.getAppointmentById(eventId, validTimeZone);
+          result = await AppointmentService.getAppointmentById(eventId);
           break;
         case 'availability':
-          result = await AvailabilityService.getAvailabilityById(eventId, validTimeZone);
+          result = await AvailabilityService.getAvailabilityById(eventId);
           break;
         case 'time_off':
-          result = await TimeOffService.getTimeOffById(eventId, validTimeZone);
+          result = await TimeOffService.getTimeOffById(eventId);
           break;
         default:
           throw CalendarErrorHandler.createError(`Unknown event type: ${eventType}`, 'INVALID_EVENT_TYPE');

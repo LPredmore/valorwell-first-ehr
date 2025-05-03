@@ -4,9 +4,9 @@
  * This file is maintained for backward compatibility with existing code
  */
 
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 
-// Re-export only the current, essential Luxon-related utilities from TimeZoneService
+// Re-export the essential Luxon-related utilities from TimeZoneService
 export const {
   createDateTime,
   parseWithZone,
@@ -23,5 +23,5 @@ export const {
   formatDateToTime12Hour
 } = TimeZoneService;
 
-// Optional: Export a type alias for common DateTime operations if needed
-export type { TimeUnit, DateTimeFormat } from '@/utils/timeZoneService';
+// Export type aliases for common DateTime operations if needed
+export type { TimeUnit, DateTimeFormat } from '@/utils/timezone';
