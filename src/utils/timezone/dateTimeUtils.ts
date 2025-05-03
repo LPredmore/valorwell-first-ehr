@@ -1,160 +1,221 @@
 
-import { DateTime } from 'luxon';
-import { TimeZoneError } from './TimeZoneError';
-import { TimeZoneService } from '@/utils/timezone';
+import { DateTime, Duration } from 'luxon';
+import { TimeZoneService } from './TimeZoneService';
 
 /**
- * Utility functions for standardizing DateTime handling across the application
- * These functions help prevent type mismatches between string and Luxon DateTime objects
+ * Format a date range for display (e.g., "Jan 1 - Jan 5, 2023")
  */
-
-/**
- * Ensures a value is a valid Luxon DateTime object
- * @param value - A DateTime object, Date object, ISO string, or any other value
- * @param timeZone - The timezone to use if converting from a string or Date
- * @returns A Luxon DateTime object
- * @throws TimeZoneError if the value cannot be converted to a valid DateTime
- */
-export function ensureDateTime(value: DateTime | Date | string, timeZone: string): DateTime {
-  // If it's already a DateTime, just return it
-  if (value instanceof DateTime) {
-    if (!value.isValid) {
-      throw new TimeZoneError('Invalid DateTime object provided', 'INVALID_DATETIME');
-    }
-    return value;
-  }
-
-  // If it's a Date object, convert it to DateTime
-  if (value instanceof Date) {
-    const dt = DateTime.fromJSDate(value).setZone(timeZone);
-    if (!dt.isValid) {
-      throw new TimeZoneError('Invalid Date object provided', 'INVALID_DATE');
-    }
-    return dt;
-  }
-
-  // If it's a string, try to parse it
-  if (typeof value === 'string') {
-    // Try ISO format first
-    let dt = DateTime.fromISO(value, { zone: timeZone });
-    
-    // If that fails, try other formats
-    if (!dt.isValid) {
-      // Try SQL date format
-      dt = DateTime.fromSQL(value, { zone: timeZone });
-    }
-    
-    if (!dt.isValid) {
-      // Try HTTP date format
-      dt = DateTime.fromHTTP(value, { zone: timeZone });
-    }
-    
-    if (dt.isValid) {
-      return dt;
-    }
-    
-    throw new TimeZoneError(`Could not parse string "${value}" as DateTime`, 'PARSE_ERROR');
-  }
-
-  throw new TimeZoneError(`Unsupported value type: ${typeof value}`, 'TYPE_ERROR');
-}
-
-/**
- * Converts a DateTime object to an ISO string
- * @param dateTime - The DateTime object to convert
- * @returns An ISO string representation of the DateTime
- */
-export function toISOString(dateTime: DateTime | Date | string, timeZone: string): string {
-  const dt = ensureDateTime(dateTime, timeZone);
-  return dt.toISO();
-}
-
-/**
- * Safely converts a value to a DateTime object in the specified timezone
- * Returns null instead of throwing if the conversion fails
- * @param value - The value to convert
- * @param timeZone - The timezone to use
- * @returns A DateTime object or null if conversion fails
- */
-export function safeToDateTime(value: any, timeZone: string): DateTime | null {
-  try {
-    return ensureDateTime(value, timeZone);
-  } catch (error) {
-    console.warn('Failed to convert value to DateTime:', error);
-    return null;
-  }
-}
-
-/**
- * Converts a string or Date to a DateTime object for use in calendar operations
- * @param date - The date to convert
- * @param timeZone - The timezone to use
- * @returns A DateTime object
- */
-export function calendarDateToDateTime(date: string | Date, timeZone: string): DateTime {
-  try {
-    return ensureDateTime(date, timeZone);
-  } catch (error) {
-    throw new TimeZoneError(
-      `Failed to convert calendar date: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      'CALENDAR_CONVERSION_ERROR'
-    );
-  }
-}
-
-/**
- * Compares two DateTime-like values for equality
- * @param a - First value
- * @param b - Second value
- * @param timeZone - Timezone to use for conversion
- * @returns True if the DateTimes represent the same moment
- */
-export function areDateTimesEqual(
-  a: DateTime | Date | string,
-  b: DateTime | Date | string,
-  timeZone: string
-): boolean {
-  try {
-    const dtA = ensureDateTime(a, timeZone);
-    const dtB = ensureDateTime(b, timeZone);
-    return dtA.equals(dtB);
-  } catch (error) {
-    return false;
-  }
-}
-
-/**
- * Converts a DateTime-like value to a format suitable for API requests
- * @param value - The value to convert
- * @param timeZone - The timezone to use
- * @returns An ISO string in UTC
- */
-export function toAPIDateTime(value: DateTime | Date | string, timeZone: string): string {
-  const dt = ensureDateTime(value, timeZone);
-  return dt.toUTC().toISO();
-}
-
-/**
- * Converts a DateTime-like value to a user-friendly display format
- * @param value - The value to convert
- * @param timeZone - The timezone to use
- * @param format - The format to use (defaults to 'datetime')
- * @returns A formatted string
- */
-export function toDisplayDateTime(
-  value: DateTime | Date | string,
-  timeZone: string,
-  format: 'datetime' | 'date' | 'time' = 'datetime'
+export function formatDateRange(
+  startDate: DateTime | Date | string,
+  endDate: DateTime | Date | string,
+  timezone: string = 'UTC',
+  includeYear: boolean = true
 ): string {
-  const dt = ensureDateTime(value, timeZone);
+  const validZone = TimeZoneService.ensureIANATimeZone(timezone);
   
-  switch (format) {
-    case 'date':
-      return TimeZoneService.formatDate(dt, 'full');
-    case 'time':
-      return TimeZoneService.formatTime(dt.toJSDate(), 'h:mm a', timeZone);
-    case 'datetime':
-    default:
-      return TimeZoneService.formatDateTime(dt, 'full', timeZone);
+  try {
+    // Convert to DateTime objects
+    const start = startDate instanceof DateTime ? 
+      startDate.setZone(validZone) : 
+      DateTime.fromJSDate(startDate instanceof Date ? startDate : new Date(startDate), { zone: validZone });
+    
+    const end = endDate instanceof DateTime ? 
+      endDate.setZone(validZone) : 
+      DateTime.fromJSDate(endDate instanceof Date ? endDate : new Date(endDate), { zone: validZone });
+    
+    // Check if dates are in the same year
+    const sameYear = start.year === end.year;
+    
+    // Format based on whether dates are in same month
+    if (start.month === end.month && start.year === end.year) {
+      return `${start.toFormat('LLL d')}${start.day !== end.day ? ` - ${end.toFormat('d')}` : ''}${includeYear || !sameYear ? `, ${start.year}` : ''}`;
+    } else if (start.year === end.year) {
+      return `${start.toFormat('LLL d')} - ${end.toFormat('LLL d')}${includeYear ? `, ${start.year}` : ''}`;
+    } else {
+      return `${start.toFormat('LLL d, yyyy')} - ${end.toFormat('LLL d, yyyy')}`;
+    }
+  } catch (error) {
+    console.error('[dateTimeUtils] Error formatting date range:', error);
+    return '';
+  }
+}
+
+/**
+ * Calculate the difference between two dates in the specified units
+ */
+export function calculateDateDifference(
+  startDate: DateTime | Date | string,
+  endDate: DateTime | Date | string,
+  unit: 'days' | 'hours' | 'minutes' | 'seconds' = 'days'
+): number {
+  try {
+    // Convert to DateTime objects
+    const start = startDate instanceof DateTime ? 
+      startDate : 
+      DateTime.fromJSDate(startDate instanceof Date ? startDate : new Date(startDate));
+    
+    const end = endDate instanceof DateTime ? 
+      endDate : 
+      DateTime.fromJSDate(endDate instanceof Date ? endDate : new Date(endDate));
+    
+    // Calculate the difference
+    const diff = end.diff(start, unit);
+    return diff.get(unit);
+  } catch (error) {
+    console.error('[dateTimeUtils] Error calculating date difference:', error);
+    return 0;
+  }
+}
+
+/**
+ * Format a duration for display (e.g., "2 hours 30 minutes")
+ */
+export function formatDuration(
+  durationMinutes: number,
+  format: 'long' | 'short' | 'compact' = 'long'
+): string {
+  try {
+    // Convert minutes to duration
+    const duration = Duration.fromObject({ minutes: durationMinutes });
+    
+    // Extract hours and minutes
+    const hours = Math.floor(durationMinutes / 60);
+    const minutes = durationMinutes % 60;
+    
+    // Format based on specified format
+    if (format === 'compact') {
+      return hours > 0 ? 
+        `${hours}h${minutes > 0 ? ` ${minutes}m` : ''}` : 
+        `${minutes}m`;
+    } else if (format === 'short') {
+      return hours > 0 ? 
+        `${hours} hr${hours !== 1 ? 's' : ''}${minutes > 0 ? ` ${minutes} min` : ''}` : 
+        `${minutes} min`;
+    } else {
+      return hours > 0 ? 
+        `${hours} hour${hours !== 1 ? 's' : ''}${minutes > 0 ? ` ${minutes} minute${minutes !== 1 ? 's' : ''}` : ''}` : 
+        `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+    }
+  } catch (error) {
+    console.error('[dateTimeUtils] Error formatting duration:', error);
+    return '';
+  }
+}
+
+/**
+ * Generate time slot options for dropdown menus
+ */
+export function generateTimeSlotOptions(
+  interval: number = 30,
+  is24Hour: boolean = false
+): { value: string; label: string }[] {
+  try {
+    const options: { value: string; label: string }[] = [];
+    const totalMinutesInDay = 24 * 60;
+    
+    for (let minutes = 0; minutes < totalMinutesInDay; minutes += interval) {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      
+      const value = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+      
+      let label;
+      if (is24Hour) {
+        label = value;
+      } else {
+        const h = hours % 12 || 12;
+        const period = hours < 12 ? 'AM' : 'PM';
+        label = `${h}:${mins.toString().padStart(2, '0')} ${period}`;
+      }
+      
+      options.push({ value, label });
+    }
+    
+    return options;
+  } catch (error) {
+    console.error('[dateTimeUtils] Error generating time slot options:', error);
+    return [];
+  }
+}
+
+/**
+ * Get start of week date
+ */
+export function getStartOfWeek(
+  date: DateTime | Date | string,
+  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 0,
+  timezone: string = 'UTC'
+): DateTime {
+  try {
+    const validZone = TimeZoneService.ensureIANATimeZone(timezone);
+    
+    // Convert to DateTime
+    let dt: DateTime;
+    if (date instanceof DateTime) {
+      dt = date.setZone(validZone);
+    } else if (date instanceof Date) {
+      dt = DateTime.fromJSDate(date, { zone: validZone });
+    } else {
+      dt = DateTime.fromISO(date, { zone: validZone });
+    }
+    
+    // Calculate the start of week
+    const currentDay = dt.weekday % 7; // 0-based day of week, Sunday = 0
+    const diff = (currentDay + 7 - weekStartsOn) % 7;
+    
+    return dt.minus({ days: diff }).startOf('day');
+  } catch (error) {
+    console.error('[dateTimeUtils] Error getting start of week:', error);
+    return DateTime.now();
+  }
+}
+
+/**
+ * Parse a date string with flexible formats
+ */
+export function parseFlexibleDate(
+  dateStr: string,
+  timezone: string = 'UTC'
+): DateTime | null {
+  try {
+    const validZone = TimeZoneService.ensureIANATimeZone(timezone);
+    
+    // Try ISO format
+    let dt = DateTime.fromISO(dateStr, { zone: validZone });
+    if (dt.isValid) return dt;
+    
+    // Try SQL format
+    dt = DateTime.fromSQL(dateStr, { zone: validZone });
+    if (dt.isValid) return dt;
+    
+    // Try HTTP format
+    dt = DateTime.fromHTTP(dateStr, { zone: validZone });
+    if (dt.isValid) return dt;
+    
+    // Try common US format MM/DD/YYYY
+    if (dateStr.includes('/')) {
+      const [month, day, year] = dateStr.split('/').map(Number);
+      dt = DateTime.fromObject({ month, day, year }, { zone: validZone });
+      if (dt.isValid) return dt;
+    }
+    
+    // Try common EU format DD.MM.YYYY
+    if (dateStr.includes('.')) {
+      const [day, month, year] = dateStr.split('.').map(Number);
+      dt = DateTime.fromObject({ day, month, year }, { zone: validZone });
+      if (dt.isValid) return dt;
+    }
+    
+    // Try ISO-like format without timezone YYYY-MM-DD
+    if (dateStr.includes('-')) {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      dt = DateTime.fromObject({ year, month, day }, { zone: validZone });
+      if (dt.isValid) return dt;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('[dateTimeUtils] Error parsing flexible date:', error);
+    return null;
   }
 }

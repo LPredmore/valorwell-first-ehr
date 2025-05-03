@@ -18,6 +18,7 @@ interface SingleAvailabilityDialogProps {
   isOpen: boolean;
   userTimeZone: string;
   onClose: () => void;
+  onAvailabilityCreated?: () => void;
 }
 
 const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
@@ -25,7 +26,8 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
   date: initialDate,
   isOpen,
   userTimeZone,
-  onClose
+  onClose,
+  onAvailabilityCreated
 }) => {
   const [date, setDate] = useState<Date | undefined>(initialDate || new Date());
   const [startTime, setStartTime] = useState<string>('09:00');
@@ -94,6 +96,11 @@ const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
           title: 'Availability Added',
           description: `Availability slot added for ${DateTime.fromJSDate(date).setZone(userTimeZone).toFormat('EEE, MMM d, yyyy')}`,
         });
+        
+        if (onAvailabilityCreated) {
+          onAvailabilityCreated();
+        }
+        
         onClose();
       } else {
         toast({
