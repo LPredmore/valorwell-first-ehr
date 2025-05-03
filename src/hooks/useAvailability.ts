@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { availabilityService } from '@/services/availabilityService';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
@@ -113,7 +114,7 @@ export const useAvailability = (clinicianId: string | null) => {
 
       await fetchWeeklyAvailability();
       
-      // Fix null safety issue
+      // Add proper null check
       let slotId: string | undefined;
       
       if (result) {
@@ -121,6 +122,8 @@ export const useAvailability = (clinicianId: string | null) => {
           slotId = result.id;
         } else if (typeof result === 'string') {
           slotId = result;
+        } else if (result) {
+          slotId = String(result);
         }
       }
       
