@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -25,6 +24,7 @@ import Activity from '@/pages/Activity';
 import Messages from '@/pages/Messages';
 import Settings from '@/pages/Settings';
 import ClinicianDetails from '@/pages/ClinicianDetails';
+import Calendar from '@/pages/Calendar';
 
 // Client pages
 import TherapistSelection from '@/pages/TherapistSelection';
@@ -155,6 +155,13 @@ const App: React.FC = () => {
                   <Route path="/messages" element={
                     <ProtectedRoute allowedRoles={['admin', 'moderator']}>
                       <Messages />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Calendar route */}
+                  <Route path="/calendar" element={
+                    <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
+                      <Calendar />
                     </ProtectedRoute>
                   } />
                   

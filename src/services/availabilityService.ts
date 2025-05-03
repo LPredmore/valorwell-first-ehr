@@ -131,7 +131,7 @@ class AvailabilityService {
         dayOfWeek: typeof updates.dayOfWeek === 'string' ? 
           ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].indexOf(updates.dayOfWeek.toLowerCase()) :
           updates.dayOfWeek,
-        specific_date: updates.specificDate // Changed property name from specificDate to specific_date
+        specific_date: updates.specificDate || undefined // Changed property name from specificDate to specific_date
       };
       
       // Use updateAvailability method with correct parameters
