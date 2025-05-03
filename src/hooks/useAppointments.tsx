@@ -11,6 +11,20 @@ import { appointmentService } from '@/services/appointmentService';
 
 export type { AppointmentType };
 
+// Define a base appointment type that matches what getAppointmentsInUserTimeZone expects
+interface BaseAppointment {
+  id: string;
+  clientId?: string;
+  clientName?: string;
+  startTime: string;
+  endTime: string;
+  date: string;
+  status: string;
+  location?: string;
+  type?: string;
+  // Add other required fields here
+}
+
 export const useAppointments = (userId: string | null) => {
   const { toast } = useToast();
   const { userTimeZone } = useTimeZone();
@@ -62,8 +76,25 @@ export const useAppointments = (userId: string | null) => {
           throw error;
         }
 
-        console.log(`[useAppointments] Retrieved ${data ? data.length : 0} appointments`);
-        return getAppointmentsInUserTimeZone(data || [], userTimeZone);
+        // Transform the data to match the expected BaseAppointment type
+        const transformedData: BaseAppointment[] = (data || []).map(item => ({
+          id: item.id,
+          clientId: item.client_id,
+          clientName: item.clients?.[0] ? `${item.clients[0].client_first_name} ${item.clients[0].client_last_name}` : 'Unknown',
+          startTime: item.start_time,
+          endTime: item.end_time,
+          date: item.date,
+          status: item.status || 'scheduled',
+          type: item.type,
+          location: 'Virtual',
+          video_room_url: item.video_room_url,
+          appointment_datetime: item.appointment_datetime,
+          appointment_end_datetime: item.appointment_end_datetime,
+          source_time_zone: item.source_time_zone
+        }));
+
+        console.log(`[useAppointments] Retrieved ${transformedData.length} appointments`);
+        return getAppointmentsInUserTimeZone(transformedData, userTimeZone);
       } catch (err) {
         console.error('[useAppointments] Error in queryFn:', err);
         throw err;
@@ -71,8 +102,6 @@ export const useAppointments = (userId: string | null) => {
     },
     enabled: !!userId
   });
-
-  
 
   const startVideoSession = async (appointment: AppointmentType) => {
     try {
@@ -88,7 +117,7 @@ export const useAppointments = (userId: string | null) => {
         const result = await getOrCreateVideoRoom(appointment.id);
         console.log('[useAppointments] Created video room:', result);
         
-        if (result && result.url) {
+        if (result && typeof result === 'object' && result.url) {
           roomUrl = result.url;
           // Update the appointment with the new room URL
           const { error: updateError } = await supabase
@@ -120,7 +149,6 @@ export const useAppointments = (userId: string | null) => {
     }
   };
 
-  
   const openSessionTemplate = async (appointment: AppointmentType) => {
     try {
       console.log('[useAppointments] Opening session template for appointment:', appointment);
@@ -171,7 +199,6 @@ export const useAppointments = (userId: string | null) => {
   };
 
   return {
-    
     appointments,
     todayAppointments: appointments?.filter(appt => isToday(parseISO(appt.date))) || [],
     upcomingAppointments: appointments?.filter(appt => 

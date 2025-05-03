@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { availabilityService } from '@/services/availabilityService';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
@@ -115,7 +114,18 @@ export const useAvailability = (clinicianId: string | null) => {
       await fetchWeeklyAvailability();
       
       // Fix the type safety issue for the result - add null check
-      const slotId = result ? (typeof result === 'object' && result.id ? result.id : String(result || '')) : undefined;
+      let slotId: string | undefined;
+      
+      if (result) {
+        if (typeof result === 'object' && result.id) {
+          slotId = result.id;
+        } else if (typeof result === 'string') {
+          slotId = result;
+        } else {
+          slotId = String(result);
+        }
+      }
+      
       return { success: true, slotId };
     } catch (err) {
       const error = CalendarErrorHandler.formatError(err);

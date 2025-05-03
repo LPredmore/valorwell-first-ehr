@@ -5,6 +5,7 @@
  */
 
 import { TimeZoneService } from '@/utils/timezone';
+import type { TimeUnit, DateTimeFormat } from '@/utils/timezone';
 
 // Re-export the essential Luxon-related utilities from TimeZoneService
 export const {
@@ -24,4 +25,4 @@ export const {
 } = TimeZoneService;
 
 // Export type aliases for common DateTime operations if needed
-export type { TimeUnit, DateTimeFormat } from '@/utils/timezone';
+export type { TimeUnit, DateTimeFormat };
