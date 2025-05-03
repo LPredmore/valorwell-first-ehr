@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2, Edit } from 'lucide-react';
@@ -20,11 +21,15 @@ const AvailabilitySlot = ({
   onDelete,
   isEditing
 }: AvailabilitySlotProps) => {
+  // Format the time strings using TimeZoneService
+  const formattedStartTime = startTime ? TimeZoneService.formatTime(startTime) : '';
+  const formattedEndTime = endTime ? TimeZoneService.formatTime(endTime) : '';
+
   return (
     <div className={`flex justify-between items-center border p-3 rounded-md ${isEditing ? 'border-primary' : ''}`}>
       <div>
         <span className="font-medium">
-          {TimeZoneService.formatTime(startTime)} - {TimeZoneService.formatTime(endTime)}
+          {formattedStartTime} - {formattedEndTime}
         </span>
         {isRecurring && (
           <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">

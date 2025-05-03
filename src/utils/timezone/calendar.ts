@@ -1,53 +1,37 @@
 
 import { CalendarEvent } from '@/types/calendar';
 import { DateTime } from 'luxon';
-import { ensureIANATimeZone, parseWithZone } from './core';
-import { formatTime } from './formatting';
-import { TimeZoneError } from './TimeZoneError';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 /**
  * Convert a calendar event to user's timezone
+ * @deprecated Use TimeZoneService.convertEventToUserTimeZone instead
  */
 export function convertEventToUserTimeZone(event: CalendarEvent, userTimeZone: string): CalendarEvent {
-  const validTimeZone = ensureIANATimeZone(userTimeZone);
-  
+  return TimeZoneService.convertEventToUserTimeZone(event, userTimeZone);
+}
+
+/**
+ * Get formatted time display for calendar events
+ */
+export function getEventTimeDisplay(event: CalendarEvent): string {
   if (!event.start || !event.end) {
-    return event;
+    return '';
   }
+
+  if (event.allDay) {
+    return 'All day';
+  }
+
+  const startDt = typeof event.start === 'string' 
+    ? DateTime.fromISO(event.start) 
+    : DateTime.fromJSDate(event.start);
+
+  const endDt = typeof event.end === 'string' 
+    ? DateTime.fromISO(event.end) 
+    : DateTime.fromJSDate(event.end);
+
+  const timezone = event.extendedProps?.timezone || 'UTC';
   
-  try {
-    let startDt: DateTime;
-    let endDt: DateTime;
-    
-    if (event.start instanceof Date) {
-      startDt = DateTime.fromJSDate(event.start).setZone(validTimeZone);
-    } else {
-      startDt = parseWithZone(String(event.start), validTimeZone);
-    }
-    
-    if (event.end instanceof Date) {
-      endDt = DateTime.fromJSDate(event.end).setZone(validTimeZone);
-    } else {
-      endDt = parseWithZone(String(event.end), validTimeZone);
-    }
-    
-    const extendedProps = {
-      ...(event.extendedProps || {}),
-      displayStart: startDt.toFormat('h:mm a'),
-      displayEnd: endDt.toFormat('h:mm a'),
-      displayDay: startDt.toFormat('ccc'),
-      displayDate: startDt.toFormat('MMM d')
-    };
-    
-    return {
-      ...event,
-      start: startDt.toISO() || '',
-      end: endDt.toISO() || '',
-      title: event.title || '',
-      extendedProps
-    };
-  } catch (error) {
-    console.error('[TimeZoneService] Error converting event to user timezone:', error);
-    return event;
-  }
+  return `${startDt.setZone(timezone).toFormat('h:mm a')} - ${endDt.setZone(timezone).toFormat('h:mm a')}`;
 }
