@@ -1,10 +1,8 @@
 
-// Export the TimeZoneService as the main export
-export { TimeZoneService } from './TimeZoneService';
-
-// Export other timezone-related utilities
-export * from './calendar';
+// Re-export everything from the timezone module
+export * from './TimeZoneService';
+export * from './dateTimeUtils';
 export * from './TimeZoneError';
 
-// Default export for backward compatibility
-export { TimeZoneService as default } from './TimeZoneService';
+// Export TimeZoneService as the default
+export { TimeZoneService } from './TimeZoneService';

@@ -3,18 +3,18 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clock, Plus, Trash } from 'lucide-react';
+import { Clock, Plus, X, Trash } from 'lucide-react';
 import { useAvailability } from '@/hooks/useAvailability';
 import { useToast } from '@/components/ui/use-toast';
 import TimeField from '@/components/ui/time-field';
 import { TimeZoneService } from '@/utils/timezone';
-import { AvailabilitySlot, WeeklyAvailability, DayOfWeek } from '@/types/availability';
+import { AvailabilitySlot, WeeklyAvailability } from '@/types/appointment';
+import { DayOfWeek } from '@/types/calendar';
 
 interface WeeklyAvailabilityDialogProps {
   clinicianId?: string;
   isOpen: boolean;
   onClose: () => void;
-  onAvailabilityUpdated?: () => void;
 }
 
 const DAYS_OF_WEEK: DayOfWeek[] = [
@@ -34,8 +34,7 @@ const DAY_LABELS: Record<DayOfWeek, string> = {
 const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   clinicianId,
   isOpen,
-  onClose,
-  onAvailabilityUpdated
+  onClose
 }) => {
   const [activeTab, setActiveTab] = useState<DayOfWeek>('monday');
   const [availabilityByDay, setAvailabilityByDay] = useState<WeeklyAvailability>({
@@ -55,7 +54,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
   // Load existing weekly availability
   useEffect(() => {
     if (isOpen && weeklyAvailability) {
-      setAvailabilityByDay({...weeklyAvailability});
+      setAvailabilityByDay(weeklyAvailability);
     }
   }, [isOpen, weeklyAvailability]);
   
@@ -163,10 +162,6 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
         title: 'Success',
         description: 'Weekly availability has been updated for all days.'
       });
-      
-      if (onAvailabilityUpdated) {
-        onAvailabilityUpdated();
-      }
       
       onClose();
     } catch (error) {
