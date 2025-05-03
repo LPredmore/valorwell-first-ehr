@@ -9,11 +9,10 @@
 
 import { DateTime, IANAZone, Zone } from 'luxon';
 import { CalendarEvent } from '@/types/calendar';
-import { TimeUnit, DateTimeFormat } from './types';
+import { TimeUnit, DateTimeFormat, CalendarEventType } from './types';
 
 // Export the types
-export type { TimeUnit, DateTimeFormat };
-export type { CalendarEventType } from './types';
+export type { TimeUnit, DateTimeFormat, CalendarEventType };
 
 /**
  * Map of common timezone display names to IANA format
@@ -42,16 +41,6 @@ export const TIMEZONE_OPTIONS = [
   { value: 'Pacific/Honolulu', label: 'Hawaii-Aleutian Time (HST)' },
   { value: 'UTC', label: 'Coordinated Universal Time (UTC)' }
 ];
-
-/**
- * Time unit type for duration calculations
- */
-export type TimeUnit = 'years' | 'months' | 'weeks' | 'days' | 'hours' | 'minutes' | 'seconds' | 'milliseconds';
-
-/**
- * DateTime format options
- */
-export type DateTimeFormat = string;
 
 /**
  * Timezone Service

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { format, isToday, isFuture, parseISO, isBefore } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
@@ -16,12 +15,12 @@ export type { AppointmentType };
 interface LocalBaseAppointment {
   id: string;
   clientId?: string;
-  clientName: string; // Make sure this is required to match the expected type
+  clientName: string;
   startTime: string;
   endTime: string;
   date: string;
   status: string;
-  location?: string;
+  location: string;
   type?: string;
   // Add other required fields here
 }
@@ -87,7 +86,7 @@ export const useAppointments = (userId: string | null) => {
           date: item.date,
           status: item.status || 'scheduled',
           type: item.type,
-          location: 'Virtual',
+          location: 'Virtual', // Ensure location is always provided
           video_room_url: item.video_room_url,
           appointment_datetime: item.appointment_datetime,
           appointment_end_datetime: item.appointment_end_datetime,
@@ -135,6 +134,7 @@ export const useAppointments = (userId: string | null) => {
         }
       }
       
+      // Fix null safety issue with non-null assertion
       setCurrentVideoUrl(roomUrl || '');
       setIsVideoOpen(true);
       

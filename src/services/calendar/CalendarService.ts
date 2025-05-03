@@ -16,6 +16,7 @@ interface AvailabilityBlock {
   availability_type?: string;
   time_zone?: string;
   allDay?: boolean; // Changed all_day to allDay for consistency
+  title?: string; // Added for CalendarEvent conversion
 }
 
 // Define Appointment interface with required id property
@@ -25,10 +26,13 @@ interface Appointment {
   client_id?: string;
   start_time: string;
   end_time: string;
-  title?: string;
+  title?: string; // Added for CalendarEvent conversion
   clientName?: string; // Changed client_name to clientName for consistency
+  client_name?: string; // Added for backward compatibility 
   allDay?: boolean; // Changed all_day to allDay for consistency
+  all_day?: boolean; // Added for backward compatibility
   appointmentType?: string; // Changed appointment_type to appointmentType for consistency
+  appointment_type?: string; // Added for backward compatibility
   time_zone?: string;
 }
 
@@ -41,6 +45,8 @@ interface TimeOff {
   time_zone?: string;
   reason?: string;
   allDay?: boolean; // Changed all_day to allDay for consistency
+  all_day?: boolean; // Added for backward compatibility
+  title?: string; // Added for CalendarEvent conversion
 }
 
 /**
@@ -129,7 +135,8 @@ export class CalendarService {
           end_time: block.end_time,
           availability_type: block.availability_type,
           time_zone: block.time_zone,
-          allDay: block.allDay
+          allDay: block.allDay || block.all_day,
+          title: block.title
         };
         return this.convertAvailabilityToCalendarEvent(validBlock, timezone);
       });
@@ -201,9 +208,9 @@ export class CalendarService {
         clinicianId: appt.clinician_id,
         clientId: appt.client_id,
         eventType: 'appointment',
-        clientName: appt.clientName,
-        allDay: appt.allDay || false,
-        appointmentType: appt.appointmentType,
+        clientName: appt.clientName || appt.client_name,
+        allDay: appt.allDay || appt.all_day || false,
+        appointmentType: appt.appointmentType || appt.appointment_type,
         sourceTimeZone: appt.time_zone || timezone
       }
     };
@@ -215,7 +222,7 @@ export class CalendarService {
   static convertAvailabilityToCalendarEvent(block: AvailabilityBlock, timezone: string): CalendarEvent {
     return {
       id: block.id,
-      title: block.availability_type || 'Available',
+      title: block.title || block.availability_type || 'Available',
       start: new Date(block.start_time),
       end: new Date(block.end_time),
       extendedProps: {
@@ -233,14 +240,14 @@ export class CalendarService {
   static convertTimeOffToCalendarEvent(timeOff: TimeOff, timezone: string): CalendarEvent {
     return {
       id: timeOff.id,
-      title: timeOff.reason || 'Time Off',
+      title: timeOff.title || timeOff.reason || 'Time Off',
       start: new Date(timeOff.start_time),
       end: new Date(timeOff.end_time),
       extendedProps: {
         clinicianId: timeOff.clinician_id,
         eventType: 'time_off',
         sourceTimeZone: timeOff.time_zone || timezone,
-        allDay: timeOff.allDay || false
+        allDay: timeOff.allDay || timeOff.all_day || false
       }
     };
   }

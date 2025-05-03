@@ -122,6 +122,7 @@ class AvailabilityService {
   async updateAvailabilitySlot(slotId: string, updates: Partial<AvailabilitySlot>) {
     try {
       // Get the timezone from the updates or use a default
+      // Access the provided timezone property correctly
       const timezone = updates.timezone || 'UTC';
       
       // Create update object with correct property names for AvailabilityMutationService

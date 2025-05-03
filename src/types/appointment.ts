@@ -96,6 +96,8 @@ export interface AvailabilitySlot {
   clientName?: string;
   appointmentStatus?: string;
   excludeDates?: string[];
+  timezone?: string; // Add this missing property
+  specificDate?: string; // Add this missing property
 }
 
 export interface WeeklyAvailability {
