@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { availabilityService } from '@/services/availabilityService';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
@@ -100,6 +99,7 @@ export const useAvailability = (clinicianId: string | null) => {
           ) : 'none'
       });
 
+      // Make sure we pass the right parameters to createAvailabilitySlot
       const result = await availabilityService.createAvailabilitySlot(
         clinicianId,
         dayOfWeek,
@@ -112,7 +112,9 @@ export const useAvailability = (clinicianId: string | null) => {
       );
 
       await fetchWeeklyAvailability();
-      return { success: true, slotId: result?.id };
+      // Add a check to ensure we're accessing ID from an object, not a string
+      const slotId = typeof result === 'object' && result ? result.id : String(result);
+      return { success: true, slotId };
     } catch (err) {
       const error = CalendarErrorHandler.formatError(err);
       console.error('[useAvailability] Error creating slot:', error);

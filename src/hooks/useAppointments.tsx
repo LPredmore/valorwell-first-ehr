@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { format, isToday, isFuture, parseISO, isBefore } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
@@ -204,6 +203,39 @@ export const useAppointments = (userId: string | null) => {
     setIsVideoOpen(false);
   };
 
+  const handleSessionDidNotOccur = async (appointmentId: string, reason: string) => {
+    try {
+      setIsUpdating(true);
+      const result = await appointmentService.markSessionNoShow(appointmentId, reason);
+      
+      // Add null check before accessing result properties
+      if (result && result.success) {
+        toast({
+          title: "Session marked as 'Did Not Occur'",
+          description: "The session has been updated in the system.",
+          variant: "success",
+        });
+        refetch();
+      } else {
+        const errorMessage = result?.error || "Failed to update session status.";
+        toast({
+          title: "Error updating session",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error marking session as no-show:', error);
+      toast({
+        title: "Error updating session",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return {
     appointments,
     todayAppointments,
@@ -221,6 +253,7 @@ export const useAppointments = (userId: string | null) => {
     startVideoSession,
     openSessionTemplate,
     closeSessionTemplate,
-    closeVideoSession
+    closeVideoSession,
+    handleSessionDidNotOccur
   };
 };

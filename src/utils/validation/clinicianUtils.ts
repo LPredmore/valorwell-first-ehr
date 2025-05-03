@@ -1,5 +1,5 @@
 
-import { UUIDValidationError, isValidUUID, ensureUUID, formatAsUUID, couldBeUUID } from './uuidUtils';
+import { isValidUUID, ensureUUID, formatAsUUID } from './uuidUtils';
 import { ValidationError } from '@/utils/errors';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -43,7 +43,7 @@ export function isValidClinicianID(id: string | null | undefined): boolean {
     
     // If not valid as standard UUID, check if it could be a UUID with formatting
     if (couldBeUUID(idStr)) {
-      const formattedId = formatAsUUID(idStr, { logLevel: 'debug' });
+      const formattedId = formatAsUUID(idStr, { logLevel: 'info' });
       if (isValidUUID(formattedId)) {
         console.debug(`[Clinician Debug] Clinician ID validation (after formatting): "${idStr}" => "${formattedId}" => VALID`);
         return true;
@@ -56,6 +56,17 @@ export function isValidClinicianID(id: string | null | undefined): boolean {
     console.error('[Clinician Debug] Error validating clinician ID:', idStr, error);
     return false;
   }
+}
+
+/**
+ * Check if a string could potentially be formatted as a UUID
+ */
+function couldBeUUID(id: string): boolean {
+  if (!id) return false;
+  // Remove all non-alphanumeric characters
+  const cleanId = id.toLowerCase().replace(/[^a-f0-9]/g, '');
+  // If we have exactly 32 hex characters, it could be a UUID
+  return cleanId.length === 32;
 }
 
 /**
@@ -86,7 +97,6 @@ export function ensureClinicianID(id: string | null | undefined): string {
     
     // If not valid, try to format it
     const formattedId = formatAsUUID(idStr, {
-      strictMode: true,
       logLevel: 'info'
     });
     if (formattedId && formattedId !== idStr && isValidUUID(formattedId)) {
@@ -139,8 +149,7 @@ export function formatAsClinicianID(id: string | null | undefined): string {
     
     // Try to format as UUID
     const formattedId = formatAsUUID(cleanId, {
-      strictMode: true,
-      logLevel: 'debug'
+      logLevel: 'info'
     });
     console.debug(`[Clinician Debug] After UUID formatting: "${cleanId}" → "${formattedId}"`);
     

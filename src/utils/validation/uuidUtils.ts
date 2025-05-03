@@ -8,6 +8,20 @@
  */
 interface UUIDFormatOptions {
   logLevel?: 'error' | 'warn' | 'info' | 'none';
+  strictMode?: boolean;
+}
+
+/**
+ * UUID validation error class
+ */
+export class UUIDValidationError extends Error {
+  context?: Record<string, any>;
+  
+  constructor(message: string, context?: Record<string, any>) {
+    super(message);
+    this.name = 'UUIDValidationError';
+    this.context = context;
+  }
 }
 
 /**
@@ -74,6 +88,19 @@ export const isValidUUID = (id: string): boolean => {
 };
 
 /**
+ * Check if a string could be a UUID (has the right number of characters)
+ * @param id The ID to check
+ * @returns True if the ID could potentially be formatted as a UUID
+ */
+export const couldBeUUID = (id: string): boolean => {
+  if (!id) return false;
+  // Remove all non-alphanumeric characters
+  const cleanId = id.toLowerCase().replace(/[^a-f0-9]/g, '');
+  // If we have exactly 32 hex characters, it could be a UUID
+  return cleanId.length === 32;
+};
+
+/**
  * Generate a random UUID
  * @returns A random UUID string
  */
@@ -94,7 +121,7 @@ export const generateUUID = (): string => {
  */
 export const ensureUUID = (id: string): string => {
   if (!isValidUUID(id)) {
-    throw new Error(`Invalid UUID: ${id}`);
+    throw new UUIDValidationError(`Invalid UUID: ${id}`);
   }
   return id;
 };

@@ -1,4 +1,3 @@
-
 import { CalendarEvent, DayOfWeek, AvailabilitySlot } from '@/types/calendar';
 import { DateTime } from 'luxon';
 import { TimeZoneService } from '@/utils/timezone';
@@ -9,6 +8,7 @@ import { AvailabilitySettings } from '@/types/availability';
  */
 export class MockAvailabilityService {
   private static daysOfWeek: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  private mockSettings: Record<string, AvailabilitySettings> = {};
 
   /**
    * Generate mock availability slots for a clinician
@@ -186,35 +186,59 @@ export class MockAvailabilityService {
   /**
    * Get availability settings for a clinician
    */
-  static getSettingsForClinician(clinicianId: string): Promise<AvailabilitySettings> {
-    return Promise.resolve({
-      clinicianId,
-      preferredDays: this.getPreferredDays(),
-      slotDuration: 60,
-      bufferBetweenAppointments: 15,
-      maxAppointmentsPerDay: 8,
-      workDayStart: '08:00',
-      workDayEnd: '17:00',
-      timezone: 'America/Chicago',
-      isActive: true
-    });
+  async getSettingsForClinician(clinicianId: string): Promise<AvailabilitySettings> {
+    console.log('[MockAvailabilityService] Getting settings for clinician:', clinicianId);
+    
+    // Generate or retrieve stored settings
+    const settings = this.mockSettings[clinicianId] || this.generateDefaultSettings(clinicianId);
+    
+    // Store for future use
+    this.mockSettings[clinicianId] = settings;
+    
+    return {
+      id: `settings_${clinicianId}`,
+      clinicianId: clinicianId,
+      defaultSlotDuration: settings.slotDuration,
+      minNoticeDays: 1,
+      maxAdvanceDays: 30,
+      timeZone: settings.timeZone,
+      slotDuration: settings.slotDuration,
+      timeGranularity: 'hour',
+      isActive: settings.isActive
+    };
   }
 
   /**
    * Update settings for a clinician
    */
-  static updateSettings(clinicianId: string, settings: Partial<AvailabilitySettings>): Promise<AvailabilitySettings> {
-    return Promise.resolve({
-      clinicianId,
-      preferredDays: settings.preferredDays || this.getPreferredDays(),
-      slotDuration: settings.slotDuration || 60,
-      bufferBetweenAppointments: settings.bufferBetweenAppointments || 15,
-      maxAppointmentsPerDay: settings.maxAppointmentsPerDay || 8,
-      workDayStart: settings.workDayStart || '08:00',
-      workDayEnd: settings.workDayEnd || '17:00',
-      timezone: settings.timezone || 'America/Chicago',
-      isActive: settings.isActive !== undefined ? settings.isActive : true
-    });
+  async updateSettings(clinicianId: string, updates: Partial<AvailabilitySettings>): Promise<AvailabilitySettings> {
+    const currentSettings = await this.getSettingsForClinician(clinicianId);
+    
+    // Apply updates while keeping the current structure
+    const updatedSettings = {
+      ...currentSettings,
+      ...updates,
+    };
+    
+    // Update in-memory store
+    this.mockSettings[clinicianId] = {
+      slotDuration: updatedSettings.slotDuration,
+      timeZone: updatedSettings.timeZone,
+      isActive: updatedSettings.isActive
+    };
+    
+    return updatedSettings;
+  }
+
+  /**
+   * Generate default settings for a clinician
+   */
+  private generateDefaultSettings(clinicianId: string) {
+    return {
+      slotDuration: 60,
+      timeZone: 'America/Chicago',
+      isActive: true
+    };
   }
 
   /**

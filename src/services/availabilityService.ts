@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timezone';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
@@ -67,6 +66,18 @@ class AvailabilityService {
       const validatedTimeZone = TimeZoneService.ensureIANATimeZone(timeZone || 'UTC');
       console.log('[AvailabilityService] Creating slot with validated timezone:', validatedTimeZone);
 
+      // Convert specificDate to string if it's a DateTime or Date object
+      let dateString: string | undefined;
+      if (specificDate) {
+        if (specificDate instanceof DateTime) {
+          dateString = specificDate.toISODate() as string;
+        } else if (specificDate instanceof Date) {
+          dateString = DateTime.fromJSDate(specificDate).toISODate() as string;
+        } else {
+          dateString = specificDate;
+        }
+      }
+
       // Choose the right method based on whether it's recurring or not
       if (isRecurring) {
         return await AvailabilityMutationService.createRecurringAvailability(
@@ -80,7 +91,7 @@ class AvailabilityService {
       } else {
         return await AvailabilityMutationService.createSingleAvailability(
           clinicianId,
-          specificDate || new Date(),
+          dateString || new Date().toISOString().split('T')[0],
           startTime,
           endTime,
           validatedTimeZone

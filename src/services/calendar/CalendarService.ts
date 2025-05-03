@@ -1,4 +1,3 @@
-
 import { DateTime } from 'luxon';
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
 import { TimeZoneService } from '@/utils/timezone';
@@ -427,6 +426,119 @@ export class CalendarService {
     event.textColor = colors.textColor;
     
     return event;
+  }
+  
+  /**
+   * Convert an Appointment to a CalendarEvent
+   */
+  static appointmentToCalendarEvent(appointment: Appointment): CalendarEvent {
+    return {
+      id: appointment.id,
+      title: `Appointment: ${appointment.client_name || 'Client'}`,
+      start: new Date(appointment.start_time),
+      end: new Date(appointment.end_time),
+      allDay: appointment.all_day || false,
+      extendedProps: {
+        ...appointment,
+        resourceId: appointment.clinician_id,
+        appointmentType: appointment.appointment_type,
+        eventType: 'appointment'
+      }
+    };
+  }
+  
+  /**
+   * Convert an AvailabilityBlock to a CalendarEvent
+   */
+  static availabilityBlockToCalendarEvent(block: AvailabilityBlock): CalendarEvent {
+    return {
+      id: block.id,
+      title: 'Available',
+      start: new Date(block.start_time),
+      end: new Date(block.end_time),
+      allDay: block.all_day || false,
+      extendedProps: {
+        ...block,
+        resourceId: block.clinician_id,
+        eventType: 'availability'
+      }
+    };
+  }
+  
+  /**
+   * Convert a TimeOff object to a CalendarEvent
+   */
+  static timeOffToCalendarEvent(timeOff: any): CalendarEvent {
+    return {
+      id: timeOff.id,
+      title: timeOff.reason || 'Time Off',
+      start: new Date(timeOff.start_time),
+      end: new Date(timeOff.end_time),
+      allDay: timeOff.all_day || false,
+      extendedProps: {
+        ...timeOff,
+        resourceId: timeOff.clinician_id,
+        eventType: 'time_off'
+      }
+    };
+  }
+  
+  /**
+   * Create a calendar event from raw data
+   */
+  static createEventFromData(data: any, type: string): CalendarEvent {
+    switch (type) {
+      case 'appointment':
+        return this.appointmentToCalendarEvent(data);
+      case 'availability':
+        return this.availabilityBlockToCalendarEvent(data);
+      case 'time_off':
+        return this.timeOffToCalendarEvent(data);
+      default:
+        throw new Error(`Unsupported event type: ${type}`);
+    }
+  }
+  
+  /**
+   * Update an appointment
+   */
+  static async updateAppointment(appointmentId: string, updates: Partial<Appointment>, timeZone?: string): Promise<CalendarEvent> {
+    const updatedData = {
+      ...updates,
+      time_zone: timeZone || updates.time_zone
+    };
+    
+    // In a real implementation, we would update the database here
+    const mockAppointment = { ...this.getMockAppointment(appointmentId), ...updatedData };
+    return this.appointmentToCalendarEvent(mockAppointment);
+  }
+  
+  /**
+   * Update an availability block
+   */
+  static async updateAvailabilityBlock(blockId: string, updates: Partial<AvailabilityBlock>, timeZone?: string): Promise<CalendarEvent> {
+    const updatedData = {
+      ...updates,
+      time_zone: timeZone || updates.time_zone
+    };
+    
+    // In a real implementation, we would update the database here
+    const mockBlock = { ...this.getMockAvailabilityBlock(blockId), ...updatedData };
+    return this.availabilityBlockToCalendarEvent(mockBlock);
+  }
+  
+  /**
+   * Update a time off
+   */
+  static async updateTimeOff(timeOffId: string, updates: Partial<{ start_time: string; end_time: string; reason: string; all_day: boolean; time_zone: string; clinician_id: string; }>, timeZone?: string): Promise<CalendarEvent> {
+    const updatedData = {
+      ...updates,
+      time_zone: timeZone || updates.time_zone
+    };
+    
+    // In a real implementation, we would update the database here
+    const mockTimeOff = { ...this.getMockTimeOff(timeOffId), ...updatedData };
+    return this.timeOffToCalendarEvent(mockTimeOff);
   }
 }
 
