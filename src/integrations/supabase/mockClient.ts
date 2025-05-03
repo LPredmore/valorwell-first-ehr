@@ -342,3 +342,21 @@ mockCalendarService.initializeSampleData('default_clinician');
 
 // Export the mocked supabase client
 export { supabase };
+
+export const availabilityService = {
+  getSettingsForClinician: MockAvailabilityService.getSettingsForClinician,
+  createAvailabilitySlot: MockAvailabilityService.createAvailabilitySlot,
+  updateSettings: MockAvailabilityService.updateSettings,
+  updateAvailabilitySlot: MockAvailabilityService.updateAvailabilitySlot,
+  deleteAvailabilitySlot: MockAvailabilityService.deleteAvailabilitySlot,
+  getWeeklyAvailabilityForClinician: () => ({
+    monday: [],
+    tuesday: [],
+    wednesday: [],
+    thursday: [],
+    friday: [],
+    saturday: [],
+    sunday: []
+  }),
+  calculateAvailableSlots: () => []
+};

@@ -1,254 +1,217 @@
 
 import React, { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, AlertCircle, Info } from 'lucide-react';
-import { useAvailability } from '@/hooks/useAvailability';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TimeZoneService } from '@/utils/timeZoneService';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useDialogs } from '@/context/DialogContext';
-import { PermissionLevel } from '@/services/PermissionService';
+import { Checkbox } from '@/components/ui/checkbox';
+import { TimeZoneService, TIMEZONE_OPTIONS } from '@/utils/timezone';
 
-interface AvailabilitySettingsDialogProps {
-  clinicianId: string;
-  onSettingsSaved?: () => void;
-  permissionLevel?: PermissionLevel;
-  error?: string | null;
+interface AvailabilitySettings {
+  defaultAppointmentDuration: number;
+  timeSlotIncrement: number;
+  startTime: string;
+  endTime: string;
+  timezone: string;
+  daysAvailable: string[];
+  id?: string;
 }
 
+interface AvailabilitySettingsDialogProps {
+  settings?: Partial<AvailabilitySettings>;
+  onSave: (settings: AvailabilitySettings) => void;
+  isOpen: boolean;
+  onClose: () => void;
+  clinicianId: string;
+}
+
+const defaultSettings: AvailabilitySettings = {
+  defaultAppointmentDuration: 50,
+  timeSlotIncrement: 15,
+  startTime: '09:00',
+  endTime: '17:00',
+  timezone: TimeZoneService.getLocalTimeZone(),
+  daysAvailable: ['1', '2', '3', '4', '5'] // Monday to Friday
+};
+
+const daysOfWeek = [
+  { id: '0', label: 'Sunday' },
+  { id: '1', label: 'Monday' },
+  { id: '2', label: 'Tuesday' },
+  { id: '3', label: 'Wednesday' },
+  { id: '4', label: 'Thursday' },
+  { id: '5', label: 'Friday' },
+  { id: '6', label: 'Saturday' }
+];
+
 const AvailabilitySettingsDialog: React.FC<AvailabilitySettingsDialogProps> = ({
-  clinicianId,
-  onSettingsSaved,
-  permissionLevel = 'admin',
-  error
+  settings: initialSettings,
+  onSave,
+  isOpen,
+  onClose,
+  clinicianId
 }) => {
-  const { isAvailabilitySettingsOpen: isOpen, closeAvailabilitySettings: onClose } = useDialogs();
-  const [defaultSlotDuration, setDefaultSlotDuration] = useState(60);
-  const [minNoticeDays, setMinNoticeDays] = useState(1);
-  const [maxAdvanceDays, setMaxAdvanceDays] = useState(30);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [settings, setSettings] = useState({
-    defaultSlotDuration: 60,
-    minNoticeDays: 1,
-    maxAdvanceDays: 30,
-    timeZone: 'America/Chicago'
+  const [settings, setSettings] = useState<AvailabilitySettings>({
+    ...defaultSettings,
+    ...initialSettings
   });
   
-  const {
-    settings: loadedSettings,
-    isLoading,
-    updateSettings
-  } = useAvailability(clinicianId);
-
-  // Initialize form with existing settings
   useEffect(() => {
-    if (loadedSettings) {
-      console.log('[AvailabilitySettingsDialog] Loading settings:', loadedSettings);
+    if (initialSettings) {
       setSettings({
-        defaultSlotDuration: loadedSettings.defaultSlotDuration,
-        minNoticeDays: loadedSettings.minNoticeDays,
-        maxAdvanceDays: loadedSettings.maxAdvanceDays,
-        timeZone: loadedSettings.timeZone
+        ...defaultSettings,
+        ...initialSettings
       });
-      setDefaultSlotDuration(loadedSettings.defaultSlotDuration);
-      setMinNoticeDays(loadedSettings.minNoticeDays);
-      setMaxAdvanceDays(loadedSettings.maxAdvanceDays);
     }
-  }, [loadedSettings]);
-
-  // Add permission check to handleSave
-  const handleSave = async () => {
-    if (permissionLevel === 'none' || permissionLevel === 'read') {
-      return;
-    }
-    
-    if (!clinicianId) return;
-    
-    setIsSubmitting(true);
-    try {
-      console.log('[AvailabilitySettingsDialog] Saving settings:', {
-        defaultSlotDuration,
-        minNoticeDays,
-        maxAdvanceDays,
-        clinicianId
-      });
-      
-      const result = await updateSettings({
-        defaultSlotDuration,
-        minNoticeDays,
-        maxAdvanceDays,
-        timeZone: settings.timeZone
-      });
-      
-      if (result) {
-        onSettingsSaved?.();
-        onClose();
-      }
-    } catch (error) {
-      console.error('[AvailabilitySettingsDialog] Error saving availability settings:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
+  }, [initialSettings, isOpen]);
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setSettings({
+      ...settings,
+      [name]: name === 'defaultAppointmentDuration' || name === 'timeSlotIncrement' 
+        ? parseInt(value) 
+        : value
+    });
   };
   
-  // ... keep existing code (useEffect, other functions)
-
+  const handleSelectChange = (name: string, value: string) => {
+    setSettings({
+      ...settings,
+      [name]: value
+    });
+  };
+  
+  const handleCheckboxChange = (dayId: string, checked: boolean) => {
+    const updatedDays = checked
+      ? [...settings.daysAvailable, dayId].sort()
+      : settings.daysAvailable.filter(d => d !== dayId);
+      
+    setSettings({
+      ...settings,
+      daysAvailable: updatedDays
+    });
+  };
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      ...settings,
+      clinicianId
+    } as AvailabilitySettings);
+    onClose();
+  };
+  
   return (
-    <Dialog open={isOpen} onOpenChange={() => onClose()}>
-      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Availability Settings</DialogTitle>
-          <DialogDescription>
-            Configure your availability preferences
-          </DialogDescription>
         </DialogHeader>
         
-        {permissionLevel !== 'admin' && (
-          <Alert variant="warning" className="mt-2">
-            <Info className="h-4 w-4" />
-            <AlertDescription>
-              You may have limited permissions to manage these settings.
-              {permissionLevel === 'none' || permissionLevel === 'read' ?
-                " You can only view the settings." :
-                " Some actions may be restricted."}
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {error && (
-          <Alert variant="destructive" className="my-2">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : (
-          <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="timeZone" className="text-right">
-                  Time Zone
-                </Label>
-                <div className="col-span-3">
-                  <Select 
-                    value={settings.timeZone} 
-                    onValueChange={(value) =>
-                      setSettings({...settings, timeZone: value})
-                    }
-                    disabled={permissionLevel === 'none' || permissionLevel === 'read'}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select time zone" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TimeZoneService.TIMEZONE_OPTIONS.map(tz => (
-                        <SelectItem key={tz.value} value={tz.value}>
-                          {tz.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="defaultSlotDuration" className="text-right">
-                  Default Appointment Duration (minutes)
-                </Label>
-                <div className="col-span-3">
-                  <Input
-                    id="defaultSlotDuration"
-                    type="number"
-                    min={15}
-                    step={15}
-                    value={settings.defaultSlotDuration}
-                    onChange={(e) => setSettings({...settings, defaultSlotDuration: Number(e.target.value)})}
-                    disabled={permissionLevel === 'none' || permissionLevel === 'read'}
-                  />
-                  <p className="text-xs text-gray-500">
-                    Default length of time for appointment slots (in minutes)
-                  </p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="minNoticeDays" className="text-right">
-                  Minimum Notice (days)
-                </Label>
-                <div className="col-span-3">
-                  <Input
-                    id="minNoticeDays"
-                    type="number"
-                    min={0}
-                    value={settings.minNoticeDays}
-                    onChange={(e) => setSettings({...settings, minNoticeDays: Number(e.target.value)})}
-                    disabled={permissionLevel === 'none' || permissionLevel === 'read'}
-                  />
-                  <p className="text-xs text-gray-500">
-                    Minimum number of days in advance clients must schedule
-                  </p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="maxAdvanceDays" className="text-right">
-                  Maximum Advance (days)
-                </Label>
-                <div className="col-span-3">
-                  <Input
-                    id="maxAdvanceDays"
-                    type="number"
-                    min={1}
-                    value={settings.maxAdvanceDays}
-                    onChange={(e) => setSettings({...settings, maxAdvanceDays: Number(e.target.value)})}
-                    disabled={permissionLevel === 'none' || permissionLevel === 'read'}
-                  />
-                  <p className="text-xs text-gray-500">
-                    Maximum number of days in advance clients can schedule
-                  </p>
-                </div>
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="defaultAppointmentDuration">Default Session Length (minutes)</Label>
+              <Input
+                id="defaultAppointmentDuration"
+                name="defaultAppointmentDuration"
+                type="number"
+                min="5"
+                max="240"
+                step="5"
+                value={settings.defaultAppointmentDuration}
+                onChange={handleInputChange}
+              />
             </div>
             
-            <DialogFooter>
-              <Button 
-                variant="outline" 
-                type="button" 
-                onClick={onClose}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting || permissionLevel === 'none' || permissionLevel === 'read'}
-              >
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
+            <div className="space-y-2">
+              <Label htmlFor="timeSlotIncrement">Time Slot Increment (minutes)</Label>
+              <Input
+                id="timeSlotIncrement"
+                name="timeSlotIncrement"
+                type="number"
+                min="5"
+                max="60"
+                step="5"
+                value={settings.timeSlotIncrement}
+                onChange={handleInputChange}
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="startTime">Start Time</Label>
+              <Input
+                id="startTime"
+                name="startTime"
+                type="time"
+                value={settings.startTime}
+                onChange={handleInputChange}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="endTime">End Time</Label>
+              <Input
+                id="endTime"
+                name="endTime"
+                type="time"
+                value={settings.endTime}
+                onChange={handleInputChange}
+              />
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="timezone">Time Zone</Label>
+            <Select 
+              value={settings.timezone} 
+              onValueChange={(value) => handleSelectChange('timezone', value)}
+            >
+              <SelectTrigger id="timezone">
+                <SelectValue placeholder="Select time zone" />
+              </SelectTrigger>
+              <SelectContent>
+                {TIMEZONE_OPTIONS.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label>Available Days</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {daysOfWeek.map(day => (
+                <div key={day.id} className="flex items-center space-x-2">
+                  <Checkbox 
+                    id={`day-${day.id}`}
+                    checked={settings.daysAvailable.includes(day.id)}
+                    onCheckedChange={(checked) => handleCheckboxChange(day.id, !!checked)}
+                  />
+                  <Label htmlFor={`day-${day.id}`} className="cursor-pointer">{day.label}</Label>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit">
+              Save Settings
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
 };
 
-// Export as default
 export default AvailabilitySettingsDialog;

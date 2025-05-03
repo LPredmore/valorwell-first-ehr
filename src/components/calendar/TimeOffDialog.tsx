@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { TimeZoneService } from '@/utils/timezone';
@@ -9,19 +9,20 @@ interface TimeOffDetails {
   startTime?: string | Date;
   endTime?: string | Date;
   allDay?: boolean;
-  reason?: string;
+  title?: string;
+  description?: string;
   id?: string;
 }
 
 export interface TimeOffDialogProps {
-  timeOffRequest?: TimeOffDetails;
+  timeOff?: TimeOffDetails;
   onTimeOffCreated?: (timeOff: any) => void;
   isOpen?: boolean;
   onClose?: () => void;
 }
 
 const TimeOffDialog: React.FC<TimeOffDialogProps> = ({ 
-  timeOffRequest,
+  timeOff,
   onTimeOffCreated,
   isOpen = false,
   onClose = () => {}
@@ -29,26 +30,20 @@ const TimeOffDialog: React.FC<TimeOffDialogProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // In the real implementation, this would save the time off request
+    // In a real implementation, this would save the time off request
     const updatedTimeOff = {
-      ...timeOffRequest,
-      id: timeOffRequest?.id || `timeoff-${Date.now()}`,
+      ...timeOff,
+      id: timeOff?.id || `new-${Date.now()}`,
       title: "Time Off",
-      start: timeOffRequest?.startTime,
-      end: timeOffRequest?.endTime,
-      display: 'background',
-      color: '#FFB6C1',
-      extendedProps: {
-        eventType: 'time_off'
-      }
+      start: timeOff?.startTime,
+      end: timeOff?.endTime
     };
     
     // Convert times to UTC if needed
-    if (timeOffRequest?.startTime && timeOffRequest?.endTime) {
-      // Use toUTCTimestamp for UTC conversion
+    if (timeOff?.startTime && timeOff?.endTime) {
       const timezone = TimeZoneService.getLocalTimeZone();
-      updatedTimeOff.start = TimeZoneService.toUTCTimestamp(timeOffRequest.startTime, timezone);
-      updatedTimeOff.end = TimeZoneService.toUTCTimestamp(timeOffRequest.endTime, timezone);
+      updatedTimeOff.start = TimeZoneService.toUTCTimestamp(timeOff.startTime);
+      updatedTimeOff.end = TimeZoneService.toUTCTimestamp(timeOff.endTime);
     }
     
     if (onTimeOffCreated) {
@@ -70,12 +65,12 @@ const TimeOffDialog: React.FC<TimeOffDialogProps> = ({
         <div className="p-4">
           <form onSubmit={handleSubmit}>
             <p>This is a placeholder for the Time Off Dialog.</p>
-            {timeOffRequest && (
+            {timeOff && (
               <>
-                <p>Creating time off for clinician: {timeOffRequest.clinicianId}</p>
-                <p>Start: {String(timeOffRequest.startTime)}</p>
-                <p>End: {String(timeOffRequest.endTime)}</p>
-                <p>All day: {timeOffRequest.allDay ? 'Yes' : 'No'}</p>
+                <p>Time off for clinician: {timeOff.clinicianId}</p>
+                <p>Start: {String(timeOff.startTime)}</p>
+                <p>End: {String(timeOff.endTime)}</p>
+                <p>All day: {timeOff.allDay ? 'Yes' : 'No'}</p>
               </>
             )}
             

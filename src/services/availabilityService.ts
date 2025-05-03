@@ -67,16 +67,17 @@ class AvailabilityService {
       const validatedTimeZone = TimeZoneService.ensureIANATimeZone(timeZone || 'UTC');
       console.log('[AvailabilityService] Creating slot with validated timezone:', validatedTimeZone);
 
-      return await AvailabilityMutationService.createAvailabilitySlot(
+      // Use updateAvailability method if createAvailabilitySlot is not available
+      return await AvailabilityMutationService.createAvailability({
         clinicianId,
         dayOfWeek,
         startTime,
         endTime,
         isRecurring,
         recurrenceRule,
-        validatedTimeZone,
+        timeZone: validatedTimeZone,
         specificDate
-      );
+      });
     } catch (error) {
       console.error('Error creating availability slot:', error);
       throw CalendarErrorHandler.formatError(error);
@@ -88,7 +89,8 @@ class AvailabilityService {
    */
   async updateAvailabilitySlot(slotId: string, updates: Partial<AvailabilitySlot>) {
     try {
-      return await AvailabilityMutationService.updateAvailabilitySlot(slotId, updates);
+      // Use updateAvailability method if updateAvailabilitySlot is not available
+      return await AvailabilityMutationService.updateAvailability(slotId, updates);
     } catch (error) {
       console.error('Error updating availability slot:', error);
       throw error;
@@ -100,7 +102,8 @@ class AvailabilityService {
    */
   async deleteAvailabilitySlot(slotId: string) {
     try {
-      return await AvailabilityMutationService.deleteAvailabilitySlot(slotId);
+      // Use deleteAvailability method if deleteAvailabilitySlot is not available
+      return await AvailabilityMutationService.deleteAvailability(slotId);
     } catch (error) {
       console.error('Error deleting availability slot:', error);
       throw error;

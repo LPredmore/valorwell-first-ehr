@@ -1,4 +1,3 @@
-
 import { DateTime } from 'luxon';
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
 import { TimeZoneService } from '@/utils/timezone';
@@ -7,6 +6,27 @@ import { AppointmentService } from './AppointmentService';
 import { AvailabilityService } from './AvailabilityService';
 import { TimeOffService } from './TimeOffService';
 import { formatAsUUID, ensureUUID } from '@/utils/validation/uuidUtils';
+
+// Define AvailabilityBlock interface if needed
+interface AvailabilityBlock {
+  id: string;
+  clinician_id: string;
+  start_time: string;
+  end_time: string;
+  availability_type?: string;
+  time_zone?: string;
+  // Add other required properties
+}
+
+// Define Appointment interface if needed
+interface Appointment {
+  id: string;
+  clinician_id: string;
+  client_id?: string;
+  start_time: string;
+  end_time: string;
+  // Add other required properties
+}
 
 /**
  * Calendar Service
@@ -71,29 +91,35 @@ export class CalendarService {
   /**
    * Get availability events for a clinician
    */
-  private static async getAvailabilityEvents(
+  static async getAvailabilityEvents(
     clinicianId: string,
     timezone: string,
     startDate: Date | string,
     endDate: Date | string
   ): Promise<CalendarEvent[]> {
     try {
-      const events = await AvailabilityService.getAvailability(clinicianId, timezone, startDate, endDate);
+      // Convert AvailabilityBlock[] to CalendarEvent[]
+      const rawEvents = await AvailabilityService.getAvailability(clinicianId, timezone, startDate, endDate);
+      
+      // Ensure rawEvents is an array (defensive programming)
+      const availabilityBlocks = Array.isArray(rawEvents) ? rawEvents : [];
+      
+      // Convert each availability block to a calendar event
+      const events: CalendarEvent[] = availabilityBlocks.map(block => ({
+        id: block.id,
+        title: block.availability_type || 'Available',
+        start: block.start_time,
+        end: block.end_time,
+        extendedProps: {
+          clinicianId: block.clinician_id,
+          eventType: 'availability',
+          sourceTimeZone: block.time_zone || timezone
+        }
+      }));
       
       // Apply colors to events
       return events.map(event => {
-        event = this.applyEventColors(event);
-        
-        // Ensure extendedProps.clinicianId exists
-        if (!event.extendedProps) {
-          event.extendedProps = {};
-        }
-        
-        if (!event.extendedProps.clinicianId) {
-          event.extendedProps.clinicianId = clinicianId;
-        }
-        
-        return event;
+        return this.applyEventColors(event);
       });
     } catch (error) {
       console.error('[CalendarService] Error in getAvailabilityEvents:', error);
@@ -104,29 +130,35 @@ export class CalendarService {
   /**
    * Get appointment events for a clinician
    */
-  private static async getAppointmentEvents(
+  static async getAppointmentEvents(
     clinicianId: string,
     timezone: string,
     startDate: Date | string,
     endDate: Date | string
   ): Promise<CalendarEvent[]> {
     try {
-      const events = await AppointmentService.getAppointments(clinicianId, timezone, startDate, endDate);
+      // Convert Appointment[] to CalendarEvent[]
+      const rawAppointments = await AppointmentService.getAppointments(clinicianId, timezone, startDate, endDate);
+      
+      // Ensure rawAppointments is an array (defensive programming)
+      const appointments = Array.isArray(rawAppointments) ? rawAppointments : [];
+      
+      // Convert each appointment to a calendar event
+      const events: CalendarEvent[] = appointments.map(appt => ({
+        id: appt.id,
+        title: 'Appointment',
+        start: appt.start_time,
+        end: appt.end_time,
+        extendedProps: {
+          clinicianId: appt.clinician_id,
+          clientId: appt.client_id,
+          eventType: 'appointment'
+        }
+      }));
       
       // Apply colors to events
       return events.map(event => {
-        event = this.applyEventColors(event);
-        
-        // Ensure extendedProps.clinicianId exists
-        if (!event.extendedProps) {
-          event.extendedProps = {};
-        }
-        
-        if (!event.extendedProps.clinicianId) {
-          event.extendedProps.clinicianId = clinicianId;
-        }
-        
-        return event;
+        return this.applyEventColors(event);
       });
     } catch (error) {
       console.error('[CalendarService] Error in getAppointmentEvents:', error);
@@ -137,7 +169,7 @@ export class CalendarService {
   /**
    * Get time off events for a clinician
    */
-  private static async getTimeOffEvents(
+  static async getTimeOffEvents(
     clinicianId: string,
     timezone: string,
     startDate: Date | string,
