@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTimeZone } from '@/context/TimeZoneContext';
-import { AppointmentType } from '@/types/appointment';
+import { BaseAppointment, AppointmentType } from '@/types/appointment';
 import { getAppointmentsInUserTimeZone } from '@/utils/appointmentUtils';
 import { formatClientName } from '@/utils/clientDataUtils';
 import { appointmentService } from '@/services/appointmentService';
@@ -76,8 +76,8 @@ export const useAppointments = (userId: string | null) => {
           throw error;
         }
 
-        // Transform the data to match the expected BaseAppointment type
-        const transformedData: LocalBaseAppointment[] = (data || []).map(item => ({
+        // Transform the data to match the BaseAppointment type
+        const transformedData: BaseAppointment[] = (data || []).map(item => ({
           id: item.id,
           clientId: item.client_id,
           clientName: item.clients?.[0] ? `${item.clients[0].client_first_name} ${item.clients[0].client_last_name}` : 'Unknown',
@@ -85,12 +85,15 @@ export const useAppointments = (userId: string | null) => {
           endTime: item.end_time,
           date: item.date,
           status: item.status || 'scheduled',
-          type: item.type,
           location: 'Virtual', // Ensure location is always provided
+          client_id: item.client_id,
+          start_time: item.start_time,
+          end_time: item.end_time,
           video_room_url: item.video_room_url,
           appointment_datetime: item.appointment_datetime,
           appointment_end_datetime: item.appointment_end_datetime,
-          source_time_zone: item.source_time_zone
+          source_time_zone: item.source_time_zone,
+          type: item.type
         }));
 
         console.log(`[useAppointments] Retrieved ${transformedData.length} appointments`);

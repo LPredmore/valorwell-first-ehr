@@ -10,7 +10,7 @@ export interface BaseAppointment {
   endTime: string;
   location: string;
   status: string;
-  clientId: string;
+  clientId?: string;  // Made optional to match usage in useAppointments.tsx
   
   // Legacy snake_case properties to maintain compatibility
   client_id?: string;
@@ -96,8 +96,14 @@ export interface AvailabilitySlot {
   clientName?: string;
   appointmentStatus?: string;
   excludeDates?: string[];
-  timezone?: string; // Add this missing property
-  specificDate?: string; // Add this missing property
+  timezone?: string;
+  specificDate?: string;
+  
+  // Add compatibility properties for CalendarService
+  allDay?: boolean;
+  all_day?: boolean;
+  title?: string;
+  availability_type?: "recurring" | "single";
 }
 
 export interface WeeklyAvailability {

@@ -121,8 +121,6 @@ export const useAvailability = (clinicianId: string | null) => {
           slotId = result.id;
         } else if (typeof result === 'string') {
           slotId = result;
-        } else {
-          slotId = String(result);
         }
       }
       

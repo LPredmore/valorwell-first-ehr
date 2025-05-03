@@ -13,10 +13,11 @@ interface AvailabilityBlock {
   clinician_id: string;
   start_time: string;
   end_time: string;
-  availability_type?: string;
+  availability_type?: "recurring" | "single";
   time_zone?: string;
-  allDay?: boolean; // Changed all_day to allDay for consistency
-  title?: string; // Added for CalendarEvent conversion
+  allDay?: boolean;
+  all_day?: boolean;
+  title?: string;
 }
 
 // Define Appointment interface with required id property
@@ -26,13 +27,13 @@ interface Appointment {
   client_id?: string;
   start_time: string;
   end_time: string;
-  title?: string; // Added for CalendarEvent conversion
-  clientName?: string; // Changed client_name to clientName for consistency
-  client_name?: string; // Added for backward compatibility 
-  allDay?: boolean; // Changed all_day to allDay for consistency
-  all_day?: boolean; // Added for backward compatibility
-  appointmentType?: string; // Changed appointment_type to appointmentType for consistency
-  appointment_type?: string; // Added for backward compatibility
+  title?: string;
+  clientName?: string;
+  client_name?: string;
+  allDay?: boolean;
+  all_day?: boolean;
+  appointmentType?: string;
+  appointment_type?: string;
   time_zone?: string;
 }
 
@@ -44,9 +45,9 @@ interface TimeOff {
   end_time: string;
   time_zone?: string;
   reason?: string;
-  allDay?: boolean; // Changed all_day to allDay for consistency
-  all_day?: boolean; // Added for backward compatibility
-  title?: string; // Added for CalendarEvent conversion
+  allDay?: boolean;
+  all_day?: boolean;
+  title?: string;
 }
 
 /**
@@ -125,6 +126,8 @@ export class CalendarService {
       // Ensure rawEvents is an array (defensive programming)
       const availabilityBlocks = Array.isArray(rawEvents) ? rawEvents : [];
       
+      console.log('[CalendarService] Converting availability blocks to events:', availabilityBlocks);
+      
       // Convert each availability block to a calendar event
       const events: CalendarEvent[] = availabilityBlocks.map(block => {
         // Ensure block has required id property
@@ -166,6 +169,8 @@ export class CalendarService {
       
       // Ensure rawAppointments is an array (defensive programming)
       const appointments = Array.isArray(rawAppointments) ? rawAppointments : [];
+      
+      console.log('[CalendarService] Converting appointments to events:', appointments);
       
       // Convert each appointment to a calendar event
       const events: CalendarEvent[] = appointments.map(appt => {
@@ -228,7 +233,7 @@ export class CalendarService {
       extendedProps: {
         clinicianId: block.clinician_id,
         eventType: 'availability',
-        allDay: block.allDay || false,
+        allDay: block.allDay || block.all_day || false,
         sourceTimeZone: block.time_zone || timezone
       }
     };
@@ -263,6 +268,8 @@ export class CalendarService {
   ): Promise<CalendarEvent[]> {
     try {
       const timeOffEvents = await TimeOffService.getTimeOff(clinicianId, timezone, startDate, endDate);
+      
+      console.log('[CalendarService] Converting time off to events:', timeOffEvents);
       
       // Map raw time off events to calendar events
       const events: CalendarEvent[] = timeOffEvents.map(event => {
@@ -383,7 +390,7 @@ export class CalendarService {
       start_time: start.toISOString(),
       end_time: end.toISOString(),
       allDay: event.allDay || false,
-      availability_type: event.title,
+      availability_type: "single", // Default to single availability
       time_zone: timezone
     };
     
