@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { format, isToday, isFuture, parseISO, isBefore } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
@@ -211,18 +212,26 @@ export const useAppointments = (userId: string | null) => {
       const result = await appointmentService.markSessionNoShow(appointmentId, reason);
       
       // Add null safety checks
-      if (result && 'success' in result && result.success) {
-        toast({
-          title: "Session marked as 'Did Not Occur'",
-          description: "The session has been updated in the system.",
-          variant: "destructive",
-        });
-        refetch();
+      if (result && 'success' in result) {
+        if (result.success) {
+          toast({
+            title: "Session marked as 'Did Not Occur'",
+            description: "The session has been updated in the system.",
+            variant: "destructive",
+          });
+          refetch();
+        } else {
+          const errorMessage = result.error ? result.error : "Failed to update session status.";
+          toast({
+            title: "Error updating session",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        }
       } else {
-        const errorMessage = result && 'error' in result ? result.error : "Failed to update session status.";
         toast({
           title: "Error updating session",
-          description: errorMessage,
+          description: "Failed to update session status.",
           variant: "destructive",
         });
       }

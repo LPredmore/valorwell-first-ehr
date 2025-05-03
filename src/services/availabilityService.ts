@@ -122,10 +122,20 @@ class AvailabilityService {
   async updateAvailabilitySlot(slotId: string, updates: Partial<AvailabilitySlot>) {
     try {
       // Get the timezone from the updates or use a default
-      const timeZone = updates.sourceTimeZone || 'UTC';
+      const timeZone = updates.time_zone || 'UTC';
+      
+      // Create update object with correct property names for AvailabilityMutationService
+      const updateData = {
+        startTime: updates.startTime,
+        endTime: updates.endTime,
+        dayOfWeek: typeof updates.dayOfWeek === 'string' ? 
+          ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].indexOf(updates.dayOfWeek.toLowerCase()) :
+          updates.dayOfWeek,
+        specificDate: updates.specificDate
+      };
       
       // Use updateAvailability method with correct parameters
-      return await AvailabilityMutationService.updateAvailability(slotId, updates, timeZone);
+      return await AvailabilityMutationService.updateAvailability(slotId, updateData, timeZone);
     } catch (error) {
       console.error('Error updating availability slot:', error);
       throw error;

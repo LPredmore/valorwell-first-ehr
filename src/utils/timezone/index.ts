@@ -1,4 +1,3 @@
-
 /**
  * Timezone Service
  * 
@@ -347,6 +346,60 @@ export class TimeZoneService {
       return `${label} (GMT${offset})`;
     } catch (error) {
       return timeZone;
+    }
+  }
+
+  /**
+   * Format date to 12-hour time format
+   */
+  static formatDateToTime12Hour(date: Date | string): string {
+    const dt = typeof date === 'string' ? new Date(date) : date;
+    return dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+
+  /**
+   * Get display name from IANA timezone identifier
+   */
+  static getDisplayNameFromIANA(timeZone: string): string {
+    try {
+      // Try to get a user-friendly name from the IANA identifier
+      const parts = timeZone.split('/');
+      const city = parts[parts.length - 1].replace(/_/g, ' ');
+      return city;
+    } catch (error) {
+      return timeZone;
+    }
+  }
+  
+  /**
+   * Get IANA timezone from display name
+   */
+  static getIANAFromDisplayName(displayName: string): string {
+    // This is a simplified implementation - in reality, you would need a more comprehensive mapping
+    const displayToIANA: Record<string, string> = {
+      'Eastern Time': 'America/New_York',
+      'Central Time': 'America/Chicago',
+      'Mountain Time': 'America/Denver',
+      'Pacific Time': 'America/Los_Angeles',
+      // Add more mappings as needed
+    };
+    
+    return displayToIANA[displayName] || 'UTC';
+  }
+  
+  /**
+   * Get timezone offset string (e.g., GMT+2)
+   */
+  static getTimezoneOffsetString(timeZone: string): string {
+    try {
+      const now = new Date();
+      const options = { timeZone, timeZoneName: 'short' as const };
+      const formatter = new Intl.DateTimeFormat('en-US', options);
+      const parts = formatter.formatToParts(now);
+      const timeZonePart = parts.find(part => part.type === 'timeZoneName');
+      return timeZonePart?.value || '';
+    } catch (error) {
+      return '';
     }
   }
 }
