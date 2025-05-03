@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { useAvailabilityEvents } from '@/hooks/useAvailabilityEvents';
-import { AvailabilityBlock } from '@/types/availability';
+import { AvailabilitySlot } from '@/types/availability';
 import { CalendarEvent } from '@/types/calendar';
 import { TimeZoneService } from '@/utils/timezone';
 

@@ -42,8 +42,8 @@ const TimeOffDialog: React.FC<TimeOffDialogProps> = ({
     // Convert times to UTC if needed
     if (timeOff?.startTime && timeOff?.endTime) {
       const timezone = TimeZoneService.getLocalTimeZone();
-      updatedTimeOff.start = TimeZoneService.toUTCTimestamp(timeOff.startTime);
-      updatedTimeOff.end = TimeZoneService.toUTCTimestamp(timeOff.endTime);
+      updatedTimeOff.start = TimeZoneService.toUTC(timeOff.startTime);
+      updatedTimeOff.end = TimeZoneService.toUTC(timeOff.endTime);
     }
     
     if (onTimeOffCreated) {

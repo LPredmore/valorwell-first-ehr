@@ -48,8 +48,8 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
     if (appointment?.startTime && appointment?.endTime) {
       // Use the corrected toUTCTimestamp for UTC conversion
       const timezone = TimeZoneService.getLocalTimeZone();
-      updatedAppointment.start = TimeZoneService.toUTCTimestamp(appointment.startTime);
-      updatedAppointment.end = TimeZoneService.toUTCTimestamp(appointment.endTime);
+      updatedAppointment.start = TimeZoneService.toUTC(appointment.startTime);
+      updatedAppointment.end = TimeZoneService.toUTC(appointment.endTime);
     }
     
     if (onAppointmentCreated) {

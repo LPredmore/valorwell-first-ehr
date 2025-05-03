@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -131,6 +130,7 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
     }
   };
 
+  // Loading state rendering
   if (isLoadingAppointments) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -191,9 +191,10 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
         {showAvailability && (
           <CalendarAvailabilityHandler
             clinicianId={clinicianId}
-            userTimeZone={validTimeZone}
-            onEventsChange={handleAvailabilityEvents}
-            showAvailability={true}
+            timeZone={validTimeZone}
+            onAvailabilityEventsChange={handleAvailabilityEvents}
+            onAvailabilityLoading={(loading) => {}}
+            onAvailabilityError={(error) => handleAvailabilityEvents([], error)}
           />
         )}
       </div>

@@ -3,27 +3,28 @@ import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface LoadingSkeletonProps {
-  height?: string | number;
-  width?: string | number;
-  className?: string;
   count?: number;
+  height?: string;
+  width?: string;
+  className?: string;
 }
 
-const LoadingSkeleton = ({ height = '20px', width = '100%', className = '', count = 1 }: LoadingSkeletonProps) => {
+const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({
+  count = 1,
+  height = '100px',
+  width = '100%',
+  className = '',
+}) => {
   return (
-    <>
-      {Array.from({ length: count }).map((_, index) => (
+    <div className="space-y-4">
+      {Array.from({ length: count }).map((_, idx) => (
         <Skeleton 
-          key={index}
-          className={className}
-          style={{
-            height,
-            width,
-            marginBottom: index < count - 1 ? '0.5rem' : 0
-          }}
+          key={idx} 
+          className={`block ${className}`} 
+          style={{ height, width }} 
         />
       ))}
-    </>
+    </div>
   );
 };
 

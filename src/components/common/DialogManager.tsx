@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useDialogs } from '@/context/DialogContext';
 import { TimeZoneService } from '@/utils/timezone';
@@ -106,7 +105,7 @@ const DialogManager: React.FC = () => {
       if (!state.props) return null;
       return (
         <TimeOffDialog 
-          timeOffRequest={{
+          timeOff={{
             clinicianId: state.props.clinicianId,
             startTime: state.props.startTime,
             endTime: state.props.endTime,
