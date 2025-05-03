@@ -4,9 +4,11 @@ import { TimeZoneService } from '@/utils/timezone';
 
 // Assuming this is a simplified version of the component with only the problem area
 const MyPortal: React.FC = () => {
+  const userTimeZone = TimeZoneService.getLocalTimeZone();
+  
   // Example to fix the incorrect formatTime call 
   const formatAppointmentTime = (time: string) => {
-    return TimeZoneService.formatTime(time);
+    return TimeZoneService.formatTime(time, 'h:mm a', userTimeZone);
   };
 
   return (

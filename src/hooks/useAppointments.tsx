@@ -62,133 +62,96 @@ export const useAppointments = (userId: string | null) => {
           throw error;
         }
 
-        console.log(`[useAppointments] Retrieved ${data?.length || 0} appointments for clinician ID: "${userId}"`);
-        
-        // Convert appointments to user's time zone
-        const appointmentsWithClient = data.map((appointment: any) => {
-          const clientName = appointment.clients ? 
-            `${appointment.clients.client_first_name || ''} ${appointment.clients.client_last_name || ''}`.trim() : 
-            'Unnamed Client';
-          
-          return {
-            ...appointment,
-            client: appointment.clients,
-            clientName,
-            clientId: appointment.client_id
-          };
-        }) as AppointmentType[];
-        
-        // Apply time zone conversion to all appointments
-        const convertedAppointments = getAppointmentsInUserTimeZone(appointmentsWithClient, userTimeZone);
-        console.log(`[useAppointments] Converted ${convertedAppointments.length} appointments to timezone: ${userTimeZone}`);
-        
-        return convertedAppointments;
-      } catch (error) {
-        console.error('[useAppointments] Exception in appointment fetching:', error);
-        throw error;
+        console.log(`[useAppointments] Retrieved ${data ? data.length : 0} appointments`);
+        return getAppointmentsInUserTimeZone(data || [], userTimeZone);
+      } catch (err) {
+        console.error('[useAppointments] Error in queryFn:', err);
+        throw err;
       }
     },
-    enabled: !!userId && !!userTimeZone
+    enabled: !!userId
   });
 
-  useEffect(() => {
-    console.log(`[useAppointments] Appointments data updated. Count: ${appointments?.length || 0}`);
-  }, [appointments]);
-
-  const todayAppointments = appointments?.filter(appointment => {
-    // Use display_date if available (time zone converted), otherwise fall back to date
-    const dateToUse = appointment.display_date || appointment.date;
-    const appointmentDate = parseISO(dateToUse);
-    return isToday(appointmentDate);
-  }) || [];
-
-  const upcomingAppointments = appointments?.filter(appointment => {
-    // Use display_date if available (time zone converted), otherwise fall back to date
-    const dateToUse = appointment.display_date || appointment.date;
-    const appointmentDate = parseISO(dateToUse);
-    return isFuture(appointmentDate) && !isToday(appointmentDate);
-  }) || [];
-
-  const pastAppointments = appointments?.filter(appointment => {
-    // Use display_date if available (time zone converted), otherwise fall back to date
-    const dateToUse = appointment.display_date || appointment.date;
-    const appointmentDate = parseISO(dateToUse);
-    return isBefore(appointmentDate, new Date()) && 
-           !isToday(appointmentDate) && 
-           appointment.status === "scheduled";
-  }) || [];
+  
 
   const startVideoSession = async (appointment: AppointmentType) => {
     try {
-      console.log("Starting video session for appointment:", appointment.id);
+      console.log('[useAppointments] Starting video session for appointment:', appointment);
       
-      if (appointment.video_room_url) {
-        console.log("Using existing video room URL:", appointment.video_room_url);
-        setCurrentVideoUrl(appointment.video_room_url);
-        setIsVideoOpen(true);
-      } else {
-        console.log("Creating new video room for appointment:", appointment.id);
-        // Get or create video room
+      setIsUpdating(true);
+      setCurrentAppointment(appointment);
+      
+      let roomUrl = appointment.video_room_url;
+      
+      if (!roomUrl) {
+        console.log('[useAppointments] No video room URL found, creating a new room');
         const result = await getOrCreateVideoRoom(appointment.id);
-        console.log("Video room creation result:", result);
+        console.log('[useAppointments] Created video room:', result);
         
-        if (result && typeof result === 'object' && 'url' in result) {
-          // Handle as object with URL property
-          setCurrentVideoUrl(result.url as string);
-          setIsVideoOpen(true);
-          refetch();
-        } else if (typeof result === 'string') {
-          // Handle as direct URL string
-          setCurrentVideoUrl(result);
-          setIsVideoOpen(true);
-          refetch();
+        if (result && result.url) {
+          roomUrl = result.url;
+          // Update the appointment with the new room URL
+          const { error: updateError } = await supabase
+            .from('appointments')
+            .update({ video_room_url: roomUrl })
+            .eq('id', appointment.id);
+            
+          if (updateError) {
+            console.error('[useAppointments] Error updating appointment with video room URL:', updateError);
+            throw updateError;
+          }
         } else {
-          console.error("Invalid result from video room creation:", result);
           throw new Error('Failed to create video room');
         }
       }
-    } catch (error) {
-      console.error('Error starting video session:', error);
+      
+      setCurrentVideoUrl(roomUrl || '');
+      setIsVideoOpen(true);
+      
+    } catch (err) {
+      console.error('[useAppointments] Error starting video session:', err);
       toast({
         title: 'Error',
-        description: 'Could not start the video session. Please try again.',
-        variant: 'destructive',
+        description: 'Failed to start video session. Please try again.',
+        variant: 'destructive'
       });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
+  
   const openSessionTemplate = async (appointment: AppointmentType) => {
-    if (!appointment || !appointment.clientId) {
-      toast({
-        title: 'Error',
-        description: 'Could not find client information for this appointment.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     try {
-      setIsLoadingClientData(true);
+      console.log('[useAppointments] Opening session template for appointment:', appointment);
       setCurrentAppointment(appointment);
-      
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', appointment.clientId || appointment.client_id)
-        .single();
-        
-      if (error) {
-        throw error;
-      }
-      
-      setClientData(data);
       setShowSessionTemplate(true);
-    } catch (error) {
-      console.error('Error fetching client data:', error);
+      
+      // Fetch client data if we need it
+      if (appointment.client_id) {
+        setIsLoadingClientData(true);
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('id', appointment.client_id)
+          .single();
+          
+        if (error) {
+          console.error('[useAppointments] Error fetching client data:', error);
+          throw error;
+        }
+        
+        if (data) {
+          console.log('[useAppointments] Retrieved client data:', data);
+          setClientData(data);
+        }
+      }
+    } catch (err) {
+      console.error('[useAppointments] Error opening session template:', err);
       toast({
         title: 'Error',
-        description: 'Could not load client information. Please try again.',
-        variant: 'destructive',
+        description: 'Failed to open session template. Please try again.',
+        variant: 'destructive'
       });
     } finally {
       setIsLoadingClientData(false);
@@ -197,61 +160,28 @@ export const useAppointments = (userId: string | null) => {
 
   const closeSessionTemplate = () => {
     setShowSessionTemplate(false);
-    setClientData(null);
     setCurrentAppointment(null);
+    refetch();
   };
 
   const closeVideoSession = () => {
     setIsVideoOpen(false);
-  };
-
-  const handleSessionDidNotOccur = async (appointmentId: string, reason: string) => {
-    try {
-      setIsUpdating(true);
-      const result = await appointmentService.markSessionNoShow(appointmentId, reason);
-      
-      // Add null safety checks
-      if (result && 'success' in result) {
-        if (result.success) {
-          toast({
-            title: "Session marked as 'Did Not Occur'",
-            description: "The session has been updated in the system.",
-            variant: "destructive",
-          });
-          refetch();
-        } else {
-          const errorMessage = result && result.error ? result.error : "Failed to update session status.";
-          toast({
-            title: "Error updating session",
-            description: errorMessage,
-            variant: "destructive",
-          });
-        }
-      } else {
-        toast({
-          title: "Error updating session",
-          description: "Failed to update session status.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('Error marking session as no-show:', error);
-      toast({
-        title: "Error updating session",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdating(false);
-    }
+    setCurrentVideoUrl('');
+    refetch();
   };
 
   return {
+    
     appointments,
-    todayAppointments,
-    upcomingAppointments,
-    pastAppointments,
+    todayAppointments: appointments?.filter(appt => isToday(parseISO(appt.date))) || [],
+    upcomingAppointments: appointments?.filter(appt => 
+      isFuture(parseISO(appt.date)) && !isToday(parseISO(appt.date))
+    ).slice(0, 5) || [],
+    pastAppointments: appointments?.filter(appt => 
+      !isFuture(parseISO(appt.date)) && !isToday(parseISO(appt.date)) && appt.status !== 'completed'
+    ).slice(0, 5) || [],
     isLoading,
+    isUpdating,
     error,
     refetch,
     currentAppointment,
@@ -263,7 +193,6 @@ export const useAppointments = (userId: string | null) => {
     startVideoSession,
     openSessionTemplate,
     closeSessionTemplate,
-    closeVideoSession,
-    handleSessionDidNotOccur
+    closeVideoSession
   };
 };

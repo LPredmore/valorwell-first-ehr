@@ -117,9 +117,9 @@ export const PatientAppointments: React.FC<PatientAppointmentsProps> = ({ patien
                 </CardHeader>
                 <CardContent>
                   <p>
-                    {TimeZoneService.formatDateTime(startDate, 'EEE, MMM d, yyyy')} • {' '}
-                    {TimeZoneService.formatDateTime(startDate, 'h:mm a')} - {' '}
-                    {TimeZoneService.formatDateTime(endDate, 'h:mm a')}
+                    {TimeZoneService.formatDateTime(startDate, 'EEE, MMM d, yyyy', userTimezone)} • {' '}
+                    {TimeZoneService.formatDateTime(startDate, 'h:mm a', userTimezone)} - {' '}
+                    {TimeZoneService.formatDateTime(endDate, 'h:mm a', userTimezone)}
                   </p>
                 </CardContent>
               </Card>
