@@ -9,18 +9,19 @@ import { formatAsUUID, ensureUUID } from '@/utils/validation/uuidUtils';
 
 // Define AvailabilityBlock interface if needed
 interface AvailabilityBlock {
-  id: string;
+  id: string; // Changed from optional to required
   clinician_id: string;
   start_time: string;
   end_time: string;
   availability_type?: string;
   time_zone?: string;
+  all_day?: boolean; // Added all_day property
   // Add other required properties
 }
 
 // Define Appointment interface if needed
 interface Appointment {
-  id: string;
+  id: string; // Changed from optional to required
   clinician_id: string;
   client_id?: string;
   start_time: string;
@@ -270,49 +271,251 @@ export class CalendarService {
       let result: CalendarEvent | null;
       
       switch (eventType) {
-        case 'appointment':
-          result = await AppointmentService.createAppointment(
-            event.id, 
-            { 
-              ...event, 
-              time_zone: validTimeZone,
-              appointmentData: this.prepareAppointmentData(event, validTimeZone)
-            }
-          );
+        case 'appointment': {
+          const appointmentData = this.prepareAppointmentData(event, validTimeZone);
+          result = await AppointmentService.createAppointment(event.id, { 
+            ...appointmentData,
+            time_zone: validTimeZone
+          });
           break;
-        case 'availability':
-          result = await AvailabilityService.createAvailability(
-            event.id, 
-            { 
-              ...event, 
-              time_zone: validTimeZone,
-              availabilityData: this.prepareAvailabilityData(event, validTimeZone)
-            }
-          );
+        }
+        case 'availability': {
+          const availabilityData = this.prepareAvailabilityData(event, validTimeZone);
+          result = await AvailabilityService.createAvailability(event.id, { 
+            ...availabilityData,
+            time_zone: validTimeZone
+          });
           break;
-        case 'time_off':
-          result = await TimeOffService.createTimeOff(
-            event.id, 
-            { 
-              ...event, 
-              time_zone: validTimeZone,
-              timeOffData: this.prepareTimeOffData(event, validTimeZone)
-            }
-          );
+        }
+        case 'time_off': {
+          const timeOffData = this.prepareTimeOffData(event, validTimeZone);
+          result = await TimeOffService.createTimeOff(event.id, { 
+            ...timeOffData,
+            time_zone: validTimeZone
+          });
           break;
+        }
         default:
-          throw CalendarErrorHandler.createError(`Unknown event type: ${eventType}`, 'INVALID_EVENT_TYPE');
+          throw CalendarErrorHandler.formatError(
+            new Error(`Unsupported event type: ${eventType}`)
+          );
       }
       
       if (!result) {
-        throw CalendarErrorHandler.createError('Failed to create event', 'CALENDAR_ERROR');
+        throw CalendarErrorHandler.formatError(
+          new Error('Failed to create event, service returned null')
+        );
       }
       
-      return this.applyEventColors(result);
+      return result;
     } catch (error) {
       console.error('[CalendarService] Error creating event:', error);
       throw CalendarErrorHandler.formatError(error);
     }
+  }
+  
+  /**
+   * Prepare appointment data for saving
+   */
+  static prepareAppointmentData(event: CalendarEvent, timezone: string): any {
+    // Ensure we have valid dates
+    const start = typeof event.start === 'string' ? new Date(event.start) : event.start;
+    const end = typeof event.end === 'string' ? new Date(event.end) : event.end;
+    
+    const appointmentData = {
+      id: event.id,
+      clinician_id: event.extendedProps?.clinicianId,
+      client_id: event.extendedProps?.clientId,
+      title: event.title,
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
+      all_day: event.allDay || false,
+      appointment_type: event.extendedProps?.appointmentType,
+      time_zone: timezone
+    };
+    
+    return appointmentData;
+  }
+  
+  /**
+   * Prepare availability data for saving
+   */
+  static prepareAvailabilityData(event: CalendarEvent, timezone: string): any {
+    // Ensure we have valid dates
+    const start = typeof event.start === 'string' ? new Date(event.start) : event.start;
+    const end = typeof event.end === 'string' ? new Date(event.end) : event.end;
+    
+    const availabilityData = {
+      id: event.id,
+      clinician_id: event.extendedProps?.clinicianId,
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
+      all_day: event.allDay || false,
+      availability_type: event.title,
+      time_zone: timezone
+    };
+    
+    return availabilityData;
+  }
+  
+  /**
+   * Prepare time off data for saving
+   */
+  static prepareTimeOffData(event: CalendarEvent, timezone: string): any {
+    // Ensure we have valid dates
+    const start = typeof event.start === 'string' ? new Date(event.start) : event.start;
+    const end = typeof event.end === 'string' ? new Date(event.end) : event.end;
+    
+    const timeOffData = {
+      id: event.id,
+      clinician_id: event.extendedProps?.clinicianId,
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
+      reason: event.title,
+      all_day: event.allDay || false,
+      time_zone: timezone
+    };
+    
+    return timeOffData;
+  }
+  
+  /**
+   * Determine event color based on type
+   */
+  static getEventColor(eventType: CalendarEventType, status?: string): { backgroundColor: string, borderColor: string, textColor: string } {
+    let backgroundColor: string;
+    let borderColor: string;
+    let textColor = '#ffffff';
+    
+    // Handle cancelled events
+    if (status === 'cancelled') {
+      backgroundColor = '#f87171';  // Red
+      borderColor = '#ef4444';  // Darker red
+      return { backgroundColor, borderColor, textColor };
+    }
+    
+    switch (eventType) {
+      case 'appointment':
+        backgroundColor = '#4f46e5';  // Indigo
+        borderColor = '#4338ca';  // Darker indigo
+        break;
+      case 'availability':
+        backgroundColor = '#10b981';  // Green
+        borderColor = '#059669';  // Darker green
+        textColor = '#ffffff';
+        break;
+      case 'time_off':
+        backgroundColor = '#f59e0b';  // Amber
+        borderColor = '#d97706';  // Darker amber
+        break;
+      default:
+        backgroundColor = '#6b7280';  // Gray
+        borderColor = '#4b5563';  // Darker gray
+    }
+    
+    return { backgroundColor, borderColor, textColor };
+  }
+  
+  /**
+   * Apply event colors based on type
+   */
+  static applyEventColors(event: CalendarEvent): CalendarEvent {
+    const eventType = event.extendedProps?.eventType || event.type || 'general';
+    let backgroundColor = '#6b7280'; // Default gray
+    
+    switch (eventType) {
+      case 'appointment':
+        backgroundColor = '#4f46e5'; // Indigo
+        break;
+      case 'availability':
+        backgroundColor = '#10b981'; // Green
+        break;
+      case 'time_off':
+        backgroundColor = '#f59e0b'; // Amber
+        break;
+    }
+    
+    return {
+      ...event,
+      backgroundColor,
+      borderColor: backgroundColor,
+      textColor: '#ffffff'
+    };
+  }
+  
+  /**
+   * Generate mock calendar events for testing
+   */
+  static generateMockEvents(clinicianId: string, timezone: string): CalendarEvent[] {
+    const events: CalendarEvent[] = [];
+    const today = new Date();
+    const currentDay = today.getDay(); // 0 = Sunday, 6 = Saturday
+    
+    // Generate some mock appointments
+    for (let i = 0; i < 3; i++) {
+      const appointmentDate = new Date();
+      appointmentDate.setDate(today.getDate() + i + 1);
+      appointmentDate.setHours(10 + i, 0, 0);
+      
+      const appointmentEnd = new Date(appointmentDate);
+      appointmentEnd.setHours(appointmentEnd.getHours() + 1);
+      
+      const mockAppointment = {
+        id: `mock-appt-${i}`,
+        title: `Mock Appointment ${i + 1}`,
+        start_time: appointmentDate.toISOString(),
+        end_time: appointmentEnd.toISOString(),
+        client_name: `Test Client ${i + 1}`,
+        client_id: `client-${i}`,
+        clinician_id: clinicianId,
+        time_zone: timezone
+      };
+      
+      events.push(this.convertAppointmentToCalendarEvent(mockAppointment, timezone));
+    }
+    
+    // Generate some mock availability blocks
+    for (let day = 0; day < 7; day++) {
+      const availabilityDate = new Date();
+      availabilityDate.setDate(today.getDate() - currentDay + day);
+      availabilityDate.setHours(9, 0, 0);
+      
+      const availabilityEnd = new Date(availabilityDate);
+      availabilityEnd.setHours(17, 0, 0);
+      
+      const mockAvailability = {
+        id: `mock-avail-${day}`,
+        clinician_id: clinicianId,
+        start_time: availabilityDate.toISOString(),
+        end_time: availabilityEnd.toISOString(),
+        availability_type: 'Regular Hours',
+        all_day: false,
+        time_zone: timezone
+      };
+      
+      events.push(this.convertAvailabilityToCalendarEvent(mockAvailability, timezone));
+    }
+    
+    // Generate a mock time off event
+    const timeOffDate = new Date();
+    timeOffDate.setDate(today.getDate() + 7);
+    timeOffDate.setHours(0, 0, 0);
+    
+    const timeOffEnd = new Date(timeOffDate);
+    timeOffEnd.setDate(timeOffEnd.getDate() + 1);
+    
+    const mockTimeOff = {
+      id: 'mock-timeoff-1',
+      clinician_id: clinicianId,
+      start_time: timeOffDate.toISOString(),
+      end_time: timeOffEnd.toISOString(),
+      time_zone: timezone
+    };
+    
+    events.push(this.convertTimeOffToCalendarEvent(mockTimeOff, timezone));
+    
+    // Apply colors and return
+    return events.map(event => this.applyEventColors(event));
   }
   
   /**
@@ -460,152 +663,6 @@ export class CalendarService {
       console.error('[CalendarService] Error getting event:', error);
       throw CalendarErrorHandler.formatError(error);
     }
-  }
-  
-  /**
-   * Prepare appointment data from calendar event
-   */
-  static prepareAppointmentData(event: CalendarEvent, timezone: string): Partial<Appointment> {
-    const start = event.start instanceof Date ? event.start : new Date(event.start);
-    const end = event.end instanceof Date ? event.end : new Date(event.end);
-    
-    return {
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
-      clinician_id: event.extendedProps?.clinicianId,
-      client_id: event.extendedProps?.clientId,
-      time_zone: timezone,
-      // Add other properties as needed
-    };
-  }
-  
-  /**
-   * Prepare availability data from calendar event
-   */
-  static prepareAvailabilityData(event: CalendarEvent, timezone: string): Partial<AvailabilityBlock> {
-    const start = event.start instanceof Date ? event.start : new Date(event.start);
-    const end = event.end instanceof Date ? event.end : new Date(event.end);
-    
-    return {
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
-      clinician_id: event.extendedProps?.clinicianId,
-      time_zone: timezone,
-      // Add other properties as needed
-    };
-  }
-  
-  /**
-   * Prepare time off data from calendar event
-   */
-  static prepareTimeOffData(event: CalendarEvent, timezone: string): Partial<TimeOff> {
-    const start = event.start instanceof Date ? event.start : new Date(event.start);
-    const end = event.end instanceof Date ? event.end : new Date(event.end);
-    
-    return {
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
-      clinician_id: event.extendedProps?.clinicianId,
-      time_zone: timezone,
-      // Add other properties as needed
-    };
-  }
-  
-  /**
-   * Determine event color based on type
-   */
-  static getEventColor(eventType: CalendarEventType, status?: string): { backgroundColor: string, borderColor: string, textColor: string } {
-    let backgroundColor: string;
-    let borderColor: string;
-    let textColor = '#ffffff';
-    
-    // Handle cancelled events
-    if (status === 'cancelled') {
-      backgroundColor = '#f87171';  // Red
-      borderColor = '#ef4444';  // Darker red
-      return { backgroundColor, borderColor, textColor };
-    }
-    
-    switch (eventType) {
-      case 'appointment':
-        backgroundColor = '#4f46e5';  // Indigo
-        borderColor = '#4338ca';  // Darker indigo
-        break;
-      case 'availability':
-        backgroundColor = '#10b981';  // Green
-        borderColor = '#059669';  // Darker green
-        textColor = '#ffffff';
-        break;
-      case 'time_off':
-        backgroundColor = '#f59e0b';  // Amber
-        borderColor = '#d97706';  // Darker amber
-        break;
-      default:
-        backgroundColor = '#6b7280';  // Gray
-        borderColor = '#4b5563';  // Darker gray
-    }
-    
-    return { backgroundColor, borderColor, textColor };
-  }
-  
-  /**
-   * Apply event colors based on type
-   */
-  static applyEventColors(event: CalendarEvent): CalendarEvent {
-    const eventType = event.extendedProps?.eventType as CalendarEventType || 'general';
-    const status = event.extendedProps?.status;
-    
-    const colors = this.getEventColor(eventType, status);
-    
-    event.backgroundColor = colors.backgroundColor;
-    event.borderColor = colors.borderColor;
-    event.textColor = colors.textColor;
-    
-    return event;
-  }
-  
-  /**
-   * Generate mock data for testing (for Appointment type)
-   */
-  static getMockAppointment(clinicianId: string): Appointment {
-    return {
-      id: `mock-appointment-${Math.random().toString(36).substring(2, 9)}`,
-      clinician_id: clinicianId,
-      client_id: `mock-client-${Math.random().toString(36).substring(2, 9)}`,
-      client_name: 'Mock Client',
-      start_time: new Date().toISOString(),
-      end_time: new Date(Date.now() + 3600000).toISOString(),
-      all_day: false,
-      appointment_type: 'Standard',
-      time_zone: 'UTC',
-    };
-  }
-  
-  /**
-   * Generate mock data for testing (for AvailabilityBlock type)
-   */
-  static getMockAvailabilityBlock(clinicianId: string): AvailabilityBlock {
-    return {
-      id: `mock-availability-${Math.random().toString(36).substring(2, 9)}`,
-      clinician_id: clinicianId,
-      start_time: new Date().toISOString(),
-      end_time: new Date(Date.now() + 3600000).toISOString(),
-      availability_type: 'Standard',
-      time_zone: 'UTC',
-    };
-  }
-  
-  /**
-   * Generate mock data for testing (for TimeOff type)
-   */
-  static getMockTimeOff(clinicianId: string): TimeOff {
-    return {
-      id: `mock-timeoff-${Math.random().toString(36).substring(2, 9)}`,
-      clinician_id: clinicianId,
-      start_time: new Date().toISOString(),
-      end_time: new Date(Date.now() + 3600000).toISOString(),
-      time_zone: 'UTC',
-    };
   }
   
   /**

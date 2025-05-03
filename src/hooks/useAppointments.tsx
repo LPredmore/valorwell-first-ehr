@@ -221,7 +221,7 @@ export const useAppointments = (userId: string | null) => {
           });
           refetch();
         } else {
-          const errorMessage = result.error ? result.error : "Failed to update session status.";
+          const errorMessage = result && result.error ? result.error : "Failed to update session status.";
           toast({
             title: "Error updating session",
             description: errorMessage,

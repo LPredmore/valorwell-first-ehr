@@ -115,7 +115,7 @@ export const useAvailability = (clinicianId: string | null) => {
       await fetchWeeklyAvailability();
       
       // Fix the type safety issue for the result - add null check
-      const slotId = result ? (typeof result === 'object' && result.id ? result.id : String(result)) : undefined;
+      const slotId = result ? (typeof result === 'object' && result.id ? result.id : String(result || '')) : undefined;
       return { success: true, slotId };
     } catch (err) {
       const error = CalendarErrorHandler.formatError(err);
