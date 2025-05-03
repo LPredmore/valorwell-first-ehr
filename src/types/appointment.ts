@@ -4,22 +4,28 @@
  */
 export interface BaseAppointment {
   id: string;
-  clientName: string;
+  clientName?: string;
   date: string;
   startTime: string;
   endTime: string;
-  location: string;
+  location?: string;
   status: string;
-  clientId: string;
+  clientId?: string;
+  title?: string;
   
   // Legacy snake_case properties to maintain compatibility
   client_id?: string;
+  client_name?: string;
   clinician_id?: string; 
   start_time?: string;
   end_time?: string;
   appointment_datetime?: string;
   appointment_end_datetime?: string;
   source_time_zone?: string;
+  all_day?: boolean;
+  allDay?: boolean;
+  appointment_type?: string;
+  appointmentType?: string;
   
   // Display properties for timezone conversions
   display_date?: string;
@@ -66,7 +72,7 @@ export interface AppointmentWithLuxon extends AppointmentDetail {
 export function isBaseAppointment(obj: any): obj is BaseAppointment {
   return obj && 
     typeof obj.id === 'string' && 
-    (typeof obj.clientName === 'string' || typeof obj.client_id === 'string') && 
+    ((typeof obj.clientName === 'string') || (typeof obj.client_name === 'string') || (typeof obj.client_id === 'string')) && 
     ((typeof obj.startTime === 'string') || (typeof obj.start_time === 'string')) && 
     ((typeof obj.endTime === 'string') || (typeof obj.end_time === 'string'));
 }
@@ -96,6 +102,11 @@ export interface AvailabilitySlot {
   clientName?: string;
   appointmentStatus?: string;
   excludeDates?: string[];
+  title?: string;
+  allDay?: boolean;
+  all_day?: boolean;
+  timezone?: string;
+  specificDate?: string;
 }
 
 export interface WeeklyAvailability {
@@ -118,7 +129,46 @@ export interface AvailabilityEvent {
   dayOfWeek?: string; 
   isRecurring?: boolean;
   excludeDates?: string[];
+  title?: string;
+  allDay?: boolean;
+}
+
+// Calendar event model that's compatible with FullCalendar
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  start: Date | string;
+  end: Date | string;
+  allDay?: boolean;
+  backgroundColor?: string;
+  borderColor?: string;
+  textColor?: string;
+  className?: string | string[];
+  editable?: boolean;
+  startEditable?: boolean;
+  durationEditable?: boolean;
+  resourceEditable?: boolean;
+  display?: string;
+  constraint?: string;
+  overlap?: boolean;
+  source?: any;
+  extendedProps?: Record<string, any>;
 }
 
 // Define AppointmentAvailabilitySlot type that was being used in AvailabilityQueryService
 export type AppointmentAvailabilitySlot = AvailabilitySlot;
+
+// Availability block type for the database
+export interface AvailabilityBlock {
+  id?: string;
+  clinician_id: string;
+  start_time: string;
+  end_time: string;
+  availability_type: 'recurring' | 'single' | 'Standard Hours';
+  recurrence_pattern_id?: string;
+  is_active?: boolean;
+  time_zone: string;
+  title?: string;
+  allDay?: boolean;
+  all_day?: boolean;
+}

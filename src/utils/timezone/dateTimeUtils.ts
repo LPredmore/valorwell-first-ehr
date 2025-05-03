@@ -1,6 +1,7 @@
+
 import { DateTime } from 'luxon';
 import { TimeZoneError } from './TimeZoneError';
-import { TimeZoneService } from './index';
+import { TimeZoneService } from '@/utils/timezone';
 
 /**
  * Utility functions for standardizing DateTime handling across the application

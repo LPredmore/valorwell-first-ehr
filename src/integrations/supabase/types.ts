@@ -765,12 +765,12 @@ export type Database = {
           clinician_npi_number: string | null
           clinician_phone: string | null
           clinician_professional_name: string | null
-          clinician_state: string[] | null
           clinician_status:
             | Database["public"]["Enums"]["clinician_status_enum"]
             | null
           clinician_taxonomy_code: string | null
           clinician_temppassword: string | null
+          clinician_timezone: string[] | null
           clinician_treatment_approaches: string[] | null
           clinician_type: string | null
           created_at: string
@@ -791,12 +791,12 @@ export type Database = {
           clinician_npi_number?: string | null
           clinician_phone?: string | null
           clinician_professional_name?: string | null
-          clinician_state?: string[] | null
           clinician_status?:
             | Database["public"]["Enums"]["clinician_status_enum"]
             | null
           clinician_taxonomy_code?: string | null
           clinician_temppassword?: string | null
+          clinician_timezone?: string[] | null
           clinician_treatment_approaches?: string[] | null
           clinician_type?: string | null
           created_at?: string
@@ -817,12 +817,12 @@ export type Database = {
           clinician_npi_number?: string | null
           clinician_phone?: string | null
           clinician_professional_name?: string | null
-          clinician_state?: string[] | null
           clinician_status?:
             | Database["public"]["Enums"]["clinician_status_enum"]
             | null
           clinician_taxonomy_code?: string | null
           clinician_temppassword?: string | null
+          clinician_timezone?: string[] | null
           clinician_treatment_approaches?: string[] | null
           clinician_type?: string | null
           created_at?: string
