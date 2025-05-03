@@ -8,7 +8,7 @@ import { AvailabilitySettings } from '@/types/availability';
  */
 export class MockAvailabilityService {
   private static daysOfWeek: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  private mockSettings: Record<string, AvailabilitySettings> = {};
+  private static mockSettings: Record<string, AvailabilitySettings> = {};
 
   /**
    * Generate mock availability slots for a clinician
@@ -186,7 +186,7 @@ export class MockAvailabilityService {
   /**
    * Get availability settings for a clinician
    */
-  async getSettingsForClinician(clinicianId: string): Promise<AvailabilitySettings> {
+  static async getSettingsForClinician(clinicianId: string): Promise<AvailabilitySettings> {
     console.log('[MockAvailabilityService] Getting settings for clinician:', clinicianId);
     
     // Generate or retrieve stored settings
@@ -195,37 +195,27 @@ export class MockAvailabilityService {
     // Store for future use
     this.mockSettings[clinicianId] = settings;
     
-    return {
-      id: `settings_${clinicianId}`,
-      clinicianId: clinicianId,
-      defaultSlotDuration: settings.slotDuration,
-      minNoticeDays: 1,
-      maxAdvanceDays: 30,
-      timeZone: settings.timeZone,
-      slotDuration: settings.slotDuration,
-      timeGranularity: 'hour',
-      isActive: settings.isActive
-    };
+    return settings;
   }
 
   /**
    * Update settings for a clinician
    */
-  async updateSettings(clinicianId: string, updates: Partial<AvailabilitySettings>): Promise<AvailabilitySettings> {
-    const currentSettings = await this.getSettingsForClinician(clinicianId);
+  static async updateSettings(clinicianId: string, updates: Partial<AvailabilitySettings>): Promise<AvailabilitySettings> {
+    // Get current settings or create new ones
+    let currentSettings = this.mockSettings[clinicianId];
+    if (!currentSettings) {
+      currentSettings = await this.getSettingsForClinician(clinicianId);
+    }
     
     // Apply updates while keeping the current structure
-    const updatedSettings = {
+    const updatedSettings: AvailabilitySettings = {
       ...currentSettings,
       ...updates,
     };
     
     // Update in-memory store
-    this.mockSettings[clinicianId] = {
-      slotDuration: updatedSettings.slotDuration,
-      timeZone: updatedSettings.timeZone,
-      isActive: updatedSettings.isActive
-    };
+    this.mockSettings[clinicianId] = updatedSettings;
     
     return updatedSettings;
   }
@@ -233,10 +223,16 @@ export class MockAvailabilityService {
   /**
    * Generate default settings for a clinician
    */
-  private generateDefaultSettings(clinicianId: string) {
+  private static generateDefaultSettings(clinicianId: string): AvailabilitySettings {
     return {
-      slotDuration: 60,
+      id: `settings_${clinicianId}`,
+      clinicianId: clinicianId,
+      defaultSlotDuration: 60,
+      minNoticeDays: 1,
+      maxAdvanceDays: 30,
       timeZone: 'America/Chicago',
+      slotDuration: 60,
+      timeGranularity: 'hour',
       isActive: true
     };
   }

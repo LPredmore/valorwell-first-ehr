@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { availabilityService } from '@/services/availabilityService';
 import { AvailabilitySettings, AvailabilitySlot, DayOfWeek, WeeklyAvailability } from '@/types/availability';
@@ -112,8 +113,8 @@ export const useAvailability = (clinicianId: string | null) => {
       );
 
       await fetchWeeklyAvailability();
-      // Add a check to ensure we're accessing ID from an object, not a string
-      const slotId = typeof result === 'object' && result ? result.id : String(result);
+      // Fix the type safety issue for the result
+      const slotId = result && typeof result === 'object' ? result.id : String(result);
       return { success: true, slotId };
     } catch (err) {
       const error = CalendarErrorHandler.formatError(err);

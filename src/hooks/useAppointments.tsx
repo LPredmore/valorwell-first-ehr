@@ -7,6 +7,7 @@ import { useTimeZone } from '@/context/TimeZoneContext';
 import { AppointmentType } from '@/types/appointment';
 import { getAppointmentsInUserTimeZone } from '@/utils/appointmentUtils';
 import { formatClientName } from '@/utils/clientDataUtils';
+import { appointmentService } from '@/services/appointmentService';
 
 export type { AppointmentType };
 
@@ -19,6 +20,7 @@ export const useAppointments = (userId: string | null) => {
   const [showSessionTemplate, setShowSessionTemplate] = useState(false);
   const [clientData, setClientData] = useState<any>(null);
   const [isLoadingClientData, setIsLoadingClientData] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const { data: appointments, isLoading, error, refetch } = useQuery({
     queryKey: ['clinician-appointments', userId, userTimeZone],
@@ -208,16 +210,16 @@ export const useAppointments = (userId: string | null) => {
       setIsUpdating(true);
       const result = await appointmentService.markSessionNoShow(appointmentId, reason);
       
-      // Add null check before accessing result properties
-      if (result && result.success) {
+      // Add null safety checks
+      if (result && 'success' in result && result.success) {
         toast({
           title: "Session marked as 'Did Not Occur'",
           description: "The session has been updated in the system.",
-          variant: "success",
+          variant: "destructive",
         });
         refetch();
       } else {
-        const errorMessage = result?.error || "Failed to update session status.";
+        const errorMessage = result && 'error' in result ? result.error : "Failed to update session status.";
         toast({
           title: "Error updating session",
           description: errorMessage,

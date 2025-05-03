@@ -1,5 +1,6 @@
+
 import { AuthChangeEvent, Session, SupabaseClient, User } from '@supabase/supabase-js';
-import { Database } from '@/types/supabase';
+import { Database, MockSupabaseClient } from '@/types/supabase';
 import MockAvailabilityService from '@/services/mock/MockAvailabilityService';
 
 // Mock Supabase client
@@ -96,7 +97,7 @@ const getAvailability = async (
 // Mock implementation for the getAvailabilitySettings function
 const getAvailabilitySettings = async (clinicianId: string): Promise<any> => {
   try {
-    // Call the mock service to get availability settings
+    // Call the mock service to get availability settings (now using static method)
     return await MockAvailabilityService.getSettingsForClinician(clinicianId);
   } catch (error) {
     console.error('Error getting availability settings:', error);
@@ -133,7 +134,7 @@ const updateAvailabilitySettings = async (
   settings: any
 ): Promise<any> => {
   try {
-    // Call the mock service to update availability settings
+    // Call the mock service to update availability settings (now using static method)
     return await MockAvailabilityService.updateSettings(clinicianId, settings);
   } catch (error) {
     console.error('Error updating availability settings:', error);

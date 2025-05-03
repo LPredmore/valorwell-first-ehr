@@ -1,9 +1,27 @@
-
 // This file defines types for the Supabase database tables and functions
 
 // Common base types
 export type UUID = string;
 export type Timestamp = string;
+
+// Add Database type that was missing
+export interface Database {
+  public: {
+    Tables: {
+      profiles: {
+        Row: Profile;
+        Insert: Omit<Profile, 'created_at' | 'updated_at'>;
+        Update: Partial<Profile>;
+      };
+      calendar_events: {
+        Row: CalendarEvent;
+        Insert: Omit<CalendarEvent, 'created_at' | 'updated_at'>;
+        Update: Partial<CalendarEvent>;
+      };
+      // Add other tables as needed
+    };
+  };
+}
 
 // Define database row types
 export interface Profile {

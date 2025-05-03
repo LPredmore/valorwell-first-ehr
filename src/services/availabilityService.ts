@@ -80,12 +80,25 @@ class AvailabilityService {
 
       // Choose the right method based on whether it's recurring or not
       if (isRecurring) {
+        // Convert DayOfWeek string to number for AvailabilityMutationService
+        const dayMap: Record<DayOfWeek, number> = {
+          'sunday': 0, 
+          'monday': 1, 
+          'tuesday': 2, 
+          'wednesday': 3, 
+          'thursday': 4, 
+          'friday': 5, 
+          'saturday': 6
+        };
+        
+        // Convert the day of week to a number
+        const dayOfWeekNum = dayMap[dayOfWeek];
+        
         return await AvailabilityMutationService.createRecurringAvailability(
           clinicianId,
-          dayOfWeek,
+          dayOfWeekNum,
           startTime,
           endTime,
-          recurrenceRule,
           validatedTimeZone
         );
       } else {
@@ -108,8 +121,11 @@ class AvailabilityService {
    */
   async updateAvailabilitySlot(slotId: string, updates: Partial<AvailabilitySlot>) {
     try {
-      // Use updateAvailability method if updateAvailabilitySlot is not available
-      return await AvailabilityMutationService.updateAvailability(slotId, updates);
+      // Get the timezone from the updates or use a default
+      const timeZone = updates.sourceTimeZone || 'UTC';
+      
+      // Use updateAvailability method with correct parameters
+      return await AvailabilityMutationService.updateAvailability(slotId, updates, timeZone);
     } catch (error) {
       console.error('Error updating availability slot:', error);
       throw error;

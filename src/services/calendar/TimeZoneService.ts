@@ -1,4 +1,3 @@
-
 import { DateTime } from 'luxon';
 import { CalendarEvent } from '@/types/calendar';
 
@@ -339,7 +338,7 @@ export class TimeZoneService {
   }
 
   /**
-   * Get display name from IANA timezone
+   * Get display name from IANA timezone identifier
    */
   static getDisplayNameFromIANA(timeZone: string): string {
     try {
@@ -351,7 +350,7 @@ export class TimeZoneService {
       return timeZone;
     }
   }
-
+  
   /**
    * Get IANA timezone from display name
    */
@@ -367,9 +366,9 @@ export class TimeZoneService {
     
     return displayToIANA[displayName] || 'UTC';
   }
-
+  
   /**
-   * Get timezone offset string
+   * Get timezone offset string (e.g., GMT+2)
    */
   static getTimezoneOffsetString(timeZone: string): string {
     try {
