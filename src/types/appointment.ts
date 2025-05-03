@@ -164,11 +164,36 @@ export interface AvailabilityBlock {
   clinician_id: string;
   start_time: string;
   end_time: string;
-  availability_type: 'recurring' | 'single' | 'Standard Hours';
+  availability_type: 'recurring' | 'single';
   recurrence_pattern_id?: string;
   is_active?: boolean;
   time_zone: string;
   title?: string;
   allDay?: boolean;
   all_day?: boolean;
+  day_of_week?: number;
+  specific_date?: string | Date;
+}
+
+/**
+ * Convert between availability data types
+ */
+export function convertAvailabilityBlockToCalendarEvent(block: AvailabilityBlock, userTimeZone: string): CalendarEvent {
+  return {
+    id: block.id || '',
+    title: block.title || 'Available',
+    start: block.start_time,
+    end: block.end_time,
+    allDay: block.allDay || block.all_day || false,
+    backgroundColor: '#22c55e',
+    borderColor: '#16a34a',
+    textColor: '#ffffff',
+    extendedProps: {
+      clinicianId: block.clinician_id,
+      availability_type: block.availability_type,
+      time_zone: block.time_zone,
+      sourceTimeZone: block.time_zone,
+      userTimeZone
+    }
+  };
 }

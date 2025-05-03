@@ -1,386 +1,325 @@
-import { DateTime } from 'luxon';
-import { CalendarEvent } from '@/types/calendar';
+// Import or create if missing 
+// This file should be in src/services/calendar/TimeZoneService.ts
+// Add the necessary methods for availability management
+
+import { DateTime, IANAZone, Info } from 'luxon';
+import { CalendarError } from './CalendarErrorHandler';
 
 /**
- * Map of common timezone display names to IANA format
- */
-export const TIMEZONE_MAP: Record<string, string> = {
-  'Eastern Time (ET)': 'America/New_York',
-  'Central Time (CT)': 'America/Chicago',
-  'Mountain Time (MT)': 'America/Denver',
-  'Pacific Time (PT)': 'America/Los_Angeles',
-  'Alaska Time (AKT)': 'America/Anchorage',
-  'Hawaii-Aleutian Time (HST)': 'Pacific/Honolulu',
-  'Atlantic Time (AST)': 'America/Puerto_Rico',
-  'GMT': 'Etc/GMT',
-  'UTC': 'Etc/UTC'
-};
-
-/**
- * Available timezone options for UI display
- */
-export const TIMEZONE_OPTIONS = [
-  { value: 'America/New_York', label: 'Eastern Time (ET)' },
-  { value: 'America/Chicago', label: 'Central Time (CT)' },
-  { value: 'America/Denver', label: 'Mountain Time (MT)' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
-  { value: 'America/Anchorage', label: 'Alaska Time (AKT)' },
-  { value: 'Pacific/Honolulu', label: 'Hawaii-Aleutian Time (HST)' },
-  { value: 'UTC', label: 'Coordinated Universal Time (UTC)' }
-];
-
-/**
- * Time unit type for duration calculations
- */
-export type TimeUnit = 'years' | 'months' | 'weeks' | 'days' | 'hours' | 'minutes' | 'seconds' | 'milliseconds';
-
-/**
- * DateTime format options
- */
-export type DateTimeFormat = string;
-
-/**
- * TimeZoneService for calendar operations
+ * Centralized service for timezone operations
  */
 export class TimeZoneService {
   /**
-   * Validates and ensures a timezone string is in IANA format
-   * @param tz Timezone string to validate
-   * @param defaultTz Default timezone to use if input is invalid
-   * @returns Valid IANA timezone string
+   * Validates that a timezone string is a valid IANA timezone
    */
-  static ensureIANATimeZone(tz?: string | null, defaultTz = 'UTC'): string {
-    if (!tz) return defaultTz;
+  static validateTimeZone(timeZone: string): string {
+    if (!timeZone || typeof timeZone !== 'string') {
+      console.warn('[TimeZoneService] Empty or invalid timezone provided, defaulting to UTC');
+      return 'UTC';
+    }
+
+    try {
+      if (IANAZone.isValidZone(timeZone)) {
+        return timeZone;
+      }
+      console.warn(`[TimeZoneService] Invalid timezone provided: ${timeZone}, defaulting to UTC`);
+      return 'UTC';
+    } catch (error) {
+      console.warn(`[TimeZoneService] Error validating timezone: ${timeZone}`, error);
+      return 'UTC';
+    }
+  }
+
+  /**
+   * Ensures a timezone string is a valid IANA timezone
+   * Similar to validateTimeZone but more permissive with fallbacks
+   */
+  static ensureIANATimeZone(timeZone: string | undefined | null): string {
+    if (!timeZone) {
+      return 'UTC';
+    }
     
     try {
-      // Check if Luxon recognizes this timezone
-      const dt = DateTime.now().setZone(tz);
-      if (dt.isValid) {
-        return tz;
+      if (IANAZone.isValidZone(timeZone)) {
+        return timeZone;
       }
-      console.warn(`[TimeZoneService] Invalid timezone: ${tz}, using ${defaultTz}`);
-      return defaultTz;
-    } catch (error) {
-      console.warn(`[TimeZoneService] Error validating timezone ${tz}:`, error);
-      return defaultTz;
-    }
-  }
-  
-  /**
-   * Legacy method for tests - redirects to ensureIANATimeZone
-   */
-  static validateTimeZone(tz: string, defaultTz = 'UTC'): string {
-    return this.ensureIANATimeZone(tz, defaultTz);
-  }
-  
-  /**
-   * Legacy method for tests - redirects to convertDateTime
-   */
-  static convertTimeZone(date: Date | string, fromZone: string, toZone: string): Date {
-    if (typeof date === 'string') {
-      // For backward compatibility with test expectations
-      return new Date(date);
-    }
-    // In a real implementation, this would use convertDateTime
-    return date;
-  }
-
-  /**
-   * Gets the local timezone of the browser
-   */
-  static getLocalTimeZone(): string {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  }
-
-  /**
-   * Gets the user's timezone - alias for getLocalTimeZone
-   */
-  static getUserTimeZone(): string {
-    return this.getLocalTimeZone();
-  }
-
-  /**
-   * Formats a timezone for display
-   * @param timeZone IANA timezone string
-   */
-  static formatTimeZoneDisplay(timeZone: string): string {
-    try {
-      const now = DateTime.now().setZone(timeZone);
-      if (!now.isValid) return timeZone;
       
-      const offset = now.toFormat('ZZ');
-      const label = timeZone.replace(/_/g, ' ').split('/').pop() || timeZone;
-      return `${label} (GMT${offset})`;
+      // Try to match with common timezone aliases
+      const tzAliases: Record<string, string> = {
+        'EST': 'America/New_York',
+        'CST': 'America/Chicago',
+        'MST': 'America/Denver',
+        'PST': 'America/Los_Angeles',
+        'EDT': 'America/New_York',
+        'CDT': 'America/Chicago',
+        'MDT': 'America/Denver',
+        'PDT': 'America/Los_Angeles'
+      };
+      
+      if (tzAliases[timeZone]) {
+        return tzAliases[timeZone];
+      }
+      
+      // Fall back to browser's timezone
+      const browserTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (IANAZone.isValidZone(browserTZ)) {
+        console.warn(`[TimeZoneService] Invalid timezone: ${timeZone}, using browser timezone: ${browserTZ}`);
+        return browserTZ;
+      }
+      
+      console.warn(`[TimeZoneService] Invalid timezone: ${timeZone}, defaulting to UTC`);
+      return 'UTC';
     } catch (error) {
-      return timeZone;
+      console.warn(`[TimeZoneService] Error ensuring IANA timezone: ${timeZone}`, error);
+      return 'UTC';
     }
   }
 
   /**
-   * Creates a DateTime object from date and time strings
-   * @param dateStr Date string
-   * @param timeStr Time string
-   * @param timeZone Timezone to use
+   * Creates a DateTime object from a date string and time string in a timezone
    */
   static createDateTime(dateStr: string, timeStr: string, timeZone: string): DateTime {
-    const validTimeZone = this.ensureIANATimeZone(timeZone);
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    
-    return DateTime.fromISO(dateStr, { zone: validTimeZone })
-      .set({ hour: hours, minute: minutes });
+    try {
+      const validatedTimeZone = this.validateTimeZone(timeZone);
+      
+      // Normalize date string
+      if (typeof dateStr !== 'string') {
+        dateStr = new Date(dateStr).toISOString().split('T')[0];
+      }
+      
+      // Parse the date and time strings
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      
+      // Create DateTime object
+      const dt = DateTime.fromObject({
+        year,
+        month,
+        day,
+        hour: hours,
+        minute: minutes
+      }, { zone: validatedTimeZone });
+      
+      if (!dt.isValid) {
+        throw new CalendarError(
+          'Failed to create DateTime object',
+          'CALENDAR_INVALID_DATETIME',
+          { dateStr, timeStr, timeZone, invalidReason: dt.invalidReason }
+        );
+      }
+      
+      return dt;
+    } catch (error) {
+      if (error instanceof CalendarError) {
+        throw error;
+      }
+      throw new CalendarError(
+        'Failed to create DateTime object',
+        'CALENDAR_UNKNOWN_ERROR',
+        { dateStr, timeStr, timeZone, error }
+      );
+    }
   }
 
   /**
    * Converts a DateTime from one timezone to another
-   * @param dateTime DateTime object or string to convert
-   * @param fromZone Source timezone
-   * @param toZone Target timezone
    */
-  static convertDateTime(dateTime: DateTime | string | Date, fromZone: string, toZone: string): DateTime {
-    const validFromZone = this.ensureIANATimeZone(fromZone);
-    const validToZone = this.ensureIANATimeZone(toZone);
-    
-    let dt: DateTime;
-    
-    if (dateTime instanceof DateTime) {
-      dt = dateTime.setZone(validFromZone);
-    } else if (dateTime instanceof Date) {
-      dt = DateTime.fromJSDate(dateTime).setZone(validFromZone);
-    } else {
-      dt = DateTime.fromISO(dateTime).setZone(validFromZone);
-    }
-    
-    return dt.setZone(validToZone);
-  }
-
-  /**
-   * Formats a DateTime object according to the specified format
-   * @param dateTime DateTime object to format
-   * @param format Format string or predefined format
-   * @param timeZone Timezone to use for formatting
-   */
-  static formatDateTime(dateTime: DateTime | Date | string, format: string = 'full', timeZone?: string): string {
-    // Convert to DateTime if not already
-    let dt: DateTime;
-    if (dateTime instanceof DateTime) {
-      dt = dateTime;
-    } else if (dateTime instanceof Date) {
-      dt = DateTime.fromJSDate(dateTime);
-    } else {
-      dt = DateTime.fromISO(dateTime);
-    }
-    
-    if (!dt.isValid) {
-      console.error('Invalid DateTime object', dt.invalidReason);
-      return 'Invalid date';
-    }
-    
-    // Set timezone if provided
-    const dateTimeInZone = timeZone 
-      ? dt.setZone(this.ensureIANATimeZone(timeZone))
-      : dt;
+  static convertDateTime(dateTime: string | Date, sourceZone: string, targetZone: string): Date {
+    try {
+      const validatedSourceZone = this.validateTimeZone(sourceZone);
+      const validatedTargetZone = this.validateTimeZone(targetZone);
       
-    return dateTimeInZone.toFormat(format);
-  }
-  
-  /**
-   * Format just the date part
-   */
-  static formatDate(date: DateTime | Date | string, format: string = 'yyyy-MM-dd', timeZone?: string): string {
-    return this.formatDateTime(date, format, timeZone);
-  }
-  
-  /**
-   * Format just the time part
-   */
-  static formatTime(time: string | Date | DateTime, format: string = 'h:mm a', timeZone?: string): string {
-    return this.formatDateTime(time, format, timeZone);
-  }
-
-  /**
-   * Format date to 12-hour time format
-   */
-  static formatDateToTime12Hour(date: Date | string): string {
-    const dt = typeof date === 'string' ? new Date(date) : date;
-    return dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  }
-
-  /**
-   * Converts a calendar event's dates to the user's timezone
-   */
-  static convertEventToUserTimeZone(event: CalendarEvent, userTimeZone: string): CalendarEvent {
-    const validTimeZone = this.ensureIANATimeZone(userTimeZone);
-    const sourceTimeZone = event.extendedProps?.sourceTimeZone || 'UTC';
-    
-    let eventStart: DateTime;
-    let eventEnd: DateTime;
-    
-    // Convert start time
-    if (typeof event.start === 'string') {
-      eventStart = DateTime.fromISO(event.start, { zone: sourceTimeZone }).setZone(validTimeZone);
-    } else {
-      eventStart = DateTime.fromJSDate(event.start, { zone: sourceTimeZone }).setZone(validTimeZone);
-    }
-    
-    // Convert end time
-    if (typeof event.end === 'string') {
-      eventEnd = DateTime.fromISO(event.end, { zone: sourceTimeZone }).setZone(validTimeZone);
-    } else {
-      eventEnd = DateTime.fromJSDate(event.end, { zone: sourceTimeZone }).setZone(validTimeZone);
-    }
-    
-    // Create additional display fields for the event
-    const displayStart = this.formatTime(eventStart);
-    const displayEnd = this.formatTime(eventEnd);
-    const displayDay = eventStart.toFormat('cccc');
-    const displayDate = eventStart.toFormat('MMM d, yyyy');
-    
-    // Return the event with converted times and display fields
-    return {
-      ...event,
-      start: eventStart.toJSDate(),
-      end: eventEnd.toJSDate(),
-      extendedProps: {
-        ...event.extendedProps,
-        sourceTimeZone,
-        displayStart,
-        displayEnd,
-        displayDay,
-        displayDate,
-        _userTimeZone: validTimeZone
+      let dt: DateTime;
+      
+      if (typeof dateTime === 'string') {
+        dt = DateTime.fromISO(dateTime, { zone: validatedSourceZone });
+      } else {
+        dt = DateTime.fromJSDate(dateTime, { zone: validatedSourceZone });
       }
-    };
-  }
-
-  /**
-   * Converts a DateTime to UTC
-   */
-  static toUTC(date: Date | DateTime): DateTime {
-    if (date instanceof DateTime) {
-      return date.toUTC();
-    }
-    return DateTime.fromJSDate(date).toUTC();
-  }
-
-  /**
-   * Converts a UTC string to a DateTime in the specified timezone
-   */
-  static fromUTC(utcStr: string, timezone: string): DateTime {
-    const validTimeZone = this.ensureIANATimeZone(timezone);
-    return DateTime.fromISO(utcStr, { zone: 'UTC' }).setZone(validTimeZone);
-  }
-
-  /**
-   * Parse a date string with timezone
-   */
-  static parseWithZone(dateString: string, timeZone: string): DateTime {
-    const validTimeZone = this.ensureIANATimeZone(timeZone);
-    return DateTime.fromISO(dateString, { zone: validTimeZone });
-  }
-  
-  /**
-   * Convert a date to a UTC timestamp in milliseconds
-   */
-  static toUTCTimestamp(date: Date | DateTime | string, sourceTimeZone?: string): number {
-    if (date instanceof DateTime) {
-      return date.toUTC().toMillis();
-    } else if (date instanceof Date) {
-      return DateTime.fromJSDate(date).toUTC().toMillis();
-    } else {
-      // For string dates, use the source timezone if provided
-      const zone = sourceTimeZone ? this.ensureIANATimeZone(sourceTimeZone) : 'UTC';
-      return DateTime.fromISO(date, { zone }).toUTC().toMillis();
-    }
-  }
-
-  /**
-   * Convert a UTC timestamp to a DateTime in the specified timezone
-   */
-  static fromUTCTimestamp(timestamp: number, timezone: string): DateTime {
-    const validTimeZone = this.ensureIANATimeZone(timezone);
-    return DateTime.fromMillis(timestamp, { zone: 'UTC' }).setZone(validTimeZone);
-  }
-  
-  /**
-   * Add a duration to a DateTime
-   */
-  static addDuration(date: DateTime, amount: number, unit: TimeUnit): DateTime {
-    return date.plus({ [unit]: amount });
-  }
-  
-  /**
-   * Check if two dates are the same day
-   */
-  static isSameDay(date1: DateTime, date2: DateTime): boolean {
-    return date1.hasSame(date2, 'day');
-  }
-  
-  /**
-   * Get the current date and time in the specified timezone
-   */
-  static getCurrentDateTime(timezone?: string): DateTime {
-    const validTimeZone = timezone ? this.ensureIANATimeZone(timezone) : undefined;
-    return DateTime.now().setZone(validTimeZone);
-  }
-  
-  /**
-   * Get the name of the weekday for a date
-   */
-  static getWeekdayName(date: DateTime, format: 'long' | 'short' = 'long'): string {
-    return date.toFormat(format === 'long' ? 'EEEE' : 'EEE');
-  }
-  
-  /**
-   * Get the name of the month for a date
-   */
-  static getMonthName(date: DateTime, format: 'long' | 'short' = 'long'): string {
-    return date.toFormat(format === 'long' ? 'MMMM' : 'MMM');
-  }
-
-  /**
-   * Get display name from IANA timezone identifier
-   */
-  static getDisplayNameFromIANA(timeZone: string): string {
-    try {
-      // Try to get a user-friendly name from the IANA identifier
-      const parts = timeZone.split('/');
-      const city = parts[parts.length - 1].replace(/_/g, ' ');
-      return city;
+      
+      if (!dt.isValid) {
+        throw new CalendarError(
+          'Invalid DateTime for conversion',
+          'CALENDAR_INVALID_DATETIME',
+          { dateTime, sourceZone, targetZone, invalidReason: dt.invalidReason }
+        );
+      }
+      
+      return dt.setZone(validatedTargetZone).toJSDate();
     } catch (error) {
-      return timeZone;
+      if (error instanceof CalendarError) {
+        throw error;
+      }
+      throw new CalendarError(
+        'Failed to convert DateTime between timezones',
+        'CALENDAR_CONVERSION_ERROR',
+        { dateTime, sourceZone, targetZone, error }
+      );
     }
   }
-  
+
   /**
-   * Get IANA timezone from display name
+   * Converts a timezone string to UTC
    */
-  static getIANAFromDisplayName(displayName: string): string {
-    // This is a simplified implementation - in reality, you would need a more comprehensive mapping
-    const displayToIANA: Record<string, string> = {
-      'Eastern Time': 'America/New_York',
-      'Central Time': 'America/Chicago',
-      'Mountain Time': 'America/Denver',
-      'Pacific Time': 'America/Los_Angeles',
-      // Add more mappings as needed
-    };
+  static toUTC(dateTime: Date | string, sourceZone?: string): DateTime {
+    try {
+      if (typeof dateTime === 'string') {
+        // If sourceZone is provided, parse with that zone, otherwise assume ISO string
+        if (sourceZone) {
+          return DateTime.fromISO(dateTime, { zone: this.validateTimeZone(sourceZone) }).toUTC();
+        } else {
+          return DateTime.fromISO(dateTime).toUTC();
+        }
+      } else {
+        // If sourceZone is provided, convert from JS Date with that zone, otherwise use local
+        if (sourceZone) {
+          return DateTime.fromJSDate(dateTime, { zone: this.validateTimeZone(sourceZone) }).toUTC();
+        } else {
+          return DateTime.fromJSDate(dateTime).toUTC();
+        }
+      }
+    } catch (error) {
+      console.error('[TimeZoneService] Error converting to UTC:', error);
+      // Return current time as fallback
+      return DateTime.now().toUTC();
+    }
+  }
+
+  /**
+   * Parses a string into a DateTime object with the specified timezone
+   */
+  static parseWithZone(dateTimeStr: string, timezone: string): DateTime {
+    try {
+      const zone = this.validateTimeZone(timezone);
+      let dt = DateTime.fromISO(dateTimeStr, { zone });
+      
+      if (!dt.isValid) {
+        // Try SQL format
+        dt = DateTime.fromSQL(dateTimeStr, { zone });
+      }
+      
+      if (!dt.isValid) {
+        // Try HTTP format
+        dt = DateTime.fromHTTP(dateTimeStr, { zone });
+      }
+      
+      if (!dt.isValid) {
+        throw new Error(`Failed to parse date string: ${dateTimeStr}`);
+      }
+      
+      return dt;
+    } catch (error) {
+      console.error('[TimeZoneService] Error parsing with zone:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Format a date for user display
+   */
+  static formatDate(date: DateTime | Date, format: 'full' | 'short' = 'full'): string {
+    try {
+      const dt = date instanceof DateTime ? date : DateTime.fromJSDate(date);
+      
+      if (format === 'full') {
+        return dt.toFormat('MMMM d, yyyy');
+      } else {
+        return dt.toFormat('MM/dd/yyyy');
+      }
+    } catch (error) {
+      console.error('[TimeZoneService] Error formatting date:', error);
+      return 'Invalid Date';
+    }
+  }
+
+  /**
+   * Format a time for user display
+   */
+  static formatTime(time: DateTime | Date, format: string = 'h:mm a', timezone?: string): string {
+    try {
+      let dt = time instanceof DateTime ? time : DateTime.fromJSDate(time);
+      
+      if (timezone) {
+        dt = dt.setZone(this.validateTimeZone(timezone));
+      }
+      
+      return dt.toFormat(format);
+    } catch (error) {
+      console.error('[TimeZoneService] Error formatting time:', error);
+      return 'Invalid Time';
+    }
+  }
+
+  /**
+   * Format a datetime for user display
+   */
+  static formatDateTime(datetime: DateTime | Date, format: 'full' | 'short' = 'full', timezone?: string): string {
+    try {
+      let dt = datetime instanceof DateTime ? datetime : DateTime.fromJSDate(datetime);
+      
+      if (timezone) {
+        dt = dt.setZone(this.validateTimeZone(timezone));
+      }
+      
+      if (format === 'full') {
+        return dt.toFormat('MMMM d, yyyy h:mm a');
+      } else {
+        return dt.toFormat('MM/dd/yyyy h:mm a');
+      }
+    } catch (error) {
+      console.error('[TimeZoneService] Error formatting datetime:', error);
+      return 'Invalid DateTime';
+    }
+  }
+
+  /**
+   * Format a timezone for user-friendly display
+   */
+  static formatTimeZoneDisplay(timezone: string): string {
+    try {
+      const zone = this.validateTimeZone(timezone);
+      const now = DateTime.now().setZone(zone);
+      const formatted = now.toFormat('ZZZZ');
+      
+      // Get cleaner timezone name
+      const zoneName = zone.replace(/_/g, ' ').replace(/\//g, ' / ');
+      
+      return `${zoneName} (${formatted})`;
+    } catch (error) {
+      console.error('[TimeZoneService] Error formatting timezone display:', error);
+      return timezone;
+    }
+  }
+
+  /**
+   * Get a list of common timezones
+   */
+  static getCommonTimezones(): { value: string; label: string }[] {
+    // Get all IANA timezones
+    const allZones = Info.features().zones ? Info.zones() : [];
     
-    return displayToIANA[displayName] || 'UTC';
-  }
-  
-  /**
-   * Get timezone offset string (e.g., GMT+2)
-   */
-  static getTimezoneOffsetString(timeZone: string): string {
-    try {
-      const now = new Date();
-      const options = { timeZone, timeZoneName: 'short' as const };
-      const formatter = new Intl.DateTimeFormat('en-US', options);
-      const parts = formatter.formatToParts(now);
-      const timeZonePart = parts.find(part => part.type === 'timeZoneName');
-      return timeZonePart?.value || '';
-    } catch (error) {
-      return '';
-    }
+    // Filter to common/major zones
+    const commonZones = allZones
+      .filter(zone => 
+        zone.includes('America/') ||
+        zone.includes('Europe/') ||
+        zone.includes('Asia/') ||
+        zone.includes('Australia/') ||
+        zone === 'UTC'
+      )
+      .sort();
+    
+    // Map to value/label format
+    return commonZones.map(zone => {
+      const now = DateTime.now().setZone(zone);
+      const offset = now.toFormat('ZZZZ');
+      const label = `${zone.replace(/_/g, ' ')} (${offset})`;
+      
+      return {
+        value: zone,
+        label
+      };
+    });
   }
 }
 

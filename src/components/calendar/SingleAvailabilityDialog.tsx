@@ -1,240 +1,171 @@
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Calendar } from 'lucide-react';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { TimeZoneService } from '@/utils/timezone';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { useAvailability } from '@/hooks/useAvailability';
+import { useToast } from '@/components/ui/use-toast';
+import TimeField from '@/components/ui/time-field';
+import { TimeZoneService } from '@/utils/timezone';
 import { DateTime } from 'luxon';
-import { format } from 'date-fns';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent } from '@/components/ui/card';
-import { DayOfWeek } from '@/types/availability';
-import { TimeField } from '@/components/ui/time-field';
+import { DayOfWeek } from '@/types/calendar';
 
 interface SingleAvailabilityDialogProps {
   clinicianId?: string;
   date?: Date;
-  userTimeZone?: string;
-  onAvailabilityCreated?: (availability: any) => void;
-  isOpen?: boolean;
-  onClose?: () => void;
+  isOpen: boolean;
+  userTimeZone: string;
+  onClose: () => void;
 }
 
 const SingleAvailabilityDialog: React.FC<SingleAvailabilityDialogProps> = ({
   clinicianId,
-  date,
+  date: initialDate,
+  isOpen,
   userTimeZone,
-  onAvailabilityCreated,
-  isOpen = false,
-  onClose = () => {}
+  onClose
 }) => {
-  const { toast } = useToast();
-  const { createSlot } = useAvailability(clinicianId || null);
-  
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('17:00');
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [timeZone, setTimeZone] = useState(userTimeZone || TimeZoneService.getUserTimeZone());
-  const [selectedDay, setSelectedDay] = useState<DayOfWeek>('monday');
+  const [date, setDate] = useState<Date | undefined>(initialDate || new Date());
+  const [startTime, setStartTime] = useState<string>('09:00');
+  const [endTime, setEndTime] = useState<string>('17:00');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [displayDate, setDisplayDate] = useState<string>('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
   
+  const { createSlot } = useAvailability(clinicianId || null);
+  const { toast } = useToast();
+  
+  // Reset form when dialog opens
   useEffect(() => {
-    // Handle the date passed to the component
-    if (date) {
-      const dt = DateTime.fromJSDate(date);
-      setDisplayDate(dt.toLocaleString(DateTime.DATE_FULL));
-      
-      // Get day of week from date
-      const dayOfWeek = dt.weekday;
-      const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-      setSelectedDay(days[dayOfWeek - 1] || 'monday');
+    if (isOpen) {
+      setStartTime('09:00');
+      setEndTime('17:00');
+      setDate(initialDate || new Date());
+      setErrors({});
     }
-  }, [date]);
-
-  const handleSaveAvailability = async () => {
-    if (!clinicianId) {
-      toast({
-        title: 'Error',
-        description: 'Clinician ID is required',
-        variant: 'destructive'
-      });
-      return;
+  }, [isOpen, initialDate]);
+  
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!date) {
+      newErrors.date = 'Please select a date';
     }
-
-    if (!startTime || !endTime) {
-      toast({
-        title: 'Error',
-        description: 'Please select both start and end times',
-        variant: 'destructive'
-      });
-      return;
+    
+    if (!startTime) {
+      newErrors.startTime = 'Please select a start time';
     }
-
+    
+    if (!endTime) {
+      newErrors.endTime = 'Please select an end time';
+    } else if (startTime >= endTime) {
+      newErrors.endTime = 'End time must be after start time';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+  
+  const handleSubmit = async () => {
+    if (!validateForm() || !clinicianId || !date) return;
+    
+    setIsSubmitting(true);
+    
     try {
-      setIsSubmitting(true);
+      // Map day of week to string format
+      const dayOfWeekNum = date.getDay();
+      const daysOfWeek: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dayOfWeek = daysOfWeek[dayOfWeekNum];
       
+      // Create availability slot
       const result = await createSlot(
-        selectedDay,
+        dayOfWeek,
         startTime,
         endTime,
-        isRecurring,
-        undefined, // No recurrence rule for now
-        timeZone,
-        date // This will be used for single-day availability
+        false, // Not recurring
+        undefined,
+        userTimeZone,
+        date
       );
-
+      
       if (result.success) {
         toast({
-          title: 'Success',
-          description: `Availability ${isRecurring ? 'pattern' : 'slot'} has been created`,
+          title: 'Availability Added',
+          description: `Availability slot added for ${DateTime.fromJSDate(date).setZone(userTimeZone).toFormat('EEE, MMM d, yyyy')}`,
         });
-        
-        if (onAvailabilityCreated && result.slotId) {
-          onAvailabilityCreated({
-            id: result.slotId,
-            startTime,
-            endTime,
-            dayOfWeek: selectedDay,
-            isRecurring
-          });
-        }
-        
         onClose();
       } else {
         toast({
           title: 'Error',
-          description: result.error || 'Failed to create availability',
+          description: result.error || 'Failed to create availability slot',
           variant: 'destructive'
         });
       }
     } catch (error) {
-      console.error('Error creating availability:', error);
       toast({
         title: 'Error',
-        description: 'An unexpected error occurred',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
         variant: 'destructive'
       });
     } finally {
       setIsSubmitting(false);
     }
   };
-
+  
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={() => onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Availability</DialogTitle>
-          <DialogDescription>
-            {isRecurring 
-              ? "Set recurring availability for this day of the week" 
-              : "Set availability for a specific date"}
-          </DialogDescription>
+          <DialogTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Add Single Day Availability
+          </DialogTitle>
         </DialogHeader>
         
-        <div className="grid gap-4 py-2">
-          <Card>
-            <CardContent className="pt-4">
-              {displayDate && (
-                <div className="mb-4">
-                  <p className="text-sm font-medium mb-1">Date:</p>
-                  <p className="text-sm">{displayDate}</p>
-                </div>
-              )}
-              
-              <div className="flex items-center gap-2 mb-4">
-                <Checkbox 
-                  id="isRecurring" 
-                  checked={isRecurring} 
-                  onCheckedChange={(checked) => setIsRecurring(checked === true)}
-                />
-                <Label htmlFor="isRecurring">
-                  Make this a recurring availability
-                </Label>
-              </div>
-              
-              {isRecurring && (
-                <div className="mb-4">
-                  <Label htmlFor="dayOfWeek">Day of Week</Label>
-                  <Select 
-                    value={selectedDay} 
-                    onValueChange={(value: DayOfWeek) => setSelectedDay(value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select day" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="monday">Monday</SelectItem>
-                      <SelectItem value="tuesday">Tuesday</SelectItem>
-                      <SelectItem value="wednesday">Wednesday</SelectItem>
-                      <SelectItem value="thursday">Thursday</SelectItem>
-                      <SelectItem value="friday">Friday</SelectItem>
-                      <SelectItem value="saturday">Saturday</SelectItem>
-                      <SelectItem value="sunday">Sunday</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <Label htmlFor="startTime">Start Time</Label>
-                  <Input 
-                    id="startTime"
-                    type="time" 
-                    value={startTime} 
-                    onChange={(e) => setStartTime(e.target.value)} 
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="endTime">End Time</Label>
-                  <Input 
-                    id="endTime"
-                    type="time" 
-                    value={endTime} 
-                    onChange={(e) => setEndTime(e.target.value)} 
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="timezone">Time Zone</Label>
-                <Select 
-                  value={timeZone} 
-                  onValueChange={setTimeZone}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select timezone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TimeZoneService.TIMEZONE_OPTIONS.map((tz) => (
-                      <SelectItem key={tz.value} value={tz.value}>
-                        {tz.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Times will be stored in UTC but displayed in the selected timezone
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex flex-col gap-4">
+          <div>
+            <Label>Select Date</Label>
+            <div className="border rounded-md p-2 mt-2">
+              <CalendarComponent
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                className="mx-auto"
+              />
+            </div>
+            {errors.date && <p className="text-sm text-red-500 mt-1">{errors.date}</p>}
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <TimeField
+              label="Start Time"
+              value={startTime}
+              onChange={setStartTime}
+              error={errors.startTime}
+            />
+            
+            <TimeField
+              label="End Time"
+              value={endTime}
+              onChange={setEndTime}
+              error={errors.endTime}
+            />
+          </div>
+          
+          <div className="text-sm text-gray-500">
+            Time Zone: {TimeZoneService.formatTimeZoneDisplay(userTimeZone)}
+          </div>
         </div>
         
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button 
-            onClick={handleSaveAvailability} 
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Saving...' : 'Save'}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+            Cancel
           </Button>
-        </div>
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? 'Saving...' : 'Save Availability'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

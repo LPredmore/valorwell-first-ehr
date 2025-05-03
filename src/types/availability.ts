@@ -1,44 +1,53 @@
-import { DateTime } from 'luxon';
-import { AvailabilitySlot as CoreAvailabilitySlot } from '@/types/appointment';
 
-export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
-
-// Re-export the core AvailabilitySlot type but extend it with our specific needs
-export interface AvailabilitySlot extends CoreAvailabilitySlot {
-  dayOfWeek: DayOfWeek; // Override to be more specific
-}
-
-export interface TimeSlot {
-  start: string;
-  end: string;
-  startTime?: string;
-  endTime?: string;
-  timeZone?: string;
-}
-
+/**
+ * Availability settings interface
+ */
 export interface AvailabilitySettings {
   id?: string;
   clinicianId: string;
   defaultSlotDuration: number;
+  slotDuration: number;
   minNoticeDays: number;
   maxAdvanceDays: number;
   timeZone: string;
-  slotDuration: number;
   timeGranularity: 'hour' | 'halfhour' | 'quarter';
   isActive?: boolean;
 }
 
-export interface ClientData {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  timeZone: string;
-  displayName: string;
-  createdAt: string;
-  updatedAt: string;
+/**
+ * Day of week type
+ */
+export type DayOfWeek = 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday';
+
+/**
+ * Availability slot interface
+ */
+export interface AvailabilitySlot {
+  id?: string;
+  clinicianId: string;
+  startTime: string;
+  endTime: string;
+  dayOfWeek: DayOfWeek;
+  isRecurring?: boolean;
+  timezone?: string;
+  specificDate?: string;
+  title?: string;
+  allDay?: boolean;
 }
 
-export type WeeklyAvailability = {
+/**
+ * Weekly availability interface
+ */
+export interface WeeklyAvailability {
   [key in DayOfWeek]: AvailabilitySlot[];
-};
+}
+
+/**
+ * Available time slot interface
+ */
+export interface AvailableTimeSlot {
+  start: string;
+  end: string;
+  slotId?: string;
+  isRecurring?: boolean;
+}

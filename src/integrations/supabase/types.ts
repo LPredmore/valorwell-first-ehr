@@ -9,6 +9,96 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      availability_blocks: {
+        Row: {
+          all_day: boolean | null
+          availability_type: string
+          clinician_id: string
+          created_at: string
+          day_of_week: number | null
+          end_time: string
+          id: string
+          is_active: boolean | null
+          specific_date: string | null
+          start_time: string
+          time_zone: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          all_day?: boolean | null
+          availability_type: string
+          clinician_id: string
+          created_at?: string
+          day_of_week?: number | null
+          end_time: string
+          id?: string
+          is_active?: boolean | null
+          specific_date?: string | null
+          start_time: string
+          time_zone: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          all_day?: boolean | null
+          availability_type?: string
+          clinician_id?: string
+          created_at?: string
+          day_of_week?: number | null
+          end_time?: string
+          id?: string
+          is_active?: boolean | null
+          specific_date?: string | null
+          start_time?: string
+          time_zone?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      availability_settings: {
+        Row: {
+          clinician_id: string
+          created_at: string
+          default_slot_duration: number
+          id: string
+          is_active: boolean | null
+          max_advance_days: number
+          min_notice_days: number
+          slot_duration: number | null
+          time_granularity: string | null
+          time_zone: string | null
+          updated_at: string
+        }
+        Insert: {
+          clinician_id: string
+          created_at?: string
+          default_slot_duration?: number
+          id?: string
+          is_active?: boolean | null
+          max_advance_days?: number
+          min_notice_days?: number
+          slot_duration?: number | null
+          time_granularity?: string | null
+          time_zone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          clinician_id?: string
+          created_at?: string
+          default_slot_duration?: number
+          id?: string
+          is_active?: boolean | null
+          max_advance_days?: number
+          min_notice_days?: number
+          slot_duration?: number | null
+          time_granularity?: string | null
+          time_zone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_history: {
         Row: {
           additional_info: string | null
