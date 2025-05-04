@@ -1,6 +1,6 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { DateTime } from 'luxon';
 import { TimeZoneService } from "@/utils/timezone";
 
 interface TimeZoneContextType {
@@ -11,7 +11,7 @@ interface TimeZoneContextType {
   updateUserTimeZone?: (newTimeZone: string) => Promise<void>;
 }
 
-const defaultTimeZone = TimeZoneService.getUserTimeZone();
+const defaultTimeZone = "America/Chicago";
 
 const TimeZoneContext = createContext<TimeZoneContextType>({
   userTimeZone: defaultTimeZone,
@@ -59,8 +59,8 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         
         if (authError) {
           setIsAuthenticated(false);
-          // Get browser timezone
-          const browserTimeZone = TimeZoneService.getUserTimeZone();
+          // Get browser timezone using Luxon directly
+          const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           setUserTimeZone(browserTimeZone);
           setIsLoading(false);
           return;
@@ -79,14 +79,14 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             const validTimeZone = TimeZoneService.ensureIANATimeZone(data.time_zone);
             setUserTimeZone(validTimeZone);
           } else {
-            // Get browser timezone
-            const browserTimeZone = TimeZoneService.getUserTimeZone();
+            // Get browser timezone using Luxon directly
+            const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             setUserTimeZone(browserTimeZone);
           }
         } else {
           setIsAuthenticated(false);
-          // Get browser timezone
-          const browserTimeZone = TimeZoneService.getUserTimeZone();
+          // Get browser timezone using Luxon directly
+          const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           setUserTimeZone(browserTimeZone);
         }
       } catch (err) {
@@ -94,8 +94,8 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setError(err as Error);
         setIsAuthenticated(false);
         
-        // Get browser timezone
-        const browserTimeZone = TimeZoneService.getUserTimeZone();
+        // Get browser timezone using Luxon directly
+        const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         setUserTimeZone(browserTimeZone);
       } finally {
         setIsLoading(false);

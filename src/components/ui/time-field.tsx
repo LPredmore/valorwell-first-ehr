@@ -1,6 +1,11 @@
 
 import React from 'react';
-import { Label } from '@/components/ui/label';
+import {
+  FormControl,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 
 interface TimeFieldProps {
@@ -33,24 +38,22 @@ export function TimeField({
   };
 
   return (
-    <div className={`space-y-2 ${className || ''}`}>
-      {label && (
-        <Label>
-          {label}{required && <span className="text-red-500 ml-1">*</span>}
-        </Label>
-      )}
-      <Input
-        type="time"
-        value={value}
-        onChange={handleChange}
-        disabled={disabled}
-        placeholder={placeholder}
-        min={min}
-        max={max}
-        className={`w-full ${error ? 'border-red-500' : ''}`}
-      />
-      {error && <p className="text-sm text-red-500">{error}</p>}
-    </div>
+    <FormItem className={className}>
+      {label && <FormLabel>{label}{required && <span className="text-red-500 ml-1">*</span>}</FormLabel>}
+      <FormControl>
+        <Input
+          type="time"
+          value={value}
+          onChange={handleChange}
+          disabled={disabled}
+          placeholder={placeholder}
+          min={min}
+          max={max}
+          className="w-full"
+        />
+      </FormControl>
+      {error && <FormMessage>{error}</FormMessage>}
+    </FormItem>
   );
 }
 
