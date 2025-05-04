@@ -1,165 +1,81 @@
 
-/**
- * @deprecated Use the TimeZoneService from @/utils/timezone instead
- * This file is maintained for backward compatibility with existing code
- */
-
-import { TimeZoneService } from '@/utils/timezone';
 import { DateTime } from 'luxon';
+import { TimeZoneService } from '@/utils/timezone';
 
 /**
- * Get the current date and time in a specific timezone
- * @deprecated Use TimeZoneService.getCurrentDateTime instead
+ * Format a date string with the specified format
  */
-export const getCurrentDateTime = (timezone: string): any => {
-  return TimeZoneService.getCurrentDateTime(timezone);
+export const formatDate = (date: string | Date, format: string = 'yyyy-MM-dd', timezone?: string): string => {
+  return TimeZoneService.formatDate(date, format, timezone);
 };
 
 /**
- * Format a date with a specific format in a timezone
- * @deprecated Use TimeZoneService.formatDate instead
+ * Format a date and time with the specified format
  */
-export const formatDate = (
-  date: string | Date,
-  format: string = 'yyyy-MM-dd',
-  timezone?: string
-): string => {
-  // Convert string or Date to DateTime before passing to TimeZoneService
-  const dateTime = date instanceof Date
-    ? DateTime.fromJSDate(date)
-    : DateTime.fromISO(date);
-    
-  return TimeZoneService.formatDate(dateTime, format);
+export const formatDateTime = (date: string | Date, format: string = 'yyyy-MM-dd HH:mm', timezone?: string): string => {
+  return TimeZoneService.formatDateTime(date, format, timezone);
 };
 
 /**
- * Format a date and time with a specific format in a timezone
- * @deprecated Use TimeZoneService.formatDateTime instead
+ * Format a time with the specified format
  */
-export const formatDateTime = (
-  dateTime: string | Date,
-  format: string = 'yyyy-MM-dd HH:mm',
-  timezone?: string
-): string => {
-  // No need to convert here as TimeZoneService.formatDateTime accepts string | Date | DateTime
-  return TimeZoneService.formatDateTime(dateTime, format, timezone);
-};
-
-/**
- * Format just the time portion of a date
- * @deprecated Use TimeZoneService.formatTime instead
- */
-export const formatTime = (
-  time: string,
-  format: string = 'h:mm a',
-  timezone?: string
-): string => {
+export const formatTime = (time: string | Date, format: string = 'h:mm a', timezone?: string): string => {
   return TimeZoneService.formatTime(time, format, timezone);
 };
 
 /**
  * Add a duration to a date
- * @deprecated Use TimeZoneService.addDuration instead
  */
-export const addDuration = (
-  date: string | Date,
-  amount: number,
-  unit: any,
-  timezone?: string
-): any => {
-  // Convert string or Date to DateTime before passing to TimeZoneService
-  const dateTime = date instanceof Date
-    ? DateTime.fromJSDate(date)
-    : DateTime.fromISO(date);
-    
-  return TimeZoneService.addDuration(dateTime, amount, unit);
+export const addDuration = (date: string | Date | DateTime, amount: number, unit: string): DateTime => {
+  return TimeZoneService.addDuration(date, amount, unit);
 };
 
 /**
- * Get the weekday name from a date
- * @deprecated Use TimeZoneService.getWeekdayName instead
+ * Check if two dates are on the same day
  */
-export const getWeekdayName = (date: string | Date): string => {
-  // Convert string or Date to DateTime before passing to TimeZoneService
-  const dateTime = date instanceof Date
-    ? DateTime.fromJSDate(date)
-    : DateTime.fromISO(date);
-    
-  return TimeZoneService.getWeekdayName(dateTime);
+export const isSameDay = (date1: string | Date | DateTime, date2: string | Date | DateTime): boolean => {
+  return TimeZoneService.isSameDay(date1, date2);
+};
+
+/**
+ * Parse a date string with a timezone
+ */
+export const parseWithZone = (dateStr: string, timezone: string): DateTime => {
+  return TimeZoneService.parseWithZone(dateStr, timezone);
+};
+
+/**
+ * Convert a date to an ISO string with timezone
+ */
+export const toISOWithZone = (dateStr: string, timezone: string): string => {
+  const dt = TimeZoneService.parseWithZone(dateStr, timezone);
+  return dt.toISO() || '';
+};
+
+/**
+ * Get the current date and time in the specified timezone
+ */
+export const getCurrentDateTime = (timezone?: string): DateTime => {
+  return TimeZoneService.getCurrentDateTime(timezone);
 };
 
 /**
  * Format a date in a specific timezone
- * @deprecated Use TimeZoneService.formatDateTime instead
  */
-export const formatInTimezone = (
-  date: string | Date,
-  format: string,
-  timezone?: string
-): string => {
-  // No need to convert here as TimeZoneService.formatDateTime accepts string | Date | DateTime
+export const formatInTimezone = (date: string | Date, format: string, timezone: string): string => {
   return TimeZoneService.formatDateTime(date, format, timezone);
 };
 
 /**
+ * Get the weekday name from a date
+ */
+export const getWeekdayName = (date: string | Date | DateTime): string => {
+  return TimeZoneService.getWeekdayName(date);
+};
+
+/**
  * Get the month name from a date
- * @deprecated Use TimeZoneService.getMonthName instead
  */
-export const getMonthName = (date: string | Date): string => {
-  // Convert string or Date to DateTime before passing to TimeZoneService
-  const dateTime = date instanceof Date
-    ? DateTime.fromJSDate(date)
-    : DateTime.fromISO(date);
-    
-  return TimeZoneService.getMonthName(dateTime);
-};
-
-/**
- * Check if two dates are the same day
- * @deprecated Use TimeZoneService.isSameDay instead
- */
-export const isSameDay = (date1: string | Date, date2: string | Date): boolean => {
-  // Convert string or Date to DateTime before passing to TimeZoneService
-  const dateTime1 = date1 instanceof Date
-    ? DateTime.fromJSDate(date1)
-    : DateTime.fromISO(date1);
-    
-  const dateTime2 = date2 instanceof Date
-    ? DateTime.fromJSDate(date2)
-    : DateTime.fromISO(date2);
-    
-  return TimeZoneService.isSameDay(dateTime1, dateTime2);
-};
-
-/**
- * Convert Date to ISO format with timezone
- * @deprecated Use TimeZoneService methods instead
- */
-export const toISOWithZone = (
-  date: Date | string,
-  timezone?: string
-): string => {
-  try {
-    if (typeof date === 'string') {
-      return TimeZoneService.parseWithZone(date, timezone || 'UTC').toISO();
-    } else {
-      // Convert Date to ISO string first, then parse with TimeZoneService
-      const isoString = date.toISOString();
-      return TimeZoneService.parseWithZone(isoString, timezone || 'UTC').toISO();
-    }
-  } catch (error) {
-    console.error('Error converting to ISO with zone:', error);
-    throw error;
-  }
-};
-
-/**
- * Parse a date string to a DateTime object with timezone
- * @deprecated Use TimeZoneService.parseWithZone instead
- */
-export const parseWithZone = (
-  dateString: string,
-  timezone: string
-): any => {
-  return TimeZoneService.parseWithZone(dateString, timezone);
+export const getMonthName = (date: string | Date | DateTime): string => {
+  return TimeZoneService.getMonthName(date);
 };

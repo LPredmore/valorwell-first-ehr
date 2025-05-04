@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2, Edit } from 'lucide-react';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { TimeZoneService } from '@/utils/timezone';
 
 interface AvailabilitySlotProps {
   startTime: string;

@@ -1,9 +1,9 @@
 
-// Import TimeZoneService from the services folder to provide a single import point
-import { TimeZoneService as ServiceTimeZoneService } from "@/services/calendar/TimeZoneService";
+// Import TimeZoneService from the services folder
+import { TimeZoneService } from "@/utils/timezone/TimeZoneService";
 
 // Re-export the TimeZoneService as a convenience
-export const TimeZoneService = ServiceTimeZoneService;
+export const TimeZoneService = TimeZoneService;
 
 // Default export for backward compatibility
-export default ServiceTimeZoneService;
+export default TimeZoneService;
