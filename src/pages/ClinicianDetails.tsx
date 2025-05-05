@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Save, X, Upload, Camera, User } from 'lucide-react';
+import { Pencil, Save, X, Upload, Camera, User, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -488,6 +488,11 @@ const ClinicianDetails = () => {
           <p className="text-gray-500">{clinician.clinician_email}</p>
         </div>
         <div className="flex gap-2">
+          <Link to={`/clinicians/${clinicianId}/availability`}>
+            <Button variant="outline" className="flex items-center gap-1">
+              <Calendar size={16} /> Availability
+            </Button>
+          </Link>
           {isEditing ? <>
               <Button variant="outline" onClick={handleCancel} className="flex items-center gap-1">
                 <X size={16} /> Cancel
