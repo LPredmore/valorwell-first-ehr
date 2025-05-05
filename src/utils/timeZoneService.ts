@@ -1,11 +1,25 @@
 
-// Simplified TimeZoneService that provides basic timezone functionality
-import { DateTime } from 'luxon';
+// Centralized TimeZoneService that provides timezone functionality
+import { DateTime, IANAZone, Info } from 'luxon';
 
 /**
  * Service for managing time zones and date/time conversions
  */
 export class TimeZoneService {
+  /**
+   * Standard timezone options for dropdowns
+   */
+  static TIMEZONE_OPTIONS = [
+    { value: 'America/New_York', label: 'Eastern Time (ET)' },
+    { value: 'America/Chicago', label: 'Central Time (CT)' },
+    { value: 'America/Denver', label: 'Mountain Time (MT)' },
+    { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+    { value: 'America/Anchorage', label: 'Alaska Time' },
+    { value: 'Pacific/Honolulu', label: 'Hawaii Time' },
+    { value: 'America/Phoenix', label: 'Arizona' },
+    { value: 'UTC', label: 'UTC' },
+  ];
+
   /**
    * Ensure we have a valid IANA timezone string
    * @param timezone The timezone to validate
@@ -25,6 +39,21 @@ export class TimeZoneService {
       console.error(`Invalid timezone: ${timezone}, using ${defaultTimeZone} instead`);
       return defaultTimeZone;
     }
+  }
+
+  /**
+   * Get the local time zone from the browser
+   * @returns The local timezone string
+   */
+  static getLocalTimeZone(): string {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  }
+
+  /**
+   * Get user timezone (alias for getLocalTimeZone for compatibility)
+   */
+  static getUserTimeZone(): string {
+    return this.getLocalTimeZone();
   }
 
   /**
@@ -82,11 +111,14 @@ export class TimeZoneService {
   }
 
   /**
-   * Get the local time zone of the browser
-   * @returns The local timezone string
+   * Convert timezone for display purposes
+   * @param time Time to convert
+   * @param fromZone Source timezone
+   * @param toZone Target timezone
+   * @returns Converted time
    */
-  static getLocalTimeZone(): string {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  static convertTimeZone(time: string, fromZone: string, toZone: string): string {
+    return this.convertTime(time, fromZone, toZone);
   }
 
   /**
@@ -188,18 +220,20 @@ export class TimeZoneService {
 
   /**
    * Convert a DateTime object from one timezone to another
-   * @param date A Luxon DateTime object or ISO string
+   * @param date A Luxon DateTime object, Date object or ISO string
    * @param sourceZone Source timezone
    * @param targetZone Target timezone
    * @returns A new DateTime object in the target timezone
    */
-  static convertDateTime(date: string | Date, sourceZone: string, targetZone: string): DateTime {
+  static convertDateTime(date: string | Date | DateTime, sourceZone: string, targetZone: string): DateTime {
     let dt: DateTime;
     
     if (typeof date === 'string') {
       dt = DateTime.fromISO(date, { zone: this.ensureIANATimeZone(sourceZone) });
-    } else {
+    } else if (date instanceof Date) {
       dt = DateTime.fromJSDate(date).setZone(this.ensureIANATimeZone(sourceZone));
+    } else {
+      dt = date.setZone(this.ensureIANATimeZone(sourceZone));
     }
     
     return dt.setZone(this.ensureIANATimeZone(targetZone));
@@ -207,18 +241,20 @@ export class TimeZoneService {
 
   /**
    * Format a DateTime object to a string
-   * @param date A Luxon DateTime object or ISO string
-   * @param format Format string or 'short'/'full'
+   * @param date A Luxon DateTime object, Date object or ISO string
+   * @param format Format string or preset ('short'/'full')
    * @param timezone Timezone to use
    * @returns A formatted date-time string
    */
-  static formatDateTime(date: string | Date, format: 'short' | 'full' = 'short', timezone?: string): string {
+  static formatDateTime(date: string | Date | DateTime, format: string | 'short' | 'full' = 'short', timezone?: string): string {
     let dt: DateTime;
     
     if (typeof date === 'string') {
       dt = DateTime.fromISO(date);
-    } else {
+    } else if (date instanceof Date) {
       dt = DateTime.fromJSDate(date);
+    } else {
+      dt = date;
     }
     
     if (timezone) {
@@ -227,9 +263,22 @@ export class TimeZoneService {
     
     if (format === 'short') {
       return dt.toLocaleString(DateTime.DATETIME_SHORT);
-    } else {
+    } else if (format === 'full') {
       return dt.toLocaleString(DateTime.DATETIME_FULL);
+    } else {
+      return dt.toFormat(format);
     }
+  }
+
+  /**
+   * Parse a string with timezone information
+   * @param dateString Date string to parse
+   * @param timezone Timezone to use
+   * @returns A DateTime object
+   */
+  static parseWithZone(dateString: string, timezone: string): DateTime {
+    const validZone = this.ensureIANATimeZone(timezone);
+    return DateTime.fromISO(dateString, { zone: validZone });
   }
 
   /**
@@ -237,7 +286,7 @@ export class TimeZoneService {
    * @param localDateTime DateTime in local timezone
    * @returns DateTime in UTC
    */
-  static toUTC(localDateTime: string | Date | DateTime): string {
+  static toUTC(localDateTime: string | Date | DateTime): DateTime {
     let dt: DateTime;
     
     if (typeof localDateTime === 'string') {
@@ -248,7 +297,7 @@ export class TimeZoneService {
       dt = localDateTime;
     }
     
-    return dt.toUTC().toISO();
+    return dt.toUTC();
   }
 
   /**
@@ -260,14 +309,102 @@ export class TimeZoneService {
   static fromUTC(utcStr: string, timezone: string): DateTime {
     return DateTime.fromISO(utcStr, { zone: 'UTC' }).setZone(this.ensureIANATimeZone(timezone));
   }
+  
+  /**
+   * Get current date/time in a specific timezone
+   */
+  static getCurrentDateTime(timezone?: string): DateTime {
+    const validZone = this.ensureIANATimeZone(timezone || 'UTC');
+    return DateTime.now().setZone(validZone);
+  }
 
   /**
-   * Convert timezone for display purposes
-   * @param fromZone Source timezone
-   * @param toZone Target timezone
+   * Check if two dates are the same day
    */
-  static convertTimeZone(time: string, fromZone: string, toZone: string): string {
-    return this.convertTime(time, fromZone, toZone);
+  static isSameDay(date1: DateTime, date2: DateTime): boolean {
+    return date1.hasSame(date2, 'day');
+  }
+
+  /**
+   * Add a duration to a date
+   */
+  static addDuration(date: DateTime, amount: number, unit: string): DateTime {
+    try {
+      return date.plus({ [unit]: amount });
+    } catch (error) {
+      console.error('[TimeZoneService] Error adding duration:', error);
+      return date;
+    }
+  }
+
+  /**
+   * Format date to 12 hour time format
+   */
+  static formatDateToTime12Hour(
+    date: DateTime | Date | string,
+    timezone: string = 'UTC'
+  ): string {
+    return this.formatDateTime(date, 'h:mm a', timezone);
+  }
+
+  /**
+   * Convert to UTC timestamp
+   */
+  static toUTCTimestamp(date: DateTime | Date | string): string {
+    try {
+      let dt: DateTime;
+      
+      // Convert input to DateTime
+      if (date instanceof DateTime) {
+        dt = date;
+      } else if (date instanceof Date) {
+        dt = DateTime.fromJSDate(date);
+      } else {
+        dt = DateTime.fromISO(date);
+      }
+      
+      // Convert to UTC and return ISO string
+      return dt.toUTC().toISO() || '';
+    } catch (error) {
+      console.error('[TimeZoneService] Error converting to UTC timestamp:', error);
+      return DateTime.now().toUTC().toISO() || '';
+    }
+  }
+
+  /**
+   * Convert from UTC timestamp
+   */
+  static fromUTCTimestamp(timestamp: string, timezone: string): DateTime {
+    try {
+      return DateTime.fromISO(timestamp).setZone(timezone);
+    } catch (error) {
+      console.error('[TimeZoneService] Error converting from UTC timestamp:', error);
+      return DateTime.now().setZone(timezone);
+    }
+  }
+
+  /**
+   * Get weekday name from date
+   */
+  static getWeekdayName(date: DateTime, format: 'long' | 'short' = 'long'): string {
+    try {
+      return date.toFormat(format === 'long' ? 'cccc' : 'ccc');
+    } catch (error) {
+      console.error('[TimeZoneService] Error getting weekday name:', error);
+      return '';
+    }
+  }
+
+  /**
+   * Get month name from date
+   */
+  static getMonthName(date: DateTime, format: 'long' | 'short' = 'long'): string {
+    try {
+      return date.toFormat(format === 'long' ? 'MMMM' : 'MMM');
+    } catch (error) {
+      console.error('[TimeZoneService] Error getting month name:', error);
+      return '';
+    }
   }
 }
 

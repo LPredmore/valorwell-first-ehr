@@ -44,20 +44,26 @@ jest.mock('@/integrations/supabase/client', () => ({
 }));
 
 // Mock the TimeZoneService
-jest.mock('@/utils/timezone', () => {
-  const originalModule = jest.requireActual('@/utils/timezone');
+jest.mock('@/utils/timeZoneService', () => {
+  const originalModule = jest.requireActual('@/utils/timeZoneService');
   
   return {
     __esModule: true,
     ...originalModule,
     TimeZoneService: {
       ensureIANATimeZone: jest.fn(timezone => timezone || 'America/Chicago'),
+      getLocalTimeZone: jest.fn(() => 'America/Chicago'),
+      fromUTC: jest.fn(timestamp => DateTime.fromISO(timestamp).setZone('America/Chicago')),
+      toUTC: jest.fn(datetime => DateTime.fromISO(datetime).toUTC()),
+      toUTCTimestamp: jest.fn(timestamp => DateTime.fromISO(timestamp).toUTC().toISO()),
       fromUTCTimestamp: jest.fn(timestamp => DateTime.fromISO(timestamp).setZone('America/Chicago')),
-      toUTCTimestamp: jest.fn((timestamp, timezone) => DateTime.fromISO(timestamp).toUTC().toISO()),
       convertEventToUserTimeZone: jest.fn(event => event),
       formatTimeZoneDisplay: jest.fn(timezone => `${timezone} (Test)`),
-      getCurrentTimeIn: jest.fn(timezone => DateTime.now().setZone(timezone || 'America/Chicago')),
-      convertDateTime: jest.fn((dt, from, to) => dt)
+      getCurrentDateTime: jest.fn(timezone => DateTime.now().setZone(timezone || 'America/Chicago')),
+      convertDateTime: jest.fn((dt, from, to) => DateTime.fromISO(dt).setZone(to)),
+      parseWithZone: jest.fn((str, zone) => DateTime.fromISO(str, { zone })),
+      createDateTime: jest.fn((date, time, zone) => DateTime.fromISO(`${date}T${time}`, { zone })),
+      formatDateTime: jest.fn((date, format) => "2025-05-01 12:00")
     }
   };
 });

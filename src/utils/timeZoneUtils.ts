@@ -1,12 +1,12 @@
 
 /**
  * This file is provided for backward compatibility with components that import from @/utils/timeZoneUtils
- * It re-exports everything from the new modular timezone service.
- * New code should import from @/utils/timezone directly.
+ * It re-exports everything from the TimeZoneService.
+ * New code should import from @/utils/timeZoneService directly.
  * 
- * @deprecated Use the new modular TimeZoneService from @/utils/timezone instead
+ * @deprecated Use TimeZoneService from @/utils/timeZoneService instead
  */
-import { TimeZoneService } from './timezone';
+import { TimeZoneService } from './timeZoneService';
 
 // Re-export all methods from TimeZoneService
 export const {
@@ -27,17 +27,16 @@ export const {
   addDuration,
   getWeekdayName,
   getMonthName,
-  formatDate,
-  getDisplayNameFromIANA,
-  getIANAFromDisplayName,
-  getTimezoneOffsetString,
+  convertTimeZone,
+  getLocalTimeZone,
+  getCommonTimezones,
   toUTCTimestamp,
   fromUTCTimestamp
 } = TimeZoneService;
 
 // For backward compatibility
 export const formatTimeWithTimezone = (time: string, timeZone: string): string => {
-  return TimeZoneService.formatTime(time, 'h:mm a', timeZone);
+  return TimeZoneService.formatTime(time, 'h:mm a');
 };
 
 export const getTimezoneDisplayName = (timeZone: string): string => {
@@ -45,5 +44,6 @@ export const getTimezoneDisplayName = (timeZone: string): string => {
 };
 
 export const convertToTimezone = (dateTime: any, targetZone: string): any => {
-  return TimeZoneService.convertDateTime(dateTime, dateTime.zone.name, targetZone);
+  const sourceZone = dateTime.zoneName || 'UTC';
+  return TimeZoneService.convertDateTime(dateTime, sourceZone, targetZone);
 };

@@ -87,7 +87,7 @@ const Calendar = () => {
       toast({
         title: "No clinician selected",
         description: "Please select a clinician to manage their availability",
-        variant: "warning",
+        variant: "destructive", // Changed from "warning" to "destructive" to match allowed variants
       });
     }
   };

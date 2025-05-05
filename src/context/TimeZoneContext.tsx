@@ -1,7 +1,7 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { DateTime } from 'luxon';
-import { TimeZoneService } from "@/utils/timezone";
+import { TimeZoneService } from "@/utils/timeZoneService";
 
 interface TimeZoneContextType {
   userTimeZone: string;

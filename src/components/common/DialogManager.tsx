@@ -135,7 +135,6 @@ const DialogManager: React.FC = () => {
             ? state.props?.date 
             : new Date(state.props?.date || new Date())}
           userTimeZone={userTimeZone}
-          onAvailabilityCreated={state.props?.onAvailabilityCreated}
           isOpen={true}
           onClose={closeDialog}
         />
@@ -145,7 +144,6 @@ const DialogManager: React.FC = () => {
       return (
         <WeeklyAvailabilityDialog 
           clinicianId={state.props?.clinicianId}
-          onAvailabilityUpdated={state.props?.onAvailabilityCreated || state.props?.onAvailabilityUpdated}
           isOpen={true}
           onClose={closeDialog}
         />
