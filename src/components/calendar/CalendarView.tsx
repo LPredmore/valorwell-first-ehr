@@ -1,47 +1,47 @@
 
-import React, { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import React from 'react';
+import { useAppointments } from '@/hooks/useAppointments';
 import Calendar from './Calendar';
-import { Loader2 } from 'lucide-react';
 
 interface CalendarViewProps {
   view: 'week' | 'month';
   showAvailability: boolean;
   clinicianId: string | null;
+  currentDate?: Date;
   userTimeZone: string;
   refreshTrigger?: number;
 }
 
-const CalendarView: React.FC<CalendarViewProps> = ({ 
-  view, 
-  showAvailability, 
+const CalendarView: React.FC<CalendarViewProps> = ({
+  view,
+  showAvailability,
   clinicianId,
-  userTimeZone, 
+  currentDate = new Date(),
+  userTimeZone,
   refreshTrigger = 0
 }) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [isLoading, setIsLoading] = useState(false);
+  // Use the appointments hook to fetch appointments
+  const { 
+    appointments, 
+    isLoading: loadingAppointments, 
+    error,
+    refetch
+  } = useAppointments(clinicianId);
+  
+  // Trigger a refresh when the refresh trigger changes
+  React.useEffect(() => {
+    if (refreshTrigger > 0) {
+      refetch();
+    }
+  }, [refreshTrigger, refetch]);
 
-  // Update calendar when view or currentDate changes
-  useEffect(() => {
-    const fetchCalendarData = async () => {
-      setIsLoading(true);
-      // Simulate loading - in a real app this might fetch data
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 500);
-    };
-
-    fetchCalendarData();
-  }, [view, currentDate, clinicianId, refreshTrigger]);
-
-  if (isLoading) {
-    return (
-      <div className="w-full h-96 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-valorwell-500" />
-      </div>
-    );
-  }
+  // Function to get client name from an appointment
+  const getClientName = (clientId: string): string => {
+    const appointment = appointments.find(app => app.client_id === clientId);
+    return appointment?.client?.client_preferred_name && appointment?.client?.client_last_name
+      ? `${appointment.client.client_preferred_name} ${appointment.client.client_last_name}`
+      : 'Client';
+  };
 
   return (
     <Calendar 

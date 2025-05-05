@@ -9,6 +9,72 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      appointments: {
+        Row: {
+          appointment_recurring: string | null
+          client_id: string
+          clinician_id: string
+          created_at: string
+          date: string
+          end_time: string
+          id: string
+          notes: string | null
+          recurring_group_id: string | null
+          start_time: string
+          status: string
+          type: string
+          updated_at: string
+          video_room_url: string | null
+        }
+        Insert: {
+          appointment_recurring?: string | null
+          client_id: string
+          clinician_id: string
+          created_at?: string
+          date: string
+          end_time: string
+          id?: string
+          notes?: string | null
+          recurring_group_id?: string | null
+          start_time: string
+          status?: string
+          type: string
+          updated_at?: string
+          video_room_url?: string | null
+        }
+        Update: {
+          appointment_recurring?: string | null
+          client_id?: string
+          clinician_id?: string
+          created_at?: string
+          date?: string
+          end_time?: string
+          id?: string
+          notes?: string | null
+          recurring_group_id?: string | null
+          start_time?: string
+          status?: string
+          type?: string
+          updated_at?: string
+          video_room_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_clinician_id_fkey"
+            columns: ["clinician_id"]
+            isOneToOne: false
+            referencedRelation: "clinicians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_history: {
         Row: {
           additional_info: string | null

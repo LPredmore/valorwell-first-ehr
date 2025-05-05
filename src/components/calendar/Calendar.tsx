@@ -40,8 +40,8 @@ const Calendar = ({
   // Function to get client name from an appointment
   const getClientName = (clientId: string): string => {
     const appointment = appointments.find(app => app.client_id === clientId);
-    return appointment?.client?.client_first_name && appointment?.client?.client_last_name
-      ? `${appointment.client.client_first_name} ${appointment.client.client_last_name}`
+    return appointment?.client?.client_preferred_name && appointment?.client?.client_last_name
+      ? `${appointment.client.client_preferred_name} ${appointment.client.client_last_name}`
       : 'Client';
   };
 

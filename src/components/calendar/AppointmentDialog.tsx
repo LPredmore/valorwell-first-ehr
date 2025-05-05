@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { format, addWeeks, addMonths, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
@@ -112,14 +112,21 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
     
     for (let i = 1; i < count; i++) {
       if (recurrenceType === 'weekly') {
-        currentDate = addWeeks(currentDate, 1);
+        currentDate = new Date(currentDate);
+        currentDate.setDate(currentDate.getDate() + 7);
       } else if (recurrenceType === 'biweekly') {
-        currentDate = addWeeks(currentDate, 2);
+        currentDate = new Date(currentDate);
+        currentDate.setDate(currentDate.getDate() + 14);
       } else if (recurrenceType === 'monthly') {
-        currentDate = addWeeks(currentDate, 4); // Every 4 weeks
+        currentDate = new Date(currentDate);
+        currentDate.setMonth(currentDate.getMonth() + 1);
       }
       
-      if (currentDate > addMonths(startDate, 6)) {
+      // Limit to 6 months from start
+      const sixMonthsFromStart = new Date(startDate);
+      sixMonthsFromStart.setMonth(sixMonthsFromStart.getMonth() + 6);
+      
+      if (currentDate > sixMonthsFromStart) {
         break;
       }
       
@@ -140,17 +147,17 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
     }
 
     try {
-      const startTimeParts = startTime.split(':').map(Number);
-      const startDateTime = new Date();
-      startDateTime.setHours(startTimeParts[0], startTimeParts[1], 0, 0);
+      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
       
-      const endDateTime = new Date(startDateTime);
-      endDateTime.setMinutes(endDateTime.getMinutes() + 60); // Always 60 minutes
-      
+      // Calculate end time (1 hour after start time)
+      const [startHour, startMinute] = startTime.split(':').map(Number);
+      const endDateTime = new Date();
+      endDateTime.setHours(startHour, startMinute, 0, 0);
+      endDateTime.setMinutes(endDateTime.getMinutes() + 60);
       const endTime = `${endDateTime.getHours().toString().padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}`;
 
       if (isRecurring) {
-        const recurringGroupId = uuidv4(); // Generate a unique ID to link recurring appointments
+        const recurringGroupId = uuidv4();
         const recurringDates = generateRecurringDates(selectedDate, recurrenceType);
         
         const appointmentsToInsert = recurringDates.map(date => ({
@@ -180,8 +187,6 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           description: `Created ${recurringDates.length} recurring appointments.`,
         });
       } else {
-        const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-
         const { data, error } = await supabase
           .from('appointments')
           .insert([{
@@ -206,9 +211,11 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
         });
       }
 
+      // Reset form and close dialog
       setSelectedClientId(null);
       setStartTime("09:00");
       setIsRecurring(false);
+      setSelectedDate(new Date());
       onClose();
       onAppointmentCreated();
 
