@@ -398,3 +398,51 @@ export const updatePracticeInfo = async (updates: Partial<PracticeInfo>) => {
     return { success: false, error };
   }
 };
+
+// Function to test if Resend is working
+export const testResendEmailService = async (email: string) => {
+  try {
+    console.log('[testResendEmailService] Testing Resend with email:', email);
+    
+    // First check if our function is deployed and accessible
+    const statusCheck = await supabase.functions.invoke('test-resend', {
+      method: 'GET'
+    });
+    
+    console.log('[testResendEmailService] Status check response:', statusCheck);
+    
+    if (statusCheck.error) {
+      console.error('[testResendEmailService] Error checking function status:', statusCheck.error);
+      return { 
+        success: false, 
+        error: statusCheck.error,
+        message: 'Error accessing the test function. It might not be deployed yet.' 
+      };
+    }
+    
+    // Now try to send a test email
+    const { data, error } = await supabase.functions.invoke('test-resend', {
+      body: { email }
+    });
+    
+    if (error) {
+      console.error('[testResendEmailService] Function invocation error:', error);
+      return { success: false, error, message: 'Error calling the test function' };
+    }
+    
+    console.log('[testResendEmailService] Function response:', data);
+    
+    return { 
+      success: true, 
+      data,
+      message: 'Test email sent successfully. Please check your inbox.' 
+    };
+  } catch (error: any) {
+    console.error('[testResendEmailService] Unexpected error:', error);
+    return { 
+      success: false, 
+      error,
+      message: `Unexpected error: ${error.message}` 
+    };
+  }
+};

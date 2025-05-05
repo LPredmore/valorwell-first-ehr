@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -87,10 +88,22 @@ const Login = () => {
   const handleResetPassword = async (values: z.infer<typeof resetPasswordSchema>) => {
     try {
       setIsResettingPassword(true);
-      console.log("[Login] Sending password reset email to:", values.email);
+      console.log("[Login] [PASSWORD RESET] Starting password reset flow for email:", values.email);
       
-      // Instead of using resetPasswordForEmail, let's redirect to the reset password page with the email
-      // This will allow us to use the admin password reset functionality as a fallback
+      // Try direct Supabase auth reset first to see what happens in the logs
+      console.log("[Login] [PASSWORD RESET] Attempting direct Supabase auth reset for debugging");
+      const { data: resetData, error: resetError } = await supabase.auth.resetPasswordForEmail(values.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (resetError) {
+        console.error("[Login] [PASSWORD RESET] Direct reset error:", resetError.message, resetError);
+      } else {
+        console.log("[Login] [PASSWORD RESET] Direct reset response:", resetData);
+      }
+      
+      // Now redirect to reset password page with email parameter
+      console.log("[Login] [PASSWORD RESET] Redirecting to reset-password page with email:", values.email);
       navigate(`/reset-password?email=${encodeURIComponent(values.email)}`);
       
       toast({
@@ -101,7 +114,7 @@ const Login = () => {
       setIsResetDialogOpen(false);
       resetForm.reset();
     } catch (error: any) {
-      console.error("[Login] Password reset error:", error);
+      console.error("[Login] [PASSWORD RESET] Unexpected error:", error);
       toast({
         title: "Password reset failed",
         description: error.message || "Failed to initiate password reset",
