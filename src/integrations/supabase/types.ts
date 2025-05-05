@@ -9,54 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      availability_blocks: {
-        Row: {
-          all_day: boolean | null
-          availability_type: string
-          clinician_id: string
-          created_at: string
-          day_of_week: number | null
-          end_time: string
-          id: string
-          is_active: boolean | null
-          specific_date: string | null
-          start_time: string
-          time_zone: string
-          title: string | null
-          updated_at: string
-        }
-        Insert: {
-          all_day?: boolean | null
-          availability_type: string
-          clinician_id: string
-          created_at?: string
-          day_of_week?: number | null
-          end_time: string
-          id?: string
-          is_active?: boolean | null
-          specific_date?: string | null
-          start_time: string
-          time_zone: string
-          title?: string | null
-          updated_at?: string
-        }
-        Update: {
-          all_day?: boolean | null
-          availability_type?: string
-          clinician_id?: string
-          created_at?: string
-          day_of_week?: number | null
-          end_time?: string
-          id?: string
-          is_active?: boolean | null
-          specific_date?: string | null
-          start_time?: string
-          time_zone?: string
-          title?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       availability_settings: {
         Row: {
           clinician_id: string

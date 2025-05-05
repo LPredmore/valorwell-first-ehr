@@ -65,54 +65,36 @@ export const useMonthViewData = (
   }, [currentDate]);
 
   useEffect(() => {
-    const fetchAvailabilityAndExceptions = async () => {
+    const fetchAvailabilityFromClinician = async () => {
       setLoading(true);
       try {
-        let query = supabase
-          .from('availability')
-          .select('*')
-          .eq('is_active', true);
-
-        if (clinicianId) {
-          query = query.eq('clinician_id', clinicianId);
+        if (!clinicianId) {
+          setAvailabilityData([]);
+          setExceptions([]);
+          setLoading(false);
+          return;
         }
 
-        const { data, error } = await query;
+        // Fetch the clinician data directly
+        const { data: clinician, error } = await supabase
+          .from('clinicians')
+          .select('*')
+          .eq('id', clinicianId)
+          .single();
 
         if (error) {
-          console.error('Error fetching availability:', error);
+          console.error('Error fetching clinician data:', error);
           setAvailabilityData([]);
+          setExceptions([]);
         } else {
-          console.log('MonthView fetched availability data:', data);
-          setAvailabilityData(data || []);
+          console.log('MonthView fetched clinician data:', clinician);
           
-          if (clinicianId && data && data.length > 0) {
-            const startDateStr = format(startDate, 'yyyy-MM-dd');
-            const endDateStr = format(endDate, 'yyyy-MM-dd');
-            const availabilityIds = data.map((block: AvailabilityBlock) => block.id);
-            
-            if (availabilityIds.length > 0) {
-              const { data: exceptionsData, error: exceptionsError } = await supabase
-                .from('availability_exceptions')
-                .select('*')
-                .eq('clinician_id', clinicianId)
-                .gte('specific_date', startDateStr)
-                .lte('specific_date', endDateStr)
-                .in('original_availability_id', availabilityIds);
-                
-              if (exceptionsError) {
-                console.error('Error fetching exceptions:', exceptionsError);
-                setExceptions([]);
-              } else {
-                console.log('MonthView exceptions data:', exceptionsData);
-                setExceptions(exceptionsData || []);
-              }
-            } else {
-              setExceptions([]);
-            }
-          } else {
-            setExceptions([]);
-          }
+          // Extract availability blocks from clinician record
+          const extractedBlocks = extractAvailabilityBlocksFromClinician(clinician);
+          setAvailabilityData(extractedBlocks);
+          
+          // No exceptions for now
+          setExceptions([]);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -123,8 +105,42 @@ export const useMonthViewData = (
       }
     };
 
-    fetchAvailabilityAndExceptions();
+    fetchAvailabilityFromClinician();
   }, [clinicianId, refreshTrigger, startDate, endDate]);
+
+  // Extract availability blocks from clinician record
+  const extractAvailabilityBlocksFromClinician = (clinician: any): AvailabilityBlock[] => {
+    if (!clinician) return [];
+    
+    const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const blocks: AvailabilityBlock[] = [];
+    
+    // For each day of the week
+    weekdays.forEach(day => {
+      const dayCapitalized = day.charAt(0).toUpperCase() + day.slice(1);
+      
+      // For each slot (1, 2, 3)
+      for (let slot = 1; slot <= 3; slot++) {
+        const startTimeKey = `clinician_availability_start_${day}_${slot}`;
+        const endTimeKey = `clinician_availability_end_${day}_${slot}`;
+        
+        // If both start and end times exist for this slot, create a block
+        if (clinician[startTimeKey] && clinician[endTimeKey]) {
+          blocks.push({
+            id: `${clinician.id}-${day}-${slot}`,
+            day_of_week: dayCapitalized,
+            start_time: clinician[startTimeKey],
+            end_time: clinician[endTimeKey],
+            clinician_id: clinician.id,
+            is_active: true
+          });
+        }
+      }
+    });
+    
+    console.log('Extracted availability blocks for month view:', blocks);
+    return blocks;
+  };
 
   const dayAvailabilityMap = useMemo(() => {
     const result = new Map<string, { 
@@ -149,55 +165,35 @@ export const useMonthViewData = (
       let displayHours = '';
       
       if (regularAvailability.length > 0) {
-        const availabilityIds = regularAvailability.map(slot => slot.id);
-        const deletedExceptions = exceptions.filter(
-          exception => 
-            exception.specific_date === dateStr && 
-            availabilityIds.includes(exception.original_availability_id) &&
-            exception.is_deleted
-        );
-        
-        hasAvailability = deletedExceptions.length < regularAvailability.length;
-        
-        const modifiedExceptions = exceptions.filter(
-          exception => 
-            exception.specific_date === dateStr && 
-            !exception.is_deleted &&
-            exception.start_time && 
-            exception.end_time
-        );
-        
-        isModified = modifiedExceptions.length > 0;
+        hasAvailability = true;
         
         // Always display fixed hours range - 6:00 AM to 10:00 PM
-        if (hasAvailability) {
-          const startTime = "06:00";
-          const endTime = "22:00";
+        const startTime = "06:00";
+        const endTime = "22:00";
+        
+        try {
+          // Convert times to selected timezone for display
+          const startTimeUTC = TimeZoneService.convertTimeToZone(
+            `2000-01-01T${startTime}:00Z`, 
+            'UTC', 
+            userTimeZone
+          );
           
-          try {
-            // Convert times to selected timezone for display
-            const startTimeUTC = TimeZoneService.convertTimeToZone(
-              `2000-01-01T${startTime}:00Z`, 
-              'UTC', 
-              userTimeZone
-            );
-            
-            const endTimeUTC = TimeZoneService.convertTimeToZone(
-              `2000-01-01T${endTime}:00Z`, 
-              'UTC', 
-              userTimeZone
-            );
-            
-            const startHourFormatted = startTimeUTC.toFormat('h:mm a');
-            const endHourFormatted = endTimeUTC.toFormat('h:mm a');
-            
-            displayHours = `${startHourFormatted}-${endHourFormatted}`;
-          } catch (error) {
-            console.error('Error formatting time for availability:', error);
-            const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${startTime}`));
-            const endHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${endTime}`));
-            displayHours = `${startHourFormatted}-${endHourFormatted}`;
-          }
+          const endTimeUTC = TimeZoneService.convertTimeToZone(
+            `2000-01-01T${endTime}:00Z`, 
+            'UTC', 
+            userTimeZone
+          );
+          
+          const startHourFormatted = startTimeUTC.toFormat('h:mm a');
+          const endHourFormatted = endTimeUTC.toFormat('h:mm a');
+          
+          displayHours = `${startHourFormatted}-${endHourFormatted}`;
+        } catch (error) {
+          console.error('Error formatting time for availability:', error);
+          const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${startTime}`));
+          const endHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${endTime}`));
+          displayHours = `${startHourFormatted}-${endHourFormatted}`;
         }
       }
       
