@@ -69,6 +69,30 @@ export class TimeZoneService {
   }
 
   /**
+   * Converts a time string from one timezone to another
+   * @param timeString ISO time string (e.g. "2000-01-01T09:00:00Z")
+   * @param fromZone Source timezone
+   * @param toZone Target timezone
+   * @returns DateTime object in the target timezone
+   */
+  static convertTimeToZone(timeString: string, fromZone: string, toZone: string): DateTime {
+    const safeFromZone = this.ensureIANATimeZone(fromZone);
+    const safeToZone = this.ensureIANATimeZone(toZone);
+    
+    // Create a DateTime object with the time in the source timezone
+    const dt = DateTime.fromISO(timeString, { zone: safeFromZone });
+    
+    if (!dt.isValid) {
+      console.error(`Invalid time string: ${timeString}, reason: ${dt.invalidReason}`);
+      // Return current time as fallback
+      return DateTime.now().setZone(safeToZone);
+    }
+    
+    // Convert to the target timezone
+    return dt.setZone(safeToZone);
+  }
+
+  /**
    * Converts a calendar event from UTC to a user's timezone
    */
   static convertEventToUserTimeZone(event: any, userTimezone: string): any {

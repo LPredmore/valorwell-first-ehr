@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -9,6 +8,7 @@ import {
   parseISO
 } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface Appointment {
   id: string;
@@ -65,7 +65,8 @@ export const useWeekViewData = (
   clinicianId: string | null,
   refreshTrigger: number = 0,
   appointments: Appointment[] = [],
-  getClientName: (clientId: string) => string = () => 'Client'
+  getClientName: (clientId: string) => string = () => 'Client',
+  userTimeZone: string = 'America/Chicago'
 ) => {
   const [loading, setLoading] = useState(true);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
@@ -84,8 +85,30 @@ export const useWeekViewData = (
     console.log("Processing appointments in week view:", appointments);
     
     const blocks: AppointmentBlock[] = appointments.map(appointment => {
-      const [startHour, startMinute] = appointment.start_time.split(':').map(Number);
-      const [endHour, endMinute] = appointment.end_time.split(':').map(Number);
+      let startHour, startMinute, endHour, endMinute;
+
+      // Handle timezone conversion for appointments
+      if (userTimeZone) {
+        try {
+          // Convert the appointment times from UTC to user timezone
+          const localizedAppointment = TimeZoneService.convertEventToUserTimeZone(
+            appointment, 
+            userTimeZone
+          );
+          
+          [startHour, startMinute] = localizedAppointment.start_time.split(':').map(Number);
+          [endHour, endMinute] = localizedAppointment.end_time.split(':').map(Number);
+        } catch (error) {
+          console.error("Error converting appointment times:", error);
+          // Fallback to original time if conversion fails
+          [startHour, startMinute] = appointment.start_time.split(':').map(Number);
+          [endHour, endMinute] = appointment.end_time.split(':').map(Number);
+        }
+      } else {
+        // No timezone conversion needed
+        [startHour, startMinute] = appointment.start_time.split(':').map(Number);
+        [endHour, endMinute] = appointment.end_time.split(':').map(Number);
+      }
 
       const dateObj = parseISO(appointment.date);
       const start = setMinutes(setHours(startOfDay(dateObj), startHour), startMinute);
@@ -114,7 +137,7 @@ export const useWeekViewData = (
 
     console.log("Week view appointment blocks created:", blocks);
     setAppointmentBlocks(blocks);
-  }, [appointments, getClientName]);
+  }, [appointments, getClientName, userTimeZone]);
 
   // Fetch availability and exceptions
   useEffect(() => {
