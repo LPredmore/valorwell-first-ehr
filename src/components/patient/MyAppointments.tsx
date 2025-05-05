@@ -118,7 +118,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
               
               try {
                 if (appointment.start_time) {
-                  formattedTime = TimeZoneService.formatTime(appointment.start_time, 'h:mm a', clientTimeZone);
+                  formattedTime = TimeZoneService.formatTime(appointment.start_time, 'h:mm a');
                 } else {
                   formattedTime = 'Time unavailable';
                 }

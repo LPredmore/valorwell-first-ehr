@@ -1,4 +1,3 @@
-
 // Centralized TimeZoneService that provides timezone functionality
 import { DateTime, IANAZone, Info } from 'luxon';
 import { CalendarEvent } from '@/types/calendar';
@@ -39,6 +38,27 @@ export class TimeZoneService {
     } catch (error) {
       console.error(`Invalid timezone: ${timezone}, using ${defaultTimeZone} instead`);
       return defaultTimeZone;
+    }
+  }
+
+  /**
+   * Validate that a timezone string is a valid IANA timezone
+   */
+  static validateTimeZone(timeZone: string): string {
+    if (!timeZone || typeof timeZone !== 'string') {
+      console.warn('[TimeZoneService] Empty or invalid timezone provided, defaulting to UTC');
+      return 'UTC';
+    }
+
+    try {
+      if (IANAZone.isValidZone(timeZone)) {
+        return timeZone;
+      }
+      console.warn(`[TimeZoneService] Invalid timezone provided: ${timeZone}, defaulting to UTC`);
+      return 'UTC';
+    } catch (error) {
+      console.warn(`[TimeZoneService] Error validating timezone: ${timeZone}`, error);
+      return 'UTC';
     }
   }
 
@@ -185,7 +205,7 @@ export class TimeZoneService {
     if (!event || !userTimezone) return event;
 
     try {
-      const eventTimezone = event.extendedProps?.timezone || 'UTC';
+      const eventTimezone = event.extendedProps?.sourceTimeZone || 'UTC';
       const startInUserTz = DateTime.fromISO(event.start as string)
         .setZone(eventTimezone)
         .setZone(userTimezone);

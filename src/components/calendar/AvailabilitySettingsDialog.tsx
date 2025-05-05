@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAvailability } from '@/hooks/useAvailability';
 import { useToast } from '@/components/ui/use-toast';
-import { TimeZoneService } from '@/utils/timezone';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { AvailabilitySettings } from '@/types/availability';
 
 interface AvailabilitySettingsDialogProps {

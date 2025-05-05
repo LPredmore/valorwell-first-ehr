@@ -570,7 +570,6 @@ export class AppointmentService {
 
   /**
    * Converts an appointment to a calendar event
-   * 
    * @param appointment - The appointment to convert
    * @param userTimeZone - The timezone to convert to
    * @returns A calendar event
@@ -580,17 +579,13 @@ export class AppointmentService {
       const validTimeZone = TimeZoneService.validateTimeZone(userTimeZone);
       
       // Convert start and end times to the user's timezone
-      const start = TimeZoneService.convertTimeZone(
-        appointment.start_time,
-        appointment.time_zone,
-        validTimeZone
-      );
+      const start = TimeZoneService.parseWithZone(appointment.start_time, appointment.time_zone)
+        .setZone(validTimeZone)
+        .toJSDate();
       
-      const end = TimeZoneService.convertTimeZone(
-        appointment.end_time,
-        appointment.time_zone,
-        validTimeZone
-      );
+      const end = TimeZoneService.parseWithZone(appointment.end_time, appointment.time_zone)
+        .setZone(validTimeZone)
+        .toJSDate();
       
       // Determine color based on status
       let backgroundColor = '#2196F3'; // Blue (default)

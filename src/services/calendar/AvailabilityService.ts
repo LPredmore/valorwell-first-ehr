@@ -581,7 +581,6 @@ export class AvailabilityService {
 
   /**
    * Converts an availability block to a calendar event
-   * 
    * @param block - The availability block to convert
    * @param userTimeZone - The timezone to convert to
    * @returns A calendar event
@@ -591,17 +590,13 @@ export class AvailabilityService {
       const validTimeZone = TimeZoneService.validateTimeZone(userTimeZone);
       
       // Convert start and end times to the user's timezone
-      const start = TimeZoneService.convertTimeZone(
-        block.start_time,
-        block.time_zone,
-        validTimeZone
-      );
+      const start = TimeZoneService.parseWithZone(block.start_time, block.time_zone)
+        .setZone(validTimeZone)
+        .toJSDate();
       
-      const end = TimeZoneService.convertTimeZone(
-        block.end_time,
-        block.time_zone,
-        validTimeZone
-      );
+      const end = TimeZoneService.parseWithZone(block.end_time, block.time_zone)
+        .setZone(validTimeZone)
+        .toJSDate();
       
       return {
         id: block.id,

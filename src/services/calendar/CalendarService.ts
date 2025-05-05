@@ -1,642 +1,356 @@
-import { DateTime } from 'luxon';
+
+import { supabase } from '@/integrations/supabase/client';
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
-import { TimeZoneService } from '@/utils/timezone';
-import { CalendarError, CalendarErrorHandler } from './CalendarErrorHandler';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { AppointmentService } from './AppointmentService';
 import { AvailabilityService } from './AvailabilityService';
-import { TimeOffService } from './TimeOffService';
-import { formatAsUUID, ensureUUID } from '@/utils/validation/uuidUtils';
+import { DateTime } from 'luxon';
 
-// Define AvailabilityBlock interface with required id property
-interface AvailabilityBlock {
-  id: string;
-  clinician_id: string;
-  start_time: string;
-  end_time: string;
-  availability_type?: string;
-  time_zone?: string;
-  allDay?: boolean; // Changed all_day to allDay for consistency
-}
-
-// Define Appointment interface with required id property
-interface Appointment {
-  id: string;
-  clinician_id: string;
-  client_id?: string;
-  start_time: string;
-  end_time: string;
-  title?: string;
-  clientName?: string; // Changed client_name to clientName for consistency
-  allDay?: boolean; // Changed all_day to allDay for consistency
-  appointmentType?: string; // Changed appointment_type to appointmentType for consistency
-  time_zone?: string;
-}
-
-// Define TimeOff interface with required properties
-interface TimeOff {
-  id: string;
-  clinician_id: string;
-  start_time: string;
-  end_time: string;
-  time_zone?: string;
-  reason?: string;
-  allDay?: boolean; // Changed all_day to allDay for consistency
+/**
+ * Interface for GetCalendarEventsOptions
+ */
+interface GetCalendarEventsOptions {
+  clinicianId: string;
+  timeZone: string;
+  startDate?: Date | string;
+  endDate?: Date | string;
+  includeAppointments?: boolean;
+  includeAvailability?: boolean;
+  includeInactive?: boolean;
 }
 
 /**
- * Calendar Service
+ * CalendarService
  * 
- * Main service for calendar operations, orchestrating between different event type services
+ * Handles all operations related to the calendar system, including:
+ * - Getting calendar events
+ * - Converting database records to CalendarEvent objects
+ * - Managing event types and colors
  */
 export class CalendarService {
   /**
-   * Get calendar events for a clinician in a date range
+   * Gets calendar events for a clinician
+   * 
+   * @param options - Options for getting calendar events
+   * @returns An array of calendar events
    */
-  static async getEvents(
-    clinicianId: string,
-    timezone: string,
-    startDate: Date | string,
-    endDate: Date | string
+  static async getCalendarEvents(
+    options: GetCalendarEventsOptions
   ): Promise<CalendarEvent[]> {
     try {
-      console.log('[CalendarService] Getting events:', { clinicianId, timezone, startDate, endDate });
+      const {
+        clinicianId,
+        timeZone,
+        startDate,
+        endDate,
+        includeAppointments = true,
+        includeAvailability = true,
+        includeInactive = false
+      } = options;
       
-      // Format clinician ID
-      const formattedClinicianId = formatAsUUID(clinicianId, { logLevel: 'warn' });
-      
-      // Ensure valid timezone
-      const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
-      
-      // Prepare results array
+      // Validate timezone
+      const validTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
       const events: CalendarEvent[] = [];
       
-      // Fetch different event types concurrently
-      const [availability, appointments, timeOff] = await Promise.all([
-        this.getAvailabilityEvents(formattedClinicianId, validTimeZone, startDate, endDate)
-          .catch(error => {
-            console.error('[CalendarService] Error fetching availability:', error);
-            return [] as CalendarEvent[];
-          }),
-        this.getAppointmentEvents(formattedClinicianId, validTimeZone, startDate, endDate)
-          .catch(error => {
-            console.error('[CalendarService] Error fetching appointments:', error);
-            return [] as CalendarEvent[];
-          }),
-        this.getTimeOffEvents(formattedClinicianId, validTimeZone, startDate, endDate)
-          .catch(error => {
-            console.error('[CalendarService] Error fetching time off:', error);
-            return [] as CalendarEvent[];
-          })
-      ]);
+      // Add appointments if requested
+      if (includeAppointments) {
+        // Get appointments
+        const appointments = await AppointmentService.getAppointments(
+          clinicianId,
+          validTimeZone,
+          startDate,
+          endDate
+        );
+        
+        // Convert appointments to calendar events
+        for (const appointment of appointments) {
+          const appointmentEvent = AppointmentService.toCalendarEvent(appointment, validTimeZone);
+          events.push(appointmentEvent);
+        }
+      }
       
-      // Add all events to results array
-      events.push(...availability);
-      events.push(...appointments);
-      events.push(...timeOff);
-      
-      console.log(`[CalendarService] Found ${events.length} events`);
+      // Add availability if requested
+      if (includeAvailability) {
+        // Get availability blocks
+        const availabilityBlocks = await AvailabilityService.getAvailability(
+          clinicianId,
+          validTimeZone,
+          startDate,
+          endDate,
+          includeInactive
+        );
+        
+        // Convert availability blocks to calendar events
+        for (const block of availabilityBlocks) {
+          const availabilityEvent = AvailabilityService.toCalendarEvent(block, validTimeZone);
+          events.push(availabilityEvent);
+        }
+      }
       
       return events;
     } catch (error) {
-      console.error('[CalendarService] Error getting events:', error);
-      throw CalendarErrorHandler.formatError(error);
+      console.error('[CalendarService] Error getting calendar events:', error);
+      throw error;
     }
   }
   
   /**
-   * Get availability events for a clinician
+   * Gets a single calendar event by ID
+   * 
+   * @param id - The ID of the event
+   * @param timeZone - The timezone to return the event in
+   * @returns The calendar event or null if not found
    */
-  static async getAvailabilityEvents(
-    clinicianId: string,
-    timezone: string,
-    startDate: Date | string,
-    endDate: Date | string
-  ): Promise<CalendarEvent[]> {
+  static async getCalendarEventById(
+    id: string,
+    timeZone: string
+  ): Promise<CalendarEvent | null> {
     try {
-      // Convert AvailabilityBlock[] to CalendarEvent[]
-      const rawEvents = await AvailabilityService.getAvailability(clinicianId, timezone, startDate, endDate);
+      // Validate timezone
+      const validTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
       
-      // Ensure rawEvents is an array (defensive programming)
-      const availabilityBlocks = Array.isArray(rawEvents) ? rawEvents : [];
+      // Try to get as an appointment
+      const appointment = await AppointmentService.getAppointmentById(id);
       
-      // Convert each availability block to a calendar event
-      const events: CalendarEvent[] = availabilityBlocks.map(block => {
-        // Ensure block has required id property
-        const validBlock: AvailabilityBlock = {
-          id: block.id || `temp-${new Date().getTime()}`,
-          clinician_id: block.clinician_id,
-          start_time: block.start_time,
-          end_time: block.end_time,
-          availability_type: block.availability_type,
-          time_zone: block.time_zone,
-          allDay: block.allDay
-        };
-        return this.convertAvailabilityToCalendarEvent(validBlock, timezone);
-      });
+      if (appointment) {
+        return AppointmentService.toCalendarEvent(appointment, validTimeZone);
+      }
       
-      // Apply colors to events
-      return events.map(event => {
-        return this.applyEventColors(event);
-      });
+      // Try to get as an availability block
+      const availabilityBlock = await AvailabilityService.getAvailabilityById(id);
+      
+      if (availabilityBlock) {
+        return AvailabilityService.toCalendarEvent(availabilityBlock, validTimeZone);
+      }
+      
+      return null;
     } catch (error) {
-      console.error('[CalendarService] Error in getAvailabilityEvents:', error);
-      throw CalendarErrorHandler.formatError(error);
+      console.error('[CalendarService] Error getting calendar event by ID:', error);
+      throw error;
     }
   }
   
   /**
-   * Get appointment events for a clinician
+   * Creates a new calendar event
+   * 
+   * @param event - The calendar event to create
+   * @param timeZone - The timezone of the event
+   * @returns The created calendar event
    */
-  static async getAppointmentEvents(
-    clinicianId: string,
-    timezone: string,
-    startDate: Date | string,
-    endDate: Date | string
-  ): Promise<CalendarEvent[]> {
+  static async createCalendarEvent(
+    event: Partial<CalendarEvent>,
+    timeZone: string
+  ): Promise<CalendarEvent> {
     try {
-      // Convert Appointment[] to CalendarEvent[]
-      const rawAppointments = await AppointmentService.getAppointments(clinicianId, timezone, startDate, endDate);
+      // Validate timezone
+      const validTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
       
-      // Ensure rawAppointments is an array (defensive programming)
-      const appointments = Array.isArray(rawAppointments) ? rawAppointments : [];
-      
-      // Convert each appointment to a calendar event
-      const events: CalendarEvent[] = appointments.map(appt => {
-        // Ensure appointment has required id property
-        const validAppointment: Appointment = {
-          id: appt.id || `temp-${new Date().getTime()}`,
-          clinician_id: appt.clinician_id,
-          client_id: appt.client_id,
-          start_time: appt.start_time,
-          end_time: appt.end_time,
-          title: appt.title,
-          clientName: appt.clientName || appt.client_name,
-          allDay: appt.allDay || appt.all_day,
-          appointmentType: appt.appointmentType || appt.appointment_type,
-          time_zone: appt.time_zone
-        };
-        return this.convertAppointmentToCalendarEvent(validAppointment, timezone);
-      });
-      
-      // Apply colors to events
-      return events.map(event => {
-        return this.applyEventColors(event);
-      });
-    } catch (error) {
-      console.error('[CalendarService] Error in getAppointmentEvents:', error);
-      throw CalendarErrorHandler.formatError(error);
-    }
-  }
-  
-  /**
-   * Convert an Appointment to CalendarEvent
-   */
-  static convertAppointmentToCalendarEvent(appt: Appointment, timezone: string): CalendarEvent {
-    return {
-      id: appt.id,
-      title: appt.title || 'Appointment',
-      start: new Date(appt.start_time),
-      end: new Date(appt.end_time),
-      extendedProps: {
-        clinicianId: appt.clinician_id,
-        clientId: appt.client_id,
-        eventType: 'appointment',
-        clientName: appt.clientName,
-        allDay: appt.allDay || false,
-        appointmentType: appt.appointmentType,
-        sourceTimeZone: appt.time_zone || timezone
+      if (!event.extendedProps?.eventType) {
+        throw new Error('Event type is required');
       }
-    };
-  }
-  
-  /**
-   * Convert an AvailabilityBlock to CalendarEvent
-   */
-  static convertAvailabilityToCalendarEvent(block: AvailabilityBlock, timezone: string): CalendarEvent {
-    return {
-      id: block.id,
-      title: block.availability_type || 'Available',
-      start: new Date(block.start_time),
-      end: new Date(block.end_time),
-      extendedProps: {
-        clinicianId: block.clinician_id,
-        eventType: 'availability',
-        allDay: block.allDay || false,
-        sourceTimeZone: block.time_zone || timezone
-      }
-    };
-  }
-  
-  /**
-   * Convert a TimeOff to CalendarEvent
-   */
-  static convertTimeOffToCalendarEvent(timeOff: TimeOff, timezone: string): CalendarEvent {
-    return {
-      id: timeOff.id,
-      title: timeOff.reason || 'Time Off',
-      start: new Date(timeOff.start_time),
-      end: new Date(timeOff.end_time),
-      extendedProps: {
-        clinicianId: timeOff.clinician_id,
-        eventType: 'time_off',
-        sourceTimeZone: timeOff.time_zone || timezone,
-        allDay: timeOff.allDay || false
-      }
-    };
-  }
-  
-  /**
-   * Get time off events for a clinician
-   */
-  static async getTimeOffEvents(
-    clinicianId: string,
-    timezone: string,
-    startDate: Date | string,
-    endDate: Date | string
-  ): Promise<CalendarEvent[]> {
-    try {
-      const timeOffEvents = await TimeOffService.getTimeOff(clinicianId, timezone, startDate, endDate);
       
-      // Map raw time off events to calendar events
-      const events: CalendarEvent[] = timeOffEvents.map(event => {
-        // If it's already a CalendarEvent, just apply colors
-        if (event.title && event.start && event.end) {
-          return this.applyEventColors(event as CalendarEvent);
+      if (event.extendedProps.eventType === 'appointment') {
+        // Create appointment
+        if (!event.extendedProps.clientId || !event.extendedProps.clinicianId) {
+          throw new Error('Client ID and clinician ID are required for appointments');
         }
         
-        // Otherwise, convert from TimeOff type
-        const timeOff: TimeOff = {
-          id: event.id || `temp-${new Date().getTime()}`,
-          clinician_id: event.clinician_id || clinicianId,
-          start_time: event.start_time || (typeof event.start === 'string' ? event.start : event.start?.toISOString()),
-          end_time: event.end_time || (typeof event.end === 'string' ? event.end : event.end?.toISOString()),
-          reason: event.reason || event.title,
-          allDay: event.allDay || event.all_day,
-          time_zone: event.time_zone || timezone
-        };
+        if (!event.start || !event.end) {
+          throw new Error('Start and end times are required for appointments');
+        }
         
-        return this.applyEventColors(this.convertTimeOffToCalendarEvent(timeOff, timezone));
-      });
-      
-      return events;
+        const start = event.start instanceof Date ? event.start.toISOString() : event.start;
+        const end = event.end instanceof Date ? event.end.toISOString() : event.end;
+        
+        const appointment = await AppointmentService.createAppointment(
+          event.extendedProps.clientId,
+          event.extendedProps.clinicianId,
+          start,
+          end,
+          event.title || 'Appointment',
+          validTimeZone,
+          event.extendedProps.description
+        );
+        
+        return AppointmentService.toCalendarEvent(appointment, validTimeZone);
+      } else if (event.extendedProps.eventType === 'availability') {
+        // Create availability
+        if (!event.extendedProps.clinicianId) {
+          throw new Error('Clinician ID is required for availability blocks');
+        }
+        
+        if (!event.start || !event.end) {
+          throw new Error('Start and end times are required for availability blocks');
+        }
+        
+        const start = event.start instanceof Date ? event.start.toISOString() : event.start;
+        const end = event.end instanceof Date ? event.end.toISOString() : event.end;
+        
+        const isRecurring = event.extendedProps.isRecurring || false;
+        const rrule = event.extendedProps.rrule;
+        
+        const availabilityBlock = await AvailabilityService.createAvailability(
+          event.extendedProps.clinicianId,
+          start,
+          end,
+          validTimeZone,
+          isRecurring,
+          rrule
+        );
+        
+        return AvailabilityService.toCalendarEvent(availabilityBlock, validTimeZone);
+      } else {
+        throw new Error(`Unsupported event type: ${event.extendedProps.eventType}`);
+      }
     } catch (error) {
-      console.error('[CalendarService] Error in getTimeOffEvents:', error);
-      throw CalendarErrorHandler.formatError(error);
+      console.error('[CalendarService] Error creating calendar event:', error);
+      throw error;
     }
   }
   
   /**
-   * Create a new calendar event
+   * Updates an existing calendar event
+   * 
+   * @param id - The ID of the event to update
+   * @param event - The updates to apply
+   * @param timeZone - The timezone of the event
+   * @returns The updated calendar event
    */
-  static async createEvent(event: CalendarEvent, timezone: string): Promise<CalendarEvent> {
+  static async updateCalendarEvent(
+    id: string,
+    event: Partial<CalendarEvent>,
+    timeZone: string
+  ): Promise<CalendarEvent> {
     try {
-      console.log('[CalendarService] Creating event:', event);
+      // Validate timezone
+      const validTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
       
-      // Ensure the timezone is valid
-      const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
-      
-      // Determine event type and call appropriate service
-      const eventType = event.extendedProps?.eventType || event.type;
-      
-      if (event.extendedProps?.clinicianId) {
-        event.extendedProps.clinicianId = formatAsUUID(event.extendedProps.clinicianId, { logLevel: 'warn' });
+      if (!event.extendedProps?.eventType) {
+        // Try to determine event type from existing event
+        const existingEvent = await this.getCalendarEventById(id, validTimeZone);
+        
+        if (!existingEvent) {
+          throw new Error('Event not found');
+        }
+        
+        event.extendedProps = {
+          ...event.extendedProps,
+          eventType: existingEvent.extendedProps?.eventType || 'general'
+        };
       }
       
-      let result: CalendarEvent | null;
-      
-      switch (eventType) {
-        case 'appointment': {
-          const appointmentData = this.prepareAppointmentData(event, validTimeZone);
-          result = await AppointmentService.createAppointment(appointmentData);
-          break;
+      if (event.extendedProps.eventType === 'appointment') {
+        // Update appointment
+        const updates: any = {};
+        
+        if (event.start) {
+          updates.start_time = typeof event.start === 'string' 
+            ? event.start 
+            : event.start.toISOString();
         }
-        case 'availability': {
-          const availabilityData = this.prepareAvailabilityData(event, validTimeZone);
-          result = await AvailabilityService.createAvailability(availabilityData);
-          break;
+        
+        if (event.end) {
+          updates.end_time = typeof event.end === 'string' 
+            ? event.end 
+            : event.end.toISOString();
         }
-        case 'time_off': {
-          const timeOffData = this.prepareTimeOffData(event, validTimeZone);
-          result = await TimeOffService.createTimeOff(timeOffData);
-          break;
+        
+        if (event.title) {
+          updates.type = event.title;
         }
-        default:
-          throw CalendarErrorHandler.formatError(
-            new Error(`Unsupported event type: ${eventType}`)
-          );
+        
+        if (event.extendedProps.description) {
+          updates.notes = event.extendedProps.description;
+        }
+        
+        if (event.extendedProps.status) {
+          updates.status = event.extendedProps.status;
+        }
+        
+        if (event.extendedProps.clientId) {
+          updates.client_id = event.extendedProps.clientId;
+        }
+        
+        if (event.extendedProps.clinicianId) {
+          updates.clinician_id = event.extendedProps.clinicianId;
+        }
+        
+        const appointment = await AppointmentService.updateAppointment(id, updates);
+        return AppointmentService.toCalendarEvent(appointment, validTimeZone);
+      } else if (event.extendedProps.eventType === 'availability') {
+        // Update availability
+        const updates: any = {};
+        
+        if (event.start) {
+          updates.start_time = typeof event.start === 'string' 
+            ? event.start 
+            : event.start.toISOString();
+        }
+        
+        if (event.end) {
+          updates.end_time = typeof event.end === 'string' 
+            ? event.end 
+            : event.end.toISOString();
+        }
+        
+        if (event.extendedProps.isActive !== undefined) {
+          updates.is_active = event.extendedProps.isActive;
+        }
+        
+        const availabilityBlock = await AvailabilityService.updateAvailability(id, updates);
+        return AvailabilityService.toCalendarEvent(availabilityBlock, validTimeZone);
+      } else {
+        throw new Error(`Unsupported event type: ${event.extendedProps.eventType}`);
       }
-      
-      if (!result) {
-        throw CalendarErrorHandler.formatError(
-          new Error('Failed to create event, service returned null')
-        );
-      }
-      
-      return result;
     } catch (error) {
-      console.error('[CalendarService] Error creating event:', error);
-      throw CalendarErrorHandler.formatError(error);
+      console.error('[CalendarService] Error updating calendar event:', error);
+      throw error;
     }
   }
   
   /**
-   * Prepare appointment data for saving
+   * Deletes a calendar event
+   * 
+   * @param id - The ID of the event to delete
+   * @param eventType - The type of event (optional, will determine automatically if not provided)
+   * @returns True if the deletion was successful
    */
-  static prepareAppointmentData(event: CalendarEvent, timezone: string): Partial<Appointment> {
-    // Ensure we have valid dates
-    const start = typeof event.start === 'string' ? new Date(event.start) : event.start;
-    const end = typeof event.end === 'string' ? new Date(event.end) : event.end;
-    
-    const appointmentData: Partial<Appointment> = {
-      id: event.id,
-      clinician_id: event.extendedProps?.clinicianId,
-      client_id: event.extendedProps?.clientId,
-      title: event.title,
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
-      allDay: event.allDay || false,
-      appointmentType: event.extendedProps?.appointmentType,
-      time_zone: timezone
-    };
-    
-    return appointmentData;
-  }
-  
-  /**
-   * Prepare availability data for saving
-   */
-  static prepareAvailabilityData(event: CalendarEvent, timezone: string): Partial<AvailabilityBlock> {
-    // Ensure we have valid dates
-    const start = typeof event.start === 'string' ? new Date(event.start) : event.start;
-    const end = typeof event.end === 'string' ? new Date(event.end) : event.end;
-    
-    const availabilityData: Partial<AvailabilityBlock> = {
-      id: event.id,
-      clinician_id: event.extendedProps?.clinicianId,
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
-      allDay: event.allDay || false,
-      availability_type: event.title,
-      time_zone: timezone
-    };
-    
-    return availabilityData;
-  }
-  
-  /**
-   * Prepare time off data for saving
-   */
-  static prepareTimeOffData(event: CalendarEvent, timezone: string): Partial<TimeOff> {
-    // Ensure we have valid dates
-    const start = typeof event.start === 'string' ? new Date(event.start) : event.start;
-    const end = typeof event.end === 'string' ? new Date(event.end) : event.end;
-    
-    const timeOffData: Partial<TimeOff> = {
-      id: event.id,
-      clinician_id: event.extendedProps?.clinicianId,
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
-      reason: event.title,
-      allDay: event.allDay || false,
-      time_zone: timezone
-    };
-    
-    return timeOffData;
-  }
-  
-  /**
-   * Update an existing calendar event
-   */
-  static async updateEvent(event: CalendarEvent, timezone: string): Promise<CalendarEvent> {
+  static async deleteCalendarEvent(
+    id: string,
+    eventType?: CalendarEventType
+  ): Promise<boolean> {
     try {
-      console.log('[CalendarService] Updating event:', event);
-      
-      if (!event.id) {
-        throw CalendarErrorHandler.formatError(
-          new Error('Event ID is required for updates')
-        );
-      }
-      
-      // Ensure the timezone is valid
-      const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
-      
-      // Determine event type and call appropriate service
-      const eventType = event.extendedProps?.eventType || event.type;
-      
-      let result: CalendarEvent | null;
-      
-      switch (eventType) {
-        case 'appointment': {
-          const appointmentData = this.prepareAppointmentData(event, validTimeZone);
-          result = await AppointmentService.updateAppointment(event.id, appointmentData);
-          break;
+      if (!eventType) {
+        // Try to determine event type from existing event
+        try {
+          const appointment = await AppointmentService.getAppointmentById(id);
+          if (appointment) {
+            eventType = 'appointment';
+          }
+        } catch (error) {
+          // Not an appointment, try availability
+          try {
+            const availabilityBlock = await AvailabilityService.getAvailabilityById(id);
+            if (availabilityBlock) {
+              eventType = 'availability';
+            }
+          } catch (innerError) {
+            // Not an availability block either
+            throw new Error('Event not found');
+          }
         }
-        case 'availability': {
-          const availabilityData = this.prepareAvailabilityData(event, validTimeZone);
-          result = await AvailabilityService.updateAvailability(event.id, availabilityData);
-          break;
-        }
-        case 'time_off': {
-          const timeOffData = this.prepareTimeOffData(event, validTimeZone);
-          result = await TimeOffService.updateTimeOff(event.id, timeOffData);
-          break;
-        }
-        default:
-          throw CalendarErrorHandler.formatError(
-            new Error(`Unsupported event type: ${eventType}`)
-          );
       }
-      
-      if (!result) {
-        throw CalendarErrorHandler.formatError(
-          new Error('Failed to update event, service returned null')
-        );
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('[CalendarService] Error updating event:', error);
-      throw CalendarErrorHandler.formatError(error);
-    }
-  }
-  
-  /**
-   * Delete a calendar event
-   */
-  static async deleteEvent(eventId: string, eventType: CalendarEventType): Promise<boolean> {
-    try {
-      console.log('[CalendarService] Deleting event:', { eventId, eventType });
-      
-      if (!eventId) {
-        throw CalendarErrorHandler.formatError(
-          new Error('Event ID is required for deletion')
-        );
-      }
-      
-      let result: boolean;
-      
-      switch (eventType) {
-        case 'appointment':
-          result = await AppointmentService.deleteAppointment(eventId);
-          break;
-        case 'availability':
-          result = await AvailabilityService.deleteAvailability(eventId);
-          break;
-        case 'time_off':
-          result = await TimeOffService.deleteTimeOff(eventId);
-          break;
-        default:
-          throw CalendarErrorHandler.formatError(
-            new Error(`Unsupported event type: ${eventType}`)
-          );
-      }
-      
-      if (!result) {
-        console.warn(`[CalendarService] Delete operation for ${eventType} with ID ${eventId} returned false`);
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('[CalendarService] Error deleting event:', error);
-      throw CalendarErrorHandler.formatError(error);
-    }
-  }
-  
-  /**
-   * Apply event colors based on event type
-   */
-  static applyEventColors(event: CalendarEvent): CalendarEvent {
-    // Add default styles based on the event type
-    const eventType = event.extendedProps?.eventType || '';
-    
-    // Create a clone of the event to avoid modifying the original
-    const styledEvent: CalendarEvent = { ...event };
-    
-    switch (eventType) {
-      case 'appointment':
-        styledEvent.backgroundColor = '#4f46e5'; // Indigo
-        styledEvent.textColor = '#ffffff';
-        styledEvent.borderColor = '#4338ca';
-        break;
-      case 'availability':
-        styledEvent.backgroundColor = '#22c55e'; // Green
-        styledEvent.textColor = '#ffffff';
-        styledEvent.borderColor = '#16a34a';
-        break;
-      case 'time_off':
-        styledEvent.backgroundColor = '#ef4444'; // Red
-        styledEvent.textColor = '#ffffff';
-        styledEvent.borderColor = '#dc2626';
-        break;
-      default:
-        styledEvent.backgroundColor = '#6b7280'; // Gray
-        styledEvent.textColor = '#ffffff';
-        styledEvent.borderColor = '#4b5563';
-    }
-    
-    return styledEvent;
-  }
-  
-  /**
-   * Get mock data for testing
-   */
-  static getMockEvents(count: number = 10): CalendarEvent[] {
-    const events: CalendarEvent[] = [];
-    
-    // Generate mock events of different types
-    for (let i = 0; i < count; i++) {
-      const eventType = i % 3 === 0 ? 'appointment' : i % 3 === 1 ? 'availability' : 'time_off';
       
       if (eventType === 'appointment') {
-        const mockAppointment = this.getMockAppointment();
-        events.push(this.convertAppointmentToCalendarEvent(mockAppointment, 'UTC'));
+        return await AppointmentService.deleteAppointment(id);
       } else if (eventType === 'availability') {
-        const mockAvailability = this.getMockAvailabilityBlock();
-        events.push(this.convertAvailabilityToCalendarEvent(mockAvailability, 'UTC'));
+        return await AvailabilityService.deleteAvailability(id);
       } else {
-        const mockTimeOff = this.getMockTimeOff();
-        events.push(this.convertTimeOffToCalendarEvent(mockTimeOff, 'UTC'));
+        throw new Error(`Unsupported event type: ${eventType}`);
       }
+    } catch (error) {
+      console.error('[CalendarService] Error deleting calendar event:', error);
+      throw error;
     }
-    
-    return events.map(event => this.applyEventColors(event));
-  }
-  
-  /**
-   * Generate a mock appointment
-   */
-  static getMockAppointment(): Appointment {
-    const now = new Date();
-    const startTime = new Date(now);
-    startTime.setHours(startTime.getHours() + Math.floor(Math.random() * 48));
-    startTime.setMinutes(0);
-    
-    const endTime = new Date(startTime);
-    endTime.setHours(endTime.getHours() + 1);
-    
-    return {
-      id: `appt-${new Date().getTime()}-${Math.floor(Math.random() * 1000)}`,
-      clinician_id: 'mock-clinician-id',
-      client_id: 'mock-client-id',
-      start_time: startTime.toISOString(),
-      end_time: endTime.toISOString(),
-      title: 'Mock Appointment',
-      clientName: 'Mock Client',
-      allDay: false,
-      appointmentType: 'Initial Consultation',
-      time_zone: 'UTC'
-    };
-  }
-  
-  /**
-   * Generate a mock availability block
-   */
-  static getMockAvailabilityBlock(): AvailabilityBlock {
-    const now = new Date();
-    const startTime = new Date(now);
-    startTime.setDate(startTime.getDate() + Math.floor(Math.random() * 7));
-    startTime.setHours(9);
-    startTime.setMinutes(0);
-    
-    const endTime = new Date(startTime);
-    endTime.setHours(17);
-    endTime.setMinutes(0);
-    
-    return {
-      id: `avail-${new Date().getTime()}-${Math.floor(Math.random() * 1000)}`,
-      clinician_id: 'mock-clinician-id',
-      start_time: startTime.toISOString(),
-      end_time: endTime.toISOString(),
-      availability_type: 'Standard Hours',
-      time_zone: 'UTC',
-      allDay: false
-    };
-  }
-  
-  /**
-   * Generate mock time off
-   */
-  static getMockTimeOff(): TimeOff {
-    const now = new Date();
-    const startTime = new Date(now);
-    startTime.setDate(startTime.getDate() + Math.floor(Math.random() * 14) + 7);
-    startTime.setHours(0);
-    startTime.setMinutes(0);
-    
-    const endTime = new Date(startTime);
-    endTime.setHours(23);
-    endTime.setMinutes(59);
-    
-    return {
-      id: `timeoff-${new Date().getTime()}-${Math.floor(Math.random() * 1000)}`,
-      clinician_id: 'mock-clinician-id',
-      start_time: startTime.toISOString(),
-      end_time: endTime.toISOString(),
-      reason: 'Vacation Day',
-      time_zone: 'UTC',
-      allDay: true
-    };
   }
 }
-
-export default CalendarService;

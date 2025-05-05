@@ -52,6 +52,7 @@ jest.mock('@/utils/timeZoneService', () => {
     ...originalModule,
     TimeZoneService: {
       ensureIANATimeZone: jest.fn((timezone) => timezone || 'America/Chicago'),
+      validateTimeZone: jest.fn((timezone) => timezone || 'America/Chicago'),
       getLocalTimeZone: jest.fn(() => 'America/Chicago'),
       getUserTimeZone: jest.fn(() => 'America/Chicago'),
       fromUTC: jest.fn((timestamp, timezone) => DateTime.fromISO(timestamp).setZone('America/Chicago')),
@@ -66,6 +67,7 @@ jest.mock('@/utils/timeZoneService', () => {
       createDateTime: jest.fn((date, time, zone) => DateTime.fromISO(`${date}T${time}`, { zone })),
       formatDateTime: jest.fn((date, format) => "2025-05-01 12:00"),
       convertTimeZone: jest.fn((time, from, to) => time),
+      convertTime: jest.fn((time, from, to) => time),
       formatTime: jest.fn((time) => "12:00 PM"),
       getCommonTimezones: jest.fn(() => [{ value: 'America/Chicago', label: 'Central Time (Test)' }]),
       getTimezoneOffsetString: jest.fn(() => "-05:00"),
