@@ -1948,6 +1948,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      is_client: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
+      is_clinician: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
       standardize_uuid: {
         Args: { input_id: string }
         Returns: string
