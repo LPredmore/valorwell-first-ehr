@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -89,6 +90,8 @@ const Login = () => {
       setIsResettingPassword(true);
       console.log("[Login] Sending password reset email to:", values.email);
       
+      // Use the Supabase resetPasswordForEmail function 
+      // This will send an email with a password reset link
       const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });

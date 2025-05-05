@@ -145,36 +145,59 @@ const ResetPassword = () => {
       setIsLoading(true);
       console.log("[ResetPassword] Admin resetting password for:", values.email);
       
-      // Get user by email using a workaround since we don't have direct getUserByEmail
-      const { data, error } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('client_email', values.email)
-        .single();
+      // First try to find the user in the auth.users table via admin API
+      // We need to use the service role key for this which is automatically used by the admin endpoints
+      const { data: userData, error: adminError } = await supabase.auth.admin.listUsers();
       
-      if (error) {
-        console.error("[ResetPassword] Error finding user:", error.message);
-        throw new Error("User not found with this email address");
+      if (adminError) {
+        console.error("[ResetPassword] Admin API access error:", adminError.message);
+        throw new Error("You don't have permission to perform admin actions. Make sure you're using the service role key.");
       }
 
-      if (!data || !data.id) {
-        throw new Error("User not found with this email address");
-      }
+      // Find the user with the matching email
+      const user = userData.users.find(u => u.email === values.email);
       
-      // Update the user's password directly using admin API
-      const { error: updateError } = await supabase.auth.admin.updateUserById(
-        data.id,
-        { password: values.password }
-      );
+      if (!user) {
+        console.error("[ResetPassword] User not found with email:", values.email);
+        
+        // Try alternative lookup through clients table as fallback
+        const { data: clientData, error: clientError } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('client_email', values.email)
+          .single();
+        
+        if (clientError || !clientData) {
+          console.error("[ResetPassword] Client lookup error:", clientError?.message);
+          throw new Error("User not found with this email address");
+        }
+        
+        // If we found the user in clients table, update their password
+        const { error: updateError } = await supabase.auth.admin.updateUserById(
+          clientData.id,
+          { password: values.password }
+        );
 
-      if (updateError) {
-        console.error("[ResetPassword] Error updating password:", updateError.message);
-        throw updateError;
+        if (updateError) {
+          console.error("[ResetPassword] Error updating password:", updateError.message);
+          throw updateError;
+        }
+      } else {
+        // Update the user's password directly using admin API with the user ID from listUsers
+        const { error: updateError } = await supabase.auth.admin.updateUserById(
+          user.id,
+          { password: values.password }
+        );
+
+        if (updateError) {
+          console.error("[ResetPassword] Error updating password:", updateError.message);
+          throw updateError;
+        }
       }
 
       console.log("[ResetPassword] Password reset successfully for:", values.email);
       
-      // Show success dialog instead of toast
+      // Show success dialog
       setShowAdminSuccessDialog(true);
       
     } catch (error: any) {
