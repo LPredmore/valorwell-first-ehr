@@ -10,6 +10,7 @@ interface CalendarViewControlsProps {
   onViewChange: (view: 'week' | 'month') => void;
   onToggleAvailability: () => void;
   onNewAppointment: () => void;
+  selectedClinicianId?: string | null;
 }
 
 const CalendarViewControls: React.FC<CalendarViewControlsProps> = ({
@@ -17,7 +18,8 @@ const CalendarViewControls: React.FC<CalendarViewControlsProps> = ({
   showAvailability,
   onViewChange,
   onToggleAvailability,
-  onNewAppointment
+  onNewAppointment,
+  selectedClinicianId
 }) => {
   return (
     <div className="flex items-center gap-4">

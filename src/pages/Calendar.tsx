@@ -77,6 +77,7 @@ const CalendarPage = () => {
                 onViewChange={handleViewChange}
                 onToggleAvailability={toggleAvailability}
                 onNewAppointment={() => setIsDialogOpen(true)}
+                selectedClinicianId={selectedClinicianId}
               />
 
               <div className="hidden">
@@ -129,8 +130,8 @@ const CalendarPage = () => {
       <AppointmentDialog
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
-        clients={clients}
-        loadingClients={loadingClients}
+        clients={[]} // We'll fetch clients in the dialog itself
+        loadingClients={false}
         selectedClinicianId={selectedClinicianId}
         onAppointmentCreated={handleAppointmentCreated}
       />

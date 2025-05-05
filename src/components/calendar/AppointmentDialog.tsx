@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format, addWeeks, addMonths, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -34,8 +34,8 @@ interface AppointmentDialogProps {
 const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   isOpen,
   onClose,
-  clients,
-  loadingClients,
+  clients: initialClients,
+  loadingClients: initialLoadingClients,
   selectedClinicianId,
   onAppointmentCreated
 }) => {
@@ -44,6 +44,49 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   const [startTime, setStartTime] = useState<string>("09:00");
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState<string>('weekly');
+  const [clients, setClients] = useState<Client[]>(initialClients);
+  const [loadingClients, setLoadingClients] = useState(initialLoadingClients);
+
+  // Fetch clients for the selected clinician when dialog opens or clinician changes
+  useEffect(() => {
+    const fetchClientsForClinician = async () => {
+      if (!selectedClinicianId) return;
+      
+      setLoadingClients(true);
+      setClients([]);
+      
+      try {
+        const { data, error } = await supabase
+          .from('clients')
+          .select('id, client_preferred_name, client_last_name')
+          .eq('client_assigned_therapist', selectedClinicianId)
+          .order('client_last_name');
+          
+        if (error) {
+          console.error('Error fetching clients:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load clients. Please try again.",
+            variant: "destructive"
+          });
+        } else {
+          const formattedClients = data.map(client => ({
+            id: client.id,
+            displayName: `${client.client_preferred_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
+          }));
+          setClients(formattedClients);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoadingClients(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchClientsForClinician();
+    }
+  }, [selectedClinicianId, isOpen]);
 
   const generateTimeOptions = () => {
     const options = [];
