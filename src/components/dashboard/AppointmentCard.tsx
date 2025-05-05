@@ -10,6 +10,7 @@ export interface AppointmentCardProps {
   appointment: {
     id: string;
     client_id: string;
+    clinician_id: string;
     date: string;
     start_time: string;
     end_time: string;

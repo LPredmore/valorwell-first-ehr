@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { format, isToday, isFuture, parseISO, isBefore } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
@@ -35,6 +34,9 @@ export const useAppointments = (
   const [currentAppointment, setCurrentAppointment] = useState<Appointment | null>(null);
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
+  const [showSessionTemplate, setShowSessionTemplate] = useState(false);
+  const [clientData, setClientData] = useState<any>(null);
+  const [isLoadingClientData, setIsLoadingClientData] = useState(false);
 
   // Fetch appointments
   const { 
@@ -54,6 +56,7 @@ export const useAppointments = (
         .select(`
           id,
           client_id,
+          clinician_id,
           date,
           start_time,
           end_time,
@@ -339,6 +342,32 @@ export const useAppointments = (
     }
   };
 
+  // Fetch client data for a specific appointment
+  const fetchClientData = async (clientId: string) => {
+    setIsLoadingClientData(true);
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', clientId)
+        .single();
+      
+      if (error) throw error;
+      setClientData(data);
+      return data;
+    } catch (error) {
+      console.error('Error fetching client data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load client information.',
+        variant: 'destructive',
+      });
+      return null;
+    } finally {
+      setIsLoadingClientData(false);
+    }
+  };
+
   // Start a video session for an appointment
   const startVideoSession = async (appointment: Appointment) => {
     try {
@@ -379,6 +408,31 @@ export const useAppointments = (
     setCurrentAppointment(null);
   };
 
+  // Open session template for documentation
+  const openSessionTemplate = async (appointment: Appointment) => {
+    try {
+      // Fetch client data if needed
+      if (!clientData || clientData.id !== appointment.client_id) {
+        await fetchClientData(appointment.client_id);
+      }
+      setCurrentAppointment(appointment);
+      setShowSessionTemplate(true);
+    } catch (error) {
+      console.error('Error opening session template:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not load the session template. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Close session template
+  const closeSessionTemplate = () => {
+    setShowSessionTemplate(false);
+    setCurrentAppointment(null);
+  };
+
   return {
     appointments,
     todayAppointments,
@@ -390,6 +444,9 @@ export const useAppointments = (
     currentAppointment,
     isVideoOpen,
     currentVideoUrl,
+    showSessionTemplate,
+    clientData,
+    isLoadingClientData,
     createAppointment,
     createRecurringAppointments,
     updateAppointment,
@@ -397,6 +454,8 @@ export const useAppointments = (
     deleteAppointment,
     deleteRecurringAppointments,
     startVideoSession,
+    openSessionTemplate,
+    closeSessionTemplate,
     closeVideoSession
   };
 };
