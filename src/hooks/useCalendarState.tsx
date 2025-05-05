@@ -66,8 +66,10 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
         if (error) {
           console.error('Error fetching clinicians:', error);
         } else {
+          console.log('Fetched clinicians:', data);
           setClinicians(data || []);
           if (data && data.length > 0 && !selectedClinicianId) {
+            console.log('Setting default clinician:', data[0].id);
             setSelectedClinicianId(data[0].id);
           }
         }
@@ -84,8 +86,12 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   // Load clients for selected clinician
   useEffect(() => {
     const fetchClientsForClinician = async () => {
-      if (!selectedClinicianId) return;
+      if (!selectedClinicianId) {
+        console.log('Not fetching clients: clinicianId is null');
+        return;
+      }
       
+      console.log('useCalendarState - Fetching clients for clinician:', selectedClinicianId);
       setLoadingClients(true);
       setClients([]);
       
@@ -99,10 +105,17 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
         if (error) {
           console.error('Error fetching clients:', error);
         } else {
+          console.log('useCalendarState - Clients fetched successfully:', data);
+          
+          if (data.length === 0) {
+            console.log('useCalendarState - No clients found for clinician:', selectedClinicianId);
+          }
+          
           const formattedClients = data.map(client => ({
             id: client.id,
             displayName: `${client.client_preferred_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
           }));
+          console.log('useCalendarState - Formatted clients:', formattedClients);
           setClients(formattedClients);
         }
       } catch (error) {

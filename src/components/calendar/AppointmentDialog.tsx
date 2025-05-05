@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -77,6 +78,12 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           });
         } else {
           console.log('Clients fetched successfully:', data);
+          console.log('Selected clinician ID used for query:', selectedClinicianId);
+          
+          if (data.length === 0) {
+            console.log('No clients found for this clinician');
+          }
+          
           const formattedClients = data.map(client => ({
             id: client.id,
             displayName: `${client.client_preferred_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
@@ -92,6 +99,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
     };
 
     if (isOpen) {
+      console.log('Dialog opened, fetching clients with clinicianId:', selectedClinicianId);
       fetchClientsForClinician();
     }
   }, [selectedClinicianId, isOpen]);
@@ -103,8 +111,14 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
       setSelectedClientId(null);
       setStartTime("09:00");
       setIsRecurring(false);
+      
+      // Use the initial clients if they're provided and not empty
+      if (initialClients && initialClients.length > 0) {
+        console.log('Using initial clients from props:', initialClients);
+        setClients(initialClients);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialClients]);
 
   const generateTimeOptions = () => {
     const options = [];
@@ -247,6 +261,15 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
     }
   };
 
+  // Log details about the client loading state and selected clinician for debugging
+  console.log('AppointmentDialog state:', {
+    isOpen,
+    selectedClinicianId,
+    loadingClients,
+    clientsCount: clients.length,
+    clients
+  });
+  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
@@ -321,7 +344,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
                 <SelectValue placeholder="Select start time" />
               </SelectTrigger>
               <SelectContent>
-                {generateTimeOptions().map((time) => (
+                {timeOptions.map((time) => (
                   <SelectItem key={time} value={time}>
                     {format(new Date(`2023-01-01T${time}`), 'h:mm a')}
                   </SelectItem>

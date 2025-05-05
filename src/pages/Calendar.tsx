@@ -65,6 +65,8 @@ const CalendarPage = () => {
   };
 
   console.log("Calendar Page - selectedClinicianId:", selectedClinicianId);
+  console.log("Calendar Page - clients:", clients);
+  console.log("Calendar Page - loadingClients:", loadingClients);
 
   return (
     <Layout>
