@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -172,14 +171,22 @@ const Login = () => {
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="flex flex-col">
-          <p className="text-center text-sm text-gray-500 mt-2">
+        <CardFooter className="flex flex-col space-y-2">
+          <p className="text-center text-sm text-gray-500">
             Don't have an account?{" "}
             <button 
               onClick={() => navigate("/signup")} 
               className="text-blue-500 hover:text-blue-700 font-medium"
             >
               Sign up
+            </button>
+          </p>
+          <p className="text-center text-sm text-gray-500">
+            <button 
+              onClick={() => navigate("/reset-password")} 
+              className="text-blue-500 hover:text-blue-700 font-medium"
+            >
+              Admin password reset
             </button>
           </p>
         </CardFooter>

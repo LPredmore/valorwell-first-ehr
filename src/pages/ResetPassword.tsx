@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,6 +17,7 @@ import {
   FormMessage 
 } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const formSchema = z.object({
   password: z
@@ -30,11 +31,26 @@ const formSchema = z.object({
   path: ["confirmPassword"],
 });
 
+const adminResetSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email address" }),
+  password: z
+    .string()
+    .min(8, { message: "Password must be at least 8 characters" })
+    .max(72, { message: "Password cannot be longer than 72 characters" }),
+});
+
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [isValid, setIsValid] = useState(false);
   const [validationMessage, setValidationMessage] = useState("");
+  const [isAdminReset, setIsAdminReset] = useState(false);
+  const [showAdminSuccessDialog, setShowAdminSuccessDialog] = useState(false);
+
+  // Extract email from query parameters if provided
+  const queryParams = new URLSearchParams(location.search);
+  const emailParam = queryParams.get('email');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -44,7 +60,21 @@ const ResetPassword = () => {
     },
   });
 
+  const adminResetForm = useForm<z.infer<typeof adminResetSchema>>({
+    resolver: zodResolver(adminResetSchema),
+    defaultValues: {
+      email: emailParam || "",
+      password: "",
+    },
+  });
+
   useEffect(() => {
+    // Check if we have email parameter for admin reset
+    if (emailParam) {
+      setIsAdminReset(true);
+      return;
+    }
+
     // Check if we have hash parameters for the password reset
     const hash = window.location.hash;
     if (!hash) {
@@ -74,7 +104,7 @@ const ResetPassword = () => {
     };
     
     checkSession();
-  }, []);
+  }, [emailParam]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
@@ -110,17 +140,77 @@ const ResetPassword = () => {
     }
   };
 
+  const onAdminResetSubmit = async (values: z.infer<typeof adminResetSchema>) => {
+    try {
+      setIsLoading(true);
+      console.log("[ResetPassword] Admin resetting password for:", values.email);
+      
+      // Check if user exists first
+      const { data: userExists, error: userCheckError } = await supabase.auth.admin.getUserByEmail(values.email);
+      
+      if (userCheckError) {
+        console.error("[ResetPassword] Error checking user:", userCheckError.message);
+        throw userCheckError;
+      }
+
+      if (!userExists || !userExists.user) {
+        throw new Error("User not found with this email address");
+      }
+      
+      // Update the user's password directly using admin API
+      const { error: updateError } = await supabase.auth.admin.updateUserById(
+        userExists.user.id,
+        { password: values.password }
+      );
+
+      if (updateError) {
+        console.error("[ResetPassword] Error updating password:", updateError.message);
+        throw updateError;
+      }
+
+      console.log("[ResetPassword] Password reset successfully for:", values.email);
+      
+      // Show success dialog instead of toast
+      setShowAdminSuccessDialog(true);
+      
+    } catch (error: any) {
+      console.error("[ResetPassword] Error:", error);
+      
+      // Handle common errors
+      let errorMessage = error.message || "There was a problem resetting the password";
+      
+      // Improve messaging for specific error types
+      if (error.message.includes("User not found")) {
+        errorMessage = "No account found with this email address";
+      } else if (error.message.includes("permission")) {
+        errorMessage = "You don't have permission to perform this action. Only administrators can reset passwords directly.";
+      }
+      
+      toast({
+        title: "Password reset failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Reset Password</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">
+            {isAdminReset ? "Direct Password Reset" : "Reset Password"}
+          </CardTitle>
           <CardDescription className="text-center">
-            Enter your new password
+            {isAdminReset 
+              ? "Directly reset a user's password by email" 
+              : "Enter your new password"}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!isValid ? (
+          {!isValid && !isAdminReset ? (
             <div className="text-center p-4">
               <p className="text-red-500">{validationMessage}</p>
               <Button 
@@ -130,6 +220,40 @@ const ResetPassword = () => {
                 Back to Login
               </Button>
             </div>
+          ) : isAdminReset ? (
+            <Form {...adminResetForm}>
+              <form onSubmit={adminResetForm.handleSubmit(onAdminResetSubmit)} className="space-y-4">
+                <FormField
+                  control={adminResetForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email Address</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="Enter user's email" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={adminResetForm.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>New Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Enter new password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Resetting..." : "Reset Password"}
+                </Button>
+              </form>
+            </Form>
           ) : (
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -176,6 +300,26 @@ const ResetPassword = () => {
           </Button>
         </CardFooter>
       </Card>
+
+      {/* Admin Reset Success Dialog */}
+      <AlertDialog open={showAdminSuccessDialog} onOpenChange={setShowAdminSuccessDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Password Reset Successful</AlertDialogTitle>
+            <AlertDialogDescription>
+              The password for {adminResetForm.getValues().email} has been reset successfully.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => {
+              setShowAdminSuccessDialog(false);
+              navigate("/login");
+            }}>
+              Go to Login
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
