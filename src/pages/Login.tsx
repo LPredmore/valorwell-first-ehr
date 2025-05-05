@@ -17,21 +17,35 @@ import {
   FormMessage 
 } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
 });
 
+const resetPasswordSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email address" }),
+});
+
 const Login = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
       password: "",
+    },
+  });
+
+  const resetForm = useForm<z.infer<typeof resetPasswordSchema>>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      email: "",
     },
   });
 
@@ -68,6 +82,40 @@ const Login = () => {
     } finally {
       console.log("[Login] Setting isLoading to false");
       setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (values: z.infer<typeof resetPasswordSchema>) => {
+    try {
+      setIsResettingPassword(true);
+      console.log("[Login] Sending password reset email to:", values.email);
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        console.error("[Login] Password reset error:", error.message);
+        throw error;
+      }
+
+      console.log("[Login] Password reset email sent successfully");
+      toast({
+        title: "Password reset email sent",
+        description: "Check your email for a link to reset your password",
+      });
+      
+      setIsResetDialogOpen(false);
+      resetForm.reset();
+    } catch (error: any) {
+      console.error("[Login] Password reset error:", error);
+      toast({
+        title: "Password reset failed",
+        description: error.message || "Failed to send password reset email",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -109,6 +157,15 @@ const Login = () => {
                   </FormItem>
                 )}
               />
+              <div className="text-right">
+                <button 
+                  type="button"
+                  onClick={() => setIsResetDialogOpen(true)}
+                  className="text-sm text-blue-500 hover:text-blue-700"
+                >
+                  Forgot password?
+                </button>
+              </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign in"}
               </Button>
@@ -127,6 +184,48 @@ const Login = () => {
           </p>
         </CardFooter>
       </Card>
+
+      {/* Password Reset Dialog */}
+      <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Reset your password</DialogTitle>
+            <DialogDescription>
+              Enter your email address and we'll send you a link to reset your password.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...resetForm}>
+            <form onSubmit={resetForm.handleSubmit(handleResetPassword)} className="space-y-4">
+              <FormField
+                control={resetForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter your email" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter className="flex justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsResetDialogOpen(false)}
+                  disabled={isResettingPassword}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isResettingPassword}>
+                  {isResettingPassword ? "Sending..." : "Send reset link"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
