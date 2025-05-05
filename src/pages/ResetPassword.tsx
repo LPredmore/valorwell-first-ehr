@@ -39,6 +39,10 @@ const adminResetSchema = z.object({
     .max(72, { message: "Password cannot be longer than 72 characters" }),
 });
 
+const standardResetSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email address" }),
+});
+
 const ResetPassword = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -46,7 +50,9 @@ const ResetPassword = () => {
   const [isValid, setIsValid] = useState(false);
   const [validationMessage, setValidationMessage] = useState("");
   const [isAdminReset, setIsAdminReset] = useState(false);
+  const [isStandardReset, setIsStandardReset] = useState(false);
   const [showAdminSuccessDialog, setShowAdminSuccessDialog] = useState(false);
+  const [showResetEmailSentDialog, setShowResetEmailSentDialog] = useState(false);
 
   // Extract email from query parameters if provided
   const queryParams = new URLSearchParams(location.search);
@@ -68,10 +74,27 @@ const ResetPassword = () => {
     },
   });
 
+  const standardResetForm = useForm<z.infer<typeof standardResetSchema>>({
+    resolver: zodResolver(standardResetSchema),
+    defaultValues: {
+      email: emailParam || "",
+    },
+  });
+
   useEffect(() => {
-    // Check if we have email parameter for admin reset
-    if (emailParam) {
+    // If no hash but email parameter exists, show standard reset form
+    if (emailParam && !window.location.hash) {
+      setIsStandardReset(true);
+      setIsAdminReset(false);
+      setIsValid(false);
+      return;
+    }
+    
+    // If no hash and no email, show admin reset form
+    if (!window.location.hash && !emailParam) {
       setIsAdminReset(true);
+      setIsStandardReset(false);
+      setIsValid(false);
       return;
     }
 
@@ -135,6 +158,33 @@ const ResetPassword = () => {
         description: error.message || "There was a problem resetting your password",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onSendResetEmail = async (values: z.infer<typeof standardResetSchema>) => {
+    try {
+      setIsLoading(true);
+      console.log("[ResetPassword] Sending password reset email to:", values.email);
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        console.error("[ResetPassword] Error sending reset email:", error.message);
+        throw error;
+      }
+
+      console.log("[ResetPassword] Reset email sent successfully");
+      setShowResetEmailSentDialog(true);
+    } catch (error: any) {
+      console.error("[ResetPassword] Error:", error);
+      
+      // Display a user-friendly message even if there's an error
+      // Don't reveal if the email exists in the system for security
+      setShowResetEmailSentDialog(true);
     } finally {
       setIsLoading(false);
     }
@@ -228,16 +278,22 @@ const ResetPassword = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            {isAdminReset ? "Direct Password Reset" : "Reset Password"}
+            {isAdminReset 
+              ? "Direct Password Reset" 
+              : isStandardReset 
+                ? "Reset Password"
+                : "Reset Password"}
           </CardTitle>
           <CardDescription className="text-center">
             {isAdminReset 
               ? "Directly reset a user's password by email" 
-              : "Enter your new password"}
+              : isStandardReset
+                ? "Enter your email to receive a password reset link"
+                : "Enter your new password"}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!isValid && !isAdminReset ? (
+          {!isValid && !isAdminReset && !isStandardReset ? (
             <div className="text-center p-4">
               <p className="text-red-500">{validationMessage}</p>
               <Button 
@@ -278,6 +334,27 @@ const ResetPassword = () => {
                 />
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Resetting..." : "Reset Password"}
+                </Button>
+              </form>
+            </Form>
+          ) : isStandardReset ? (
+            <Form {...standardResetForm}>
+              <form onSubmit={standardResetForm.handleSubmit(onSendResetEmail)} className="space-y-4">
+                <FormField
+                  control={standardResetForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email Address</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="Enter your email" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Sending..." : "Send Reset Link"}
                 </Button>
               </form>
             </Form>
@@ -343,6 +420,26 @@ const ResetPassword = () => {
               navigate("/login");
             }}>
               Go to Login
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reset Email Sent Dialog */}
+      <AlertDialog open={showResetEmailSentDialog} onOpenChange={setShowResetEmailSentDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Password Reset Email Sent</AlertDialogTitle>
+            <AlertDialogDescription>
+              If an account exists with the email {standardResetForm.getValues().email}, you will receive a password reset link. Please check your email and follow the instructions.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => {
+              setShowResetEmailSentDialog(false);
+              navigate("/login");
+            }}>
+              Return to Login
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

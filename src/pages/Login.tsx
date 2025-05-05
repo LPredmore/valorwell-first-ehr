@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -90,30 +89,22 @@ const Login = () => {
       setIsResettingPassword(true);
       console.log("[Login] Sending password reset email to:", values.email);
       
-      // Use the Supabase resetPasswordForEmail function 
-      // This will send an email with a password reset link
-      const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) {
-        console.error("[Login] Password reset error:", error.message);
-        throw error;
-      }
-
-      console.log("[Login] Password reset email sent successfully");
-      toast({
-        title: "Password reset email sent",
-        description: "Check your email for a link to reset your password",
-      });
+      // Instead of using resetPasswordForEmail, let's redirect to the reset password page with the email
+      // This will allow us to use the admin password reset functionality as a fallback
+      navigate(`/reset-password?email=${encodeURIComponent(values.email)}`);
       
+      toast({
+        title: "Password reset initiated",
+        description: "Please follow the instructions on the next page to reset your password.",
+      });
+
       setIsResetDialogOpen(false);
       resetForm.reset();
     } catch (error: any) {
       console.error("[Login] Password reset error:", error);
       toast({
         title: "Password reset failed",
-        description: error.message || "Failed to send password reset email",
+        description: error.message || "Failed to initiate password reset",
         variant: "destructive",
       });
     } finally {
@@ -201,7 +192,7 @@ const Login = () => {
           <DialogHeader>
             <DialogTitle>Reset your password</DialogTitle>
             <DialogDescription>
-              Enter your email address and we'll send you a link to reset your password.
+              Enter your email address and we'll help you reset your password.
             </DialogDescription>
           </DialogHeader>
           <Form {...resetForm}>
@@ -229,7 +220,7 @@ const Login = () => {
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isResettingPassword}>
-                  {isResettingPassword ? "Sending..." : "Send reset link"}
+                  {isResettingPassword ? "Processing..." : "Continue"}
                 </Button>
               </DialogFooter>
             </form>
