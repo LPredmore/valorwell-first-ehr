@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import WeekView from './week-view/WeekView';
-import MonthView from './month-view/MonthView';
-import { useAppointments } from '@/hooks/useAppointments';
+import MonthView from './MonthView';
+import { useAppointments, Appointment } from '@/hooks/useAppointments';
 import ClinicianAvailabilityPanel from './ClinicianAvailabilityPanel';
 import AvailabilityPanel from './AvailabilityPanel';
 
@@ -28,16 +28,23 @@ const Calendar = ({
   // Fetch appointments
   const { 
     appointments, 
-    loading: loadingAppointments, 
+    isLoading: loadingAppointments, 
     error, 
-    getClientName,
     refetch 
-  } = useAppointments(clinicianId, refreshTrigger);
+  } = useAppointments(clinicianId);
+
+  // Function to get client name from an appointment
+  const getClientName = (clientId: string): string => {
+    const appointment = appointments.find(app => app.client_id === clientId);
+    return appointment?.client?.client_first_name && appointment?.client?.client_last_name
+      ? `${appointment.client.client_first_name} ${appointment.client.client_last_name}`
+      : 'Client';
+  };
 
   // Handler for appointment clicked in calendar
-  const handleAppointmentClick = (appointmentId: string) => {
-    setSelectedAppointmentId(appointmentId);
-    console.log(`Appointment clicked: ${appointmentId}`);
+  const handleAppointmentClick = (appointment: Appointment) => {
+    setSelectedAppointmentId(appointment.id);
+    console.log(`Appointment clicked: ${appointment.id}`);
   };
 
   // Handler for availability block clicked in calendar
