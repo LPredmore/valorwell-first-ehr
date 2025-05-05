@@ -67,4 +67,46 @@ export class TimeZoneService {
     const safeTimezone = this.ensureIANATimeZone(timezone);
     return DateTime.fromISO(utcStr, { zone: 'utc' }).setZone(safeTimezone);
   }
+
+  /**
+   * Converts a calendar event from UTC to a user's timezone
+   */
+  static convertEventToUserTimeZone(event: any, userTimezone: string): any {
+    if (!event) return null;
+    
+    const safeTimezone = this.ensureIANATimeZone(userTimezone);
+    
+    // Create a deep copy of the event to avoid modifying the original
+    const localEvent = { ...event };
+    
+    if (event.start_time) {
+      // Assuming start_time is in HH:MM format
+      const [hours, minutes] = event.start_time.split(':').map(Number);
+      const dt = DateTime.fromObject({ 
+        year: new Date(event.date).getFullYear(),
+        month: new Date(event.date).getMonth() + 1, 
+        day: new Date(event.date).getDate(),
+        hour: hours,
+        minute: minutes 
+      }, { zone: 'utc' }).setZone(safeTimezone);
+      
+      localEvent.start_time = dt.toFormat('HH:mm');
+    }
+    
+    if (event.end_time) {
+      // Assuming end_time is in HH:MM format
+      const [hours, minutes] = event.end_time.split(':').map(Number);
+      const dt = DateTime.fromObject({ 
+        year: new Date(event.date).getFullYear(),
+        month: new Date(event.date).getMonth() + 1, 
+        day: new Date(event.date).getDate(),
+        hour: hours,
+        minute: minutes 
+      }, { zone: 'utc' }).setZone(safeTimezone);
+      
+      localEvent.end_time = dt.toFormat('HH:mm');
+    }
+    
+    return localEvent;
+  }
 }

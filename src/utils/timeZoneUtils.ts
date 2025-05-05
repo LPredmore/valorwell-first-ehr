@@ -1,17 +1,15 @@
 
 import { format, parseISO } from 'date-fns';
 import { DateTime } from 'luxon';
+import { TimeZoneService } from './timeZoneService';
 
 /**
  * Get the user's timezone from the browser
  */
 export function getUserTimeZone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Chicago';
-  } catch (error) {
-    console.error('Error getting user timezone:', error);
-    return 'America/Chicago'; // Default fallback
-  }
+  return TimeZoneService.ensureIANATimeZone(
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  );
 }
 
 /**
@@ -43,26 +41,98 @@ export function formatTimeStringTo12Hour(timeString: string): string {
 }
 
 /**
+ * Format a time string in the user's timezone
+ * @param timeString Time string in format "HH:MM"
+ * @param userTimeZone IANA timezone string
+ * @param formatStr Format string for the output
+ */
+export function formatTimeInUserTimeZone(timeString: string, userTimeZone: string, formatStr: string = 'h:mm a'): string {
+  try {
+    // Get today's date
+    const today = DateTime.now().setZone(userTimeZone);
+    const todayStr = today.toFormat('yyyy-MM-dd');
+    
+    // Parse the time using Luxon with today's date
+    const dateTime = DateTime.fromFormat(`${todayStr} ${timeString}`, 'yyyy-MM-dd HH:mm', { zone: userTimeZone });
+    
+    if (!dateTime.isValid) {
+      throw new Error(`Invalid datetime: ${dateTime.invalidReason}`);
+    }
+    
+    return dateTime.toFormat(formatStr);
+  } catch (error) {
+    console.error('Error formatting time in user timezone:', error);
+    return timeString;
+  }
+}
+
+/**
+ * Format timezone for display (e.g. "EDT" or "America/New_York")
+ */
+export function formatTimeZoneDisplay(timezone: string): string {
+  try {
+    const now = DateTime.now().setZone(timezone);
+    return now.toFormat('ZZZZ'); // Returns the timezone abbreviation (e.g., EDT)
+  } catch (error) {
+    console.error('Error formatting timezone display:', error);
+    return timezone;
+  }
+}
+
+/**
  * Convert a date and time string to a specific timezone
  */
 export function convertToTimezone(dateStr: string, timeStr: string, timezone: string): DateTime {
-  try {
-    return DateTime.fromFormat(`${dateStr} ${timeStr}`, 'yyyy-MM-dd HH:mm', { zone: timezone });
-  } catch (error) {
-    console.error('Error converting to timezone:', error);
-    return DateTime.now().setZone(timezone); // Fallback to current time in the timezone
-  }
+  return TimeZoneService.createDateTime(dateStr, timeStr, timezone);
 }
 
 /**
  * Format a date to display with timezone abbreviation (e.g. "Mar 12, 2023 - CST")
  */
 export function formatDateWithTimezone(date: Date, timezone: string): string {
+  return TimeZoneService.formatDateTime(
+    DateTime.fromJSDate(date),
+    'MMM d, yyyy - ZZZZ',
+    timezone
+  );
+}
+
+/**
+ * Format a date with timezone (e.g. "Mar 12, 2023 at 3:30 PM EDT")
+ */
+export function formatWithTimeZone(date: Date, timezone: string, formatStr: string = 'MMM d, yyyy \'at\' h:mm a ZZZZ'): string {
   try {
     const dt = DateTime.fromJSDate(date).setZone(timezone);
-    return `${dt.toFormat('MMM d, yyyy')} - ${dt.toFormat('ZZZZ')}`;
+    return dt.toFormat(formatStr);
   } catch (error) {
     console.error('Error formatting date with timezone:', error);
-    return format(date, 'MMM d, yyyy'); // Fallback without timezone
+    return format(date, 'MMM d, yyyy');
+  }
+}
+
+/**
+ * Ensures a timezone string is a valid IANA timezone
+ */
+export function ensureIANATimeZone(timezone: string | null | undefined): string {
+  return TimeZoneService.ensureIANATimeZone(timezone);
+}
+
+/**
+ * Format a time value to 12-hour format
+ */
+export function formatTime12Hour(timeString: string): string {
+  try {
+    // Handle both "HH:MM" and "HH:MM:SS" formats
+    const parts = timeString.split(':');
+    const hours = parseInt(parts[0], 10);
+    const minutes = parseInt(parts[1], 10);
+    
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours % 12 || 12; // Convert 0 to 12 for 12 AM
+    
+    return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
+  } catch (error) {
+    console.error('Error formatting to 12-hour time:', error);
+    return timeString;
   }
 }

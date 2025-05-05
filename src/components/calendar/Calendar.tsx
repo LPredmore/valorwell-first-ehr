@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import WeekView from './week-view/WeekView';
 import MonthView from './month-view/MonthView';
-import { useAppointments } from './useAppointments';
+import { useAppointments } from '@/hooks/useAppointments';
 import ClinicianAvailabilityPanel from './ClinicianAvailabilityPanel';
 import AvailabilityPanel from './AvailabilityPanel';
 
