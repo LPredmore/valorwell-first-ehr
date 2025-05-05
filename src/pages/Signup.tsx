@@ -1,11 +1,10 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/use-toast";
 
 import {
   Form,
@@ -56,7 +55,7 @@ const Signup = () => {
       // Generate a random password (will be reset later)
       const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
       
-      // 1. Create auth user
+      // Create auth user with client role directly in the metadata
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: values.email,
         password: tempPassword,
@@ -66,7 +65,8 @@ const Signup = () => {
             last_name: values.lastName,
             phone: values.phone,
             role: "client",
-            temp_password: tempPassword // Include temp password in metadata so it gets stored in profiles table
+            state: values.state,
+            temp_password: tempPassword
           }
         }
       });
@@ -77,26 +77,6 @@ const Signup = () => {
         throw new Error("Failed to create user account");
       }
       
-      // 2. Create client record
-      // Note: The profiles table will be created automatically via trigger
-      const { error: clientError } = await supabase
-        .from('clients')
-        .insert([
-          { 
-            id: authData.user.id,
-            client_first_name: values.firstName, 
-            client_last_name: values.lastName,
-            client_preferred_name: values.preferredName || values.firstName, // Use firstName as fallback
-            client_email: values.email,
-            client_phone: values.phone,
-            client_state: values.state,
-            client_status: 'New'
-          }
-        ]);
-      
-      if (clientError) throw clientError;
-      
-      // Success
       toast({
         title: "Account created successfully",
         description: "You can now log in to access your patient portal.",
