@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -28,6 +29,7 @@ import ProfileSetup from "./pages/ProfileSetup";
 import TherapistSelection from "./pages/TherapistSelection";
 import ClinicianDashboard from "./pages/ClinicianDashboard";
 import ResetPassword from "./pages/ResetPassword";
+import UpdatePassword from "./pages/UpdatePassword";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -47,6 +49,7 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/update-password" element={<UpdatePassword />} />
                 
                 {/* Client accessible routes */}
                 <Route path="/profile-setup" element={<ProfileSetup />} />

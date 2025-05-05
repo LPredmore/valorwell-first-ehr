@@ -90,10 +90,14 @@ const Login = () => {
       setIsResettingPassword(true);
       console.log("[Login] [PASSWORD RESET] Starting password reset flow for email:", values.email);
       
-      // Try direct Supabase auth reset first to see what happens in the logs
-      console.log("[Login] [PASSWORD RESET] Attempting direct Supabase auth reset for debugging");
+      // Use the origin to build the proper redirect URL
+      const siteUrl = window.location.origin;
+      const redirectTo = `${siteUrl}/update-password`;
+      
+      console.log("[Login] [PASSWORD RESET] Using redirect URL:", redirectTo);
+      
       const { data: resetData, error: resetError } = await supabase.auth.resetPasswordForEmail(values.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: redirectTo,
       });
       
       if (resetError) {
@@ -102,13 +106,9 @@ const Login = () => {
         console.log("[Login] [PASSWORD RESET] Direct reset response:", resetData);
       }
       
-      // Now redirect to reset password page with email parameter
-      console.log("[Login] [PASSWORD RESET] Redirecting to reset-password page with email:", values.email);
-      navigate(`/reset-password?email=${encodeURIComponent(values.email)}`);
-      
       toast({
-        title: "Password reset initiated",
-        description: "Please follow the instructions on the next page to reset your password.",
+        title: "Password reset email sent",
+        description: "Please check your email for the password reset link.",
       });
 
       setIsResetDialogOpen(false);
