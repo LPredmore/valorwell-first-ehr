@@ -64,6 +64,8 @@ const CalendarPage = () => {
     setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
+  console.log("Calendar Page - selectedClinicianId:", selectedClinicianId);
+
   return (
     <Layout>
       <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
@@ -130,8 +132,8 @@ const CalendarPage = () => {
       <AppointmentDialog
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
-        clients={[]} // We'll fetch clients in the dialog itself
-        loadingClients={false}
+        clients={clients}
+        loadingClients={loadingClients}
         selectedClinicianId={selectedClinicianId}
         onAppointmentCreated={handleAppointmentCreated}
       />

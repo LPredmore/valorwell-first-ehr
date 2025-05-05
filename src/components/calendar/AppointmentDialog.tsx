@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -50,8 +49,15 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   // Fetch clients for the selected clinician when dialog opens or clinician changes
   useEffect(() => {
     const fetchClientsForClinician = async () => {
-      if (!selectedClinicianId) return;
+      if (!selectedClinicianId || !isOpen) {
+        console.log('Not fetching clients: clinicianId is null or dialog not open', { 
+          selectedClinicianId, 
+          isOpen 
+        });
+        return;
+      }
       
+      console.log('Fetching clients for clinician:', selectedClinicianId);
       setLoadingClients(true);
       setClients([]);
       
@@ -70,10 +76,12 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
             variant: "destructive"
           });
         } else {
+          console.log('Clients fetched successfully:', data);
           const formattedClients = data.map(client => ({
             id: client.id,
             displayName: `${client.client_preferred_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
           }));
+          console.log('Formatted clients:', formattedClients);
           setClients(formattedClients);
         }
       } catch (error) {
@@ -87,6 +95,16 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
       fetchClientsForClinician();
     }
   }, [selectedClinicianId, isOpen]);
+
+  // Reset form values when dialog opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedDate(new Date());
+      setSelectedClientId(null);
+      setStartTime("09:00");
+      setIsRecurring(false);
+    }
+  }, [isOpen]);
 
   const generateTimeOptions = () => {
     const options = [];
@@ -303,7 +321,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
                 <SelectValue placeholder="Select start time" />
               </SelectTrigger>
               <SelectContent>
-                {timeOptions.map((time) => (
+                {generateTimeOptions().map((time) => (
                   <SelectItem key={time} value={time}>
                     {format(new Date(`2023-01-01T${time}`), 'h:mm a')}
                   </SelectItem>
