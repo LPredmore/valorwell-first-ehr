@@ -145,21 +145,25 @@ const ResetPassword = () => {
       setIsLoading(true);
       console.log("[ResetPassword] Admin resetting password for:", values.email);
       
-      // Check if user exists first
-      const { data: userExists, error: userCheckError } = await supabase.auth.admin.getUserByEmail(values.email);
+      // Get user by email using a workaround since we don't have direct getUserByEmail
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('client_email', values.email)
+        .single();
       
-      if (userCheckError) {
-        console.error("[ResetPassword] Error checking user:", userCheckError.message);
-        throw userCheckError;
+      if (error) {
+        console.error("[ResetPassword] Error finding user:", error.message);
+        throw new Error("User not found with this email address");
       }
 
-      if (!userExists || !userExists.user) {
+      if (!data || !data.id) {
         throw new Error("User not found with this email address");
       }
       
       // Update the user's password directly using admin API
       const { error: updateError } = await supabase.auth.admin.updateUserById(
-        userExists.user.id,
+        data.id,
         { password: values.password }
       );
 
