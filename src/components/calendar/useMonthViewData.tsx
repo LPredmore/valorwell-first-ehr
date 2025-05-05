@@ -11,6 +11,7 @@ import {
 } from 'date-fns';
 import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface Appointment {
   id: string;
@@ -46,7 +47,8 @@ export const useMonthViewData = (
   currentDate: Date,
   clinicianId: string | null,
   refreshTrigger: number = 0,
-  appointments: Appointment[] = []
+  appointments: Appointment[] = [],
+  userTimeZone: string = 'America/Chicago'
 ) => {
   const [loading, setLoading] = useState(true);
   const [availabilityData, setAvailabilityData] = useState<AvailabilityBlock[]>([]);
@@ -131,6 +133,9 @@ export const useMonthViewData = (
       displayHours: string 
     }>();
     
+    // Log total availability for debugging
+    console.log(`Processing ${availabilityData.length} availability blocks for month view`);
+    
     days.forEach(day => {
       const dayOfWeek = format(day, 'EEEE');
       const dateStr = format(day, 'yyyy-MM-dd');
@@ -169,10 +174,30 @@ export const useMonthViewData = (
           const startTime = "06:00";
           const endTime = "22:00";
           
-          const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${startTime}`));
-          const endHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${endTime}`));
-          
-          displayHours = `${startHourFormatted}-${endHourFormatted}`;
+          try {
+            // Convert times to selected timezone for display
+            const startTimeUTC = TimeZoneService.convertTimeToZone(
+              `2000-01-01T${startTime}:00Z`, 
+              'UTC', 
+              userTimeZone
+            );
+            
+            const endTimeUTC = TimeZoneService.convertTimeToZone(
+              `2000-01-01T${endTime}:00Z`, 
+              'UTC', 
+              userTimeZone
+            );
+            
+            const startHourFormatted = startTimeUTC.toFormat('h:mm a');
+            const endHourFormatted = endTimeUTC.toFormat('h:mm a');
+            
+            displayHours = `${startHourFormatted}-${endHourFormatted}`;
+          } catch (error) {
+            console.error('Error formatting time for availability:', error);
+            const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${startTime}`));
+            const endHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${endTime}`));
+            displayHours = `${startHourFormatted}-${endHourFormatted}`;
+          }
         }
       }
       
@@ -180,7 +205,7 @@ export const useMonthViewData = (
     });
     
     return result;
-  }, [days, availabilityData, exceptions]);
+  }, [days, availabilityData, exceptions, userTimeZone]);
 
   const availabilityByDay = useMemo(() => {
     const result = new Map<string, AvailabilityBlock>();

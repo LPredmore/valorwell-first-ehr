@@ -44,7 +44,7 @@ const MonthView: React.FC<MonthViewProps> = ({
   getClientName = () => 'Client',
   onAppointmentClick,
   onAvailabilityClick,
-  userTimeZone
+  userTimeZone = 'America/Chicago'
 }) => {
   const {
     loading,
@@ -53,7 +53,13 @@ const MonthView: React.FC<MonthViewProps> = ({
     dayAvailabilityMap,
     dayAppointmentsMap,
     availabilityByDay
-  } = useMonthViewData(currentDate, clinicianId, refreshTrigger, appointments);
+  } = useMonthViewData(currentDate, clinicianId, refreshTrigger, appointments, userTimeZone);
+
+  console.log('Month view rendering with availability data:', {
+    daysWithAvailability: Array.from(dayAvailabilityMap.entries())
+      .filter(([_, data]) => data.hasAvailability)
+      .map(([date]) => date)
+  });
 
   if (loading) {
     return (

@@ -66,8 +66,7 @@ const DayCell: React.FC<DayCellProps> = ({
         </span>
         {hasAvailability && isSameMonth(day, monthStart) && (
           <div 
-            className={`${isModified ? 'bg-teal-100 text-teal-800' : 'bg-green-100 text-green-800'} text-xs px-1 py-0.5 rounded cursor-pointer hover:opacity-80 transition-colors`}
-            onClick={handleAvailabilityClick}
+            className={`${isModified ? 'bg-teal-100 text-teal-800' : 'bg-green-100 text-green-800'} text-xs px-1 py-0.5 rounded`}
           >
             {isModified ? 'Modified' : 'Available'}
             {displayHours && (

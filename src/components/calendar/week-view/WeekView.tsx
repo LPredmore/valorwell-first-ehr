@@ -24,7 +24,8 @@ const WeekView: React.FC<WeekViewProps> = ({
   appointments = [],
   getClientName = () => 'Client',
   onAppointmentClick,
-  onAvailabilityClick
+  onAvailabilityClick,
+  userTimeZone = 'America/Chicago'
 }) => {
   // Create array of days for the week and time slots for each day
   const { days, timeSlots } = useMemo(() => {
@@ -55,10 +56,10 @@ const WeekView: React.FC<WeekViewProps> = ({
     isTimeSlotAvailable,
     getBlockForTimeSlot,
     getAppointmentForTimeSlot
-  } = useWeekViewData(days, clinicianId, refreshTrigger, appointments, getClientName);
+  } = useWeekViewData(days, clinicianId, refreshTrigger, appointments, getClientName, userTimeZone);
 
-  // Debug: Log the processed appointment blocks
-  console.log("Week view processed appointment blocks:", appointmentBlocks);
+  // Debug: Log the availability blocks
+  console.log("Week view processed availability blocks:", timeBlocks.length);
 
   // Handle click on availability block
   const handleAvailabilityBlockClick = (day: Date, block: any) => {

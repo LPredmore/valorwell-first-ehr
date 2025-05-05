@@ -5,6 +5,7 @@ import MonthView from './MonthView';
 import { useAppointments, Appointment } from '@/hooks/useAppointments';
 import ClinicianAvailabilityPanel from './ClinicianAvailabilityPanel';
 import AvailabilityPanel from './AvailabilityPanel';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface CalendarProps {
   view: 'week' | 'month';
@@ -24,6 +25,9 @@ const Calendar = ({
   refreshTrigger = 0 
 }: CalendarProps) => {
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
+  
+  // Ensure we have a valid IANA timezone
+  const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
   
   // Fetch appointments
   const { 
@@ -59,6 +63,13 @@ const Calendar = ({
     refetch();
   };
 
+  // Log availability settings
+  useEffect(() => {
+    if (showAvailability && clinicianId) {
+      console.log(`Displaying availability for clinician ${clinicianId} in ${validTimeZone} timezone`);
+    }
+  }, [showAvailability, clinicianId, validTimeZone]);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
       <div className="md:col-span-3">
@@ -71,6 +82,7 @@ const Calendar = ({
             getClientName={getClientName}
             onAppointmentClick={handleAppointmentClick}
             onAvailabilityClick={handleAvailabilityClick}
+            userTimeZone={validTimeZone}
           />
         ) : (
           <MonthView 
@@ -78,6 +90,10 @@ const Calendar = ({
             clinicianId={clinicianId}
             refreshTrigger={refreshTrigger}
             appointments={appointments}
+            getClientName={getClientName}
+            onAppointmentClick={handleAppointmentClick}
+            onAvailabilityClick={handleAvailabilityClick}
+            userTimeZone={validTimeZone}
           />
         )}
       </div>
@@ -87,7 +103,7 @@ const Calendar = ({
           <ClinicianAvailabilityPanel 
             clinicianId={clinicianId} 
             onAvailabilityUpdated={handleAvailabilityUpdated}
-            userTimeZone={userTimeZone}
+            userTimeZone={validTimeZone}
           />
         </div>
       )}

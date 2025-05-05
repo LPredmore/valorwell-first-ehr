@@ -87,8 +87,7 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
   if (isAvailable) {
     return (
       <div
-        className={`p-1 ${currentBlock?.isException ? 'bg-teal-50 border-teal-500' : 'bg-green-50 border-green-500'} border-l-4 ${continuousBlockClass} h-full text-xs cursor-pointer hover:opacity-90 transition-colors`}
-        onClick={() => currentBlock && handleAvailabilityBlockClick(day, currentBlock)}
+        className={`p-1 ${currentBlock?.isException ? 'bg-teal-50 border-teal-500' : 'bg-green-50 border-green-500'} border-l-4 ${continuousBlockClass} h-full text-xs`}
       >
         {isStartOfBlock && (
           <div className="font-medium truncate flex items-center">
