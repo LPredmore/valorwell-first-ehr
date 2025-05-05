@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { z } from "zod";
@@ -42,6 +41,19 @@ const adminResetSchema = z.object({
 const standardResetSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
 });
+
+// Define the structure of a user in the response
+interface SupabaseUser {
+  id: string;
+  email?: string;
+  // Add other properties as needed
+}
+
+// Define the structure of the listUsers response
+interface ListUsersResponse {
+  users: SupabaseUser[];
+  // Add other properties as needed
+}
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -197,7 +209,10 @@ const ResetPassword = () => {
       
       // First try to find the user in the auth.users table via admin API
       // We need to use the service role key for this which is automatically used by the admin endpoints
-      const { data: userData, error: adminError } = await supabase.auth.admin.listUsers();
+      const { data: userData, error: adminError } = await supabase.auth.admin.listUsers() as { 
+        data: ListUsersResponse, 
+        error: any 
+      };
       
       if (adminError) {
         console.error("[ResetPassword] Admin API access error:", adminError.message);
