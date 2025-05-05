@@ -205,9 +205,9 @@ const ResetPassword = () => {
       }
 
       // Find the user with the matching email
-      const user = userData.users.find(u => u.email === values.email);
+      const userFound = userData.users.find(u => u.email === values.email);
       
-      if (!user) {
+      if (!userFound) {
         console.error("[ResetPassword] User not found with email:", values.email);
         
         // Try alternative lookup through clients table as fallback
@@ -235,7 +235,7 @@ const ResetPassword = () => {
       } else {
         // Update the user's password directly using admin API with the user ID from listUsers
         const { error: updateError } = await supabase.auth.admin.updateUserById(
-          user.id,
+          userFound.id,
           { password: values.password }
         );
 
