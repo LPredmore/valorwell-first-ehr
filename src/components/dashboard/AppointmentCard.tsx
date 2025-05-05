@@ -20,6 +20,7 @@ export interface AppointmentCardProps {
     client?: {
       client_first_name: string;
       client_last_name: string;
+      client_preferred_name: string;
     };
   };
   timeZoneDisplay: string;
