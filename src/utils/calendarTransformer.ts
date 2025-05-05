@@ -44,8 +44,8 @@ export const calendarTransformer = {
     };
     
     // Add display properties
-    const displayStart = TimeZoneService.formatTime(startTime, 'h:mm a', validTimeZone);
-    const displayEnd = TimeZoneService.formatTime(endTime, 'h:mm a', validTimeZone);
+    const displayStart = TimeZoneService.formatTime(startTime, 'h:mm a');
+    const displayEnd = TimeZoneService.formatTime(endTime, 'h:mm a');
     const displayDay = startTime.setZone(validTimeZone).toFormat('cccc');
     const displayDate = startTime.setZone(validTimeZone).toFormat('MMM d, yyyy');
     

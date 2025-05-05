@@ -59,8 +59,8 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         
         if (authError) {
           setIsAuthenticated(false);
-          // Get browser timezone using Luxon directly
-          const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          // Get browser timezone using TimeZoneService
+          const browserTimeZone = TimeZoneService.getLocalTimeZone();
           setUserTimeZone(browserTimeZone);
           setIsLoading(false);
           return;
@@ -79,14 +79,14 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             const validTimeZone = TimeZoneService.ensureIANATimeZone(data.time_zone);
             setUserTimeZone(validTimeZone);
           } else {
-            // Get browser timezone using Luxon directly
-            const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            // Get browser timezone using TimeZoneService
+            const browserTimeZone = TimeZoneService.getLocalTimeZone();
             setUserTimeZone(browserTimeZone);
           }
         } else {
           setIsAuthenticated(false);
-          // Get browser timezone using Luxon directly
-          const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          // Get browser timezone using TimeZoneService
+          const browserTimeZone = TimeZoneService.getLocalTimeZone();
           setUserTimeZone(browserTimeZone);
         }
       } catch (err) {
@@ -94,8 +94,8 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setError(err as Error);
         setIsAuthenticated(false);
         
-        // Get browser timezone using Luxon directly
-        const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        // Get browser timezone using TimeZoneService
+        const browserTimeZone = TimeZoneService.getLocalTimeZone();
         setUserTimeZone(browserTimeZone);
       } finally {
         setIsLoading(false);

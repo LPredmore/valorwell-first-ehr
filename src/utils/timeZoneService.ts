@@ -1,6 +1,7 @@
 
 // Centralized TimeZoneService that provides timezone functionality
 import { DateTime, IANAZone, Info } from 'luxon';
+import { CalendarEvent } from '@/types/calendar';
 
 /**
  * Service for managing time zones and date/time conversions
@@ -62,21 +63,29 @@ export class TimeZoneService {
    * @param format Format to use (default: 'h:mm a')
    * @returns Formatted time string
    */
-  static formatTime(timeStr: string, format: string = 'h:mm a'): string {
+  static formatTime(timeStr: string | DateTime | Date, format: string = 'h:mm a'): string {
     if (!timeStr) return '';
     
     try {
-      // Extract hours and minutes
-      const [hours, minutes] = timeStr.split(':').map(Number);
+      let dt: DateTime;
       
-      // Create a DateTime object with today's date and the specified time
-      const dt = DateTime.now().set({ hour: hours, minute: minutes });
+      if (typeof timeStr === 'string') {
+        // Extract hours and minutes
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        
+        // Create a DateTime object with today's date and the specified time
+        dt = DateTime.now().set({ hour: hours, minute: minutes });
+      } else if (timeStr instanceof Date) {
+        dt = DateTime.fromJSDate(timeStr);
+      } else {
+        dt = timeStr;
+      }
       
       // Format the time according to the specified format
       return dt.toFormat(format);
     } catch (error) {
       console.error(`Error formatting time ${timeStr}:`, error);
-      return timeStr;
+      return typeof timeStr === 'string' ? timeStr : 'Invalid time';
     }
   }
 
@@ -172,27 +181,27 @@ export class TimeZoneService {
    * @param userTimezone The user's timezone
    * @returns A new event object with times converted to user's timezone
    */
-  static convertEventToUserTimeZone(event: any, userTimezone: string): any {
+  static convertEventToUserTimeZone(event: CalendarEvent, userTimezone: string): CalendarEvent {
     if (!event || !userTimezone) return event;
 
     try {
       const eventTimezone = event.extendedProps?.timezone || 'UTC';
-      const startInUserTz = DateTime.fromISO(event.start)
+      const startInUserTz = DateTime.fromISO(event.start as string)
         .setZone(eventTimezone)
         .setZone(userTimezone);
       
       const endInUserTz = event.end 
-        ? DateTime.fromISO(event.end).setZone(eventTimezone).setZone(userTimezone)
+        ? DateTime.fromISO(event.end as string).setZone(eventTimezone).setZone(userTimezone)
         : startInUserTz.plus({ hours: 1 });
 
       return {
         ...event,
-        start: startInUserTz.toISO(),
-        end: endInUserTz.toISO(),
+        start: startInUserTz.toISO() as string,
+        end: endInUserTz.toISO() as string,
         extendedProps: {
           ...event.extendedProps,
           originalTimezone: eventTimezone,
-          userTimezone
+          timezone: userTimezone
         }
       };
     } catch (error) {
@@ -267,6 +276,27 @@ export class TimeZoneService {
       return dt.toLocaleString(DateTime.DATETIME_FULL);
     } else {
       return dt.toFormat(format);
+    }
+  }
+
+  /**
+   * Format a date in a specific timezone
+   * @param date Date to format
+   * @param format Format to use
+   * @param timezone Timezone to use
+   */
+  static formatDate(date: DateTime | Date, format: 'full' | 'short' = 'full'): string {
+    try {
+      const dt = date instanceof DateTime ? date : DateTime.fromJSDate(date);
+      
+      if (format === 'full') {
+        return dt.toFormat('MMMM d, yyyy');
+      } else {
+        return dt.toFormat('MM/dd/yyyy');
+      }
+    } catch (error) {
+      console.error('[TimeZoneService] Error formatting date:', error);
+      return 'Invalid Date';
     }
   }
 
@@ -403,6 +433,18 @@ export class TimeZoneService {
       return date.toFormat(format === 'long' ? 'MMMM' : 'MMM');
     } catch (error) {
       console.error('[TimeZoneService] Error getting month name:', error);
+      return '';
+    }
+  }
+
+  /**
+   * Get timezone offset string for display
+   */
+  static getTimezoneOffsetString(timezone: string): string {
+    try {
+      const now = DateTime.now().setZone(timezone);
+      return now.toFormat('ZZ');
+    } catch (error) {
       return '';
     }
   }

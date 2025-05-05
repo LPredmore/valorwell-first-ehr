@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { useDialogs } from '@/context/DialogContext';
-import { TimeZoneService } from '@/utils/timezone';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 // Import all dialogs
 import AddClinicianDialog from '@/components/admin/AddClinicianDialog';

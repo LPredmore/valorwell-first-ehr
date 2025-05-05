@@ -31,7 +31,9 @@ export const {
   getLocalTimeZone,
   getCommonTimezones,
   toUTCTimestamp,
-  fromUTCTimestamp
+  fromUTCTimestamp,
+  getTimezoneOffsetString,
+  formatDate
 } = TimeZoneService;
 
 // For backward compatibility
