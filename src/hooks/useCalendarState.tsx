@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
@@ -98,7 +97,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
       try {
         const { data, error } = await supabase
           .from('clients')
-          .select('id, client_preferred_name, client_last_name')
+          .select('id, client_first_name, client_preferred_name, client_last_name')
           .eq('client_assigned_therapist', selectedClinicianId)
           .order('client_last_name');
           
@@ -113,7 +112,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
           
           const formattedClients = data.map(client => ({
             id: client.id,
-            displayName: `${client.client_preferred_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
+            displayName: `${client.client_preferred_name || client.client_first_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
           }));
           console.log('useCalendarState - Formatted clients:', formattedClients);
           setClients(formattedClients);

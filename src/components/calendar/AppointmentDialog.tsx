@@ -65,7 +65,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
       try {
         const { data, error } = await supabase
           .from('clients')
-          .select('id, client_preferred_name, client_last_name')
+          .select('id, client_first_name, client_preferred_name, client_last_name')
           .eq('client_assigned_therapist', selectedClinicianId)
           .order('client_last_name');
           
@@ -86,7 +86,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           
           const formattedClients = data.map(client => ({
             id: client.id,
-            displayName: `${client.client_preferred_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
+            displayName: `${client.client_preferred_name || client.client_first_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
           }));
           console.log('Formatted clients:', formattedClients);
           setClients(formattedClients);
