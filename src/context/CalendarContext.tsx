@@ -1,8 +1,8 @@
 
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { CalendarEvent } from '@/types/calendar';
-import { TimeZoneService } from '@/utils/timezone';
-import CalendarService from '@/services/calendar/CalendarService';
+import { TimeZoneService } from '@/utils/timeZoneService';
+import { CalendarService } from '@/services/calendar/CalendarService';
 import { useUserTimeZone } from '@/hooks/useUserTimeZone';
 import { useUser } from './UserContext';
 

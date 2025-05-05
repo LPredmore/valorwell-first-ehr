@@ -9,11 +9,15 @@ import Settings from './pages/Settings';
 import ClinicianDetails from './pages/ClinicianDetails';
 import ClinicianAvailability from './pages/ClinicianAvailability';
 import NotFound from './components/NotFound';
+import Login from './pages/Login';
+import Calendar from './pages/Calendar';
+import PatientDashboard from './pages/PatientDashboard';
 
 function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/clients" element={<Clients />} />
       <Route path="/clients/:clientId" element={<ClientDetails />} />
@@ -21,6 +25,8 @@ function App() {
       <Route path="/settings" element={<Settings />} />
       <Route path="/clinicians/:clinicianId" element={<ClinicianDetails />} />
       <Route path="/clinicians/:clinicianId/availability" element={<ClinicianAvailability />} />
+      <Route path="/calendar" element={<Calendar />} />
+      <Route path="/patient-dashboard" element={<PatientDashboard />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

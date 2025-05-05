@@ -353,4 +353,45 @@ export class CalendarService {
       throw error;
     }
   }
+
+  // Add compatibility methods to match test expectations
+  static async getEvents(
+    clinicianId: string,
+    timeZone: string,
+    startDate?: Date | string,
+    endDate?: Date | string
+  ): Promise<CalendarEvent[]> {
+    return this.getCalendarEvents({
+      clinicianId,
+      timeZone,
+      startDate,
+      endDate
+    });
+  }
+
+  static async createEvent(
+    event: Partial<CalendarEvent>, 
+    timeZone: string
+  ): Promise<CalendarEvent> {
+    return this.createCalendarEvent(event, timeZone);
+  }
+
+  static async updateEvent(
+    event: CalendarEvent,
+    timeZone: string
+  ): Promise<CalendarEvent> {
+    if (!event.id) {
+      throw new Error('Event ID is required for update');
+    }
+    return this.updateCalendarEvent(event.id, event, timeZone);
+  }
+
+  static async deleteEvent(
+    id: string,
+    eventType: CalendarEventType
+  ): Promise<boolean> {
+    return this.deleteCalendarEvent(id, eventType);
+  }
 }
+
+export default CalendarService;

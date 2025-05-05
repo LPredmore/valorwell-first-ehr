@@ -8,7 +8,7 @@
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
 import { CalendarService } from './CalendarService';
 import { CalendarHealthService } from './CalendarHealthService';
-import { TimeZoneService } from '@/utils/timezone';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 export class CalendarFacade {
   /**
@@ -22,12 +22,12 @@ export class CalendarFacade {
   ): Promise<CalendarEvent[]> {
     const validTimeZone = TimeZoneService.ensureIANATimeZone(timezone);
     
-    const events = await CalendarService.getEvents(
+    const events = await CalendarService.getCalendarEvents({
       clinicianId,
-      validTimeZone,
+      timeZone: validTimeZone,
       startDate,
       endDate
-    );
+    });
     
     return events;
   }
@@ -44,7 +44,7 @@ export class CalendarFacade {
     // Validate event timing
     CalendarHealthService.validateEventTiming(event, validTimeZone);
     
-    const result = await CalendarService.createEvent(event, validTimeZone);
+    const result = await CalendarService.createCalendarEvent(event, validTimeZone);
     return result;
   }
   
@@ -60,7 +60,11 @@ export class CalendarFacade {
     // Validate event timing
     CalendarHealthService.validateEventTiming(event, validTimeZone);
     
-    const result = await CalendarService.updateEvent(event, validTimeZone);
+    if (!event.id) {
+      throw new Error('Event ID is required for update');
+    }
+    
+    const result = await CalendarService.updateCalendarEvent(event.id, event, validTimeZone);
     return result;
   }
   
@@ -71,7 +75,7 @@ export class CalendarFacade {
     eventId: string,
     eventType: CalendarEventType
   ): Promise<boolean> {
-    return CalendarService.deleteEvent(eventId, eventType);
+    return CalendarService.deleteCalendarEvent(eventId, eventType);
   }
   
   /**
