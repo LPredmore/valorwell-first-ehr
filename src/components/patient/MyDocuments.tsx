@@ -1,138 +1,141 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useUser } from '@/context/UserContext';
-import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/hooks/use-toast';
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+import { Calendar, Eye, FileText } from 'lucide-react';
+import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { getCurrentUser, fetchClinicalDocuments, getDocumentDownloadURL } from '@/integrations/supabase/client';
 
-const MyDocuments: React.FC = () => {
-  const navigate = useNavigate();
-  const { userId } = useUser();
-  const [documents, setDocuments] = useState<any[]>([]);
+interface ClinicalDocument {
+  id: string;
+  document_title: string;
+  document_type: string;
+  document_date: string;
+  file_path: string;
+  created_at: string;
+}
+
+const MyDocuments: React.FC<{ clientId?: string }> = ({ clientId }) => {
+  const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    fetchDocuments();
-  }, [userId]);
-
-  const fetchDocuments = async () => {
-    if (!userId) return;
-
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('document_assignments')
-        .select('*')
-        .eq('client_id', userId);
-
-      if (error) {
-        console.error('Error fetching documents:', error);
+    const loadDocuments = async () => {
+      setIsLoading(true);
+      try {
+        // If clientId is passed as prop, use it; otherwise get current user
+        let userId = clientId;
+        
+        if (!userId) {
+          const user = await getCurrentUser();
+          if (!user) {
+            setIsLoading(false);
+            return;
+          }
+          userId = user.id;
+        }
+        
+        const docs = await fetchClinicalDocuments(userId);
+        setDocuments(docs);
+      } catch (error) {
+        console.error('Error loading documents:', error);
         toast({
-          title: 'Error',
-          description: 'Failed to fetch documents',
-          variant: 'destructive',
+          title: "Error",
+          description: "Failed to load your documents",
+          variant: "destructive"
         });
-        return;
+      } finally {
+        setIsLoading(false);
       }
+    };
 
-      setDocuments(data || []);
-    } catch (error) {
-      console.error('Error in fetching documents:', error);
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    loadDocuments();
+  }, [clientId, toast]);
 
-  const docSubmit = async (documentName: string) => {
-    if (!navigate || !userId) return;
-
+  const handleViewDocument = async (filePath: string) => {
     try {
-      // Update the document status
-      const { data, error } = await supabase
-        .from('document_assignments')
-        .update({ status: 'completed' })
-        .eq('client_id', userId)
-        .eq('document_name', documentName);
-
-      if (error) {
-        console.error('Error updating document status:', error);
+      const url = await getDocumentDownloadURL(filePath);
+      if (url) {
+        window.open(url, '_blank');
+      } else {
         toast({
-          title: 'Error',
-          description: 'Failed to update document status',
-          variant: 'destructive',
+          title: "Error",
+          description: "Could not retrieve document URL",
+          variant: "destructive"
         });
-        return;
       }
-
-      // Refresh document list
-      fetchDocuments();
-      
-      toast({
-        title: 'Success',
-        description: 'Document submitted successfully',
-      });
     } catch (error) {
-      console.error('Error in document submission:', error);
+      console.error('Error viewing document:', error);
       toast({
-        title: 'Error',
-        description: 'An unexpected error occurred',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to open document",
+        variant: "destructive"
       });
     }
   };
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">My Documents</h2>
-      {isLoading ? (
-        <p>Loading documents...</p>
-      ) : (
-        <div className="container mx-auto">
-          <Table>
-            <TableCaption>A list of documents assigned to you.</TableCaption>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px]">Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {documents.map((document) => (
-                <TableRow key={document.document_name}>
-                  <TableCell className="font-medium">{document.document_name}</TableCell>
-                  <TableCell>{document.description}</TableCell>
-                  <TableCell>{document.status}</TableCell>
-                  <TableCell className="text-right">
-                    {document.status !== 'completed' ? (
-                      <Button onClick={() => docSubmit(document.document_name)}>Submit</Button>
-                    ) : (
-                      <span>Completed</span>
-                    )}
-                  </TableCell>
+    <Card>
+      <CardHeader>
+        <CardTitle>Documents</CardTitle>
+        <CardDescription>View and download your documents</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <p>Loading documents...</p>
+          </div>
+        ) : documents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <FileText className="h-12 w-12 text-gray-300 mb-3" />
+            <h3 className="text-lg font-medium">No documents available</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Your therapist will add documents here
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-    </div>
+              </TableHeader>
+              <TableBody>
+                {documents.map((doc) => (
+                  <TableRow key={doc.id}>
+                    <TableCell className="font-medium">{doc.document_title}</TableCell>
+                    <TableCell>{doc.document_type}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4 text-gray-500" />
+                        {format(new Date(doc.document_date), 'MMM d, yyyy')}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewDocument(doc.file_path)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

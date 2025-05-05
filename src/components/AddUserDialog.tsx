@@ -1,5 +1,9 @@
-
-import { useState } from 'react';
+import { useState } from "react";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "@/hooks/use-toast";
+import { supabase, createUser } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -7,19 +11,36 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
+const userFormSchema = z.object({
+  firstName: z.string().min(2, { message: "First name is required" }),
+  lastName: z.string().min(2, { message: "Last name is required" }),
+  email: z.string().email({ message: "Invalid email address" }),
+  phone: z.string().optional(),
+  role: z.enum(["admin", "client", "clinician"], {
+    required_error: "Please select a role",
+  }),
+});
+
+type UserFormValues = z.infer<typeof userFormSchema>;
 
 interface AddUserDialogProps {
   open: boolean;
@@ -27,202 +48,165 @@ interface AddUserDialogProps {
   onUserAdded: () => void;
 }
 
-export const AddUserDialog = ({ open, onOpenChange, onUserAdded }: AddUserDialogProps) => {
-  const [email, setEmail] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [role, setRole] = useState('client');
-  const [phone, setPhone] = useState('');
+export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const resetForm = () => {
-    setEmail('');
-    setFirstName('');
-    setLastName('');
-    setRole('client');
-    setPhone('');
-  };
+  const form = useForm<UserFormValues>({
+    resolver: zodResolver(userFormSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      role: "client",
+    },
+  });
 
-  const handleClose = () => {
-    resetForm();
-    onOpenChange(false);
-  };
-
-  const validateForm = () => {
-    if (!email.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Email is required',
-        variant: 'destructive',
-      });
-      return false;
-    }
-
-    if (!firstName.trim()) {
-      toast({
-        title: 'Error',
-        description: 'First name is required',
-        variant: 'destructive',
-      });
-      return false;
-    }
-
-    if (!lastName.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Last name is required',
-        variant: 'destructive',
-      });
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-    
+  async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
-    
+    console.log("Submitting user data:", data);
+
     try {
-      // Generate a random password for the user
-      const tempPassword = Math.random().toString(36).slice(-8);
+      // User metadata to be saved
+      const userData = {
+        first_name: data.firstName,
+        last_name: data.lastName,
+        phone: data.phone || "",
+        role: data.role
+      };
       
-      // Create the user in Supabase Auth
-      const { data, error } = await supabase.auth.admin.createUser({
-        email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: {
-          first_name: firstName,
-          last_name: lastName,
-          role,
-          phone,
-          temp_password: tempPassword
-        }
-      });
+      console.log("User metadata to be saved:", userData);
       
-      if (error) {
-        throw error;
+      // Create user using our helper function
+      const { data: authData, error: authError } = await createUser(data.email, userData);
+
+      if (authError) {
+        console.error("Auth error:", authError);
+        throw authError;
       }
+
+      console.log("User created successfully:", authData);
       
       toast({
-        title: 'Success',
-        description: `User ${firstName} ${lastName} has been created successfully`,
+        title: "Success",
+        description: "User added successfully with default password: temppass1234. Please note they will need to confirm their email before logging in.",
       });
-      
+
+      form.reset();
       onUserAdded();
-      handleClose();
-    } catch (error: any) {
-      console.error('Error adding user:', error);
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error adding user:", error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to add user. Please try again.',
-        variant: 'destructive',
+        title: "Error",
+        description: `Failed to add user: ${error.message || "Please try again."}`,
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
           <DialogDescription>
-            Enter the details for the new user. A temporary password will be generated.
+            Enter user details below. A default password of "temppass1234" will be assigned. The user will need to confirm their email before logging in.
           </DialogDescription>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="firstName" className="text-right">
-                First Name
-              </Label>
-              <Input
-                id="firstName"
-                className="col-span-3"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="lastName" className="text-right">
-                Last Name
-              </Label>
-              <Input
-                id="lastName"
-                className="col-span-3"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                className="col-span-3"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="phone" className="text-right">
-                Phone
-              </Label>
-              <Input
-                id="phone"
-                type="tel"
-                className="col-span-3"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
-            
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="role" className="text-right">
-                Role
-              </Label>
-              <Select
-                value={role}
-                onValueChange={setRole}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="firstName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>First Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter first name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="lastName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Last Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter last name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="Enter email address" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter phone number" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>User Role</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="client">Client</SelectItem>
+                      <SelectItem value="clinician">Clinician</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button
+                type="button" 
+                variant="outline" 
+                onClick={() => onOpenChange(false)}
               >
-                <SelectTrigger id="role" className="col-span-3">
-                  <SelectValue placeholder="Select Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="clinician">Clinician</SelectItem>
-                  <SelectItem value="client">Client</SelectItem>
-                  <SelectItem value="staff">Staff</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating...' : 'Create User'}
-            </Button>
-          </DialogFooter>
-        </form>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Adding..." : "Add User"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
-};
+}

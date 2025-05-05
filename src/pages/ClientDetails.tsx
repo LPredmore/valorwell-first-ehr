@@ -405,9 +405,9 @@ const ClientDetails = () => {
               </TabsContent>
             )}
 
-            {activeTab === 'documentation' && (
-              <DocumentationTab clientId={clientData.id} />
-            )}
+            <TabsContent value="documentation">
+              <DocumentationTab clientData={clientData} />
+            </TabsContent>
           </Tabs>
         </form>
       </Form>

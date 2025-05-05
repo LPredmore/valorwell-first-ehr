@@ -21,6 +21,7 @@ const Header: React.FC<HeaderProps> = ({
   const [lastName, setLastName] = useState('');
   const [initials, setInitials] = useState('');
 
+  // Get user profile data
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -39,6 +40,7 @@ const Header: React.FC<HeaderProps> = ({
             setFirstName(data.first_name || '');
             setLastName(data.last_name || '');
 
+            // Generate initials
             const firstInitial = data.first_name ? data.first_name.charAt(0).toUpperCase() : '';
             const lastInitial = data.last_name ? data.last_name.charAt(0).toUpperCase() : '';
             setInitials(firstInitial + lastInitial);
@@ -51,6 +53,7 @@ const Header: React.FC<HeaderProps> = ({
     fetchUserProfile();
   }, []);
 
+  // Get current time to display greeting
   const hours = new Date().getHours();
   let greeting = 'Good morning';
   if (hours >= 12 && hours < 17) {
@@ -58,22 +61,19 @@ const Header: React.FC<HeaderProps> = ({
   } else if (hours >= 17) {
     greeting = 'Good evening';
   }
-  
   const handleLogout = async () => {
     try {
-      console.log('[Header] Logout initiated');
-      const { error } = await supabase.auth.signOut();
+      const {
+        error
+      } = await supabase.auth.signOut();
       if (error) throw error;
-      
       toast({
         title: "Logged out successfully",
         description: "You have been logged out of your account"
       });
-      
-      console.log('[Header] Redirecting to login page using window.location');
-      window.location.href = '/login';
+      navigate('/login');
     } catch (error) {
-      console.error('[Header] Error logging out:', error);
+      console.error('Error logging out:', error);
       toast({
         title: "Logout failed",
         description: "There was a problem logging you out",
@@ -82,6 +82,7 @@ const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  // Create display name from first and last name, fallback to the provided userName prop
   const displayName = firstName && lastName ? `${firstName} ${lastName}` : userName || 'User';
   return <header className="h-16 border-b bg-white flex items-center justify-between px-6">
       

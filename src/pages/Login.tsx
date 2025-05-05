@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -17,7 +17,6 @@ import {
   FormMessage 
 } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useUser } from "@/context/UserContext";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -27,15 +26,6 @@ const formSchema = z.object({
 const Login = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const { userRole, isLoading: userContextLoading } = useUser();
-  
-  // Check if user is already logged in
-  useEffect(() => {
-    if (userRole && !userContextLoading) {
-      console.log("[Login] User already authenticated, redirecting to home");
-      navigate("/");
-    }
-  }, [userRole, userContextLoading, navigate]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -61,36 +51,13 @@ const Login = () => {
       }
 
       console.log("[Login] Authentication successful, user:", data.user?.id);
+      toast({
+        title: "Login successful",
+        description: "Welcome back!",
+      });
       
-      // After successful login, clear the temporary password if it exists
-      if (data.user) {
-        const { data: clientData } = await supabase
-          .from('clients')
-          .select('client_temppassword')
-          .eq('id', data.user.id)
-          .maybeSingle();
-
-        if (clientData?.client_temppassword) {
-          // Clear the temporary password
-          await supabase
-            .from('clients')
-            .update({ client_temppassword: null })
-            .eq('id', data.user.id);
-          
-          toast({
-            title: "Welcome!",
-            description: "Your account has been set up successfully. You may want to change your password in settings.",
-          });
-        } else {
-          toast({
-            title: "Login successful",
-            description: "Welcome back!",
-          });
-        }
-      }
-      
-      // Let the UserContext handle the navigation through its useEffect
-      console.log("[Login] Authentication complete - letting UserContext redirect");
+      console.log("[Login] Navigating to home page");
+      navigate("/");
     } catch (error: any) {
       console.error("[Login] Login error:", error);
       toast({
@@ -104,19 +71,6 @@ const Login = () => {
     }
   };
 
-  // If user context is still loading, show loading state
-  if (userContextLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="flex flex-col items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-          <p className="text-gray-600">Checking authentication status...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If user is not logged in (userRole is null), show login form
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <Card className="w-full max-w-md">
@@ -155,16 +109,6 @@ const Login = () => {
                   </FormItem>
                 )}
               />
-              <div className="flex justify-end">
-                <Button
-                  variant="link"
-                  type="button"
-                  className="px-0 font-normal text-sm"
-                  onClick={() => navigate("/forgot-password")}
-                >
-                  Forgot password?
-                </Button>
-              </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign in"}
               </Button>

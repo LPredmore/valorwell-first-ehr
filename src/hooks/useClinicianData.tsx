@@ -1,13 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Clinician } from "@/types/client";
-import { getUserTimeZoneById } from "./useUserTimeZone";
-import { useUser } from "@/context/UserContext";
 
-export const useClinicianData = (clinicianId?: string) => {
-  // Get the current user's ID if no clinicianId is provided
-  const { userId: currentUserId } = useUser();
+export const useClinicianData = () => {
   const [clinicianData, setClinicianData] = useState<Clinician | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -17,28 +12,11 @@ export const useClinicianData = (clinicianId?: string) => {
       try {
         setLoading(true);
         
-        // If clinicianId is provided, fetch that specific clinician
-        // Otherwise, use the current user's ID
-        const targetId = clinicianId || currentUserId;
-        
-        console.log('[useClinicianData] Clinician data request:', {
-          providedClinicianId: clinicianId,
-          currentUserId,
-          targetId,
-          usingCurrentUserAsFallback: !clinicianId && !!currentUserId
-        });
-        
-        if (!targetId) {
-          console.warn('[useClinicianData] No clinician ID or current user ID available');
-          setLoading(false);
-          return;
-        }
-        
-        console.log(`[useClinicianData] Fetching clinician data for ID: ${targetId}`);
+        // Get the first clinician for now (in a real app, you would get the current user's clinician)
         const { data, error } = await supabase
           .from('clinicians')
           .select('*')
-          .eq('id', targetId)
+          .limit(1)
           .single();
 
         if (error) {
@@ -55,7 +33,7 @@ export const useClinicianData = (clinicianId?: string) => {
     };
 
     fetchClinicianData();
-  }, [clinicianId, currentUserId]);
+  }, []);
 
   return { clinicianData, loading, error };
 };
@@ -78,10 +56,19 @@ export const getClinicianById = async (clinicianId: string) => {
 
 export const getClinicianTimeZone = async (clinicianId: string): Promise<string> => {
   try {
-    // Get the time zone from the profiles table using getUserTimeZoneById
-    const timeZone = await getUserTimeZoneById(clinicianId);
-    console.log(`Retrieved timezone for clinician ${clinicianId}: ${timeZone}`);
-    return timeZone;
+    const { data, error } = await supabase
+      .from('clinicians')
+      .select('clinician_timezone')
+      .eq('id', clinicianId)
+      .single();
+      
+    if (error) {
+      console.error('Error fetching clinician timezone:', error);
+      return 'America/Chicago'; // Default to Central Time
+    }
+    
+    // Return the timezone or a default if not set
+    return data?.clinician_timezone || 'America/Chicago';
   } catch (error) {
     console.error('Error fetching clinician timezone:', error);
     return 'America/Chicago'; // Default to Central Time

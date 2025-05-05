@@ -1,166 +1,138 @@
 
 import React from 'react';
-import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { Clock, Video, MapPin, CheckCircle, AlertTriangle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { Calendar, Clock, UserCircle, Video, FileText, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
-import { Badge } from '@/components/ui/badge';
-import { BaseAppointment } from '@/types/appointment';
-import { getClientNameFromAppointment } from '@/utils/clientDataUtils';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatTime12Hour, formatTimeInUserTimeZone } from '@/utils/timeZoneUtils';
 
-interface InfoCardAction {
-  label: string;
-  icon: React.ComponentType<any>;
-  onClick: () => void;
-  variant: "default" | "destructive" | "outline" | "secondary";
-  destructive: boolean;
-}
-
-interface AppointmentCardProps {
-  appointment: BaseAppointment;
-  onStartSession?: (appointment: BaseAppointment) => void;
-  onDocumentSession?: (appointment: BaseAppointment) => void;
-  onSessionDidNotOccur?: (appointment: BaseAppointment) => void;
+export interface AppointmentCardProps {
+  appointment: {
+    id: string;
+    client_id: string;
+    date: string;
+    start_time: string;
+    end_time: string;
+    type: string;
+    status: string;
+    video_room_url: string | null;
+    client?: {
+      client_first_name: string;
+      client_last_name: string;
+    };
+  };
   timeZoneDisplay: string;
   userTimeZone: string;
   showStartButton?: boolean;
-  showViewAllButton?: boolean;
+  onStartSession?: (appointment: AppointmentCardProps['appointment']) => void;
+  onDocumentSession?: (appointment: AppointmentCardProps['appointment']) => void;
+  onSessionDidNotOccur?: (appointment: AppointmentCardProps['appointment']) => void;
 }
 
-const AppointmentCard: React.FC<AppointmentCardProps> = ({
+export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   appointment,
-  onStartSession,
-  onDocumentSession,
-  onSessionDidNotOccur,
   timeZoneDisplay,
   userTimeZone,
   showStartButton = false,
-  showViewAllButton = false
+  onStartSession,
+  onDocumentSession,
+  onSessionDidNotOccur
 }) => {
-  const appointmentDate = appointment.date ? new Date(appointment.date) : new Date();
-  const formattedDate = format(appointmentDate, 'EEEE, MMMM d, yyyy');
-
-  // Ensure we have a valid clientName and handle the case where it might be undefined
-  const clientName = appointment.clientName || getClientNameFromAppointment(appointment);
-  
-  // Safe initials for avatar fallback
-  const initials = clientName ? clientName.substring(0, 2) : 'UN';
-
-  const formatTime = (timeString: string) => {
+  // Format time for display in user's time zone
+  const formatTimeDisplay = (timeString: string) => {
     try {
-      const [hours, minutes] = timeString.split(':').map(Number);
-      const date = new Date();
-      date.setHours(hours, minutes, 0, 0);
-      return format(date, 'h:mm a');
+      return formatTimeInUserTimeZone(timeString, userTimeZone, 'h:mm a');
     } catch (error) {
-      console.error('Error formatting time:', error);
-      return timeString;
+      console.error('Error formatting time with time zone:', error);
+      return formatTime12Hour(timeString);
     }
   };
 
-  const actions: InfoCardAction[] = [
-    {
-      label: 'Start Session',
-      icon: Video,
-      onClick: () => onStartSession && onStartSession(appointment),
-      variant: 'default', 
-      destructive: false
-    },
-    {
-      label: 'Document Session',
-      icon: CheckCircle,
-      onClick: () => onDocumentSession && onDocumentSession(appointment),
-      variant: 'outline',
-      destructive: false
-    },
-    {
-      label: 'Session Did Not Occur',
-      icon: AlertTriangle,
-      onClick: () => onSessionDidNotOccur && onSessionDidNotOccur(appointment),
-      variant: 'destructive',
-      destructive: true
-    }
-  ];
-
-  return (
-    <Card className="w-full">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <div className="flex items-center space-x-4">
-          <Avatar>
-            <AvatarImage src={`https://avatar.vercel.sh/${clientName}.png`} />
-            <AvatarFallback>{initials}</AvatarFallback>
-          </Avatar>
-          <div className="space-y-1">
-            <h4 className="text-sm font-semibold">
-              {appointment.clientId ? (
-                <Link 
-                  to={`/clients/${appointment.clientId}`}
-                  className="text-blue-600 hover:text-blue-800 hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log(`Navigating to client profile with ID: ${appointment.clientId}`);
-                  }}
-                >
-                  {clientName}
-                </Link>
-              ) : (
-                <span>{clientName}</span>
-              )}
-            </h4>
-            <p className="text-xs text-gray-500">
-              {formattedDate}
-            </p>
-          </div>
-        </div>
-        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-          {appointment.status || 'Scheduled'}
-        </Badge>
-      </CardHeader>
-      <CardContent>
-        <div className="text-sm text-gray-600">
-          <div className="flex items-center mb-1">
-            <Clock className="h-4 w-4 mr-2" />
-            {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)} ({timeZoneDisplay})
-          </div>
+  if (onDocumentSession) {
+    return (
+      <Card key={appointment.id} className="mb-3">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold flex items-center">
+            <UserCircle className="h-4 w-4 mr-2" />
+            {appointment.client?.client_first_name} {appointment.client?.client_last_name}
+          </CardTitle>
+          <CardDescription className="flex items-center">
+            <Calendar className="h-4 w-4 mr-2" />
+            {format(parseISO(appointment.date), 'EEEE, MMMM do, yyyy')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pb-2">
           <div className="flex items-center">
-            <MapPin className="h-4 w-4 mr-2" />
-            {appointment.location}
+            <Clock className="h-4 w-4 mr-2" />
+            <span className="text-sm">
+              {formatTimeDisplay(appointment.start_time)} - {formatTimeDisplay(appointment.end_time)}
+            </span>
           </div>
+          <div className="text-sm mt-1">{appointment.type}</div>
+        </CardContent>
+        <CardFooter className="flex flex-col gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full"
+            onClick={() => onDocumentSession(appointment)}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Document Session
+          </Button>
+          
+          {onSessionDidNotOccur && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+              onClick={() => onSessionDidNotOccur(appointment)}
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Session Did Not Occur
+            </Button>
+          )}
+        </CardFooter>
+      </Card>
+    );
+  }
+
+  
+  return (
+    <Card key={appointment.id} className="mb-3">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-semibold flex items-center">
+          <Clock className="h-4 w-4 mr-2" />
+          {formatTimeDisplay(appointment.start_time)} - {formatTimeDisplay(appointment.end_time)} 
+          <span className="text-xs text-gray-500 ml-1">({timeZoneDisplay})</span>
+        </CardTitle>
+        <CardDescription className="flex items-center">
+          <Calendar className="h-4 w-4 mr-2" />
+          {format(parseISO(appointment.date), 'EEEE, MMMM do, yyyy')}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pb-2">
+        <div className="flex items-center">
+          <UserCircle className="h-4 w-4 mr-2" />
+          <span className="text-sm">
+            {appointment.client?.client_first_name} {appointment.client?.client_last_name}
+          </span>
         </div>
+        <div className="text-sm mt-1">{appointment.type}</div>
       </CardContent>
-      <CardFooter className="flex justify-between items-center">
-        <div>
-          {showStartButton && onStartSession && (
-            <Button size="sm" onClick={() => onStartSession(appointment)}>
-              <Video className="h-4 w-4 mr-2" />
-              Start Session
-            </Button>
-          )}
-          {showViewAllButton && (
-            <Button size="sm" variant="secondary">
-              View All
-            </Button>
-          )}
-        </div>
-        {onDocumentSession && onSessionDidNotOccur && (
-          <div className="flex space-x-2">
-            {actions.map((action, index) => (
-              <Button
-                key={index}
-                size="sm"
-                variant={action.variant}
-                onClick={action.onClick}
-              >
-                {action.label}
-              </Button>
-            ))}
-          </div>
-        )}
-      </CardFooter>
+      {showStartButton && onStartSession && (
+        <CardFooter>
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full"
+            onClick={() => onStartSession(appointment)}
+          >
+            <Video className="h-4 w-4 mr-2" />
+            Start Session
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   );
 };
-
-export default AppointmentCard;

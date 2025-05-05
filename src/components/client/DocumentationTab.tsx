@@ -1,13 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
-import { timeAgo } from '@/utils/dateUtils';
-import { FileText, Download, FileCheck, AlertCircle, FileX } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { Skeleton } from '@/components/ui/skeleton';
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { BarChart2, ClipboardCheck, FileText, ClipboardList, Download, Calendar, Eye } from "lucide-react";
+import TreatmentPlanTemplate from "@/components/templates/TreatmentPlanTemplate";
+import SessionNoteTemplate from "@/components/templates/SessionNoteTemplate";
+import PHQ9Template from "@/components/templates/PHQ9Template";
+import PCL5Template from "@/components/templates/PCL5Template";
+import { useClinicianData } from "@/hooks/useClinicianData";
+import { ClientDetails } from "@/types/client";
+import { fetchClinicalDocuments, getDocumentDownloadURL } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
 
-// Define the ClinicalDocument type
+interface DocumentationTabProps {
+  clientData?: ClientDetails | null;
+}
+
 interface ClinicalDocument {
   id: string;
   document_title: string;
@@ -15,228 +24,179 @@ interface ClinicalDocument {
   document_date: string;
   file_path: string;
   created_at: string;
+  created_by?: string;
 }
 
-interface DocumentationTabProps {
-  clientId: string;
-}
-
-export default function DocumentationTab({ clientId }: DocumentationTabProps) {
+const DocumentationTab: React.FC<DocumentationTabProps> = ({
+  clientData
+}) => {
+  const [showTreatmentPlanTemplate, setShowTreatmentPlanTemplate] = useState(false);
+  const [showSessionNoteTemplate, setShowSessionNoteTemplate] = useState(false);
+  const [showPHQ9Template, setShowPHQ9Template] = useState(false);
+  const [showPCL5Template, setShowPCL5Template] = useState(false);
   const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const {
+    clinicianData
+  } = useClinicianData();
+  const {
+    toast
+  } = useToast();
 
   useEffect(() => {
-    if (clientId) {
-      fetchDocuments();
-    }
-  }, [clientId]);
-
-  const fetchDocuments = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const { data, error } = await supabase
-        .from('clinical_documents')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('document_date', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
-      // Type safety: ensure the data matches our expected format
-      const typedData: ClinicalDocument[] = data as ClinicalDocument[];
-      setDocuments(typedData);
-    } catch (err: any) {
-      console.error('Error fetching documents:', err);
-      setError(err.message || 'Error loading documents');
-      toast({
-        title: "Error Loading Documents",
-        description: "There was a problem loading your documents.",
-        variant: "destructive",
+    if (clientData?.id) {
+      setIsLoading(true);
+      fetchClinicalDocuments(clientData.id).then(docs => {
+        setDocuments(docs);
+        setIsLoading(false);
+      }).catch(err => {
+        console.error('Error fetching documents:', err);
+        setIsLoading(false);
+        toast({
+          title: "Error",
+          description: "Failed to load client documents",
+          variant: "destructive"
+        });
       });
-    } finally {
-      setIsLoading(false);
+    }
+  }, [clientData?.id, toast]);
+
+  const handleCloseTreatmentPlan = () => {
+    setShowTreatmentPlanTemplate(false);
+    if (clientData?.id) {
+      fetchClinicalDocuments(clientData.id).then(docs => setDocuments(docs)).catch(err => console.error('Error refreshing documents:', err));
     }
   };
 
-  const handleDownload = async (filePath: string, documentTitle: string) => {
+  const handleCloseSessionNote = () => {
+    setShowSessionNoteTemplate(false);
+    if (clientData?.id) {
+      fetchClinicalDocuments(clientData.id).then(docs => setDocuments(docs)).catch(err => console.error('Error refreshing documents:', err));
+    }
+  };
+
+  const handleClosePHQ9 = () => {
+    setShowPHQ9Template(false);
+    if (clientData?.id) {
+      fetchClinicalDocuments(clientData.id).then(docs => setDocuments(docs)).catch(err => console.error('Error refreshing documents:', err));
+    }
+  };
+
+  const handleClosePCL5 = () => {
+    setShowPCL5Template(false);
+    if (clientData?.id) {
+      fetchClinicalDocuments(clientData.id).then(docs => setDocuments(docs)).catch(err => console.error('Error refreshing documents:', err));
+    }
+  };
+
+  const handleViewDocument = async (filePath: string) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('clinical-documents')
-        .download(filePath);
-
-      if (error) {
-        throw error;
+      const url = await getDocumentDownloadURL(filePath);
+      if (url) {
+        window.open(url, '_blank');
+      } else {
+        toast({
+          title: "Error",
+          description: "Could not retrieve document URL",
+          variant: "destructive"
+        });
       }
-
-      // Create a URL for the blob
-      const url = URL.createObjectURL(data);
-      
-      // Create a link element and trigger the download
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = documentTitle || 'document.pdf';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // Revoke the object URL to free up memory
-      URL.revokeObjectURL(url);
-    } catch (err: any) {
-      console.error('Error downloading document:', err);
+    } catch (error) {
+      console.error('Error viewing document:', error);
       toast({
-        title: "Download Failed",
-        description: err.message || "Could not download the document.",
-        variant: "destructive",
+        title: "Error",
+        description: "Failed to open document",
+        variant: "destructive"
       });
     }
   };
 
-  // Filter documents by type for display
-  const clinicalNotes = documents.filter(doc => doc.document_type === 'clinical_note');
-  const assessments = documents.filter(doc => doc.document_type === 'assessment');
-  const treatmentPlans = documents.filter(doc => doc.document_type === 'treatment_plan');
-  const informedConsent = documents.filter(doc => doc.document_type === 'informed_consent');
-  const otherDocuments = documents.filter(doc => 
-    !['clinical_note', 'assessment', 'treatment_plan', 'informed_consent'].includes(doc.document_type)
-  );
+  return <div className="grid grid-cols-1 gap-6">
+      <Card>
+        
+        
+      </Card>
 
-  if (isLoading) {
-    return <DocumentationSkeleton />;
-  }
+      {showTreatmentPlanTemplate && <div className="animate-fade-in">
+          <TreatmentPlanTemplate onClose={handleCloseTreatmentPlan} clinicianName={clinicianData?.clinician_professional_name || ''} clientData={clientData} />
+        </div>}
 
-  if (error) {
-    return (
-      <div className="p-6 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-3">
-        <AlertCircle className="h-5 w-5 text-red-500" />
-        <div>
-          <h3 className="font-medium text-red-800">Error Loading Documents</h3>
-          <p className="text-red-600 text-sm">{error}</p>
-        </div>
-      </div>
-    );
-  }
+      {showSessionNoteTemplate && <div className="animate-fade-in">
+          <SessionNoteTemplate onClose={handleCloseSessionNote} clinicianName={clinicianData?.clinician_professional_name || ''} clientData={clientData} />
+        </div>}
 
-  if (documents.length === 0) {
-    return (
-      <div className="text-center p-12 border border-dashed rounded-lg">
-        <FileX className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-        <h3 className="text-lg font-medium mb-2">No Documents Available</h3>
-        <p className="text-gray-500">No clinical documents have been uploaded for this client yet.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-8">
-      {/* Clinical Notes Section */}
-      {renderDocumentSection('Clinical Notes', clinicalNotes)}
+      {showPHQ9Template && <div className="animate-fade-in">
+          <PHQ9Template onClose={handleClosePHQ9} clinicianName={clinicianData?.clinician_professional_name || ''} clientData={clientData} />
+        </div>}
       
-      {/* Assessments Section */}
-      {renderDocumentSection('Assessments', assessments)}
-      
-      {/* Treatment Plans Section */}
-      {renderDocumentSection('Treatment Plans', treatmentPlans)}
-      
-      {/* Informed Consent Section */}
-      {renderDocumentSection('Informed Consent', informedConsent)}
-      
-      {/* Other Documents Section */}
-      {otherDocuments.length > 0 && renderDocumentSection('Other Documents', otherDocuments)}
-    </div>
-  );
+      {showPCL5Template && <div className="animate-fade-in">
+          <PCL5Template onClose={handleClosePCL5} clinicianName={clinicianData?.clinician_professional_name || ''} clientData={clientData} />
+        </div>}
 
-  function renderDocumentSection(title: string, docs: ClinicalDocument[]) {
-    if (docs.length === 0) return null;
-    
-    return (
-      <div>
-        <h2 className="text-lg font-semibold mb-4">{title}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {docs.map(doc => (
-            <DocumentCard 
-              key={doc.id} 
-              document={doc} 
-              onDownload={() => handleDownload(doc.file_path, doc.document_title)} 
-            />
-          ))}
-        </div>
-      </div>
-    );
-  }
-}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ClipboardCheck className="h-5 w-5 text-valorwell-600" />
+            Assigned Forms
+          </CardTitle>
+          <CardDescription>View and complete patient assessments</CardDescription>
+        </CardHeader>
+        <CardContent className="py-6">
+          {/* Assessment content */}
+        </CardContent>
+      </Card>
 
-interface DocumentCardProps {
-  document: ClinicalDocument;
-  onDownload: () => void;
-}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-valorwell-600" />
+            Completed Notes
+          </CardTitle>
+          <CardDescription>View completed session notes and documentation</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? <div className="flex justify-center py-8">
+              <p>Loading documents...</p>
+            </div> : documents.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-center">
+              <FileText className="h-12 w-12 text-gray-300 mb-3" />
+              <h3 className="text-lg font-medium">No documents found</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Create a treatment plan or session note to view it here
+              </p>
+            </div> : <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {documents.map(doc => <TableRow key={doc.id}>
+                      <TableCell className="font-medium">{doc.document_title}</TableCell>
+                      <TableCell>{doc.document_type}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4 text-gray-500" />
+                          {format(new Date(doc.document_date), 'MMM d, yyyy')}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="outline" size="sm" className="ml-2" onClick={() => handleViewDocument(doc.file_path)}>
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>)}
+                </TableBody>
+              </Table>
+            </div>}
+        </CardContent>
+      </Card>
+    </div>;
+};
 
-function DocumentCard({ document, onDownload }: DocumentCardProps) {
-  const dateFormatted = new Date(document.document_date).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <FileText className="h-4 w-4 text-blue-500" />
-            <CardTitle className="text-sm font-medium">{document.document_title}</CardTitle>
-          </div>
-          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-            {document.document_type.replace('_', ' ')}
-          </span>
-        </div>
-        <CardDescription className="text-xs">{dateFormatted}</CardDescription>
-      </CardHeader>
-      <CardContent className="pb-2 text-xs">
-        <p>Uploaded {timeAgo(document.created_at)}</p>
-      </CardContent>
-      <CardFooter>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="w-full" 
-          onClick={onDownload}
-        >
-          <Download className="h-3.5 w-3.5 mr-1" />
-          Download
-        </Button>
-      </CardFooter>
-    </Card>
-  );
-}
-
-function DocumentationSkeleton() {
-  return (
-    <div className="space-y-8">
-      <div>
-        <Skeleton className="h-7 w-40 mb-4" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => (
-            <Card key={i}>
-              <CardHeader className="pb-3">
-                <Skeleton className="h-6 w-full" />
-                <Skeleton className="h-4 w-1/2" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-4 w-3/4" />
-              </CardContent>
-              <CardFooter>
-                <Skeleton className="h-9 w-full" />
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+export default DocumentationTab;

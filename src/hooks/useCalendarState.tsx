@@ -1,255 +1,138 @@
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useEntityState } from './useEntityState';
-import { useAsyncState } from './useAsyncState';
-import { useUserTimeZone } from '@/hooks/useUserTimeZone';
-import { TimeZoneService } from '@/utils/timezone';
-import { ClientData } from '@/types/availability';
-import { componentMonitor } from '@/utils/performance/componentMonitor';
-import { useUser } from '@/context/UserContext';
-import { formatAsUUID, isValidUUID } from '@/utils/validation/uuidUtils';
-import { trackClinicianSelection } from '@/utils/calendarDebugUtils';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { getUserTimeZone } from '@/utils/timeZoneUtils';
+import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 
-/**
- * @hook useCalendarState
- * @description Hook for managing calendar state including clinician selection, client data,
- * appointment refresh state, and timezone handling. Provides a centralized state management
- * solution for calendar-related components.
- */
+interface Client {
+  id: string;
+  displayName: string;
+}
+
 export const useCalendarState = (initialClinicianId: string | null = null) => {
-  // Performance monitoring
-  useEffect(() => {
-    const hookStartTime = performance.now();
-    
-    return () => {
-      const totalHookTime = performance.now() - hookStartTime;
-      componentMonitor.recordRender('useCalendarState', totalHookTime);
-    };
-  }, []);
-
-  // User context to get current user data
-  const { userId, isClinician, isLoading: isUserLoading } = useUser();
-  
-  // Local state
-  const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(null);
+  const [view, setView] = useState<'week' | 'month'>('week');
+  const [showAvailability, setShowAvailability] = useState(false);
+  const [selectedClinicianId, setSelectedClinicianId] = useState<string | null>(initialClinicianId);
+  const [clinicians, setClinicians] = useState<Array<{ id: string; clinician_professional_name: string }>>([]);
+  const [loadingClinicians, setLoadingClinicians] = useState(true);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loadingClients, setLoadingClients] = useState(false);
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [initializing, setInitializing] = useState(true);
-  
-  // Log initialization with initial clinician ID
-  useEffect(() => {
-    console.log('[useCalendarState] Initialized with:', {
-      initialClinicianId,
-      userId,
-      isClinician,
-      isUserLoading,
-      selectedClinicianId
-    });
-  }, []);
-  
-  // Get user timezone
-  const { timeZone } = useUserTimeZone(selectedClinicianId);
-  
-  // Fetch clinicians using useEntityState
-  const {
-    data: clinicians,
-    isLoading: loadingClinicians,
-  } = useEntityState<{ id: string; clinician_professional_name: string }>({
-    entityType: 'clinicians',
-    orderBy: { column: 'clinician_professional_name', ascending: true },
-  });
-  
-  // Fetch clients for the selected clinician using useEntityState
-  const {
-    data: clientsRaw,
-    isLoading: loadingClients,
-    setQuery: setClientsQuery,
-    refresh: refreshClients,
-  } = useEntityState<Record<string, any>>({
-    entityType: 'clients',
-    initialQuery: selectedClinicianId ? { client_assigned_therapist: selectedClinicianId } : {},
-    orderBy: { column: 'client_last_name', ascending: true },
-    cacheTime: 5 * 60 * 1000, // 5 minutes
-  });
-  
-  // Normalize client data
-  const clients = useMemo(() => {
-    return clientsRaw.map(client => {
-      // Extract client fields with proper naming
-      const normalizedClient: ClientData = {
-        id: client.id,
-        name: `${client.client_first_name || ''} ${client.client_last_name || ''}`.trim(),
-        displayName: client.client_preferred_name || `${client.client_first_name || ''} ${client.client_last_name || ''}`.trim(),
-        email: client.client_email || '',
-        phone: client.client_phone || '',
-        timeZone: client.client_time_zone || '',
-        createdAt: client.created_at,
-        updatedAt: client.updated_at,
-      };
-      
-      return normalizedClient;
-    });
-  }, [clientsRaw]);
+  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago');
+  const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
+  const [userTimeZone, setUserTimeZone] = useState<string>('');
 
-  // Initialize clinician ID selection with proper priority
+  // Fetch clinician timezone
   useEffect(() => {
-    // Skip initialization if user context is still loading
-    if (isUserLoading) {
-      console.log('[useCalendarState] User context still loading, deferring clinician initialization');
-      return;
-    }
+    const fetchClinicianTimeZone = async () => {
+      if (selectedClinicianId) {
+        setIsLoadingTimeZone(true);
+        try {
+          const timeZone = await getClinicianTimeZone(selectedClinicianId);
+          console.log("Fetched clinician timezone:", timeZone);
+          setClinicianTimeZone(timeZone);
+        } catch (error) {
+          console.error("Error fetching clinician timezone:", error);
+        } finally {
+          setIsLoadingTimeZone(false);
+        }
+      }
+    };
     
-    // Skip if we've already initialized
-    if (!initializing) return;
-    
-    console.log('[useCalendarState] Running clinician initialization', {
-      userId,
-      isClinician,
-      initialClinicianId,
-      selectedClinicianId,
-      cliniciansLoaded: !loadingClinicians && clinicians.length > 0
-    });
-    
-    // PRIORITY 1: If the user is a clinician, use their ID
-    if (isClinician && userId) {
-      const formattedId = formatAsUUID(userId);
-      console.log('[useCalendarState] Setting clinician ID to current user (clinician):', formattedId);
-      
-      trackClinicianSelection('auto-select', {
-        source: 'currentUserIsClinician',
-        selectedClinicianId: formattedId,
-        previousClinicianId: selectedClinicianId,
-        userId
-      });
-      
-      setSelectedClinicianId(formattedId);
-      setInitializing(false);
-      return;
-    }
-    
-    // PRIORITY 2: If we have an initialClinicianId, use that
-    if (initialClinicianId) {
-      const formattedId = formatAsUUID(initialClinicianId);
-      console.log('[useCalendarState] Setting clinician ID to initialClinicianId:', formattedId);
-      
-      trackClinicianSelection('auto-select', {
-        source: 'initialClinicianId',
-        selectedClinicianId: formattedId,
-        previousClinicianId: selectedClinicianId,
-        userId
-      });
-      
-      setSelectedClinicianId(formattedId);
-      setInitializing(false);
-      return;
-    }
-    
-    // PRIORITY 3: If clinicians are loaded and there's at least one, use the first one
-    if (!loadingClinicians && clinicians.length > 0) {
-      const firstClinicianId = clinicians[0].id;
-      const formattedId = formatAsUUID(firstClinicianId);
-      
-      console.log('[useCalendarState] Setting clinician ID to first available clinician:', formattedId);
-      
-      trackClinicianSelection('auto-select', {
-        source: 'firstAvailableClinician',
-        selectedClinicianId: formattedId,
-        previousClinicianId: selectedClinicianId,
-        userId,
-        availableClinicians: clinicians.map(c => ({
-          id: c.id,
-          name: c.clinician_professional_name
-        }))
-      });
-      
-      setSelectedClinicianId(formattedId);
-      setInitializing(false);
-      return;
-    }
-    
-    // If we've loaded clinicians but there aren't any, mark as initialized
-    if (!loadingClinicians) {
-      setInitializing(false);
-    }
-    
-  }, [
-    userId, 
-    isClinician, 
-    initialClinicianId, 
-    clinicians, 
-    loadingClinicians, 
-    selectedClinicianId, 
-    isUserLoading, 
-    initializing
-  ]);
-  
-  // Update clients query when clinician changes
+    fetchClinicianTimeZone();
+  }, [selectedClinicianId]);
+
+  // Set user timezone
   useEffect(() => {
-    if (selectedClinicianId) {
-      console.log(`[useCalendarState] Updating clients query for clinician: ${selectedClinicianId}`);
-      setClientsQuery({ client_assigned_therapist: selectedClinicianId });
+    if (clinicianTimeZone && !isLoadingTimeZone) {
+      setUserTimeZone(clinicianTimeZone);
     } else {
-      setClientsQuery({});
+      setUserTimeZone(getUserTimeZone());
     }
-  }, [selectedClinicianId, setClientsQuery]);
-  
-  // Custom setter for selectedClinicianId that ensures UUID format
-  const setFormattedClinicianId = useCallback((id: string | null) => {
-    if (!id) {
-      console.log('[useCalendarState] Setting clinician ID to null');
-      setSelectedClinicianId(null);
-      return;
-    }
-    
-    const formattedId = formatAsUUID(id);
-    
-    console.log(`[useCalendarState] Setting clinician ID: ${id} → ${formattedId}`);
-    setSelectedClinicianId(formattedId);
+  }, [clinicianTimeZone, isLoadingTimeZone]);
+
+  // Load clinicians
+  useEffect(() => {
+    const fetchClinicians = async () => {
+      setLoadingClinicians(true);
+      try {
+        const { data, error } = await supabase
+          .from('clinicians')
+          .select('id, clinician_professional_name')
+          .order('clinician_professional_name');
+
+        if (error) {
+          console.error('Error fetching clinicians:', error);
+        } else {
+          setClinicians(data || []);
+          if (data && data.length > 0 && !selectedClinicianId) {
+            setSelectedClinicianId(data[0].id);
+          }
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoadingClinicians(false);
+      }
+    };
+
+    fetchClinicians();
   }, []);
-  
-  // Memoized refresh function
-  const refreshAppointments = useCallback(() => {
-    console.log('[useCalendarState] Triggering appointment refresh');
-    setAppointmentRefreshTrigger(prev => prev + 1);
-  }, []);
-  
-  // Memoize return values to prevent unnecessary re-renders
-  const calendarState = useMemo(() => ({
+
+  // Load clients for selected clinician
+  useEffect(() => {
+    const fetchClientsForClinician = async () => {
+      if (!selectedClinicianId) return;
+      
+      setLoadingClients(true);
+      setClients([]);
+      
+      try {
+        const { data, error } = await supabase
+          .from('clients')
+          .select('id, client_preferred_name, client_last_name')
+          .eq('client_assigned_therapist', selectedClinicianId)
+          .order('client_last_name');
+          
+        if (error) {
+          console.error('Error fetching clients:', error);
+        } else {
+          const formattedClients = data.map(client => ({
+            id: client.id,
+            displayName: `${client.client_preferred_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
+          }));
+          setClients(formattedClients);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoadingClients(false);
+      }
+    };
+
+    fetchClientsForClinician();
+  }, [selectedClinicianId]);
+
+  return {
+    view,
+    setView,
+    showAvailability,
+    setShowAvailability,
     selectedClinicianId,
-    setSelectedClinicianId: setFormattedClinicianId,
+    setSelectedClinicianId,
     clinicians,
     loadingClinicians,
+    currentDate,
+    setCurrentDate,
     clients,
     loadingClients,
     appointmentRefreshTrigger,
-    refreshAppointments,
+    setAppointmentRefreshTrigger,
     isDialogOpen,
     setIsDialogOpen,
-    timeZone: TimeZoneService.ensureIANATimeZone(timeZone || 'UTC'),
-    isClinician,
-    userId,
-    isUserLoading,
-    initializing,
-    
-    // Add additional methods for refreshing data
-    refreshClients,
-  }), [
-    selectedClinicianId,
-    setFormattedClinicianId,
-    clinicians,
-    loadingClinicians,
-    clients,
-    loadingClients,
-    appointmentRefreshTrigger,
-    refreshAppointments,
-    isDialogOpen,
-    timeZone,
-    refreshClients,
-    isClinician,
-    userId,
-    isUserLoading,
-    initializing
-  ]);
-  
-  return calendarState;
+    userTimeZone,
+    isLoadingTimeZone,
+  };
 };

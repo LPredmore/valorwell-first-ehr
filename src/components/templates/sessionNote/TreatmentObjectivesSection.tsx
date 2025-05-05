@@ -36,7 +36,7 @@ export const TreatmentObjectivesSection: React.FC<TreatmentObjectivesSectionProp
           <Textarea
             placeholder="Describe the primary objective"
             className="min-h-[100px] bg-gray-100"
-            value={formState.primaryObjective || ''}
+            value={formState.primaryObjective}
             onChange={(e) => handleChange('primaryObjective', e.target.value)}
             readOnly
           />
@@ -51,7 +51,7 @@ export const TreatmentObjectivesSection: React.FC<TreatmentObjectivesSectionProp
               <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 1</label>
               <Input
                 placeholder="Describe intervention"
-                value={formState.intervention1 || ''}
+                value={formState.intervention1}
                 onChange={(e) => handleChange('intervention1', e.target.value)}
                 readOnly
                 className="bg-gray-100"
@@ -63,7 +63,7 @@ export const TreatmentObjectivesSection: React.FC<TreatmentObjectivesSectionProp
               <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 2</label>
               <Input
                 placeholder="Describe intervention"
-                value={formState.intervention2 || ''}
+                value={formState.intervention2}
                 onChange={(e) => handleChange('intervention2', e.target.value)}
                 readOnly
                 className="bg-gray-100"
@@ -80,7 +80,7 @@ export const TreatmentObjectivesSection: React.FC<TreatmentObjectivesSectionProp
           <Textarea
             placeholder="Describe the secondary objective"
             className="min-h-[100px] bg-gray-100"
-            value={formState.secondaryObjective || ''}
+            value={formState.secondaryObjective}
             onChange={(e) => handleChange('secondaryObjective', e.target.value)}
             readOnly
           />
@@ -95,7 +95,7 @@ export const TreatmentObjectivesSection: React.FC<TreatmentObjectivesSectionProp
               <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 3</label>
               <Input
                 placeholder="Describe intervention"
-                value={formState.intervention3 || ''}
+                value={formState.intervention3}
                 onChange={(e) => handleChange('intervention3', e.target.value)}
                 readOnly
                 className="bg-gray-100"
@@ -107,7 +107,7 @@ export const TreatmentObjectivesSection: React.FC<TreatmentObjectivesSectionProp
               <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 4</label>
               <Input
                 placeholder="Describe intervention"
-                value={formState.intervention4 || ''}
+                value={formState.intervention4}
                 onChange={(e) => handleChange('intervention4', e.target.value)}
                 readOnly
                 className="bg-gray-100"
@@ -124,7 +124,7 @@ export const TreatmentObjectivesSection: React.FC<TreatmentObjectivesSectionProp
           <Textarea
             placeholder="Describe the tertiary objective"
             className="min-h-[100px] bg-gray-100"
-            value={formState.tertiaryObjective || ''}
+            value={formState.tertiaryObjective}
             onChange={(e) => handleChange('tertiaryObjective', e.target.value)}
             readOnly
           />
@@ -139,7 +139,7 @@ export const TreatmentObjectivesSection: React.FC<TreatmentObjectivesSectionProp
               <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 5</label>
               <Input
                 placeholder="Describe intervention"
-                value={formState.intervention5 || ''}
+                value={formState.intervention5}
                 onChange={(e) => handleChange('intervention5', e.target.value)}
                 readOnly
                 className="bg-gray-100"
@@ -151,7 +151,7 @@ export const TreatmentObjectivesSection: React.FC<TreatmentObjectivesSectionProp
               <label className="block text-sm font-medium text-gray-700 mb-1">Intervention 6</label>
               <Input
                 placeholder="Describe intervention"
-                value={formState.intervention6 || ''}
+                value={formState.intervention6}
                 onChange={(e) => handleChange('intervention6', e.target.value)}
                 readOnly
                 className="bg-gray-100"

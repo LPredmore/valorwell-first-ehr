@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { Search, Filter, RotateCcw, MoreHorizontal } from 'lucide-react';
-import { supabase, getCurrentUser } from '@/integrations/supabase/client';
+import { supabase, getCurrentUser, getClinicianIdByName } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
@@ -34,21 +34,20 @@ const MyClients = () => {
   const currentClients = clients.slice(indexOfFirstItem, indexOfLastItem);
 
   useEffect(() => {
-    const fetchClinicianInfo = async () => {
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      
-      if (userError) {
-        console.error('Error fetching user data:', userError);
-        return;
-      }
-      
-      if (userData?.user?.email) {
+    const getClinicianInfo = async () => {
+      try {
+        const user = await getCurrentUser();
+        if (!user) {
+          console.error('No authenticated user found');
+          return;
+        }
+        
         const { data, error } = await supabase
           .from('clinicians')
-          .select('*')
-          .eq('clinician_email', userData.user.email)
-          .single();
-        
+          .select('id')
+          .eq('clinician_email', user.email)
+          .maybeSingle();
+          
         if (error) {
           console.error('Error fetching clinician:', error);
           return;
@@ -62,10 +61,13 @@ const MyClients = () => {
           console.error('No clinician found for current user');
           setLoading(false);
         }
+      } catch (error) {
+        console.error('Error getting clinician info:', error);
+        setLoading(false);
       }
     };
     
-    fetchClinicianInfo();
+    getClinicianInfo();
   }, []);
 
   const fetchClients = async (clinicianId: string) => {

@@ -1,11 +1,4 @@
 
-/**
- * @component VideoChat
- * @description A component for embedding a video chat session using Daily.co.
- * Provides a modal dialog with an embedded iframe for video conferencing,
- * along with controls for toggling audio/video and ending the call.
- */
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
@@ -13,43 +6,12 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
 import { Loader2, Mic, MicOff, Video, VideoOff, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-/**
- * @interface VideoChatProps
- * @description Props for the VideoChat component
- */
 interface VideoChatProps {
-  /**
-   * The URL of the Daily.co room to connect to
-   */
   roomUrl: string;
-  
-  /**
-   * Whether the video chat dialog is open
-   */
   isOpen: boolean;
-  
-  /**
-   * Function to call when the dialog is closed
-   */
   onClose: () => void;
 }
 
-/**
- * VideoChat component for embedding a Daily.co video chat session in a dialog.
- *
- * @param props - The component props
- * @param props.roomUrl - The URL of the Daily.co room to connect to
- * @param props.isOpen - Whether the video chat dialog is open
- * @param props.onClose - Function to call when the dialog is closed
- *
- * @example
- * // Basic usage
- * <VideoChat
- *   roomUrl="https://valorwell.daily.co/room-name"
- *   isOpen={isVideoSessionOpen}
- *   onClose={() => setIsVideoSessionOpen(false)}
- * />
- */
 const VideoChat: React.FC<VideoChatProps> = ({ roomUrl, isOpen, onClose }) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);

@@ -1,147 +1,179 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { AppointmentDetail } from '@/types/appointment';
-import { DateTime } from 'luxon';
-import { TimeZoneService } from '@/utils/timezone';
+import { useState, useEffect } from 'react';
+import { format, isToday, isFuture, parseISO, isBefore } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { getUserTimeZone } from '@/utils/timeZoneUtils';
+import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 
-export function useAppointments(clinicianId: string | null) {
-  const [todayAppointments, setTodayAppointments] = useState<AppointmentDetail[]>([]);
-  const [upcomingAppointments, setUpcomingAppointments] = useState<AppointmentDetail[]>([]);
-  const [pastAppointments, setPastAppointments] = useState<AppointmentDetail[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [currentAppointment, setCurrentAppointment] = useState<AppointmentDetail | null>(null);
-  const [isVideoOpen, setIsVideoOpen] = useState(false);
+export interface Appointment {
+  id: string;
+  client_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  type: string;
+  status: string;
+  video_room_url: string | null;
+  client?: {
+    client_first_name: string;
+    client_last_name: string;
+  };
+}
+
+export const useAppointments = (userId: string | null) => {
+  const { toast } = useToast();
+  const [currentAppointment, setCurrentAppointment] = useState<Appointment | null>(null);
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
+  const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [showSessionTemplate, setShowSessionTemplate] = useState(false);
   const [clientData, setClientData] = useState<any>(null);
   const [isLoadingClientData, setIsLoadingClientData] = useState(false);
 
-  const fetchAppointments = useCallback(async () => {
-    if (!clinicianId) return;
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const today = DateTime.now().setZone('utc').toFormat('yyyy-MM-dd');
-
-      const { data: appointments, error: appointmentsError } = await supabase
+  const { data: appointments, isLoading, error, refetch } = useQuery({
+    queryKey: ['clinician-appointments', userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      
+      console.log('Fetching appointments for clinician:', userId);
+      const { data, error } = await supabase
         .from('appointments')
-        .select('*')
-        .eq('clinician_id', clinicianId)
-        .order('appointment_datetime', { ascending: true });
+        .select(`
+          id,
+          client_id,
+          date,
+          start_time,
+          end_time,
+          type,
+          status,
+          video_room_url,
+          clients (
+            client_first_name,
+            client_last_name
+          )
+        `)
+        .eq('clinician_id', userId)
+        .order('date')
+        .order('start_time');
 
-      if (appointmentsError) {
-        console.error('Error fetching appointments:', appointmentsError);
-        setError(appointmentsError);
-        return;
+      if (error) {
+        console.error('Error fetching appointments:', error);
+        throw error;
       }
 
-      const todayAppts: AppointmentDetail[] = [];
-      const upcomingAppts: AppointmentDetail[] = [];
-      const pastAppts: AppointmentDetail[] = [];
+      return data.map((appointment: any) => ({
+        ...appointment,
+        client: appointment.clients
+      }));
+    },
+    enabled: !!userId
+  });
 
-      appointments.forEach((appointment: any) => {
-        const appointmentDate = DateTime.fromISO(appointment.appointment_datetime, { zone: 'utc' }).toFormat('yyyy-MM-dd');
+  const todayAppointments = appointments?.filter(appointment => {
+    const appointmentDate = parseISO(appointment.date);
+    return isToday(appointmentDate);
+  }) || [];
 
-        if (appointmentDate === today) {
-          todayAppts.push(appointment);
-        } else if (DateTime.fromISO(appointment.appointment_datetime, { zone: 'utc' }) > DateTime.now().setZone('utc')) {
-          upcomingAppts.push(appointment);
-        } else {
-          pastAppts.push(appointment);
-        }
-      });
+  const upcomingAppointments = appointments?.filter(appointment => {
+    const appointmentDate = parseISO(appointment.date);
+    return isFuture(appointmentDate) && !isToday(appointmentDate);
+  }) || [];
 
-      setTodayAppointments(todayAppts);
-      setUpcomingAppointments(upcomingAppts);
-      setPastAppointments(pastAppts);
-    } catch (error) {
-      console.error('Error in fetchAppointments:', error);
-      setError(error instanceof Error ? error : new Error('An unexpected error occurred'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [clinicianId]);
+  const pastAppointments = appointments?.filter(appointment => {
+    const appointmentDate = parseISO(appointment.date);
+    return isBefore(appointmentDate, new Date()) && 
+           !isToday(appointmentDate) && 
+           appointment.status === "scheduled";
+  }) || [];
 
-  useEffect(() => {
-    if (clinicianId) {
-      fetchAppointments();
-    }
-  }, [clinicianId, fetchAppointments]);
-
-  const openSessionTemplate = useCallback(async (appointment: AppointmentDetail) => {
-    setCurrentAppointment(appointment);
-    setIsLoadingClientData(true);
+  const startVideoSession = async (appointment: Appointment) => {
     try {
-      const { data: client, error: clientError } = await supabase
+      console.log("Starting video session for appointment:", appointment.id);
+      
+      if (appointment.video_room_url) {
+        console.log("Using existing video room URL:", appointment.video_room_url);
+        setCurrentVideoUrl(appointment.video_room_url);
+        setIsVideoOpen(true);
+      } else {
+        console.log("Creating new video room for appointment:", appointment.id);
+        const result = await getOrCreateVideoRoom(appointment.id);
+        console.log("Video room creation result:", result);
+        
+        if (result.success && result.url) {
+          setCurrentVideoUrl(result.url);
+          setIsVideoOpen(true);
+          refetch();
+        } else {
+          console.error("Failed to create video room:", result.error);
+          throw new Error('Failed to create video room');
+        }
+      }
+    } catch (error) {
+      console.error('Error starting video session:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not start the video session. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const openSessionTemplate = async (appointment: Appointment) => {
+    if (!appointment || !appointment.client_id) {
+      toast({
+        title: 'Error',
+        description: 'Could not find client information for this appointment.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setIsLoadingClientData(true);
+      setCurrentAppointment(appointment);
+      
+      const { data, error } = await supabase
         .from('clients')
         .select('*')
         .eq('id', appointment.client_id)
         .single();
-
-      if (clientError) {
-        console.error('Error fetching client data:', clientError);
-        setError(clientError);
-        return;
+        
+      if (error) {
+        throw error;
       }
-      setClientData(client);
+      
+      setClientData(data);
+      setShowSessionTemplate(true);
     } catch (error) {
-      console.error('Error in openSessionTemplate:', error);
-      setError(error instanceof Error ? error : new Error('An unexpected error occurred'));
+      console.error('Error fetching client data:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not load client information. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoadingClientData(false);
-      setShowSessionTemplate(true);
     }
-  }, [setCurrentAppointment, setShowSessionTemplate, setClientData]);
+  };
 
-  const closeSessionTemplate = useCallback(() => {
+  const closeSessionTemplate = () => {
     setShowSessionTemplate(false);
-    setCurrentAppointment(null);
     setClientData(null);
-  }, [setShowSessionTemplate, setCurrentAppointment, setClientData]);
+    setCurrentAppointment(null);
+  };
 
-  const closeVideoSession = useCallback(() => {
+  const closeVideoSession = () => {
     setIsVideoOpen(false);
-    setCurrentVideoUrl('');
-  }, [setIsVideoOpen, setCurrentVideoUrl]);
-
-  const startVideoSession = useCallback(async (appointment: AppointmentDetail) => {
-    try {
-      setCurrentAppointment(appointment);
-      setIsVideoOpen(true);
-
-      const appointmentId = appointment?.id;
-
-      if (!appointmentId) {
-        console.error('Appointment ID is missing');
-        return;
-      }
-      
-      const { data: result } = await supabase.rpc('get_or_create_video_room', { appointment_id: appointmentId });
-      
-      if (result) {
-        const videoUrl = result.video_room_url || '';
-        setCurrentVideoUrl(videoUrl);
-        console.log('Video URL:', videoUrl);
-      } else {
-        console.error('Failed to get or create video room');
-      }
-    } catch (error) {
-      console.error('Error starting video session:', error);
-      setError(error instanceof Error ? error : new Error('An unexpected error occurred'));
-      setIsVideoOpen(false);
-    }
-  }, [currentAppointment, setIsVideoOpen, setCurrentVideoUrl]);
+  };
 
   return {
+    appointments,
     todayAppointments,
     upcomingAppointments,
     pastAppointments,
     isLoading,
     error,
-    refetch: fetchAppointments,
+    refetch,
     currentAppointment,
     isVideoOpen,
     currentVideoUrl,
@@ -153,4 +185,4 @@ export function useAppointments(clinicianId: string | null) {
     closeSessionTemplate,
     closeVideoSession
   };
-}
+};

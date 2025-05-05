@@ -1,259 +1,254 @@
 
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from 'react';
+import { Pencil, Save, X } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { fetchPracticeInfo, updatePracticeInfo, PracticeInfo } from '@/integrations/supabase/client';
+import { Button } from "@/components/ui/button";
 
-// Define PracticeInfo type matching backend
-interface PracticeInfo {
-  id: string;
-  practice_name: string;
-  practice_address1: string;
-  practice_address2: string;
-  practice_city: string;
-  practice_state: string;
-  practice_zip: string;
-  practice_npi: string;
-  practice_taxid: string;
-  practice_taxonomy: string;
-  created_at: string;
-  updated_at: string;
-}
-
-const PracticeTab: React.FC = () => {
-  const { toast } = useToast();
+const PracticeTab = () => {
   const [practiceInfo, setPracticeInfo] = useState<PracticeInfo>({
     id: '',
     practice_name: '',
+    practice_npi: '',
+    practice_taxid: '',
+    practice_taxonomy: '',
     practice_address1: '',
     practice_address2: '',
     practice_city: '',
     practice_state: '',
-    practice_zip: '',
-    practice_npi: '',
-    practice_taxid: '',
-    practice_taxonomy: '',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    practice_zip: ''
   });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
   
+  const [isEditingPractice, setIsEditingPractice] = useState(false);
+  const [isSavingPractice, setIsSavingPractice] = useState(false);
+
   useEffect(() => {
-    fetchPracticeInfo();
+    fetchPracticeData();
   }, []);
-  
-  const fetchPracticeInfo = async () => {
+
+  const fetchPracticeData = async () => {
     try {
-      setIsLoading(true);
-      const { data, error } = await supabase.from('practiceinfo').select('*').limit(1).single();
-      
-      if (error) {
-        if (error.code !== 'PGRST116') { // PGRST116 means no rows returned
-          throw error;
-        }
-        // No practice info yet, that's ok
-      }
-      
+      const data = await fetchPracticeInfo();
       if (data) {
         setPracticeInfo(data);
       }
-    } catch (err) {
-      setError(err as Error);
+    } catch (error) {
+      console.error('Error fetching practice information:', error);
       toast({
-        title: "Error",
-        description: "Failed to load practice information",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to load practice information. Please try again.',
+        variant: 'destructive',
       });
-    } finally {
-      setIsLoading(false);
     }
   };
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handlePracticeInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setPracticeInfo({
-      ...practiceInfo,
+    setPracticeInfo(prev => ({
+      ...prev,
       [name]: value
-    });
+    }));
   };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+
+  const handleSavePracticeInfo = async () => {
+    setIsSavingPractice(true);
     try {
-      setIsSaving(true);
+      const result = await updatePracticeInfo(practiceInfo);
       
-      const updatedInfo = {
-        ...practiceInfo,
-        updated_at: new Date().toISOString()
-      };
-      
-      let result;
-      
-      if (practiceInfo.id) {
-        // Update existing record
-        result = await supabase
-          .from('practiceinfo')
-          .update(updatedInfo)
-          .eq('id', practiceInfo.id)
-          .select();
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: 'Practice information saved successfully',
+        });
+        setIsEditingPractice(false);
       } else {
-        // Insert new record
-        result = await supabase
-          .from('practiceinfo')
-          .insert(updatedInfo)
-          .select();
-      }
-      
-      if (result.error) {
         throw result.error;
       }
-      
-      if (result.data && result.data.length > 0) {
-        setPracticeInfo(result.data[0]);
-      }
-      
+    } catch (error) {
+      console.error('Error saving practice information:', error);
       toast({
-        title: "Success",
-        description: "Practice information saved successfully",
-      });
-    } catch (err) {
-      setError(err as Error);
-      toast({
-        title: "Error",
-        description: "Failed to save practice information",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to save practice information. Please try again.',
+        variant: 'destructive',
       });
     } finally {
-      setIsSaving(false);
+      setIsSavingPractice(false);
     }
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Practice Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-4">Loading practice information...</div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="practice_name">Practice Name</Label>
-                  <Input 
-                    id="practice_name" 
-                    name="practice_name"
-                    value={practiceInfo.practice_name}
-                    onChange={handleInputChange}
-                    placeholder="Enter practice name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="practice_npi">NPI Number</Label>
-                  <Input 
-                    id="practice_npi" 
-                    name="practice_npi"
-                    value={practiceInfo.practice_npi}
-                    onChange={handleInputChange}
-                    placeholder="National Provider Identifier"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="practice_taxid">Tax ID</Label>
-                  <Input 
-                    id="practice_taxid" 
-                    name="practice_taxid"
-                    value={practiceInfo.practice_taxid}
-                    onChange={handleInputChange}
-                    placeholder="Tax ID Number"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="practice_taxonomy">Taxonomy Code</Label>
-                  <Input 
-                    id="practice_taxonomy" 
-                    name="practice_taxonomy"
-                    value={practiceInfo.practice_taxonomy}
-                    onChange={handleInputChange}
-                    placeholder="Taxonomy Code"
-                  />
-                </div>
-              </div>
-              
-              <div className="pt-4 border-t border-gray-200">
-                <h3 className="text-lg font-medium mb-3">Practice Address</h3>
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <Label htmlFor="practice_address1">Address Line 1</Label>
-                    <Input 
-                      id="practice_address1" 
-                      name="practice_address1"
-                      value={practiceInfo.practice_address1}
-                      onChange={handleInputChange}
-                      placeholder="Street address"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="practice_address2">Address Line 2</Label>
-                    <Input 
-                      id="practice_address2" 
-                      name="practice_address2"
-                      value={practiceInfo.practice_address2}
-                      onChange={handleInputChange}
-                      placeholder="Apt, Suite, etc. (optional)"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="practice_city">City</Label>
-                      <Input 
-                        id="practice_city" 
-                        name="practice_city"
-                        value={practiceInfo.practice_city}
-                        onChange={handleInputChange}
-                        placeholder="City"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="practice_state">State</Label>
-                      <Input 
-                        id="practice_state" 
-                        name="practice_state"
-                        value={practiceInfo.practice_state}
-                        onChange={handleInputChange}
-                        placeholder="State"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="practice_zip">ZIP Code</Label>
-                      <Input 
-                        id="practice_zip" 
-                        name="practice_zip"
-                        value={practiceInfo.practice_zip}
-                        onChange={handleInputChange}
-                        placeholder="ZIP Code"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex justify-end pt-4">
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? 'Saving...' : 'Save Practice Information'}
-                </Button>
-              </div>
-            </form>
-          )}
-        </CardContent>
-      </Card>
+    <div className="p-6 animate-fade-in">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold">Practice Information</h2>
+        {isEditingPractice ? (
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                setIsEditingPractice(false);
+                fetchPracticeData(); // Reset to original data
+              }}
+              disabled={isSavingPractice}
+            >
+              <X size={14} className="mr-1" />
+              Cancel
+            </Button>
+            <Button 
+              size="sm"
+              onClick={handleSavePracticeInfo}
+              disabled={isSavingPractice}
+            >
+              <Save size={14} className="mr-1" />
+              {isSavingPractice ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        ) : (
+          <button 
+            className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+            onClick={() => setIsEditingPractice(true)}
+          >
+            <Pencil size={14} />
+            <span>Edit</span>
+          </button>
+        )}
+      </div>
+      
+      <div className="grid grid-cols-2 gap-6 mb-8">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Practice Name
+          </label>
+          <input 
+            type="text" 
+            name="practice_name"
+            value={practiceInfo.practice_name}
+            onChange={handlePracticeInfoChange}
+            placeholder="Enter practice name"
+            className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+            readOnly={!isEditingPractice}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            NPI Number
+          </label>
+          <input 
+            type="text" 
+            name="practice_npi"
+            value={practiceInfo.practice_npi}
+            onChange={handlePracticeInfoChange}
+            placeholder="Enter NPI number"
+            className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+            readOnly={!isEditingPractice}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Tax ID
+          </label>
+          <input 
+            type="text" 
+            name="practice_taxid"
+            value={practiceInfo.practice_taxid}
+            onChange={handlePracticeInfoChange}
+            placeholder="Enter tax ID"
+            className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+            readOnly={!isEditingPractice}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Group Taxonomy Code
+          </label>
+          <input 
+            type="text" 
+            name="practice_taxonomy"
+            value={practiceInfo.practice_taxonomy}
+            onChange={handlePracticeInfoChange}
+            placeholder="Enter group taxonomy code"
+            className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+            readOnly={!isEditingPractice}
+          />
+        </div>
+      </div>
+      
+      <h3 className="text-lg font-medium mb-4">Practice Billing Address</h3>
+      <div className="grid grid-cols-2 gap-6 mb-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Address Line 1
+          </label>
+          <input 
+            type="text" 
+            name="practice_address1"
+            value={practiceInfo.practice_address1}
+            onChange={handlePracticeInfoChange}
+            placeholder="Street address"
+            className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+            readOnly={!isEditingPractice}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Address Line 2
+          </label>
+          <input 
+            type="text" 
+            name="practice_address2"
+            value={practiceInfo.practice_address2}
+            onChange={handlePracticeInfoChange}
+            placeholder="Apt, suite, etc."
+            className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+            readOnly={!isEditingPractice}
+          />
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-3 gap-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            City
+          </label>
+          <input 
+            type="text" 
+            name="practice_city"
+            value={practiceInfo.practice_city}
+            onChange={handlePracticeInfoChange}
+            placeholder="City"
+            className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+            readOnly={!isEditingPractice}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            State
+          </label>
+          <input 
+            type="text" 
+            name="practice_state"
+            value={practiceInfo.practice_state}
+            onChange={handlePracticeInfoChange}
+            placeholder="State"
+            className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+            readOnly={!isEditingPractice}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            ZIP Code
+          </label>
+          <input 
+            type="text" 
+            name="practice_zip"
+            value={practiceInfo.practice_zip}
+            onChange={handlePracticeInfoChange}
+            placeholder="ZIP Code"
+            className="w-full p-2 border rounded-md text-gray-700 bg-gray-50" 
+            readOnly={!isEditingPractice}
+          />
+        </div>
+      </div>
     </div>
   );
 };

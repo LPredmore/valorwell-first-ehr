@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,8 +6,14 @@ import { Calendar } from 'lucide-react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, startOfToday } from 'date-fns';
-import { TimeZoneService } from '@/utils/timeZoneService';
-import { useTimeZone } from '@/context/TimeZoneContext';
+import { 
+  getUserTimeZone, 
+  formatTime12Hour, 
+  formatTimeZoneDisplay,
+  formatWithTimeZone,
+  formatTimeInUserTimeZone,
+  ensureIANATimeZone
+} from '@/utils/timeZoneUtils';
 import { useToast } from '@/hooks/use-toast';
 
 interface PastAppointment {
@@ -23,27 +30,24 @@ interface MyAppointmentsProps {
   pastAppointments?: PastAppointment[];
 }
 
-const MyAppointments: React.FC<MyAppointmentsProps> = ({
-  pastAppointments: initialPastAppointments
-}) => {
+const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initialPastAppointments }) => {
   const [loading, setLoading] = useState(false);
   const [pastAppointments, setPastAppointments] = useState<PastAppointment[]>([]);
   const [clinicianName, setClinicianName] = useState<string | null>(null);
   const [clientData, setClientData] = useState<any>(null);
   const { toast } = useToast();
-  const { userTimeZone } = useTimeZone();
-
-  // Get validated timezone
-  const clientTimeZone = TimeZoneService.ensureIANATimeZone(clientData?.client_time_zone || userTimeZone);
+  const clientTimeZone = ensureIANATimeZone(clientData?.client_time_zone || getUserTimeZone());
 
   useEffect(() => {
     const fetchClientData = async () => {
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
         if (userError || !user) {
           console.error('Error getting current user:', userError);
           return;
         }
+        
         const { data: client, error: clientError } = await supabase
           .from('clients')
           .select('*')
@@ -68,6 +72,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
             console.error('Error getting clinician name:', clinicianError);
             return;
           }
+          
           setClinicianName(clinician?.clinician_professional_name || null);
         }
       } catch (error) {
@@ -96,7 +101,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
           .neq('status', 'cancelled')
           .order('date', { ascending: false })
           .order('start_time', { ascending: false });
-        
+
         if (error) {
           console.error('Error fetching past appointments:', error);
           toast({
@@ -106,7 +111,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
           });
           return;
         }
-        
+
         if (data && data.length > 0) {
           console.log("Past appointments data:", data);
           console.log("Using client time zone:", clientTimeZone);
@@ -114,11 +119,15 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
           const formattedAppointments = data.map(appointment => {
             try {
               const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
-              let formattedTime = '';
               
+              let formattedTime = '';
               try {
                 if (appointment.start_time) {
-                  formattedTime = TimeZoneService.formatTime(appointment.start_time, 'h:mm a');
+                  formattedTime = formatTimeInUserTimeZone(
+                    appointment.start_time,
+                    clientTimeZone,
+                    'h:mm a'
+                  );
                 } else {
                   formattedTime = 'Time unavailable';
                 }
@@ -127,7 +136,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
                   appointment,
                   timezone: clientTimeZone
                 });
-                formattedTime = TimeZoneService.formatTime(appointment.start_time, 'h:mm a') || 'Time unavailable';
+                formattedTime = formatTime12Hour(appointment.start_time) || 'Time unavailable';
               }
               
               return {
@@ -174,7 +183,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
     fetchPastAppointments();
   }, [clientData, clinicianName, clientTimeZone, toast]);
 
-  const timeZoneDisplay = TimeZoneService.formatTimeZoneDisplay(clientTimeZone);
+  const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);
 
   return (
     <Card>
@@ -193,15 +202,21 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({
                 <TableHead>Time <span className="text-xs text-gray-500">({timeZoneDisplay})</span></TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Therapist</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pastAppointments.map(appointment => (
+              {pastAppointments.map((appointment) => (
                 <TableRow key={appointment.id}>
                   <TableCell>{appointment.date}</TableCell>
                   <TableCell>{appointment.time}</TableCell>
                   <TableCell>{appointment.type}</TableCell>
                   <TableCell>{appointment.therapist}</TableCell>
+                  <TableCell>{appointment.status}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="sm">View Details</Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
