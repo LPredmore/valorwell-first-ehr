@@ -65,6 +65,7 @@ const ClinicianAvailabilityPanel: React.FC<ClinicianAvailabilityPanelProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [timeGranularity, setTimeGranularity] = useState<'hour' | 'half-hour'>('hour');
   const [minDaysAhead, setMinDaysAhead] = useState<number>(1);
+  const [maxDaysAhead, setMaxDaysAhead] = useState<number>(30);
   const [clinicianData, setClinicianData] = useState<any>(null);
   const { toast } = useToast();
 
@@ -132,6 +133,11 @@ const ClinicianAvailabilityPanel: React.FC<ClinicianAvailabilityPanelProps> = ({
           if (data) {
             console.log('Fetched clinician data:', data);
             setClinicianData(data);
+            
+            // Set the availability settings from clinician data
+            setTimeGranularity(data.clinician_time_granularity || 'hour');
+            setMinDaysAhead(Number(data.clinician_min_notice_days) || 1);
+            setMaxDaysAhead(Number(data.clinician_max_advance_days) || 30);
             
             // Transform the database columns into our internal data structure
             const newSchedule = [...weekSchedule];
@@ -505,6 +511,27 @@ const ClinicianAvailabilityPanel: React.FC<ClinicianAvailabilityPanelProps> = ({
                     {Array.from({ length: 15 }, (_, i) => i + 1).map((day) => (
                       <SelectItem key={`days-ahead-${day}`} value={day.toString()}>
                         {day} {day === 1 ? 'day' : 'days'} in advance
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">
+                  How far in advance can clients schedule?
+                </p>
+                <Select 
+                  value={maxDaysAhead.toString()} 
+                  onValueChange={(value) => setMaxDaysAhead(Number(value))}
+                >
+                  <SelectTrigger className="w-full max-w-xs">
+                    <SelectValue placeholder="Select maximum days in advance" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[14, 30, 45, 60, 90, 120, 180].map((day) => (
+                      <SelectItem key={`max-days-${day}`} value={day.toString()}>
+                        {day} days ({Math.floor(day/30)} {Math.floor(day/30) === 1 ? 'month' : 'months'})
                       </SelectItem>
                     ))}
                   </SelectContent>
