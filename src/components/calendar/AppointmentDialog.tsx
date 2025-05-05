@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -44,67 +43,21 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   const [startTime, setStartTime] = useState<string>("09:00");
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState<string>('weekly');
-  const [clients, setClients] = useState<Client[]>(initialClients);
-  const [loadingClients, setLoadingClients] = useState(initialLoadingClients);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loadingClients, setLoadingClients] = useState(false);
 
-  // Fetch clients for the selected clinician when dialog opens or clinician changes
+  // Log when dialog opens with crucial info
   useEffect(() => {
-    const fetchClientsForClinician = async () => {
-      if (!selectedClinicianId || !isOpen) {
-        console.log('Not fetching clients: clinicianId is null or dialog not open', { 
-          selectedClinicianId, 
-          isOpen 
-        });
-        return;
-      }
-      
-      console.log('Fetching clients for clinician:', selectedClinicianId);
-      setLoadingClients(true);
-      setClients([]);
-      
-      try {
-        const { data, error } = await supabase
-          .from('clients')
-          .select('id, client_first_name, client_preferred_name, client_last_name')
-          .eq('client_assigned_therapist', selectedClinicianId)
-          .order('client_last_name');
-          
-        if (error) {
-          console.error('Error fetching clients:', error);
-          toast({
-            title: "Error",
-            description: "Failed to load clients. Please try again.",
-            variant: "destructive"
-          });
-        } else {
-          console.log('Clients fetched successfully:', data);
-          console.log('Selected clinician ID used for query:', selectedClinicianId);
-          
-          if (data.length === 0) {
-            console.log('No clients found for this clinician');
-          }
-          
-          const formattedClients = data.map(client => ({
-            id: client.id,
-            displayName: `${client.client_preferred_name || client.client_first_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
-          }));
-          console.log('Formatted clients:', formattedClients);
-          setClients(formattedClients);
-        }
-      } catch (error) {
-        console.error('Error:', error);
-      } finally {
-        setLoadingClients(false);
-      }
-    };
-
     if (isOpen) {
-      console.log('Dialog opened, fetching clients with clinicianId:', selectedClinicianId);
-      fetchClientsForClinician();
+      console.log('AppointmentDialog opened with state:', { 
+        selectedClinicianId,
+        initialClientsLength: initialClients?.length || 0,
+        initialLoadingClients
+      });
     }
-  }, [selectedClinicianId, isOpen]);
+  }, [isOpen, selectedClinicianId, initialClients, initialLoadingClients]);
 
-  // Reset form values when dialog opens/closes
+  // Reset form values when dialog opens/closes and set initial clients from props
   useEffect(() => {
     if (isOpen) {
       setSelectedDate(new Date());
@@ -112,13 +65,70 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
       setStartTime("09:00");
       setIsRecurring(false);
       
-      // Use the initial clients if they're provided and not empty
+      // Always start with the clients from props
       if (initialClients && initialClients.length > 0) {
         console.log('Using initial clients from props:', initialClients);
         setClients(initialClients);
+        setLoadingClients(initialLoadingClients);
+      } else {
+        console.log('No initial clients from props, will fetch');
+        setClients([]);
+        // Only fetch if we don't have clients from props
+        fetchClientsIfNeeded();
       }
     }
-  }, [isOpen, initialClients]);
+  }, [isOpen, initialClients, initialLoadingClients]);
+
+  // Only fetch clients if needed (not provided in props or empty)
+  const fetchClientsIfNeeded = async () => {
+    if (!selectedClinicianId || !isOpen) {
+      console.log('Not fetching clients: clinicianId is null or dialog not open');
+      return;
+    }
+    
+    if (initialClients && initialClients.length > 0) {
+      console.log('Skipping fetch: clients already available from props');
+      return;
+    }
+    
+    console.log('Fetching clients for clinician:', selectedClinicianId);
+    setLoadingClients(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, client_first_name, client_preferred_name, client_last_name')
+        .eq('client_assigned_therapist', selectedClinicianId)
+        .order('client_last_name');
+        
+      if (error) {
+        console.error('Error fetching clients:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load clients. Please try again.",
+          variant: "destructive"
+        });
+      } else {
+        console.log('Clients fetched successfully:', data);
+        console.log('Selected clinician ID used for query:', selectedClinicianId);
+        
+        if (data.length === 0) {
+          console.log('No clients found for this clinician');
+        }
+        
+        const formattedClients = data.map(client => ({
+          id: client.id,
+          displayName: `${client.client_preferred_name || client.client_first_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
+        }));
+        console.log('Formatted clients:', formattedClients);
+        setClients(formattedClients);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoadingClients(false);
+    }
+  };
 
   const generateTimeOptions = () => {
     const options = [];
@@ -261,8 +271,8 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
     }
   };
 
-  // Log details about the client loading state and selected clinician for debugging
-  console.log('AppointmentDialog state:', {
+  // Debugging info
+  console.log('AppointmentDialog render state:', {
     isOpen,
     selectedClinicianId,
     loadingClients,
