@@ -9,48 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      availability_settings: {
-        Row: {
-          clinician_id: string
-          created_at: string
-          default_slot_duration: number
-          id: string
-          is_active: boolean | null
-          max_advance_days: number
-          min_notice_days: number
-          slot_duration: number | null
-          time_granularity: string | null
-          time_zone: string | null
-          updated_at: string
-        }
-        Insert: {
-          clinician_id: string
-          created_at?: string
-          default_slot_duration?: number
-          id?: string
-          is_active?: boolean | null
-          max_advance_days?: number
-          min_notice_days?: number
-          slot_duration?: number | null
-          time_granularity?: string | null
-          time_zone?: string | null
-          updated_at?: string
-        }
-        Update: {
-          clinician_id?: string
-          created_at?: string
-          default_slot_duration?: number
-          id?: string
-          is_active?: boolean | null
-          max_advance_days?: number
-          min_notice_days?: number
-          slot_duration?: number | null
-          time_granularity?: string | null
-          time_zone?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       client_history: {
         Row: {
           additional_info: string | null
@@ -865,7 +823,9 @@ export type Database = {
           clinician_last_name: string | null
           clinician_license_type: string | null
           clinician_licensed_states: string[] | null
+          clinician_max_advance_days: number | null
           clinician_min_client_age: number | null
+          clinician_min_notice_days: number | null
           clinician_nameinsurance: string | null
           clinician_npi_number: string | null
           clinician_phone: string | null
@@ -875,6 +835,7 @@ export type Database = {
             | null
           clinician_taxonomy_code: string | null
           clinician_temppassword: string | null
+          clinician_time_granularity: string | null
           clinician_timezone: string[] | null
           clinician_treatment_approaches: string[] | null
           clinician_type: string | null
@@ -954,7 +915,9 @@ export type Database = {
           clinician_last_name?: string | null
           clinician_license_type?: string | null
           clinician_licensed_states?: string[] | null
+          clinician_max_advance_days?: number | null
           clinician_min_client_age?: number | null
+          clinician_min_notice_days?: number | null
           clinician_nameinsurance?: string | null
           clinician_npi_number?: string | null
           clinician_phone?: string | null
@@ -964,6 +927,7 @@ export type Database = {
             | null
           clinician_taxonomy_code?: string | null
           clinician_temppassword?: string | null
+          clinician_time_granularity?: string | null
           clinician_timezone?: string[] | null
           clinician_treatment_approaches?: string[] | null
           clinician_type?: string | null
@@ -1043,7 +1007,9 @@ export type Database = {
           clinician_last_name?: string | null
           clinician_license_type?: string | null
           clinician_licensed_states?: string[] | null
+          clinician_max_advance_days?: number | null
           clinician_min_client_age?: number | null
+          clinician_min_notice_days?: number | null
           clinician_nameinsurance?: string | null
           clinician_npi_number?: string | null
           clinician_phone?: string | null
@@ -1053,6 +1019,7 @@ export type Database = {
             | null
           clinician_taxonomy_code?: string | null
           clinician_temppassword?: string | null
+          clinician_time_granularity?: string | null
           clinician_timezone?: string[] | null
           clinician_treatment_approaches?: string[] | null
           clinician_type?: string | null

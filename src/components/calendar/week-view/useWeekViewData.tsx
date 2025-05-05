@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -215,7 +214,6 @@ export const useWeekViewData = (
             end_time: clinician[endTimeKey],
             clinician_id: clinician.id,
             is_active: true,
-            timezone: clinician[timezoneKey] || 'America/Chicago'
           });
         }
       }

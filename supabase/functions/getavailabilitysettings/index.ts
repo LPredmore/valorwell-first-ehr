@@ -32,31 +32,38 @@ serve(async (req) => {
     
     console.log(`Fetching availability settings for clinician ID: ${clinicianId}`)
     
-    // Fetch the clinician's availability settings
+    // Fetch the clinician's availability settings directly from clinicians table
     const { data, error } = await supabaseClient
-      .from('availability_settings')
-      .select('*')
-      .eq('clinician_id', clinicianId.toString()) // Convert to string explicitly
+      .from('clinicians')
+      .select('clinician_time_granularity, clinician_min_notice_days, clinician_max_advance_days')
+      .eq('id', clinicianId.toString()) // Convert to string explicitly
       .single()
     
     if (error) {
-      console.error('Error fetching availability settings:', error)
+      console.error('Error fetching clinician settings:', error)
       console.error(`Clinician ID used in query: ${clinicianId}`)
       // Return default settings if not found
       return new Response(
-        JSON.stringify({ time_granularity: 'hour', min_days_ahead: 1 }),
+        JSON.stringify({ 
+          time_granularity: 'hour', 
+          min_days_ahead: 1,
+          max_days_ahead: 30 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
     
-    // Ensure min_days_ahead is a number
-    if (data) {
-      data.min_days_ahead = Number(data.min_days_ahead) || 1;
-      console.log(`Successfully retrieved settings: ${JSON.stringify(data, null, 2)}`)
+    // Map clinician table columns to the expected response format
+    const settings = {
+      time_granularity: data.clinician_time_granularity || 'hour',
+      min_days_ahead: Number(data.clinician_min_notice_days) || 1,
+      max_days_ahead: Number(data.clinician_max_advance_days) || 30
     }
     
+    console.log(`Successfully retrieved settings: ${JSON.stringify(settings, null, 2)}`)
+    
     return new Response(
-      JSON.stringify(data),
+      JSON.stringify(settings),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {

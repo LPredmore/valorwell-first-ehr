@@ -334,7 +334,10 @@ const ClinicianAvailabilityPanel: React.FC<ClinicianAvailabilityPanelProps> = ({
 
       // Transform the weekSchedule into database columns format
       const updateData: Record<string, any> = {
-        // We'll add the availability data here
+        // Add the settings directly to the clinicians table
+        clinician_time_granularity: timeGranularity,
+        clinician_min_notice_days: minDaysAhead,
+        clinician_max_advance_days: maxDaysAhead
       };
       
       // For each day of the week, set all possible slots

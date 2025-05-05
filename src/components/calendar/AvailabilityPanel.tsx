@@ -68,6 +68,10 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
   const [singleDateTimeSlots, setSingleDateTimeSlots] = useState<TimeSlot[]>([]);
   const [existingSingleAvailability, setExistingSingleAvailability] = useState<{[date: string]: TimeSlot[]}>({});
 
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+
   useEffect(() => {
     async function fetchAvailability() {
       setLoading(true);
@@ -214,7 +218,7 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
     }
 
     fetchAvailability();
-  }, [clinicianId]);
+  }, [clinicianId, refreshTrigger, startDate, endDate]);
 
   useEffect(() => {
     if (selectedDate) {
@@ -548,16 +552,30 @@ const AvailabilityPanel: React.FC<AvailabilityPanelProps> = ({ clinicianId, onAv
 
       const safeMaxDaysAhead = Math.max(minDaysAhead + 30, maxDaysAhead);
       
+      // Fetch clinician directly to get the settings
+      const { data: clinicianData, error: clinicianError } = await supabase
+        .from('clinicians')
+        .select('clinician_time_granularity, clinician_min_notice_days, clinician_max_advance_days')
+        .eq('id', clinicianIdToUse)
+        .single();
+
+      if (clinicianData) {
+        console.log('Retrieved settings from clinician:', clinicianData);
+        setTimeGranularity(clinicianData.clinician_time_granularity as 'hour' | 'half-hour' || 'hour');
+        setMinDaysAhead(Number(clinicianData.clinician_min_notice_days) || 1);
+        setMaxDaysAhead(Number(clinicianData.clinician_max_advance_days) || 90);
+      } else {
+        console.log('No clinician settings found, using default values');
+      }
+
       const { error: settingsError } = await supabase
-        .from('availability_settings')
-        .upsert({
-          clinician_id: clinicianIdToUse,
-          time_granularity: timeGranularity,
-          min_days_ahead: minDaysAhead,
-          max_days_ahead: safeMaxDaysAhead
-        }, {
-          onConflict: 'clinician_id'
-        });
+        .from('clinicians')
+        .update({
+          clinician_time_granularity: timeGranularity,
+          clinician_min_notice_days: minDaysAhead,
+          clinician_max_advance_days: safeMaxDaysAhead
+        })
+        .eq('id', clinicianIdToUse);
 
       if (settingsError) {
         console.error('Error saving availability settings:', settingsError);

@@ -30,24 +30,35 @@ serve(async (req) => {
       throw new Error('Clinician ID is required')
     }
     
-    // Fetch the clinician's availability settings
+    // Fetch the clinician's availability settings directly from clinicians table
     const { data, error } = await supabaseClient
-      .from('availability_settings')
-      .select('*')
-      .eq('clinician_id', clinicianId.toString()) // Convert to string explicitly
+      .from('clinicians')
+      .select('clinician_time_granularity, clinician_min_notice_days, clinician_max_advance_days')
+      .eq('id', clinicianId.toString()) // Convert to string explicitly
       .single()
     
     if (error) {
-      console.error('Error fetching availability settings:', error)
+      console.error('Error fetching clinician settings:', error)
       // Return default settings if not found
       return new Response(
-        JSON.stringify({ time_granularity: 'hour' }),
+        JSON.stringify({ 
+          time_granularity: 'hour',
+          min_days_ahead: 1,
+          max_days_ahead: 30 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
     
+    // Map clinician table columns to the expected response format
+    const settings = {
+      time_granularity: data.clinician_time_granularity || 'hour',
+      min_days_ahead: data.clinician_min_notice_days || 1,
+      max_days_ahead: data.clinician_max_advance_days || 30
+    }
+    
     return new Response(
-      JSON.stringify(data),
+      JSON.stringify(settings),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
