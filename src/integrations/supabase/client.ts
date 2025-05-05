@@ -401,6 +401,8 @@ export const updatePracticeInfo = async (updates: Partial<PracticeInfo>) => {
 
 // Function to test if Resend is working
 export const testResendEmailService = async (email: string) => {
+  // This function is kept for reference but is no longer exposed in the UI
+  // It can be used for debugging email issues via the console if needed
   try {
     console.log('[testResendEmailService] Testing Resend with email:', email);
     

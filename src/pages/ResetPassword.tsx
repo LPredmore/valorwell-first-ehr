@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
-import { supabase, testResendEmailService } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,6 @@ const ResetPassword = () => {
   const emailParam = searchParams.get("email");
   const [email, setEmail] = useState(emailParam || "");
   const [isLoading, setIsLoading] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,48 +52,6 @@ const ResetPassword = () => {
     }
   };
 
-  const handleTestResend = async () => {
-    if (!email) {
-      toast({
-        title: "Email required",
-        description: "Please enter your email address first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsTesting(true);
-    console.log("[ResetPassword] Testing Resend email service with:", email);
-    
-    try {
-      const result = await testResendEmailService(email);
-      
-      console.log("[ResetPassword] Test result:", result);
-      
-      if (result.success) {
-        toast({
-          title: "Test email sent successfully",
-          description: "The Resend service is working properly. Please check your inbox.",
-        });
-      } else {
-        toast({
-          title: "Test email failed",
-          description: result.message || "Failed to send test email. Check the console for details.",
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      console.error("[ResetPassword] Test email error:", error);
-      toast({
-        title: "Test failed",
-        description: error.message || "An unexpected error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsTesting(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <Card className="w-full max-w-md">
@@ -121,22 +78,6 @@ const ResetPassword = () => {
               {isLoading ? "Sending..." : "Send Reset Link"}
             </Button>
           </form>
-          
-          <div className="mt-4 pt-4 border-t">
-            <p className="text-sm text-gray-500 mb-2">Troubleshooting</p>
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="w-full"
-              onClick={handleTestResend}
-              disabled={isTesting}
-            >
-              {isTesting ? "Sending Test..." : "Test Email Service"}
-            </Button>
-            <p className="text-xs text-gray-400 mt-2">
-              This will send a test email to the address above to verify if the email service is working properly.
-            </p>
-          </div>
         </CardContent>
         <CardFooter className="flex justify-center">
           <Button variant="link" onClick={() => navigate("/login")}>
