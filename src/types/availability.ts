@@ -39,7 +39,14 @@ export interface AvailabilitySlot {
  * Weekly availability interface
  */
 export interface WeeklyAvailability {
-  [key in DayOfWeek]: AvailabilitySlot[];
+  sunday: AvailabilitySlot[];
+  monday: AvailabilitySlot[];
+  tuesday: AvailabilitySlot[];
+  wednesday: AvailabilitySlot[];
+  thursday: AvailabilitySlot[];
+  friday: AvailabilitySlot[];
+  saturday: AvailabilitySlot[];
+  [key: string]: AvailabilitySlot[];
 }
 
 /**
@@ -50,4 +57,18 @@ export interface AvailableTimeSlot {
   end: string;
   slotId?: string;
   isRecurring?: boolean;
+}
+
+/**
+ * Client data interface
+ */
+export interface ClientData {
+  id: string;
+  name: string;
+  displayName: string;
+  email: string;
+  phone: string;
+  timeZone: string;
+  createdAt: string;
+  updatedAt: string;
 }

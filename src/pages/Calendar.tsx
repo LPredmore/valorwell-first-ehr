@@ -5,7 +5,7 @@ import { CalendarIcon, ClockIcon, Users2Icon, ChevronDown } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import FullCalendarView from '@/components/calendar/FullCalendarView';
 import { useCalendarState } from '@/hooks/useCalendarState';
-import { TimeZoneService } from '@/utils/timezone';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -79,6 +79,19 @@ const Calendar = () => {
     });
   };
 
+  const handleManageAvailability = () => {
+    // Navigate to the clinician availability page
+    if (selectedClinicianId) {
+      navigate(`/clinicians/${selectedClinicianId}/availability`);
+    } else {
+      toast({
+        title: "No clinician selected",
+        description: "Please select a clinician to manage their availability",
+        variant: "warning",
+      });
+    }
+  };
+
   const handleAddAvailability = () => {
     openDialog('weeklyAvailability', {
       clinicianId: selectedClinicianId,
@@ -128,6 +141,17 @@ const Calendar = () => {
                 </SelectContent>
               </Select>
             </div>
+            
+            {/* Manage Availability Button - NEW */}
+            <Button 
+              variant="outline" 
+              className="w-full sm:w-auto"
+              onClick={handleManageAvailability}
+              disabled={!selectedClinicianId}
+            >
+              <ClockIcon className="mr-2 h-4 w-4" />
+              Manage Availability
+            </Button>
             
             {/* Add Event Button */}
             <DropdownMenu>
