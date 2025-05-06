@@ -30,6 +30,7 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
   onAppointmentClick,
   originalAppointments
 }) => {
+  // Improved continuous block styling
   let continuousBlockClass = "";
 
   if (isAvailable && !appointment) {
@@ -38,36 +39,48 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
     } else if (isStartOfBlock) {
       continuousBlockClass = "rounded-t border-b-0";
     } else if (isEndOfBlock) {
-      continuousBlockClass = "rounded-b";
+      continuousBlockClass = "rounded-b border-t-0";
     } else {
       continuousBlockClass = "border-t-0 border-b-0";
     }
   }
 
-  if (appointment && isStartOfAppointment) {
-    return (
-      <div 
-        className="p-1 bg-blue-50 border-l-4 border-blue-500 rounded h-full text-xs font-medium truncate cursor-pointer hover:bg-blue-100 transition-colors"
-        onClick={() => {
-          if (onAppointmentClick) {
-            const originalAppointment = originalAppointments.find(app => 
-              app.id === appointment.id
-            );
-            if (originalAppointment) {
-              onAppointmentClick(originalAppointment);
+  // For appointments, create a continuous effect
+  if (appointment) {
+    const appointmentClass = isStartOfAppointment 
+      ? "rounded-t border-b-0" 
+      : "border-t-0 border-b-0";
+      
+    // For the last slot of an appointment, add rounded bottom
+    if (isEndOfBlock) {
+      appointmentClass += " rounded-b";
+    }
+
+    // Render the start of an appointment with client name
+    if (isStartOfAppointment) {
+      return (
+        <div 
+          className="p-1 bg-blue-100 border-l-4 border-blue-500 rounded-t h-full text-xs font-medium truncate cursor-pointer hover:bg-blue-200 transition-colors"
+          onClick={() => {
+            if (onAppointmentClick) {
+              const originalAppointment = originalAppointments.find(app => 
+                app.id === appointment.id
+              );
+              if (originalAppointment) {
+                onAppointmentClick(originalAppointment);
+              }
             }
-          }
-        }}
-      >
-        {appointment.clientName}
-      </div>
-    );
-  } 
-  
-  if (appointment && !isStartOfAppointment) {
+          }}
+        >
+          {appointment.clientName}
+        </div>
+      );
+    } 
+    
+    // Render continuation of appointment without visual break
     return (
       <div 
-        className="p-1 bg-blue-50 border-l-4 border-blue-500 border-t-0 h-full text-xs opacity-75 cursor-pointer hover:bg-blue-100 transition-colors"
+        className={`p-1 bg-blue-100 border-l-4 border-blue-500 border-t-0 h-full text-xs opacity-75 cursor-pointer hover:bg-blue-200 transition-colors ${isEndOfBlock ? 'rounded-b' : ''}`}
         onClick={() => {
           if (onAppointmentClick) {
             const originalAppointment = originalAppointments.find(app => 
@@ -84,16 +97,18 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
     );
   } 
   
+  // For availability blocks, create a continuous effect
   if (isAvailable) {
     return (
       <div
-        className={`p-1 ${currentBlock?.isException ? 'bg-teal-50 border-teal-500' : 'bg-green-50 border-green-500'} border-l-4 ${continuousBlockClass} h-full text-xs`}
+        className={`p-1 ${currentBlock?.isException ? 'bg-teal-100 border-teal-500' : 'bg-green-100 border-green-500'} border-l-4 ${continuousBlockClass} h-full text-xs cursor-pointer`}
+        onClick={() => currentBlock && handleAvailabilityBlockClick(day, currentBlock)}
       >
         {isStartOfBlock && (
           <div className="font-medium truncate flex items-center">
             Available
             {currentBlock?.isException && (
-              <span className="ml-1 text-[10px] px-1 py-0.5 bg-teal-100 text-teal-800 rounded-full">Modified</span>
+              <span className="ml-1 text-[10px] px-1 py-0.5 bg-teal-200 text-teal-800 rounded-full">Modified</span>
             )}
           </div>
         )}
