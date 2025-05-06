@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -239,7 +240,7 @@ export const useMonthViewData = (
           
           // Additional attempt: try parsing with DateTime just in case
           try {
-            const parsedDate = TimeZoneService.fromDateString(appointment.date);
+            const parsedDate = TimeZoneService.fromDateString(normalizedDate);
             const formattedDate = TimeZoneService.formatDate(parsedDate);
             
             if (result.has(formattedDate)) {

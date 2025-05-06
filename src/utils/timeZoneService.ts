@@ -1,5 +1,5 @@
 
-import { DateTime, Settings } from 'luxon';
+import { DateTime, Settings, Interval } from 'luxon';
 
 /**
  * TimeZoneService - Central utility for handling all timezone operations in the application
@@ -113,7 +113,7 @@ export class TimeZoneService {
   /**
    * Create DateTime from just a date string
    */
-  static fromDateString(dateStr: string, timezone: string): DateTime {
+  static fromDateString(dateStr: string, timezone: string = 'UTC'): DateTime {
     const safeZone = this.ensureIANATimeZone(timezone);
     const dt = DateTime.fromFormat(dateStr, 'yyyy-MM-dd', { zone: safeZone });
     
@@ -290,6 +290,94 @@ export class TimeZoneService {
       console.error('Error getting timezone display name:', error);
       return safeZone;
     }
+  }
+
+  /**
+   * Get the first day of the month for a given date
+   * @param date The DateTime object to get the first day of the month for
+   * @returns DateTime object representing the first day of the month
+   */
+  static startOfMonth(date: DateTime): DateTime {
+    return date.startOf('month');
+  }
+
+  /**
+   * Get the last day of the month for a given date
+   * @param date The DateTime object to get the last day of the month for
+   * @returns DateTime object representing the last day of the month
+   */
+  static endOfMonth(date: DateTime): DateTime {
+    return date.endOf('month');
+  }
+
+  /**
+   * Get the first day of the week for a given date
+   * @param date The DateTime object to get the first day of the week for
+   * @param weekStartsOn Optional. Day of week the week starts on (0 = Sunday, 1 = Monday, etc.)
+   * @returns DateTime object representing the first day of the week
+   */
+  static startOfWeek(date: DateTime, weekStartsOn: number = 0): DateTime {
+    const weekday = date.weekday % 7; // Convert to 0-based (Sunday = 0)
+    const diff = (weekday - weekStartsOn + 7) % 7;
+    return date.minus({ days: diff }).startOf('day');
+  }
+
+  /**
+   * Get the last day of the week for a given date
+   * @param date The DateTime object to get the last day of the week for
+   * @param weekStartsOn Optional. Day of week the week starts on (0 = Sunday, 1 = Monday, etc.)
+   * @returns DateTime object representing the last day of the week
+   */
+  static endOfWeek(date: DateTime, weekStartsOn: number = 0): DateTime {
+    const start = this.startOfWeek(date, weekStartsOn);
+    return start.plus({ days: 6 }).endOf('day');
+  }
+
+  /**
+   * Get an array of DateTime objects for each day in the interval
+   * @param start The start of the interval
+   * @param end The end of the interval
+   * @returns Array of DateTime objects for each day in the interval
+   */
+  static eachDayOfInterval(start: DateTime, end: DateTime): DateTime[] {
+    const days: DateTime[] = [];
+    let current = start.startOf('day');
+    const lastDay = end.startOf('day');
+    
+    while (current <= lastDay) {
+      days.push(current);
+      current = current.plus({ days: 1 });
+    }
+    
+    return days;
+  }
+
+  /**
+   * Convert a DateTime from one timezone to another
+   * @param dateTime The DateTime object to convert
+   * @param fromZone The source timezone
+   * @param toZone The target timezone
+   * @returns DateTime object in the target timezone
+   */
+  static convertDateTime(dateTime: DateTime, fromZone: string, toZone: string): DateTime {
+    const safeFromZone = this.ensureIANATimeZone(fromZone);
+    const safeToZone = this.ensureIANATimeZone(toZone);
+    
+    // First ensure the DateTime is in the source timezone
+    const dtInFromZone = dateTime.setZone(safeFromZone);
+    
+    // Then convert to the target timezone
+    return dtInFromZone.setZone(safeToZone);
+  }
+
+  /**
+   * Check if two DateTime objects represent the same day
+   * @param date1 First DateTime object
+   * @param date2 Second DateTime object
+   * @returns Boolean indicating if both DateTimes are on the same day
+   */
+  static isSameDay(date1: DateTime, date2: DateTime): boolean {
+    return date1.hasSame(date2, 'day');
   }
 }
 
