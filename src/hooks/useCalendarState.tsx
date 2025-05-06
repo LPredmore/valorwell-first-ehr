@@ -3,13 +3,14 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface Client {
   id: string;
   displayName: string;
 }
 
-// Helper function to ensure consistent ID format
+// Helper function to ensure consistent ID format for database queries
 const ensureStringId = (id: string | null): string | null => {
   if (!id) return null;
   
@@ -57,9 +58,9 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   // Set user timezone
   useEffect(() => {
     if (clinicianTimeZone && !isLoadingTimeZone) {
-      setUserTimeZone(clinicianTimeZone);
+      setUserTimeZone(TimeZoneService.ensureIANATimeZone(clinicianTimeZone));
     } else {
-      setUserTimeZone(getUserTimeZone());
+      setUserTimeZone(TimeZoneService.ensureIANATimeZone(getUserTimeZone()));
     }
   }, [clinicianTimeZone, isLoadingTimeZone]);
 
@@ -101,7 +102,8 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
         return;
       }
       
-      console.log('useCalendarState - Fetching clients for clinician:', formattedClinicianId);
+      console.log('useCalendarState - Fetching clients for clinician ID (FORMATTED):', formattedClinicianId);
+      console.log('useCalendarState - Original clinician ID before formatting:', selectedClinicianId);
       setLoadingClients(true);
       setClients([]);
       
@@ -122,6 +124,14 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
           if (data.length === 0) {
             console.log('useCalendarState - No clients found for clinician:', formattedClinicianId);
             console.log('useCalendarState - Database query returned empty for client_assigned_therapist:', formattedClinicianId);
+            
+            // Additional debug query to check if any clients exist with this therapist
+            const { data: rawData, error: rawError } = await supabase
+              .rpc('debug_client_therapist_matching', { therapist_id: formattedClinicianId });
+              
+            if (!rawError && rawData) {
+              console.log('useCalendarState - Debug query results:', rawData);
+            }
           }
           
           const formattedClients = data.map(client => ({

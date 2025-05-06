@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -30,7 +31,7 @@ interface AppointmentDialogProps {
   onAppointmentCreated: () => void;
 }
 
-// Helper function to ensure consistent ID format
+// Helper function to ensure consistent ID format for database queries
 const ensureStringId = (id: string | null): string | null => {
   if (!id) return null;
   
@@ -103,7 +104,8 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
       return;
     }
     
-    console.log('Fetching clients for clinician with ID:', formattedClinicianId);
+    console.log('Fetching clients for clinician with ID (FORMATTED):', formattedClinicianId);
+    console.log('Original clinician ID before formatting:', selectedClinicianId);
     setLoadingClients(true);
     
     try {
@@ -128,6 +130,14 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
         if (data.length === 0) {
           console.log('No clients found for this clinician ID:', formattedClinicianId);
           console.log('Database query returned empty result for clinician_id:', formattedClinicianId);
+          
+          // Additional debug query to check if any clients exist with this therapist
+          const { data: rawData, error: rawError } = await supabase
+            .rpc('debug_client_therapist_matching', { therapist_id: formattedClinicianId });
+            
+          if (!rawError && rawData) {
+            console.log('Debug query results:', rawData);
+          }
         }
         
         const formattedClients = data.map(client => ({
@@ -228,6 +238,8 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           recurring_group_id: recurringGroupId
         }));
 
+        console.log('Creating recurring appointments with data:', appointmentsToInsert[0]);
+
         const { data, error } = await supabase
           .from('appointments')
           .insert(appointmentsToInsert)
@@ -243,17 +255,21 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           description: `Created ${recurringDates.length} recurring appointments.`,
         });
       } else {
+        const appointmentData = {
+          client_id: selectedClientId,
+          clinician_id: formattedClinicianId,
+          date: formattedDate,
+          start_time: startTime,
+          end_time: endTime,
+          type: "Therapy Session",
+          status: 'scheduled'
+        };
+        
+        console.log('Creating single appointment with data:', appointmentData);
+
         const { data, error } = await supabase
           .from('appointments')
-          .insert([{
-            client_id: selectedClientId,
-            clinician_id: formattedClinicianId,
-            date: formattedDate,
-            start_time: startTime,
-            end_time: endTime,
-            type: "Therapy Session",
-            status: 'scheduled'
-          }])
+          .insert([appointmentData])
           .select();
 
         if (error) {
