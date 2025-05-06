@@ -28,6 +28,8 @@ export interface AvailabilityBlock {
   end_time: string;
   clinician_id?: string;
   is_active?: boolean;
+  isException?: boolean;
+  isStandalone?: boolean;
 }
 
 export interface AvailabilityException {

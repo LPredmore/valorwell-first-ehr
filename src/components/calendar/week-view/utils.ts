@@ -1,31 +1,59 @@
 
-import { addMinutes, differenceInMinutes } from 'date-fns';
-import { DateTime } from 'luxon';
 import { TimeBlock, AppointmentBlock } from './types';
 
-// Helper function to check if a time slot is at the start of a block
-export function isStartOfBlock(timeSlot: Date, block: TimeBlock | null): boolean {
+// Check if a time is the start of an availability block
+export const isStartOfBlock = (time: Date, block?: TimeBlock): boolean => {
   if (!block) return false;
   
-  // Convert DateTime to JS Date for comparison
-  const blockStartDate = block.start.toJSDate();
-  return differenceInMinutes(timeSlot, blockStartDate) < 30;
-}
+  // Convert JavaScript Date to milliseconds for comparison
+  const timeMs = time.getTime();
+  
+  // DateTime from Luxon has toMillis() method to convert to milliseconds
+  const blockStartMs = block.start.toMillis();
+  
+  // Check if the times are within a minute of each other
+  return Math.abs(timeMs - blockStartMs) < 60000;
+};
 
-// Helper function to check if a time slot is at the end of a block
-export function isEndOfBlock(timeSlot: Date, block: TimeBlock | null): boolean {
+// Check if a time is the end of an availability block
+export const isEndOfBlock = (time: Date, block?: TimeBlock): boolean => {
   if (!block) return false;
   
-  // Convert DateTime to JS Date for comparison
-  const blockEndDate = block.end.toJSDate();
-  return differenceInMinutes(blockEndDate, addMinutes(timeSlot, 30)) < 30;
-}
+  // Convert JavaScript Date to milliseconds for comparison
+  const timeMs = time.getTime();
+  
+  // DateTime from Luxon has toMillis() method to convert to milliseconds
+  const blockEndMs = block.end.toMillis();
+  
+  // Check if the times are within a minute of each other
+  return Math.abs(timeMs - blockEndMs) < 60000;
+};
 
-// Helper function to check if a time slot is at the start of an appointment
-export function isStartOfAppointment(timeSlot: Date, appointment: AppointmentBlock | null): boolean {
+// Check if a time is the start of an appointment
+export const isStartOfAppointment = (time: Date, appointment?: AppointmentBlock): boolean => {
   if (!appointment) return false;
   
-  // Convert DateTime to JS Date for comparison
-  const appointmentStartDate = appointment.start.toJSDate();
-  return differenceInMinutes(timeSlot, appointmentStartDate) < 30;
-}
+  // Convert JavaScript Date to milliseconds for comparison
+  const timeMs = time.getTime();
+  
+  // DateTime from Luxon has toMillis() method to convert to milliseconds
+  const appointmentStartMs = appointment.start.toMillis();
+  
+  // Check if the times are within a minute of each other
+  return Math.abs(timeMs - appointmentStartMs) < 60000;
+};
+
+// Check if a time is within an appointment block
+export const isWithinAppointment = (time: Date, appointment?: AppointmentBlock): boolean => {
+  if (!appointment) return false;
+  
+  // Convert JavaScript Date to milliseconds for comparison
+  const timeMs = time.getTime();
+  
+  // DateTime from Luxon has toMillis() method to convert to milliseconds
+  const appointmentStartMs = appointment.start.toMillis();
+  const appointmentEndMs = appointment.end.toMillis();
+  
+  // Check if the time is within the appointment
+  return timeMs >= appointmentStartMs && timeMs < appointmentEndMs;
+};

@@ -92,7 +92,7 @@ const DayCell: React.FC<DayCellProps> = ({
                 <div className="font-medium truncate">
                   {appointment.clientName || getClientName(appointment.client_id)}
                 </div>
-                <div>{appointment.formattedStartTime || (appointment.start_time ? appointment.start_time.slice(0, 5) : 'N/A')}</div>
+                <div>{appointment.formattedStartTime || 'N/A'}</div>
               </div>
             ))}
           </div>

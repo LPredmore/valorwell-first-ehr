@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { DateTime } from 'luxon';
 import { Appointment } from '@/types/appointment';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useMonthViewData = (
   currentDate: Date,

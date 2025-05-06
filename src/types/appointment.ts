@@ -23,11 +23,6 @@ export interface Appointment {
     client_preferred_name: string;
   };
   
-  // Legacy fields - maintained for backward compatibility
-  date?: string;
-  start_time?: string;
-  end_time?: string;
-  
   // Display fields - populated when needed for presentation
   formattedDate?: string;
   formattedStartTime?: string;

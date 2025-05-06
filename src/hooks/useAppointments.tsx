@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
@@ -99,7 +100,8 @@ export const useAppointments = (
         
         // Process appointments to format client data correctly
         const formattedAppointments = (data || []).map(appointment => {
-          // Extract client data and remove it from the main object
+          // The clients field from Supabase join is not an array - it's a direct object
+          // Extract client data and handle it properly
           const clientData = appointment.clients;
           delete appointment.clients;
           
