@@ -18,6 +18,11 @@ const ensureStringId = (id: string | null): string | null => {
   return id.toString().trim();
 };
 
+// Helper function to log client-therapist assignment debug info
+const logClientTherapistDebug = (message: string, data: any) => {
+  console.log(`🔍 CLIENT-THERAPIST DEBUG - ${message}`, data);
+};
+
 export const useCalendarState = (initialClinicianId: string | null = null) => {
   const [view, setView] = useState<'week' | 'month'>('week');
   const [showAvailability, setShowAvailability] = useState(false);
@@ -102,14 +107,17 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
         return;
       }
       
-      console.log('useCalendarState - Fetching clients for clinician ID (FORMATTED):', formattedClinicianId);
-      console.log('useCalendarState - Original clinician ID before formatting:', selectedClinicianId);
+      console.log('🔍 DEBUG - Fetching clients for clinician ID (FORMATTED):', formattedClinicianId);
+      console.log('🔍 DEBUG - Original clinician ID before formatting:', selectedClinicianId);
+      console.log('🔍 DEBUG - Clinician ID type:', typeof formattedClinicianId);
       setLoadingClients(true);
       setClients([]);
       
       try {
         // First, fetch the clinician record to get the correctly formatted ID from the database
+        console.log('🔍 DEBUG - Calling getClinicianById with ID:', formattedClinicianId);
         const clinicianRecord = await getClinicianById(formattedClinicianId);
+        console.log('🔍 DEBUG - Clinician record returned:', clinicianRecord);
         
         if (!clinicianRecord) {
           console.error('Could not find clinician with ID:', formattedClinicianId);
@@ -119,33 +127,188 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
         
         // Use the database-retrieved ID to ensure exact format match
         const databaseClinicianId = clinicianRecord.id;
-        console.log('useCalendarState - Database-retrieved clinician ID:', databaseClinicianId);
+        const clinicianEmail = clinicianRecord.clinician_email || '';
+        console.log('🔍 DEBUG - Database-retrieved clinician ID:', databaseClinicianId);
+        console.log('🔍 DEBUG - Database clinician ID type:', typeof databaseClinicianId);
+        console.log('🔍 DEBUG - Clinician email:', clinicianEmail);
         
-        // Use text comparison since client_assigned_therapist is a TEXT column
+        // First, check if there are any clients with assigned therapists at all
+        const { data: allClientsWithTherapists, error: allClientsError } = await supabase
+          .from('clients')
+          .select('id, client_first_name, client_preferred_name, client_last_name, client_assigned_therapist')
+          .not('client_assigned_therapist', 'is', null)
+          .limit(10);
+          
+        console.log('🔍 DEBUG - Sample of clients with assigned therapists:', allClientsWithTherapists);
+        if (allClientsWithTherapists && allClientsWithTherapists.length > 0) {
+          console.log('🔍 DEBUG - Example client_assigned_therapist value:', allClientsWithTherapists[0].client_assigned_therapist);
+          console.log('🔍 DEBUG - Example therapist value type:', typeof allClientsWithTherapists[0].client_assigned_therapist);
+        }
+        
+        // Use a more comprehensive query to find clients by either ID or email
+        logClientTherapistDebug('Querying clients with OR conditions for ID and email', {
+          databaseClinicianId,
+          clinicianEmail,
+          idType: typeof databaseClinicianId
+        });
+        
+        // First attempt: Try exact matches with both ID and email
         const { data, error } = await supabase
           .from('clients')
-          .select('id, client_first_name, client_preferred_name, client_last_name')
-          .eq('client_assigned_therapist', databaseClinicianId)
+          .select('id, client_first_name, client_preferred_name, client_last_name, client_assigned_therapist')
+          .or(`client_assigned_therapist.eq.${databaseClinicianId},client_assigned_therapist.eq.${clinicianEmail}`)
           .order('client_last_name');
           
         if (error) {
           console.error('Error fetching clients:', error);
         } else {
-          console.log('useCalendarState - Clients fetched successfully:', data);
-          console.log('useCalendarState - Database clinician ID used for query:', databaseClinicianId);
+          console.log('🔍 DEBUG - Clients fetched successfully. Count:', data.length);
+          console.log('🔍 DEBUG - Raw client data:', data);
+          console.log('🔍 DEBUG - Database clinician ID used for query:', databaseClinicianId);
           
           if (data.length === 0) {
-            console.log('useCalendarState - No clients found for clinician:', databaseClinicianId);
-            console.log('useCalendarState - Database query returned empty for client_assigned_therapist:', databaseClinicianId);
+            logClientTherapistDebug('No clients found with direct ID or email match', {
+              attemptedId: databaseClinicianId,
+              attemptedEmail: clinicianEmail
+            });
             
-            // Additional debug query to check if any clients exist with this therapist
-            const { data: rawData, error: rawError } = await supabase
-              .rpc('debug_client_therapist_matching', {
+            // Second attempt: Try with ILIKE for partial matching
+            logClientTherapistDebug('Trying more aggressive query with ILIKE', {
+              partialIdSearch: `%${databaseClinicianId}%`,
+              partialEmailSearch: `%${clinicianEmail}%`
+            });
+            
+            const { data: likeData, error: likeError } = await supabase
+              .from('clients')
+              .select('id, client_first_name, client_preferred_name, client_last_name, client_assigned_therapist')
+              .or(`client_assigned_therapist.ilike.%${databaseClinicianId}%,client_assigned_therapist.ilike.%${clinicianEmail}%`)
+              .order('client_last_name');
+              
+            if (!likeError && likeData && likeData.length > 0) {
+              logClientTherapistDebug('Found clients with ILIKE query', {
+                clientCount: likeData.length,
+                firstClientTherapist: likeData[0].client_assigned_therapist,
+                therapistType: typeof likeData[0].client_assigned_therapist
+              });
+              
+              // Use these clients instead
+              const formattedLikeClients = likeData.map(client => ({
+                id: client.id,
+                displayName: `${client.client_preferred_name || client.client_first_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
+              }));
+              logClientTherapistDebug('Setting clients using ILIKE match', {
+                clientCount: formattedLikeClients.length,
+                clients: formattedLikeClients
+              });
+              setClients(formattedLikeClients);
+              setLoadingClients(false);
+              return;
+            } else {
+              logClientTherapistDebug('No clients found with ILIKE query either', {
+                error: likeError
+              });
+            }
+            
+            // Third attempt: Try to find ANY clients with non-null therapist assignments
+            logClientTherapistDebug('Checking for ANY clients with therapist assignments', {});
+            const { data: anyClients, error: anyError } = await supabase
+              .from('clients')
+              .select('id, client_first_name, client_preferred_name, client_last_name, client_assigned_therapist')
+              .not('client_assigned_therapist', 'is', null)
+              .limit(5);
+              
+            if (!anyError && anyClients && anyClients.length > 0) {
+              logClientTherapistDebug('Found some clients with therapist assignments', {
+                clientCount: anyClients.length,
+                sampleAssignments: anyClients.map(c => ({
+                  clientId: c.id,
+                  therapistId: c.client_assigned_therapist,
+                  therapistIdType: typeof c.client_assigned_therapist
+                }))
+              });
+            } else {
+              logClientTherapistDebug('No clients found with ANY therapist assignments', {
+                error: anyError
+              });
+            }
+            
+            // Fourth attempt: Use the enhanced debug function to find potential matches
+            logClientTherapistDebug('Running enhanced_debug_client_therapist function', {
+              therapistId: databaseClinicianId
+            });
+            const { data: enhancedDebugData, error: enhancedDebugError } = await supabase
+              .rpc('enhanced_debug_client_therapist', {
                 p_therapist_id: databaseClinicianId
               });
               
-            if (!rawError && rawData) {
-              console.log('useCalendarState - Debug query results:', rawData);
+            if (!enhancedDebugError && enhancedDebugData) {
+              logClientTherapistDebug('Enhanced debug query results', {
+                resultCount: enhancedDebugData.length,
+                results: enhancedDebugData
+              });
+              
+              // Check if we have any matches that aren't exact but could be fixed
+              const exactMatches = enhancedDebugData.filter(item => item.exact_match);
+              const containsMatches = enhancedDebugData.filter(item => item.contains_match);
+              const emailMatches = enhancedDebugData.filter(item => item.email_match);
+              
+              logClientTherapistDebug('Match breakdown', {
+                exactMatchCount: exactMatches.length,
+                containsMatchCount: containsMatches.length,
+                emailMatchCount: emailMatches.length
+              });
+              
+              if (emailMatches.length > 0 || containsMatches.length > 0) {
+                logClientTherapistDebug('Found clients with email or contains matches', {
+                  emailMatches,
+                  containsMatches
+                });
+                
+                // Try to fix the client-therapist assignments
+                logClientTherapistDebug('Attempting to fix client-therapist assignments', {});
+                const { data: fixResults, error: fixError } = await supabase
+                  .rpc('fix_client_therapist_assignments');
+                  
+                if (!fixError && fixResults) {
+                  logClientTherapistDebug('Fix results', {
+                    fixedCount: fixResults.filter(r => r.updated).length,
+                    results: fixResults
+                  });
+                  
+                  // Try the query again after fixing - use both ID and email to be safe
+                  logClientTherapistDebug('Retrying client query after fix', {
+                    usingId: databaseClinicianId
+                  });
+                  const { data: fixedData, error: fixedError } = await supabase
+                    .from('clients')
+                    .select('id, client_first_name, client_preferred_name, client_last_name, client_assigned_therapist')
+                    .or(`client_assigned_therapist.eq.${databaseClinicianId},client_assigned_therapist.eq.${clinicianEmail}`)
+                    .order('client_last_name');
+                    
+                  if (!fixedError && fixedData && fixedData.length > 0) {
+                    logClientTherapistDebug('Found clients after fix', {
+                      clientCount: fixedData.length,
+                      sampleTherapistId: fixedData[0].client_assigned_therapist,
+                      sampleTherapistIdType: typeof fixedData[0].client_assigned_therapist
+                    });
+                    
+                    const formattedFixedClients = fixedData.map(client => ({
+                      id: client.id,
+                      displayName: `${client.client_preferred_name || client.client_first_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
+                    }));
+                    logClientTherapistDebug('Setting clients after fix', {
+                      clientCount: formattedFixedClients.length
+                    });
+                    setClients(formattedFixedClients);
+                    setLoadingClients(false);
+                    return;
+                  } else {
+                    logClientTherapistDebug('No clients found after fix attempt', {
+                      error: fixedError
+                    });
+                  }
+                }
+              }
             }
           }
           
@@ -153,7 +316,10 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
             id: client.id,
             displayName: `${client.client_preferred_name || client.client_first_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
           }));
-          console.log('useCalendarState - Formatted clients:', formattedClients);
+          logClientTherapistDebug('Formatted clients from initial query', {
+            clientCount: formattedClients.length,
+            clients: formattedClients
+          });
           setClients(formattedClients);
         }
       } catch (error) {

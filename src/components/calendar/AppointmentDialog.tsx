@@ -17,14 +17,15 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
-import { 
-  DEFAULT_START_TIME, 
-  generateTimeOptions, 
-  calculateEndTime, 
+import {
+  DEFAULT_START_TIME,
+  generateTimeOptions,
+  calculateEndTime,
   ensureStringId,
   generateRecurringDates,
   formatTimeDisplay
 } from '@/utils/appointmentUtils';
+import { useEffect as useEffectDebug } from 'react';
 import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface Client {
@@ -59,6 +60,13 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   const [recurrenceType, setRecurrenceType] = useState<string>('weekly');
   const [databaseClinicianId, setDatabaseClinicianId] = useState<string | null>(null);
   const [fetchingClinicianId, setFetchingClinicianId] = useState(false);
+  const [appointmentCreationAttempts, setAppointmentCreationAttempts] = useState(0);
+  const [lastError, setLastError] = useState<any>(null);
+  
+  // Helper function for consistent logging
+  const logAppointmentDebug = (message: string, data: any = {}) => {
+    console.log(`🔍 APPOINTMENT DIALOG - ${message}`, data);
+  };
   
   // Format the clinician ID once
   const formattedClinicianId = ensureStringId(selectedClinicianId);
@@ -67,22 +75,64 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   const timeOptions = generateTimeOptions();
   
   // Fetch the database-formatted clinician ID when the dialog opens or clinician changes
+  // Debug effect to track state changes
+  useEffectDebug(() => {
+    logAppointmentDebug('State updated', {
+      selectedClientId,
+      selectedDate,
+      startTime,
+      isRecurring,
+      recurrenceType,
+      databaseClinicianId,
+      formattedClinicianId,
+      appointmentCreationAttempts,
+      lastError: lastError ? {
+        message: lastError.message,
+        code: lastError.code
+      } : null
+    });
+  }, [selectedClientId, selectedDate, startTime, isRecurring, recurrenceType,
+      databaseClinicianId, formattedClinicianId, appointmentCreationAttempts, lastError]);
+  
   useEffect(() => {
     const fetchDatabaseClinicianId = async () => {
-      if (!formattedClinicianId) return;
+      if (!formattedClinicianId) {
+        logAppointmentDebug('No clinician ID provided');
+        return;
+      }
+      
+      logAppointmentDebug('Fetching database clinician ID', {
+        formattedClinicianId,
+        idType: typeof formattedClinicianId
+      });
       
       setFetchingClinicianId(true);
       try {
         const clinicianRecord = await getClinicianById(formattedClinicianId);
+        logAppointmentDebug('Clinician record returned', {
+          found: !!clinicianRecord,
+          record: clinicianRecord
+        });
+        
         if (clinicianRecord) {
-          console.log('AppointmentDialog - Database-retrieved clinician ID:', clinicianRecord.id);
+          logAppointmentDebug('Database-retrieved clinician details', {
+            id: clinicianRecord.id,
+            idType: typeof clinicianRecord.id,
+            email: clinicianRecord.clinician_email,
+            name: clinicianRecord.clinician_professional_name
+          });
           setDatabaseClinicianId(clinicianRecord.id);
         } else {
-          console.error('Could not find clinician with ID:', formattedClinicianId);
+          logAppointmentDebug('Could not find clinician with ID - falling back to formatted ID', {
+            attemptedId: formattedClinicianId
+          });
           setDatabaseClinicianId(formattedClinicianId); // Fallback to formatted ID
         }
       } catch (error) {
-        console.error('Error fetching clinician record:', error);
+        logAppointmentDebug('Error fetching clinician record - falling back to formatted ID', {
+          error: error instanceof Error ? error.message : String(error),
+          attemptedId: formattedClinicianId
+        });
         setDatabaseClinicianId(formattedClinicianId); // Fallback to formatted ID
       } finally {
         setFetchingClinicianId(false);
@@ -95,6 +145,17 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   // Reset form when dialog opens
   useEffect(() => {
     if (isOpen) {
+      logAppointmentDebug('Dialog opened, resetting form', {
+        clientCount: clients.length,
+        loadingClients,
+        selectedClinicianId,
+        formattedClinicianId,
+        databaseClinicianId
+      });
+      
+      // Reset error tracking
+      setAppointmentCreationAttempts(0);
+      setLastError(null);
       resetForm();
     }
   }, [isOpen]);
@@ -110,10 +171,20 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
 
   // Create appointment handler
   const handleCreateAppointment = async () => {
+    // Increment attempt counter
+    setAppointmentCreationAttempts(prev => prev + 1);
+    
     if (!selectedClientId || !selectedDate || !startTime) {
+      const missingFields = [];
+      if (!selectedClientId) missingFields.push('client');
+      if (!selectedDate) missingFields.push('date');
+      if (!startTime) missingFields.push('start time');
+      
+      logAppointmentDebug('Missing required fields', { missingFields });
+      
       toast({
         title: "Missing Information",
-        description: "Please fill in all required fields.",
+        description: `Please fill in all required fields: ${missingFields.join(', ')}.`,
         variant: "destructive"
       });
       return;
@@ -123,6 +194,12 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
     const clinicianIdToUse = databaseClinicianId || formattedClinicianId;
     
     if (!clinicianIdToUse) {
+      logAppointmentDebug('Missing clinician ID', {
+        databaseClinicianId,
+        formattedClinicianId,
+        selectedClinicianId
+      });
+      
       toast({
         title: "Missing Clinician",
         description: "No clinician selected. Please try again.",
@@ -130,6 +207,18 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
       });
       return;
     }
+    
+    logAppointmentDebug('Creating appointment', {
+      attempt: appointmentCreationAttempts + 1,
+      clinicianIdToUse,
+      clinicianIdType: typeof clinicianIdToUse,
+      selectedClientId,
+      clientIdType: typeof selectedClientId,
+      date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null,
+      startTime,
+      isRecurring,
+      recurrenceType: isRecurring ? recurrenceType : null
+    });
 
     try {
       const formattedDate = format(selectedDate, 'yyyy-MM-dd');
@@ -138,6 +227,13 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
       if (isRecurring) {
         const recurringGroupId = uuidv4();
         const recurringDates = generateRecurringDates(selectedDate, recurrenceType);
+        
+        logAppointmentDebug('Creating recurring appointments', {
+          recurringGroupId,
+          dateCount: recurringDates.length,
+          firstDate: format(recurringDates[0], 'yyyy-MM-dd'),
+          lastDate: format(recurringDates[recurringDates.length - 1], 'yyyy-MM-dd')
+        });
         
         const appointmentsToInsert = recurringDates.map(date => ({
           client_id: selectedClientId,
@@ -157,9 +253,21 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           .select();
 
         if (error) {
-          console.error('Error creating recurring appointments:', error);
+          logAppointmentDebug('Error creating recurring appointments', {
+            error: {
+              message: error.message,
+              code: error.code,
+              details: error.details
+            }
+          });
+          setLastError(error);
           throw error;
         }
+
+        logAppointmentDebug('Successfully created recurring appointments', {
+          count: data?.length || 0,
+          firstAppointmentId: data?.[0]?.id
+        });
 
         toast({
           title: "Recurring Appointments Created",
@@ -176,15 +284,32 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           status: 'scheduled'
         };
 
+        logAppointmentDebug('Creating single appointment', {
+          appointmentData
+        });
+
         const { data, error } = await supabase
           .from('appointments')
           .insert([appointmentData])
           .select();
 
         if (error) {
-          console.error('Error creating appointment:', error);
+          logAppointmentDebug('Error creating appointment', {
+            error: {
+              message: error.message,
+              code: error.code,
+              details: error.details
+            },
+            appointmentData
+          });
+          setLastError(error);
           throw error;
         }
+
+        logAppointmentDebug('Successfully created appointment', {
+          appointmentId: data?.[0]?.id,
+          data: data?.[0]
+        });
 
         toast({
           title: "Appointment Created",
@@ -198,9 +323,34 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
 
     } catch (error) {
       console.error('Error creating appointment:', error);
+      
+      // Provide more detailed error information
+      let errorMessage = "Failed to create appointment. Please try again.";
+      
+      if (error instanceof Error) {
+        errorMessage = `Error: ${error.message}`;
+      }
+      
+      // If it's a database constraint error, provide more helpful message
+      if (error && typeof error === 'object' && 'code' in error) {
+        const errorObj = error as any;
+        if (errorObj.code === '23503') {
+          errorMessage = "Foreign key constraint error. The client or clinician ID may be invalid.";
+        } else if (errorObj.code === '23505') {
+          errorMessage = "This appointment conflicts with an existing appointment.";
+        }
+      }
+      
+      logAppointmentDebug('Appointment creation failed', {
+        error: error instanceof Error ? error.message : String(error),
+        attempt: appointmentCreationAttempts,
+        clientId: selectedClientId,
+        clinicianId: clinicianIdToUse
+      });
+      
       toast({
         title: "Error",
-        description: "Failed to create appointment. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -215,9 +365,12 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="client">Client Name</Label>
-            <Select 
+            <Select
               value={selectedClientId || undefined}
-              onValueChange={(value) => setSelectedClientId(value)}
+              onValueChange={(value) => {
+                console.log('🔍 DIALOG - Client selected:', value);
+                setSelectedClientId(value);
+              }}
             >
               <SelectTrigger id="client">
                 <SelectValue placeholder="Select a client" />
@@ -229,11 +382,14 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
                     Loading...
                   </div>
                 ) : clients.length > 0 ? (
-                  clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.displayName}
-                    </SelectItem>
-                  ))
+                  clients.map((client) => {
+                    console.log('🔍 DIALOG - Rendering client option:', client);
+                    return (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.displayName}
+                      </SelectItem>
+                    );
+                  })
                 ) : (
                   <SelectItem value="no-clients" disabled>
                     No clients assigned to this clinician
@@ -241,6 +397,19 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
                 )}
               </SelectContent>
             </Select>
+            <div className="text-xs text-muted-foreground mt-1">
+              {clients.length === 0 && !loadingClients ?
+                "Debug info: No clients found for this clinician" :
+                `Debug info: Found ${clients.length} clients`}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Clinician ID: {databaseClinicianId || formattedClinicianId || 'None'}
+            </div>
+            {lastError && (
+              <div className="text-xs text-red-500 mt-1">
+                Last error: {lastError.message || JSON.stringify(lastError)}
+              </div>
+            )}
           </div>
 
           <div className="grid gap-2">
