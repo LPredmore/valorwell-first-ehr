@@ -42,9 +42,6 @@ const WeekView: React.FC<WeekViewProps> = ({
     return { days, timeSlots };
   }, [currentDate]);
 
-  // Debug: Log the appointments prop
-  console.log("Week view received appointments:", appointments);
-
   // Use the custom hook to get all the data and utility functions
   const {
     loading,
@@ -57,9 +54,6 @@ const WeekView: React.FC<WeekViewProps> = ({
     getBlockForTimeSlot,
     getAppointmentForTimeSlot
   } = useWeekViewData(days, clinicianId, refreshTrigger, appointments, getClientName, userTimeZone);
-
-  // Debug: Log the availability blocks
-  console.log("Week view processed availability blocks:", timeBlocks.length);
 
   // Handle click on availability block
   const handleAvailabilityBlockClick = (day: Date, block: any) => {
@@ -102,7 +96,8 @@ const WeekView: React.FC<WeekViewProps> = ({
 
   return (
     <Card className="p-4">
-      <div className="grid grid-cols-8 gap-1">
+      {/* Grid container with reduced gap to minimize visual breaks */}
+      <div className="grid grid-cols-8 gap-0">
         <div className="col-span-1"></div>
         {days.map(day => (
           <div
@@ -118,10 +113,12 @@ const WeekView: React.FC<WeekViewProps> = ({
 
         {timeSlots.map((timeSlot) => (
           <React.Fragment key={timeSlot.toString()}>
+            {/* Time label column */}
             <div className="col-span-1 p-2 text-xs text-gray-500 text-right pr-4 border-t border-gray-100">
               {format(timeSlot, 'h:mm a')}
             </div>
 
+            {/* Day columns */}
             {days.map(day => {
               const isAvailable = isTimeSlotAvailable(day, timeSlot);
               const currentBlock = getBlockForTimeSlot(day, timeSlot);
@@ -140,10 +137,12 @@ const WeekView: React.FC<WeekViewProps> = ({
 
               const cellKey = `${day.toString()}-${timeSlot.toString()}`;
 
+              // Modified cell styling - removed left border and minimized padding
+              // This helps reduce visible gaps between cells
               return (
                 <div
                   key={cellKey}
-                  className="col-span-1 min-h-[40px] border-t border-l border-gray-100 p-1 group hover:bg-gray-50"
+                  className="col-span-1 min-h-[40px] border-t border-gray-50 p-0 group hover:bg-gray-50"
                 >
                   <TimeSlot
                     day={day}

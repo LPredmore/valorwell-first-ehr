@@ -30,7 +30,7 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
   onAppointmentClick,
   originalAppointments
 }) => {
-  // Improved continuous block styling
+  // Create a class for continuous blocks with consistent border styling
   let continuousBlockClass = "";
 
   if (isAvailable && !appointment) {
@@ -39,74 +39,99 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
     } else if (isStartOfBlock) {
       continuousBlockClass = "rounded-t border-b-0";
     } else if (isEndOfBlock) {
-      continuousBlockClass = "rounded-b border-t-0";
+      continuousBlockClass = "rounded-b";
     } else {
       continuousBlockClass = "border-t-0 border-b-0";
     }
   }
 
-  // For appointments, handle continuous styling
+  // For appointments, handle styling to ensure visual continuity
   if (appointment) {
     // Find the corresponding original appointment
     const originalAppointment = originalAppointments.find(app => 
       app.id === appointment.id
     );
     
-    // Define appointment styling conditionally with "let" instead of "const" 
-    let appointmentClass = "";
+    // Handle appointment click event
+    const handleAppointmentClick = () => {
+      if (onAppointmentClick && originalAppointment) {
+        onAppointmentClick(originalAppointment);
+      }
+    };
     
-    // Add appropriate rounding and borders based on position in appointment
+    // Base appointment styling that's consistent for all cells
+    const baseAppointmentClass = "p-1 bg-blue-100 border-l-4 border-blue-500 h-full cursor-pointer transition-colors";
+    
+    // Position-specific styling
+    let positionClass = "";
+    
     if (isStartOfAppointment) {
-      appointmentClass = "rounded-t border-b-0";
+      // Top of appointment
+      positionClass = "rounded-t border-t border-r border-l";
+      if (!isEndOfBlock) {
+        positionClass += " border-b-0";
+      }
     } else {
-      appointmentClass = "border-t-0"; 
+      // Middle sections - no top border
+      positionClass = "border-r border-l border-t-0";
+      if (!isEndOfBlock) {
+        positionClass += " border-b-0";
+      }
     }
     
-    // Add rounded bottom if it's the end of the appointment
+    // Add bottom rounding if it's the end
     if (isEndOfBlock) {
-      appointmentClass += " rounded-b border-b";
-    } else {
-      appointmentClass += " border-b-0";
+      positionClass += " rounded-b border-b";
     }
 
-    // Render the start of an appointment with client name
+    // For the start of an appointment, show client name
     if (isStartOfAppointment) {
       return (
         <div 
-          className={`p-1 bg-blue-100 border-l-4 border-blue-500 ${appointmentClass} h-full text-xs font-medium truncate cursor-pointer hover:bg-blue-200 transition-colors`}
-          onClick={() => {
-            if (onAppointmentClick && originalAppointment) {
-              onAppointmentClick(originalAppointment);
-            }
-          }}
+          className={`${baseAppointmentClass} ${positionClass} text-xs font-medium truncate hover:bg-blue-200`}
+          onClick={handleAppointmentClick}
         >
           {appointment.clientName}
         </div>
       );
     } 
     
-    // Render continuation of appointment without visual break
+    // For continuation cells
     return (
       <div 
-        className={`p-1 bg-blue-100 border-l-4 border-blue-500 ${appointmentClass} h-full text-xs opacity-75 cursor-pointer hover:bg-blue-200 transition-colors`}
-        onClick={() => {
-          if (onAppointmentClick && originalAppointment) {
-            onAppointmentClick(originalAppointment);
-          }
-        }}
+        className={`${baseAppointmentClass} ${positionClass} text-xs opacity-75 hover:bg-blue-200`}
+        onClick={handleAppointmentClick}
       >
         {/* Continuation of appointment */}
       </div>
     );
   } 
   
-  // For availability blocks, create a continuous effect
+  // For availability blocks, ensure visual continuity
   if (isAvailable) {
-    const availabilityBaseClass = currentBlock?.isException ? 'bg-teal-100 border-teal-500' : 'bg-green-100 border-green-500';
+    const availabilityBaseClass = currentBlock?.isException 
+      ? 'bg-teal-100 border-teal-500' 
+      : 'bg-green-100 border-green-500';
+    
+    // Complete class set for availability, with consistent borders
+    let availabilityClass = `p-1 ${availabilityBaseClass} border-l-4 border-r border-l`;
+    
+    // Apply top/bottom borders and rounding based on position
+    if (isStartOfBlock) {
+      availabilityClass += " border-t rounded-t";
+    } else {
+      availabilityClass += " border-t-0";
+    }
+    
+    if (isEndOfBlock) {
+      availabilityClass += " border-b rounded-b";
+    } else {
+      availabilityClass += " border-b-0";
+    }
     
     return (
       <div
-        className={`p-1 ${availabilityBaseClass} border-l-4 ${continuousBlockClass} h-full text-xs cursor-pointer hover:bg-opacity-80 transition-colors`}
+        className={`${availabilityClass} h-full text-xs cursor-pointer hover:bg-opacity-80 transition-colors`}
         onClick={() => currentBlock && handleAvailabilityBlockClick(day, currentBlock)}
       >
         {isStartOfBlock && (
