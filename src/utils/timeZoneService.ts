@@ -430,35 +430,76 @@ export class TimeZoneService {
       
       // Handle legacy event format with start_time and end_time as HH:MM
       if (event.start_time && event.date) {
+        // Log the original values for debugging
+        console.log(`[TimeZoneService] Converting event from UTC to ${safeTimezone}:`, {
+          originalDate: event.date,
+          originalStartTime: event.start_time,
+          originalEndTime: event.end_time || 'N/A'
+        });
+        
+        // Ensure date is in correct format
+        let dateStr = event.date;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          // Try to normalize non-standard date formats
+          const jsDate = new Date(dateStr);
+          if (!isNaN(jsDate.getTime())) {
+            dateStr = jsDate.toISOString().split('T')[0];
+            console.log(`[TimeZoneService] Normalized non-standard date: ${event.date} -> ${dateStr}`);
+          }
+        }
+        
         // Assuming start_time is in HH:MM format
-        const [hours, minutes] = event.start_time.split(':').map(Number);
+        const [startHours, startMinutes] = event.start_time.split(':').map(Number);
         
-        // Create a DateTime object directly instead of using JS Date
-        const dateTime = this.fromDateString(event.date, 'utc')
-          .set({ hour: hours, minute: minutes })
-          .setZone(safeTimezone);
+        // Create a DateTime object in UTC first
+        const startDateTime = DateTime.fromISO(`${dateStr}T${event.start_time}:00Z`, { zone: 'utc' });
         
-        // Normalize the date format to yyyy-MM-dd
-        const normalizedDate = dateTime.toFormat(this.DATE_FORMAT);
-        console.log(`[TimeZoneService] Normalizing date: ${event.date} -> ${normalizedDate}`);
+        if (!startDateTime.isValid) {
+          console.error(`[TimeZoneService] Invalid start DateTime: ${startDateTime.invalidReason}`);
+        }
+        
+        // Convert to user timezone
+        const localStartDateTime = startDateTime.setZone(safeTimezone);
+        
+        // Update the date based on the localized time (important for timezone boundaries)
+        const normalizedDate = localStartDateTime.toFormat(this.DATE_FORMAT);
         localEvent.date = normalizedDate;
-        localEvent.start_time = dateTime.toFormat(this.TIME_FORMAT);
+        localEvent.start_time = localStartDateTime.toFormat(this.TIME_FORMAT);
+        
+        console.log(`[TimeZoneService] Converted start time:`, {
+          utcDateTime: startDateTime.toISO(),
+          localDateTime: localStartDateTime.toISO(),
+          normalizedDate,
+          localizedStartTime: localEvent.start_time
+        });
       }
       
       if (event.end_time && event.date) {
         // Assuming end_time is in HH:MM format
-        const [hours, minutes] = event.end_time.split(':').map(Number);
+        const [endHours, endMinutes] = event.end_time.split(':').map(Number);
         
-        // Create a DateTime object directly instead of using JS Date
-        const dateTime = this.fromDateString(event.date, 'utc')
-          .set({ hour: hours, minute: minutes })
-          .setZone(safeTimezone);
+        // Create a DateTime object in UTC first
+        const endDateTime = DateTime.fromISO(`${event.date}T${event.end_time}:00Z`, { zone: 'utc' });
+        
+        if (!endDateTime.isValid) {
+          console.error(`[TimeZoneService] Invalid end DateTime: ${endDateTime.invalidReason}`);
+        }
+        
+        // Convert to user timezone
+        const localEndDateTime = endDateTime.setZone(safeTimezone);
         
         // We already set the date in the start_time block, but set it here too as a fallback
         if (!localEvent.date) {
-          localEvent.date = dateTime.toFormat(this.DATE_FORMAT);
+          localEvent.date = localEndDateTime.toFormat(this.DATE_FORMAT);
         }
-        localEvent.end_time = dateTime.toFormat(this.TIME_FORMAT);
+        
+        localEvent.end_time = localEndDateTime.toFormat(this.TIME_FORMAT);
+        
+        console.log(`[TimeZoneService] Converted end time:`, {
+          utcDateTime: endDateTime.toISO(),
+          localDateTime: localEndDateTime.toISO(),
+          localizedEndTime: localEvent.end_time
+        });
       }
       
       return localEvent;

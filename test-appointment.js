@@ -9,6 +9,12 @@ async function createTestAppointment() {
     const today = new Date();
     const formattedDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
     
+    console.log('Current date and time:', {
+      raw: today,
+      formatted: formattedDate,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    });
+    
     // Create appointment data
     const appointmentData = {
       client_id: '00000000-0000-0000-0000-000000000001', // Replace with an actual client ID
@@ -58,18 +64,45 @@ async function verifyAppointmentInCalendar(appointmentId) {
     
     console.log('Fetched appointment from database:', data);
     
-    // Convert the appointment to the user's timezone
-    const userTimeZone = 'America/Chicago';
-    const localizedAppointment = TimeZoneService.convertEventToUserTimeZone(
-      data,
-      userTimeZone
-    );
+    // Get the current system timezone
+    const systemTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    console.log('System timezone:', systemTimeZone);
     
-    console.log('Localized appointment:', localizedAppointment);
+    // Test with multiple timezones to ensure consistent behavior
+    const timezones = ['America/Chicago', 'UTC', systemTimeZone];
     
-    // Verify the date format
-    const normalizedDate = new Date(localizedAppointment.date).toISOString().split('T')[0];
-    console.log('Normalized date:', normalizedDate);
+    for (const userTimeZone of timezones) {
+      console.log(`\n--- Testing with timezone: ${userTimeZone} ---`);
+      
+      // Convert the appointment to the user's timezone
+      const localizedAppointment = TimeZoneService.convertEventToUserTimeZone(
+        data,
+        userTimeZone
+      );
+      
+      console.log('Localized appointment:', localizedAppointment);
+      
+      // Verify the date format using multiple methods
+      const normalizedDate = new Date(localizedAppointment.date).toISOString().split('T')[0];
+      console.log('Normalized date (JS Date):', normalizedDate);
+      
+      // Use TimeZoneService to normalize the date
+      const luxonNormalizedDate = TimeZoneService.formatDate(
+        TimeZoneService.fromDateString(localizedAppointment.date, userTimeZone)
+      );
+      console.log('Normalized date (TimeZoneService):', luxonNormalizedDate);
+      
+      // Check if the date is today (which it should be since we created it today)
+      const today = new Date().toISOString().split('T')[0];
+      const isToday = normalizedDate === today;
+      console.log('Is appointment today?', isToday, `(today: ${today}, appointment: ${normalizedDate})`);
+      
+      // Simulate the calendar component's date comparison logic
+      const appointmentDateTime = TimeZoneService.fromDateString(localizedAppointment.date, userTimeZone);
+      const todayDateTime = TimeZoneService.fromDateString(today, userTimeZone);
+      const isSameDay = TimeZoneService.isSameDay(appointmentDateTime, todayDateTime);
+      console.log('isSameDay check:', isSameDay);
+    }
     
     return true;
   } catch (error) {

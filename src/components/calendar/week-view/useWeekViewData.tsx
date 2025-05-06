@@ -94,7 +94,7 @@ export const useWeekViewData = (
     return days.map(day => TimeZoneService.fromJSDate(day, userTimeZone));
   }, [days, userTimeZone]);
 
-  // Process appointments into blocks with improved logging
+  // Process appointments into blocks with enhanced logging
   useEffect(() => {
     if (!appointments || !appointments.length) {
       setAppointmentBlocks([]);
@@ -103,29 +103,49 @@ export const useWeekViewData = (
     }
 
     console.log(`[useWeekViewData] Processing ${appointments.length} appointments with timezone: ${userTimeZone}`);
+    console.log(`[useWeekViewData] Current system timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`);
     
-    // Log sample appointments for debugging
-    if (appointments.length > 0) {
-      const sampleAppointment = appointments[0];
+    // Log all appointments for comprehensive debugging
+    appointments.forEach((appointment, index) => {
       // Log raw appointment data
-      console.log(`[useWeekViewData] Raw sample appointment data:`, {
-        id: sampleAppointment.id,
-        date: sampleAppointment.date,
-        dateType: typeof sampleAppointment.date,
-        start_time: sampleAppointment.start_time,
-        clinician_id: sampleAppointment.clinician_id
+      console.log(`[useWeekViewData] Appointment ${index + 1}/${appointments.length} raw data:`, {
+        id: appointment.id,
+        date: appointment.date,
+        dateType: typeof appointment.date,
+        start_time: appointment.start_time,
+        end_time: appointment.end_time,
+        clinician_id: appointment.clinician_id
       });
       
       // Log normalized date for comparison using TimeZoneService
       const normalizedDate = TimeZoneService.formatDate(
-        TimeZoneService.fromDateString(sampleAppointment.date)
+        TimeZoneService.fromDateString(appointment.date)
       );
       
-      console.log('[useWeekViewData] Normalized sample appointment date:', {
-        original: sampleAppointment.date,
-        normalized: normalizedDate
+      console.log(`[useWeekViewData] Appointment ${appointment.id} normalized date:`, {
+        original: appointment.date,
+        normalized: normalizedDate,
+        currentWeekDays: daysAsDateTime.map(day => TimeZoneService.formatDate(day))
       });
-    }
+      
+      // Test timezone conversion explicitly
+      try {
+        const localizedAppointment = TimeZoneService.convertEventToUserTimeZone(
+          appointment,
+          userTimeZone
+        );
+        
+        console.log(`[useWeekViewData] Appointment ${appointment.id} after timezone conversion:`, {
+          originalDate: appointment.date,
+          localizedDate: localizedAppointment.date,
+          originalStartTime: appointment.start_time,
+          localizedStartTime: localizedAppointment.start_time,
+          timezone: userTimeZone
+        });
+      } catch (error) {
+        console.error(`[useWeekViewData] Error in timezone conversion for appointment ${appointment.id}:`, error);
+      }
+    });
     
     try {
       const blocks: AppointmentBlock[] = appointments.map(appointment => {
@@ -138,11 +158,11 @@ export const useWeekViewData = (
         let startDateTime: DateTime;
         let endDateTime: DateTime;
 
-        // Handle timezone conversion for appointments
+        // Handle timezone conversion for appointments with enhanced error handling
         try {
           // Convert the appointment times from UTC to user timezone
           const localizedAppointment = TimeZoneService.convertEventToUserTimeZone(
-            appointment, 
+            appointment,
             userTimeZone
           );
           
@@ -150,16 +170,17 @@ export const useWeekViewData = (
             throw new Error("Missing time information in localized appointment");
           }
           
-          console.log(`[useWeekViewData] Original appointment: `, {
-            date: appointment.date, 
-            start: appointment.start_time,
-            end: appointment.end_time
-          });
-          
-          console.log(`[useWeekViewData] Localized appointment: `, {
-            date: localizedAppointment.date,
-            start: localizedAppointment.start_time,
-            end: localizedAppointment.end_time
+          console.log(`[useWeekViewData] Appointment ${appointment.id} conversion:`, {
+            original: {
+              date: appointment.date,
+              start: appointment.start_time,
+              end: appointment.end_time
+            },
+            localized: {
+              date: localizedAppointment.date,
+              start: localizedAppointment.start_time,
+              end: localizedAppointment.end_time
+            }
           });
           
           // Create DateTime objects for the appointment date and times
@@ -178,9 +199,31 @@ export const useWeekViewData = (
             userTimeZone
           );
           
-          console.log(`[useWeekViewData] Normalized date: ${TimeZoneService.formatDate(dateTime)}`);
+          // Verify the created DateTime objects are valid
+          if (!startDateTime.isValid || !endDateTime.isValid) {
+            console.error(`[useWeekViewData] Invalid DateTime objects created:`, {
+              startValid: startDateTime.isValid,
+              startInvalidReason: startDateTime.invalidReason,
+              endValid: endDateTime.isValid,
+              endInvalidReason: endDateTime.invalidReason
+            });
+          }
+          
+          console.log(`[useWeekViewData] Appointment ${appointment.id} DateTime objects:`, {
+            date: TimeZoneService.formatDate(dateTime),
+            start: TimeZoneService.formatTime24(startDateTime),
+            end: TimeZoneService.formatTime24(endDateTime),
+            weekDays: daysAsDateTime.map(day => TimeZoneService.formatDate(day))
+          });
+          
+          // Check if this appointment falls within the current week view
+          const appointmentInWeek = daysAsDateTime.some(day =>
+            TimeZoneService.isSameDay(day, dateTime)
+          );
+          
+          console.log(`[useWeekViewData] Appointment ${appointment.id} in current week: ${appointmentInWeek}`);
         } catch (error) {
-          console.error("[useWeekViewData] Error converting appointment times:", error);
+          console.error(`[useWeekViewData] Error converting appointment ${appointment.id} times:`, error);
           
           // Fallback to original time if conversion fails
           dateTime = TimeZoneService.fromDateString(appointment.date, userTimeZone);
@@ -198,7 +241,7 @@ export const useWeekViewData = (
             userTimeZone
           );
           
-          console.log(`[useWeekViewData] Fallback normalized date: ${TimeZoneService.formatDate(dateTime)}`);
+          console.log(`[useWeekViewData] Fallback normalized date for appointment ${appointment.id}: ${TimeZoneService.formatDate(dateTime)}`);
         }
 
         try {
@@ -462,10 +505,21 @@ export const useWeekViewData = (
         minute: timeSlotDt.minute
       });
       
+      console.log(`[useWeekViewData] Looking for appointments on ${dayFormatted} at ${TimeZoneService.formatTime24(slotTime)}`);
+      console.log(`[useWeekViewData] Total appointment blocks: ${appointmentBlocks.length}`);
+      
       // Find appointments on the same day where the time slot falls within the appointment time
       const appointment = appointmentBlocks.find(block => {
-        // First check if we're on the same day
+        // First check if we're on the same day using isSameDay for more reliable comparison
         const sameDayCheck = TimeZoneService.isSameDay(block.day, dayDt);
+        
+        // Log the day comparison for debugging
+        console.log(`[useWeekViewData] Day comparison for appointment ${block.id}:`, {
+          appointmentDay: TimeZoneService.formatDate(block.day),
+          slotDay: dayFormatted,
+          sameDayCheck
+        });
+        
         if (!sameDayCheck) return false;
         
         // Convert to minutes for easier comparison
@@ -474,9 +528,17 @@ export const useWeekViewData = (
         const apptEndTotalMinutes = block.end.hour * 60 + block.end.minute;
         
         // Check if the slot time falls within the appointment time
-        const isWithinAppointment = 
-          slotTotalMinutes >= apptStartTotalMinutes && 
+        const isWithinAppointment =
+          slotTotalMinutes >= apptStartTotalMinutes &&
           slotTotalMinutes < apptEndTotalMinutes;
+        
+        // Log the time comparison for debugging
+        console.log(`[useWeekViewData] Time comparison for appointment ${block.id}:`, {
+          slotTime: `${slotTime.hour}:${slotTime.minute} (${slotTotalMinutes} mins)`,
+          appointmentStart: `${block.start.hour}:${block.start.minute} (${apptStartTotalMinutes} mins)`,
+          appointmentEnd: `${block.end.hour}:${block.end.minute} (${apptEndTotalMinutes} mins)`,
+          isWithinAppointment
+        });
         
         if (isWithinAppointment) {
           console.log(`[useWeekViewData] Found appointment ${block.id} for ${dayFormatted} at ${TimeZoneService.formatTime24(slotTime)}:`, {

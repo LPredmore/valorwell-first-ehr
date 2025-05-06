@@ -210,6 +210,8 @@ export const useMonthViewData = (
       console.log('[useMonthViewData] Raw sample appointment:', {
         id: sampleAppointment.id,
         date: sampleAppointment.date,
+        start_time: sampleAppointment.start_time,
+        end_time: sampleAppointment.end_time,
         clinician_id: sampleAppointment.clinician_id,
         format: typeof sampleAppointment.date
       });
@@ -221,26 +223,50 @@ export const useMonthViewData = (
       
       console.log('[useMonthViewData] Normalized sample appointment date:', {
         original: sampleAppointment.date,
-        normalized: normalizedDate
+        normalized: normalizedDate,
+        dayFormat: TimeZoneService.formatDate(DateTime.now())
+      });
+      
+      // Log timezone information
+      console.log('[useMonthViewData] Timezone information:', {
+        userTimeZone,
+        currentSystemTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
       });
     }
     
     days.forEach(day => {
       const dayStr = TimeZoneService.formatDate(day);
       
-      // Add explicit filtering with logging and date normalization
+      // Add explicit filtering with enhanced logging and date normalization
       const dayAppointments = appointments.filter(appointment => {
-        // Normalize both dates to yyyy-MM-dd format before comparison using TimeZoneService
-        const appointmentDateNormalized = TimeZoneService.formatDate(
-          TimeZoneService.fromDateString(appointment.date)
+        // First convert the appointment to user timezone
+        const localizedAppointment = TimeZoneService.convertEventToUserTimeZone(
+          appointment,
+          userTimeZone
         );
         
-        const match = appointmentDateNormalized === dayStr;
+        // Create DateTime objects for direct comparison instead of string comparison
+        const appointmentDateTime = TimeZoneService.fromDateString(localizedAppointment.date, userTimeZone);
+        const dayDateTime = day;
         
-        // Log date comparison details for the first few appointments
-        if (appointments.indexOf(appointment) < 3) {
-          console.log(`[useMonthViewData] Comparing date: "${appointment.date}" (normalized: "${appointmentDateNormalized}") === "${dayStr}" => ${match}`);
-        }
+        // Compare dates using isSameDay for more reliable comparison
+        const match = TimeZoneService.isSameDay(appointmentDateTime, dayDateTime);
+        
+        // Enhanced logging for all appointments to better diagnose issues
+        console.log(`[useMonthViewData] Appointment ${appointment.id} comparison:`, {
+          originalDate: appointment.date,
+          localizedDate: localizedAppointment.date,
+          appointmentDateFormatted: TimeZoneService.formatDate(appointmentDateTime),
+          dayDateFormatted: TimeZoneService.formatDate(dayDateTime),
+          match: match,
+          comparisonMethod: "isSameDay",
+          timeInfo: {
+            start: appointment.start_time,
+            end: appointment.end_time,
+            localizedStart: localizedAppointment.start_time,
+            localizedEnd: localizedAppointment.end_time
+          }
+        });
         
         return match;
       });
@@ -260,7 +286,7 @@ export const useMonthViewData = (
     console.log(`[useMonthViewData] Created map with appointments on ${daysWithAppointments} days`);
     
     return result;
-  }, [days, appointments]);
+  }, [days, appointments, userTimeZone]);
 
   return {
     loading,
