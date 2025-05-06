@@ -10,6 +10,7 @@ import CalendarHeader from '../components/calendar/CalendarHeader';
 import CalendarViewControls from '../components/calendar/CalendarViewControls';
 import AppointmentDialog from '../components/calendar/AppointmentDialog';
 import { useUser } from '@/context/UserContext';
+import useAppointments from '@/hooks/useAppointments';
 
 const CalendarPage = () => {
   // Get the logged-in user's ID
@@ -35,6 +36,20 @@ const CalendarPage = () => {
     userTimeZone,
     isLoadingTimeZone,
   } = useCalendarState(userId); // Pass userId to useCalendarState
+
+  // Fetch appointments for the selected clinician
+  const {
+    appointments,
+    isLoading: isLoadingAppointments,
+    error: appointmentsError
+  } = useAppointments(
+    selectedClinicianId,
+    // Start date for fetch range - 1 month before current date
+    subMonths(currentDate, 1),
+    // End date for fetch range - 2 months after current date
+    addMonths(currentDate, 2),
+    userTimeZone
+  );
 
   const navigatePrevious = () => {
     if (view === 'week') {
@@ -130,8 +145,12 @@ const CalendarPage = () => {
             view={view}
             showAvailability={showAvailability}
             clinicianId={selectedClinicianId}
+            currentDate={currentDate}
             userTimeZone={userTimeZone}
             refreshTrigger={appointmentRefreshTrigger}
+            appointments={appointments}
+            isLoading={isLoadingAppointments}
+            error={appointmentsError}
           />
         </div>
       </div>
