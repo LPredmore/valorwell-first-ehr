@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, startOfToday, isBefore, isToday } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import VideoChat from '@/components/video/VideoChat';
-import { getUserTimeZone, formatTimeZoneDisplay, formatTimeInUserTimeZone, formatTime12Hour, ensureIANATimeZone, TimeZoneService } from '@/utils/timeZoneUtils';
+import { getUserTimeZone, formatTimeZoneDisplay, formatTimeInUserTimeZone, formatTime12Hour, ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import PHQ9Template from '@/components/templates/PHQ9Template';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 

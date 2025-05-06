@@ -168,8 +168,9 @@ export const useAppointments = (
     try {
       // Add UTC timestamps if not present but date and time are
       if (!appointmentData.start_at && appointmentData.date && appointmentData.start_time) {
-        // Use TimeZoneService to convert local date and time to UTC
-        const userTimezone = appointmentData.timezone || TimeZoneService.DEFAULT_TIMEZONE;
+        // Get timezone - either from the context of the appointment creation or use default
+        const userTimezone = TimeZoneService.DEFAULT_TIMEZONE;
+        
         const startDateTime = TimeZoneService.createDateTime(
           appointmentData.date, 
           appointmentData.start_time, 
