@@ -27,13 +27,14 @@ export function formatTimeStringTo12Hour(timeString: string): string {
     // Parse the time string (expecting format like "09:00")
     const [hours, minutes] = timeString.split(':').map(Number);
     
-    // Create a date object with the time
-    const date = new Date();
-    date.setHours(hours);
-    date.setMinutes(minutes);
+    // Create a DateTime object with the time
+    const dt = DateTime.fromObject({
+      hour: hours,
+      minute: minutes
+    });
     
     // Format to 12-hour time
-    return format(date, 'h:mm a');
+    return dt.toFormat('h:mm a');
   } catch (error) {
     console.error('Error formatting time string:', error);
     return timeString; // Return the original string if parsing fails
@@ -52,13 +53,8 @@ export function formatTimeInUserTimeZone(timeString: string, userTimeZone: strin
     const today = DateTime.now().setZone(userTimeZone);
     const todayStr = today.toFormat('yyyy-MM-dd');
     
-    // Parse the time using Luxon with today's date
-    const dateTime = DateTime.fromFormat(`${todayStr} ${timeString}`, 'yyyy-MM-dd HH:mm', { zone: userTimeZone });
-    
-    if (!dateTime.isValid) {
-      throw new Error(`Invalid datetime: ${dateTime.invalidReason}`);
-    }
-    
+    // Use TimeZoneService to create and format the datetime
+    const dateTime = TimeZoneService.createDateTime(todayStr, timeString, userTimeZone);
     return dateTime.toFormat(formatStr);
   } catch (error) {
     console.error('Error formatting time in user timezone:', error);
@@ -123,14 +119,10 @@ export function ensureIANATimeZone(timezone: string | null | undefined): string 
 export function formatTime12Hour(timeString: string): string {
   try {
     // Handle both "HH:MM" and "HH:MM:SS" formats
-    const parts = timeString.split(':');
-    const hours = parseInt(parts[0], 10);
-    const minutes = parseInt(parts[1], 10);
+    const dt = DateTime.fromFormat(timeString, timeString.includes(':') ? 
+                                  (timeString.split(':').length > 2 ? 'HH:mm:ss' : 'HH:mm') : 'HH');
     
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const hour12 = hours % 12 || 12; // Convert 0 to 12 for 12 AM
-    
-    return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
+    return dt.toFormat('h:mm a');
   } catch (error) {
     console.error('Error formatting to 12-hour time:', error);
     return timeString;

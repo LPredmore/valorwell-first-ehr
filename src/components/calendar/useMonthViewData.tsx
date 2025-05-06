@@ -7,9 +7,7 @@ import {
   eachDayOfInterval,
   startOfWeek,
   endOfWeek,
-  parseISO,
 } from 'date-fns';
-import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
 
@@ -30,17 +28,6 @@ interface AvailabilityBlock {
   end_time: string;
   clinician_id?: string;
   is_active?: boolean;
-  isException?: boolean;
-}
-
-interface AvailabilityException {
-  id: string;
-  specific_date: string;
-  original_availability_id: string;
-  start_time: string | null;
-  end_time: string | null;
-  is_deleted: boolean;
-  clinician_id: string;
 }
 
 export const useMonthViewData = (
@@ -52,25 +39,25 @@ export const useMonthViewData = (
 ) => {
   const [loading, setLoading] = useState(true);
   const [availabilityData, setAvailabilityData] = useState<AvailabilityBlock[]>([]);
-  const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
 
-  const { monthStart, monthEnd, startDate, endDate, days } = useMemo(() => {
+  // Memoize date calculations to improve performance
+  const { monthStart, days, startDate, endDate } = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
     const startDate = startOfWeek(monthStart, { weekStartsOn: 0 });
     const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
     const days = eachDayOfInterval({ start: startDate, end: endDate });
     
-    return { monthStart, monthEnd, startDate, endDate, days };
+    return { monthStart, days, startDate, endDate };
   }, [currentDate]);
 
+  // Fetch availability data
   useEffect(() => {
     const fetchAvailabilityFromClinician = async () => {
       setLoading(true);
       try {
         if (!clinicianId) {
           setAvailabilityData([]);
-          setExceptions([]);
           setLoading(false);
           return;
         }
@@ -85,21 +72,16 @@ export const useMonthViewData = (
         if (error) {
           console.error('Error fetching clinician data:', error);
           setAvailabilityData([]);
-          setExceptions([]);
         } else {
           console.log('MonthView fetched clinician data:', clinician);
           
           // Extract availability blocks from clinician record
           const extractedBlocks = extractAvailabilityBlocksFromClinician(clinician);
           setAvailabilityData(extractedBlocks);
-          
-          // No exceptions for now
-          setExceptions([]);
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Error fetching availability:', error);
         setAvailabilityData([]);
-        setExceptions([]);
       } finally {
         setLoading(false);
       }
@@ -142,10 +124,10 @@ export const useMonthViewData = (
     return blocks;
   };
 
+  // Build day availability map with standardized display hours
   const dayAvailabilityMap = useMemo(() => {
     const result = new Map<string, { 
       hasAvailability: boolean, 
-      isModified: boolean,
       displayHours: string 
     }>();
     
@@ -161,7 +143,6 @@ export const useMonthViewData = (
       );
       
       let hasAvailability = false;
-      let isModified = false;
       let displayHours = '';
       
       if (regularAvailability.length > 0) {
@@ -172,11 +153,10 @@ export const useMonthViewData = (
         const endTime = "22:00";
         
         try {
-          // Create DateTime objects with the time strings
+          // Create DateTime objects with the time strings and convert to the user's timezone
           const startDateTime = TimeZoneService.createDateTime('2000-01-01', startTime, 'UTC');
           const endDateTime = TimeZoneService.createDateTime('2000-01-01', endTime, 'UTC');
           
-          // Convert to the user's timezone
           const startTimeInUserZone = TimeZoneService.convertDateTime(startDateTime, 'UTC', userTimeZone);
           const endTimeInUserZone = TimeZoneService.convertDateTime(endDateTime, 'UTC', userTimeZone);
           
@@ -186,18 +166,17 @@ export const useMonthViewData = (
           displayHours = `${startHourFormatted}-${endHourFormatted}`;
         } catch (error) {
           console.error('Error formatting time for availability:', error);
-          const startHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${startTime}`));
-          const endHourFormatted = formatDateToTime12Hour(parseISO(`2000-01-01T${endTime}`));
-          displayHours = `${startHourFormatted}-${endHourFormatted}`;
+          displayHours = '6:00 AM-10:00 PM'; // Fallback display format
         }
       }
       
-      result.set(dateStr, { hasAvailability, isModified, displayHours });
+      result.set(dateStr, { hasAvailability, displayHours });
     });
     
     return result;
-  }, [days, availabilityData, exceptions, userTimeZone]);
+  }, [days, availabilityData, userTimeZone]);
 
+  // Map availability blocks to days for lookup
   const availabilityByDay = useMemo(() => {
     const result = new Map<string, AvailabilityBlock>();
     
@@ -217,6 +196,7 @@ export const useMonthViewData = (
     return result;
   }, [days, availabilityData]);
 
+  // Map appointments to days for easy lookup
   const dayAppointmentsMap = useMemo(() => {
     const result = new Map<string, Appointment[]>();
     
@@ -232,7 +212,6 @@ export const useMonthViewData = (
   return {
     loading,
     monthStart,
-    monthEnd,
     days,
     dayAvailabilityMap,
     dayAppointmentsMap,

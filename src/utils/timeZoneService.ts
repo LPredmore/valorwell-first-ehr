@@ -108,6 +108,30 @@ export class TimeZoneService {
   }
 
   /**
+   * Converts a time string from one timezone to another
+   * @param timeString ISO time string (e.g. "2000-01-01T09:00:00Z")
+   * @param fromZone Source timezone
+   * @param toZone Target timezone
+   * @returns DateTime object in the target timezone
+   */
+  static convertTimeToZone(timeString: string, fromZone: string, toZone: string): DateTime {
+    const safeFromZone = this.ensureIANATimeZone(fromZone);
+    const safeToZone = this.ensureIANATimeZone(toZone);
+    
+    // Create a DateTime object with the time in the source timezone
+    const dt = DateTime.fromISO(timeString, { zone: safeFromZone });
+    
+    if (!dt.isValid) {
+      console.error(`Invalid time string: ${timeString}, reason: ${dt.invalidReason}`);
+      // Return current time as fallback
+      return DateTime.now().setZone(safeToZone);
+    }
+    
+    // Convert to the target timezone
+    return dt.setZone(safeToZone);
+  }
+
+  /**
    * Converts a calendar event to the user's timezone
    */
   static convertEventToUserTimeZone(event: any, userTimezone: string): any {
@@ -128,6 +152,35 @@ export class TimeZoneService {
       if (localEvent.end) {
         const endDt = DateTime.fromISO(localEvent.end);
         localEvent.end = endDt.setZone(safeTimezone).toISO();
+      }
+      
+      // Handle legacy event format with start_time and end_time as HH:MM
+      if (event.start_time && event.date) {
+        // Assuming start_time is in HH:MM format
+        const [hours, minutes] = event.start_time.split(':').map(Number);
+        const dt = DateTime.fromObject({ 
+          year: new Date(event.date).getFullYear(),
+          month: new Date(event.date).getMonth() + 1, 
+          day: new Date(event.date).getDate(),
+          hour: hours,
+          minute: minutes 
+        }, { zone: 'utc' }).setZone(safeTimezone);
+        
+        localEvent.start_time = dt.toFormat('HH:mm');
+      }
+      
+      if (event.end_time && event.date) {
+        // Assuming end_time is in HH:MM format
+        const [hours, minutes] = event.end_time.split(':').map(Number);
+        const dt = DateTime.fromObject({ 
+          year: new Date(event.date).getFullYear(),
+          month: new Date(event.date).getMonth() + 1, 
+          day: new Date(event.date).getDate(),
+          hour: hours,
+          minute: minutes 
+        }, { zone: 'utc' }).setZone(safeTimezone);
+        
+        localEvent.end_time = dt.toFormat('HH:mm');
       }
       
       return localEvent;

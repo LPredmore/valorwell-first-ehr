@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { format, isSameDay, isSameMonth, parseISO } from 'date-fns';
-import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
+import { format, isSameMonth } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface Appointment {
   id: string;
@@ -20,22 +20,22 @@ interface AvailabilityBlock {
   end_time: string;
   clinician_id?: string;
   is_active?: boolean;
-  isException?: boolean;
+}
+
+interface DayAvailabilityInfo {
+  hasAvailability: boolean;
+  displayHours: string;
 }
 
 interface DayCellProps {
   day: Date;
   monthStart: Date;
-  availabilityInfo: {
-    hasAvailability: boolean;
-    isModified: boolean;
-    displayHours: string;
-  };
+  availabilityInfo: DayAvailabilityInfo;
   appointments: Appointment[];
+  firstAvailability?: AvailabilityBlock;
   getClientName: (clientId: string) => string;
   onAppointmentClick?: (appointment: Appointment) => void;
   onAvailabilityClick?: (day: Date, availabilityBlock: AvailabilityBlock) => void;
-  firstAvailability?: AvailabilityBlock;
 }
 
 const DayCell: React.FC<DayCellProps> = ({
@@ -43,57 +43,70 @@ const DayCell: React.FC<DayCellProps> = ({
   monthStart,
   availabilityInfo,
   appointments,
+  firstAvailability,
   getClientName,
   onAppointmentClick,
-  onAvailabilityClick,
-  firstAvailability
+  onAvailabilityClick
 }) => {
-  const { hasAvailability, isModified, displayHours } = availabilityInfo;
-  
+  const isCurrentMonth = isSameMonth(day, monthStart);
+  const dayNum = format(day, 'd');
+  const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+
   const handleAvailabilityClick = () => {
-    if (onAvailabilityClick && firstAvailability) {
+    if (availabilityInfo.hasAvailability && firstAvailability && onAvailabilityClick) {
       onAvailabilityClick(day, firstAvailability);
     }
   };
 
   return (
     <div
-      className={`p-2 min-h-[100px] border border-gray-100 ${!isSameMonth(day, monthStart) ? 'bg-gray-50 text-gray-400' : ''} ${isSameDay(day, new Date()) ? 'border-valorwell-500 border-2' : ''}`}
+      className={cn(
+        "min-h-[80px] border border-gray-200 p-1",
+        !isCurrentMonth ? "bg-gray-50" : "bg-white",
+        isToday ? "border-blue-500 border-2" : ""
+      )}
     >
-      <div className="flex justify-between items-start">
-        <span className={`text-sm font-medium ${isSameDay(day, new Date()) ? 'text-valorwell-500' : ''}`}>
-          {format(day, 'd')}
+      <div className="flex justify-between items-center">
+        <span
+          className={cn(
+            "text-sm font-medium",
+            !isCurrentMonth ? "text-gray-400" : "text-gray-900"
+          )}
+        >
+          {dayNum}
         </span>
-        {hasAvailability && isSameMonth(day, monthStart) && (
-          <div 
-            className={`${isModified ? 'bg-teal-100 text-teal-800' : 'bg-green-100 text-green-800'} text-xs px-1 py-0.5 rounded`}
+      </div>
+
+      <div className="mt-1 space-y-1 text-xs">
+        {availabilityInfo.hasAvailability && (
+          <div
+            className="bg-green-100 text-green-800 p-1 rounded cursor-pointer hover:bg-green-200"
+            onClick={handleAvailabilityClick}
           >
-            {isModified ? 'Modified' : 'Available'}
-            {displayHours && (
-              <div className="text-xs mt-0.5">{displayHours}</div>
+            <p className="font-medium">Available</p>
+            {availabilityInfo.displayHours && (
+              <p>{availabilityInfo.displayHours}</p>
             )}
           </div>
         )}
+
+        {appointments.length > 0 && (
+          <div className="space-y-1 mt-1">
+            {appointments.map((appointment) => (
+              <div
+                key={appointment.id}
+                className="bg-blue-100 text-blue-800 p-1 rounded cursor-pointer hover:bg-blue-200"
+                onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
+              >
+                <div className="font-medium truncate">
+                  {getClientName(appointment.client_id)}
+                </div>
+                <div>{appointment.start_time.slice(0, 5)}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      
-      {appointments.length > 0 && isSameMonth(day, monthStart) && (
-        <div className="mt-1 space-y-1">
-          {appointments.slice(0, 3).map(appointment => (
-            <div 
-              key={appointment.id} 
-              className="bg-blue-100 text-blue-800 text-xs p-1 rounded truncate cursor-pointer hover:bg-blue-200 transition-colors"
-              onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
-            >
-              {formatDateToTime12Hour(parseISO(`2000-01-01T${appointment.start_time}`))} - {getClientName(appointment.client_id)}
-            </div>
-          ))}
-          {appointments.length > 3 && (
-            <div className="text-xs text-gray-500 pl-1">
-              +{appointments.length - 3} more
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 };

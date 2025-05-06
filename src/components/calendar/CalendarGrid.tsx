@@ -19,12 +19,10 @@ interface AvailabilityBlock {
   end_time: string;
   clinician_id?: string;
   is_active?: boolean;
-  isException?: boolean;
 }
 
 interface DayAvailabilityData {
   hasAvailability: boolean;
-  isModified: boolean;
   displayHours: string;
 }
 
@@ -64,7 +62,6 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
         const dayAppointments = dayAppointmentsMap.get(dateStr) || [];
         const dayAvailability = dayAvailabilityMap.get(dateStr) || { 
           hasAvailability: false, 
-          isModified: false,
           displayHours: ''
         };
         const firstAvailability = availabilityByDay.get(dateStr);
