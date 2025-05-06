@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import {
   format,
@@ -171,21 +172,16 @@ export const useMonthViewData = (
         const endTime = "22:00";
         
         try {
-          // Convert times to selected timezone for display
-          const startTimeUTC = TimeZoneService.convertTimeToZone(
-            `2000-01-01T${startTime}:00Z`, 
-            'UTC', 
-            userTimeZone
-          );
+          // Create DateTime objects with the time strings
+          const startDateTime = TimeZoneService.createDateTime('2000-01-01', startTime, 'UTC');
+          const endDateTime = TimeZoneService.createDateTime('2000-01-01', endTime, 'UTC');
           
-          const endTimeUTC = TimeZoneService.convertTimeToZone(
-            `2000-01-01T${endTime}:00Z`, 
-            'UTC', 
-            userTimeZone
-          );
+          // Convert to the user's timezone
+          const startTimeInUserZone = TimeZoneService.convertDateTime(startDateTime, 'UTC', userTimeZone);
+          const endTimeInUserZone = TimeZoneService.convertDateTime(endDateTime, 'UTC', userTimeZone);
           
-          const startHourFormatted = startTimeUTC.toFormat('h:mm a');
-          const endHourFormatted = endTimeUTC.toFormat('h:mm a');
+          const startHourFormatted = startTimeInUserZone.toFormat('h:mm a');
+          const endHourFormatted = endTimeInUserZone.toFormat('h:mm a');
           
           displayHours = `${startHourFormatted}-${endHourFormatted}`;
         } catch (error) {

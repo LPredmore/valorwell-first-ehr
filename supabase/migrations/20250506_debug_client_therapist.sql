@@ -1,6 +1,6 @@
 
 -- Create a database function to help debug client-therapist matching
-CREATE OR REPLACE FUNCTION public.debug_client_therapist_matching(therapist_id TEXT)
+CREATE OR REPLACE FUNCTION public.debug_client_therapist_matching(p_therapist_id TEXT)
 RETURNS TABLE (
   client_id UUID,
   client_name TEXT,
