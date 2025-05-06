@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
-import { getClinicianTimeZone } from '@/hooks/useClinicianData';
+import { getClinicianTimeZone, getClinicianById } from '@/hooks/useClinicianData';
 import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface Client {
@@ -108,27 +108,40 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
       setClients([]);
       
       try {
+        // First, fetch the clinician record to get the correctly formatted ID from the database
+        const clinicianRecord = await getClinicianById(formattedClinicianId);
+        
+        if (!clinicianRecord) {
+          console.error('Could not find clinician with ID:', formattedClinicianId);
+          setLoadingClients(false);
+          return;
+        }
+        
+        // Use the database-retrieved ID to ensure exact format match
+        const databaseClinicianId = clinicianRecord.id;
+        console.log('useCalendarState - Database-retrieved clinician ID:', databaseClinicianId);
+        
         // Use text comparison since client_assigned_therapist is a TEXT column
         const { data, error } = await supabase
           .from('clients')
           .select('id, client_first_name, client_preferred_name, client_last_name')
-          .eq('client_assigned_therapist', formattedClinicianId)
+          .eq('client_assigned_therapist', databaseClinicianId)
           .order('client_last_name');
           
         if (error) {
           console.error('Error fetching clients:', error);
         } else {
           console.log('useCalendarState - Clients fetched successfully:', data);
-          console.log('useCalendarState - formattedClinicianId used for query:', formattedClinicianId);
+          console.log('useCalendarState - Database clinician ID used for query:', databaseClinicianId);
           
           if (data.length === 0) {
-            console.log('useCalendarState - No clients found for clinician:', formattedClinicianId);
-            console.log('useCalendarState - Database query returned empty for client_assigned_therapist:', formattedClinicianId);
+            console.log('useCalendarState - No clients found for clinician:', databaseClinicianId);
+            console.log('useCalendarState - Database query returned empty for client_assigned_therapist:', databaseClinicianId);
             
             // Additional debug query to check if any clients exist with this therapist
             const { data: rawData, error: rawError } = await supabase
-              .rpc('debug_client_therapist_matching', { 
-                p_therapist_id: formattedClinicianId 
+              .rpc('debug_client_therapist_matching', {
+                p_therapist_id: databaseClinicianId
               });
               
             if (!rawError && rawData) {

@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { getClinicianById } from '@/hooks/useClinicianData';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, 
   DialogFooter, DialogClose 
@@ -56,12 +57,40 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   const [startTime, setStartTime] = useState<string>(DEFAULT_START_TIME);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState<string>('weekly');
+  const [databaseClinicianId, setDatabaseClinicianId] = useState<string | null>(null);
+  const [fetchingClinicianId, setFetchingClinicianId] = useState(false);
   
   // Format the clinician ID once
   const formattedClinicianId = ensureStringId(selectedClinicianId);
   
   // Generate time options once
   const timeOptions = generateTimeOptions();
+  
+  // Fetch the database-formatted clinician ID when the dialog opens or clinician changes
+  useEffect(() => {
+    const fetchDatabaseClinicianId = async () => {
+      if (!formattedClinicianId) return;
+      
+      setFetchingClinicianId(true);
+      try {
+        const clinicianRecord = await getClinicianById(formattedClinicianId);
+        if (clinicianRecord) {
+          console.log('AppointmentDialog - Database-retrieved clinician ID:', clinicianRecord.id);
+          setDatabaseClinicianId(clinicianRecord.id);
+        } else {
+          console.error('Could not find clinician with ID:', formattedClinicianId);
+          setDatabaseClinicianId(formattedClinicianId); // Fallback to formatted ID
+        }
+      } catch (error) {
+        console.error('Error fetching clinician record:', error);
+        setDatabaseClinicianId(formattedClinicianId); // Fallback to formatted ID
+      } finally {
+        setFetchingClinicianId(false);
+      }
+    };
+    
+    fetchDatabaseClinicianId();
+  }, [formattedClinicianId]);
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -81,10 +110,22 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
 
   // Create appointment handler
   const handleCreateAppointment = async () => {
-    if (!selectedClientId || !selectedDate || !startTime || !formattedClinicianId) {
+    if (!selectedClientId || !selectedDate || !startTime) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Use the database-retrieved clinician ID or fall back to the formatted ID
+    const clinicianIdToUse = databaseClinicianId || formattedClinicianId;
+    
+    if (!clinicianIdToUse) {
+      toast({
+        title: "Missing Clinician",
+        description: "No clinician selected. Please try again.",
         variant: "destructive"
       });
       return;
@@ -100,7 +141,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
         
         const appointmentsToInsert = recurringDates.map(date => ({
           client_id: selectedClientId,
-          clinician_id: formattedClinicianId,
+          clinician_id: clinicianIdToUse,
           date: format(date, 'yyyy-MM-dd'),
           start_time: startTime,
           end_time: endTime,
@@ -127,7 +168,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
       } else {
         const appointmentData = {
           client_id: selectedClientId,
-          clinician_id: formattedClinicianId,
+          clinician_id: clinicianIdToUse,
           date: formattedDate,
           start_time: startTime,
           end_time: endTime,
