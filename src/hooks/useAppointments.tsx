@@ -102,21 +102,23 @@ export const useAppointments = (
         const formattedAppointments = (data || []).map(appointment => {
           // Extract client data from the joined table
           // Supabase returns this as a direct object, not an array
-          const clientData = appointment.clients;
-          delete appointment.clients;
+          const clientDataFromSupabase = appointment.clients;
+          
+          // Create a new object without the clients field
+          const { clients, ...restOfAppointment } = appointment;
           
           // Create properly formatted appointment object
           const formattedAppointment: Appointment = {
-            ...appointment,
+            ...restOfAppointment,
             // Add formatted client object with required properties
-            client: clientData ? {
-              client_first_name: clientData.client_first_name || '',
-              client_last_name: clientData.client_last_name || '',
-              client_preferred_name: clientData.client_preferred_name || ''
+            client: clientDataFromSupabase ? {
+              client_first_name: clientDataFromSupabase.client_first_name || '',
+              client_last_name: clientDataFromSupabase.client_last_name || '',
+              client_preferred_name: clientDataFromSupabase.client_preferred_name || ''
             } : undefined,
             // Add computed client name for convenience
-            clientName: clientData ? 
-              `${clientData.client_preferred_name || clientData.client_first_name || ''} ${clientData.client_last_name || ''}`.trim() : 
+            clientName: clientDataFromSupabase ? 
+              `${clientDataFromSupabase.client_preferred_name || clientDataFromSupabase.client_first_name || ''} ${clientDataFromSupabase.client_last_name || ''}`.trim() : 
               'Unknown Client'
           };
 
