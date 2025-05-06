@@ -29,6 +29,11 @@ const Calendar = ({
   // Ensure we have a valid IANA timezone
   const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
   
+  // If clinicianId is empty, display a message
+  if (!clinicianId) {
+    console.error('No clinician ID provided to Calendar component');
+  }
+  
   // Fetch appointments
   const { 
     appointments, 

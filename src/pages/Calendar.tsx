@@ -9,8 +9,12 @@ import { useCalendarState } from '../hooks/useCalendarState';
 import CalendarHeader from '../components/calendar/CalendarHeader';
 import CalendarViewControls from '../components/calendar/CalendarViewControls';
 import AppointmentDialog from '../components/calendar/AppointmentDialog';
+import { useUser } from '@/context/UserContext';
 
 const CalendarPage = () => {
+  // Get the logged-in user's ID
+  const { userId } = useUser();
+  
   const {
     view,
     setView,
@@ -30,7 +34,7 @@ const CalendarPage = () => {
     setIsDialogOpen,
     userTimeZone,
     isLoadingTimeZone,
-  } = useCalendarState();
+  } = useCalendarState(userId); // Pass userId to useCalendarState
 
   const navigatePrevious = () => {
     if (view === 'week') {
@@ -65,6 +69,7 @@ const CalendarPage = () => {
   };
 
   console.log("Calendar Page - selectedClinicianId:", selectedClinicianId);
+  console.log("Calendar Page - userId:", userId);
   console.log("Calendar Page - clients:", clients);
   console.log("Calendar Page - loadingClients:", loadingClients);
 

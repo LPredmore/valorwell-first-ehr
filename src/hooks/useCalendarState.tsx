@@ -84,7 +84,9 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
         } else {
           console.log('Fetched clinicians:', data);
           setClinicians(data || []);
-          if (data && data.length > 0 && !selectedClinicianId) {
+          
+          // Only set default clinician if none was provided and we don't already have one
+          if (data && data.length > 0 && !initialClinicianId && !selectedClinicianId) {
             console.log('Setting default clinician:', data[0].id);
             setSelectedClinicianId(data[0].id);
           }
@@ -97,7 +99,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     };
 
     fetchClinicians();
-  }, []);
+  }, [initialClinicianId]);
 
   // Load clients for selected clinician
   useEffect(() => {
