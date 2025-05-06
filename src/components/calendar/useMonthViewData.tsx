@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -226,12 +225,6 @@ export const useMonthViewData = (
           console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched to ${formattedDate}`);
         } else {
           console.log(`[useMonthViewData] ❌ No matching day found for appointment ${appointment.id} with date ${formattedDate}`);
-          
-          // Additional attempt: try using the legacy date field if available
-          if (appointment.date && result.has(appointment.date)) {
-            result.get(appointment.date)!.push(appointment);
-            console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched using legacy date field: ${appointment.date}`);
-          }
         }
       } catch (error) {
         console.error(`[useMonthViewData] Error processing appointment ${appointment.id}:`, error);

@@ -1,105 +1,70 @@
 
 import React, { useEffect } from 'react';
-import { useAppointments } from '@/hooks/useAppointments';
-import Calendar from './Calendar';
+import WeekView from './week-view/WeekView';
+import MonthView from './MonthView';
+import ClinicianAvailabilityPanel from './ClinicianAvailabilityPanel';
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { Card } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
 import { Appointment } from '@/types/appointment';
 
-interface CalendarViewProps {
+interface CalendarProps {
   view: 'week' | 'month';
   showAvailability: boolean;
   clinicianId: string | null;
-  currentDate?: Date;
+  currentDate: Date;
   userTimeZone: string;
-  refreshTrigger?: number;
+  refreshTrigger: number;
+  appointments: Appointment[];
+  isLoading: boolean;
+  error: any;
 }
 
-const CalendarView: React.FC<CalendarViewProps> = ({
-  view,
-  showAvailability,
-  clinicianId,
-  currentDate = new Date(),
+const Calendar = ({ 
+  view, 
+  showAvailability, 
+  clinicianId, 
+  currentDate, 
   userTimeZone,
-  refreshTrigger = 0
-}) => {
-  // Ensure we have a valid timezone
+  refreshTrigger = 0,
+  appointments = [],
+  isLoading = false,
+  error = null
+}: CalendarProps) => {
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
+  
+  // Ensure we have a valid IANA timezone
   const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
   
-  // Format the clinicianId correctly for Supabase queries
-  const formattedClinicianId = clinicianId?.trim() || null;
+  // If clinicianId is empty, display a message
+  if (!clinicianId) {
+    console.error('No clinician ID provided to Calendar component');
+  }
   
-  console.log(`[CalendarView] Initializing with clinicianId: ${formattedClinicianId}, timezone: ${validTimeZone}`);
-  
-  // Use the appointments hook to fetch appointments for the formatted clinicianId
-  const { 
-    appointments, 
-    isLoading: loadingAppointments, 
-    error,
-    refetch
-  } = useAppointments(formattedClinicianId);
-  
-  // Trigger a refresh when the refresh trigger changes
+  // Enhanced logging for appointments
   useEffect(() => {
-    if (refreshTrigger > 0) {
-      console.log(`[CalendarView] Refresh triggered (${refreshTrigger}), refetching appointments`);
-      refetch();
-    }
-  }, [refreshTrigger, refetch]);
-
-  // Log appointments for debugging
-  useEffect(() => {
-    if (error) {
-      console.error(`[CalendarView] Error fetching appointments:`, error);
-    } else if (appointments) {
-      console.log(`[CalendarView] Received ${appointments.length} appointments for clinician ${formattedClinicianId}`);
-      
-      if (appointments.length > 0) {
-        console.log(`[CalendarView] First 3 appointments (sample):`);
-        appointments.slice(0, 3).forEach((appointment, index) => {
-          console.log(`[CalendarView] Appointment #${index + 1}:`, {
-            id: appointment.id,
-            startAt: appointment.start_at,
-            endAt: appointment.end_at,
-            clientId: appointment.client_id,
-            clinicianId: appointment.clinician_id
-          });
+    console.log(`[Calendar] Rendering with ${appointments.length} appointments for clinician ${clinicianId}`);
+    console.log(`[Calendar] Calendar view: ${view}, timezone: ${validTimeZone}`);
+    
+    if (appointments.length > 0) {
+      // Sample appointments for inspection
+      const sampleSize = Math.min(3, appointments.length);
+      console.log(`[Calendar] Sample of ${sampleSize} appointments:`);
+      appointments.slice(0, sampleSize).forEach((app, idx) => {
+        console.log(`[Calendar] Sample appointment ${idx+1}:`, {
+          id: app.id,
+          startAt: app.start_at,
+          endAt: app.end_at,
+          clientId: app.client_id,
+          clinicianId: app.clinician_id
         });
-      }
+      });
     }
-  }, [appointments, formattedClinicianId, error]);
+    
+    if (error) {
+      console.error('[Calendar] Error detected:', error);
+    }
+  }, [appointments, clinicianId, error, view, validTimeZone]);
 
-  // Show loading state
-  if (loadingAppointments) {
-    return (
-      <Card className="p-4 flex justify-center items-center h-[300px]">
-        <Loader2 className="h-6 w-6 animate-spin text-valorwell-500 mr-2" />
-        <span>Loading appointments...</span>
-      </Card>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <Card className="p-4 text-center">
-        <p className="text-red-500 mb-2">Error loading appointments</p>
-        <p className="text-sm text-gray-500">{error.message || 'Unknown error'}</p>
-      </Card>
-    );
-  }
-
-  // If no clinician is selected, show a message
-  if (!formattedClinicianId) {
-    return (
-      <Card className="p-4 text-center">
-        <p className="text-gray-500">Please select a clinician to view their appointments</p>
-      </Card>
-    );
-  }
-  
-  // Process appointments with timezone awareness - add both UTC and display fields
+  // Process appointments with timezone awareness - add display fields only
   const processedAppointments = appointments.map(appointment => {
     // Use the UTC timestamps for accurate timezone handling
     if (appointment.start_at && appointment.end_at) {
@@ -111,40 +76,84 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       const formattedStartTime = TimeZoneService.formatTime24(startDateTime);
       const formattedEndTime = TimeZoneService.formatTime24(endDateTime);
       
-      // Add both legacy fields and formatted fields
-      const processedAppointment: Appointment = {
+      // Return appointment with formatted display fields only
+      return {
         ...appointment,
-        // Legacy fields for compatibility
-        date: formattedDate,
-        start_time: formattedStartTime,
-        end_time: formattedEndTime,
-        // Formatted fields for display
         formattedDate,
         formattedStartTime,
-        formattedEndTime
+        formattedEndTime,
+        formattedStartDate: formattedDate // Add this for consistent API
       };
-      
-      return processedAppointment;
     }
     
     return appointment;
   });
-  
-  console.log(`[CalendarView] Rendering calendar with ${processedAppointments.length} processed appointments`);
-  
+
+  // Function to get client name from an appointment
+  const getClientName = (clientId: string): string => {
+    const appointment = appointments.find(app => app.client_id === clientId);
+    if (!appointment || !appointment.client) return 'Client';
+    
+    return appointment.client.client_preferred_name && appointment.client.client_last_name
+      ? `${appointment.client.client_preferred_name} ${appointment.client.client_last_name}`
+      : 'Client';
+  };
+
+  // Handler for appointment clicked in calendar
+  const handleAppointmentClick = (appointment: Appointment) => {
+    setSelectedAppointmentId(appointment.id);
+    console.log(`[Calendar] Appointment clicked: ${appointment.id}`);
+  };
+
+  // Handler for availability block clicked in calendar
+  const handleAvailabilityClick = (date: Date, availabilityBlock: any) => {
+    console.log(`[Calendar] Availability clicked for ${date} - Block:`, availabilityBlock);
+  };
+
+  // Handler for when availability is updated
+  const handleAvailabilityUpdated = () => {
+    console.log('[Calendar] Availability updated, refreshing calendar...');
+  };
+
   return (
-    <Calendar 
-      view={view}
-      showAvailability={showAvailability}
-      clinicianId={formattedClinicianId}
-      currentDate={currentDate}
-      userTimeZone={validTimeZone}
-      refreshTrigger={refreshTrigger}
-      appointments={processedAppointments}
-      isLoading={false}
-      error={null}
-    />
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="md:col-span-3">
+        {view === 'week' ? (
+          <WeekView 
+            currentDate={currentDate}
+            clinicianId={clinicianId}
+            refreshTrigger={refreshTrigger}
+            appointments={processedAppointments}
+            getClientName={getClientName}
+            onAppointmentClick={handleAppointmentClick}
+            onAvailabilityClick={handleAvailabilityClick}
+            userTimeZone={validTimeZone}
+          />
+        ) : (
+          <MonthView 
+            currentDate={currentDate}
+            clinicianId={clinicianId}
+            refreshTrigger={refreshTrigger}
+            appointments={processedAppointments}
+            getClientName={getClientName}
+            onAppointmentClick={handleAppointmentClick}
+            onAvailabilityClick={handleAvailabilityClick}
+            userTimeZone={validTimeZone}
+          />
+        )}
+      </div>
+      
+      {showAvailability && (
+        <div className="md:col-span-1">
+          <ClinicianAvailabilityPanel 
+            clinicianId={clinicianId} 
+            onAvailabilityUpdated={handleAvailabilityUpdated}
+            userTimeZone={validTimeZone}
+          />
+        </div>
+      )}
+    </div>
   );
 };
 
-export default CalendarView;
+export default Calendar;
