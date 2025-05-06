@@ -1920,6 +1920,15 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      debug_client_therapist_matching: {
+        Args: { p_therapist_id: string }
+        Returns: {
+          client_id: string
+          client_name: string
+          therapist_id: string
+          therapist_id_type: string
+        }[]
+      }
       debug_rls_check: {
         Args: {
           schema_name: string

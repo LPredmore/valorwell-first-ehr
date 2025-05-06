@@ -133,7 +133,9 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           
           // Additional debug query to check if any clients exist with this therapist
           const { data: rawData, error: rawError } = await supabase
-            .rpc('debug_client_therapist_matching', { therapist_id: formattedClinicianId });
+            .rpc('debug_client_therapist_matching', { 
+              p_therapist_id: formattedClinicianId 
+            });
             
           if (!rawError && rawData) {
             console.log('Debug query results:', rawData);
