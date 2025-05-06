@@ -1,681 +1,297 @@
 
-import { DateTime } from 'luxon';
-import { toast } from '@/hooks/use-toast';
+import { DateTime, Settings } from 'luxon';
 
 /**
- * TimeZoneService provides standardized timezone and date handling functionality
- * for the entire application following the Timezone Handling Standards.
- *
- * All dates should be stored in UTC in the database and converted to the user's
- * timezone for display. All UI date/time displays should use AM/PM formatting.
+ * TimeZoneService - Central utility for handling all timezone operations in the application
+ * Using Luxon to ensure consistent timezone handling and formatting
  */
 export class TimeZoneService {
-  // Default timezone to use when none is provided
-  static DEFAULT_TIMEZONE = 'America/Chicago';
+  // Default timezone to use when none is specified
+  static readonly DEFAULT_TIMEZONE = 'America/New_York';
   
-  // Common date/time formats
-  static DATE_FORMAT = 'yyyy-MM-dd';
-  static TIME_FORMAT = 'HH:mm';
-  static TIME_FORMAT_AMPM = 'h:mm a';
-  static DATETIME_FORMAT = 'yyyy-MM-dd HH:mm';
-  static DATETIME_FORMAT_AMPM = 'yyyy-MM-dd h:mm a';
-  static DISPLAY_DATE_FORMAT = 'MMM d, yyyy';
-  static DISPLAY_DATETIME_FORMAT = 'MMM d, yyyy h:mm a';
-  static FULL_DATE_FORMAT = 'EEEE, MMMM d, yyyy';
-
-  /**
-   * Mapping of common timezone names, abbreviations, and descriptive names to IANA timezone identifiers
-   */
-  static TIMEZONE_MAP: Record<string, string> = {
-    // US Timezones - Common names
-    'Eastern Standard Time': 'America/New_York',
-    'Eastern Standard Time (EST)': 'America/New_York',
-    'EST': 'America/New_York',
-    'EDT': 'America/New_York',
-    'Eastern Time': 'America/New_York',
-    'Eastern Time (ET)': 'America/New_York',
-    'ET': 'America/New_York',
-    'Eastern': 'America/New_York',
-    
-    'Central Standard Time': 'America/Chicago',
-    'Central Standard Time (CST)': 'America/Chicago',
-    'CST': 'America/Chicago',
-    'CDT': 'America/Chicago',
-    'Central Time': 'America/Chicago',
-    'Central Time (CT)': 'America/Chicago',
-    'CT': 'America/Chicago',
-    'Central': 'America/Chicago',
-    
-    'Mountain Standard Time': 'America/Denver',
-    'Mountain Standard Time (MST)': 'America/Denver',
-    'MST': 'America/Denver',
-    'MDT': 'America/Denver',
-    'Mountain Time': 'America/Denver',
-    'Mountain Time (MT)': 'America/Denver',
-    'MT': 'America/Denver',
-    'Mountain': 'America/Denver',
-    'Arizona': 'America/Phoenix',
-    
-    'Pacific Standard Time': 'America/Los_Angeles',
-    'Pacific Standard Time (PST)': 'America/Los_Angeles',
-    'PST': 'America/Los_Angeles',
-    'PDT': 'America/Los_Angeles',
-    'Pacific Time': 'America/Los_Angeles',
-    'Pacific Time (PT)': 'America/Los_Angeles',
-    'PT': 'America/Los_Angeles',
-    'Pacific': 'America/Los_Angeles',
-    
-    'Alaska Standard Time': 'America/Anchorage',
-    'Alaska Standard Time (AKST)': 'America/Anchorage',
-    'AKST': 'America/Anchorage',
-    'Alaska Time': 'America/Anchorage',
-    'Alaska Time (AKT)': 'America/Anchorage',
-    'AKT': 'America/Anchorage',
-    'Alaska': 'America/Anchorage',
-    
-    'Hawaii-Aleutian Standard Time': 'Pacific/Honolulu',
-    'Hawaii-Aleutian Standard Time (HST)': 'Pacific/Honolulu',
-    'HST': 'Pacific/Honolulu',
-    'Hawaii Time': 'Pacific/Honolulu',
-    'Hawaii Time (HT)': 'Pacific/Honolulu',
-    'HT': 'Pacific/Honolulu',
-    'Hawaii': 'Pacific/Honolulu',
-    
-    'Atlantic Standard Time': 'America/Puerto_Rico',
-    'Atlantic Standard Time (AST)': 'America/Puerto_Rico',
-    'AST': 'America/Puerto_Rico',
-    'Atlantic Time': 'America/Puerto_Rico',
-    'Atlantic Time (AT)': 'America/Puerto_Rico',
-    'AT': 'America/Puerto_Rico',
-    'Atlantic': 'America/Puerto_Rico',
-
-    // State names that users might enter
-    'New York': 'America/New_York',
-    'California': 'America/Los_Angeles',
-    'Texas': 'America/Chicago',
-    'Florida': 'America/New_York',
-    'Illinois': 'America/Chicago',
-    
-    // Windows timezone names
-    'Eastern Time (US & Canada)': 'America/New_York',
-    'Central Time (US & Canada)': 'America/Chicago',
-    'Mountain Time (US & Canada)': 'America/Denver',
-    'Pacific Time (US & Canada)': 'America/Los_Angeles',
-    'US Eastern Standard Time': 'America/New_York',
-    'US Mountain Standard Time': 'America/Phoenix',
-    
-    // Common international timezones
-    'GMT': 'Etc/GMT',
-    'GMT+0': 'Etc/GMT',
-    'UTC': 'Etc/UTC',
-    'Europe/London': 'Europe/London',
-    'GMT Standard Time': 'Europe/London',
-    'GMT+1': 'Etc/GMT-1',
-    'CET': 'Europe/Paris',
-    'Europe/Paris': 'Europe/Paris',
-    'Europe/Berlin': 'Europe/Berlin',
-    'W. Europe Standard Time': 'Europe/Berlin',
-    'IST': 'Asia/Kolkata',
-    'India Standard Time': 'Asia/Kolkata',
-    'JST': 'Asia/Tokyo',
-    'Tokyo Standard Time': 'Asia/Tokyo',
-    'AEST': 'Australia/Sydney',
-    'AUS Eastern Standard Time': 'Australia/Sydney',
-  };
+  // Standard format strings
+  static readonly DATE_FORMAT = 'yyyy-MM-dd';
+  static readonly TIME_FORMAT_24 = 'HH:mm';
+  static readonly TIME_FORMAT_AMPM = 'h:mm a';
+  static readonly DATETIME_FORMAT = 'yyyy-MM-dd HH:mm:ss';
   
   /**
-   * Normalizes timezone identifiers to valid IANA format
-   * Attempts to convert common timezone names and abbreviations to valid IANA identifiers
-   */
-  static normalizeTimeZone(timezone: string | null | undefined): string | null {
-    if (!timezone) {
-      return null;
-    }
-    
-    try {
-      // Clean up the input
-      const cleanedTimezone = timezone.trim();
-      if (!cleanedTimezone) return null;
-      
-      // If it's already a valid IANA timezone, return it
-      try {
-        const testDt = DateTime.now().setZone(cleanedTimezone);
-        if (testDt.isValid) {
-          return cleanedTimezone;
-        }
-      } catch (e) {
-        // Not a valid IANA timezone, continue with normalization
-      }
-
-      // Try to map the timezone to an IANA identifier
-      if (typeof cleanedTimezone === 'string') {
-        // First try direct mapping
-        const mappedTimezone = this.TIMEZONE_MAP[cleanedTimezone];
-        if (mappedTimezone) {
-          return mappedTimezone;
-        }
-        
-        // Then try case-insensitive mapping
-        const lowerTimezone = cleanedTimezone.toLowerCase();
-        for (const [key, value] of Object.entries(this.TIMEZONE_MAP)) {
-          if (key.toLowerCase() === lowerTimezone) {
-            return value;
-          }
-        }
-        
-        // Check if it's close to an IANA identifier
-        if (cleanedTimezone.includes('/')) {
-          // It looks like an IANA identifier (e.g., "America/New_York")
-          try {
-            const testDt = DateTime.now().setZone(cleanedTimezone);
-            if (testDt.isValid) {
-              return cleanedTimezone;
-            }
-          } catch (e) {
-            // Invalid IANA-like timezone
-          }
-        }
-      }
-
-      // If no mapping found, return null
-      console.warn(`Unable to map timezone '${cleanedTimezone}' to an IANA identifier`);
-      return null;
-    } catch (error) {
-      console.error(`Error normalizing timezone: '${timezone}'`, error);
-      return null;
-    }
-  }
-
-  /**
-   * Ensures that a timezone string is a valid IANA timezone.
-   * If invalid, falls back to a default timezone and logs the error.
+   * Ensures a timezone string is a valid IANA timezone
+   * Provides fallback to default timezone if invalid
    */
   static ensureIANATimeZone(timezone: string | null | undefined): string {
+    if (!timezone) return this.DEFAULT_TIMEZONE;
+    
+    // Check if the timezone is valid
     try {
-      // First try to normalize the timezone
-      const normalizedTimezone = this.normalizeTimeZone(timezone);
-      
-      if (!normalizedTimezone) {
-        console.warn(`Invalid or empty timezone provided: '${timezone}', falling back to ${this.DEFAULT_TIMEZONE}`);
-        return this.DEFAULT_TIMEZONE;
+      const dt = DateTime.now().setZone(timezone);
+      if (dt.isValid) {
+        return timezone;
       }
-
-      // Check if normalized timezone is a valid IANA timezone
-      try {
-        const dt = DateTime.now().setZone(normalizedTimezone);
-        if (dt.isValid) {
-          return normalizedTimezone;
-        }
-      } catch (error) {
-        console.warn(`Normalized timezone '${normalizedTimezone}' is still invalid, falling back to ${this.DEFAULT_TIMEZONE}`);
-        return this.DEFAULT_TIMEZONE;
-      }
-      
-      return this.DEFAULT_TIMEZONE;
     } catch (error) {
-      console.error(`Error validating timezone: '${timezone}'`, error);
-      return this.DEFAULT_TIMEZONE;
+      console.error(`Invalid timezone: ${timezone}`, error);
     }
+    
+    // Common timezone abbreviation mappings
+    const timezoneMap: Record<string, string> = {
+      'EST': 'America/New_York',
+      'EDT': 'America/New_York',
+      'CST': 'America/Chicago',
+      'CDT': 'America/Chicago',
+      'MST': 'America/Denver',
+      'MDT': 'America/Denver',
+      'PST': 'America/Los_Angeles',
+      'PDT': 'America/Los_Angeles',
+    };
+    
+    // Check if it's a known abbreviation
+    if (timezone in timezoneMap) {
+      return timezoneMap[timezone];
+    }
+    
+    // If all else fails, return the default
+    return this.DEFAULT_TIMEZONE;
   }
-
+  
   /**
-   * Creates a DateTime object from date and time strings in the specified timezone
+   * Convert a date string and time string to an ISO string in UTC
+   * @param dateStr Date string in format 'YYYY-MM-DD'
+   * @param timeStr Time string in format 'HH:MM'
+   * @param timezone IANA timezone string
+   * @returns ISO string in UTC
+   */
+  static toUTC(dateStr: string, timeStr: string, timezone: string): string {
+    const safeZone = this.ensureIANATimeZone(timezone);
+    
+    const dt = this.createDateTime(dateStr, timeStr, safeZone);
+    return dt.toUTC().toISO();
+  }
+  
+  /**
+   * Convert a UTC ISO string to local time
+   * @param isoStr ISO string in UTC
+   * @param timezone IANA timezone string
+   * @returns DateTime object in the specified timezone
+   */
+  static fromUTC(isoStr: string | null, timezone: string): DateTime {
+    if (!isoStr) return DateTime.now().setZone(this.ensureIANATimeZone(timezone));
+    
+    const safeZone = this.ensureIANATimeZone(timezone);
+    return DateTime.fromISO(isoStr).setZone(safeZone);
+  }
+  
+  /**
+   * Create a DateTime object from separate date and time strings
+   * @param dateStr Date string in format 'YYYY-MM-DD'
+   * @param timeStr Time string in format 'HH:MM'
+   * @param timezone IANA timezone string
+   * @returns DateTime object
    */
   static createDateTime(dateStr: string, timeStr: string, timezone: string): DateTime {
-    const safeTimezone = this.ensureIANATimeZone(timezone);
-    const fullDateTimeStr = `${dateStr}T${timeStr}`;
+    const safeZone = this.ensureIANATimeZone(timezone);
     
-    try {
-      const dt = DateTime.fromISO(fullDateTimeStr, { zone: safeTimezone });
-      if (!dt.isValid) {
-        console.error(`Invalid DateTime created: ${dt.invalidReason}: ${dt.invalidExplanation}`);
-      }
-      return dt;
-    } catch (error) {
-      console.error(`Error creating DateTime from: ${fullDateTimeStr} in timezone ${safeTimezone}`, error);
-      // Return current time as fallback
-      return DateTime.now().setZone(safeTimezone);
-    }
-  }
-
-  /**
-   * Creates a DateTime object from a JavaScript Date object
-   */
-  static fromJSDate(date: Date, timezone?: string): DateTime {
-    const safeTimezone = timezone ? this.ensureIANATimeZone(timezone) : 'local';
-    
-    try {
-      return DateTime.fromJSDate(date, { zone: safeTimezone });
-    } catch (error) {
-      console.error(`Error converting JS Date to DateTime: ${error}`);
-      return DateTime.now().setZone(safeTimezone);
-    }
-  }
-
-  /**
-   * Creates a DateTime object from an ISO string
-   */
-  static fromISO(isoString: string, timezone?: string): DateTime {
-    const safeTimezone = timezone ? this.ensureIANATimeZone(timezone) : 'utc';
-    
-    try {
-      return DateTime.fromISO(isoString, { zone: safeTimezone });
-    } catch (error) {
-      console.error(`Error creating DateTime from ISO string: ${isoString}`, error);
-      return DateTime.now().setZone(safeTimezone);
-    }
-  }
-
-  /**
-   * Creates a DateTime object from a date string in yyyy-MM-dd format
-   */
-  static fromDateString(dateString: string, timezone?: string): DateTime {
-    const safeTimezone = timezone ? this.ensureIANATimeZone(timezone) : 'utc';
-    
-    try {
-      // Ensure the date string is in yyyy-MM-dd format
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-        // Try to parse and normalize the date
-        const jsDate = new Date(dateString);
-        if (isNaN(jsDate.getTime())) {
-          throw new Error(`Invalid date string: ${dateString}`);
-        }
-        dateString = jsDate.toISOString().split('T')[0];
-      }
+    // If time contains seconds, format is 'HH:MM:SS', otherwise 'HH:MM'
+    const format = timeStr.split(':').length > 2 ? 
+      `yyyy-MM-dd'T'HH:mm:ss` : 
+      `yyyy-MM-dd'T'HH:mm`;
       
-      return DateTime.fromISO(`${dateString}T00:00:00`, { zone: safeTimezone });
-    } catch (error) {
-      console.error(`Error creating DateTime from date string: ${dateString}`, error);
-      return DateTime.now().setZone(safeTimezone).startOf('day');
-    }
-  }
-
-  /**
-   * Creates a DateTime object from a time string in HH:mm format
-   */
-  static fromTimeString(timeString: string, timezone?: string): DateTime {
-    const safeTimezone = timezone ? this.ensureIANATimeZone(timezone) : 'utc';
+    // Join date and time
+    const dateTimeStr = `${dateStr}T${timeStr}`;
     
-    try {
-      // Use today's date with the specified time
-      const today = DateTime.now().setZone(safeTimezone).startOf('day');
-      const [hours, minutes] = timeString.split(':').map(Number);
-      
-      return today.set({ hour: hours, minute: minutes });
-    } catch (error) {
-      console.error(`Error creating DateTime from time string: ${timeString}`, error);
-      return DateTime.now().setZone(safeTimezone);
-    }
-  }
-
-  /**
-   * Converts a DateTime object from one timezone to another
-   */
-  static convertDateTime(dt: DateTime, fromTimezone: string, toTimezone: string): DateTime {
-    const safeFromTimezone = this.ensureIANATimeZone(fromTimezone);
-    const safeToTimezone = this.ensureIANATimeZone(toTimezone);
-    
-    try {
-      return dt.setZone(safeFromTimezone).setZone(safeToTimezone);
-    } catch (error) {
-      console.error(`Error converting timezone from ${safeFromTimezone} to ${safeToTimezone}`, error);
-      return dt;
-    }
-  }
-
-  /**
-   * Formats a DateTime object according to the specified format and timezone
-   */
-  static formatDateTime(dt: DateTime, format: string, timezone?: string): string {
-    const safeTimezone = timezone ? this.ensureIANATimeZone(timezone) : dt.zoneName;
-    
-    try {
-      return dt.setZone(safeTimezone).toFormat(format);
-    } catch (error) {
-      console.error(`Error formatting DateTime in timezone ${safeTimezone}`, error);
-      return dt.toFormat(format);
-    }
-  }
-
-  /**
-   * Formats a DateTime object as a date string (yyyy-MM-dd)
-   */
-  static formatDate(dt: DateTime, timezone?: string): string {
-    return this.formatDateTime(dt, this.DATE_FORMAT, timezone);
-  }
-
-  /**
-   * Formats a DateTime object as a time string with AM/PM (h:mm a)
-   */
-  static formatTime(dt: DateTime, timezone?: string): string {
-    return this.formatDateTime(dt, this.TIME_FORMAT_AMPM, timezone);
-  }
-
-  /**
-   * Formats a DateTime object as a time string in 24-hour format (HH:mm)
-   */
-  static formatTime24(dt: DateTime, timezone?: string): string {
-    return this.formatDateTime(dt, this.TIME_FORMAT, timezone);
-  }
-
-  /**
-   * Formats a DateTime object as a display date (MMM d, yyyy)
-   */
-  static formatDisplayDate(dt: DateTime, timezone?: string): string {
-    return this.formatDateTime(dt, this.DISPLAY_DATE_FORMAT, timezone);
-  }
-
-  /**
-   * Formats a DateTime object as a full date (EEEE, MMMM d, yyyy)
-   */
-  static formatFullDate(dt: DateTime, timezone?: string): string {
-    return this.formatDateTime(dt, this.FULL_DATE_FORMAT, timezone);
-  }
-
-  /**
-   * Formats a DateTime object as a display date and time (MMM d, yyyy h:mm a)
-   */
-  static formatDisplayDateTime(dt: DateTime, timezone?: string): string {
-    return this.formatDateTime(dt, this.DISPLAY_DATETIME_FORMAT, timezone);
-  }
-
-  /**
-   * Gets the current date and time in the specified timezone
-   */
-  static now(timezone?: string): DateTime {
-    const safeTimezone = timezone ? this.ensureIANATimeZone(timezone) : 'local';
-    return DateTime.now().setZone(safeTimezone);
-  }
-
-  /**
-   * Gets the current date (start of day) in the specified timezone
-   */
-  static today(timezone?: string): DateTime {
-    return this.now(timezone).startOf('day');
-  }
-
-  /**
-   * Converts a DateTime to UTC for database storage
-   */
-  static toUTC(dt: DateTime): string {
-    try {
-      return dt.toUTC().toISO();
-    } catch (error) {
-      console.error('Error converting to UTC', error);
-      return DateTime.utc().toISO();
-    }
-  }
-
-  /**
-   * Converts a UTC string from the database to the user's timezone
-   */
-  static fromUTC(utcStr: string, userTimezone: string): DateTime {
-    const safeTimezone = this.ensureIANATimeZone(userTimezone);
-    
-    try {
-      return DateTime.fromISO(utcStr, { zone: 'utc' }).setZone(safeTimezone);
-    } catch (error) {
-      console.error(`Error converting from UTC to ${safeTimezone}`, error);
-      return DateTime.now().setZone(safeTimezone);
-    }
-  }
-
-  /**
-   * Converts a time string from one timezone to another
-   * @param timeString ISO time string (e.g. "2000-01-01T09:00:00Z")
-   * @param fromZone Source timezone
-   * @param toZone Target timezone
-   * @returns DateTime object in the target timezone
-   */
-  static convertTimeToZone(timeString: string, fromZone: string, toZone: string): DateTime {
-    const safeFromZone = this.ensureIANATimeZone(fromZone);
-    const safeToZone = this.ensureIANATimeZone(toZone);
-    
-    // Create a DateTime object with the time in the source timezone
-    const dt = DateTime.fromISO(timeString, { zone: safeFromZone });
+    const dt = DateTime.fromFormat(dateTimeStr, format, { zone: safeZone });
     
     if (!dt.isValid) {
-      console.error(`Invalid time string: ${timeString}, reason: ${dt.invalidReason}`);
+      console.error(`Invalid date/time: ${dateTimeStr} in timezone ${safeZone}`);
+      console.error(`Reason: ${dt.invalidReason}, ${dt.invalidExplanation}`);
       // Return current time as fallback
-      return DateTime.now().setZone(safeToZone);
+      return DateTime.now().setZone(safeZone);
     }
     
-    // Convert to the target timezone
-    return dt.setZone(safeToZone);
+    return dt;
   }
-
+  
   /**
-   * Adds a specified number of days to a DateTime
+   * Create DateTime from just a date string
+   */
+  static fromDateString(dateStr: string, timezone: string): DateTime {
+    const safeZone = this.ensureIANATimeZone(timezone);
+    const dt = DateTime.fromFormat(dateStr, 'yyyy-MM-dd', { zone: safeZone });
+    
+    if (!dt.isValid) {
+      console.error(`Invalid date string: ${dateStr}`);
+      return DateTime.now().setZone(safeZone);
+    }
+    
+    return dt;
+  }
+  
+  /**
+   * Create DateTime from just a time string
+   */
+  static fromTimeString(timeStr: string, timezone?: string): DateTime {
+    const safeZone = timezone ? this.ensureIANATimeZone(timezone) : 'UTC';
+    
+    // Use today's date with the given time
+    const today = DateTime.now().setZone(safeZone).startOf('day');
+    
+    // Handle different time string formats
+    let dt: DateTime;
+    if (timeStr.split(':').length === 3) {
+      // HH:MM:SS
+      dt = DateTime.fromFormat(timeStr, 'HH:mm:ss', { zone: safeZone });
+    } else {
+      // HH:MM
+      dt = DateTime.fromFormat(timeStr, 'HH:mm', { zone: safeZone });
+    }
+    
+    if (!dt.isValid) {
+      console.error(`Invalid time string: ${timeStr}`);
+      return today;
+    }
+    
+    // Combine today's date with the parsed time
+    return today.set({
+      hour: dt.hour,
+      minute: dt.minute,
+      second: dt.second
+    });
+  }
+  
+  /**
+   * Convert JavaScript Date to Luxon DateTime
+   */
+  static fromJSDate(date: Date, timezone?: string): DateTime {
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+      console.warn('Invalid date provided to fromJSDate');
+      return DateTime.now().setZone(timezone ? this.ensureIANATimeZone(timezone) : 'UTC');
+    }
+    
+    if (timezone) {
+      return DateTime.fromJSDate(date).setZone(this.ensureIANATimeZone(timezone));
+    }
+    
+    return DateTime.fromJSDate(date);
+  }
+  
+  /**
+   * Format a DateTime object to a date string
+   */
+  static formatDate(dt: DateTime, format: string = this.DATE_FORMAT): string {
+    if (!dt.isValid) {
+      console.error('Attempted to format invalid DateTime', dt.invalidReason, dt.invalidExplanation);
+      return 'Invalid date';
+    }
+    return dt.toFormat(format);
+  }
+  
+  /**
+   * Format a DateTime object to a time string
+   */
+  static formatTime(dt: DateTime, format: string = this.TIME_FORMAT_AMPM): string {
+    if (!dt.isValid) {
+      console.error('Attempted to format invalid DateTime', dt.invalidReason, dt.invalidExplanation);
+      return 'Invalid time';
+    }
+    return dt.toFormat(format);
+  }
+  
+  /**
+   * Format a DateTime object to a 24-hour time string
+   */
+  static formatTime24(dt: DateTime): string {
+    return this.formatTime(dt, this.TIME_FORMAT_24);
+  }
+  
+  /**
+   * Format a DateTime object to a date and time string
+   */
+  static formatDateTime(dt: DateTime, format: string = `${this.DATE_FORMAT} ${this.TIME_FORMAT_AMPM}`): string {
+    if (!dt.isValid) {
+      console.error('Attempted to format invalid DateTime', dt.invalidReason, dt.invalidExplanation);
+      return 'Invalid date/time';
+    }
+    return dt.toFormat(format);
+  }
+  
+  /**
+   * Get current DateTime in the specified timezone
+   */
+  static now(timezone: string = this.DEFAULT_TIMEZONE): DateTime {
+    return DateTime.now().setZone(this.ensureIANATimeZone(timezone));
+  }
+  
+  /**
+   * Get today's date as DateTime at midnight in the specified timezone
+   */
+  static today(timezone: string = this.DEFAULT_TIMEZONE): DateTime {
+    return this.now(timezone).startOf('day');
+  }
+  
+  /**
+   * Add days to a DateTime
    */
   static addDays(dt: DateTime, days: number): DateTime {
     return dt.plus({ days });
   }
-
+  
   /**
-   * Adds a specified number of weeks to a DateTime
-   */
-  static addWeeks(dt: DateTime, weeks: number): DateTime {
-    return dt.plus({ weeks });
-  }
-
-  /**
-   * Adds a specified number of months to a DateTime
+   * Add months to a DateTime
    */
   static addMonths(dt: DateTime, months: number): DateTime {
     return dt.plus({ months });
   }
-
+  
   /**
-   * Subtracts a specified number of days from a DateTime
+   * Convert a calendar event to user's timezone
    */
-  static subtractDays(dt: DateTime, days: number): DateTime {
-    return dt.minus({ days });
-  }
-
-  /**
-   * Subtracts a specified number of weeks from a DateTime
-   */
-  static subtractWeeks(dt: DateTime, weeks: number): DateTime {
-    return dt.minus({ weeks });
-  }
-
-  /**
-   * Subtracts a specified number of months from a DateTime
-   */
-  static subtractMonths(dt: DateTime, months: number): DateTime {
-    return dt.minus({ months });
-  }
-
-  /**
-   * Checks if a DateTime is before another DateTime
-   */
-  static isBefore(dt1: DateTime, dt2: DateTime): boolean {
-    return dt1 < dt2;
-  }
-
-  /**
-   * Checks if a DateTime is after another DateTime
-   */
-  static isAfter(dt1: DateTime, dt2: DateTime): boolean {
-    return dt1 > dt2;
-  }
-
-  /**
-   * Checks if a DateTime is the same day as another DateTime
-   */
-  static isSameDay(dt1: DateTime, dt2: DateTime): boolean {
-    return dt1.hasSame(dt2, 'day');
-  }
-
-  /**
-   * Checks if a DateTime is today
-   */
-  static isToday(dt: DateTime): boolean {
-    return dt.hasSame(DateTime.now(), 'day');
-  }
-
-  /**
-   * Checks if a DateTime is in the future
-   */
-  static isFuture(dt: DateTime): boolean {
-    return dt > DateTime.now();
-  }
-
-  /**
-   * Checks if a DateTime is in the past
-   */
-  static isPast(dt: DateTime): boolean {
-    return dt < DateTime.now();
-  }
-
-  /**
-   * Gets the start of the week containing the specified DateTime
-   */
-  static startOfWeek(dt: DateTime, weekStartsOn: number = 0): DateTime {
-    // Adjust for week start (0 = Sunday, 1 = Monday, etc.)
-    const dayOfWeek = dt.weekday % 7; // Convert to 0-6 range where 0 is Sunday
-    const diff = (dayOfWeek - weekStartsOn + 7) % 7;
-    return dt.minus({ days: diff }).startOf('day');
-  }
-
-  /**
-   * Gets the end of the week containing the specified DateTime
-   */
-  static endOfWeek(dt: DateTime, weekStartsOn: number = 0): DateTime {
-    return this.startOfWeek(dt, weekStartsOn).plus({ days: 6 }).endOf('day');
-  }
-
-  /**
-   * Gets the start of the month containing the specified DateTime
-   */
-  static startOfMonth(dt: DateTime): DateTime {
-    return dt.startOf('month');
-  }
-
-  /**
-   * Gets the end of the month containing the specified DateTime
-   */
-  static endOfMonth(dt: DateTime): DateTime {
-    return dt.endOf('month');
-  }
-
-  /**
-   * Gets an array of DateTimes for each day in the specified interval
-   */
-  static eachDayOfInterval(start: DateTime, end: DateTime): DateTime[] {
-    const days: DateTime[] = [];
-    let current = start.startOf('day');
-    const endDay = end.startOf('day');
-    
-    while (current <= endDay) {
-      days.push(current);
-      current = current.plus({ days: 1 });
-    }
-    
-    return days;
-  }
-
-  /**
-   * Converts a calendar event to the user's timezone
-   */
-  static convertEventToUserTimeZone(event: any, userTimezone: string): any {
+  static convertEventToUserTimeZone(event: any, userTimeZone: string): any {
     if (!event) return null;
     
+    const safeZone = this.ensureIANATimeZone(userTimeZone);
+    
+    // Deep clone the event to avoid mutating the original
+    const localEvent = JSON.parse(JSON.stringify(event));
+    
+    // Convert start and end times if they exist in ISO format
+    if (localEvent.start_time_utc) {
+      const startDt = this.fromUTC(localEvent.start_time_utc, safeZone);
+      localEvent.start_time = this.formatTime24(startDt);
+      localEvent.formatted_start_time = this.formatTime(startDt);
+    }
+    
+    if (localEvent.end_time_utc) {
+      const endDt = this.fromUTC(localEvent.end_time_utc, safeZone);
+      localEvent.end_time = this.formatTime24(endDt);
+      localEvent.formatted_end_time = this.formatTime(endDt);
+    }
+    
+    return localEvent;
+  }
+  
+  /**
+   * Get the display name for a timezone
+   */
+  static getTimeZoneDisplayName(timezone: string): string {
+    const safeZone = this.ensureIANATimeZone(timezone);
+    
     try {
-      const safeTimezone = this.ensureIANATimeZone(userTimezone);
+      const now = this.now(safeZone);
+      const abbr = now.toFormat('ZZZZ'); // timezone abbreviation
       
-      // Deep clone the event to avoid modifying the original
-      const localEvent = JSON.parse(JSON.stringify(event));
+      // Format the timezone name more friendly
+      let friendlyName = safeZone.split('/').pop()?.replace('_', ' ');
       
-      // Convert start and end times
-      if (localEvent.start) {
-        const startDt = DateTime.fromISO(localEvent.start);
-        localEvent.start = startDt.setZone(safeTimezone).toISO();
+      if (abbr !== safeZone) {
+        return `${friendlyName} (${abbr})`;
+      } else {
+        return friendlyName || safeZone;
       }
-      
-      if (localEvent.end) {
-        const endDt = DateTime.fromISO(localEvent.end);
-        localEvent.end = endDt.setZone(safeTimezone).toISO();
-      }
-      
-      // Handle legacy event format with start_time and end_time as HH:MM
-      if (event.start_time && event.date) {
-        // Log the original values for debugging
-        console.log(`[TimeZoneService] Converting event from UTC to ${safeTimezone}:`, {
-          originalDate: event.date,
-          originalStartTime: event.start_time,
-          originalEndTime: event.end_time || 'N/A'
-        });
-        
-        // Ensure date is in correct format
-        let dateStr = event.date;
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-          // Try to normalize non-standard date formats
-          const jsDate = new Date(dateStr);
-          if (!isNaN(jsDate.getTime())) {
-            dateStr = jsDate.toISOString().split('T')[0];
-            console.log(`[TimeZoneService] Normalized non-standard date: ${event.date} -> ${dateStr}`);
-          }
-        }
-        
-        // Assuming start_time is in HH:MM format
-        const [startHours, startMinutes] = event.start_time.split(':').map(Number);
-        
-        // Create a DateTime object in UTC first
-        const startDateTime = DateTime.fromISO(`${dateStr}T${event.start_time}:00Z`, { zone: 'utc' });
-        
-        if (!startDateTime.isValid) {
-          console.error(`[TimeZoneService] Invalid start DateTime: ${startDateTime.invalidReason}`);
-        }
-        
-        // Convert to user timezone
-        const localStartDateTime = startDateTime.setZone(safeTimezone);
-        
-        // Update the date based on the localized time (important for timezone boundaries)
-        const normalizedDate = localStartDateTime.toFormat(this.DATE_FORMAT);
-        localEvent.date = normalizedDate;
-        localEvent.start_time = localStartDateTime.toFormat(this.TIME_FORMAT);
-        
-        console.log(`[TimeZoneService] Converted start time:`, {
-          utcDateTime: startDateTime.toISO(),
-          localDateTime: localStartDateTime.toISO(),
-          normalizedDate,
-          localizedStartTime: localEvent.start_time
-        });
-      }
-      
-      if (event.end_time && event.date) {
-        // Assuming end_time is in HH:MM format
-        const [endHours, endMinutes] = event.end_time.split(':').map(Number);
-        
-        // Create a DateTime object in UTC first
-        const endDateTime = DateTime.fromISO(`${event.date}T${event.end_time}:00Z`, { zone: 'utc' });
-        
-        if (!endDateTime.isValid) {
-          console.error(`[TimeZoneService] Invalid end DateTime: ${endDateTime.invalidReason}`);
-        }
-        
-        // Convert to user timezone
-        const localEndDateTime = endDateTime.setZone(safeTimezone);
-        
-        // We already set the date in the start_time block, but set it here too as a fallback
-        if (!localEvent.date) {
-          localEvent.date = localEndDateTime.toFormat(this.DATE_FORMAT);
-        }
-        
-        localEvent.end_time = localEndDateTime.toFormat(this.TIME_FORMAT);
-        
-        console.log(`[TimeZoneService] Converted end time:`, {
-          utcDateTime: endDateTime.toISO(),
-          localDateTime: localEndDateTime.toISO(),
-          localizedEndTime: localEvent.end_time
-        });
-      }
-      
-      return localEvent;
     } catch (error) {
-      console.error('Error converting event to user timezone', error);
-      return event;
+      console.error('Error getting timezone display name:', error);
+      return safeZone;
     }
   }
 }
+
+// Configure Luxon settings globally
+Settings.defaultLocale = 'en';

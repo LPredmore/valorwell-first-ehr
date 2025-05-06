@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -13,8 +12,9 @@ import MyPortal from '@/components/patient/MyPortal';
 import MyProfile from '@/components/patient/MyProfile';
 import MyAppointments from '@/components/patient/MyAppointments';
 import MyInsurance from '@/components/patient/MyInsurance';
-// Import timezoneOptions properly as an ES module
-import { timezoneOptions } from '@/utils/timezoneOptions';
+// Import timezoneOptions and TimeZoneService
+import { timezoneOptions, formatTimezoneForDisplay } from '@/utils/timezoneOptions';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 const PatientDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
@@ -135,6 +135,13 @@ const PatientDashboard: React.FC = () => {
             day: 'numeric'
           });
         }
+        
+        // Make sure we have a proper IANA timezone format stored
+        let clientTimeZone = client.client_time_zone || '';
+        if (clientTimeZone) {
+          clientTimeZone = TimeZoneService.ensureIANATimeZone(clientTimeZone);
+        }
+        
         form.reset({
           firstName: client.client_first_name || '',
           lastName: client.client_last_name || '',
@@ -146,7 +153,8 @@ const PatientDashboard: React.FC = () => {
           gender: client.client_gender || '',
           genderIdentity: client.client_gender_identity || '',
           state: client.client_state || '',
-          timeZone: client.client_time_zone || '',
+          timeZone: clientTimeZone ? formatTimezoneForDisplay(clientTimeZone) : '',
+          // ... keep existing code for insurance fields
           client_insurance_company_primary: client.client_insurance_company_primary || '',
           client_insurance_type_primary: client.client_insurance_type_primary || '',
           client_policy_number_primary: client.client_policy_number_primary || '',
@@ -208,11 +216,24 @@ const PatientDashboard: React.FC = () => {
       });
       return;
     }
-    console.log("Starting save process for client ID:", clientData.id);
+    console.log("Starting save profile process for client ID:", clientData.id);
     setIsSaving(true);
     try {
       const formValues = form.getValues();
       console.log("Form values to save:", formValues);
+      
+      // Extract the IANA timezone from the combined format
+      let timeZoneValue = formValues.timeZone;
+      if (timeZoneValue) {
+        // Extract the IANA timezone from the format "Label (IANA)"
+        const match = timeZoneValue.match(/\(([^)]+)\)$/);
+        if (match && match[1]) {
+          timeZoneValue = match[1];
+        }
+        
+        // Ensure it's a valid IANA timezone
+        timeZoneValue = TimeZoneService.ensureIANATimeZone(timeZoneValue);
+      }
       
       const updates = {
         client_preferred_name: formValues.preferredName,
@@ -220,7 +241,8 @@ const PatientDashboard: React.FC = () => {
         client_gender: formValues.gender,
         client_gender_identity: formValues.genderIdentity,
         client_state: formValues.state,
-        client_time_zone: formValues.timeZone,
+        client_time_zone: timeZoneValue,
+        // ... keep existing code for insurance fields
         client_insurance_company_primary: formValues.client_insurance_company_primary,
         client_insurance_type_primary: formValues.client_insurance_type_primary,
         client_policy_number_primary: formValues.client_policy_number_primary,
