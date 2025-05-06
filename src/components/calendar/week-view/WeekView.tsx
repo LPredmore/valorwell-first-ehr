@@ -15,7 +15,18 @@ import { Loader2 } from 'lucide-react';
 import { useWeekViewData } from './useWeekViewData';
 import TimeSlot from './TimeSlot';
 import { isStartOfBlock, isEndOfBlock, isStartOfAppointment } from './utils';
-import { WeekViewProps } from './types';
+import { Appointment } from '@/types/appointment';
+
+export interface WeekViewProps {
+  currentDate: Date;
+  clinicianId: string | null;
+  refreshTrigger?: number;
+  appointments?: Appointment[];
+  getClientName?: (clientId: string) => string;
+  onAppointmentClick?: (appointment: Appointment) => void;
+  onAvailabilityClick?: (date: Date, availabilityBlock: any) => void;
+  userTimeZone?: string;
+}
 
 const WeekView: React.FC<WeekViewProps> = ({ 
   currentDate, 

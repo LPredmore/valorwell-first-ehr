@@ -1,36 +1,19 @@
 
 import React from 'react';
-import { format, parseISO } from 'date-fns';
 import { Calendar, Clock, UserCircle, Video, FileText, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { Appointment } from '@/types/appointment';
 
 export interface AppointmentCardProps {
-  appointment: {
-    id: string;
-    client_id: string;
-    clinician_id: string;
-    date?: string; // Legacy field, may exist in database
-    start_time?: string; // Legacy field, may exist in database
-    end_time?: string; // Legacy field, may exist in database
-    start_at: string; // UTC timestamp - the source of truth
-    end_at: string; // UTC timestamp - the source of truth
-    type: string;
-    status: string;
-    video_room_url: string | null;
-    client?: {
-      client_first_name: string;
-      client_last_name: string;
-      client_preferred_name: string;
-    };
-  };
+  appointment: Appointment;
   timeZoneDisplay: string;
   userTimeZone: string;
   showStartButton?: boolean;
-  onStartSession?: (appointment: AppointmentCardProps['appointment']) => void;
-  onDocumentSession?: (appointment: AppointmentCardProps['appointment']) => void;
-  onSessionDidNotOccur?: (appointment: AppointmentCardProps['appointment']) => void;
+  onStartSession?: (appointment: Appointment) => void;
+  onDocumentSession?: (appointment: Appointment) => void;
+  onSessionDidNotOccur?: (appointment: Appointment) => void;
 }
 
 export const AppointmentCard: React.FC<AppointmentCardProps> = ({

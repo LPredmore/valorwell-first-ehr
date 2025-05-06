@@ -171,6 +171,24 @@ export class TimeZoneService {
   }
   
   /**
+   * Format time in 24-hour format
+   */
+  static formatTime24(dt: DateTime): string {
+    return this.formatTime(dt, this.TIME_FORMAT_24);
+  }
+  
+  /**
+   * Format just the date portion of a DateTime
+   */
+  static formatDate(dt: DateTime, format: string = this.DATE_FORMAT): string {
+    if (!dt.isValid) {
+      console.error('Attempted to format invalid DateTime', dt.invalidReason, dt.invalidExplanation);
+      return 'Invalid date';
+    }
+    return dt.toFormat(format);
+  }
+  
+  /**
    * Get current DateTime in the specified timezone
    */
   static now(timezone: string = this.DEFAULT_TIMEZONE): DateTime {
@@ -232,6 +250,62 @@ export class TimeZoneService {
       console.error('Error getting timezone display name:', error);
       return safeZone;
     }
+  }
+
+  /**
+   * Convert JavaScript Date to Luxon DateTime in the specified timezone
+   */
+  static fromJSDate(jsDate: Date, timezone: string = this.DEFAULT_TIMEZONE): DateTime {
+    return DateTime.fromJSDate(jsDate).setZone(this.ensureIANATimeZone(timezone));
+  }
+
+  /**
+   * Convert from date string to DateTime object
+   */
+  static fromDateString(dateStr: string, timezone: string = this.DEFAULT_TIMEZONE): DateTime {
+    const safeZone = this.ensureIANATimeZone(timezone);
+    return DateTime.fromISO(dateStr).setZone(safeZone);
+  }
+
+  /**
+   * Create DateTime from date and time strings in specific timezone
+   */
+  static createDateTime(dateStr: string, timeStr: string, timezone: string): DateTime {
+    const safeZone = this.ensureIANATimeZone(timezone);
+    
+    // If time contains seconds, format is 'HH:MM:SS', otherwise 'HH:MM'
+    const format = timeStr.split(':').length > 2 ? 
+      `yyyy-MM-dd'T'HH:mm:ss` : 
+      `yyyy-MM-dd'T'HH:mm`;
+      
+    // Join date and time
+    const dateTimeStr = `${dateStr}T${timeStr}`;
+    
+    const dt = DateTime.fromFormat(dateTimeStr, format, { zone: safeZone });
+    
+    if (!dt.isValid) {
+      console.error(`Invalid date/time: ${dateTimeStr} in timezone ${safeZone}`);
+      console.error(`Reason: ${dt.invalidReason}, ${dt.invalidExplanation}`);
+      // Return current time as fallback
+      return DateTime.now().setZone(safeZone);
+    }
+    
+    return dt;
+  }
+  
+  /**
+   * Convert DateTime between timezones
+   */
+  static convertDateTime(dt: DateTime, fromTimezone: string, toTimezone: string): DateTime {
+    const safeFromZone = this.ensureIANATimeZone(fromTimezone);
+    const safeToZone = this.ensureIANATimeZone(toTimezone);
+    
+    if (!dt.isValid) {
+      console.error('Attempted to convert invalid DateTime', dt.invalidReason, dt.invalidExplanation);
+      return DateTime.now().setZone(safeToZone);
+    }
+    
+    return dt.setZone(safeFromZone).setZone(safeToZone);
   }
 
   // Additional calendar-related methods

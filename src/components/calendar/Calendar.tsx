@@ -4,7 +4,7 @@ import WeekView from './week-view/WeekView';
 import MonthView from './MonthView';
 import ClinicianAvailabilityPanel from './ClinicianAvailabilityPanel';
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { Appointment } from '@/hooks/useAppointments';
+import { Appointment } from '@/types/appointment';
 
 interface CalendarProps {
   view: 'week' | 'month';
@@ -45,26 +45,14 @@ const Calendar = ({
     console.log(`[Calendar] Calendar view: ${view}, timezone: ${validTimeZone}`);
     
     if (appointments.length > 0) {
-      // Check date format consistency
-      const dateFormats = new Set();
-      appointments.forEach(app => {
-        if (typeof app.date === 'string') {
-          dateFormats.add(app.date.includes('T') ? 'ISO format' : 'YYYY-MM-DD format');
-        } else {
-          dateFormats.add(typeof app.date);
-        }
-      });
-      
-      console.log('[Calendar] Appointment date formats:', Array.from(dateFormats));
-      
       // Sample appointments for inspection
       const sampleSize = Math.min(3, appointments.length);
       console.log(`[Calendar] Sample of ${sampleSize} appointments:`);
       appointments.slice(0, sampleSize).forEach((app, idx) => {
         console.log(`[Calendar] Sample appointment ${idx+1}:`, {
           id: app.id,
-          date: app.date,
-          startTime: app.start_time,
+          startAt: app.start_at,
+          endAt: app.end_at,
           clientId: app.client_id,
           clinicianId: app.clinician_id
         });

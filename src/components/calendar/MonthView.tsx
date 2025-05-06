@@ -3,17 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { useMonthViewData } from './useMonthViewData';
 import CalendarGrid from './CalendarGrid';
-
-interface Appointment {
-  id: string;
-  client_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  type: string;
-  status: string;
-  clinician_id?: string;
-}
+import { Appointment } from '@/types/appointment';
 
 interface AvailabilityBlock {
   id: string;
@@ -56,23 +46,12 @@ const MonthView: React.FC<MonthViewProps> = ({
         const app = appointments[i];
         console.log(`[MonthView] Sample appointment ${i+1}/${samplesToLog}:`, {
           id: app.id,
-          date: app.date,
-          startTime: app.start_time,
-          endTime: app.end_time,
-          clinicianId: app.clinician_id || 'Not specified'
+          startAt: app.start_at,
+          endAt: app.end_at,
+          formattedDate: app.formattedDate,
+          formattedStartTime: app.formattedStartTime,
+          formattedEndTime: app.formattedEndTime
         });
-      }
-    }
-    
-    // Check for any potential date format issues
-    if (appointments && appointments.length > 0) {
-      const differentFormats = new Set(
-        appointments.map(app => 
-          typeof app.date === 'string' && app.date.includes('T') ? 'ISO' : 'Simple'
-        )
-      );
-      if (differentFormats.size > 1) {
-        console.warn('[MonthView] WARNING: Mixed date formats detected in appointments array');
       }
     }
   }, [appointments, clinicianId]);
@@ -105,7 +84,7 @@ const MonthView: React.FC<MonthViewProps> = ({
       console.log('[MonthView] Sample days in calendar:', mapKeys);
       
       // Print sample of appointment dates
-      const appDates = appointments.slice(0, 5).map(a => a.date);
+      const appDates = appointments.slice(0, 5).map(a => a.formattedDate);
       console.log('[MonthView] Sample appointment dates:', appDates);
     }
   }, [dayAppointmentsMap, appointments]);

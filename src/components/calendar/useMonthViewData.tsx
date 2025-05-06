@@ -3,17 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { DateTime } from 'luxon';
-
-interface Appointment {
-  id: string;
-  client_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  type: string;
-  status: string;
-  clinician_id?: string;
-}
+import { Appointment } from '@/types/appointment';
 
 interface AvailabilityBlock {
   id: string;
@@ -198,7 +188,7 @@ export const useMonthViewData = (
     return result;
   }, [days, availabilityData]);
 
-  // SIMPLIFIED: Map appointments to days for easy lookup with improved debugging
+  // Map appointments to days for easy lookup with improved debugging
   const dayAppointmentsMap = useMemo(() => {
     const result = new Map<string, Appointment[]>();
     console.log(`[useMonthViewData] Processing ${appointments.length} appointments for month view`);
@@ -210,45 +200,37 @@ export const useMonthViewData = (
       result.set(dayStr, []);
     });
     
-    // Process each appointment with simplified date matching
+    // Process each appointment with UTC timestamps
     appointments.forEach(appointment => {
       try {
-        // Normalize the appointment date to YYYY-MM-DD format for direct string comparison
-        let normalizedDate = appointment.date;
-        if (!normalizedDate) {
-          console.error(`[useMonthViewData] Appointment has no date:`, appointment.id);
+        // If we don't have start_at, skip this appointment
+        if (!appointment.start_at) {
+          console.error(`[useMonthViewData] Appointment ${appointment.id} has no start_at:`, appointment);
           return;
         }
         
-        // Ensure we have a clean YYYY-MM-DD format
-        if (normalizedDate.includes('T')) {
-          normalizedDate = normalizedDate.split('T')[0];
-        }
+        // Get the local date from the UTC timestamp
+        const startDateTime = TimeZoneService.fromUTC(appointment.start_at, userTimeZone);
+        const formattedDate = TimeZoneService.formatDate(startDateTime);
         
         // Log the matching process for debugging
         console.log(`[useMonthViewData] Matching appointment ${appointment.id}:`, {
-          appointmentDate: normalizedDate,
-          availableDays: Array.from(result.keys()),
+          startAt: appointment.start_at,
+          formattedDate: formattedDate,
+          availableDays: Array.from(result.keys()).slice(0, 5), // Show first 5 days
         });
         
-        // Direct map lookup by normalized date string - much simpler!
-        if (result.has(normalizedDate)) {
-          result.get(normalizedDate)!.push(appointment);
-          console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched to ${normalizedDate}`);
+        // Direct map lookup by formatted date string
+        if (result.has(formattedDate)) {
+          result.get(formattedDate)!.push(appointment);
+          console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched to ${formattedDate}`);
         } else {
-          console.log(`[useMonthViewData] ❌ No matching day found for appointment ${appointment.id} with date ${normalizedDate}`);
+          console.log(`[useMonthViewData] ❌ No matching day found for appointment ${appointment.id} with date ${formattedDate}`);
           
-          // Additional attempt: try parsing with DateTime just in case
-          try {
-            const parsedDate = TimeZoneService.fromDateString(normalizedDate);
-            const formattedDate = TimeZoneService.formatDate(parsedDate);
-            
-            if (result.has(formattedDate)) {
-              result.get(formattedDate)!.push(appointment);
-              console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched to ${formattedDate} after parsing`);
-            }
-          } catch (e) {
-            console.error(`[useMonthViewData] Failed to parse date alternative:`, e);
+          // Additional attempt: try using the legacy date field if available
+          if (appointment.date && result.has(appointment.date)) {
+            result.get(appointment.date)!.push(appointment);
+            console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched using legacy date field: ${appointment.date}`);
           }
         }
       } catch (error) {
@@ -268,7 +250,7 @@ export const useMonthViewData = (
     console.log(`[useMonthViewData] Total appointments mapped: ${appointmentCount}`);
     
     return result;
-  }, [days, appointments]);
+  }, [days, appointments, userTimeZone]);
 
   return {
     loading,

@@ -5,6 +5,7 @@ import Calendar from './Calendar';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { Appointment } from '@/types/appointment';
 
 interface CalendarViewProps {
   view: 'week' | 'month';
@@ -59,31 +60,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         appointments.slice(0, 3).forEach((appointment, index) => {
           console.log(`[CalendarView] Appointment #${index + 1}:`, {
             id: appointment.id,
-            date: appointment.date,
-            dateType: typeof appointment.date,
-            start_time: appointment.start_time,
-            end_time: appointment.end_time,
-            start_at: appointment.start_at,
-            end_at: appointment.end_at,
-            client_id: appointment.client_id,
-            clinician_id: appointment.clinician_id
+            startAt: appointment.start_at,
+            endAt: appointment.end_at,
+            clientId: appointment.client_id,
+            clinicianId: appointment.clinician_id
           });
         });
-        
-        // Check for any date format inconsistencies
-        const dateFormatsFound = new Set();
-        appointments.forEach(app => {
-          if (typeof app.date === 'string') {
-            dateFormatsFound.add(app.date.includes('T') ? 'ISO' : 'YYYY-MM-DD');
-          } else {
-            dateFormatsFound.add(typeof app.date);
-          }
-        });
-        
-        if (dateFormatsFound.size > 1) {
-          console.warn(`[CalendarView] WARNING: Mixed date formats detected in appointments:`, 
-            Array.from(dateFormatsFound));
-        }
       }
     }
   }, [appointments, formattedClinicianId, error]);
@@ -117,45 +99,35 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     );
   }
   
-  // Process appointments with timezone awareness
+  // Process appointments with timezone awareness - add both UTC and display fields
   const processedAppointments = appointments.map(appointment => {
-    // Ensure date is in YYYY-MM-DD format for consistent comparison
-    let normalizedDate = appointment.date;
-    
-    // Handle ISO format dates (with T)
-    if (typeof normalizedDate === 'string' && normalizedDate.includes('T')) {
-      normalizedDate = normalizedDate.split('T')[0];
-    }
-    
-    // Use the UTC timestamps if available for most accurate timezone handling
+    // Use the UTC timestamps for accurate timezone handling
     if (appointment.start_at && appointment.end_at) {
       const startDateTime = TimeZoneService.fromUTC(appointment.start_at, validTimeZone);
       const endDateTime = TimeZoneService.fromUTC(appointment.end_at, validTimeZone);
       
       // Format the local times for this timezone
-      const localStartTime = TimeZoneService.formatTime24(startDateTime);
-      const localEndTime = TimeZoneService.formatTime24(endDateTime);
+      const formattedDate = TimeZoneService.formatDate(startDateTime);
+      const formattedStartTime = TimeZoneService.formatTime24(startDateTime);
+      const formattedEndTime = TimeZoneService.formatTime24(endDateTime);
       
-      console.log(`[CalendarView] Using UTC timestamps for appointment ${appointment.id}:`, {
-        utcStart: appointment.start_at,
-        utcEnd: appointment.end_at,
-        localStartTime,
-        localEndTime,
-        timezone: validTimeZone
-      });
-      
-      return {
+      // Add both legacy fields and formatted fields
+      const processedAppointment: Appointment = {
         ...appointment,
-        date: normalizedDate,
-        start_time: localStartTime,
-        end_time: localEndTime
+        // Legacy fields for compatibility
+        date: formattedDate,
+        start_time: formattedStartTime,
+        end_time: formattedEndTime,
+        // Formatted fields for display
+        formattedDate,
+        formattedStartTime,
+        formattedEndTime
       };
+      
+      return processedAppointment;
     }
     
-    return {
-      ...appointment,
-      date: normalizedDate
-    };
+    return appointment;
   });
   
   console.log(`[CalendarView] Rendering calendar with ${processedAppointments.length} processed appointments`);
