@@ -47,11 +47,12 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
 
   // For appointments, create a continuous effect
   if (appointment) {
-    const appointmentClass = isStartOfAppointment 
+    // Create appointment class conditionally instead of modifying after declaration
+    let appointmentClass = isStartOfAppointment 
       ? "rounded-t border-b-0" 
       : "border-t-0 border-b-0";
       
-    // For the last slot of an appointment, add rounded bottom
+    // Add rounded bottom class if it's the end of the block
     if (isEndOfBlock) {
       appointmentClass += " rounded-b";
     }
