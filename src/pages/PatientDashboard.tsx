@@ -30,8 +30,9 @@ const PatientDashboard: React.FC = () => {
   const genderIdentityOptions = ['Male', 'Female', 'Trans Man', 'Trans Woman', 'Non-Binary', 'Other', 'Prefer not to say'];
   const stateOptions = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'];
   
-  // Use the imported timezoneOptions directly
-  const timeZoneOptions = timezoneOptions.map(tz => ({ value: tz.value, label: tz.label }));
+  // Create timeZoneOptions with the correct type annotation for MyProfile component
+  // This creates an array of strings from the imported timezoneOptions objects
+  const timeZoneOptions: string[] = timezoneOptions.map(tz => `${tz.label} (${tz.value})`);
   
   const insuranceTypes = ['PPO', 'HMO', 'EPO', 'POS', 'HDHP', 'Medicare', 'Medicaid', 'Other'];
   const relationshipTypes = ['Self', 'Spouse', 'Child', 'Other'];
