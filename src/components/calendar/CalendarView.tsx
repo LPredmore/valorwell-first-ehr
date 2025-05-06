@@ -64,31 +64,6 @@ const Calendar = ({
     }
   }, [appointments, clinicianId, error, view, validTimeZone]);
 
-  // Process appointments with timezone awareness - add display fields only
-  const processedAppointments = appointments.map(appointment => {
-    // Use the UTC timestamps for accurate timezone handling
-    if (appointment.start_at && appointment.end_at) {
-      const startDateTime = TimeZoneService.fromUTC(appointment.start_at, validTimeZone);
-      const endDateTime = TimeZoneService.fromUTC(appointment.end_at, validTimeZone);
-      
-      // Format the local times for this timezone
-      const formattedDate = TimeZoneService.formatDate(startDateTime);
-      const formattedStartTime = TimeZoneService.formatTime24(startDateTime);
-      const formattedEndTime = TimeZoneService.formatTime24(endDateTime);
-      
-      // Return appointment with formatted display fields only
-      return {
-        ...appointment,
-        formattedDate,
-        formattedStartTime,
-        formattedEndTime,
-        formattedStartDate: formattedDate // Add this for consistent API
-      };
-    }
-    
-    return appointment;
-  });
-
   // Function to get client name from an appointment
   const getClientName = (clientId: string): string => {
     const appointment = appointments.find(app => app.client_id === clientId);
@@ -123,7 +98,7 @@ const Calendar = ({
             currentDate={currentDate}
             clinicianId={clinicianId}
             refreshTrigger={refreshTrigger}
-            appointments={processedAppointments}
+            appointments={appointments}
             getClientName={getClientName}
             onAppointmentClick={handleAppointmentClick}
             onAvailabilityClick={handleAvailabilityClick}
@@ -134,7 +109,7 @@ const Calendar = ({
             currentDate={currentDate}
             clinicianId={clinicianId}
             refreshTrigger={refreshTrigger}
-            appointments={processedAppointments}
+            appointments={appointments}
             getClientName={getClientName}
             onAppointmentClick={handleAppointmentClick}
             onAvailabilityClick={handleAvailabilityClick}
