@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
@@ -120,11 +119,21 @@ const MonthView: React.FC<MonthViewProps> = ({
     );
   }
 
+  // Make sure days is an array of JavaScript Date objects, not Luxon DateTime objects
+  const jsDateDays = days.map(day => {
+    // Check if the day is already a JavaScript Date object
+    if (day instanceof Date) {
+      return day;
+    }
+    // Otherwise, convert it from Luxon DateTime to JavaScript Date
+    return new Date(day.toMillis());
+  });
+
   return (
     <Card className="p-4">
       <CalendarGrid
-        days={days}
-        monthStart={monthStart}
+        days={jsDateDays}
+        monthStart={monthStart instanceof Date ? monthStart : new Date(monthStart.toMillis())}
         dayAvailabilityMap={dayAvailabilityMap}
         dayAppointmentsMap={dayAppointmentsMap}
         availabilityByDay={availabilityByDay}

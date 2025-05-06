@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -199,13 +198,13 @@ export const useMonthViewData = (
   }, [days, availabilityData]);
 
   // SIMPLIFIED: Map appointments to days for easy lookup with improved debugging
-  // This is the key part that's been simplified for more reliable appointment display
   const dayAppointmentsMap = useMemo(() => {
     const result = new Map<string, Appointment[]>();
     console.log(`[useMonthViewData] Processing ${appointments.length} appointments for month view`);
     
     // Create a map of formatted dates to store appointments
     days.forEach(day => {
+      // Convert Luxon DateTime to YYYY-MM-DD format string
       const dayStr = TimeZoneService.formatDate(day);
       result.set(dayStr, []);
     });
@@ -273,7 +272,7 @@ export const useMonthViewData = (
   return {
     loading,
     monthStart,
-    days: days.map(d => d.toJSDate()), // Convert DateTime objects back to JS Dates for compatibility
+    days,  // Return the Luxon DateTime objects directly
     dayAvailabilityMap,
     dayAppointmentsMap,
     availabilityByDay
