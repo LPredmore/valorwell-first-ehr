@@ -45,31 +45,38 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
     }
   }
 
-  // For appointments, create a continuous effect
+  // For appointments, handle continuous styling
   if (appointment) {
-    // Create appointment class conditionally instead of modifying after declaration
-    let appointmentClass = isStartOfAppointment 
-      ? "rounded-t border-b-0" 
-      : "border-t-0 border-b-0";
-      
-    // Add rounded bottom class if it's the end of the block
+    // Find the corresponding original appointment
+    const originalAppointment = originalAppointments.find(app => 
+      app.id === appointment.id
+    );
+    
+    // Define appointment styling conditionally with "let" instead of "const" 
+    let appointmentClass = "";
+    
+    // Add appropriate rounding and borders based on position in appointment
+    if (isStartOfAppointment) {
+      appointmentClass = "rounded-t border-b-0";
+    } else {
+      appointmentClass = "border-t-0"; 
+    }
+    
+    // Add rounded bottom if it's the end of the appointment
     if (isEndOfBlock) {
-      appointmentClass += " rounded-b";
+      appointmentClass += " rounded-b border-b";
+    } else {
+      appointmentClass += " border-b-0";
     }
 
     // Render the start of an appointment with client name
     if (isStartOfAppointment) {
       return (
         <div 
-          className="p-1 bg-blue-100 border-l-4 border-blue-500 rounded-t h-full text-xs font-medium truncate cursor-pointer hover:bg-blue-200 transition-colors"
+          className={`p-1 bg-blue-100 border-l-4 border-blue-500 ${appointmentClass} h-full text-xs font-medium truncate cursor-pointer hover:bg-blue-200 transition-colors`}
           onClick={() => {
-            if (onAppointmentClick) {
-              const originalAppointment = originalAppointments.find(app => 
-                app.id === appointment.id
-              );
-              if (originalAppointment) {
-                onAppointmentClick(originalAppointment);
-              }
+            if (onAppointmentClick && originalAppointment) {
+              onAppointmentClick(originalAppointment);
             }
           }}
         >
@@ -81,15 +88,10 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
     // Render continuation of appointment without visual break
     return (
       <div 
-        className={`p-1 bg-blue-100 border-l-4 border-blue-500 border-t-0 h-full text-xs opacity-75 cursor-pointer hover:bg-blue-200 transition-colors ${isEndOfBlock ? 'rounded-b' : ''}`}
+        className={`p-1 bg-blue-100 border-l-4 border-blue-500 ${appointmentClass} h-full text-xs opacity-75 cursor-pointer hover:bg-blue-200 transition-colors`}
         onClick={() => {
-          if (onAppointmentClick) {
-            const originalAppointment = originalAppointments.find(app => 
-              app.id === appointment.id
-            );
-            if (originalAppointment) {
-              onAppointmentClick(originalAppointment);
-            }
+          if (onAppointmentClick && originalAppointment) {
+            onAppointmentClick(originalAppointment);
           }
         }}
       >
@@ -100,9 +102,11 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
   
   // For availability blocks, create a continuous effect
   if (isAvailable) {
+    const availabilityBaseClass = currentBlock?.isException ? 'bg-teal-100 border-teal-500' : 'bg-green-100 border-green-500';
+    
     return (
       <div
-        className={`p-1 ${currentBlock?.isException ? 'bg-teal-100 border-teal-500' : 'bg-green-100 border-green-500'} border-l-4 ${continuousBlockClass} h-full text-xs cursor-pointer`}
+        className={`p-1 ${availabilityBaseClass} border-l-4 ${continuousBlockClass} h-full text-xs cursor-pointer hover:bg-opacity-80 transition-colors`}
         onClick={() => currentBlock && handleAvailabilityBlockClick(day, currentBlock)}
       >
         {isStartOfBlock && (
@@ -117,6 +121,7 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
     );
   }
   
+  // Default empty cell with faded "Unavailable" text on hover
   return (
     <div className="h-full w-full opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-gray-400">
       Unavailable
