@@ -30,6 +30,14 @@ interface AppointmentDialogProps {
   onAppointmentCreated: () => void;
 }
 
+// Helper function to ensure consistent ID format
+const ensureStringId = (id: string | null): string | null => {
+  if (!id) return null;
+  
+  // Ensure the ID is a clean string without any format issues
+  return id.toString().trim();
+};
+
 const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   isOpen,
   onClose,
@@ -45,17 +53,21 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   const [recurrenceType, setRecurrenceType] = useState<string>('weekly');
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
+  
+  // Format the clinician ID for consistent comparison
+  const formattedClinicianId = ensureStringId(selectedClinicianId);
 
   // Log when dialog opens with crucial info
   useEffect(() => {
     if (isOpen) {
       console.log('AppointmentDialog opened with state:', { 
-        selectedClinicianId,
+        rawClinicianId: selectedClinicianId,
+        formattedClinicianId,
         initialClientsLength: initialClients?.length || 0,
         initialLoadingClients
       });
     }
-  }, [isOpen, selectedClinicianId, initialClients, initialLoadingClients]);
+  }, [isOpen, selectedClinicianId, formattedClinicianId, initialClients, initialLoadingClients]);
 
   // Reset form values when dialog opens/closes and set initial clients from props
   useEffect(() => {
@@ -81,7 +93,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
 
   // Only fetch clients if needed (not provided in props or empty)
   const fetchClientsIfNeeded = async () => {
-    if (!selectedClinicianId || !isOpen) {
+    if (!formattedClinicianId || !isOpen) {
       console.log('Not fetching clients: clinicianId is null or dialog not open');
       return;
     }
@@ -91,14 +103,15 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
       return;
     }
     
-    console.log('Fetching clients for clinician:', selectedClinicianId);
+    console.log('Fetching clients for clinician with ID:', formattedClinicianId);
     setLoadingClients(true);
     
     try {
+      // Use text comparison since client_assigned_therapist is a TEXT column
       const { data, error } = await supabase
         .from('clients')
         .select('id, client_first_name, client_preferred_name, client_last_name')
-        .eq('client_assigned_therapist', selectedClinicianId)
+        .eq('client_assigned_therapist', formattedClinicianId)
         .order('client_last_name');
         
       if (error) {
@@ -110,10 +123,11 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
         });
       } else {
         console.log('Clients fetched successfully:', data);
-        console.log('Selected clinician ID used for query:', selectedClinicianId);
+        console.log('Selected clinician ID used for query:', formattedClinicianId);
         
         if (data.length === 0) {
-          console.log('No clients found for this clinician');
+          console.log('No clients found for this clinician ID:', formattedClinicianId);
+          console.log('Database query returned empty result for clinician_id:', formattedClinicianId);
         }
         
         const formattedClients = data.map(client => ({
@@ -179,7 +193,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   };
 
   const handleCreateAppointment = async () => {
-    if (!selectedClientId || !selectedDate || !startTime || !selectedClinicianId) {
+    if (!selectedClientId || !selectedDate || !startTime || !formattedClinicianId) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
@@ -204,7 +218,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
         
         const appointmentsToInsert = recurringDates.map(date => ({
           client_id: selectedClientId,
-          clinician_id: selectedClinicianId,
+          clinician_id: formattedClinicianId,
           date: format(date, 'yyyy-MM-dd'),
           start_time: startTime,
           end_time: endTime,
@@ -233,7 +247,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           .from('appointments')
           .insert([{
             client_id: selectedClientId,
-            clinician_id: selectedClinicianId,
+            clinician_id: formattedClinicianId,
             date: formattedDate,
             start_time: startTime,
             end_time: endTime,
@@ -274,7 +288,8 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   // Debugging info
   console.log('AppointmentDialog render state:', {
     isOpen,
-    selectedClinicianId,
+    rawClinicianId: selectedClinicianId,
+    formattedClinicianId,
     loadingClients,
     clientsCount: clients.length,
     clients

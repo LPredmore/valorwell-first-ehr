@@ -9,6 +9,14 @@ interface Client {
   displayName: string;
 }
 
+// Helper function to ensure consistent ID format
+const ensureStringId = (id: string | null): string | null => {
+  if (!id) return null;
+  
+  // Ensure the ID is a clean string without any format issues
+  return id.toString().trim();
+};
+
 export const useCalendarState = (initialClinicianId: string | null = null) => {
   const [view, setView] = useState<'week' | 'month'>('week');
   const [showAvailability, setShowAvailability] = useState(false);
@@ -24,13 +32,15 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
   const [userTimeZone, setUserTimeZone] = useState<string>('');
 
+  const formattedClinicianId = ensureStringId(selectedClinicianId);
+  
   // Fetch clinician timezone
   useEffect(() => {
     const fetchClinicianTimeZone = async () => {
-      if (selectedClinicianId) {
+      if (formattedClinicianId) {
         setIsLoadingTimeZone(true);
         try {
-          const timeZone = await getClinicianTimeZone(selectedClinicianId);
+          const timeZone = await getClinicianTimeZone(formattedClinicianId);
           console.log("Fetched clinician timezone:", timeZone);
           setClinicianTimeZone(timeZone);
         } catch (error) {
@@ -42,7 +52,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     };
     
     fetchClinicianTimeZone();
-  }, [selectedClinicianId]);
+  }, [formattedClinicianId]);
 
   // Set user timezone
   useEffect(() => {
@@ -86,29 +96,32 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   // Load clients for selected clinician
   useEffect(() => {
     const fetchClientsForClinician = async () => {
-      if (!selectedClinicianId) {
+      if (!formattedClinicianId) {
         console.log('Not fetching clients: clinicianId is null');
         return;
       }
       
-      console.log('useCalendarState - Fetching clients for clinician:', selectedClinicianId);
+      console.log('useCalendarState - Fetching clients for clinician:', formattedClinicianId);
       setLoadingClients(true);
       setClients([]);
       
       try {
+        // Use text comparison since client_assigned_therapist is a TEXT column
         const { data, error } = await supabase
           .from('clients')
           .select('id, client_first_name, client_preferred_name, client_last_name')
-          .eq('client_assigned_therapist', selectedClinicianId)
+          .eq('client_assigned_therapist', formattedClinicianId)
           .order('client_last_name');
           
         if (error) {
           console.error('Error fetching clients:', error);
         } else {
           console.log('useCalendarState - Clients fetched successfully:', data);
+          console.log('useCalendarState - formattedClinicianId used for query:', formattedClinicianId);
           
           if (data.length === 0) {
-            console.log('useCalendarState - No clients found for clinician:', selectedClinicianId);
+            console.log('useCalendarState - No clients found for clinician:', formattedClinicianId);
+            console.log('useCalendarState - Database query returned empty for client_assigned_therapist:', formattedClinicianId);
           }
           
           const formattedClients = data.map(client => ({
@@ -126,7 +139,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     };
 
     fetchClientsForClinician();
-  }, [selectedClinicianId]);
+  }, [formattedClinicianId]);
 
   return {
     view,
