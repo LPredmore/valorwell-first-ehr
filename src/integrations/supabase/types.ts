@@ -71,6 +71,7 @@ export type Database = {
           date: string
           denial_details_json: Json | null
           diagnosis_code_pointers: string | null
+          end_at: string | null
           end_time: string
           era_check_eft_number: string | null
           era_claimmd_id: string | null
@@ -89,6 +90,7 @@ export type Database = {
           place_of_service_code: string | null
           recurring_group_id: string | null
           requires_billing_review: boolean | null
+          start_at: string | null
           start_time: string
           status: string
           stripe_charge_ids: string[] | null
@@ -113,6 +115,7 @@ export type Database = {
           date: string
           denial_details_json?: Json | null
           diagnosis_code_pointers?: string | null
+          end_at?: string | null
           end_time: string
           era_check_eft_number?: string | null
           era_claimmd_id?: string | null
@@ -131,6 +134,7 @@ export type Database = {
           place_of_service_code?: string | null
           recurring_group_id?: string | null
           requires_billing_review?: boolean | null
+          start_at?: string | null
           start_time: string
           status?: string
           stripe_charge_ids?: string[] | null
@@ -155,6 +159,7 @@ export type Database = {
           date?: string
           denial_details_json?: Json | null
           diagnosis_code_pointers?: string | null
+          end_at?: string | null
           end_time?: string
           era_check_eft_number?: string | null
           era_claimmd_id?: string | null
@@ -173,6 +178,7 @@ export type Database = {
           place_of_service_code?: string | null
           recurring_group_id?: string | null
           requires_billing_review?: boolean | null
+          start_at?: string | null
           start_time?: string
           status?: string
           stripe_charge_ids?: string[] | null
@@ -2070,6 +2076,10 @@ export type Database = {
       check_table_exists: {
         Args: { check_table_name: string }
         Returns: boolean
+      }
+      convert_appointment_times_to_utc: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       create_or_replace_check_table_exists_function: {
         Args: Record<PropertyKey, never>

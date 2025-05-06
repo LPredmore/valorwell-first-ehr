@@ -26,6 +26,8 @@ interface PastAppointment {
   therapist: string;
   rawDate?: string;
   status?: string;
+  start_at?: string;
+  end_at?: string;
 }
 
 interface MyAppointmentsProps {
@@ -80,7 +82,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
         
         // Safely set the client timezone with fallback
         if (client?.client_time_zone) {
-          const safeTimezone = ensureIANATimeZone(client.client_time_zone);
+          const safeTimezone = TimeZoneService.ensureIANATimeZone(client.client_time_zone);
           console.log(`Setting client timezone from database: ${client.client_time_zone} → ${safeTimezone}`);
           setClientTimeZone(safeTimezone);
         } else {
@@ -156,10 +158,15 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
                 console.error('Error parsing appointment date:', dateError, { date: appointment.date });
               }
               
-              // Format time safely
+              // Format time safely, preferring UTC timestamps if available
               let formattedTime = 'Time unavailable';
               try {
-                if (appointment.start_time) {
+                if (appointment.start_at) {
+                  // Use the UTC timestamp for most accurate timezone conversion
+                  const startDateTime = TimeZoneService.fromUTC(appointment.start_at, clientTimeZone);
+                  formattedTime = TimeZoneService.formatTime(startDateTime);
+                  console.log(`Formatted UTC time for appointment ${appointment.id}: ${formattedTime}`);
+                } else if (appointment.start_time) {
                   formattedTime = formatTimeInUserTimeZone(
                     appointment.start_time,
                     clientTimeZone,
@@ -186,7 +193,9 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
                 therapist: clinicianName || 'Your Therapist',
                 rawDate: appointment.date,
                 rawTime: appointment.start_time,
-                status: appointment.status
+                status: appointment.status,
+                start_at: appointment.start_at,
+                end_at: appointment.end_at
               };
             } catch (error) {
               console.error('Error processing appointment:', error, appointment);
@@ -261,7 +270,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
           <div className="py-6 text-center">Loading past appointments...</div>
         ) : pastAppointments.length > 0 ? (
           <div>
-            <p className="text-sm text-gray-500 mb-2">All times shown in {getTimeZoneDisplayName(clientTimeZone)} ({timeZoneDisplay})</p>
+            <p className="text-sm text-gray-500 mb-2">All times shown in {TimeZoneService.getTimeZoneDisplayName(clientTimeZone)} ({timeZoneDisplay})</p>
             <Table>
               <TableHeader>
                 <TableRow>

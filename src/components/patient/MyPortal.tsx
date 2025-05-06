@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, startOfToday, isBefore, isToday } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import VideoChat from '@/components/video/VideoChat';
-import { getUserTimeZone, formatTimeZoneDisplay, formatTimeInUserTimeZone, formatTime12Hour, ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import { getUserTimeZone, formatTimeZoneDisplay, formatTimeInUserTimeZone, formatTime12Hour, ensureIANATimeZone, TimeZoneService } from '@/utils/timeZoneUtils';
 import PHQ9Template from '@/components/templates/PHQ9Template';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -22,6 +22,9 @@ interface Appointment {
   type: string;
   therapist: string;
   rawDate?: string;
+  rawTime?: string;
+  start_at?: string;
+  end_at?: string;
 }
 
 interface MyPortalProps {
@@ -50,7 +53,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
     toast
   } = useToast();
 
-  const clientTimeZone = ensureIANATimeZone(clientData?.client_time_zone || getUserTimeZone());
+  const clientTimeZone = TimeZoneService.ensureIANATimeZone(clientData?.client_time_zone || getUserTimeZone());
 
   useEffect(() => {
     const fetchClinicianData = async () => {
@@ -86,11 +89,13 @@ const MyPortal: React.FC<MyPortalProps> = ({
         const {
           data,
           error
-        } = await supabase.from('appointments').select('*').eq('client_id', clientData.id).eq('status', 'scheduled').gte('date', todayStr).order('date', {
-          ascending: true
-        }).order('start_time', {
-          ascending: true
-        });
+        } = await supabase.from('appointments').select('*')
+          .eq('client_id', clientData.id)
+          .eq('status', 'scheduled')
+          .gte('date', todayStr)
+          .order('date', { ascending: true })
+          .order('start_time', { ascending: true });
+          
         if (error) {
           console.error('Error fetching appointments:', error);
           return;
@@ -100,22 +105,30 @@ const MyPortal: React.FC<MyPortalProps> = ({
           const formattedAppointments = data.map(appointment => {
             try {
               const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
-
+              
               let formattedTime = '';
               try {
-                // Use the appointment's actual date when formatting the time
-                formattedTime = formatTimeInUserTimeZone(
-                  appointment.start_time, 
-                  clientTimeZone,
-                  'h:mm a',
-                  appointment.date // Pass the appointment date
-                );
-                console.log(`Formatted time for ${appointment.start_time} on ${appointment.date}: ${formattedTime}`);
+                // Try to use UTC timestamps for most accurate timezone conversion if available
+                if (appointment.start_at) {
+                  const startDateTime = TimeZoneService.fromUTC(appointment.start_at, clientTimeZone);
+                  formattedTime = TimeZoneService.formatTime(startDateTime);
+                  console.log(`Formatted UTC time for ${appointment.id}: ${formattedTime}`);
+                } else {
+                  // Fall back to date/time string formatting
+                  formattedTime = formatTimeInUserTimeZone(
+                    appointment.start_time, 
+                    clientTimeZone,
+                    'h:mm a',
+                    appointment.date
+                  );
+                  console.log(`Formatted time for ${appointment.start_time} on ${appointment.date}: ${formattedTime}`);
+                }
               } catch (error) {
                 console.error('Error formatting time:', error, {
                   date: appointment.date,
                   time: appointment.start_time,
-                  timezone: clientTimeZone
+                  timezone: clientTimeZone,
+                  utcStart: appointment.start_at
                 });
                 formattedTime = formatTime12Hour(appointment.start_time) || 'Time unavailable';
               }
@@ -126,7 +139,9 @@ const MyPortal: React.FC<MyPortalProps> = ({
                 type: appointment.type,
                 therapist: clinicianName || 'Your Therapist',
                 rawDate: appointment.date,
-                rawTime: appointment.start_time
+                rawTime: appointment.start_time,
+                start_at: appointment.start_at,
+                end_at: appointment.end_at
               };
             } catch (error) {
               console.error('Error processing appointment:', error, appointment);
@@ -221,14 +236,14 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const todayAppointments = upcomingAppointments.filter(appointment => isAppointmentToday(appointment.rawDate));
   const futureAppointments = upcomingAppointments.filter(appointment => !isAppointmentToday(appointment.rawDate));
 
-  return <div className="grid grid-cols-1 gap-6">
+  return (
+    <div className="grid grid-cols-1 gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
             <CardTitle>Today's Appointments</CardTitle>
             <CardDescription>Sessions scheduled for today</CardDescription>
           </div>
-          
         </CardHeader>
         <CardContent>
           {todayAppointments.length > 0 ? <Table>
@@ -343,7 +358,8 @@ const MyPortal: React.FC<MyPortalProps> = ({
       {showPHQ9 && <PHQ9Template onClose={() => setShowPHQ9(false)} clinicianName={clinicianName || "Your Therapist"} clientData={clientData} onComplete={handlePHQ9Complete} />}
 
       {videoRoomUrl && <VideoChat roomUrl={videoRoomUrl} isOpen={isVideoSessionOpen} onClose={handleCloseVideoSession} />}
-    </div>;
+    </div>
+  );
 };
 
 export default MyPortal;

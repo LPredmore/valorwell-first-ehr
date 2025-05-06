@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { format, isToday, isFuture, parseISO, isBefore } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
@@ -13,6 +12,8 @@ export interface Appointment {
   date: string;
   start_time: string;
   end_time: string;
+  start_at?: string;
+  end_at?: string;
   type: string;
   status: string;
   appointment_recurring?: string | null;
@@ -69,6 +70,8 @@ export const useAppointments = (
             date,
             start_time,
             end_time,
+            start_at,
+            end_at,
             type,
             status,
             appointment_recurring,
@@ -84,6 +87,7 @@ export const useAppointments = (
           .eq('clinician_id', formattedClinicianId);
         
         if (fromDate) {
+          // If we have UTC timestamps, use those for more accurate filtering
           query = query.gte('date', format(fromDate, 'yyyy-MM-dd'));
         }
         
@@ -111,15 +115,17 @@ export const useAppointments = (
           client: appointment.clients
         }));
         
-        console.log(`[useAppointments] Retrieved ${processedAppointments.length} appointments for clinician ${formattedClinicianId}`, processedAppointments);
+        console.log(`[useAppointments] Retrieved ${processedAppointments.length} appointments for clinician ${formattedClinicianId}`);
         
-        // Log the first appointment for debugging
+        // Sample appointments for debugging
         if (processedAppointments.length > 0) {
           const firstAppointment = processedAppointments[0];
           console.log('[useAppointments] Example appointment:', {
             id: firstAppointment.id,
             date: firstAppointment.date,
             time: `${firstAppointment.start_time} - ${firstAppointment.end_time}`,
+            utcStart: firstAppointment.start_at,
+            utcEnd: firstAppointment.end_at,
             clinicianId: firstAppointment.clinician_id,
             clientId: firstAppointment.client_id,
             client: firstAppointment.client ? 
@@ -160,6 +166,26 @@ export const useAppointments = (
   // Create a new appointment
   const createAppointment = async (appointmentData: Partial<Appointment>) => {
     try {
+      // Add UTC timestamps if not present but date and time are
+      if (!appointmentData.start_at && appointmentData.date && appointmentData.start_time) {
+        // Use TimeZoneService to convert local date and time to UTC
+        const userTimezone = appointmentData.timezone || TimeZoneService.DEFAULT_TIMEZONE;
+        const startDateTime = TimeZoneService.createDateTime(
+          appointmentData.date, 
+          appointmentData.start_time, 
+          userTimezone
+        );
+        const endDateTime = TimeZoneService.createDateTime(
+          appointmentData.date, 
+          appointmentData.end_time as string, 
+          userTimezone
+        );
+        
+        // Convert to ISO strings for storage
+        appointmentData.start_at = startDateTime.toUTC().toISO();
+        appointmentData.end_at = endDateTime.toUTC().toISO();
+      }
+      
       const { data, error } = await supabase
         .from('appointments')
         .insert([appointmentData])

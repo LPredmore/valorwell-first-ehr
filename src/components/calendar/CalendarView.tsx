@@ -63,6 +63,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             dateType: typeof appointment.date,
             start_time: appointment.start_time,
             end_time: appointment.end_time,
+            start_at: appointment.start_at,
+            end_at: appointment.end_at,
             client_id: appointment.client_id,
             clinician_id: appointment.clinician_id
           });
@@ -115,8 +117,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     );
   }
   
-  // Ensure we have a normalized array of appointments
-  const normalizedAppointments = appointments.map(appointment => {
+  // Process appointments with timezone awareness
+  const processedAppointments = appointments.map(appointment => {
     // Ensure date is in YYYY-MM-DD format for consistent comparison
     let normalizedDate = appointment.date;
     
@@ -125,13 +127,38 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       normalizedDate = normalizedDate.split('T')[0];
     }
     
+    // Use the UTC timestamps if available for most accurate timezone handling
+    if (appointment.start_at && appointment.end_at) {
+      const startDateTime = TimeZoneService.fromUTC(appointment.start_at, validTimeZone);
+      const endDateTime = TimeZoneService.fromUTC(appointment.end_at, validTimeZone);
+      
+      // Format the local times for this timezone
+      const localStartTime = TimeZoneService.formatTime24(startDateTime);
+      const localEndTime = TimeZoneService.formatTime24(endDateTime);
+      
+      console.log(`[CalendarView] Using UTC timestamps for appointment ${appointment.id}:`, {
+        utcStart: appointment.start_at,
+        utcEnd: appointment.end_at,
+        localStartTime,
+        localEndTime,
+        timezone: validTimeZone
+      });
+      
+      return {
+        ...appointment,
+        date: normalizedDate,
+        start_time: localStartTime,
+        end_time: localEndTime
+      };
+    }
+    
     return {
       ...appointment,
       date: normalizedDate
     };
   });
   
-  console.log(`[CalendarView] Rendering calendar with ${normalizedAppointments.length} normalized appointments`);
+  console.log(`[CalendarView] Rendering calendar with ${processedAppointments.length} processed appointments`);
   
   return (
     <Calendar 
@@ -141,7 +168,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       currentDate={currentDate}
       userTimeZone={validTimeZone}
       refreshTrigger={refreshTrigger}
-      appointments={normalizedAppointments}
+      appointments={processedAppointments}
       isLoading={false}
       error={null}
     />
