@@ -54,7 +54,8 @@ const Calendar = ({
           startAt: app.start_at,
           endAt: app.end_at,
           clientId: app.client_id,
-          clinicianId: app.clinician_id
+          clinicianId: app.clinician_id,
+          clientName: app.clientName
         });
       });
     }
@@ -69,9 +70,7 @@ const Calendar = ({
     const appointment = appointments.find(app => app.client_id === clientId);
     if (!appointment || !appointment.client) return 'Client';
     
-    return appointment.client.client_preferred_name && appointment.client.client_last_name
-      ? `${appointment.client.client_preferred_name} ${appointment.client.client_last_name}`
-      : 'Client';
+    return appointment.clientName || 'Client';
   };
 
   // Handler for appointment clicked in calendar

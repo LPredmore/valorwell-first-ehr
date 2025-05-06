@@ -100,7 +100,8 @@ export const useAppointments = (
         
         // Process appointments to format client data correctly
         const formattedAppointments = (data || []).map(appointment => {
-          // The clients field from Supabase join is a direct object, not an array
+          // Extract client data from the joined table
+          // Supabase returns this as a direct object, not an array
           const clientData = appointment.clients;
           delete appointment.clients;
           

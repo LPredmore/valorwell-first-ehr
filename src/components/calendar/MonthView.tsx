@@ -1,7 +1,8 @@
+
 import React, { useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import { useMonthViewData } from './useMonthViewData';
+import { useMonthViewData } from '@/hooks/useMonthViewData';
 import CalendarGrid from './CalendarGrid';
 import { Appointment } from '@/types/appointment';
 
@@ -50,7 +51,8 @@ const MonthView: React.FC<MonthViewProps> = ({
           endAt: app.end_at,
           formattedDate: app.formattedDate,
           formattedStartTime: app.formattedStartTime,
-          formattedEndTime: app.formattedEndTime
+          formattedEndTime: app.formattedEndTime,
+          clientName: app.clientName
         });
       }
     }
