@@ -1,4 +1,3 @@
-
 import { DateTime, Settings, Interval } from 'luxon';
 
 /**
@@ -99,7 +98,7 @@ export class TimeZoneService {
       console.error(`Invalid date/time: ${dateTimeStr} in timezone ${safeZone}`);
       console.error(`Reason: ${dt.invalidReason}, ${dt.invalidExplanation}`);
       // Return current time as fallback
-      return DateTime.now().toUTC();
+      return DateTime.now().setZone(safeZone);
     }
     
     return dt.toUTC();
@@ -266,6 +265,34 @@ export class TimeZoneService {
     const safeZone = this.ensureIANATimeZone(timezone);
     return DateTime.fromISO(dateStr).setZone(safeZone);
   }
+  
+  /**
+   * Convert from time string (HH:MM or HH:MM:SS) to DateTime object
+   * Uses today's date in the specified timezone
+   */
+  static fromTimeString(timeStr: string, timezone: string = this.DEFAULT_TIMEZONE): DateTime {
+    const safeZone = this.ensureIANATimeZone(timezone);
+    const today = this.today(safeZone);
+    const todayStr = this.formatDate(today);
+    
+    // Handle both HH:MM and HH:MM:SS formats
+    const format = timeStr.split(':').length > 2 ? 
+      `yyyy-MM-dd'T'HH:mm:ss` : 
+      `yyyy-MM-dd'T'HH:mm`;
+      
+    const dateTimeStr = `${todayStr}T${timeStr}`;
+    
+    const dt = DateTime.fromFormat(dateTimeStr, format, { zone: safeZone });
+    
+    if (!dt.isValid) {
+      console.error(`Invalid time string: ${timeStr} in timezone ${safeZone}`);
+      console.error(`Reason: ${dt.invalidReason}, ${dt.invalidExplanation}`);
+      // Return current time as fallback
+      return DateTime.now().setZone(safeZone);
+    }
+    
+    return dt;
+  }
 
   /**
    * Create DateTime from date and time strings in specific timezone
@@ -343,6 +370,20 @@ export class TimeZoneService {
     }
     
     return days;
+  }
+  
+  /**
+   * Add days to a DateTime
+   */
+  static addDays(dt: DateTime, days: number): DateTime {
+    return dt.plus({ days });
+  }
+  
+  /**
+   * Add months to a DateTime
+   */
+  static addMonths(dt: DateTime, months: number): DateTime {
+    return dt.plus({ months });
   }
 }
 

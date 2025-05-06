@@ -1,70 +1,10 @@
-
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
+import { format, parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { DateTime } from 'luxon';
 import { Appointment } from '@/types/appointment';
-
-interface AvailabilityBlock {
-  id: string;
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
-  clinician_id?: string;
-  is_active?: boolean;
-  isException?: boolean;
-  isStandalone?: boolean;
-}
-
-interface AvailabilityException {
-  id: string;
-  specific_date: string;
-  original_availability_id: string | null;
-  start_time: string | null;
-  end_time: string | null;
-  is_deleted: boolean;
-  clinician_id: string;
-}
-
-interface TimeBlock {
-  day: DateTime;
-  start: DateTime;
-  end: DateTime;
-  availabilityIds: string[];
-  isException?: boolean;
-  isStandalone?: boolean;
-}
-
-interface AppointmentBlock {
-  id: string;
-  day: DateTime;
-  start: DateTime;
-  end: DateTime;
-  clientId: string;
-  type: string;
-  clientName?: string;
-}
-
-// Convert TimeBlock to JS Date compatible version for external use
-interface JSTimeBlock {
-  day: Date;
-  start: Date;
-  end: Date;
-  availabilityIds: string[];
-  isException?: boolean;
-  isStandalone?: boolean;
-}
-
-// Convert AppointmentBlock to JS Date compatible version for external use
-interface JSAppointmentBlock {
-  id: string;
-  day: Date;
-  start: Date;
-  end: Date;
-  clientId: string;
-  type: string;
-  clientName?: string;
-}
+import { TimeBlock, AppointmentBlock, AvailabilityBlock, AvailabilityException } from './types';
+import { DateTime } from 'luxon';
 
 export const useWeekViewData = (
   days: Date[],
@@ -80,289 +20,275 @@ export const useWeekViewData = (
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
 
-  // Convert days array to DateTime objects
-  const daysAsDateTime = useMemo(() => {
-    return days.map(day => TimeZoneService.fromJSDate(day, userTimeZone));
-  }, [days, userTimeZone]);
+  const dayOfWeek = days.map(day => format(day, 'EEEE'));
+  const formattedDates = days.map(day => format(day, 'yyyy-MM-dd'));
 
-  // Process appointments using UTC timestamps
   useEffect(() => {
-    if (!appointments || !appointments.length) {
-      setAppointmentBlocks([]);
-      console.log("[useWeekViewData] No appointments to process");
-      return;
-    }
-
-    console.log(`[useWeekViewData] Processing ${appointments.length} appointments with timezone: ${userTimeZone}`);
-    
-    try {
-      // Create a map of formatted dates for quick lookup
-      const formattedDayMap = new Map<string, DateTime>();
-      daysAsDateTime.forEach(day => {
-        const formattedDate = TimeZoneService.formatDate(day);
-        formattedDayMap.set(formattedDate, day);
-      });
-      
-      // Log the dates we're checking against
-      console.log("[useWeekViewData] Days in week view:", Array.from(formattedDayMap.keys()));
-      
-      // Process each appointment using UTC timestamps
-      const blocks: AppointmentBlock[] = appointments.map(appointment => {
-          // Skip invalid data
-          if (!appointment.start_at || !appointment.end_at) {
-            console.error("[useWeekViewData] Invalid appointment data, missing UTC timestamps:", appointment);
-            return null;
-          }
-          
-          // Get the local date from UTC timestamp
-          const startDateTime = TimeZoneService.fromUTC(appointment.start_at, userTimeZone);
-          const endDateTime = TimeZoneService.fromUTC(appointment.end_at, userTimeZone);
-          
-          // Extract just the date part for matching with week days
-          const formattedDate = TimeZoneService.formatDate(startDateTime);
-          
-          console.log(`[useWeekViewData] Checking appointment ${appointment.id} with date ${formattedDate}`);
-          
-          // Check if this date is in our week view
-          if (!formattedDayMap.has(formattedDate)) {
-            console.log(`[useWeekViewData] Appointment ${appointment.id} date ${formattedDate} not in current week`);
-            return null;
-          }
-          
-          // Get the DateTime object for this day
-          const dayDateTime = formattedDayMap.get(formattedDate)!;
-          
-          return {
-            id: appointment.id,
-            day: dayDateTime,
-            start: startDateTime,
-            end: endDateTime,
-            clientId: appointment.client_id,
-            type: appointment.type,
-            clientName: getClientName(appointment.client_id)
-          };
-        }).filter(block => block !== null) as AppointmentBlock[];
-
-      console.log(`[useWeekViewData] Created ${blocks.length} appointment blocks`);
-      
-      // Log sample processed block
-      if (blocks.length > 0) {
-        console.log(`[useWeekViewData] Sample processed appointment block:`, {
-          id: blocks[0].id,
-          day: TimeZoneService.formatDate(blocks[0].day),
-          start: TimeZoneService.formatTime24(blocks[0].start),
-          end: TimeZoneService.formatTime24(blocks[0].end)
-        });
-      }
-      
-      setAppointmentBlocks(blocks);
-    } catch (error) {
-      console.error("[useWeekViewData] Error in appointment processing:", error);
-      setAppointmentBlocks([]);
-    }
-  }, [appointments, getClientName, daysAsDateTime, userTimeZone]);
-
-  // Fetch availability from clinicians table
-  useEffect(() => {
-    const fetchAvailability = async () => {
+    const fetchAvailabilityAndExceptions = async () => {
       setLoading(true);
       try {
-        if (!clinicianId) {
-          console.log("[useWeekViewData] No clinicianId provided, skipping availability fetch");
-          setAvailabilityBlocks([]);
-          setExceptions([]);
-          processAvailabilityFromClinician([], []);
-          setLoading(false);
-          return;
-        }
+        // Fetch availability blocks for the week
+        const availabilityPromises = dayOfWeek.map(async (day) => {
+          let availabilityQuery = supabase
+            .from('availability')
+            .select('*')
+            .eq('day_of_week', day)
+            .eq('is_active', true);
 
-        // Format the clinicianId correctly
-        const formattedClinicianId = clinicianId.trim();
-        console.log(`[useWeekViewData] Fetching availability for clinician: ${formattedClinicianId}`);
+          if (clinicianId) {
+            availabilityQuery = availabilityQuery.eq('clinician_id', clinicianId);
+          }
 
-        // Fetch clinician data with availability fields
-        const { data: clinicianData, error } = await supabase
-          .from('clinicians')
-          .select('*')
-          .eq('id', formattedClinicianId)
-          .single();
+          const { data, error } = await availabilityQuery;
 
-        if (error) {
-          console.error('[useWeekViewData] Error fetching clinician data:', error);
-          setAvailabilityBlocks([]);
-          setExceptions([]);
-          processAvailabilityFromClinician([], []);
-        } else {
-          console.log('[useWeekViewData] Clinician data for availability:', clinicianData?.id);
-          
-          // Extract availability blocks from clinician data
-          const extractedBlocks = extractAvailabilityBlocksFromClinician(clinicianData);
-          setAvailabilityBlocks(extractedBlocks);
-          
-          // No exceptions to process for now
-          setExceptions([]);
-          processAvailabilityFromClinician(extractedBlocks, []);
-        }
+          if (error) {
+            console.error('Error fetching availability:', error);
+            return [];
+          } else {
+            return data || [];
+          }
+        });
+
+        const allAvailabilityData = (await Promise.all(availabilityPromises)).flat();
+        setAvailabilityBlocks(allAvailabilityData);
+
+        // Fetch availability exceptions for the week
+        const exceptionsPromises = formattedDates.map(async (date) => {
+          if (!clinicianId) return [];
+
+          const { data: exceptionsData, error: exceptionsError } = await supabase
+            .from('availability_exceptions')
+            .select('*')
+            .eq('clinician_id', clinicianId)
+            .eq('specific_date', date);
+
+          if (exceptionsError) {
+            console.error('Error fetching availability exceptions:', exceptionsError);
+            return [];
+          } else {
+            return exceptionsData || [];
+          }
+        });
+
+        const allExceptionsData = (await Promise.all(exceptionsPromises)).flat();
+        setExceptions(allExceptionsData);
+
+        processAvailabilityWithExceptions(allAvailabilityData, allExceptionsData);
       } catch (error) {
-        console.error('[useWeekViewData] Error fetching availability:', error);
-        setAvailabilityBlocks([]);
-        setExceptions([]);
-        processAvailabilityFromClinician([], []);
+        console.error('Error:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAvailability();
-  }, [clinicianId, refreshTrigger, daysAsDateTime]);
+    fetchAvailabilityAndExceptions();
+  }, [days, clinicianId, refreshTrigger, userTimeZone]);
 
-  // Extract availability blocks from clinician record
-  const extractAvailabilityBlocksFromClinician = (clinician: any): AvailabilityBlock[] => {
-    if (!clinician) return [];
-    
-    const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    const blocks: AvailabilityBlock[] = [];
-    
-    // For each day of the week
-    weekdays.forEach(day => {
-      const dayCapitalized = day.charAt(0).toUpperCase() + day.slice(1);
-      
-      // For each slot (1, 2, 3)
-      for (let slot = 1; slot <= 3; slot++) {
-        const startTimeKey = `clinician_availability_start_${day}_${slot}`;
-        const endTimeKey = `clinician_availability_end_${day}_${slot}`;
-        const timezoneKey = `clinician_availability_timezone_${day}_${slot}`;
-        
-        // If both start and end times exist for this slot, create a block
-        if (clinician[startTimeKey] && clinician[endTimeKey]) {
-          blocks.push({
-            id: `${clinician.id}-${day}-${slot}`,
-            day_of_week: dayCapitalized,
-            start_time: clinician[startTimeKey],
-            end_time: clinician[endTimeKey],
-            clinician_id: clinician.id,
-            is_active: true,
+  useEffect(() => {
+    const blocks = processAppointments();
+    setAppointmentBlocks(blocks);
+  }, [appointments, days, userTimeZone, getClientName]);
+
+  const processAvailabilityWithExceptions = (blocks: AvailabilityBlock[], exceptions: AvailabilityException[]) => {
+    if (!blocks.length && !exceptions.length) {
+      setTimeBlocks([]);
+      return;
+    }
+
+    const exceptionsMap: Record<string, AvailabilityException> = {};
+    exceptions.forEach(exception => {
+      exceptionsMap[exception.original_availability_id] = exception;
+    });
+
+    const effectiveBlocks = blocks
+      .filter(block => {
+        const exception = exceptionsMap[block.id];
+        return !exception || !exception.is_deleted;
+      })
+      .map(block => {
+        const exception = exceptionsMap[block.id];
+
+        if (exception && exception.start_time && exception.end_time) {
+          return {
+            ...block,
+            start_time: exception.start_time,
+            end_time: exception.end_time,
+            isException: true
+          };
+        }
+
+        return block;
+      });
+
+    const parsedBlocks: TimeBlock[] = [];
+
+    days.forEach(day => {
+      const dayOfWeek = format(day, 'EEEE');
+      const formattedDate = format(day, 'yyyy-MM-dd');
+
+      const dayBlocks = effectiveBlocks.filter(block => block.day_of_week === dayOfWeek);
+      const dayExceptions = exceptions.filter(exception => exception.specific_date === formattedDate);
+
+      dayBlocks.forEach(block => {
+        const [startHour, startMinute] = block.start_time.split(':').map(Number);
+        const [endHour, endMinute] = block.end_time.split(':').map(Number);
+
+        const start = TimeZoneService.fromJSDate(day, userTimeZone).set({
+          hour: startHour,
+          minute: startMinute,
+          second: 0,
+          millisecond: 0
+        });
+
+        const end = TimeZoneService.fromJSDate(day, userTimeZone).set({
+          hour: endHour,
+          minute: endMinute,
+          second: 0,
+          millisecond: 0
+        });
+
+        parsedBlocks.push({
+          start,
+          end,
+          availabilityIds: [block.id],
+          isException: block.isException,
+          day: TimeZoneService.fromJSDate(day, userTimeZone)
+        });
+      });
+
+      dayExceptions.forEach(exception => {
+        if (exception.start_time && exception.end_time) {
+          const [startHour, startMinute] = exception.start_time.split(':').map(Number);
+          const [endHour, endMinute] = exception.end_time.split(':').map(Number);
+
+          const start = TimeZoneService.fromJSDate(day, userTimeZone).set({
+            hour: startHour,
+            minute: startMinute,
+            second: 0,
+            millisecond: 0
+          });
+
+          const end = TimeZoneService.fromJSDate(day, userTimeZone).set({
+            hour: endHour,
+            minute: endMinute,
+            second: 0,
+            millisecond: 0
+          });
+
+          parsedBlocks.push({
+            start,
+            end,
+            availabilityIds: [exception.id],
+            isException: true,
+            isStandalone: true,
+            day: TimeZoneService.fromJSDate(day, userTimeZone)
           });
         }
+      });
+    });
+
+    parsedBlocks.sort((a, b) => a.start.toMillis() - b.start.toMillis());
+
+    const mergedBlocks: TimeBlock[] = [];
+
+    parsedBlocks.forEach(block => {
+      const lastBlock = mergedBlocks[mergedBlocks.length - 1];
+
+      if (lastBlock && block.start <= lastBlock.end) {
+        if (block.end > lastBlock.end) {
+          lastBlock.end = block.end;
+        }
+        lastBlock.availabilityIds.push(block.availabilityIds[0]);
+        if (block.isException) {
+          lastBlock.isException = true;
+        }
+      } else {
+        mergedBlocks.push({
+          start: block.start,
+          end: block.end,
+          availabilityIds: [block.availabilityIds[0]],
+          isException: block.isException,
+          isStandalone: block.isStandalone,
+          day: block.day
+        });
       }
     });
+
+    setTimeBlocks(mergedBlocks);
+  };
+  
+  // Process appointments into blocks
+  const processAppointments = () => {
+    // Convert days array to DateTime objects for easier comparison
+    const daysAsDateTime = days.map(day => 
+      TimeZoneService.fromJSDate(day, userTimeZone)
+    );
     
-    console.log('[useWeekViewData] Extracted availability blocks from clinician:', blocks.length);
+    const blocks: AppointmentBlock[] = appointments
+      .map(appointment => {
+        // Skip invalid data
+        if (!appointment.start_at || !appointment.end_at) {
+          console.error("[useWeekViewData] Invalid appointment data:", appointment);
+          return null;
+        }
+        
+        // Get the day in the user's timezone from the UTC timestamp
+        const startDateTime = TimeZoneService.fromUTC(appointment.start_at, userTimeZone);
+        const endDateTime = TimeZoneService.fromUTC(appointment.end_at, userTimeZone);
+        
+        // Find which day of the week this appointment falls on
+        const matchingDay = daysAsDateTime.find(day => 
+          TimeZoneService.isSameDay(startDateTime, day)
+        );
+        
+        if (!matchingDay) {
+          return null;
+        }
+        
+        return {
+          id: appointment.id,
+          day: matchingDay,
+          start: startDateTime,
+          end: endDateTime,
+          clientId: appointment.client_id,
+          type: appointment.type,
+          clientName: appointment.clientName || getClientName(appointment.client_id)
+        };
+      })
+      .filter(block => block !== null) as AppointmentBlock[];
+    
     return blocks;
   };
 
-  // Process availability data
-  const processAvailabilityFromClinician = (blocks: AvailabilityBlock[], exceptionsData: AvailabilityException[]) => {
-    const allTimeBlocks: TimeBlock[] = [];
-
-    daysAsDateTime.forEach(day => {
-      const dayOfWeek = day.toFormat('EEEE');
-      
-      // Filter blocks for this day of week
-      const dayBlocks = blocks.filter(block => block.day_of_week === dayOfWeek);
-
-      const parsedBlocks = dayBlocks.map(block => {
-        // Create DateTime objects for start and end times
-        const startTime = TimeZoneService.createDateTime(
-          TimeZoneService.formatDate(day),
-          block.start_time,
-          userTimeZone
-        );
-        
-        const endTime = TimeZoneService.createDateTime(
-          TimeZoneService.formatDate(day),
-          block.end_time,
-          userTimeZone
-        );
-
-        return {
-          id: block.id,
-          day,
-          start: startTime,
-          end: endTime,
-          isException: false,
-          isStandalone: false
-        };
-      });
-
-      // Sort blocks by start time
-      parsedBlocks.sort((a, b) => a.start.toMillis() - b.start.toMillis());
-
-      const mergedBlocks: TimeBlock[] = [];
-
-      parsedBlocks.forEach(block => {
-        const lastBlock = mergedBlocks[mergedBlocks.length - 1];
-
-        if (lastBlock && block.start <= lastBlock.end) {
-          if (block.end > lastBlock.end) {
-            lastBlock.end = block.end;
-          }
-          lastBlock.availabilityIds.push(block.id);
-        } else {
-          mergedBlocks.push({
-            day: block.day,
-            start: block.start,
-            end: block.end,
-            availabilityIds: [block.id],
-            isException: block.isException,
-            isStandalone: block.isStandalone
-          });
-        }
-      });
-
-      allTimeBlocks.push(...mergedBlocks);
-    });
-
-    setTimeBlocks(allTimeBlocks);
-  };
-
-  const getAvailabilityForBlock = (blockId: string): AvailabilityBlock | undefined => {
-    return availabilityBlocks.find(block => block.id === blockId);
-  };
-
-  const isTimeSlotAvailable = (date: Date, time: Date): boolean => {
-    const dateTime = DateTime.fromJSDate(date)
-      .set({
-        hour: time.getHours(),
-        minute: time.getMinutes(),
-        second: 0,
-        millisecond: 0
-      })
-      .setZone(userTimeZone);
-
+  const isTimeSlotAvailable = (day: Date, timeSlot: Date) => {
     return timeBlocks.some(block => {
-      return block.start <= dateTime && dateTime < block.end;
+      const slotTime = TimeZoneService.fromJSDate(timeSlot, userTimeZone);
+      const blockStart = block.start;
+      const blockEnd = block.end;
+      return slotTime >= blockStart && slotTime < blockEnd && TimeZoneService.isSameDay(slotTime, block.day!);
     });
   };
 
-  const getBlockForTimeSlot = (date: Date, time: Date): TimeBlock | undefined => {
-    const dateTime = DateTime.fromJSDate(date)
-      .set({
-        hour: time.getHours(),
-        minute: time.getMinutes(),
-        second: 0,
-        millisecond: 0
-      })
-      .setZone(userTimeZone);
-
+  const getBlockForTimeSlot = (day: Date, timeSlot: Date) => {
     return timeBlocks.find(block => {
-      return block.start <= dateTime && dateTime < block.end;
+      const slotTime = TimeZoneService.fromJSDate(timeSlot, userTimeZone);
+      const blockStart = block.start;
+      const blockEnd = block.end;
+      return slotTime >= blockStart && slotTime < blockEnd && TimeZoneService.isSameDay(slotTime, block.day!);
     });
   };
 
-  const getAppointmentForTimeSlot = (date: Date, time: Date): AppointmentBlock | undefined => {
-    const dateTime = DateTime.fromJSDate(date)
-      .set({
-        hour: time.getHours(),
-        minute: time.getMinutes(),
-        second: 0,
-        millisecond: 0
-      })
-      .setZone(userTimeZone);
-
+  const getAppointmentForTimeSlot = (day: Date, timeSlot: Date) => {
     return appointmentBlocks.find(block => {
-      return block.start <= dateTime && dateTime < block.end;
+      const slotTime = TimeZoneService.fromJSDate(timeSlot, userTimeZone);
+      const blockStart = block.start;
+      const blockEnd = block.end;
+      return slotTime >= blockStart && slotTime < blockEnd && TimeZoneService.isSameDay(slotTime, block.day!);
     });
+  };
+
+  const getAvailabilityForBlock = (blockId: string) => {
+    return availabilityBlocks.find(block => block.id === blockId);
   };
 
   return {

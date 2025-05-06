@@ -1,30 +1,11 @@
 
 import { useState, useEffect } from 'react';
-import { isToday, parseISO } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { DateTime } from 'luxon';
-
-export interface Appointment {
-  id: string;
-  client_id: string;
-  clinician_id: string;
-  start_at: string;  // UTC timestamp
-  end_at: string;    // UTC timestamp
-  type: string;
-  status: string;
-  appointment_recurring?: string | null;
-  recurring_group_id?: string | null;
-  video_room_url?: string | null;
-  notes?: string | null;
-  client?: {
-    client_first_name: string;
-    client_last_name: string;
-    client_preferred_name: string;
-  };
-}
+import { Appointment } from '@/types/appointment';
 
 export const useAppointments = (
   clinicianId: string | null,
@@ -128,7 +109,7 @@ export const useAppointments = (
             clientName: clientData ? 
               `${clientData.client_preferred_name || clientData.client_first_name || ''} ${clientData.client_last_name || ''}`.trim() : 
               'Unknown Client'
-          };
+          } as Appointment;
         });
 
         return formattedAppointments;
@@ -156,7 +137,7 @@ export const useAppointments = (
     if (converted.start_at) {
       const startLocal = TimeZoneService.fromUTC(converted.start_at, safeZone);
       converted.formattedStartTime = TimeZoneService.formatTime(startLocal);
-      converted.formattedStartDate = TimeZoneService.formatDateTime(startLocal, 'MMMM d, yyyy');
+      converted.formattedDate = TimeZoneService.formatDate(startLocal);
     }
     
     if (converted.end_at) {
@@ -164,7 +145,7 @@ export const useAppointments = (
       converted.formattedEndTime = TimeZoneService.formatTime(endLocal);
     }
     
-    return converted as Appointment;
+    return converted;
   };
 
   // Function to check if appointment is today
@@ -239,6 +220,25 @@ export const useAppointments = (
     setIsVideoOpen(false);
   };
 
+  const closeSessionTemplate = () => {
+    setShowSessionTemplate(false);
+  };
+
+  // Filter past appointments that need documentation
+  const pastAppointments = appointments.filter(app => {
+    const endTime = app.end_at ? new Date(app.end_at) : null;
+    return endTime && endTime < new Date() && app.status === 'scheduled';
+  });
+
+  // Filter upcoming (future) appointments
+  const upcomingAppointments = appointments.filter(app => {
+    const startTime = app.start_at ? new Date(app.start_at) : null;
+    // Not today and in the future
+    return startTime && 
+           startTime > new Date() && 
+           !isAppointmentToday(app);
+  });
+
   // Convert appointments to display timezone
   const processedAppointments = appointments.map(appt => 
     convertAppointmentToTimeZone(appt, safeTimeZone)
@@ -250,13 +250,18 @@ export const useAppointments = (
   return {
     appointments: processedAppointments,
     todayAppointments,
+    upcomingAppointments,
+    pastAppointments,
     isLoading,
     error,
     refetch,
     startSession,
+    startVideoSession: startSession,
     documentSession,
+    openSessionTemplate: documentSession,
     isVideoOpen,
     closeVideoSession,
+    closeSessionTemplate,
     currentVideoUrl,
     currentAppointment,
     showSessionTemplate,

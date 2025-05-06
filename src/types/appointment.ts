@@ -32,5 +32,6 @@ export interface Appointment {
   formattedDate?: string;
   formattedStartTime?: string;
   formattedEndTime?: string;
+  formattedStartDate?: string;
   clientName?: string;
 }

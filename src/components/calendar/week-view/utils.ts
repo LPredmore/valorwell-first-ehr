@@ -1,37 +1,31 @@
 
-import { differenceInMinutes, addMinutes } from 'date-fns';
-import { TimeBlock, AppointmentBlock } from './useWeekViewData';
+import { addMinutes, differenceInMinutes } from 'date-fns';
+import { DateTime } from 'luxon';
+import { TimeBlock, AppointmentBlock } from './types';
 
-export const isStartOfBlock = (
-  slotStartTime: Date,
-  currentBlock?: TimeBlock
-): boolean => {
-  if (!currentBlock) return false;
-  return differenceInMinutes(slotStartTime, currentBlock.start) < 30;
-};
+// Helper function to check if a time slot is at the start of a block
+export function isStartOfBlock(timeSlot: Date, block: TimeBlock | null): boolean {
+  if (!block) return false;
+  
+  // Convert DateTime to JS Date for comparison
+  const blockStartDate = block.start.toJSDate();
+  return differenceInMinutes(timeSlot, blockStartDate) < 30;
+}
 
-export const isEndOfBlock = (
-  slotStartTime: Date,
-  slotEndTime: Date,
-  currentBlock?: TimeBlock
-): boolean => {
-  if (!currentBlock) return false;
-  return differenceInMinutes(currentBlock.end, slotEndTime) < 30;
-};
+// Helper function to check if a time slot is at the end of a block
+export function isEndOfBlock(timeSlot: Date, block: TimeBlock | null): boolean {
+  if (!block) return false;
+  
+  // Convert DateTime to JS Date for comparison
+  const blockEndDate = block.end.toJSDate();
+  return differenceInMinutes(blockEndDate, addMinutes(timeSlot, 30)) < 30;
+}
 
-export const isStartOfAppointment = (
-  slotStartTime: Date,
-  appointment?: AppointmentBlock
-): boolean => {
+// Helper function to check if a time slot is at the start of an appointment
+export function isStartOfAppointment(timeSlot: Date, appointment: AppointmentBlock | null): boolean {
   if (!appointment) return false;
   
-  // Compare hours and minutes only (ignore date part)
-  const slotHours = slotStartTime.getHours();
-  const slotMinutes = slotStartTime.getMinutes();
-  const appointmentHours = appointment.start.getHours();
-  const appointmentMinutes = appointment.start.getMinutes();
-  
-  // Check if the slot start time is within 30 minutes of the appointment start time
-  return slotHours === appointmentHours && 
-         Math.abs(slotMinutes - appointmentMinutes) < 30;
-};
+  // Convert DateTime to JS Date for comparison
+  const appointmentStartDate = appointment.start.toJSDate();
+  return differenceInMinutes(timeSlot, appointmentStartDate) < 30;
+}

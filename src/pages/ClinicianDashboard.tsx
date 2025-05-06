@@ -11,6 +11,7 @@ import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 import { useAppointments } from '@/hooks/useAppointments';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 import { SessionDidNotOccurDialog } from '@/components/dashboard/SessionDidNotOccurDialog';
+import { Appointment } from '@/types/appointment';
 
 const ClinicianDashboard = () => {
   const { userRole, userId } = useUser();
@@ -19,7 +20,7 @@ const ClinicianDashboard = () => {
   const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
   const timeZoneDisplay = formatTimeZoneDisplay(clinicianTimeZone);
   const [showSessionDidNotOccurDialog, setShowSessionDidNotOccurDialog] = useState(false);
-  const [selectedAppointmentForNoShow, setSelectedAppointmentForNoShow] = useState<any>(null);
+  const [selectedAppointmentForNoShow, setSelectedAppointmentForNoShow] = useState<Appointment | null>(null);
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -55,6 +56,7 @@ const ClinicianDashboard = () => {
   }, [currentUserId]);
 
   const {
+    appointments,
     todayAppointments,
     upcomingAppointments,
     pastAppointments,
@@ -73,7 +75,7 @@ const ClinicianDashboard = () => {
     closeVideoSession
   } = useAppointments(currentUserId);
 
-  const handleSessionDidNotOccur = (appointment: any) => {
+  const handleSessionDidNotOccur = (appointment: Appointment) => {
     setSelectedAppointmentForNoShow(appointment);
     setShowSessionDidNotOccurDialog(true);
   };

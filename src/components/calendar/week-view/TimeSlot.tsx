@@ -1,7 +1,9 @@
-
 import React from 'react';
-import { format, differenceInMinutes, addMinutes } from 'date-fns';
-import { TimeBlock, AppointmentBlock, Appointment } from './useWeekViewData';
+import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
+import { TimeBlock, AppointmentBlock } from './types';
+import { Appointment } from '@/types/appointment';
+import { isStartOfBlock, isEndOfBlock, isStartOfAppointment } from './utils';
+import { addMinutes } from 'date-fns';
 
 interface TimeSlotProps {
   day: Date;
