@@ -1,33 +1,22 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Calendar } from 'lucide-react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
-import { format, parseISO, startOfToday } from 'date-fns';
-import { 
-  getUserTimeZone, 
-  formatTime12Hour, 
-  formatTimeZoneDisplay,
-  formatWithTimeZone,
-  formatTimeInUserTimeZone,
-  ensureIANATimeZone,
-  getTimeZoneDisplayName
-} from '@/utils/timeZoneUtils';
 import { useToast } from '@/hooks/use-toast';
+import { getUserTimeZone } from '@/utils/timeZoneUtils';
 import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface PastAppointment {
   id: string | number;
-  date: string;
-  time: string;
+  formattedDate: string;
+  formattedTime: string;
   type: string;
   therapist: string;
-  rawDate?: string;
   status?: string;
-  start_at?: string;
-  end_at?: string;
+  start_at: string;
+  end_at: string;
 }
 
 interface MyAppointmentsProps {
@@ -53,7 +42,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
   const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
   
-  // Default to browser timezone if client timezone is not available
+  // Get client timezone from database or browser
   const [clientTimeZone, setClientTimeZone] = useState<string>(TimeZoneService.DEFAULT_TIMEZONE);
 
   useEffect(() => {
@@ -88,7 +77,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
         } else {
           const browserTimezone = getUserTimeZone();
           console.log(`No client timezone found, using browser timezone: ${browserTimezone}`);
-          setClientTimeZone(browserTimezone);
+          setClientTimeZone(TimeZoneService.ensureIANATimeZone(browserTimezone));
         }
         
         if (client?.client_assigned_therapist) {
@@ -120,18 +109,16 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
       
       setLoading(true);
       try {
-        const today = startOfToday();
-        const todayStr = format(today, 'yyyy-MM-dd');
+        // Get the current time in UTC
+        const nowUTC = TimeZoneService.now().toUTC().toISO();
         
         const { data, error } = await supabase
           .from('appointments')
           .select('*')
           .eq('client_id', clientData.id)
-          .lt('date', todayStr)
-          .neq('status', 'scheduled')
+          .lt('end_at', nowUTC)  // Use end_at to find completed appointments
           .neq('status', 'cancelled')
-          .order('date', { ascending: false })
-          .order('start_time', { ascending: false });
+          .order('start_at', { ascending: false });
 
         if (error) {
           console.error('Error fetching past appointments:', error);
@@ -150,49 +137,15 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
           
           const formattedAppointments = data.map(appointment => {
             try {
-              // Format date safely
-              let formattedDate = 'Date unavailable';
-              try {
-                formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
-              } catch (dateError) {
-                console.error('Error parsing appointment date:', dateError, { date: appointment.date });
-              }
-              
-              // Format time safely, preferring UTC timestamps if available
-              let formattedTime = 'Time unavailable';
-              try {
-                if (appointment.start_at) {
-                  // Use the UTC timestamp for most accurate timezone conversion
-                  const startDateTime = TimeZoneService.fromUTC(appointment.start_at, clientTimeZone);
-                  formattedTime = TimeZoneService.formatTime(startDateTime);
-                  console.log(`Formatted UTC time for appointment ${appointment.id}: ${formattedTime}`);
-                } else if (appointment.start_time) {
-                  formattedTime = formatTimeInUserTimeZone(
-                    appointment.start_time,
-                    clientTimeZone,
-                    'h:mm a',
-                    appointment.date // Pass the appointment date
-                  );
-                  console.log(`Formatted time for appointment ${appointment.id}: ${formattedTime}`);
-                }
-              } catch (timeError) {
-                console.error('Error formatting time:', timeError, {
-                  appointment,
-                  timezone: clientTimeZone
-                });
-                // Fallback to simple formatting
-                formattedTime = appointment.start_time ? 
-                  formatTime12Hour(appointment.start_time) : 'Time unavailable';
-              }
+              // Format using TimeZoneService for consistency
+              const startDateTime = TimeZoneService.fromUTC(appointment.start_at, clientTimeZone);
               
               return {
                 id: appointment.id,
-                date: formattedDate,
-                time: formattedTime,
+                formattedDate: startDateTime.toFormat('MMMM d, yyyy'),
+                formattedTime: startDateTime.toFormat('h:mm a'),
                 type: appointment.type || 'Appointment',
                 therapist: clinicianName || 'Your Therapist',
-                rawDate: appointment.date,
-                rawTime: appointment.start_time,
                 status: appointment.status,
                 start_at: appointment.start_at,
                 end_at: appointment.end_at
@@ -201,11 +154,12 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
               console.error('Error processing appointment:', error, appointment);
               return {
                 id: appointment.id || 'unknown-id',
-                date: 'Date unavailable',
-                time: 'Time unavailable',
+                formattedDate: 'Date unavailable',
+                formattedTime: 'Time unavailable',
                 type: appointment.type || 'Appointment',
                 therapist: clinicianName || 'Your Therapist',
-                rawDate: null
+                start_at: appointment.start_at || '',
+                end_at: appointment.end_at || ''
               };
             }
           });
@@ -233,16 +187,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
   }, [clientData, clinicianName, clientTimeZone, toast]);
 
   // Safely get timezone display with error handling
-  const timeZoneDisplay = (() => {
-    try {
-      const display = formatTimeZoneDisplay(clientTimeZone);
-      console.log(`Formatted timezone display: ${clientTimeZone} → ${display}`);
-      return display;
-    } catch (error) {
-      console.error('Error formatting timezone display:', error);
-      return 'local time';
-    }
-  })();
+  const timeZoneDisplay = TimeZoneService.getTimeZoneDisplayName(clientTimeZone);
 
   // If there's an error, show error state
   if (error) {
@@ -270,7 +215,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
           <div className="py-6 text-center">Loading past appointments...</div>
         ) : pastAppointments.length > 0 ? (
           <div>
-            <p className="text-sm text-gray-500 mb-2">All times shown in {TimeZoneService.getTimeZoneDisplayName(clientTimeZone)} ({timeZoneDisplay})</p>
+            <p className="text-sm text-gray-500 mb-2">All times shown in {timeZoneDisplay}</p>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -283,8 +228,8 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
               <TableBody>
                 {pastAppointments.map((appointment) => (
                   <TableRow key={appointment.id}>
-                    <TableCell>{appointment.date}</TableCell>
-                    <TableCell>{appointment.time}</TableCell>
+                    <TableCell>{appointment.formattedDate}</TableCell>
+                    <TableCell>{appointment.formattedTime}</TableCell>
                     <TableCell>{appointment.type}</TableCell>
                     <TableCell>{appointment.therapist}</TableCell>
                   </TableRow>

@@ -4,7 +4,9 @@ import { format, parse, addDays, isSameDay, isAfter, differenceInCalendarDays } 
 import { Calendar as CalendarIcon, Clock, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { formatTimeInUserTimeZone, getUserTimeZone } from '@/utils/timeZoneUtils';
+import { getUserTimeZone } from '@/utils/timeZoneUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
+import { DateTime } from 'luxon';
 
 import { 
   Dialog, 
@@ -18,7 +20,6 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2 } from 'lucide-react';
@@ -35,13 +36,16 @@ interface AppointmentBookingDialogProps {
 
 interface AvailabilityBlock {
   id: string;
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
+  clinician_id: string;
+  start_at: string; // UTC timestamp
+  end_at: string;   // UTC timestamp
+  is_active: boolean;
 }
 
 interface TimeSlot {
-  time: string;
+  utcStart: string;   // UTC ISO string for start
+  utcEnd: string;     // UTC ISO string for end
+  localTime: string;  // Formatted local time for display
   available: boolean;
 }
 
@@ -60,22 +64,45 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   userTimeZone: propTimeZone
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
   const [notes, setNotes] = useState<string>("");
   const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [bookingInProgress, setBookingInProgress] = useState<boolean>(false);
   const [minDaysAhead, setMinDaysAhead] = useState<number>(1);
+  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>(TimeZoneService.DEFAULT_TIMEZONE);
   const { toast } = useToast();
-  const userTimeZone = propTimeZone || getUserTimeZone();
+  
+  // Get user's timezone safely
+  const userTimeZone = TimeZoneService.ensureIANATimeZone(
+    propTimeZone || getUserTimeZone()
+  );
 
+  // When dialog opens, fetch clinician's timezone and availability settings
   useEffect(() => {
     if (!open || !clinicianId) return;
     
-    const fetchSettings = async () => {
+    const fetchClinicianData = async () => {
       try {
-        console.log('Fetching availability settings for clinician ID:', clinicianId);
+        // Get clinician's timezone
+        const { data: clinicianData, error: clinicianError } = await supabase
+          .from('clinicians')
+          .select('clinician_time_zone')
+          .eq('id', clinicianId)
+          .single();
+          
+        if (!clinicianError && clinicianData) {
+          const safeTimezone = TimeZoneService.ensureIANATimeZone(
+            clinicianData.clinician_time_zone
+          );
+          setClinicianTimeZone(safeTimezone);
+          console.log(`Using clinician timezone: ${safeTimezone}`);
+        } else {
+          console.log(`No clinician timezone found, using default: ${TimeZoneService.DEFAULT_TIMEZONE}`);
+        }
+        
+        // Get availability settings
         const { data: settingsData, error: settingsError } = await supabase.functions.invoke('getavailabilitysettings', {
           body: { clinicianId }
         });
@@ -92,21 +119,23 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           console.log('No settings data received, using default value of 1 for minDaysAhead');
         }
       } catch (error) {
-        console.error('Caught error in fetchSettings:', error);
+        console.error('Caught error fetching clinician data:', error);
       }
     };
     
-    fetchSettings();
+    fetchClinicianData();
   }, [clinicianId, open]);
 
+  // Fetch availability blocks from the database
   useEffect(() => {
     const fetchAvailability = async () => {
       if (!clinicianId) return;
       
       setLoading(true);
       try {
+        // Get availability blocks using UTC timestamps
         const { data, error } = await supabase
-          .from('availability')
+          .from('availability_blocks')
           .select('*')
           .eq('clinician_id', clinicianId)
           .eq('is_active', true);
@@ -119,6 +148,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
             variant: "destructive"
           });
         } else {
+          console.log('Retrieved availability blocks:', data);
           setAvailabilityBlocks(data || []);
         }
       } catch (error) {
@@ -131,75 +161,110 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     fetchAvailability();
   }, [clinicianId, toast]);
 
+  // Generate time slots when a date is selected and we have availability data
   useEffect(() => {
     if (!selectedDate || !availabilityBlocks.length) {
       setTimeSlots([]);
       return;
     }
 
-    const dayOfWeek = format(selectedDate, 'EEEE');
-    const availabilityForDay = availabilityBlocks.filter(
-      block => block.day_of_week === dayOfWeek
-    );
-
-    if (availabilityForDay.length === 0) {
+    // Convert selected date to DateTime for easier manipulation
+    const selectedDateLuxon = DateTime.fromJSDate(selectedDate).setZone(userTimeZone).startOf('day');
+    console.log(`Generating slots for date: ${selectedDateLuxon.toFormat('yyyy-MM-dd')}`);
+    
+    // Check if date is too soon based on minDaysAhead
+    const today = DateTime.now().setZone(userTimeZone).startOf('day');
+    const daysFromToday = selectedDateLuxon.diff(today, 'days').days;
+    
+    console.log('Days from today:', daysFromToday, 'minDaysAhead:', minDaysAhead);
+    
+    if (daysFromToday < minDaysAhead) {
+      console.log('Selected date is too soon, should be blocked');
       setTimeSlots([]);
       return;
     }
-
+    
     const slots: TimeSlot[] = [];
     
-    availabilityForDay.forEach(block => {
-      const startTime = parse(block.start_time, 'HH:mm:ss', new Date());
-      const endTime = parse(block.end_time, 'HH:mm:ss', new Date());
+    // Process availability blocks for the selected day
+    availabilityBlocks.forEach(block => {
+      // Convert UTC block to clinician's timezone and check if it's on this day of week
+      const blockStartLocal = TimeZoneService.fromUTC(block.start_at, clinicianTimeZone);
+      const blockEndLocal = TimeZoneService.fromUTC(block.end_at, clinicianTimeZone);
       
-      let currentTime = startTime;
-      while (currentTime < endTime) {
-        const timeString = format(currentTime, 'HH:mm');
-        slots.push({
-          time: timeString,
-          available: true
-        });
-        currentTime = addDays(currentTime, 0);
-        currentTime.setMinutes(currentTime.getMinutes() + 30);
+      const blockDayOfWeek = blockStartLocal.weekday; // 1-7 (Monday to Sunday in Luxon)
+      const selectedDayOfWeek = selectedDateLuxon.weekday;
+      
+      if (blockDayOfWeek === selectedDayOfWeek) {
+        console.log(`Found block for day ${blockDayOfWeek}:`, 
+          `${blockStartLocal.toFormat('HH:mm')} - ${blockEndLocal.toFormat('HH:mm')}`);
+        
+        // Generate 30-minute slots for this block
+        let slotStart = blockStartLocal;
+        while (slotStart < blockEndLocal) {
+          const slotEnd = slotStart.plus({ minutes: 30 });
+          
+          // Create slot with user's time
+          const slotInUserTZ = slotStart.setZone(userTimeZone);
+          
+          // Map this time to the actual date selected
+          const slotStartOnSelectedDate = selectedDateLuxon
+            .set({
+              hour: slotInUserTZ.hour,
+              minute: slotInUserTZ.minute,
+              second: 0,
+              millisecond: 0
+            });
+          
+          const slotEndOnSelectedDate = slotStartOnSelectedDate.plus({ minutes: 30 });
+          
+          // Convert back to UTC for storage
+          const slotStartUTC = slotStartOnSelectedDate.toUTC();
+          const slotEndUTC = slotEndOnSelectedDate.toUTC();
+          
+          slots.push({
+            utcStart: slotStartUTC.toISO(),
+            utcEnd: slotEndUTC.toISO(),
+            localTime: slotInUserTZ.toFormat('h:mm a'),
+            available: true
+          });
+          
+          slotStart = slotEnd;
+        }
       }
     });
-
+    
+    // Sort slots by time
+    slots.sort((a, b) => a.utcStart.localeCompare(b.utcStart));
+    
+    // Check if any slots are already booked
     const checkExistingAppointments = async () => {
       if (!selectedDate || !clinicianId) return;
       
-      const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      console.log('Checking appointments for date:', dateStr);
-      
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const daysFromToday = differenceInCalendarDays(selectedDate, today);
-      console.log('Days from today:', daysFromToday, 'minDaysAhead:', minDaysAhead);
-      
-      if (daysFromToday < minDaysAhead) {
-        console.log('Selected date is too soon, should be blocked');
-        setTimeSlots([]);
-        return;
-      }
-      
       try {
+        const selectedDateISO = selectedDateLuxon.toISO();
+        const nextDayISO = selectedDateLuxon.plus({ days: 1 }).toISO();
+        
+        console.log('Checking appointments between:', selectedDateISO, 'and', nextDayISO);
+        
         const { data, error } = await supabase
           .from('appointments')
           .select('*')
           .eq('clinician_id', clinicianId)
-          .eq('date', dateStr)
-          .eq('status', 'scheduled');
+          .eq('status', 'scheduled')
+          .gte('start_at', selectedDateISO)
+          .lt('start_at', nextDayISO);
           
         if (error) {
           console.error('Error fetching appointments:', error);
         } else if (data && data.length > 0) {
+          console.log('Found existing appointments:', data);
+          
+          // Mark booked slots as unavailable
           const updatedSlots = slots.map(slot => {
-            const slotTime = parse(slot.time, 'HH:mm', new Date());
-            const slotTimeStr = format(slotTime, 'HH:mm:ss');
-            
-            const isBooked = data.some(appointment => 
-              appointment.start_time === slotTimeStr
-            );
+            const isBooked = data.some(appointment => {
+              return new Date(appointment.start_at).getTime() === new Date(slot.utcStart).getTime();
+            });
             
             return {
               ...slot,
@@ -212,15 +277,16 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           setTimeSlots(slots);
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Error checking existing appointments:', error);
+        setTimeSlots(slots); // Use slots without availability check on error
       }
     };
     
     checkExistingAppointments();
-  }, [selectedDate, availabilityBlocks, clinicianId, minDaysAhead]);
+  }, [selectedDate, availabilityBlocks, userTimeZone, clinicianId, minDaysAhead, clinicianTimeZone]);
 
   const handleBookAppointment = async () => {
-    if (!selectedDate || !selectedTime || !clinicianId || !clientId) {
+    if (!selectedDate || !selectedTimeSlot || !clinicianId || !clientId) {
       toast({
         title: "Missing information",
         description: "Please select a date and time",
@@ -230,9 +296,9 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     }
 
     // Add validation to ensure the selected date meets the minimum days ahead requirement
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const daysFromToday = differenceInCalendarDays(selectedDate, today);
+    const today = DateTime.now().setZone(userTimeZone).startOf('day');
+    const selectedDay = DateTime.fromJSDate(selectedDate).setZone(userTimeZone).startOf('day');
+    const daysFromToday = selectedDay.diff(today, 'days').days;
     
     if (daysFromToday < minDaysAhead) {
       toast({
@@ -246,22 +312,15 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     setBookingInProgress(true);
     
     try {
-      const startTime = selectedTime;
-      const endTimeObj = parse(selectedTime, 'HH:mm', new Date());
-      endTimeObj.setMinutes(endTimeObj.getMinutes() + 30);
-      const endTime = format(endTimeObj, 'HH:mm');
-      
-      const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      
+      // Use UTC timestamps for database storage
       const { data, error } = await supabase
         .from('appointments')
         .insert([
           {
             client_id: clientId,
             clinician_id: clinicianId,
-            date: dateStr,
-            start_time: startTime,
-            end_time: endTime,
+            start_at: selectedTimeSlot.utcStart,
+            end_at: selectedTimeSlot.utcEnd,
             type: "Therapy Session",
             notes: notes,
             status: 'scheduled'
@@ -281,7 +340,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           description: "Your appointment has been booked successfully!",
         });
         
-        setSelectedTime(null);
+        setSelectedTimeSlot(null);
         setNotes("");
         onAppointmentBooked();
         onOpenChange(false);
@@ -299,29 +358,29 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   };
 
   const isDayUnavailable = (date: Date) => {
-    const dayOfWeek = format(date, 'EEEE');
-    return !availabilityBlocks.some(block => block.day_of_week === dayOfWeek);
+    const selectedDay = DateTime.fromJSDate(date).setZone(userTimeZone);
+    const dayOfWeek = selectedDay.weekday; // 1-7 (Monday to Sunday in Luxon)
+    
+    // Check if day is available in any block
+    const hasAvailability = availabilityBlocks.some(block => {
+      const blockStart = TimeZoneService.fromUTC(block.start_at, clinicianTimeZone);
+      return blockStart.weekday === dayOfWeek;
+    });
+    
+    return !hasAvailability;
   };
 
   const isPastDate = (date: Date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return date < today;
+    const today = DateTime.now().setZone(userTimeZone).startOf('day');
+    const testDate = DateTime.fromJSDate(date).setZone(userTimeZone).startOf('day');
+    return testDate < today;
   };
 
   const isDateTooSoon = (date: Date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const daysFromToday = differenceInCalendarDays(date, today);
-    const result = daysFromToday < minDaysAhead;
-    console.log('isDateTooSoon check:', {
-      date: format(date, 'yyyy-MM-dd'),
-      today: format(today, 'yyyy-MM-dd'),
-      daysFromToday,
-      minDaysAhead,
-      isTooSoon: result
-    });
-    return result;
+    const today = DateTime.now().setZone(userTimeZone).startOf('day');
+    const testDate = DateTime.fromJSDate(date).setZone(userTimeZone).startOf('day');
+    const daysFromToday = testDate.diff(today, 'days').days;
+    return daysFromToday < minDaysAhead;
   };
 
   const disabledDays = (date: Date) => {
@@ -329,10 +388,13 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     const pastDate = isPastDate(date);
     const tooSoon = isDateTooSoon(date);
     
-    const today = new Date();
-    const daysFromToday = differenceInCalendarDays(date, today);
+    // For debugging near-term dates
+    const testDate = DateTime.fromJSDate(date).setZone(userTimeZone);
+    const today = DateTime.now().setZone(userTimeZone).startOf('day');
+    const daysFromToday = testDate.diff(today, 'days').days;
+    
     if (daysFromToday >= 0 && daysFromToday < 10) {
-      console.log('Checking date:', format(date, 'yyyy-MM-dd'), {
+      console.log('Checking date:', testDate.toFormat('yyyy-MM-dd'), {
         unavailable,
         pastDate,
         tooSoon,
@@ -343,10 +405,6 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     }
     
     return unavailable || pastDate || tooSoon;
-  };
-
-  const formatTimeDisplay = (timeString: string) => {
-    return formatTimeInUserTimeZone(timeString, userTimeZone);
   };
 
   return (
@@ -377,7 +435,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
                 <CalendarIcon className="h-4 w-4 mr-2" />
                 Select Date
               </TabsTrigger>
-              <TabsTrigger value="details" disabled={!selectedTime}>
+              <TabsTrigger value="details" disabled={!selectedTimeSlot}>
                 <Clock className="h-4 w-4 mr-2" />
                 Appointment Details
               </TabsTrigger>
@@ -396,6 +454,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
                     onSelect={(date) => {
                       console.log('Date selected:', date ? format(date, 'yyyy-MM-dd') : 'none');
                       setSelectedDate(date);
+                      setSelectedTimeSlot(null); // Reset time slot selection when date changes
                     }}
                     disabled={disabledDays}
                     className="border rounded-md"
@@ -405,25 +464,31 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
                 <div>
                   <h3 className="text-sm font-medium mb-2">Available Time Slots</h3>
                   <div className="text-xs text-gray-600 mb-2">
-                    All times shown in your local time zone ({userTimeZone})
+                    All times shown in {TimeZoneService.getTimeZoneDisplayName(userTimeZone)}
                   </div>
                   {timeSlots.length > 0 ? (
                     <div className="space-y-2 max-h-[300px] overflow-y-auto p-2">
-                      <RadioGroup value={selectedTime || ''} onValueChange={setSelectedTime}>
+                      <RadioGroup 
+                        value={selectedTimeSlot?.utcStart || ''} 
+                        onValueChange={(value) => {
+                          const slot = timeSlots.find(slot => slot.utcStart === value);
+                          setSelectedTimeSlot(slot || null);
+                        }}
+                      >
                         <div className="grid grid-cols-2 gap-2">
                           {timeSlots.map(slot => (
-                            <div key={slot.time} className="flex items-center">
+                            <div key={slot.utcStart} className="flex items-center">
                               <RadioGroupItem
-                                value={slot.time}
-                                id={`time-${slot.time}`}
+                                value={slot.utcStart}
+                                id={`time-${slot.utcStart}`}
                                 disabled={!slot.available}
                                 className="focus:ring-valorwell-500"
                               />
                               <Label
-                                htmlFor={`time-${slot.time}`}
+                                htmlFor={`time-${slot.utcStart}`}
                                 className={`ml-2 ${!slot.available ? 'line-through text-gray-400' : ''}`}
                               >
-                                {formatTimeDisplay(slot.time)}
+                                {slot.localTime}
                               </Label>
                             </div>
                           ))}
@@ -445,7 +510,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
               <DialogFooter>
                 <Button 
                   onClick={() => {
-                    if (selectedTime) {
+                    if (selectedTimeSlot) {
                       const tabsList = document.querySelector('[role="tablist"]');
                       if (tabsList) {
                         const detailsTab = tabsList.querySelector('[value="details"]');
@@ -455,7 +520,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
                       }
                     }
                   }}
-                  disabled={!selectedTime}
+                  disabled={!selectedTimeSlot}
                 >
                   Continue
                 </Button>
@@ -485,7 +550,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
                   <div className="flex justify-between">
                     <span className="text-gray-500">Time:</span>
                     <span className="font-medium">
-                      {selectedTime ? formatTimeDisplay(selectedTime) : ''}
+                      {selectedTimeSlot?.localTime || ''}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -498,7 +563,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Time Zone:</span>
-                    <span className="font-medium">{userTimeZone}</span>
+                    <span className="font-medium">{TimeZoneService.getTimeZoneDisplayName(userTimeZone)}</span>
                   </div>
                 </div>
               </div>

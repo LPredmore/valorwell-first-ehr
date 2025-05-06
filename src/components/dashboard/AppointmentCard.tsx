@@ -11,11 +11,11 @@ export interface AppointmentCardProps {
     id: string;
     client_id: string;
     clinician_id: string;
-    date: string;
-    start_time: string;
-    end_time: string;
-    start_at?: string;
-    end_at?: string;
+    date?: string; // Legacy field, may exist in database
+    start_time?: string; // Legacy field, may exist in database
+    end_time?: string; // Legacy field, may exist in database
+    start_at: string; // UTC timestamp - the source of truth
+    end_at: string; // UTC timestamp - the source of truth
     type: string;
     status: string;
     video_room_url: string | null;
@@ -42,26 +42,15 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   onDocumentSession,
   onSessionDidNotOccur
 }) => {
-  // Format time for display in user's time zone
-  const formatTimeDisplay = (timeString: string, utcTime?: string) => {
-    try {
-      // If we have UTC timestamp, use it for most accurate time conversion
-      if (utcTime) {
-        const utcDateTime = TimeZoneService.fromUTC(utcTime, userTimeZone);
-        return TimeZoneService.formatTime(utcDateTime, 'h:mm a');
-      }
-      
-      // Fall back to original time formatting method
-      const dateTime = TimeZoneService.createDateTime(
-        appointment.date,
-        timeString,
-        userTimeZone
-      );
-      return TimeZoneService.formatTime(dateTime, 'h:mm a');
-    } catch (error) {
-      console.error('Error formatting appointment time:', error);
-      return timeString; // Return original if conversion fails
-    }
+  // Format time for display in user's time zone directly from UTC timestamps
+  const formatTimeDisplay = (utcTimestamp: string) => {
+    return TimeZoneService.formatUTCInTimezone(utcTimestamp, userTimeZone, 'h:mm a');
+  };
+  
+  // Format date from UTC timestamp
+  const formatDateDisplay = (utcTimestamp: string) => {
+    const localDate = TimeZoneService.fromUTC(utcTimestamp, userTimeZone);
+    return localDate.toFormat('EEEE, MMMM d, yyyy');
   };
 
   if (onDocumentSession) {
@@ -74,14 +63,14 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
           </CardTitle>
           <CardDescription className="flex items-center">
             <Calendar className="h-4 w-4 mr-2" />
-            {format(parseISO(appointment.date), 'EEEE, MMMM do, yyyy')}
+            {formatDateDisplay(appointment.start_at)}
           </CardDescription>
         </CardHeader>
         <CardContent className="pb-2">
           <div className="flex items-center">
             <Clock className="h-4 w-4 mr-2" />
             <span className="text-sm">
-              {formatTimeDisplay(appointment.start_time, appointment.start_at)} - {formatTimeDisplay(appointment.end_time, appointment.end_at)}
+              {formatTimeDisplay(appointment.start_at)} - {formatTimeDisplay(appointment.end_at)}
             </span>
           </div>
           <div className="text-sm mt-1">{appointment.type}</div>
@@ -112,19 +101,18 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
       </Card>
     );
   }
-
   
   return (
     <Card key={appointment.id} className="mb-3">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-semibold flex items-center">
           <Clock className="h-4 w-4 mr-2" />
-          {formatTimeDisplay(appointment.start_time, appointment.start_at)} - {formatTimeDisplay(appointment.end_time, appointment.end_at)} 
+          {formatTimeDisplay(appointment.start_at)} - {formatTimeDisplay(appointment.end_at)} 
           <span className="text-xs text-gray-500 ml-1">({timeZoneDisplay})</span>
         </CardTitle>
         <CardDescription className="flex items-center">
           <Calendar className="h-4 w-4 mr-2" />
-          {format(parseISO(appointment.date), 'EEEE, MMMM do, yyyy')}
+          {formatDateDisplay(appointment.start_at)}
         </CardDescription>
       </CardHeader>
       <CardContent className="pb-2">

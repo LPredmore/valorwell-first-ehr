@@ -9,24 +9,23 @@ import WeekView from '@/components/calendar/WeekView';
 import AppointmentBookingDialog from './AppointmentBookingDialog';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { format, parseISO, startOfToday, isBefore, isToday } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
+import { isToday } from 'date-fns';
+import { getUserTimeZone } from '@/utils/timeZoneUtils';
 import VideoChat from '@/components/video/VideoChat';
-import { getUserTimeZone, formatTimeZoneDisplay, formatTimeInUserTimeZone, formatTime12Hour, ensureIANATimeZone } from '@/utils/timeZoneUtils';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import PHQ9Template from '@/components/templates/PHQ9Template';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface Appointment {
   id: number;
-  date: string;
-  time: string;
+  date?: string; // Legacy field
+  time?: string; // Legacy field
+  formattedDate?: string; // Generated field from UTC timestamp
+  formattedTime?: string; // Generated field from UTC timestamp
   type: string;
   therapist: string;
-  rawDate?: string;
-  rawTime?: string;
-  start_at?: string;
-  end_at?: string;
+  start_at: string; // UTC timestamp
+  end_at: string; // UTC timestamp
 }
 
 interface MyPortalProps {
@@ -51,24 +50,28 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const [showPHQ9, setShowPHQ9] = useState(false);
   const [pendingAppointmentId, setPendingAppointmentId] = useState<string | number | null>(null);
   const [clinicianData, setClinicianData] = useState<any>(null);
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
 
-  const clientTimeZone = TimeZoneService.ensureIANATimeZone(clientData?.client_time_zone || getUserTimeZone());
+  // Get client timezone from database or browser
+  const clientTimeZone = TimeZoneService.ensureIANATimeZone(
+    clientData?.client_time_zone || getUserTimeZone()
+  );
 
   useEffect(() => {
     const fetchClinicianData = async () => {
       if (!clientData?.client_assigned_therapist) return;
       try {
-        const {
-          data,
-          error
-        } = await supabase.from('clinicians').select('*').eq('id', clientData.client_assigned_therapist).single();
+        const { data, error } = await supabase
+          .from('clinicians')
+          .select('*')
+          .eq('id', clientData.client_assigned_therapist)
+          .single();
+          
         if (error) {
           console.error('Error fetching clinician data:', error);
           return;
         }
+        
         if (data) {
           console.log('Fetched clinician data:', data);
           setClinicianData(data);
@@ -77,86 +80,68 @@ const MyPortal: React.FC<MyPortalProps> = ({
         console.error('Error:', error);
       }
     };
+    
     fetchClinicianData();
   }, [clientData]);
 
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!clientData?.id) return;
+      
       try {
-        const today = startOfToday();
-        const todayStr = format(today, 'yyyy-MM-dd');
         console.log("Fetching appointments for client:", clientData.id);
         console.log("Using time zone:", clientTimeZone);
-        const {
-          data,
-          error
-        } = await supabase.from('appointments').select('*')
+        
+        // Get today's date in UTC
+        const todayUTC = TimeZoneService.now().toUTC().startOf('day');
+        
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('*')
           .eq('client_id', clientData.id)
           .eq('status', 'scheduled')
-          .gte('date', todayStr)
-          .order('date', { ascending: true })
-          .order('start_time', { ascending: true });
+          .gte('start_at', todayUTC.toISO())
+          .order('start_at', { ascending: true });
           
         if (error) {
           console.error('Error fetching appointments:', error);
           return;
         }
+        
         console.log("Appointments data from Supabase:", data);
+        
         if (data && data.length > 0) {
+          // Process appointments with TimeZoneService
           const formattedAppointments = data.map(appointment => {
             try {
-              const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
+              // Convert UTC timestamps to client timezone and format for display
+              const startDateTime = TimeZoneService.fromUTC(appointment.start_at, clientTimeZone);
               
-              let formattedTime = '';
-              try {
-                // Try to use UTC timestamps for most accurate timezone conversion if available
-                if (appointment.start_at) {
-                  const startDateTime = TimeZoneService.fromUTC(appointment.start_at, clientTimeZone);
-                  formattedTime = TimeZoneService.formatTime(startDateTime);
-                  console.log(`Formatted UTC time for ${appointment.id}: ${formattedTime}`);
-                } else {
-                  // Fall back to date/time string formatting
-                  formattedTime = formatTimeInUserTimeZone(
-                    appointment.start_time, 
-                    clientTimeZone,
-                    'h:mm a',
-                    appointment.date
-                  );
-                  console.log(`Formatted time for ${appointment.start_time} on ${appointment.date}: ${formattedTime}`);
-                }
-              } catch (error) {
-                console.error('Error formatting time:', error, {
-                  date: appointment.date,
-                  time: appointment.start_time,
-                  timezone: clientTimeZone,
-                  utcStart: appointment.start_at
-                });
-                formattedTime = formatTime12Hour(appointment.start_time) || 'Time unavailable';
-              }
               return {
                 id: appointment.id,
-                date: formattedDate,
-                time: formattedTime,
+                formattedDate: startDateTime.toFormat('MMMM d, yyyy'),
+                formattedTime: startDateTime.toFormat('h:mm a'),
                 type: appointment.type,
                 therapist: clinicianName || 'Your Therapist',
-                rawDate: appointment.date,
-                rawTime: appointment.start_time,
                 start_at: appointment.start_at,
                 end_at: appointment.end_at
               };
             } catch (error) {
               console.error('Error processing appointment:', error, appointment);
+              
+              // Fallback with basic info
               return {
                 id: appointment.id,
-                date: 'Date processing error',
-                time: 'Time processing error',
+                formattedDate: 'Date unavailable',
+                formattedTime: 'Time unavailable',
                 type: appointment.type || 'Unknown',
                 therapist: clinicianName || 'Your Therapist',
-                rawDate: null
+                start_at: appointment.start_at || '',
+                end_at: appointment.end_at || ''
               };
             }
           });
+          
           console.log("Formatted appointments:", formattedAppointments);
           setUpcomingAppointments(formattedAppointments);
         } else {
@@ -172,13 +157,17 @@ const MyPortal: React.FC<MyPortalProps> = ({
         });
       }
     };
+    
     fetchAppointments();
   }, [clientData, clinicianName, refreshAppointments, clientTimeZone, toast]);
 
-  const isAppointmentToday = (rawDate: string | undefined | null): boolean => {
-    if (!rawDate) return false;
+  const isAppointmentToday = (appointment: Appointment): boolean => {
+    if (!appointment.start_at) return false;
+    
     try {
-      return isToday(parseISO(rawDate));
+      const apptDate = TimeZoneService.fromUTC(appointment.start_at, clientTimeZone);
+      const today = TimeZoneService.today(clientTimeZone);
+      return TimeZoneService.isSameDay(apptDate, today);
     } catch (error) {
       console.error('Error in isAppointmentToday:', error);
       return false;
@@ -234,9 +223,9 @@ const MyPortal: React.FC<MyPortalProps> = ({
     setIsVideoSessionOpen(false);
   };
 
-  const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);
-  const todayAppointments = upcomingAppointments.filter(appointment => isAppointmentToday(appointment.rawDate));
-  const futureAppointments = upcomingAppointments.filter(appointment => !isAppointmentToday(appointment.rawDate));
+  const timeZoneDisplay = TimeZoneService.getTimeZoneDisplayName(clientTimeZone);
+  const todayAppointments = upcomingAppointments.filter(appointment => isAppointmentToday(appointment));
+  const futureAppointments = upcomingAppointments.filter(appointment => !isAppointmentToday(appointment));
 
   return (
     <div className="grid grid-cols-1 gap-6">
@@ -248,7 +237,8 @@ const MyPortal: React.FC<MyPortalProps> = ({
           </div>
         </CardHeader>
         <CardContent>
-          {todayAppointments.length > 0 ? <Table>
+          {todayAppointments.length > 0 ? (
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
@@ -259,23 +249,33 @@ const MyPortal: React.FC<MyPortalProps> = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {todayAppointments.map(appointment => <TableRow key={appointment.id}>
-                    <TableCell>{appointment.date}</TableCell>
-                    <TableCell>{appointment.time}</TableCell>
+                {todayAppointments.map(appointment => (
+                  <TableRow key={appointment.id}>
+                    <TableCell>{appointment.formattedDate}</TableCell>
+                    <TableCell>{appointment.formattedTime}</TableCell>
                     <TableCell>{appointment.type}</TableCell>
                     <TableCell>{appointment.therapist}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm" onClick={() => handleStartSession(appointment.id)} disabled={isLoadingVideoSession}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleStartSession(appointment.id)} 
+                        disabled={isLoadingVideoSession}
+                      >
                         {isLoadingVideoSession ? "Loading..." : "Start Session"}
                       </Button>
                     </TableCell>
-                  </TableRow>)}
+                  </TableRow>
+                ))}
               </TableBody>
-            </Table> : <div className="flex flex-col items-center justify-center py-6 text-center">
+            </Table>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-6 text-center">
               <Calendar className="h-12 w-12 text-gray-300 mb-3" />
               <h3 className="text-lg font-medium">No appointments today</h3>
               <p className="text-sm text-gray-500 mt-1">Check your upcoming appointments below</p>
-            </div>}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -288,28 +288,43 @@ const MyPortal: React.FC<MyPortalProps> = ({
           </Button>
         </CardHeader>
         <CardContent>
-          {clientData && clientData.client_assigned_therapist && clinicianData ? <div className="bg-gray-50 p-4 rounded-md mb-4">
+          {clientData && clientData.client_assigned_therapist && clinicianData ? (
+            <div className="bg-gray-50 p-4 rounded-md mb-4">
               <div className="flex flex-row gap-6 items-start">
                 <Avatar className="h-48 w-48 border-2 border-white shadow-md rounded-md flex-shrink-0">
-                  {clinicianData.clinician_image_url ? <AvatarImage src={clinicianData.clinician_image_url} alt={clinicianName || 'Therapist'} className="object-cover h-full w-full" /> : <AvatarFallback className="text-4xl font-medium bg-valorwell-100 text-valorwell-700 h-full w-full">
-                      {clinicianData.clinician_first_name?.[0] || ''}{clinicianData.clinician_last_name?.[0] || ''}
-                    </AvatarFallback>}
+                  {clinicianData.clinician_image_url ? (
+                    <AvatarImage 
+                      src={clinicianData.clinician_image_url} 
+                      alt={clinicianName || 'Therapist'} 
+                      className="object-cover h-full w-full" 
+                    />
+                  ) : (
+                    <AvatarFallback className="text-4xl font-medium bg-valorwell-100 text-valorwell-700 h-full w-full">
+                      {clinicianData.clinician_first_name?.[0] || ''}
+                      {clinicianData.clinician_last_name?.[0] || ''}
+                    </AvatarFallback>
+                  )}
                 </Avatar>
                 
                 <div className="flex-1">
-                  {clinicianData.clinician_bio && <>
+                  {clinicianData.clinician_bio && (
+                    <>
                       <h4 className="font-medium text-lg mb-2">About {clinicianName}</h4>
                       <p className="text-gray-700 text-sm whitespace-pre-line">{clinicianData.clinician_bio}</p>
-                    </>}
+                    </>
+                  )}
                 </div>
               </div>
-            </div> : <div className="flex flex-col items-center justify-center py-8 text-center">
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
               <Calendar className="h-12 w-12 text-gray-300 mb-3" />
               <h3 className="text-lg font-medium">No Assigned Therapist</h3>
               <p className="text-sm text-gray-500 mt-1">
                 You don't have an assigned therapist yet. Please contact the clinic for assistance.
               </p>
-            </div>}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -319,47 +334,71 @@ const MyPortal: React.FC<MyPortalProps> = ({
             <CardTitle>Upcoming Appointments</CardTitle>
             <CardDescription>Your scheduled sessions</CardDescription>
           </div>
-          
         </CardHeader>
         <CardContent>
-          {futureAppointments.length > 0 ? <Table>
+          {futureAppointments.length > 0 ? (
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
                   <TableHead>Time <span className="text-xs text-gray-500">({timeZoneDisplay})</span></TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Therapist</TableHead>
-                  
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {futureAppointments.map(appointment => <TableRow key={appointment.id}>
-                    <TableCell>{appointment.date}</TableCell>
-                    <TableCell>{appointment.time}</TableCell>
+                {futureAppointments.map(appointment => (
+                  <TableRow key={appointment.id}>
+                    <TableCell>{appointment.formattedDate}</TableCell>
+                    <TableCell>{appointment.formattedTime}</TableCell>
                     <TableCell>{appointment.type}</TableCell>
                     <TableCell>{appointment.therapist}</TableCell>
-                    
-                  </TableRow>)}
+                  </TableRow>
+                ))}
               </TableBody>
-            </Table> : <div className="flex flex-col items-center justify-center py-6 text-center">
+            </Table>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-6 text-center">
               <Calendar className="h-12 w-12 text-gray-300 mb-3" />
               <h3 className="text-lg font-medium">No upcoming appointments</h3>
               <p className="text-sm text-gray-500 mt-1">Schedule a session with your therapist</p>
               <Button className="mt-4" onClick={() => setIsBookingOpen(true)}>
                 Book Appointment
               </Button>
-            </div>}
+            </div>
+          )}
         </CardContent>
         <CardFooter className="flex justify-between">
           
         </CardFooter>
       </Card>
 
-      <AppointmentBookingDialog open={isBookingOpen} onOpenChange={setIsBookingOpen} clinicianId={clientData?.client_assigned_therapist || null} clinicianName={clinicianName} clientId={clientData?.id || null} onAppointmentBooked={handleBookingComplete} />
+      <AppointmentBookingDialog 
+        open={isBookingOpen} 
+        onOpenChange={setIsBookingOpen} 
+        clinicianId={clientData?.client_assigned_therapist || null} 
+        clinicianName={clinicianName} 
+        clientId={clientData?.id || null} 
+        onAppointmentBooked={handleBookingComplete}
+        userTimeZone={clientTimeZone}
+      />
 
-      {showPHQ9 && <PHQ9Template onClose={() => setShowPHQ9(false)} clinicianName={clinicianName || "Your Therapist"} clientData={clientData} onComplete={handlePHQ9Complete} />}
+      {showPHQ9 && (
+        <PHQ9Template 
+          onClose={() => setShowPHQ9(false)} 
+          clinicianName={clinicianName || "Your Therapist"} 
+          clientData={clientData} 
+          onComplete={handlePHQ9Complete} 
+        />
+      )}
 
-      {videoRoomUrl && <VideoChat roomUrl={videoRoomUrl} isOpen={isVideoSessionOpen} onClose={handleCloseVideoSession} />}
+      {videoRoomUrl && (
+        <VideoChat 
+          roomUrl={videoRoomUrl} 
+          isOpen={isVideoSessionOpen} 
+          onClose={handleCloseVideoSession} 
+        />
+      )}
     </div>
   );
 };

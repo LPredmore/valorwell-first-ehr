@@ -29,9 +29,9 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   const [loadingClients, setLoadingClients] = useState(false);
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago');
+  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>(TimeZoneService.DEFAULT_TIMEZONE);
   const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
-  const [userTimeZone, setUserTimeZone] = useState<string>('');
+  const [userTimeZone, setUserTimeZone] = useState<string>(TimeZoneService.DEFAULT_TIMEZONE);
 
   const formattedClinicianId = ensureStringId(selectedClinicianId);
   
@@ -56,7 +56,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
         try {
           const timeZone = await getClinicianTimeZone(formattedClinicianId);
           console.log("[useCalendarState] Fetched clinician timezone:", timeZone);
-          setClinicianTimeZone(timeZone);
+          setClinicianTimeZone(TimeZoneService.ensureIANATimeZone(timeZone));
         } catch (error) {
           console.error("[useCalendarState] Error fetching clinician timezone:", error);
         } finally {
@@ -71,8 +71,10 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   // Set user timezone
   useEffect(() => {
     if (clinicianTimeZone && !isLoadingTimeZone) {
+      // For clinician views, use clinician's timezone
       setUserTimeZone(TimeZoneService.ensureIANATimeZone(clinicianTimeZone));
     } else {
+      // Fallback to browser timezone
       setUserTimeZone(TimeZoneService.ensureIANATimeZone(getUserTimeZone()));
     }
   }, [clinicianTimeZone, isLoadingTimeZone]);
@@ -185,6 +187,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     isDialogOpen,
     setIsDialogOpen,
     userTimeZone,
+    clinicianTimeZone,
     isLoadingTimeZone,
   };
 };

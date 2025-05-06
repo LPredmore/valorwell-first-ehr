@@ -71,7 +71,7 @@ export type Database = {
           date: string
           denial_details_json: Json | null
           diagnosis_code_pointers: string | null
-          end_at: string | null
+          end_at: string
           end_time: string
           era_check_eft_number: string | null
           era_claimmd_id: string | null
@@ -90,7 +90,7 @@ export type Database = {
           place_of_service_code: string | null
           recurring_group_id: string | null
           requires_billing_review: boolean | null
-          start_at: string | null
+          start_at: string
           start_time: string
           status: string
           stripe_charge_ids: string[] | null
@@ -115,7 +115,7 @@ export type Database = {
           date: string
           denial_details_json?: Json | null
           diagnosis_code_pointers?: string | null
-          end_at?: string | null
+          end_at: string
           end_time: string
           era_check_eft_number?: string | null
           era_claimmd_id?: string | null
@@ -134,7 +134,7 @@ export type Database = {
           place_of_service_code?: string | null
           recurring_group_id?: string | null
           requires_billing_review?: boolean | null
-          start_at?: string | null
+          start_at: string
           start_time: string
           status?: string
           stripe_charge_ids?: string[] | null
@@ -159,7 +159,7 @@ export type Database = {
           date?: string
           denial_details_json?: Json | null
           diagnosis_code_pointers?: string | null
-          end_at?: string | null
+          end_at?: string
           end_time?: string
           era_check_eft_number?: string | null
           era_claimmd_id?: string | null
@@ -178,7 +178,7 @@ export type Database = {
           place_of_service_code?: string | null
           recurring_group_id?: string | null
           requires_billing_review?: boolean | null
-          start_at?: string | null
+          start_at?: string
           start_time?: string
           status?: string
           stripe_charge_ids?: string[] | null
@@ -196,6 +196,47 @@ export type Database = {
           },
           {
             foreignKeyName: "appointments_clinician_id_fkey"
+            columns: ["clinician_id"]
+            isOneToOne: false
+            referencedRelation: "clinicians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      availability_blocks: {
+        Row: {
+          clinician_id: string
+          created_at: string
+          end_at: string
+          id: string
+          is_active: boolean
+          recurring_pattern: Json | null
+          start_at: string
+          updated_at: string
+        }
+        Insert: {
+          clinician_id: string
+          created_at?: string
+          end_at: string
+          id?: string
+          is_active?: boolean
+          recurring_pattern?: Json | null
+          start_at: string
+          updated_at?: string
+        }
+        Update: {
+          clinician_id?: string
+          created_at?: string
+          end_at?: string
+          id?: string
+          is_active?: boolean
+          recurring_pattern?: Json | null
+          start_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_blocks_clinician_id_fkey"
             columns: ["clinician_id"]
             isOneToOne: false
             referencedRelation: "clinicians"
@@ -1063,6 +1104,7 @@ export type Database = {
           clinician_taxonomy_code: string | null
           clinician_temppassword: string | null
           clinician_time_granularity: string | null
+          clinician_time_zone: string | null
           clinician_timezone: string[] | null
           clinician_treatment_approaches: string[] | null
           clinician_type: string | null
@@ -1155,6 +1197,7 @@ export type Database = {
           clinician_taxonomy_code?: string | null
           clinician_temppassword?: string | null
           clinician_time_granularity?: string | null
+          clinician_time_zone?: string | null
           clinician_timezone?: string[] | null
           clinician_treatment_approaches?: string[] | null
           clinician_type?: string | null
@@ -1247,6 +1290,7 @@ export type Database = {
           clinician_taxonomy_code?: string | null
           clinician_temppassword?: string | null
           clinician_time_granularity?: string | null
+          clinician_time_zone?: string | null
           clinician_timezone?: string[] | null
           clinician_treatment_approaches?: string[] | null
           clinician_type?: string | null

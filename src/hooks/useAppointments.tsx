@@ -1,19 +1,18 @@
+
 import { useState, useEffect } from 'react';
-import { format, isToday, isFuture, parseISO, isBefore } from 'date-fns';
+import { isToday, parseISO } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { DateTime } from 'luxon';
 
 export interface Appointment {
   id: string;
   client_id: string;
   clinician_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  start_at?: string;
-  end_at?: string;
+  start_at: string;  // UTC timestamp
+  end_at: string;    // UTC timestamp
   type: string;
   status: string;
   appointment_recurring?: string | null;
@@ -30,7 +29,8 @@ export interface Appointment {
 export const useAppointments = (
   clinicianId: string | null,
   fromDate?: Date,
-  toDate?: Date
+  toDate?: Date,
+  timeZone: string = TimeZoneService.DEFAULT_TIMEZONE
 ) => {
   const { toast } = useToast();
   const [currentAppointment, setCurrentAppointment] = useState<Appointment | null>(null);
@@ -42,6 +42,16 @@ export const useAppointments = (
 
   // Format clinician ID if provided
   const formattedClinicianId = clinicianId ? clinicianId.trim() : null;
+  const safeTimeZone = TimeZoneService.ensureIANATimeZone(timeZone);
+
+  // Convert from/to dates to UTC for database query
+  const fromUTC = fromDate ? 
+    DateTime.fromJSDate(fromDate).setZone(safeTimeZone).toUTC().toISO() : 
+    undefined;
+    
+  const toUTC = toDate ? 
+    DateTime.fromJSDate(toDate).setZone(safeTimeZone).toUTC().toISO() : 
+    undefined;
 
   // Fetch appointments
   const { 
@@ -50,7 +60,7 @@ export const useAppointments = (
     error, 
     refetch 
   } = useQuery({
-    queryKey: ['appointments', formattedClinicianId, fromDate, toDate],
+    queryKey: ['appointments', formattedClinicianId, fromUTC, toUTC],
     queryFn: async () => {
       if (!formattedClinicianId) {
         console.log('[useAppointments] Skipping appointment fetch - no clinicianId provided');
@@ -58,7 +68,10 @@ export const useAppointments = (
       }
       
       console.log('[useAppointments] Fetching appointments for clinician:', formattedClinicianId);
-      console.log('[useAppointments] Clinician ID type:', typeof formattedClinicianId);
+      console.log('[useAppointments] Date range:', { 
+        from: fromUTC ? new Date(fromUTC).toISOString() : 'none', 
+        to: toUTC ? new Date(toUTC).toISOString() : 'none' 
+      });
       
       try {
         let query = supabase
@@ -67,9 +80,6 @@ export const useAppointments = (
             id,
             client_id,
             clinician_id,
-            date,
-            start_time,
-            end_time,
             start_at,
             end_at,
             type,
@@ -84,443 +94,176 @@ export const useAppointments = (
               client_preferred_name
             )
           `)
-          .eq('clinician_id', formattedClinicianId);
-        
-        if (fromDate) {
-          // If we have UTC timestamps, use those for more accurate filtering
-          query = query.gte('date', format(fromDate, 'yyyy-MM-dd'));
+          .eq('clinician_id', formattedClinicianId)
+          .eq('status', 'scheduled');
+
+        // Apply date range filters if provided
+        if (fromUTC) {
+          query = query.gte('start_at', fromUTC);
         }
         
-        if (toDate) {
-          query = query.lte('date', format(toDate, 'yyyy-MM-dd'));
+        if (toUTC) {
+          query = query.lte('start_at', toUTC);
         }
         
-        const { data, error } = await query
-          .order('date')
-          .order('start_time');
+        query = query.order('start_at', { ascending: true });
+
+        const { data, error } = await query;
 
         if (error) {
           console.error('[useAppointments] Error fetching appointments:', error);
-          throw error;
+          throw new Error(error.message);
         }
+        
+        console.log(`[useAppointments] Fetched ${data?.length || 0} appointments`);
+        
+        // Process appointments to format client data correctly
+        const formattedAppointments = (data || []).map(appointment => {
+          const clientData = appointment.clients;
+          delete appointment.clients;
+          
+          return {
+            ...appointment,
+            client: clientData,
+            clientName: clientData ? 
+              `${clientData.client_preferred_name || clientData.client_first_name || ''} ${clientData.client_last_name || ''}`.trim() : 
+              'Unknown Client'
+          };
+        });
 
-        // Check if we actually got data back
-        if (!data || data.length === 0) {
-          console.log('[useAppointments] No appointments found for clinician:', formattedClinicianId);
-          return [];
-        }
-
-        const processedAppointments = data.map((appointment: any) => ({
-          ...appointment,
-          client: appointment.clients
-        }));
-        
-        console.log(`[useAppointments] Retrieved ${processedAppointments.length} appointments for clinician ${formattedClinicianId}`);
-        
-        // Sample appointments for debugging
-        if (processedAppointments.length > 0) {
-          const firstAppointment = processedAppointments[0];
-          console.log('[useAppointments] Example appointment:', {
-            id: firstAppointment.id,
-            date: firstAppointment.date,
-            time: `${firstAppointment.start_time} - ${firstAppointment.end_time}`,
-            utcStart: firstAppointment.start_at,
-            utcEnd: firstAppointment.end_at,
-            clinicianId: firstAppointment.clinician_id,
-            clientId: firstAppointment.client_id,
-            client: firstAppointment.client ? 
-              `${firstAppointment.client.client_preferred_name || ''} ${firstAppointment.client.client_last_name || ''}` : 
-              'Unknown client'
-          });
-        }
-        
-        return processedAppointments;
-      } catch (err) {
-        console.error('[useAppointments] Unexpected error in appointment fetch:', err);
-        throw err;
+        return formattedAppointments;
+      } catch (error) {
+        console.error('[useAppointments] Error:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load appointments. Please try again later.",
+          variant: "destructive"
+        });
+        return [];
       }
     },
     enabled: !!formattedClinicianId
   });
 
-  // Get today's appointments
-  const todayAppointments = appointments?.filter(appointment => {
-    const appointmentDate = parseISO(appointment.date);
-    return isToday(appointmentDate);
-  }) || [];
-
-  // Get upcoming appointments
-  const upcomingAppointments = appointments?.filter(appointment => {
-    const appointmentDate = parseISO(appointment.date);
-    return isFuture(appointmentDate) && !isToday(appointmentDate);
-  }) || [];
-
-  // Get past appointments
-  const pastAppointments = appointments?.filter(appointment => {
-    const appointmentDate = parseISO(appointment.date);
-    return isBefore(appointmentDate, new Date()) && 
-           !isToday(appointmentDate) && 
-           appointment.status === "scheduled";
-  }) || [];
-
-  // Create a new appointment
-  const createAppointment = async (appointmentData: Partial<Appointment>) => {
-    try {
-      // Add UTC timestamps if not present but date and time are
-      if (!appointmentData.start_at && appointmentData.date && appointmentData.start_time) {
-        // Get timezone - either from the context of the appointment creation or use default
-        const userTimezone = TimeZoneService.DEFAULT_TIMEZONE;
-        
-        const startDateTime = TimeZoneService.createDateTime(
-          appointmentData.date, 
-          appointmentData.start_time, 
-          userTimezone
-        );
-        const endDateTime = TimeZoneService.createDateTime(
-          appointmentData.date, 
-          appointmentData.end_time as string, 
-          userTimezone
-        );
-        
-        // Convert to ISO strings for storage
-        appointmentData.start_at = startDateTime.toUTC().toISO();
-        appointmentData.end_at = endDateTime.toUTC().toISO();
-      }
-      
-      const { data, error } = await supabase
-        .from('appointments')
-        .insert([appointmentData])
-        .select();
-
-      if (error) throw error;
-      return { success: true, data };
-    } catch (error) {
-      console.error('Error creating appointment:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to create appointment. Please try again.',
-        variant: 'destructive',
-      });
-      return { success: false, error };
-    }
-  };
-
-  // Create recurring appointments
-  const createRecurringAppointments = async (
-    baseAppointment: Partial<Appointment>,
-    recurrenceType: string,
-    count: number
-  ) => {
-    try {
-      const recurringGroupId = crypto.randomUUID();
-      const appointments = [];
-      
-      // Create the base date from the appointment date
-      let currentDate = parseISO(baseAppointment.date as string);
-      
-      for (let i = 0; i < count; i++) {
-        // For the first appointment, use the base date
-        // For subsequent appointments, calculate the next date
-        const appointmentDate = i === 0 
-          ? currentDate 
-          : getNextRecurringDate(currentDate, recurrenceType);
-        
-        // Update current date for next iteration
-        currentDate = appointmentDate;
-        
-        appointments.push({
-          ...baseAppointment,
-          date: format(appointmentDate, 'yyyy-MM-dd'),
-          appointment_recurring: recurrenceType,
-          recurring_group_id: recurringGroupId
-        });
-      }
-      
-      const { data, error } = await supabase
-        .from('appointments')
-        .insert(appointments)
-        .select();
-
-      if (error) throw error;
-      return { success: true, data };
-    } catch (error) {
-      console.error('Error creating recurring appointments:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to create recurring appointments. Please try again.',
-        variant: 'destructive',
-      });
-      return { success: false, error };
-    }
-  };
-
-  // Helper function to calculate the next date based on recurrence type
-  const getNextRecurringDate = (date: Date, recurrenceType: string): Date => {
-    const newDate = new Date(date);
+  // Helper function to convert appointment dates between timezones
+  const convertAppointmentToTimeZone = (appointment: Appointment, targetTimeZone: string): Appointment => {
+    const safeZone = TimeZoneService.ensureIANATimeZone(targetTimeZone);
     
-    switch (recurrenceType) {
-      case 'weekly':
-        newDate.setDate(newDate.getDate() + 7);
-        break;
-      case 'biweekly':
-        newDate.setDate(newDate.getDate() + 14);
-        break;
-      case 'monthly':
-        newDate.setMonth(newDate.getMonth() + 1);
-        break;
-      default:
-        newDate.setDate(newDate.getDate() + 7); // Default to weekly
+    // Clone appointment to avoid mutating the original
+    const converted = { ...appointment };
+    
+    // Add formatted fields for display
+    if (converted.start_at) {
+      const startLocal = TimeZoneService.fromUTC(converted.start_at, safeZone);
+      converted.formattedStartTime = TimeZoneService.formatTime(startLocal);
+      converted.formattedStartDate = TimeZoneService.formatDateTime(startLocal, 'MMMM d, yyyy');
     }
     
-    return newDate;
+    if (converted.end_at) {
+      const endLocal = TimeZoneService.fromUTC(converted.end_at, safeZone);
+      converted.formattedEndTime = TimeZoneService.formatTime(endLocal);
+    }
+    
+    return converted as Appointment;
   };
 
-  // Update an appointment
-  const updateAppointment = async (id: string, updates: Partial<Appointment>) => {
+  // Function to check if appointment is today
+  const isAppointmentToday = (appointment: Appointment): boolean => {
+    if (!appointment?.start_at) return false;
+    
     try {
-      const { data, error } = await supabase
-        .from('appointments')
-        .update(updates)
-        .eq('id', id)
-        .select();
-
-      if (error) throw error;
-      return { success: true, data };
+      const startDateTime = TimeZoneService.fromUTC(appointment.start_at, safeTimeZone);
+      const todayInTimeZone = TimeZoneService.today(safeTimeZone);
+      return TimeZoneService.isSameDay(startDateTime, todayInTimeZone);
     } catch (error) {
-      console.error('Error updating appointment:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update appointment. Please try again.',
-        variant: 'destructive',
-      });
-      return { success: false, error };
+      console.error('[useAppointments] Error checking if appointment is today:', error);
+      return false;
     }
   };
 
-  // Update recurring appointments
-  const updateRecurringAppointments = async (
-    appointmentId: string,
-    recurringGroupId: string,
-    updates: Partial<Appointment>,
-    updateMode: 'single' | 'future' | 'all'
-  ) => {
+  const startSession = async (appointment: Appointment) => {
     try {
-      let query = supabase
-        .from('appointments')
-        .update(updates);
+      setCurrentAppointment(appointment);
+      setIsLoadingClientData(true);
       
-      if (updateMode === 'single') {
-        // Update only this appointment
-        query = query.eq('id', appointmentId);
-      } else if (updateMode === 'future') {
-        // Update this and all future appointments in the series
-        const appointment = appointments.find(a => a.id === appointmentId);
-        if (!appointment) {
-          throw new Error('Appointment not found');
+      // Get client data if needed
+      if (appointment.client_id) {
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('id', appointment.client_id)
+          .single();
+          
+        if (error) {
+          console.error('[useAppointments] Error fetching client data:', error);
+        } else {
+          setClientData(data);
         }
-        
-        query = query
-          .eq('recurring_group_id', recurringGroupId)
-          .gte('date', appointment.date);
-      } else {
-        // Update all appointments in the series
-        query = query.eq('recurring_group_id', recurringGroupId);
       }
       
-      const { data, error } = await query.select();
-
-      if (error) throw error;
-      return { success: true, data };
-    } catch (error) {
-      console.error('Error updating recurring appointments:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update appointments. Please try again.',
-        variant: 'destructive',
-      });
-      return { success: false, error };
-    }
-  };
-
-  // Delete an appointment
-  const deleteAppointment = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('appointments')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      return { success: true };
-    } catch (error) {
-      console.error('Error deleting appointment:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete appointment. Please try again.',
-        variant: 'destructive',
-      });
-      return { success: false, error };
-    }
-  };
-
-  // Delete recurring appointments
-  const deleteRecurringAppointments = async (
-    appointmentId: string,
-    recurringGroupId: string,
-    deleteMode: 'single' | 'future' | 'all'
-  ) => {
-    try {
-      let query = supabase
-        .from('appointments')
-        .delete();
-      
-      if (deleteMode === 'single') {
-        // Delete only this appointment
-        query = query.eq('id', appointmentId);
-      } else if (deleteMode === 'future') {
-        // Delete this and all future appointments in the series
-        const appointment = appointments.find(a => a.id === appointmentId);
-        if (!appointment) {
-          throw new Error('Appointment not found');
-        }
-        
-        query = query
-          .eq('recurring_group_id', recurringGroupId)
-          .gte('date', appointment.date);
+      // Open video session if URL exists or create a new one
+      if (appointment.video_room_url) {
+        setCurrentVideoUrl(appointment.video_room_url);
+        setIsVideoOpen(true);
       } else {
-        // Delete all appointments in the series
-        query = query.eq('recurring_group_id', recurringGroupId);
+        const result = await getOrCreateVideoRoom(appointment.id.toString());
+        if (result.success && result.url) {
+          setCurrentVideoUrl(result.url);
+          setIsVideoOpen(true);
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to create video room. Please try again.",
+            variant: "destructive"
+          });
+        }
       }
-      
-      const { error } = await query;
-
-      if (error) throw error;
-      return { success: true };
     } catch (error) {
-      console.error('Error deleting recurring appointments:', error);
+      console.error('[useAppointments] Error starting session:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to delete appointments. Please try again.',
-        variant: 'destructive',
+        title: "Error",
+        description: "There was a problem starting the session.",
+        variant: "destructive"
       });
-      return { success: false, error };
-    }
-  };
-
-  // Fetch client data for a specific appointment
-  const fetchClientData = async (clientId: string) => {
-    setIsLoadingClientData(true);
-    try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', clientId)
-        .single();
-      
-      if (error) throw error;
-      setClientData(data);
-      return data;
-    } catch (error) {
-      console.error('Error fetching client data:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load client information.',
-        variant: 'destructive',
-      });
-      return null;
     } finally {
       setIsLoadingClientData(false);
     }
   };
 
-  // Start a video session for an appointment
-  const startVideoSession = async (appointment: Appointment) => {
-    try {
-      console.log("Starting video session for appointment:", appointment.id);
-      
-      if (appointment.video_room_url) {
-        console.log("Using existing video room URL:", appointment.video_room_url);
-        setCurrentVideoUrl(appointment.video_room_url);
-        setCurrentAppointment(appointment);
-        setIsVideoOpen(true);
-      } else {
-        console.log("Creating new video room for appointment:", appointment.id);
-        const result = await getOrCreateVideoRoom(appointment.id);
-        console.log("Video room creation result:", result);
-        
-        if (result.success && result.url) {
-          setCurrentVideoUrl(result.url);
-          setCurrentAppointment(appointment);
-          setIsVideoOpen(true);
-          refetch();
-        } else {
-          console.error("Failed to create video room:", result.error);
-          throw new Error('Failed to create video room');
-        }
-      }
-    } catch (error) {
-      console.error('Error starting video session:', error);
-      toast({
-        title: 'Error',
-        description: 'Could not start the video session. Please try again.',
-        variant: 'destructive',
-      });
-    }
+  const documentSession = (appointment: Appointment) => {
+    setCurrentAppointment(appointment);
+    setShowSessionTemplate(true);
   };
 
   const closeVideoSession = () => {
     setIsVideoOpen(false);
-    setCurrentAppointment(null);
   };
 
-  // Open session template for documentation
-  const openSessionTemplate = async (appointment: Appointment) => {
-    try {
-      // Fetch client data if needed
-      if (!clientData || clientData.id !== appointment.client_id) {
-        await fetchClientData(appointment.client_id);
-      }
-      setCurrentAppointment(appointment);
-      setShowSessionTemplate(true);
-    } catch (error) {
-      console.error('Error opening session template:', error);
-      toast({
-        title: 'Error',
-        description: 'Could not load the session template. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  };
+  // Convert appointments to display timezone
+  const processedAppointments = appointments.map(appt => 
+    convertAppointmentToTimeZone(appt, safeTimeZone)
+  );
 
-  // Close session template
-  const closeSessionTemplate = () => {
-    setShowSessionTemplate(false);
-    setCurrentAppointment(null);
-  };
+  // Filter appointments by today 
+  const todayAppointments = processedAppointments.filter(isAppointmentToday);
 
   return {
-    appointments,
+    appointments: processedAppointments,
     todayAppointments,
-    upcomingAppointments,
-    pastAppointments,
     isLoading,
     error,
     refetch,
-    currentAppointment,
+    startSession,
+    documentSession,
     isVideoOpen,
+    closeVideoSession,
     currentVideoUrl,
+    currentAppointment,
     showSessionTemplate,
+    setShowSessionTemplate,
     clientData,
-    isLoadingClientData,
-    createAppointment,
-    createRecurringAppointments,
-    updateAppointment,
-    updateRecurringAppointments,
-    deleteAppointment,
-    deleteRecurringAppointments,
-    startVideoSession,
-    openSessionTemplate,
-    closeSessionTemplate,
-    closeVideoSession
+    isLoadingClientData
   };
 };
+
+export default useAppointments;

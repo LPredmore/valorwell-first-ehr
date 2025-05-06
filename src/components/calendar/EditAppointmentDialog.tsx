@@ -13,12 +13,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { 
-  generateTimeOptions, 
-  calculateEndTime,
-  formatTimeDisplay
-} from '@/utils/appointmentUtils';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { DateTime } from 'luxon';
 
 interface EditAppointmentDialogProps {
   isOpen: boolean;
@@ -28,17 +24,54 @@ interface EditAppointmentDialogProps {
   userTimeZone?: string;
 }
 
+// Generate time options for dropdown
+const generateTimeOptions = (): string[] => {
+  const options: string[] = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      options.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+    }
+  }
+  return options;
+};
+
+// Function to calculate end time (30 minutes after start time)
+const calculateEndTime = (startTime: string): string => {
+  const [hours, minutes] = startTime.split(':').map(Number);
+  let endHours = hours;
+  let endMinutes = minutes + 30;
+  
+  if (endMinutes >= 60) {
+    endHours = (endHours + 1) % 24;
+    endMinutes = endMinutes - 60;
+  }
+  
+  return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+};
+
 const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
   isOpen,
   onClose,
   appointment,
   onAppointmentUpdated,
-  userTimeZone = TimeZoneService.ensureIANATimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+  userTimeZone = TimeZoneService.DEFAULT_TIMEZONE
 }) => {
+  const safeTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
+  
+  // Convert UTC timestamp to local date and time for initial values
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
-    appointment?.date ? new Date(appointment.date) : new Date()
+    appointment?.start_at ? 
+      TimeZoneService.fromUTC(appointment.start_at, safeTimeZone).toJSDate() : 
+      new Date()
   );
-  const [startTime, setStartTime] = useState<string>(appointment?.start_time || '09:00');
+  
+  const [startTime, setStartTime] = useState<string>(() => {
+    if (appointment?.start_at) {
+      return TimeZoneService.fromUTC(appointment.start_at, safeTimeZone).toFormat('HH:mm');
+    }
+    return '09:00';
+  });
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [editOption, setEditOption] = useState<'single' | 'series'>('single');
@@ -49,11 +82,15 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
 
   useEffect(() => {
     if (appointment) {
-      setSelectedDate(appointment.date ? new Date(appointment.date) : new Date());
-      setStartTime(appointment.start_time || '09:00');
+      // Update state when appointment changes
+      if (appointment.start_at) {
+        const localDateTime = TimeZoneService.fromUTC(appointment.start_at, safeTimeZone);
+        setSelectedDate(localDateTime.toJSDate());
+        setStartTime(localDateTime.toFormat('HH:mm'));
+      }
       setIsRecurring(!!appointment.recurring_group_id);
     }
-  }, [appointment]);
+  }, [appointment, safeTimeZone]);
 
   const handleSaveClick = () => {
     if (isRecurring) {
@@ -75,19 +112,31 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
 
     setIsLoading(true);
     try {
-      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-      const endTime = calculateEndTime(startTime);
+      // Convert local date and time to UTC timestamps
+      const localDateTime = DateTime.fromJSDate(selectedDate)
+        .set({ 
+          hour: parseInt(startTime.split(':')[0]), 
+          minute: parseInt(startTime.split(':')[1]),
+          second: 0,
+          millisecond: 0 
+        })
+        .setZone(safeTimeZone);
+      
+      // Calculate end time (30 minutes after start)
+      const endDateTime = localDateTime.plus({ minutes: 30 });
+      
+      // Convert to UTC for storage
+      const utcStart = localDateTime.toUTC().toISO();
+      const utcEnd = endDateTime.toUTC().toISO();
 
       if (mode === 'single') {
         const updateData: any = {
-          date: formattedDate,
-          start_time: startTime,
-          end_time: endTime,
+          start_at: utcStart,
+          end_at: utcEnd,
         };
         
         if (isRecurring) {
           updateData.recurring_group_id = null;
-          updateData.appointment_recurring = null;
         }
         
         const { error } = await supabase
@@ -105,11 +154,11 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
         const { error } = await supabase
           .from('appointments')
           .update({
-            start_time: startTime,
-            end_time: endTime,
+            start_at: utcStart,
+            end_at: utcEnd,
           })
           .eq('recurring_group_id', appointment.recurring_group_id)
-          .gte('date', appointment.date);
+          .gte('start_at', appointment.start_at);
 
         if (error) throw error;
         
@@ -181,7 +230,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
             </div>
             
             <div className="grid gap-2">
-              <Label htmlFor="time">Start Time</Label>
+              <Label htmlFor="time">Start Time ({TimeZoneService.getTimeZoneDisplayName(safeTimeZone)})</Label>
               <Select value={startTime} onValueChange={setStartTime}>
                 <SelectTrigger id="time">
                   <SelectValue placeholder="Select start time" />
@@ -189,7 +238,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
                 <SelectContent>
                   {timeOptions.map((time) => (
                     <SelectItem key={time} value={time}>
-                      {formatTimeDisplay(time, userTimeZone)}
+                      {time}
                     </SelectItem>
                   ))}
                 </SelectContent>
