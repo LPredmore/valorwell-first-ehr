@@ -7,6 +7,27 @@ import { TimeZoneService } from '@/utils/timeZoneService';
 import { DateTime } from 'luxon';
 import { Appointment } from '@/types/appointment';
 
+// Define the structure of the raw appointment data from Supabase
+interface SupabaseAppointmentResponse {
+  id: string;
+  client_id: string;
+  clinician_id: string;
+  start_at: string;
+  end_at: string;
+  type: string;
+  status: string;
+  appointment_recurring: string | null;
+  recurring_group_id: string | null;
+  video_room_url: string | null;
+  notes: string | null;
+  // Supabase returns joined clients as a direct object, not an array
+  clients: {
+    client_first_name: string;
+    client_last_name: string;
+    client_preferred_name: string;
+  } | null;
+}
+
 export const useAppointments = (
   clinicianId: string | null,
   fromDate?: Date,
@@ -18,7 +39,7 @@ export const useAppointments = (
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
   const [showSessionTemplate, setShowSessionTemplate] = useState(false);
-  const [clientData, setClientData] = useState<any>(null);
+  const [clientData, setClientData] = useState<Record<string, any> | null>(null);
   const [isLoadingClientData, setIsLoadingClientData] = useState(false);
 
   // Format clinician ID if provided
@@ -99,10 +120,9 @@ export const useAppointments = (
         console.log(`[useAppointments] Fetched ${data?.length || 0} appointments`);
         
         // Process appointments to format client data correctly
-        const formattedAppointments = (data || []).map(appointment => {
+        const formattedAppointments = (data || []).map((appointment: SupabaseAppointmentResponse) => {
           // Extract client data from the joined table
-          // Supabase returns this as a direct object, not an array
-          const clientDataFromSupabase = appointment.clients;
+          const clientData = appointment.clients;
           
           // Create a new object without the clients field
           const { clients, ...restOfAppointment } = appointment;
@@ -111,14 +131,14 @@ export const useAppointments = (
           const formattedAppointment: Appointment = {
             ...restOfAppointment,
             // Add formatted client object with required properties
-            client: clientDataFromSupabase ? {
-              client_first_name: clientDataFromSupabase.client_first_name || '',
-              client_last_name: clientDataFromSupabase.client_last_name || '',
-              client_preferred_name: clientDataFromSupabase.client_preferred_name || ''
+            client: clientData ? {
+              client_first_name: clientData.client_first_name || '',
+              client_last_name: clientData.client_last_name || '',
+              client_preferred_name: clientData.client_preferred_name || ''
             } : undefined,
             // Add computed client name for convenience
-            clientName: clientDataFromSupabase ? 
-              `${clientDataFromSupabase.client_preferred_name || clientDataFromSupabase.client_first_name || ''} ${clientDataFromSupabase.client_last_name || ''}`.trim() : 
+            clientName: clientData ?
+              `${clientData.client_preferred_name || clientData.client_first_name || ''} ${clientData.client_last_name || ''}`.trim() :
               'Unknown Client'
           };
 
@@ -146,7 +166,7 @@ export const useAppointments = (
     // Clone appointment to avoid mutating the original
     const converted = { ...appointment };
     
-    // Add formatted fields for display
+    // Add formatted fields for display based on UTC timestamps
     if (converted.start_at) {
       const startLocal = TimeZoneService.fromUTC(converted.start_at, safeZone);
       converted.formattedStartTime = TimeZoneService.formatTime(startLocal);
@@ -161,7 +181,7 @@ export const useAppointments = (
     return converted;
   };
 
-  // Function to check if appointment is today
+  // Function to check if appointment is today based on UTC timestamp
   const isAppointmentToday = (appointment: Appointment): boolean => {
     if (!appointment?.start_at) return false;
     
@@ -239,17 +259,17 @@ export const useAppointments = (
 
   // Filter past appointments that need documentation
   const pastAppointments = appointments.filter(app => {
-    const endTime = app.end_at ? new Date(app.end_at) : null;
-    return endTime && endTime < new Date() && app.status === 'scheduled';
+    if (!app.end_at) return false;
+    const endTime = new Date(app.end_at);
+    return endTime < new Date() && app.status === 'scheduled';
   });
 
   // Filter upcoming (future) appointments
   const upcomingAppointments = appointments.filter(app => {
-    const startTime = app.start_at ? new Date(app.start_at) : null;
+    if (!app.start_at) return false;
+    const startTime = new Date(app.start_at);
     // Not today and in the future
-    return startTime && 
-           startTime > new Date() && 
-           !isAppointmentToday(app);
+    return startTime > new Date() && !isAppointmentToday(app);
   });
 
   // Convert appointments to display timezone

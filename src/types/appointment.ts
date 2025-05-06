@@ -1,14 +1,14 @@
 
 /**
  * Unified Appointment interface for all components
- * UTC timestamps are the source of truth
+ * UTC timestamps (start_at, end_at) are the sole source of truth for appointment timing
  */
 export interface Appointment {
   id: string;
   client_id: string;
   clinician_id: string;
-  start_at: string;  // UTC timestamp
-  end_at: string;    // UTC timestamp
+  start_at: string;  // UTC ISO timestamp
+  end_at: string;    // UTC ISO timestamp
   type: string;
   status: string;
   video_room_url?: string | null;
