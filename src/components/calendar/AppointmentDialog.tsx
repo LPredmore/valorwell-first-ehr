@@ -242,14 +242,38 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           const localEndDateTimeStr = `${localDateStr}T${endTime}`;
           
           // Convert local date+time to UTC ISO strings
-          const utcStartAt = TimeZoneService.convertLocalToUTC(localStartDateTimeStr, userTimeZone).toISO();
-          const utcEndAt = TimeZoneService.convertLocalToUTC(localEndDateTimeStr, userTimeZone).toISO();
+          const utcStartDateTime = TimeZoneService.convertLocalToUTC(localStartDateTimeStr, userTimeZone);
+          const utcEndDateTime = TimeZoneService.convertLocalToUTC(localEndDateTimeStr, userTimeZone);
+          
+          // Validate that UTC conversion was successful
+          if (!utcStartDateTime.isValid || !utcEndDateTime.isValid) {
+            console.error("Failed to convert local time to UTC for recurring appointment", {
+              localStartDateTimeStr,
+              localEndDateTimeStr,
+              userTimeZone,
+              startInvalid: !utcStartDateTime.isValid,
+              endInvalid: !utcEndDateTime.isValid
+            });
+            throw new Error("Failed to convert appointment times to UTC");
+          }
+          
+          const utcStartAtISO = utcStartDateTime.toISO();
+          const utcEndAtISO = utcEndDateTime.toISO();
+          
+          // Final validation to ensure ISO strings are not null
+          if (!utcStartAtISO || !utcEndAtISO) {
+            console.error("Generated null ISO string for UTC datetime", {
+              utcStartDateTime,
+              utcEndDateTime
+            });
+            throw new Error("Generated invalid UTC timestamp");
+          }
           
           return {
             client_id: selectedClientId,
             clinician_id: clinicianIdToUse,
-            start_at: utcStartAt,
-            end_at: utcEndAt,
+            start_at: utcStartAtISO,
+            end_at: utcEndAtISO,
             type: "Therapy Session",
             status: 'scheduled',
             appointment_recurring: recurrenceType,
@@ -288,14 +312,52 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
         const localStartDateTimeStr = `${formattedDate}T${startTime}`;
         const localEndDateTimeStr = `${formattedDate}T${endTime}`;
         
-        const utcStartAt = TimeZoneService.convertLocalToUTC(localStartDateTimeStr, userTimeZone).toISO();
-        const utcEndAt = TimeZoneService.convertLocalToUTC(localEndDateTimeStr, userTimeZone).toISO();
+        logAppointmentDebug('Converting local times to UTC', {
+          localStartDateTimeStr,
+          localEndDateTimeStr,
+          userTimeZone
+        });
+        
+        // Convert to UTC using TimeZoneService
+        const utcStartDateTime = TimeZoneService.convertLocalToUTC(localStartDateTimeStr, userTimeZone);
+        const utcEndDateTime = TimeZoneService.convertLocalToUTC(localEndDateTimeStr, userTimeZone);
+        
+        // Validate that UTC conversion was successful
+        if (!utcStartDateTime.isValid || !utcEndDateTime.isValid) {
+          logAppointmentDebug('UTC conversion failed - DateTime objects invalid', {
+            startValid: utcStartDateTime.isValid,
+            startInvalidReason: utcStartDateTime.invalidReason,
+            startInvalidExplanation: utcStartDateTime.invalidExplanation,
+            endValid: utcEndDateTime.isValid,
+            endInvalidReason: utcEndDateTime.invalidReason,
+            endInvalidExplanation: utcEndDateTime.invalidExplanation
+          });
+          throw new Error("Failed to convert appointment times to UTC");
+        }
+        
+        // Convert DateTime objects to ISO strings
+        const utcStartAtISO = utcStartDateTime.toISO();
+        const utcEndAtISO = utcEndDateTime.toISO();
+        
+        // Final validation to ensure ISO strings are not null
+        if (!utcStartAtISO || !utcEndAtISO) {
+          logAppointmentDebug('Generated null ISO string for UTC datetime', {
+            utcStartDateTime,
+            utcEndDateTime
+          });
+          throw new Error("Generated invalid UTC timestamp");
+        }
+        
+        logAppointmentDebug('Successfully converted to UTC', {
+          utcStartAtISO,
+          utcEndAtISO
+        });
         
         const appointmentData = {
           client_id: selectedClientId,
           clinician_id: clinicianIdToUse,
-          start_at: utcStartAt,
-          end_at: utcEndAt,
+          start_at: utcStartAtISO,
+          end_at: utcEndAtISO,
           type: "Therapy Session",
           status: 'scheduled'
         };
@@ -303,7 +365,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
         logAppointmentDebug('Creating single appointment', {
           appointmentData,
           localDateTime: localStartDateTimeStr,
-          utcDateTime: utcStartAt,
+          utcDateTime: utcStartAtISO,
           timezone: userTimeZone
         });
 
