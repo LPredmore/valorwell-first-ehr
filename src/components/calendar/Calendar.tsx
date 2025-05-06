@@ -41,7 +41,21 @@ const Calendar = ({
   
   // Log appointments for debugging
   useEffect(() => {
-    console.log(`[Calendar] Rendering with ${appointments.length} appointments for clinician ${clinicianId}`, appointments);
+    console.log(`[Calendar] Rendering with ${appointments.length} appointments for clinician ${clinicianId}`);
+    
+    // Log appointment format details
+    if (appointments.length > 0) {
+      const sampleAppointment = appointments[0];
+      console.log('[Calendar] Sample appointment format:', {
+        id: sampleAppointment.id,
+        date: sampleAppointment.date,
+        dateType: typeof sampleAppointment.date,
+        start: sampleAppointment.start_time,
+        end: sampleAppointment.end_time,
+        clinicianId: sampleAppointment.clinician_id
+      });
+    }
+    
     if (error) {
       console.error('[Calendar] Error detected:', error);
     }

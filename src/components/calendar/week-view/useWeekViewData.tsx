@@ -19,6 +19,7 @@ interface Appointment {
   end_time: string;
   type: string;
   status: string;
+  clinician_id?: string;
 }
 
 interface AvailabilityBlock {
@@ -75,7 +76,7 @@ export const useWeekViewData = (
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
 
-  // Process appointments into blocks
+  // Process appointments into blocks with improved logging
   useEffect(() => {
     if (!appointments || !appointments.length) {
       setAppointmentBlocks([]);
@@ -85,6 +86,17 @@ export const useWeekViewData = (
 
     console.log(`[useWeekViewData] Processing ${appointments.length} appointments with timezone: ${userTimeZone}`);
     
+    // Log sample appointments for debugging
+    if (appointments.length > 0) {
+      console.log(`[useWeekViewData] Sample appointment data:`, {
+        id: appointments[0].id,
+        date: appointments[0].date, 
+        dateType: typeof appointments[0].date,
+        start_time: appointments[0].start_time,
+        clinician_id: appointments[0].clinician_id
+      });
+    }
+    
     try {
       const blocks: AppointmentBlock[] = appointments.map(appointment => {
         if (!appointment.date || !appointment.start_time || !appointment.end_time) {
@@ -93,6 +105,7 @@ export const useWeekViewData = (
         }
         
         let startHour = 0, startMinute = 0, endHour = 0, endMinute = 0;
+        let dateObj: Date;
 
         // Handle timezone conversion for appointments
         try {
@@ -106,26 +119,40 @@ export const useWeekViewData = (
             throw new Error("Missing time information in localized appointment");
           }
           
+          console.log(`[useWeekViewData] Original appointment: `, {
+            date: appointment.date, 
+            start: appointment.start_time,
+            end: appointment.end_time
+          });
+          
+          console.log(`[useWeekViewData] Localized appointment: `, {
+            date: localizedAppointment.date,
+            start: localizedAppointment.start_time,
+            end: localizedAppointment.end_time
+          });
+          
           [startHour, startMinute] = localizedAppointment.start_time.split(':').map(Number);
           [endHour, endMinute] = localizedAppointment.end_time.split(':').map(Number);
           
-          console.log(`[useWeekViewData] Appointment ${appointment.id} time converted:`, {
-            original: { start: appointment.start_time, end: appointment.end_time },
-            localized: { start: localizedAppointment.start_time, end: localizedAppointment.end_time }
-          });
+          // Parse date correctly
+          dateObj = parseISO(localizedAppointment.date);
+          console.log(`[useWeekViewData] Parsed date: ${format(dateObj, 'yyyy-MM-dd')}`);
         } catch (error) {
           console.error("[useWeekViewData] Error converting appointment times:", error);
           // Fallback to original time if conversion fails
           [startHour, startMinute] = appointment.start_time.split(':').map(Number);
           [endHour, endMinute] = appointment.end_time.split(':').map(Number);
+          dateObj = parseISO(appointment.date);
+          console.log(`[useWeekViewData] Fallback parsed date: ${format(dateObj, 'yyyy-MM-dd')}`);
         }
 
         try {
-          const dateObj = parseISO(appointment.date);
           const start = setMinutes(setHours(startOfDay(dateObj), startHour), startMinute);
           const end = setMinutes(setHours(startOfDay(dateObj), endHour), endMinute);
 
-          console.log(`[useWeekViewData] Created appointment block for date ${format(dateObj, 'yyyy-MM-dd')}:`, {
+          console.log(`[useWeekViewData] Created appointment block:`, {
+            id: appointment.id,
+            date: format(dateObj, 'yyyy-MM-dd'),
             start: format(start, 'HH:mm'),
             end: format(end, 'HH:mm')
           });
@@ -146,6 +173,17 @@ export const useWeekViewData = (
       }).filter(block => block !== null) as AppointmentBlock[];
 
       console.log(`[useWeekViewData] Created ${blocks.length} appointment blocks`);
+      
+      // Log sample processed block
+      if (blocks.length > 0) {
+        console.log(`[useWeekViewData] Sample processed appointment block:`, {
+          id: blocks[0].id,
+          day: format(blocks[0].day, 'yyyy-MM-dd'),
+          start: format(blocks[0].start, 'HH:mm'),
+          end: format(blocks[0].end, 'HH:mm')
+        });
+      }
+      
       setAppointmentBlocks(blocks);
     } catch (error) {
       console.error("[useWeekViewData] Error in appointment processing:", error);

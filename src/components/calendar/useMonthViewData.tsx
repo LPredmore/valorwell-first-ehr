@@ -19,6 +19,7 @@ interface Appointment {
   end_time: string;
   type: string;
   status: string;
+  clinician_id?: string;
 }
 
 interface AvailabilityBlock {
@@ -62,6 +63,8 @@ export const useMonthViewData = (
           return;
         }
 
+        console.log(`[useMonthViewData] Fetching availability for clinician: ${clinicianId}`);
+        
         // Fetch the clinician data directly
         const { data: clinician, error } = await supabase
           .from('clinicians')
@@ -70,17 +73,17 @@ export const useMonthViewData = (
           .single();
 
         if (error) {
-          console.error('Error fetching clinician data:', error);
+          console.error('[useMonthViewData] Error fetching clinician data:', error);
           setAvailabilityData([]);
         } else {
-          console.log('MonthView fetched clinician data:', clinician);
+          console.log('[useMonthViewData] Fetched clinician data:', clinician?.id);
           
           // Extract availability blocks from clinician record
           const extractedBlocks = extractAvailabilityBlocksFromClinician(clinician);
           setAvailabilityData(extractedBlocks);
         }
       } catch (error) {
-        console.error('Error fetching availability:', error);
+        console.error('[useMonthViewData] Error fetching availability:', error);
         setAvailabilityData([]);
       } finally {
         setLoading(false);
@@ -120,7 +123,7 @@ export const useMonthViewData = (
       }
     });
     
-    console.log('Extracted availability blocks for month view:', blocks);
+    console.log(`[useMonthViewData] Extracted ${blocks.length} availability blocks`);
     return blocks;
   };
 
@@ -130,9 +133,6 @@ export const useMonthViewData = (
       hasAvailability: boolean, 
       displayHours: string 
     }>();
-    
-    // Log total availability for debugging
-    console.log(`Processing ${availabilityData.length} availability blocks for month view`);
     
     days.forEach(day => {
       const dayOfWeek = format(day, 'EEEE');
@@ -165,7 +165,7 @@ export const useMonthViewData = (
           
           displayHours = `${startHourFormatted}-${endHourFormatted}`;
         } catch (error) {
-          console.error('Error formatting time for availability:', error);
+          console.error('[useMonthViewData] Error formatting time for availability:', error);
           displayHours = '6:00 AM-10:00 PM'; // Fallback display format
         }
       }
@@ -196,15 +196,50 @@ export const useMonthViewData = (
     return result;
   }, [days, availabilityData]);
 
-  // Map appointments to days for easy lookup
+  // Map appointments to days for easy lookup with improved debugging
   const dayAppointmentsMap = useMemo(() => {
     const result = new Map<string, Appointment[]>();
+    console.log(`[useMonthViewData] Processing ${appointments.length} appointments for month view`);
+    
+    // Log sample appointment if available for debugging
+    if (appointments.length > 0) {
+      const sampleAppointment = appointments[0];
+      console.log('[useMonthViewData] Sample appointment:', {
+        id: sampleAppointment.id,
+        date: sampleAppointment.date,
+        clinician_id: sampleAppointment.clinician_id,
+        format: typeof sampleAppointment.date
+      });
+    }
     
     days.forEach(day => {
       const dayStr = format(day, 'yyyy-MM-dd');
-      const dayAppointments = appointments.filter(appointment => appointment.date === dayStr);
+      
+      // Add explicit filtering with logging
+      const dayAppointments = appointments.filter(appointment => {
+        const match = appointment.date === dayStr;
+        
+        // Log date comparison details for the first few appointments
+        if (appointments.indexOf(appointment) < 3) {
+          console.log(`[useMonthViewData] Comparing date: "${appointment.date}" === "${dayStr}" => ${match}`);
+        }
+        
+        return match;
+      });
+      
+      if (dayAppointments.length > 0) {
+        console.log(`[useMonthViewData] Found ${dayAppointments.length} appointments for ${dayStr}`);
+      }
+      
       result.set(dayStr, dayAppointments);
     });
+    
+    // Log counts of days with appointments
+    const daysWithAppointments = Array.from(result.entries())
+      .filter(([_, apps]) => apps.length > 0)
+      .length;
+    
+    console.log(`[useMonthViewData] Created map with appointments on ${daysWithAppointments} days`);
     
     return result;
   }, [days, appointments]);

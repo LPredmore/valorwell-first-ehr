@@ -51,19 +51,20 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   useEffect(() => {
     if (error) {
       console.error(`[CalendarView] Error fetching appointments:`, error);
-    }
-    
-    console.log(`[CalendarView] Received ${appointments.length} appointments for clinician ${formattedClinicianId}`, appointments);
-    
-    // Log a sample of the first appointment if available
-    if (appointments && appointments.length > 0) {
-      console.log(`[CalendarView] Sample appointment:`, {
-        id: appointments[0].id,
-        date: appointments[0].date,
-        start_time: appointments[0].start_time,
-        end_time: appointments[0].end_time,
-        client_id: appointments[0].client_id,
-        clinician_id: appointments[0].clinician_id
+    } else if (appointments) {
+      console.log(`[CalendarView] Received ${appointments.length} appointments for clinician ${formattedClinicianId}`);
+      
+      // Log all appointments for debugging
+      appointments.forEach((appointment, index) => {
+        console.log(`[CalendarView] Appointment #${index + 1}:`, {
+          id: appointment.id,
+          date: appointment.date,
+          dateType: typeof appointment.date,
+          start_time: appointment.start_time,
+          end_time: appointment.end_time,
+          client_id: appointment.client_id,
+          clinician_id: appointment.clinician_id
+        });
       });
     }
   }, [appointments, formattedClinicianId, error]);
@@ -86,6 +87,20 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         <p className="text-sm text-gray-500">{error.message || 'Unknown error'}</p>
       </Card>
     );
+  }
+
+  // If no clinician is selected, show a message
+  if (!formattedClinicianId) {
+    return (
+      <Card className="p-4 text-center">
+        <p className="text-gray-500">Please select a clinician to view their appointments</p>
+      </Card>
+    );
+  }
+  
+  // If no appointments were found, log this but still render the calendar
+  if (appointments.length === 0) {
+    console.log(`[CalendarView] No appointments found for clinician: ${formattedClinicianId}`);
   }
 
   return (

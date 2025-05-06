@@ -49,10 +49,14 @@ const MonthView: React.FC<MonthViewProps> = ({
   // Log appointments for debugging
   useEffect(() => {
     console.log(`[MonthView] Rendering with ${appointments.length} appointments for clinician ${clinicianId}`);
+    
     if (appointments && appointments.length > 0) {
       console.log(`[MonthView] Sample appointment:`, {
         id: appointments[0].id,
         date: appointments[0].date,
+        dateType: typeof appointments[0].date,
+        start_time: appointments[0].start_time,
+        end_time: appointments[0].end_time,
         clinician_id: appointments[0].clinician_id || 'Not specified'
       });
     }
@@ -82,7 +86,9 @@ const MonthView: React.FC<MonthViewProps> = ({
       
     if (daysWithAppointments.length > 0) {
       daysWithAppointments.forEach(([day, apps]) => {
-        console.log(`[MonthView] Day ${day} has ${apps.length} appointments`);
+        console.log(`[MonthView] Day ${day} has ${apps.length} appointments:`, 
+          apps.map(app => ({ id: app.id, start: app.start_time, end: app.end_time }))
+        );
       });
     } else {
       console.log('[MonthView] No days with appointments found in the processed data');
