@@ -12,9 +12,11 @@ import {
   formatTimeZoneDisplay,
   formatWithTimeZone,
   formatTimeInUserTimeZone,
-  ensureIANATimeZone
+  ensureIANATimeZone,
+  getTimeZoneDisplayName
 } from '@/utils/timeZoneUtils';
 import { useToast } from '@/hooks/use-toast';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface PastAppointment {
   id: string | number;
@@ -30,15 +32,27 @@ interface MyAppointmentsProps {
   pastAppointments?: PastAppointment[];
 }
 
+const ErrorBoundaryFallback = ({ error }: { error: Error }) => (
+  <div className="p-4 border border-red-200 rounded bg-red-50 text-red-700">
+    <h3 className="font-medium">Something went wrong loading appointments</h3>
+    <p className="text-sm mt-2">Please try again later or contact support if the issue persists.</p>
+    <details className="mt-2 text-xs">
+      <summary>Technical Details</summary>
+      <pre className="mt-1 p-2 bg-white rounded overflow-x-auto">{error.message}</pre>
+    </details>
+  </div>
+);
+
 const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initialPastAppointments }) => {
   const [loading, setLoading] = useState(false);
   const [pastAppointments, setPastAppointments] = useState<PastAppointment[]>([]);
   const [clinicianName, setClinicianName] = useState<string | null>(null);
   const [clientData, setClientData] = useState<any>(null);
+  const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
   
   // Default to browser timezone if client timezone is not available
-  const clientTimeZone = ensureIANATimeZone(clientData?.client_time_zone || getUserTimeZone());
+  const [clientTimeZone, setClientTimeZone] = useState<string>(TimeZoneService.DEFAULT_TIMEZONE);
 
   useEffect(() => {
     const fetchClientData = async () => {
@@ -64,6 +78,17 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
         console.log('Client data retrieved:', client);
         setClientData(client);
         
+        // Safely set the client timezone with fallback
+        if (client?.client_time_zone) {
+          const safeTimezone = ensureIANATimeZone(client.client_time_zone);
+          console.log(`Setting client timezone from database: ${client.client_time_zone} → ${safeTimezone}`);
+          setClientTimeZone(safeTimezone);
+        } else {
+          const browserTimezone = getUserTimeZone();
+          console.log(`No client timezone found, using browser timezone: ${browserTimezone}`);
+          setClientTimeZone(browserTimezone);
+        }
+        
         if (client?.client_assigned_therapist) {
           const { data: clinician, error: clinicianError } = await supabase
             .from('clinicians')
@@ -80,6 +105,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
         }
       } catch (error) {
         console.error('Error fetching client data:', error);
+        setError(error instanceof Error ? error : new Error('Failed to fetch client data'));
       }
     };
     
@@ -112,6 +138,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
             description: "Failed to load appointment history",
             variant: "destructive"
           });
+          setError(new Error(`Failed to fetch past appointments: ${error.message}`));
           return;
         }
 
@@ -121,8 +148,15 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
           
           const formattedAppointments = data.map(appointment => {
             try {
-              const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
+              // Format date safely
+              let formattedDate = 'Date unavailable';
+              try {
+                formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
+              } catch (dateError) {
+                console.error('Error parsing appointment date:', dateError, { date: appointment.date });
+              }
               
+              // Format time safely
               let formattedTime = 'Time unavailable';
               try {
                 if (appointment.start_time) {
@@ -175,6 +209,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
         }
       } catch (error) {
         console.error('Error in fetchPastAppointments:', error);
+        setError(error instanceof Error ? error : new Error('Failed to fetch past appointments'));
         toast({
           title: "Error",
           description: "Failed to load your appointment history",
@@ -191,12 +226,29 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
   // Safely get timezone display with error handling
   const timeZoneDisplay = (() => {
     try {
-      return formatTimeZoneDisplay(clientTimeZone);
+      const display = formatTimeZoneDisplay(clientTimeZone);
+      console.log(`Formatted timezone display: ${clientTimeZone} → ${display}`);
+      return display;
     } catch (error) {
       console.error('Error formatting timezone display:', error);
       return 'local time';
     }
   })();
+
+  // If there's an error, show error state
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Past Appointments</CardTitle>
+          <CardDescription>View your appointment history</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ErrorBoundaryFallback error={error} />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -208,26 +260,29 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
         {loading ? (
           <div className="py-6 text-center">Loading past appointments...</div>
         ) : pastAppointments.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Time <span className="text-xs text-gray-500">({timeZoneDisplay})</span></TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Therapist</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pastAppointments.map((appointment) => (
-                <TableRow key={appointment.id}>
-                  <TableCell>{appointment.date}</TableCell>
-                  <TableCell>{appointment.time}</TableCell>
-                  <TableCell>{appointment.type}</TableCell>
-                  <TableCell>{appointment.therapist}</TableCell>
+          <div>
+            <p className="text-sm text-gray-500 mb-2">All times shown in {getTimeZoneDisplayName(clientTimeZone)} ({timeZoneDisplay})</p>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Therapist</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {pastAppointments.map((appointment) => (
+                  <TableRow key={appointment.id}>
+                    <TableCell>{appointment.date}</TableCell>
+                    <TableCell>{appointment.time}</TableCell>
+                    <TableCell>{appointment.type}</TableCell>
+                    <TableCell>{appointment.therapist}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-6 text-center">
             <Calendar className="h-12 w-12 text-gray-300 mb-3" />
