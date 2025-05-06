@@ -60,17 +60,18 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
     <>
       <h4 className="text-md font-medium text-gray-800 mb-4">Session Assessment</h4>
 
-      <div className="mb-6">
+      <div className="mb-6 pdf-section">
         <label className="block text-sm font-medium text-gray-700 mb-1">Current Symptoms</label>
         <Textarea
           placeholder="Describe current symptoms"
           className="min-h-[100px] resize-y"
           value={formState.currentSymptoms}
           onChange={(e) => handleChange('currentSymptoms', e.target.value)}
+          data-field-name="Current Symptoms"
         />
       </div>
 
-      <div className="mb-6">
+      <div className="mb-6 pdf-section">
         <label className="block text-sm font-medium text-gray-700 mb-1">Functioning</label>
         <Select 
           value={formState.functioning || ""}
@@ -85,9 +86,11 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
             ))}
           </SelectContent>
         </Select>
+        {/* Hidden span for PDF rendering */}
+        <span className="hidden pdf-only">{formState.functioning}</span>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-6 pdf-section">
         <label className="block text-sm font-medium text-gray-700 mb-1">Prognosis</label>
         <Select 
           value={formState.prognosis || ""}
@@ -102,9 +105,11 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
             ))}
           </SelectContent>
         </Select>
+        {/* Hidden span for PDF rendering */}
+        <span className="hidden pdf-only">{formState.prognosis}</span>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-6 pdf-section">
         <label className="block text-sm font-medium text-gray-700 mb-1">Progress</label>
         <Select 
           value={formState.progress || ""}
@@ -119,15 +124,18 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
             ))}
           </SelectContent>
         </Select>
+        {/* Hidden span for PDF rendering */}
+        <span className="hidden pdf-only">{formState.progress}</span>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-6 pdf-section">
         <label className="block text-sm font-medium text-gray-700 mb-1">Session Narrative</label>
         <Textarea
           placeholder="Provide a detailed narrative of the session"
           className="min-h-[100px] resize-y"
           value={formState.sessionNarrative}
           onChange={(e) => handleChange('sessionNarrative', e.target.value)}
+          data-field-name="Session Narrative"
         />
       </div>
       
@@ -136,7 +144,7 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
 
       <h4 className="text-md font-medium text-gray-800 mb-4">Plan & Signature</h4>
 
-      <div className="mb-6">
+      <div className="mb-6 pdf-section">
         <label className="block text-sm font-medium text-gray-700 mb-1">Next Treatment Plan Update</label>
         <Input
           placeholder="When will this plan be reviewed next"
@@ -144,15 +152,17 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
           onChange={(e) => handleChange('nextTreatmentPlanUpdate', e.target.value)}
           readOnly
           className="bg-gray-100"
+          data-field-name="Next Treatment Plan Update"
         />
       </div>
 
-      <div className="mb-6">
+      <div className="mb-6 pdf-section">
         <label className="block text-sm font-medium text-gray-700 mb-1">Signature</label>
         <Input
           placeholder="Digital signature"
           value={formState.signature}
           onChange={(e) => handleChange('signature', e.target.value)}
+          data-field-name="Signature"
         />
       </div>
 
@@ -164,6 +174,8 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
           className="min-h-[100px] resize-y"
           value={formState.privateNote}
           onChange={(e) => handleChange('privateNote', e.target.value)}
+          pdfVisible={false}
+          data-field-name="Private Note"
         />
       </div>
     </>

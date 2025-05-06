@@ -14,7 +14,7 @@ export const PHQ9AssessmentSection: React.FC<PHQ9AssessmentSectionProps> = ({
   }
   
   return (
-    <div className="mb-6 mt-6">
+    <div className="mb-6 mt-6 pdf-section">
       <h4 className="text-md font-medium text-gray-800 mb-4">PHQ-9 Assessment</h4>
       
       {phq9Data.phq9_narrative && (
@@ -23,7 +23,17 @@ export const PHQ9AssessmentSection: React.FC<PHQ9AssessmentSectionProps> = ({
             className="min-h-[100px] bg-gray-100 resize-y" 
             value={phq9Data.phq9_narrative || ''} 
             readOnly 
+            data-field-name="PHQ-9 Narrative"
           />
+        </div>
+      )}
+
+      {phq9Data.phq9_score !== undefined && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">PHQ-9 Score</label>
+          <div className="bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
+            {phq9Data.phq9_score} - {getScoreInterpretation(phq9Data.phq9_score)}
+          </div>
         </div>
       )}
 
@@ -38,3 +48,13 @@ export const PHQ9AssessmentSection: React.FC<PHQ9AssessmentSectionProps> = ({
     </div>
   );
 };
+
+// Helper function to interpret PHQ-9 scores
+function getScoreInterpretation(score: number): string {
+  if (score >= 0 && score <= 4) return "None-minimal depression";
+  if (score >= 5 && score <= 9) return "Mild depression";
+  if (score >= 10 && score <= 14) return "Moderate depression";
+  if (score >= 15 && score <= 19) return "Moderately severe depression";
+  if (score >= 20) return "Severe depression";
+  return "Score interpretation unavailable";
+}

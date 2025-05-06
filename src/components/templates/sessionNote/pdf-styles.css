@@ -24,6 +24,7 @@
   /* Allow breaking between sections */
   break-before: auto;
   page-break-before: auto;
+  margin-bottom: 1.5em !important;
 }
 
 /* Make text more readable in PDF */
@@ -31,6 +32,7 @@
   font-weight: 600 !important;
   color: #000 !important;
   margin-bottom: 4px !important;
+  display: block !important;
 }
 
 /* Ensure inputs and textareas render properly */
@@ -43,6 +45,22 @@
   min-height: initial !important;
   padding: 8px !important;
   font-size: 12px !important;
+  display: block !important;
+  width: 100% !important;
+}
+
+/* Force select elements to show their value */
+.generating-pdf select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  background-color: white !important;
+  border: 1px solid #ccc !important;
+  color: black !important;
+  display: block !important;
+  width: 100% !important;
+  padding: 8px !important;
+  font-size: 12px !important;
 }
 
 /* Ensure all content is visible */
@@ -50,6 +68,7 @@
   min-height: auto !important;
   height: auto !important;
   overflow: visible !important;
+  white-space: pre-wrap !important;
 }
 
 /* Give textareas with lots of content more space */
@@ -70,7 +89,8 @@
 }
 
 .generating-pdf .grid > div {
-  margin-bottom: 10px !important;
+  margin-bottom: 15px !important;
+  page-break-inside: avoid !important;
 }
 
 /* Hide elements with this class in PDFs */
@@ -81,27 +101,65 @@
 /* Ensure all text is visible */
 .generating-pdf .pdf-container {
   font-size: 12px !important;
-  line-height: 1.4 !important;
+  line-height: 1.5 !important;
 }
 
 /* Table styles for PDF */
 .generating-pdf table {
   width: 100% !important;
   border-collapse: collapse !important;
+  margin-bottom: 1em !important;
 }
 
 .generating-pdf th,
 .generating-pdf td {
   border: 1px solid #ddd !important;
-  padding: 4px !important;
-  font-size: 10px !important;
+  padding: 6px !important;
+  font-size: 11px !important;
+  text-align: left !important;
 }
 
 /* Headings for PDF */
 .generating-pdf h4 {
   font-size: 14px !important;
-  margin-top: 15px !important;
-  margin-bottom: 10px !important;
+  margin-top: 20px !important;
+  margin-bottom: 12px !important;
   border-bottom: 1px solid #e5e7eb !important;
   padding-bottom: 5px !important;
+  page-break-after: avoid !important;
+}
+
+/* Add special styling for select components */
+.generating-pdf .select-value-text {
+  display: inline !important;
+}
+
+/* Hide UI elements that shouldn't appear in PDF */
+.generating-pdf button,
+.generating-pdf [role="combobox"],
+.generating-pdf [data-radix-select-trigger] {
+  display: none !important;
+}
+
+/* Make sure form values are always visible */
+.generating-pdf input[readonly],
+.generating-pdf textarea[readonly],
+.generating-pdf .bg-gray-100 {
+  opacity: 1 !important;
+  color: black !important;
+}
+
+/* Ensure proper content spacing */
+.generating-pdf .mb-6 {
+  margin-bottom: 1.5em !important;
+}
+
+.generating-pdf .pdf-value-display {
+  min-height: 24px;
+  border: 1px solid #ccc;
+  padding: 6px;
+  background-color: #fff;
+  color: #000;
+  font-size: 12px;
+  white-space: pre-wrap;
 }

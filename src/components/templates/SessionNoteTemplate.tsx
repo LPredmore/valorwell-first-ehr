@@ -49,7 +49,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
           <h2 className="text-xl font-semibold">Session Note Template</h2>
           <p className="text-sm text-gray-600">This is the template used for client session notes. This template will be used when creating a new session note for a client.</p>
         </div>
-        <Button variant="outline" size="icon" onClick={onClose}>
+        <Button variant="outline" size="icon" onClick={onClose} className="pdf-hide">
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -92,6 +92,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
                   value={formState.problemNarrative}
                   onChange={(e) => handleChange('problemNarrative', e.target.value)}
                   readOnly
+                  data-field-name="Problem Narrative"
                 />
               </div>
             )}
@@ -105,6 +106,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
                   value={formState.treatmentGoalNarrative}
                   onChange={(e) => handleChange('treatmentGoalNarrative', e.target.value)}
                   readOnly
+                  data-field-name="Treatment Goal Narrative"
                 />
               </div>
             )}
@@ -129,7 +131,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         </div>
       </div>
 
-      <div className="flex justify-end gap-2 mt-6">
+      <div className="flex justify-end gap-2 mt-6 pdf-hide">
         <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Close</Button>
         <Button
           className="bg-valorwell-700 hover:bg-valorwell-800"

@@ -1,11 +1,14 @@
+
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
 export interface TextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
+  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  pdfVisible?: boolean;
+}
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, ...props }, ref) => {
+  ({ className, pdfVisible = true, ...props }, ref) => {
     const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
     
     const setRefs = React.useCallback((element: HTMLTextAreaElement | null) => {
@@ -35,10 +38,27 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       
       textarea.addEventListener('input', handleInput);
       
+      // Also resize on window resize in case container width changes
+      window.addEventListener('resize', resizeTextarea);
+      
       return () => {
         textarea.removeEventListener('input', handleInput);
+        window.removeEventListener('resize', resizeTextarea);
       };
     }, [resizeTextarea]);
+
+    // Resize if value changes from outside (e.g. form state)
+    React.useEffect(() => {
+      if (props.value) {
+        resizeTextarea();
+      }
+    }, [props.value, resizeTextarea]);
+
+    // Data attributes to help with PDF generation
+    const pdfAttributes = pdfVisible ? {
+      'data-pdf-value': props.value,
+      'data-pdf-visible': 'true',
+    } : { 'data-pdf-visible': 'false' };
 
     return (
       <textarea
@@ -48,6 +68,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         )}
         ref={setRefs}
         {...props}
+        {...pdfAttributes}
         onInput={e => {
           if (props.onInput) {
             props.onInput(e);
