@@ -44,5 +44,20 @@ export function withPdfAttributes(props: any, value: string): any {
   return {
     ...props,
     'data-pdf-value': value,
+    'data-pdf-visible': 'true',
+  };
+}
+
+/**
+ * Creates appropriate attributes for PDF rendering of form elements
+ * @param value The value to display
+ * @param fieldName Optional field name for reference
+ * @returns Object with PDF data attributes
+ */
+export function createPdfAttributes(value: string, fieldName?: string): object {
+  return {
+    'data-pdf-value': value,
+    'data-pdf-visible': 'true',
+    'data-field-name': fieldName || '',
   };
 }

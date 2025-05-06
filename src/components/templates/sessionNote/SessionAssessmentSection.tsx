@@ -86,8 +86,10 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
             ))}
           </SelectContent>
         </Select>
-        {/* Hidden span for PDF rendering */}
-        <span className="hidden pdf-only">{formState.functioning}</span>
+        {/* Hidden span for PDF rendering that will be shown in PDF mode */}
+        <span className="hidden pdf-only" data-pdf-value={formState.functioning}>
+          {formState.functioning}
+        </span>
       </div>
 
       <div className="mb-6 pdf-section">
@@ -106,7 +108,9 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
           </SelectContent>
         </Select>
         {/* Hidden span for PDF rendering */}
-        <span className="hidden pdf-only">{formState.prognosis}</span>
+        <span className="hidden pdf-only" data-pdf-value={formState.prognosis}>
+          {formState.prognosis}
+        </span>
       </div>
 
       <div className="mb-6 pdf-section">
@@ -125,7 +129,9 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
           </SelectContent>
         </Select>
         {/* Hidden span for PDF rendering */}
-        <span className="hidden pdf-only">{formState.progress}</span>
+        <span className="hidden pdf-only" data-pdf-value={formState.progress}>
+          {formState.progress}
+        </span>
       </div>
 
       <div className="mb-6 pdf-section">
@@ -153,7 +159,10 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
           readOnly
           className="bg-gray-100"
           data-field-name="Next Treatment Plan Update"
+          data-pdf-value={formState.nextTreatmentPlanUpdate}
         />
+        {/* Hidden div for PDF output */}
+        <div className="hidden pdf-only">{formState.nextTreatmentPlanUpdate}</div>
       </div>
 
       <div className="mb-6 pdf-section">
@@ -163,7 +172,10 @@ export const SessionAssessmentSection: React.FC<SessionAssessmentSectionProps> =
           value={formState.signature}
           onChange={(e) => handleChange('signature', e.target.value)}
           data-field-name="Signature"
+          data-pdf-value={formState.signature}
         />
+        {/* Hidden div for PDF output */}
+        <div className="hidden pdf-only">{formState.signature}</div>
       </div>
 
       {/* Private Note Field - Add private-note-container class for PDF exclusion */}

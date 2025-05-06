@@ -67,9 +67,22 @@ export const generateAndSavePDF = async (
       backgroundColor: '#ffffff',
       windowWidth: clone.offsetWidth,
       onclone: clonedDoc => {
-        // Additional processing can be done here if needed
+        // Process all form elements in the cloned document
         const clonedElement = clonedDoc.body.lastChild as HTMLElement;
         clonedElement.style.width = clone.offsetWidth + 'px';
+        
+        // Ensure all form values are properly rendered
+        const textareas = clonedElement.querySelectorAll('textarea');
+        textareas.forEach(textarea => {
+          const value = textarea.value;
+          const div = document.createElement('div');
+          div.className = 'pdf-value-display';
+          div.textContent = value;
+          div.style.whiteSpace = 'pre-wrap';
+          if (textarea.parentNode) {
+            textarea.parentNode.replaceChild(div, textarea);
+          }
+        });
       }
     });
     
@@ -150,19 +163,14 @@ export const generateAndSavePDF = async (
  * Process form elements to ensure their values are properly displayed in the PDF
  */
 const processFormElementsForPDF = (element: HTMLElement) => {
-  // Process inputs
+  // Process all inputs
   const inputs = element.querySelectorAll('input');
   inputs.forEach(input => {
     if (input.type === 'text' || input.type === 'date') {
       // Create a visible text representation of the input value
-      const valueSpan = document.createElement('span');
-      valueSpan.textContent = input.value;
-      valueSpan.style.display = 'block';
-      valueSpan.style.minHeight = '20px';
-      valueSpan.style.padding = '4px';
-      valueSpan.style.border = '1px solid #ccc';
-      valueSpan.style.backgroundColor = '#fff';
-      valueSpan.style.color = '#000';
+      const valueSpan = document.createElement('div');
+      valueSpan.className = 'pdf-value-display';
+      valueSpan.textContent = input.value || '';
       
       // Replace the input with the span
       if (input.parentNode) {
@@ -176,26 +184,16 @@ const processFormElementsForPDF = (element: HTMLElement) => {
   textareas.forEach(textarea => {
     // Create a div to represent the textarea content
     const contentDiv = document.createElement('div');
+    contentDiv.className = 'pdf-value-display';
     
-    // Preserve line breaks by replacing them with <br> elements
-    const formattedContent = textarea.value
-      .split('\n')
-      .map(line => line || ' ') // Ensure empty lines are preserved
-      .join('<br>');
-    
-    contentDiv.innerHTML = formattedContent;
+    // Preserve content and line breaks
+    contentDiv.textContent = textarea.value || '';
     contentDiv.style.whiteSpace = 'pre-wrap';
-    contentDiv.style.minHeight = '25px';
-    contentDiv.style.height = 'auto';
-    contentDiv.style.padding = '8px';
-    contentDiv.style.border = '1px solid #ccc';
-    contentDiv.style.backgroundColor = '#fff';
-    contentDiv.style.color = '#000';
     
     // Add more height for textareas with substantial content
     const lineCount = (textarea.value.match(/\n/g) || []).length + 1;
     if (lineCount > 2 || textarea.value.length > 100) {
-      contentDiv.style.minHeight = Math.min(Math.max(lineCount * 20, 60), 200) + 'px';
+      contentDiv.style.minHeight = Math.min(Math.max(lineCount * 20, 60), 300) + 'px';
     }
     
     // Replace the textarea with the content div
@@ -204,27 +202,27 @@ const processFormElementsForPDF = (element: HTMLElement) => {
     }
   });
   
-  // Process select elements
-  const selects = element.querySelectorAll('select');
-  selects.forEach(select => {
-    const selectedOption = select.options[select.selectedIndex];
-    const valueSpan = document.createElement('span');
-    valueSpan.textContent = selectedOption ? selectedOption.text : '';
-    valueSpan.style.display = 'block';
-    valueSpan.style.minHeight = '20px';
-    valueSpan.style.padding = '4px';
-    valueSpan.style.border = '1px solid #ccc';
-    valueSpan.style.backgroundColor = '#fff';
-    valueSpan.style.color = '#000';
-    
-    // Replace the select with the span
-    if (select.parentNode) {
-      select.parentNode.replaceChild(valueSpan, select);
+  // Process select elements and custom select components
+  processSelectElements(element);
+  
+  // Process elements with data-pdf-value attributes
+  const elementsWithDataAttributes = element.querySelectorAll('[data-pdf-value]');
+  elementsWithDataAttributes.forEach(el => {
+    const pdfValue = el.getAttribute('data-pdf-value');
+    if (pdfValue) {
+      const valueDiv = document.createElement('div');
+      valueDiv.className = 'pdf-value-display';
+      valueDiv.textContent = pdfValue;
+      valueDiv.style.whiteSpace = 'pre-wrap';
+      
+      if (el.parentNode) {
+        el.parentNode.replaceChild(valueDiv, el as Node);
+      }
     }
   });
   
   // Hide any remaining form controls that might interfere with PDF rendering
-  const formControls = element.querySelectorAll('.radix-select-trigger, button:not(.pdf-visible)');
+  const formControls = element.querySelectorAll('button:not(.pdf-visible)');
   formControls.forEach(control => {
     (control as HTMLElement).style.display = 'none';
   });
@@ -236,4 +234,61 @@ const processFormElementsForPDF = (element: HTMLElement) => {
   });
   
   return element;
+};
+
+/**
+ * Process select elements and radix select components
+ */
+const processSelectElements = (element: HTMLElement) => {
+  // Process native select elements
+  const selects = element.querySelectorAll('select');
+  selects.forEach(select => {
+    const selectedOption = select.options[select.selectedIndex];
+    const valueSpan = document.createElement('div');
+    valueSpan.className = 'pdf-value-display';
+    valueSpan.textContent = selectedOption ? selectedOption.text : '';
+    
+    // Replace the select with the span
+    if (select.parentNode) {
+      select.parentNode.replaceChild(valueSpan, select);
+    }
+  });
+  
+  // Process Radix UI Select components
+  const radixSelects = element.querySelectorAll('[data-radix-select-trigger]');
+  radixSelects.forEach(selectTrigger => {
+    const selectValue = selectTrigger.querySelector('[data-radix-select-value]');
+    const valueDiv = document.createElement('div');
+    valueDiv.className = 'pdf-value-display';
+    
+    // Extract the displayed value from the select component
+    const valueText = selectValue ? selectValue.textContent : '';
+    valueDiv.textContent = valueText || '';
+    
+    // Try to find a hidden span for PDF that might contain the value
+    const hiddenSpan = (selectTrigger.parentNode as HTMLElement)?.querySelector('.pdf-only');
+    if (hiddenSpan && hiddenSpan.textContent) {
+      valueDiv.textContent = hiddenSpan.textContent;
+    }
+    
+    // Replace the select trigger with the value div
+    if (selectTrigger.parentNode) {
+      selectTrigger.parentNode.replaceChild(valueDiv, selectTrigger as Node);
+    }
+  });
+  
+  // Look for any hidden fields with select values
+  const hiddenFields = element.querySelectorAll('.hidden.pdf-only');
+  hiddenFields.forEach(field => {
+    if (field.textContent && field.textContent.trim() !== '') {
+      const valueDiv = document.createElement('div');
+      valueDiv.className = 'pdf-value-display';
+      valueDiv.textContent = field.textContent;
+      
+      // Make the hidden field visible by replacing it
+      if (field.parentNode) {
+        field.parentNode.replaceChild(valueDiv, field as Node);
+      }
+    }
+  });
 };

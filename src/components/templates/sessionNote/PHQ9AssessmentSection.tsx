@@ -19,6 +19,7 @@ export const PHQ9AssessmentSection: React.FC<PHQ9AssessmentSectionProps> = ({
       
       {phq9Data.phq9_narrative && (
         <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">PHQ-9 Narrative</label>
           <Textarea 
             className="min-h-[100px] bg-gray-100 resize-y" 
             value={phq9Data.phq9_narrative || ''} 
@@ -31,7 +32,12 @@ export const PHQ9AssessmentSection: React.FC<PHQ9AssessmentSectionProps> = ({
       {phq9Data.phq9_score !== undefined && (
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">PHQ-9 Score</label>
-          <div className="bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
+          <div className="bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm"
+               data-pdf-value={`${phq9Data.phq9_score} - ${getScoreInterpretation(phq9Data.phq9_score)}`}>
+            {phq9Data.phq9_score} - {getScoreInterpretation(phq9Data.phq9_score)}
+          </div>
+          {/* Hidden div for PDF output */}
+          <div className="hidden pdf-only">
             {phq9Data.phq9_score} - {getScoreInterpretation(phq9Data.phq9_score)}
           </div>
         </div>
