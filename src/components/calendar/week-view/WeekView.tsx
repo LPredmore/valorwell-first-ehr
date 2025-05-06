@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import {
   format,
@@ -143,7 +142,7 @@ const WeekView: React.FC<WeekViewProps> = ({
               const slotEndTime = addMinutes(slotStartTime, 30);
 
               const blockStartCheck = isStartOfBlock(slotStartTime, currentBlock);
-              const blockEndCheck = isEndOfBlock(slotStartTime, slotEndTime, currentBlock);
+              const blockEndCheck = isEndOfBlock(slotStartTime, currentBlock);
               const appointmentStartCheck = isStartOfAppointment(slotStartTime, appointment);
 
               const cellKey = `${day.toString()}-${timeSlot.toString()}`;

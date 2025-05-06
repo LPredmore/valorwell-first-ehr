@@ -100,6 +100,10 @@ export const useWeekViewData = (
       exceptionsMap[exception.original_availability_id] = exception;
     });
 
+    interface EnhancedAvailabilityBlock extends AvailabilityBlock {
+      isException?: boolean;
+    }
+
     const effectiveBlocks = blocks
       .filter(block => {
         const exception = exceptionsMap[block.id];
@@ -114,7 +118,7 @@ export const useWeekViewData = (
             start_time: exception.start_time,
             end_time: exception.end_time,
             isException: true
-          };
+          } as EnhancedAvailabilityBlock;
         }
 
         return block;

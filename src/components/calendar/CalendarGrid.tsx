@@ -1,16 +1,7 @@
 
 import React from 'react';
 import DayCell from './DayCell';
-
-interface Appointment {
-  id: string;
-  client_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  type: string;
-  status: string;
-}
+import { Appointment } from '@/types/appointment';
 
 interface AvailabilityBlock {
   id: string;

@@ -2,16 +2,7 @@
 import React from 'react';
 import { format, isSameMonth } from 'date-fns';
 import { cn } from '@/lib/utils';
-
-interface Appointment {
-  id: string;
-  client_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  type: string;
-  status: string;
-}
+import { Appointment } from '@/types/appointment';
 
 interface AvailabilityBlock {
   id: string;
@@ -99,9 +90,9 @@ const DayCell: React.FC<DayCellProps> = ({
                 onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
               >
                 <div className="font-medium truncate">
-                  {getClientName(appointment.client_id)}
+                  {appointment.clientName || getClientName(appointment.client_id)}
                 </div>
-                <div>{appointment.start_time.slice(0, 5)}</div>
+                <div>{appointment.formattedStartTime || (appointment.start_time ? appointment.start_time.slice(0, 5) : 'N/A')}</div>
               </div>
             ))}
           </div>

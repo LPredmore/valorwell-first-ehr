@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
@@ -100,16 +99,26 @@ export const useAppointments = (
         
         // Process appointments to format client data correctly
         const formattedAppointments = (data || []).map(appointment => {
+          // Extract client data and remove it from the main object
           const clientData = appointment.clients;
           delete appointment.clients;
           
-          return {
+          // Create properly formatted appointment object
+          const formattedAppointment: Appointment = {
             ...appointment,
-            client: clientData,
+            // Add formatted client object with required properties
+            client: clientData ? {
+              client_first_name: clientData.client_first_name || '',
+              client_last_name: clientData.client_last_name || '',
+              client_preferred_name: clientData.client_preferred_name || ''
+            } : undefined,
+            // Add computed client name for convenience
             clientName: clientData ? 
               `${clientData.client_preferred_name || clientData.client_first_name || ''} ${clientData.client_last_name || ''}`.trim() : 
               'Unknown Client'
-          } as Appointment;
+          };
+
+          return formattedAppointment;
         });
 
         return formattedAppointments;
