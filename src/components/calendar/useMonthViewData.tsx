@@ -204,24 +204,35 @@ export const useMonthViewData = (
     // Log sample appointment if available for debugging
     if (appointments.length > 0) {
       const sampleAppointment = appointments[0];
-      console.log('[useMonthViewData] Sample appointment:', {
+      // Log raw appointment data
+      console.log('[useMonthViewData] Raw sample appointment:', {
         id: sampleAppointment.id,
         date: sampleAppointment.date,
         clinician_id: sampleAppointment.clinician_id,
         format: typeof sampleAppointment.date
+      });
+      
+      // Log normalized date for comparison
+      const normalizedDate = new Date(sampleAppointment.date).toISOString().split('T')[0];
+      console.log('[useMonthViewData] Normalized sample appointment date:', {
+        original: sampleAppointment.date,
+        normalized: normalizedDate,
+        matches: normalizedDate === format(new Date(sampleAppointment.date), 'yyyy-MM-dd')
       });
     }
     
     days.forEach(day => {
       const dayStr = format(day, 'yyyy-MM-dd');
       
-      // Add explicit filtering with logging
+      // Add explicit filtering with logging and date normalization
       const dayAppointments = appointments.filter(appointment => {
-        const match = appointment.date === dayStr;
+        // Normalize both dates to yyyy-MM-dd format before comparison
+        const appointmentDateNormalized = new Date(appointment.date).toISOString().split('T')[0];
+        const match = appointmentDateNormalized === dayStr;
         
         // Log date comparison details for the first few appointments
         if (appointments.indexOf(appointment) < 3) {
-          console.log(`[useMonthViewData] Comparing date: "${appointment.date}" === "${dayStr}" => ${match}`);
+          console.log(`[useMonthViewData] Comparing date: "${appointment.date}" (normalized: "${appointmentDateNormalized}") === "${dayStr}" => ${match}`);
         }
         
         return match;

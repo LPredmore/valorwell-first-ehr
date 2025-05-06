@@ -158,28 +158,36 @@ export class TimeZoneService {
       if (event.start_time && event.date) {
         // Assuming start_time is in HH:MM format
         const [hours, minutes] = event.start_time.split(':').map(Number);
-        const dt = DateTime.fromObject({ 
+        const dt = DateTime.fromObject({
           year: new Date(event.date).getFullYear(),
-          month: new Date(event.date).getMonth() + 1, 
+          month: new Date(event.date).getMonth() + 1,
           day: new Date(event.date).getDate(),
           hour: hours,
-          minute: minutes 
+          minute: minutes
         }, { zone: 'utc' }).setZone(safeTimezone);
         
+        // Normalize the date format to yyyy-MM-dd
+        const normalizedDate = dt.toFormat('yyyy-MM-dd');
+        console.log(`[TimeZoneService] Normalizing date: ${event.date} -> ${normalizedDate}`);
+        localEvent.date = normalizedDate;
         localEvent.start_time = dt.toFormat('HH:mm');
       }
       
       if (event.end_time && event.date) {
         // Assuming end_time is in HH:MM format
         const [hours, minutes] = event.end_time.split(':').map(Number);
-        const dt = DateTime.fromObject({ 
+        const dt = DateTime.fromObject({
           year: new Date(event.date).getFullYear(),
-          month: new Date(event.date).getMonth() + 1, 
+          month: new Date(event.date).getMonth() + 1,
           day: new Date(event.date).getDate(),
           hour: hours,
-          minute: minutes 
+          minute: minutes
         }, { zone: 'utc' }).setZone(safeTimezone);
         
+        // We already set the date in the start_time block, but set it here too as a fallback
+        if (!localEvent.date) {
+          localEvent.date = dt.toFormat('yyyy-MM-dd');
+        }
         localEvent.end_time = dt.toFormat('HH:mm');
       }
       

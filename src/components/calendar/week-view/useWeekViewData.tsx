@@ -88,12 +88,21 @@ export const useWeekViewData = (
     
     // Log sample appointments for debugging
     if (appointments.length > 0) {
-      console.log(`[useWeekViewData] Sample appointment data:`, {
-        id: appointments[0].id,
-        date: appointments[0].date, 
-        dateType: typeof appointments[0].date,
-        start_time: appointments[0].start_time,
-        clinician_id: appointments[0].clinician_id
+      const sampleAppointment = appointments[0];
+      // Log raw appointment data
+      console.log(`[useWeekViewData] Raw sample appointment data:`, {
+        id: sampleAppointment.id,
+        date: sampleAppointment.date,
+        dateType: typeof sampleAppointment.date,
+        start_time: sampleAppointment.start_time,
+        clinician_id: sampleAppointment.clinician_id
+      });
+      
+      // Log normalized date for comparison
+      const normalizedDate = new Date(sampleAppointment.date).toISOString().split('T')[0];
+      console.log('[useWeekViewData] Normalized sample appointment date:', {
+        original: sampleAppointment.date,
+        normalized: normalizedDate
       });
     }
     
@@ -134,16 +143,20 @@ export const useWeekViewData = (
           [startHour, startMinute] = localizedAppointment.start_time.split(':').map(Number);
           [endHour, endMinute] = localizedAppointment.end_time.split(':').map(Number);
           
-          // Parse date correctly
-          dateObj = parseISO(localizedAppointment.date);
-          console.log(`[useWeekViewData] Parsed date: ${format(dateObj, 'yyyy-MM-dd')}`);
+          // Normalize and parse date correctly
+          // Ensure date is in yyyy-MM-dd format before parsing
+          const normalizedDate = new Date(localizedAppointment.date).toISOString().split('T')[0];
+          dateObj = parseISO(normalizedDate);
+          console.log(`[useWeekViewData] Normalized date: ${normalizedDate}, Parsed date: ${format(dateObj, 'yyyy-MM-dd')}`);
         } catch (error) {
           console.error("[useWeekViewData] Error converting appointment times:", error);
           // Fallback to original time if conversion fails
           [startHour, startMinute] = appointment.start_time.split(':').map(Number);
           [endHour, endMinute] = appointment.end_time.split(':').map(Number);
-          dateObj = parseISO(appointment.date);
-          console.log(`[useWeekViewData] Fallback parsed date: ${format(dateObj, 'yyyy-MM-dd')}`);
+          // Normalize date in fallback case too
+          const normalizedDate = new Date(appointment.date).toISOString().split('T')[0];
+          dateObj = parseISO(normalizedDate);
+          console.log(`[useWeekViewData] Fallback normalized date: ${normalizedDate}, parsed date: ${format(dateObj, 'yyyy-MM-dd')}`);
         }
 
         try {
