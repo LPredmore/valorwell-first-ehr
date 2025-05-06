@@ -1,4 +1,3 @@
-
 import { DateTime } from 'luxon';
 import { toast } from '@/hooks/use-toast';
 
@@ -32,27 +31,54 @@ export class TimeZoneService {
     'Eastern Standard Time (EST)': 'America/New_York',
     'EST': 'America/New_York',
     'EDT': 'America/New_York',
+    'Eastern Time': 'America/New_York',
+    'Eastern Time (ET)': 'America/New_York',
+    'ET': 'America/New_York',
+    
     'Central Standard Time': 'America/Chicago',
     'Central Standard Time (CST)': 'America/Chicago',
     'CST': 'America/Chicago',
     'CDT': 'America/Chicago',
+    'Central Time': 'America/Chicago',
+    'Central Time (CT)': 'America/Chicago',
+    'CT': 'America/Chicago',
+    
     'Mountain Standard Time': 'America/Denver',
     'Mountain Standard Time (MST)': 'America/Denver',
     'MST': 'America/Denver',
     'MDT': 'America/Denver',
+    'Mountain Time': 'America/Denver',
+    'Mountain Time (MT)': 'America/Denver',
+    'MT': 'America/Denver',
+    
     'Pacific Standard Time': 'America/Los_Angeles',
     'Pacific Standard Time (PST)': 'America/Los_Angeles',
     'PST': 'America/Los_Angeles',
     'PDT': 'America/Los_Angeles',
+    'Pacific Time': 'America/Los_Angeles',
+    'Pacific Time (PT)': 'America/Los_Angeles',
+    'PT': 'America/Los_Angeles',
+    
     'Alaska Standard Time': 'America/Anchorage',
     'Alaska Standard Time (AKST)': 'America/Anchorage',
     'AKST': 'America/Anchorage',
+    'Alaska Time': 'America/Anchorage',
+    'Alaska Time (AKT)': 'America/Anchorage',
+    'AKT': 'America/Anchorage',
+    
     'Hawaii-Aleutian Standard Time': 'Pacific/Honolulu',
     'Hawaii-Aleutian Standard Time (HST)': 'Pacific/Honolulu',
     'HST': 'Pacific/Honolulu',
+    'Hawaii Time': 'Pacific/Honolulu',
+    'Hawaii Time (HT)': 'Pacific/Honolulu',
+    'HT': 'Pacific/Honolulu',
+    
     'Atlantic Standard Time': 'America/Puerto_Rico',
     'Atlantic Standard Time (AST)': 'America/Puerto_Rico',
     'AST': 'America/Puerto_Rico',
+    'Atlantic Time': 'America/Puerto_Rico',
+    'Atlantic Time (AT)': 'America/Puerto_Rico',
+    'AT': 'America/Puerto_Rico',
 
     // Windows timezone names
     'Eastern Time (US & Canada)': 'America/New_York',
@@ -72,8 +98,8 @@ export class TimeZoneService {
       return null;
     }
 
-    // If it's already a valid IANA timezone, return it
     try {
+      // If it's already a valid IANA timezone, return it
       const testDt = DateTime.now().setZone(timezone);
       if (testDt.isValid) {
         return timezone;
@@ -83,9 +109,11 @@ export class TimeZoneService {
     }
 
     // Try to map the timezone to an IANA identifier
-    const mappedTimezone = this.TIMEZONE_MAP[timezone.trim()];
-    if (mappedTimezone) {
-      return mappedTimezone;
+    if (timezone && typeof timezone === 'string') {
+      const mappedTimezone = this.TIMEZONE_MAP[timezone.trim()];
+      if (mappedTimezone) {
+        return mappedTimezone;
+      }
     }
 
     // If no mapping found, return null
@@ -98,15 +126,15 @@ export class TimeZoneService {
    * If invalid, falls back to a default timezone and logs the error.
    */
   static ensureIANATimeZone(timezone: string | null | undefined): string {
-    // First try to normalize the timezone
-    const normalizedTimezone = this.normalizeTimeZone(timezone);
-    
-    if (!normalizedTimezone) {
-      console.warn(`Invalid or empty timezone provided: '${timezone}', falling back to ${this.DEFAULT_TIMEZONE}`);
-      return this.DEFAULT_TIMEZONE;
-    }
-
     try {
+      // First try to normalize the timezone
+      const normalizedTimezone = this.normalizeTimeZone(timezone);
+      
+      if (!normalizedTimezone) {
+        console.warn(`Invalid or empty timezone provided: '${timezone}', falling back to ${this.DEFAULT_TIMEZONE}`);
+        return this.DEFAULT_TIMEZONE;
+      }
+
       // Check if normalized timezone is a valid IANA timezone
       const dt = DateTime.now().setZone(normalizedTimezone);
       if (dt.isValid) {
@@ -116,7 +144,7 @@ export class TimeZoneService {
       console.warn(`Normalized timezone '${normalizedTimezone}' is still invalid, falling back to ${this.DEFAULT_TIMEZONE}`);
       return this.DEFAULT_TIMEZONE;
     } catch (error) {
-      console.error(`Error validating timezone: '${normalizedTimezone}'`, error);
+      console.error(`Error validating timezone: '${timezone}'`, error);
       return this.DEFAULT_TIMEZONE;
     }
   }
@@ -582,4 +610,3 @@ export class TimeZoneService {
     }
   }
 }
-

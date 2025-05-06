@@ -36,6 +36,8 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
   const [clinicianName, setClinicianName] = useState<string | null>(null);
   const [clientData, setClientData] = useState<any>(null);
   const { toast } = useToast();
+  
+  // Default to browser timezone if client timezone is not available
   const clientTimeZone = ensureIANATimeZone(clientData?.client_time_zone || getUserTimeZone());
 
   useEffect(() => {
@@ -59,6 +61,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
           return;
         }
         
+        console.log('Client data retrieved:', client);
         setClientData(client);
         
         if (client?.client_assigned_therapist) {
@@ -120,7 +123,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
             try {
               const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
               
-              let formattedTime = '';
+              let formattedTime = 'Time unavailable';
               try {
                 if (appointment.start_time) {
                   formattedTime = formatTimeInUserTimeZone(
@@ -129,15 +132,16 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
                     'h:mm a',
                     appointment.date // Pass the appointment date
                   );
-                } else {
-                  formattedTime = 'Time unavailable';
+                  console.log(`Formatted time for appointment ${appointment.id}: ${formattedTime}`);
                 }
-              } catch (error) {
-                console.error('Error formatting time:', error, {
+              } catch (timeError) {
+                console.error('Error formatting time:', timeError, {
                   appointment,
                   timezone: clientTimeZone
                 });
-                formattedTime = formatTime12Hour(appointment.start_time) || 'Time unavailable';
+                // Fallback to simple formatting
+                formattedTime = appointment.start_time ? 
+                  formatTime12Hour(appointment.start_time) : 'Time unavailable';
               }
               
               return {
@@ -184,7 +188,15 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
     fetchPastAppointments();
   }, [clientData, clinicianName, clientTimeZone, toast]);
 
-  const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);
+  // Safely get timezone display with error handling
+  const timeZoneDisplay = (() => {
+    try {
+      return formatTimeZoneDisplay(clientTimeZone);
+    } catch (error) {
+      console.error('Error formatting timezone display:', error);
+      return 'local time';
+    }
+  })();
 
   return (
     <Card>

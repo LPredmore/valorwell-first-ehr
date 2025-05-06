@@ -1,4 +1,8 @@
 
+/**
+ * Standard IANA timezone options for the application
+ * Each timezone includes both the IANA identifier and a user-friendly label
+ */
 export const timezoneOptions = [
   { value: "America/New_York", label: "Eastern Time (ET)" },
   { value: "America/Chicago", label: "Central Time (CT)" },
