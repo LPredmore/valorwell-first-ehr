@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LayoutDashboard, User, Clock3, Shield, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, User, Clock3, Shield } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById, formatDateForDB } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
-// Import the new tab components
+// Import the tab components
 import MyPortal from '@/components/patient/MyPortal';
 import MyProfile from '@/components/patient/MyProfile';
 import MyAppointments from '@/components/patient/MyAppointments';
 import MyInsurance from '@/components/patient/MyInsurance';
-import MyDocuments from '@/components/patient/MyDocuments';
 
 const PatientDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
@@ -321,10 +320,6 @@ const PatientDashboard: React.FC = () => {
               <Shield className="h-4 w-4" />
               Insurance
             </TabsTrigger>
-            <TabsTrigger value="documents" className="gap-2 rounded-b-none rounded-t-lg data-[state=active]:border-b-2 data-[state=active]:border-valorwell-600">
-              <ClipboardList className="h-4 w-4" />
-              Documents
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard" className="mt-0">
@@ -341,10 +336,6 @@ const PatientDashboard: React.FC = () => {
 
           <TabsContent value="insurance" className="mt-0">
             <MyInsurance clientData={clientData} loading={loading} isEditing={isEditing} setIsEditing={setIsEditing} form={form} isSaving={isSaving} handleSaveProfile={handleSaveProfile} handleCancelEdit={handleCancelEdit} insuranceTypes={insuranceTypes} relationshipTypes={relationshipTypes} />
-          </TabsContent>
-
-          <TabsContent value="documents" className="mt-0">
-            <MyDocuments />
           </TabsContent>
         </Tabs>
       </div>

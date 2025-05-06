@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -202,8 +201,6 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
                 <TableHead>Time <span className="text-xs text-gray-500">({timeZoneDisplay})</span></TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Therapist</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -213,10 +210,6 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
                   <TableCell>{appointment.time}</TableCell>
                   <TableCell>{appointment.type}</TableCell>
                   <TableCell>{appointment.therapist}</TableCell>
-                  <TableCell>{appointment.status}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="outline" size="sm">View Details</Button>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
