@@ -235,17 +235,27 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           lastDate: format(recurringDates[recurringDates.length - 1], 'yyyy-MM-dd')
         });
         
-        const appointmentsToInsert = recurringDates.map(date => ({
-          client_id: selectedClientId,
-          clinician_id: clinicianIdToUse,
-          date: format(date, 'yyyy-MM-dd'),
-          start_time: startTime,
-          end_time: endTime,
-          type: "Therapy Session",
-          status: 'scheduled',
-          appointment_recurring: recurrenceType,
-          recurring_group_id: recurringGroupId
-        }));
+        const appointmentsToInsert = recurringDates.map(date => {
+          // For each recurring date, create local date+time strings
+          const localDateStr = format(date, 'yyyy-MM-dd');
+          const localStartDateTimeStr = `${localDateStr}T${startTime}`;
+          const localEndDateTimeStr = `${localDateStr}T${endTime}`;
+          
+          // Convert local date+time to UTC ISO strings
+          const utcStartAt = TimeZoneService.convertLocalToUTC(localStartDateTimeStr, userTimeZone).toISO();
+          const utcEndAt = TimeZoneService.convertLocalToUTC(localEndDateTimeStr, userTimeZone).toISO();
+          
+          return {
+            client_id: selectedClientId,
+            clinician_id: clinicianIdToUse,
+            start_at: utcStartAt,
+            end_at: utcEndAt,
+            type: "Therapy Session",
+            status: 'scheduled',
+            appointment_recurring: recurrenceType,
+            recurring_group_id: recurringGroupId
+          };
+        });
 
         const { data, error } = await supabase
           .from('appointments')
@@ -274,18 +284,27 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           description: `Created ${recurringDates.length} recurring appointments.`,
         });
       } else {
+        // Convert local date+time to UTC ISO strings
+        const localStartDateTimeStr = `${formattedDate}T${startTime}`;
+        const localEndDateTimeStr = `${formattedDate}T${endTime}`;
+        
+        const utcStartAt = TimeZoneService.convertLocalToUTC(localStartDateTimeStr, userTimeZone).toISO();
+        const utcEndAt = TimeZoneService.convertLocalToUTC(localEndDateTimeStr, userTimeZone).toISO();
+        
         const appointmentData = {
           client_id: selectedClientId,
           clinician_id: clinicianIdToUse,
-          date: formattedDate,
-          start_time: startTime,
-          end_time: endTime,
+          start_at: utcStartAt,
+          end_at: utcEndAt,
           type: "Therapy Session",
           status: 'scheduled'
         };
 
         logAppointmentDebug('Creating single appointment', {
-          appointmentData
+          appointmentData,
+          localDateTime: localStartDateTimeStr,
+          utcDateTime: utcStartAt,
+          timezone: userTimeZone
         });
 
         const { data, error } = await supabase
