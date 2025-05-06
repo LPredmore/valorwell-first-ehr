@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -6,26 +7,33 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { formatTime12Hour } from '@/utils/timeZoneUtils';
+import { 
+  generateTimeOptions, 
+  calculateEndTime,
+  formatTimeDisplay
+} from '@/utils/appointmentUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface EditAppointmentDialogProps {
   isOpen: boolean;
   onClose: () => void;
   appointment: any;
   onAppointmentUpdated: () => void;
+  userTimeZone?: string;
 }
 
 const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
   isOpen,
   onClose,
   appointment,
-  onAppointmentUpdated
+  onAppointmentUpdated,
+  userTimeZone = TimeZoneService.ensureIANATimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone)
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     appointment?.date ? new Date(appointment.date) : new Date()
@@ -36,18 +44,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
   const [editOption, setEditOption] = useState<'single' | 'series'>('single');
   const [isEditOptionDialogOpen, setIsEditOptionDialogOpen] = useState(false);
 
-  const generateTimeOptions = () => {
-    const options = [];
-    for (let hour = 0; hour < 24; hour++) {
-      for (let minute = 0; minute < 60; minute += 15) {
-        const formattedHour = hour.toString().padStart(2, '0');
-        const formattedMinute = minute.toString().padStart(2, '0');
-        options.push(`${formattedHour}:${formattedMinute}`);
-      }
-    }
-    return options;
-  };
-
+  // Generate time options once
   const timeOptions = generateTimeOptions();
 
   useEffect(() => {
@@ -57,15 +54,6 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       setIsRecurring(!!appointment.recurring_group_id);
     }
   }, [appointment]);
-
-  const calculateEndTime = (startTimeStr: string): string => {
-    const [hours, minutes] = startTimeStr.split(':').map(Number);
-    const date = new Date();
-    date.setHours(hours, minutes, 0, 0);
-    date.setMinutes(date.getMinutes() + 60); // 60 minute appointments
-    
-    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-  };
 
   const handleSaveClick = () => {
     if (isRecurring) {
@@ -183,7 +171,6 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
                     mode="single"
                     selected={selectedDate}
                     onSelect={(date) => {
-                      console.log('Date selected:', date);
                       setSelectedDate(date);
                     }}
                     initialFocus
@@ -202,7 +189,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
                 <SelectContent>
                   {timeOptions.map((time) => (
                     <SelectItem key={time} value={time}>
-                      {formatTime12Hour(time)}
+                      {formatTimeDisplay(time, userTimeZone)}
                     </SelectItem>
                   ))}
                 </SelectContent>

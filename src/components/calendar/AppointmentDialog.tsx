@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +16,15 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
+import { 
+  DEFAULT_START_TIME, 
+  generateTimeOptions, 
+  calculateEndTime, 
+  ensureStringId,
+  generateRecurringDates,
+  formatTimeDisplay
+} from '@/utils/appointmentUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface Client {
   id: string;
@@ -29,181 +38,48 @@ interface AppointmentDialogProps {
   loadingClients: boolean;
   selectedClinicianId: string | null;
   onAppointmentCreated: () => void;
+  userTimeZone?: string;
 }
-
-// Helper function to ensure consistent ID format for database queries
-const ensureStringId = (id: string | null): string | null => {
-  if (!id) return null;
-  
-  // Ensure the ID is a clean string without any format issues
-  return id.toString().trim();
-};
 
 const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   isOpen,
   onClose,
-  clients: initialClients,
-  loadingClients: initialLoadingClients,
+  clients,
+  loadingClients,
   selectedClinicianId,
-  onAppointmentCreated
+  onAppointmentCreated,
+  userTimeZone = TimeZoneService.ensureIANATimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone)
 }) => {
+  // Form state
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  const [startTime, setStartTime] = useState<string>("09:00");
+  const [startTime, setStartTime] = useState<string>(DEFAULT_START_TIME);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState<string>('weekly');
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loadingClients, setLoadingClients] = useState(false);
   
-  // Format the clinician ID for consistent comparison
+  // Format the clinician ID once
   const formattedClinicianId = ensureStringId(selectedClinicianId);
-
-  // Log when dialog opens with crucial info
-  useEffect(() => {
-    if (isOpen) {
-      console.log('AppointmentDialog opened with state:', { 
-        rawClinicianId: selectedClinicianId,
-        formattedClinicianId,
-        initialClientsLength: initialClients?.length || 0,
-        initialLoadingClients
-      });
-    }
-  }, [isOpen, selectedClinicianId, formattedClinicianId, initialClients, initialLoadingClients]);
-
-  // Reset form values when dialog opens/closes and set initial clients from props
-  useEffect(() => {
-    if (isOpen) {
-      setSelectedDate(new Date());
-      setSelectedClientId(null);
-      setStartTime("09:00");
-      setIsRecurring(false);
-      
-      // Always start with the clients from props
-      if (initialClients && initialClients.length > 0) {
-        console.log('Using initial clients from props:', initialClients);
-        setClients(initialClients);
-        setLoadingClients(initialLoadingClients);
-      } else {
-        console.log('No initial clients from props, will fetch');
-        setClients([]);
-        // Only fetch if we don't have clients from props
-        fetchClientsIfNeeded();
-      }
-    }
-  }, [isOpen, initialClients, initialLoadingClients]);
-
-  // Only fetch clients if needed (not provided in props or empty)
-  const fetchClientsIfNeeded = async () => {
-    if (!formattedClinicianId || !isOpen) {
-      console.log('Not fetching clients: clinicianId is null or dialog not open');
-      return;
-    }
-    
-    if (initialClients && initialClients.length > 0) {
-      console.log('Skipping fetch: clients already available from props');
-      return;
-    }
-    
-    console.log('Fetching clients for clinician with ID (FORMATTED):', formattedClinicianId);
-    console.log('Original clinician ID before formatting:', selectedClinicianId);
-    setLoadingClients(true);
-    
-    try {
-      // Use text comparison since client_assigned_therapist is a TEXT column
-      const { data, error } = await supabase
-        .from('clients')
-        .select('id, client_first_name, client_preferred_name, client_last_name')
-        .eq('client_assigned_therapist', formattedClinicianId)
-        .order('client_last_name');
-        
-      if (error) {
-        console.error('Error fetching clients:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load clients. Please try again.",
-          variant: "destructive"
-        });
-      } else {
-        console.log('Clients fetched successfully:', data);
-        console.log('Selected clinician ID used for query:', formattedClinicianId);
-        
-        if (data.length === 0) {
-          console.log('No clients found for this clinician ID:', formattedClinicianId);
-          console.log('Database query returned empty result for clinician_id:', formattedClinicianId);
-          
-          // Additional debug query to check if any clients exist with this therapist
-          const { data: rawData, error: rawError } = await supabase
-            .rpc('debug_client_therapist_matching', { 
-              p_therapist_id: formattedClinicianId 
-            });
-            
-          if (!rawError && rawData) {
-            console.log('Debug query results:', rawData);
-          }
-        }
-        
-        const formattedClients = data.map(client => ({
-          id: client.id,
-          displayName: `${client.client_preferred_name || client.client_first_name || ''} ${client.client_last_name || ''}`.trim() || 'Unnamed Client'
-        }));
-        console.log('Formatted clients:', formattedClients);
-        setClients(formattedClients);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoadingClients(false);
-    }
-  };
-
-  const generateTimeOptions = () => {
-    const options = [];
-    for (let hour = 0; hour < 24; hour++) {
-      for (let minute = 0; minute < 60; minute += 15) {
-        const formattedHour = hour.toString().padStart(2, '0');
-        const formattedMinute = minute.toString().padStart(2, '0');
-        options.push(`${formattedHour}:${formattedMinute}`);
-      }
-    }
-    return options;
-  };
-
+  
+  // Generate time options once
   const timeOptions = generateTimeOptions();
 
-  const generateRecurringDates = (
-    startDate: Date,
-    recurrenceType: string,
-    count = 26 // 6 months (26 weeks) of appointments
-  ): Date[] => {
-    const dates: Date[] = [new Date(startDate)];
-    let currentDate = new Date(startDate);
-    
-    for (let i = 1; i < count; i++) {
-      if (recurrenceType === 'weekly') {
-        currentDate = new Date(currentDate);
-        currentDate.setDate(currentDate.getDate() + 7);
-      } else if (recurrenceType === 'biweekly') {
-        currentDate = new Date(currentDate);
-        currentDate.setDate(currentDate.getDate() + 14);
-      } else if (recurrenceType === 'monthly') {
-        currentDate = new Date(currentDate);
-        currentDate.setMonth(currentDate.getMonth() + 1);
-      }
-      
-      // Limit to 6 months from start
-      const sixMonthsFromStart = new Date(startDate);
-      sixMonthsFromStart.setMonth(sixMonthsFromStart.getMonth() + 6);
-      
-      if (currentDate > sixMonthsFromStart) {
-        break;
-      }
-      
-      dates.push(new Date(currentDate));
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      resetForm();
     }
-    
-    return dates;
+  }, [isOpen]);
+
+  // Reset form values
+  const resetForm = () => {
+    setSelectedDate(new Date());
+    setSelectedClientId(null);
+    setStartTime(DEFAULT_START_TIME);
+    setIsRecurring(false);
+    setRecurrenceType('weekly');
   };
 
+  // Create appointment handler
   const handleCreateAppointment = async () => {
     if (!selectedClientId || !selectedDate || !startTime || !formattedClinicianId) {
       toast({
@@ -216,13 +92,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
 
     try {
       const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-      
-      // Calculate end time (1 hour after start time)
-      const [startHour, startMinute] = startTime.split(':').map(Number);
-      const endDateTime = new Date();
-      endDateTime.setHours(startHour, startMinute, 0, 0);
-      endDateTime.setMinutes(endDateTime.getMinutes() + 60);
-      const endTime = `${endDateTime.getHours().toString().padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}`;
+      const endTime = calculateEndTime(startTime);
 
       if (isRecurring) {
         const recurringGroupId = uuidv4();
@@ -240,15 +110,13 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           recurring_group_id: recurringGroupId
         }));
 
-        console.log('Creating recurring appointments with data:', appointmentsToInsert[0]);
-
         const { data, error } = await supabase
           .from('appointments')
           .insert(appointmentsToInsert)
           .select();
 
         if (error) {
-          console.error('Error details:', error.message, error);
+          console.error('Error creating recurring appointments:', error);
           throw error;
         }
 
@@ -266,8 +134,6 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           type: "Therapy Session",
           status: 'scheduled'
         };
-        
-        console.log('Creating single appointment with data:', appointmentData);
 
         const { data, error } = await supabase
           .from('appointments')
@@ -275,7 +141,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           .select();
 
         if (error) {
-          console.error('Error details:', error.message, error);
+          console.error('Error creating appointment:', error);
           throw error;
         }
 
@@ -285,11 +151,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
         });
       }
 
-      // Reset form and close dialog
-      setSelectedClientId(null);
-      setStartTime("09:00");
-      setIsRecurring(false);
-      setSelectedDate(new Date());
+      resetForm();
       onClose();
       onAppointmentCreated();
 
@@ -302,16 +164,6 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
       });
     }
   };
-
-  // Debugging info
-  console.log('AppointmentDialog render state:', {
-    isOpen,
-    rawClinicianId: selectedClinicianId,
-    formattedClinicianId,
-    loadingClients,
-    clientsCount: clients.length,
-    clients
-  });
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -389,7 +241,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
               <SelectContent>
                 {timeOptions.map((time) => (
                   <SelectItem key={time} value={time}>
-                    {format(new Date(`2023-01-01T${time}`), 'h:mm a')}
+                    {formatTimeDisplay(time, userTimeZone)}
                   </SelectItem>
                 ))}
               </SelectContent>
