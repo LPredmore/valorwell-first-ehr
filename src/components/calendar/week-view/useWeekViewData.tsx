@@ -82,7 +82,7 @@ export const useWeekViewData = (
       return;
     }
 
-    console.log("Processing appointments in week view:", appointments);
+    console.log("Week view processing appointments:", appointments.length);
     
     const blocks: AppointmentBlock[] = appointments.map(appointment => {
       let startHour, startMinute, endHour, endMinute;
@@ -98,6 +98,11 @@ export const useWeekViewData = (
           
           [startHour, startMinute] = localizedAppointment.start_time.split(':').map(Number);
           [endHour, endMinute] = localizedAppointment.end_time.split(':').map(Number);
+          
+          console.log(`Appointment ${appointment.id} time converted:`, {
+            original: { start: appointment.start_time, end: appointment.end_time },
+            localized: { start: localizedAppointment.start_time, end: localizedAppointment.end_time }
+          });
         } catch (error) {
           console.error("Error converting appointment times:", error);
           // Fallback to original time if conversion fails
@@ -135,7 +140,7 @@ export const useWeekViewData = (
       return result;
     });
 
-    console.log("Week view appointment blocks created:", blocks);
+    console.log("Week view appointment blocks created:", blocks.length);
     setAppointmentBlocks(blocks);
   }, [appointments, getClientName, userTimeZone]);
 
@@ -311,8 +316,8 @@ export const useWeekViewData = (
     };
   
     const getAppointmentForTimeSlot = (day: Date, timeSlot: Date) => {
-      // Log to debug appointment matching
-      console.log(`Checking appointments for ${format(day, 'yyyy-MM-dd')} at ${format(timeSlot, 'HH:mm')}`);
+      // Debug appointment matching
+      const dayFormatted = format(day, 'yyyy-MM-dd');
       
       // Get the time components only from the time slot
       const slotHours = timeSlot.getHours();
@@ -341,7 +346,7 @@ export const useWeekViewData = (
           slotTotalMinutes < apptEndTotalMinutes;
           
         if (isWithinAppointment) {
-          console.log(`Found appointment ${block.id} for ${format(day, 'yyyy-MM-dd')} at ${format(timeSlot, 'HH:mm')}:`, {
+          console.log(`Found appointment ${block.id} for ${dayFormatted} at ${format(timeSlot, 'HH:mm')}:`, {
             appointmentDay: format(block.day, 'yyyy-MM-dd'),
             appointmentTime: `${format(block.start, 'HH:mm')} - ${format(block.end, 'HH:mm')}`,
             slotTime: format(timeSlot, 'HH:mm')

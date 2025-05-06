@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { format, isToday, isFuture, parseISO, isBefore } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
@@ -47,7 +48,10 @@ export const useAppointments = (
   } = useQuery({
     queryKey: ['appointments', clinicianId, fromDate, toDate],
     queryFn: async () => {
-      if (!clinicianId) return [];
+      if (!clinicianId) {
+        console.log('Skipping appointment fetch - no clinicianId provided');
+        return [];
+      }
       
       console.log('Fetching appointments for clinician:', clinicianId);
       
@@ -91,10 +95,14 @@ export const useAppointments = (
         throw error;
       }
 
-      return data.map((appointment: any) => ({
+      const processedAppointments = data.map((appointment: any) => ({
         ...appointment,
         client: appointment.clients
       }));
+      
+      console.log(`Retrieved ${processedAppointments.length} appointments for clinician ${clinicianId}`, processedAppointments);
+      
+      return processedAppointments;
     },
     enabled: !!clinicianId
   });

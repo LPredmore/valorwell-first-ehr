@@ -35,13 +35,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     }
   }, [refreshTrigger, refetch]);
 
-  // Function to get client name from an appointment
-  const getClientName = (clientId: string): string => {
-    const appointment = appointments.find(app => app.client_id === clientId);
-    return appointment?.client?.client_preferred_name && appointment?.client?.client_last_name
-      ? `${appointment.client.client_preferred_name} ${appointment.client.client_last_name}`
-      : 'Client';
-  };
+  // Log appointments for debugging
+  React.useEffect(() => {
+    console.log(`CalendarView: Fetched ${appointments.length} appointments for clinician ${clinicianId}`, appointments);
+  }, [appointments, clinicianId]);
 
   return (
     <Calendar 
@@ -51,6 +48,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       currentDate={currentDate}
       userTimeZone={userTimeZone}
       refreshTrigger={refreshTrigger}
+      appointments={appointments}
+      isLoading={loadingAppointments}
+      error={error}
     />
   );
 };

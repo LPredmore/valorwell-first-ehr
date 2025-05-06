@@ -6,6 +6,8 @@ import { useAppointments, Appointment } from '@/hooks/useAppointments';
 import ClinicianAvailabilityPanel from './ClinicianAvailabilityPanel';
 import AvailabilityPanel from './AvailabilityPanel';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { Loader2 } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 
 interface CalendarProps {
   view: 'week' | 'month';
@@ -14,6 +16,9 @@ interface CalendarProps {
   currentDate: Date;
   userTimeZone: string;
   refreshTrigger: number;
+  appointments?: Appointment[];
+  isLoading?: boolean;
+  error?: any;
 }
 
 const Calendar = ({ 
@@ -22,7 +27,10 @@ const Calendar = ({
   clinicianId, 
   currentDate, 
   userTimeZone,
-  refreshTrigger = 0 
+  refreshTrigger = 0,
+  appointments = [],
+  isLoading = false,
+  error = null
 }: CalendarProps) => {
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
   
@@ -34,13 +42,13 @@ const Calendar = ({
     console.error('No clinician ID provided to Calendar component');
   }
   
-  // Fetch appointments
-  const { 
-    appointments, 
-    isLoading: loadingAppointments, 
-    error, 
-    refetch 
-  } = useAppointments(clinicianId);
+  // Log appointments for debugging
+  useEffect(() => {
+    console.log(`Calendar: Rendering with ${appointments.length} appointments for clinician ${clinicianId}`, appointments);
+    if (error) {
+      console.error('Error fetching appointments:', error);
+    }
+  }, [appointments, clinicianId, error]);
 
   // Function to get client name from an appointment
   const getClientName = (clientId: string): string => {
@@ -65,15 +73,16 @@ const Calendar = ({
   // Handler for when availability is updated
   const handleAvailabilityUpdated = () => {
     console.log('Availability updated, refreshing calendar...');
-    refetch();
   };
 
-  // Log availability settings
-  useEffect(() => {
-    if (showAvailability && clinicianId) {
-      console.log(`Displaying availability for clinician ${clinicianId} in ${validTimeZone} timezone`);
-    }
-  }, [showAvailability, clinicianId, validTimeZone]);
+  // Show loading indicator if appointments are being fetched
+  if (isLoading) {
+    return (
+      <Card className="p-4 flex justify-center items-center h-[300px]">
+        <Loader2 className="h-6 w-6 animate-spin text-valorwell-500" />
+      </Card>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
