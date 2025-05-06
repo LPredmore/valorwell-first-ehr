@@ -35,18 +35,30 @@ export function formatTimeStringTo12Hour(timeString: string): string {
  * @param timeString Time string in format "HH:MM"
  * @param userTimeZone IANA timezone string
  * @param formatStr Format string for the output
+ * @param dateStr Optional date string in format "yyyy-MM-dd" to use instead of today's date
  */
-export function formatTimeInUserTimeZone(timeString: string, userTimeZone: string, formatStr: string = TimeZoneService.TIME_FORMAT_AMPM): string {
+export function formatTimeInUserTimeZone(
+  timeString: string, 
+  userTimeZone: string, 
+  formatStr: string = TimeZoneService.TIME_FORMAT_AMPM,
+  dateStr?: string
+): string {
   try {
-    // Get today's date
-    const today = TimeZoneService.today(userTimeZone);
-    const todayStr = TimeZoneService.formatDate(today);
+    // If dateStr is provided, use it, otherwise get today's date
+    const baseDate = dateStr 
+      ? TimeZoneService.fromDateString(dateStr, userTimeZone)
+      : TimeZoneService.today(userTimeZone);
+    const baseDateStr = TimeZoneService.formatDate(baseDate);
     
     // Use TimeZoneService to create and format the datetime
-    const dateTime = TimeZoneService.createDateTime(todayStr, timeString, userTimeZone);
+    const dateTime = TimeZoneService.createDateTime(baseDateStr, timeString, userTimeZone);
     return TimeZoneService.formatDateTime(dateTime, formatStr);
   } catch (error) {
-    console.error('Error formatting time in user timezone:', error);
+    console.error('Error formatting time in user timezone:', error, {
+      timeString,
+      userTimeZone,
+      dateStr
+    });
     return timeString;
   }
 }

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -125,7 +126,8 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
                   formattedTime = formatTimeInUserTimeZone(
                     appointment.start_time,
                     clientTimeZone,
-                    'h:mm a'
+                    'h:mm a',
+                    appointment.date // Pass the appointment date
                   );
                 } else {
                   formattedTime = 'Time unavailable';

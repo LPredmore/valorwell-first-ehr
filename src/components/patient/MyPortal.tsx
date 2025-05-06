@@ -103,11 +103,17 @@ const MyPortal: React.FC<MyPortalProps> = ({
 
               let formattedTime = '';
               try {
-                formattedTime = formatTimeInUserTimeZone(appointment.start_time, clientTimeZone,
-                'h:mm a');
-                console.log(`Formatted time for ${appointment.start_time}: ${formattedTime}`);
+                // Use the appointment's actual date when formatting the time
+                formattedTime = formatTimeInUserTimeZone(
+                  appointment.start_time, 
+                  clientTimeZone,
+                  'h:mm a',
+                  appointment.date // Pass the appointment date
+                );
+                console.log(`Formatted time for ${appointment.start_time} on ${appointment.date}: ${formattedTime}`);
               } catch (error) {
                 console.error('Error formatting time:', error, {
+                  date: appointment.date,
                   time: appointment.start_time,
                   timezone: clientTimeZone
                 });
