@@ -198,95 +198,77 @@ export const useMonthViewData = (
     return result;
   }, [days, availabilityData]);
 
-  // Map appointments to days for easy lookup with improved debugging
+  // SIMPLIFIED: Map appointments to days for easy lookup with improved debugging
+  // This is the key part that's been simplified for more reliable appointment display
   const dayAppointmentsMap = useMemo(() => {
     const result = new Map<string, Appointment[]>();
     console.log(`[useMonthViewData] Processing ${appointments.length} appointments for month view`);
     
-    // Log sample appointment if available for debugging
-    if (appointments.length > 0) {
-      const sampleAppointment = appointments[0];
-      // Log raw appointment data
-      console.log('[useMonthViewData] Raw sample appointment:', {
-        id: sampleAppointment.id,
-        date: sampleAppointment.date,
-        start_time: sampleAppointment.start_time,
-        end_time: sampleAppointment.end_time,
-        clinician_id: sampleAppointment.clinician_id,
-        format: typeof sampleAppointment.date
-      });
-      
-      // Log normalized date for comparison using TimeZoneService
-      const normalizedDate = TimeZoneService.formatDate(
-        TimeZoneService.fromDateString(sampleAppointment.date)
-      );
-      
-      console.log('[useMonthViewData] Normalized sample appointment date:', {
-        original: sampleAppointment.date,
-        normalized: normalizedDate,
-        dayFormat: TimeZoneService.formatDate(DateTime.now())
-      });
-      
-      // Log timezone information
-      console.log('[useMonthViewData] Timezone information:', {
-        userTimeZone,
-        currentSystemTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-      });
-    }
-    
+    // Create a map of formatted dates to store appointments
     days.forEach(day => {
       const dayStr = TimeZoneService.formatDate(day);
-      
-      // Add explicit filtering with enhanced logging and date normalization
-      const dayAppointments = appointments.filter(appointment => {
-        // First convert the appointment to user timezone
-        const localizedAppointment = TimeZoneService.convertEventToUserTimeZone(
-          appointment,
-          userTimeZone
-        );
-        
-        // Create DateTime objects for direct comparison instead of string comparison
-        const appointmentDateTime = TimeZoneService.fromDateString(localizedAppointment.date, userTimeZone);
-        const dayDateTime = day;
-        
-        // Compare dates using isSameDay for more reliable comparison
-        const match = TimeZoneService.isSameDay(appointmentDateTime, dayDateTime);
-        
-        // Enhanced logging for all appointments to better diagnose issues
-        console.log(`[useMonthViewData] Appointment ${appointment.id} comparison:`, {
-          originalDate: appointment.date,
-          localizedDate: localizedAppointment.date,
-          appointmentDateFormatted: TimeZoneService.formatDate(appointmentDateTime),
-          dayDateFormatted: TimeZoneService.formatDate(dayDateTime),
-          match: match,
-          comparisonMethod: "isSameDay",
-          timeInfo: {
-            start: appointment.start_time,
-            end: appointment.end_time,
-            localizedStart: localizedAppointment.start_time,
-            localizedEnd: localizedAppointment.end_time
-          }
-        });
-        
-        return match;
-      });
-      
-      if (dayAppointments.length > 0) {
-        console.log(`[useMonthViewData] Found ${dayAppointments.length} appointments for ${dayStr}`);
-      }
-      
-      result.set(dayStr, dayAppointments);
+      result.set(dayStr, []);
     });
     
-    // Log counts of days with appointments
-    const daysWithAppointments = Array.from(result.entries())
-      .filter(([_, apps]) => apps.length > 0)
-      .length;
+    // Process each appointment with simplified date matching
+    appointments.forEach(appointment => {
+      try {
+        // Normalize the appointment date to YYYY-MM-DD format for direct string comparison
+        let normalizedDate = appointment.date;
+        if (!normalizedDate) {
+          console.error(`[useMonthViewData] Appointment has no date:`, appointment.id);
+          return;
+        }
+        
+        // Ensure we have a clean YYYY-MM-DD format
+        if (normalizedDate.includes('T')) {
+          normalizedDate = normalizedDate.split('T')[0];
+        }
+        
+        // Log the matching process for debugging
+        console.log(`[useMonthViewData] Matching appointment ${appointment.id}:`, {
+          appointmentDate: normalizedDate,
+          availableDays: Array.from(result.keys()),
+        });
+        
+        // Direct map lookup by normalized date string - much simpler!
+        if (result.has(normalizedDate)) {
+          result.get(normalizedDate)!.push(appointment);
+          console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched to ${normalizedDate}`);
+        } else {
+          console.log(`[useMonthViewData] ❌ No matching day found for appointment ${appointment.id} with date ${normalizedDate}`);
+          
+          // Additional attempt: try parsing with DateTime just in case
+          try {
+            const parsedDate = TimeZoneService.fromDateString(appointment.date);
+            const formattedDate = TimeZoneService.formatDate(parsedDate);
+            
+            if (result.has(formattedDate)) {
+              result.get(formattedDate)!.push(appointment);
+              console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched to ${formattedDate} after parsing`);
+            }
+          } catch (e) {
+            console.error(`[useMonthViewData] Failed to parse date alternative:`, e);
+          }
+        }
+      } catch (error) {
+        console.error(`[useMonthViewData] Error processing appointment ${appointment.id}:`, error);
+      }
+    });
     
-    console.log(`[useMonthViewData] Created map with appointments on ${daysWithAppointments} days`);
+    // Log summary of appointments distribution
+    let appointmentCount = 0;
+    result.forEach((apps, date) => {
+      if (apps.length > 0) {
+        console.log(`[useMonthViewData] Date ${date} has ${apps.length} appointments`);
+        appointmentCount += apps.length;
+      }
+    });
+    
+    console.log(`[useMonthViewData] Total appointments mapped: ${appointmentCount}`);
     
     return result;
-  }, [days, appointments, userTimeZone]);
+  }, [days, appointments]);
 
   return {
     loading,

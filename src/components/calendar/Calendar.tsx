@@ -39,32 +39,49 @@ const Calendar = ({
     console.error('No clinician ID provided to Calendar component');
   }
   
-  // Log appointments for debugging
+  // Enhanced logging for appointments
   useEffect(() => {
     console.log(`[Calendar] Rendering with ${appointments.length} appointments for clinician ${clinicianId}`);
+    console.log(`[Calendar] Calendar view: ${view}, timezone: ${validTimeZone}`);
     
-    // Log appointment format details
     if (appointments.length > 0) {
-      const sampleAppointment = appointments[0];
-      console.log('[Calendar] Sample appointment format:', {
-        id: sampleAppointment.id,
-        date: sampleAppointment.date,
-        dateType: typeof sampleAppointment.date,
-        start: sampleAppointment.start_time,
-        end: sampleAppointment.end_time,
-        clinicianId: sampleAppointment.clinician_id
+      // Check date format consistency
+      const dateFormats = new Set();
+      appointments.forEach(app => {
+        if (typeof app.date === 'string') {
+          dateFormats.add(app.date.includes('T') ? 'ISO format' : 'YYYY-MM-DD format');
+        } else {
+          dateFormats.add(typeof app.date);
+        }
+      });
+      
+      console.log('[Calendar] Appointment date formats:', Array.from(dateFormats));
+      
+      // Sample appointments for inspection
+      const sampleSize = Math.min(3, appointments.length);
+      console.log(`[Calendar] Sample of ${sampleSize} appointments:`);
+      appointments.slice(0, sampleSize).forEach((app, idx) => {
+        console.log(`[Calendar] Sample appointment ${idx+1}:`, {
+          id: app.id,
+          date: app.date,
+          startTime: app.start_time,
+          clientId: app.client_id,
+          clinicianId: app.clinician_id
+        });
       });
     }
     
     if (error) {
       console.error('[Calendar] Error detected:', error);
     }
-  }, [appointments, clinicianId, error]);
+  }, [appointments, clinicianId, error, view, validTimeZone]);
 
   // Function to get client name from an appointment
   const getClientName = (clientId: string): string => {
     const appointment = appointments.find(app => app.client_id === clientId);
-    return appointment?.client?.client_preferred_name && appointment?.client?.client_last_name
+    if (!appointment || !appointment.client) return 'Client';
+    
+    return appointment.client.client_preferred_name && appointment.client.client_last_name
       ? `${appointment.client.client_preferred_name} ${appointment.client.client_last_name}`
       : 'Client';
   };
@@ -78,7 +95,6 @@ const Calendar = ({
   // Handler for availability block clicked in calendar
   const handleAvailabilityClick = (date: Date, availabilityBlock: any) => {
     console.log(`[Calendar] Availability clicked for ${date} - Block:`, availabilityBlock);
-    // Here you could open a modal to edit the availability
   };
 
   // Handler for when availability is updated

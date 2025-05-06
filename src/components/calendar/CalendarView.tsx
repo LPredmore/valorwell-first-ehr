@@ -54,18 +54,35 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     } else if (appointments) {
       console.log(`[CalendarView] Received ${appointments.length} appointments for clinician ${formattedClinicianId}`);
       
-      // Log all appointments for debugging
-      appointments.forEach((appointment, index) => {
-        console.log(`[CalendarView] Appointment #${index + 1}:`, {
-          id: appointment.id,
-          date: appointment.date,
-          dateType: typeof appointment.date,
-          start_time: appointment.start_time,
-          end_time: appointment.end_time,
-          client_id: appointment.client_id,
-          clinician_id: appointment.clinician_id
+      if (appointments.length > 0) {
+        console.log(`[CalendarView] First 3 appointments (sample):`);
+        appointments.slice(0, 3).forEach((appointment, index) => {
+          console.log(`[CalendarView] Appointment #${index + 1}:`, {
+            id: appointment.id,
+            date: appointment.date,
+            dateType: typeof appointment.date,
+            start_time: appointment.start_time,
+            end_time: appointment.end_time,
+            client_id: appointment.client_id,
+            clinician_id: appointment.clinician_id
+          });
         });
-      });
+        
+        // Check for any date format inconsistencies
+        const dateFormatsFound = new Set();
+        appointments.forEach(app => {
+          if (typeof app.date === 'string') {
+            dateFormatsFound.add(app.date.includes('T') ? 'ISO' : 'YYYY-MM-DD');
+          } else {
+            dateFormatsFound.add(typeof app.date);
+          }
+        });
+        
+        if (dateFormatsFound.size > 1) {
+          console.warn(`[CalendarView] WARNING: Mixed date formats detected in appointments:`, 
+            Array.from(dateFormatsFound));
+        }
+      }
     }
   }, [appointments, formattedClinicianId, error]);
 
@@ -98,11 +115,24 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     );
   }
   
-  // If no appointments were found, log this but still render the calendar
-  if (appointments.length === 0) {
-    console.log(`[CalendarView] No appointments found for clinician: ${formattedClinicianId}`);
-  }
-
+  // Ensure we have a normalized array of appointments
+  const normalizedAppointments = appointments.map(appointment => {
+    // Ensure date is in YYYY-MM-DD format for consistent comparison
+    let normalizedDate = appointment.date;
+    
+    // Handle ISO format dates (with T)
+    if (typeof normalizedDate === 'string' && normalizedDate.includes('T')) {
+      normalizedDate = normalizedDate.split('T')[0];
+    }
+    
+    return {
+      ...appointment,
+      date: normalizedDate
+    };
+  });
+  
+  console.log(`[CalendarView] Rendering calendar with ${normalizedAppointments.length} normalized appointments`);
+  
   return (
     <Calendar 
       view={view}
@@ -111,9 +141,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       currentDate={currentDate}
       userTimeZone={validTimeZone}
       refreshTrigger={refreshTrigger}
-      appointments={appointments}
-      isLoading={false} // We're handling loading state above
-      error={null} // We're handling error state above
+      appointments={normalizedAppointments}
+      isLoading={false}
+      error={null}
     />
   );
 };

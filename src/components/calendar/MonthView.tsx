@@ -46,19 +46,35 @@ const MonthView: React.FC<MonthViewProps> = ({
   onAvailabilityClick,
   userTimeZone = 'America/Chicago'
 }) => {
-  // Log appointments for debugging
+  // Enhanced debugging for appointments
   useEffect(() => {
     console.log(`[MonthView] Rendering with ${appointments.length} appointments for clinician ${clinicianId}`);
     
     if (appointments && appointments.length > 0) {
-      console.log(`[MonthView] Sample appointment:`, {
-        id: appointments[0].id,
-        date: appointments[0].date,
-        dateType: typeof appointments[0].date,
-        start_time: appointments[0].start_time,
-        end_time: appointments[0].end_time,
-        clinician_id: appointments[0].clinician_id || 'Not specified'
-      });
+      // Log the first few appointments for debugging
+      const samplesToLog = Math.min(appointments.length, 3);
+      for (let i = 0; i < samplesToLog; i++) {
+        const app = appointments[i];
+        console.log(`[MonthView] Sample appointment ${i+1}/${samplesToLog}:`, {
+          id: app.id,
+          date: app.date,
+          startTime: app.start_time,
+          endTime: app.end_time,
+          clinicianId: app.clinician_id || 'Not specified'
+        });
+      }
+    }
+    
+    // Check for any potential date format issues
+    if (appointments && appointments.length > 0) {
+      const differentFormats = new Set(
+        appointments.map(app => 
+          typeof app.date === 'string' && app.date.includes('T') ? 'ISO' : 'Simple'
+        )
+      );
+      if (differentFormats.size > 1) {
+        console.warn('[MonthView] WARNING: Mixed date formats detected in appointments array');
+      }
     }
   }, [appointments, clinicianId]);
 
@@ -71,29 +87,29 @@ const MonthView: React.FC<MonthViewProps> = ({
     availabilityByDay
   } = useMonthViewData(currentDate, clinicianId, refreshTrigger, appointments, userTimeZone);
 
-  // Check if the appointments are being correctly processed in the monthView data
+  // Additional debug - check if appointments are being processed correctly
   useEffect(() => {
-    const appointmentCount = Object.values(dayAppointmentsMap).reduce(
-      (sum, dayApps) => sum + dayApps.length, 0
-    );
+    const appointmentCount = Array.from(dayAppointmentsMap.values())
+      .reduce((sum, dayApps) => sum + dayApps.length, 0);
     
-    console.log(`[MonthView] Processed appointments in useMonthViewData: ${appointmentCount} appointments distributed across calendar`);
+    console.log(`[MonthView] Total appointments displayed in calendar: ${appointmentCount}`);
     
-    // Log a few example days with appointments
-    const daysWithAppointments = Object.entries(dayAppointmentsMap)
-      .filter(([_, apps]) => apps.length > 0)
-      .slice(0, 3);
+    // If there are appointments but none are being displayed, this is an issue
+    if (appointments.length > 0 && appointmentCount === 0) {
+      console.error('[MonthView] CRITICAL: Appointments exist but none are displayed in calendar');
+      console.log('[MonthView] This could be due to date format mismatches. Check:');
+      console.log('1. Format of appointments.date vs. the keys in dayAppointmentsMap');
+      console.log('2. Timezone conversions affecting date comparisons');
       
-    if (daysWithAppointments.length > 0) {
-      daysWithAppointments.forEach(([day, apps]) => {
-        console.log(`[MonthView] Day ${day} has ${apps.length} appointments:`, 
-          apps.map(app => ({ id: app.id, start: app.start_time, end: app.end_time }))
-        );
-      });
-    } else {
-      console.log('[MonthView] No days with appointments found in the processed data');
+      // Print sample of dayAppointmentsMap keys
+      const mapKeys = Array.from(dayAppointmentsMap.keys()).slice(0, 5);
+      console.log('[MonthView] Sample days in calendar:', mapKeys);
+      
+      // Print sample of appointment dates
+      const appDates = appointments.slice(0, 5).map(a => a.date);
+      console.log('[MonthView] Sample appointment dates:', appDates);
     }
-  }, [dayAppointmentsMap]);
+  }, [dayAppointmentsMap, appointments]);
 
   if (loading) {
     return (
