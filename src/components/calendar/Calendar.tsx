@@ -2,12 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import WeekView from './week-view/WeekView';
 import MonthView from './MonthView';
-import { useAppointments, Appointment } from '@/hooks/useAppointments';
 import ClinicianAvailabilityPanel from './ClinicianAvailabilityPanel';
-import AvailabilityPanel from './AvailabilityPanel';
 import { TimeZoneService } from '@/utils/timeZoneService';
-import { Loader2 } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Appointment } from '@/hooks/useAppointments';
 
 interface CalendarProps {
   view: 'week' | 'month';
@@ -16,9 +13,9 @@ interface CalendarProps {
   currentDate: Date;
   userTimeZone: string;
   refreshTrigger: number;
-  appointments?: Appointment[];
-  isLoading?: boolean;
-  error?: any;
+  appointments: Appointment[];
+  isLoading: boolean;
+  error: any;
 }
 
 const Calendar = ({ 
@@ -44,9 +41,9 @@ const Calendar = ({
   
   // Log appointments for debugging
   useEffect(() => {
-    console.log(`Calendar: Rendering with ${appointments.length} appointments for clinician ${clinicianId}`, appointments);
+    console.log(`[Calendar] Rendering with ${appointments.length} appointments for clinician ${clinicianId}`, appointments);
     if (error) {
-      console.error('Error fetching appointments:', error);
+      console.error('[Calendar] Error detected:', error);
     }
   }, [appointments, clinicianId, error]);
 
@@ -61,28 +58,19 @@ const Calendar = ({
   // Handler for appointment clicked in calendar
   const handleAppointmentClick = (appointment: Appointment) => {
     setSelectedAppointmentId(appointment.id);
-    console.log(`Appointment clicked: ${appointment.id}`);
+    console.log(`[Calendar] Appointment clicked: ${appointment.id}`);
   };
 
   // Handler for availability block clicked in calendar
   const handleAvailabilityClick = (date: Date, availabilityBlock: any) => {
-    console.log(`Availability clicked for ${date} - Block:`, availabilityBlock);
+    console.log(`[Calendar] Availability clicked for ${date} - Block:`, availabilityBlock);
     // Here you could open a modal to edit the availability
   };
 
   // Handler for when availability is updated
   const handleAvailabilityUpdated = () => {
-    console.log('Availability updated, refreshing calendar...');
+    console.log('[Calendar] Availability updated, refreshing calendar...');
   };
-
-  // Show loading indicator if appointments are being fetched
-  if (isLoading) {
-    return (
-      <Card className="p-4 flex justify-center items-center h-[300px]">
-        <Loader2 className="h-6 w-6 animate-spin text-valorwell-500" />
-      </Card>
-    );
-  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

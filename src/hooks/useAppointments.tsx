@@ -39,6 +39,9 @@ export const useAppointments = (
   const [clientData, setClientData] = useState<any>(null);
   const [isLoadingClientData, setIsLoadingClientData] = useState(false);
 
+  // Format clinician ID if provided
+  const formattedClinicianId = clinicianId ? clinicianId.trim() : null;
+
   // Fetch appointments
   const { 
     data: appointments = [], 
@@ -46,65 +49,92 @@ export const useAppointments = (
     error, 
     refetch 
   } = useQuery({
-    queryKey: ['appointments', clinicianId, fromDate, toDate],
+    queryKey: ['appointments', formattedClinicianId, fromDate, toDate],
     queryFn: async () => {
-      if (!clinicianId) {
-        console.log('Skipping appointment fetch - no clinicianId provided');
+      if (!formattedClinicianId) {
+        console.log('[useAppointments] Skipping appointment fetch - no clinicianId provided');
         return [];
       }
       
-      console.log('Fetching appointments for clinician:', clinicianId);
+      console.log('[useAppointments] Fetching appointments for clinician:', formattedClinicianId);
+      console.log('[useAppointments] Clinician ID type:', typeof formattedClinicianId);
       
-      let query = supabase
-        .from('appointments')
-        .select(`
-          id,
-          client_id,
-          clinician_id,
-          date,
-          start_time,
-          end_time,
-          type,
-          status,
-          appointment_recurring,
-          recurring_group_id,
-          video_room_url,
-          notes,
-          clients (
-            client_first_name,
-            client_last_name,
-            client_preferred_name
-          )
-        `)
-        .eq('clinician_id', clinicianId);
-      
-      if (fromDate) {
-        query = query.gte('date', format(fromDate, 'yyyy-MM-dd'));
-      }
-      
-      if (toDate) {
-        query = query.lte('date', format(toDate, 'yyyy-MM-dd'));
-      }
-      
-      const { data, error } = await query
-        .order('date')
-        .order('start_time');
+      try {
+        let query = supabase
+          .from('appointments')
+          .select(`
+            id,
+            client_id,
+            clinician_id,
+            date,
+            start_time,
+            end_time,
+            type,
+            status,
+            appointment_recurring,
+            recurring_group_id,
+            video_room_url,
+            notes,
+            clients (
+              client_first_name,
+              client_last_name,
+              client_preferred_name
+            )
+          `)
+          .eq('clinician_id', formattedClinicianId);
+        
+        if (fromDate) {
+          query = query.gte('date', format(fromDate, 'yyyy-MM-dd'));
+        }
+        
+        if (toDate) {
+          query = query.lte('date', format(toDate, 'yyyy-MM-dd'));
+        }
+        
+        const { data, error } = await query
+          .order('date')
+          .order('start_time');
 
-      if (error) {
-        console.error('Error fetching appointments:', error);
-        throw error;
-      }
+        if (error) {
+          console.error('[useAppointments] Error fetching appointments:', error);
+          throw error;
+        }
 
-      const processedAppointments = data.map((appointment: any) => ({
-        ...appointment,
-        client: appointment.clients
-      }));
-      
-      console.log(`Retrieved ${processedAppointments.length} appointments for clinician ${clinicianId}`, processedAppointments);
-      
-      return processedAppointments;
+        // Check if we actually got data back
+        if (!data || data.length === 0) {
+          console.log('[useAppointments] No appointments found for clinician:', formattedClinicianId);
+          return [];
+        }
+
+        const processedAppointments = data.map((appointment: any) => ({
+          ...appointment,
+          client: appointment.clients
+        }));
+        
+        console.log(`[useAppointments] Retrieved ${processedAppointments.length} appointments for clinician ${formattedClinicianId}`, processedAppointments);
+        
+        // Log the first appointment for debugging
+        if (processedAppointments.length > 0) {
+          const firstAppointment = processedAppointments[0];
+          console.log('[useAppointments] Example appointment:', {
+            id: firstAppointment.id,
+            date: firstAppointment.date,
+            time: `${firstAppointment.start_time} - ${firstAppointment.end_time}`,
+            clinicianId: firstAppointment.clinician_id,
+            clientId: firstAppointment.client_id,
+            client: firstAppointment.client ? 
+              `${firstAppointment.client.client_preferred_name || ''} ${firstAppointment.client.client_last_name || ''}` : 
+              'Unknown client'
+          });
+        }
+        
+        return processedAppointments;
+      } catch (err) {
+        console.error('[useAppointments] Unexpected error in appointment fetch:', err);
+        throw err;
+      }
     },
-    enabled: !!clinicianId
+    enabled: !!formattedClinicianId
   });
 
   // Get today's appointments
