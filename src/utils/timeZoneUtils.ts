@@ -1,6 +1,4 @@
 
-import { format, parseISO } from 'date-fns';
-import { DateTime } from 'luxon';
 import { TimeZoneService } from './timeZoneService';
 
 /**
@@ -16,7 +14,7 @@ export function getUserTimeZone(): string {
  * Format a date object to a 12-hour time string (e.g. "9:00 AM")
  */
 export function formatDateToTime12Hour(date: Date): string {
-  return format(date, 'h:mm a');
+  return TimeZoneService.formatTime(TimeZoneService.fromJSDate(date));
 }
 
 /**
@@ -24,17 +22,8 @@ export function formatDateToTime12Hour(date: Date): string {
  */
 export function formatTimeStringTo12Hour(timeString: string): string {
   try {
-    // Parse the time string (expecting format like "09:00")
-    const [hours, minutes] = timeString.split(':').map(Number);
-    
-    // Create a DateTime object with the time
-    const dt = DateTime.fromObject({
-      hour: hours,
-      minute: minutes
-    });
-    
-    // Format to 12-hour time
-    return dt.toFormat('h:mm a');
+    const dt = TimeZoneService.fromTimeString(timeString);
+    return TimeZoneService.formatTime(dt);
   } catch (error) {
     console.error('Error formatting time string:', error);
     return timeString; // Return the original string if parsing fails
@@ -47,15 +36,15 @@ export function formatTimeStringTo12Hour(timeString: string): string {
  * @param userTimeZone IANA timezone string
  * @param formatStr Format string for the output
  */
-export function formatTimeInUserTimeZone(timeString: string, userTimeZone: string, formatStr: string = 'h:mm a'): string {
+export function formatTimeInUserTimeZone(timeString: string, userTimeZone: string, formatStr: string = TimeZoneService.TIME_FORMAT_AMPM): string {
   try {
     // Get today's date
-    const today = DateTime.now().setZone(userTimeZone);
-    const todayStr = today.toFormat('yyyy-MM-dd');
+    const today = TimeZoneService.today(userTimeZone);
+    const todayStr = TimeZoneService.formatDate(today);
     
     // Use TimeZoneService to create and format the datetime
     const dateTime = TimeZoneService.createDateTime(todayStr, timeString, userTimeZone);
-    return dateTime.toFormat(formatStr);
+    return TimeZoneService.formatDateTime(dateTime, formatStr);
   } catch (error) {
     console.error('Error formatting time in user timezone:', error);
     return timeString;
@@ -67,7 +56,7 @@ export function formatTimeInUserTimeZone(timeString: string, userTimeZone: strin
  */
 export function formatTimeZoneDisplay(timezone: string): string {
   try {
-    const now = DateTime.now().setZone(timezone);
+    const now = TimeZoneService.now(timezone);
     return now.toFormat('ZZZZ'); // Returns the timezone abbreviation (e.g., EDT)
   } catch (error) {
     console.error('Error formatting timezone display:', error);
@@ -78,7 +67,7 @@ export function formatTimeZoneDisplay(timezone: string): string {
 /**
  * Convert a date and time string to a specific timezone
  */
-export function convertToTimezone(dateStr: string, timeStr: string, timezone: string): DateTime {
+export function convertToTimezone(dateStr: string, timeStr: string, timezone: string): ReturnType<typeof TimeZoneService.createDateTime> {
   return TimeZoneService.createDateTime(dateStr, timeStr, timezone);
 }
 
@@ -86,11 +75,8 @@ export function convertToTimezone(dateStr: string, timeStr: string, timezone: st
  * Format a date to display with timezone abbreviation (e.g. "Mar 12, 2023 - CST")
  */
 export function formatDateWithTimezone(date: Date, timezone: string): string {
-  return TimeZoneService.formatDateTime(
-    DateTime.fromJSDate(date),
-    'MMM d, yyyy - ZZZZ',
-    timezone
-  );
+  const dt = TimeZoneService.fromJSDate(date, timezone);
+  return TimeZoneService.formatDateTime(dt, 'MMM d, yyyy - ZZZZ');
 }
 
 /**
@@ -98,11 +84,11 @@ export function formatDateWithTimezone(date: Date, timezone: string): string {
  */
 export function formatWithTimeZone(date: Date, timezone: string, formatStr: string = 'MMM d, yyyy \'at\' h:mm a ZZZZ'): string {
   try {
-    const dt = DateTime.fromJSDate(date).setZone(timezone);
-    return dt.toFormat(formatStr);
+    const dt = TimeZoneService.fromJSDate(date, timezone);
+    return TimeZoneService.formatDateTime(dt, formatStr);
   } catch (error) {
     console.error('Error formatting date with timezone:', error);
-    return format(date, 'MMM d, yyyy');
+    return TimeZoneService.formatDisplayDate(TimeZoneService.fromJSDate(date));
   }
 }
 
@@ -119,10 +105,11 @@ export function ensureIANATimeZone(timezone: string | null | undefined): string 
 export function formatTime12Hour(timeString: string): string {
   try {
     // Handle both "HH:MM" and "HH:MM:SS" formats
-    const dt = DateTime.fromFormat(timeString, timeString.includes(':') ? 
-                                  (timeString.split(':').length > 2 ? 'HH:mm:ss' : 'HH:mm') : 'HH');
+    const format = timeString.includes(':') ?
+                  (timeString.split(':').length > 2 ? 'HH:mm:ss' : 'HH:mm') : 'HH';
     
-    return dt.toFormat('h:mm a');
+    const dt = TimeZoneService.fromTimeString(timeString);
+    return TimeZoneService.formatTime(dt);
   } catch (error) {
     console.error('Error formatting to 12-hour time:', error);
     return timeString;

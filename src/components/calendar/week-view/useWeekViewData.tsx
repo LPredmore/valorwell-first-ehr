@@ -1,15 +1,7 @@
-
 import { useState, useEffect, useMemo } from 'react';
-import {
-  format,
-  startOfDay,
-  isSameDay,
-  setHours,
-  setMinutes,
-  parseISO
-} from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { DateTime } from 'luxon';
 
 interface Appointment {
   id: string;
@@ -44,6 +36,26 @@ interface AvailabilityException {
 }
 
 interface TimeBlock {
+  day: DateTime;
+  start: DateTime;
+  end: DateTime;
+  availabilityIds: string[];
+  isException?: boolean;
+  isStandalone?: boolean;
+}
+
+interface AppointmentBlock {
+  id: string;
+  day: DateTime;
+  start: DateTime;
+  end: DateTime;
+  clientId: string;
+  type: string;
+  clientName?: string;
+}
+
+// Convert TimeBlock to JS Date compatible version for external use
+interface JSTimeBlock {
   day: Date;
   start: Date;
   end: Date;
@@ -52,7 +64,8 @@ interface TimeBlock {
   isStandalone?: boolean;
 }
 
-interface AppointmentBlock {
+// Convert AppointmentBlock to JS Date compatible version for external use
+interface JSAppointmentBlock {
   id: string;
   day: Date;
   start: Date;
@@ -76,6 +89,11 @@ export const useWeekViewData = (
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
 
+  // Convert days array to DateTime objects
+  const daysAsDateTime = useMemo(() => {
+    return days.map(day => TimeZoneService.fromJSDate(day, userTimeZone));
+  }, [days, userTimeZone]);
+
   // Process appointments into blocks with improved logging
   useEffect(() => {
     if (!appointments || !appointments.length) {
@@ -98,8 +116,11 @@ export const useWeekViewData = (
         clinician_id: sampleAppointment.clinician_id
       });
       
-      // Log normalized date for comparison
-      const normalizedDate = new Date(sampleAppointment.date).toISOString().split('T')[0];
+      // Log normalized date for comparison using TimeZoneService
+      const normalizedDate = TimeZoneService.formatDate(
+        TimeZoneService.fromDateString(sampleAppointment.date)
+      );
+      
       console.log('[useWeekViewData] Normalized sample appointment date:', {
         original: sampleAppointment.date,
         normalized: normalizedDate
@@ -113,8 +134,9 @@ export const useWeekViewData = (
           return null;
         }
         
-        let startHour = 0, startMinute = 0, endHour = 0, endMinute = 0;
-        let dateObj: Date;
+        let dateTime: DateTime;
+        let startDateTime: DateTime;
+        let endDateTime: DateTime;
 
         // Handle timezone conversion for appointments
         try {
@@ -140,41 +162,58 @@ export const useWeekViewData = (
             end: localizedAppointment.end_time
           });
           
-          [startHour, startMinute] = localizedAppointment.start_time.split(':').map(Number);
-          [endHour, endMinute] = localizedAppointment.end_time.split(':').map(Number);
+          // Create DateTime objects for the appointment date and times
+          dateTime = TimeZoneService.fromDateString(localizedAppointment.date, userTimeZone);
           
-          // Normalize and parse date correctly
-          // Ensure date is in yyyy-MM-dd format before parsing
-          const normalizedDate = new Date(localizedAppointment.date).toISOString().split('T')[0];
-          dateObj = parseISO(normalizedDate);
-          console.log(`[useWeekViewData] Normalized date: ${normalizedDate}, Parsed date: ${format(dateObj, 'yyyy-MM-dd')}`);
+          // Create start and end DateTimes by combining the date with the time strings
+          startDateTime = TimeZoneService.createDateTime(
+            localizedAppointment.date,
+            localizedAppointment.start_time,
+            userTimeZone
+          );
+          
+          endDateTime = TimeZoneService.createDateTime(
+            localizedAppointment.date,
+            localizedAppointment.end_time,
+            userTimeZone
+          );
+          
+          console.log(`[useWeekViewData] Normalized date: ${TimeZoneService.formatDate(dateTime)}`);
         } catch (error) {
           console.error("[useWeekViewData] Error converting appointment times:", error);
+          
           // Fallback to original time if conversion fails
-          [startHour, startMinute] = appointment.start_time.split(':').map(Number);
-          [endHour, endMinute] = appointment.end_time.split(':').map(Number);
-          // Normalize date in fallback case too
-          const normalizedDate = new Date(appointment.date).toISOString().split('T')[0];
-          dateObj = parseISO(normalizedDate);
-          console.log(`[useWeekViewData] Fallback normalized date: ${normalizedDate}, parsed date: ${format(dateObj, 'yyyy-MM-dd')}`);
+          dateTime = TimeZoneService.fromDateString(appointment.date, userTimeZone);
+          
+          // Create start and end DateTimes by combining the date with the time strings
+          startDateTime = TimeZoneService.createDateTime(
+            appointment.date,
+            appointment.start_time,
+            userTimeZone
+          );
+          
+          endDateTime = TimeZoneService.createDateTime(
+            appointment.date,
+            appointment.end_time,
+            userTimeZone
+          );
+          
+          console.log(`[useWeekViewData] Fallback normalized date: ${TimeZoneService.formatDate(dateTime)}`);
         }
 
         try {
-          const start = setMinutes(setHours(startOfDay(dateObj), startHour), startMinute);
-          const end = setMinutes(setHours(startOfDay(dateObj), endHour), endMinute);
-
           console.log(`[useWeekViewData] Created appointment block:`, {
             id: appointment.id,
-            date: format(dateObj, 'yyyy-MM-dd'),
-            start: format(start, 'HH:mm'),
-            end: format(end, 'HH:mm')
+            date: TimeZoneService.formatDate(dateTime),
+            start: TimeZoneService.formatTime24(startDateTime),
+            end: TimeZoneService.formatTime24(endDateTime)
           });
           
           return {
             id: appointment.id,
-            day: dateObj,
-            start,
-            end,
+            day: dateTime,
+            start: startDateTime,
+            end: endDateTime,
             clientId: appointment.client_id,
             type: appointment.type,
             clientName: getClientName(appointment.client_id)
@@ -191,9 +230,9 @@ export const useWeekViewData = (
       if (blocks.length > 0) {
         console.log(`[useWeekViewData] Sample processed appointment block:`, {
           id: blocks[0].id,
-          day: format(blocks[0].day, 'yyyy-MM-dd'),
-          start: format(blocks[0].start, 'HH:mm'),
-          end: format(blocks[0].end, 'HH:mm')
+          day: TimeZoneService.formatDate(blocks[0].day),
+          start: TimeZoneService.formatTime24(blocks[0].start),
+          end: TimeZoneService.formatTime24(blocks[0].end)
         });
       }
       
@@ -256,7 +295,7 @@ export const useWeekViewData = (
     };
 
     fetchAvailability();
-  }, [clinicianId, refreshTrigger, days]);
+  }, [clinicianId, refreshTrigger, daysAsDateTime]);
 
   // Extract availability blocks from clinician record
   const extractAvailabilityBlocksFromClinician = (clinician: any): AvailabilityBlock[] => {
@@ -297,31 +336,38 @@ export const useWeekViewData = (
   const processAvailabilityFromClinician = (blocks: AvailabilityBlock[], exceptionsData: AvailabilityException[]) => {
     const allTimeBlocks: TimeBlock[] = [];
 
-    days.forEach(day => {
-      const dayOfWeek = format(day, 'EEEE');
+    daysAsDateTime.forEach(day => {
+      const dayOfWeek = day.toFormat('EEEE');
       
       // Filter blocks for this day of week
       const dayBlocks = blocks.filter(block => block.day_of_week === dayOfWeek);
 
       const parsedBlocks = dayBlocks.map(block => {
-        // Extract hours and minutes
-        const [startHour, startMinute] = block.start_time.split(':').map(Number);
-        const [endHour, endMinute] = block.end_time.split(':').map(Number);
-
-        const start = setMinutes(setHours(startOfDay(day), startHour), startMinute);
-        const end = setMinutes(setHours(startOfDay(day), endHour), endMinute);
+        // Create DateTime objects for start and end times
+        const startTime = TimeZoneService.createDateTime(
+          TimeZoneService.formatDate(day),
+          block.start_time,
+          userTimeZone
+        );
+        
+        const endTime = TimeZoneService.createDateTime(
+          TimeZoneService.formatDate(day),
+          block.end_time,
+          userTimeZone
+        );
 
         return {
           id: block.id,
           day,
-          start,
-          end,
+          start: startTime,
+          end: endTime,
           isException: false,
           isStandalone: false
         };
       });
 
-      parsedBlocks.sort((a, b) => a.start.getTime() - b.start.getTime());
+      // Sort blocks by start time
+      parsedBlocks.sort((a, b) => a.start.toMillis() - b.start.toMillis());
 
       const mergedBlocks: TimeBlock[] = [];
 
@@ -355,55 +401,77 @@ export const useWeekViewData = (
   // Utility functions for time slot checking
   const timeSlotUtils = useMemo(() => {
     const isTimeSlotAvailable = (day: Date, timeSlot: Date) => {
-      const slotTime = setMinutes(
-        setHours(startOfDay(day), timeSlot.getHours()),
-        timeSlot.getMinutes()
-      );
+      // Convert JS Dates to DateTime objects
+      const dayDt = TimeZoneService.fromJSDate(day, userTimeZone);
+      const timeSlotDt = TimeZoneService.fromJSDate(timeSlot, userTimeZone);
+      
+      // Create a DateTime that combines the day with the time
+      const slotTime = dayDt.set({
+        hour: timeSlotDt.hour,
+        minute: timeSlotDt.minute
+      });
   
       return timeBlocks.some(block =>
-        isSameDay(block.day, day) &&
+        TimeZoneService.isSameDay(block.day, dayDt) &&
         slotTime >= block.start &&
         slotTime < block.end
       );
     };
   
     const getBlockForTimeSlot = (day: Date, timeSlot: Date) => {
-      const slotTime = setMinutes(
-        setHours(startOfDay(day), timeSlot.getHours()),
-        timeSlot.getMinutes()
-      );
+      // Convert JS Dates to DateTime objects
+      const dayDt = TimeZoneService.fromJSDate(day, userTimeZone);
+      const timeSlotDt = TimeZoneService.fromJSDate(timeSlot, userTimeZone);
+      
+      // Create a DateTime that combines the day with the time
+      const slotTime = dayDt.set({
+        hour: timeSlotDt.hour,
+        minute: timeSlotDt.minute
+      });
   
-      return timeBlocks.find(block =>
-        isSameDay(block.day, day) &&
+      const block = timeBlocks.find(block =>
+        TimeZoneService.isSameDay(block.day, dayDt) &&
         slotTime >= block.start &&
         slotTime < block.end
       );
+      
+      if (!block) return null;
+      
+      // Convert to JS Date compatible format for external use
+      return {
+        day: block.day.toJSDate(),
+        start: block.start.toJSDate(),
+        end: block.end.toJSDate(),
+        availabilityIds: block.availabilityIds,
+        isException: block.isException,
+        isStandalone: block.isStandalone
+      } as JSTimeBlock;
     };
   
     const getAppointmentForTimeSlot = (day: Date, timeSlot: Date) => {
-      // Format for easier debugging
-      const dayFormatted = format(day, 'yyyy-MM-dd');
+      // Convert JS Dates to DateTime objects
+      const dayDt = TimeZoneService.fromJSDate(day, userTimeZone);
+      const timeSlotDt = TimeZoneService.fromJSDate(timeSlot, userTimeZone);
       
-      // Get the time components only from the time slot
-      const slotHours = timeSlot.getHours();
-      const slotMinutes = timeSlot.getMinutes();
+      // Format for easier debugging
+      const dayFormatted = TimeZoneService.formatDate(dayDt);
+      
+      // Create a DateTime that combines the day with the time
+      const slotTime = dayDt.set({
+        hour: timeSlotDt.hour,
+        minute: timeSlotDt.minute
+      });
       
       // Find appointments on the same day where the time slot falls within the appointment time
       const appointment = appointmentBlocks.find(block => {
         // First check if we're on the same day
-        const sameDayCheck = isSameDay(block.day, day);
+        const sameDayCheck = TimeZoneService.isSameDay(block.day, dayDt);
         if (!sameDayCheck) return false;
         
-        // Get the time components from the appointment
-        const apptStartHours = block.start.getHours();
-        const apptStartMinutes = block.start.getMinutes();
-        const apptEndHours = block.end.getHours();
-        const apptEndMinutes = block.end.getMinutes();
-        
         // Convert to minutes for easier comparison
-        const slotTotalMinutes = slotHours * 60 + slotMinutes;
-        const apptStartTotalMinutes = apptStartHours * 60 + apptStartMinutes;
-        const apptEndTotalMinutes = apptEndHours * 60 + apptEndMinutes;
+        const slotTotalMinutes = slotTime.hour * 60 + slotTime.minute;
+        const apptStartTotalMinutes = block.start.hour * 60 + block.start.minute;
+        const apptEndTotalMinutes = block.end.hour * 60 + block.end.minute;
         
         // Check if the slot time falls within the appointment time
         const isWithinAppointment = 
@@ -411,17 +479,28 @@ export const useWeekViewData = (
           slotTotalMinutes < apptEndTotalMinutes;
         
         if (isWithinAppointment) {
-          console.log(`[useWeekViewData] Found appointment ${block.id} for ${dayFormatted} at ${format(timeSlot, 'HH:mm')}:`, {
-            appointmentDay: format(block.day, 'yyyy-MM-dd'),
-            appointmentTime: `${format(block.start, 'HH:mm')} - ${format(block.end, 'HH:mm')}`,
-            slotTime: format(timeSlot, 'HH:mm')
+          console.log(`[useWeekViewData] Found appointment ${block.id} for ${dayFormatted} at ${TimeZoneService.formatTime24(slotTime)}:`, {
+            appointmentDay: TimeZoneService.formatDate(block.day),
+            appointmentTime: `${TimeZoneService.formatTime24(block.start)} - ${TimeZoneService.formatTime24(block.end)}`,
+            slotTime: TimeZoneService.formatTime24(slotTime)
           });
         }
         
         return isWithinAppointment;
       });
       
-      return appointment;
+      if (!appointment) return null;
+      
+      // Convert to JS Date compatible format for external use
+      return {
+        id: appointment.id,
+        day: appointment.day.toJSDate(),
+        start: appointment.start.toJSDate(),
+        end: appointment.end.toJSDate(),
+        clientId: appointment.clientId,
+        type: appointment.type,
+        clientName: appointment.clientName
+      } as JSAppointmentBlock;
     };
 
     return {
@@ -429,17 +508,41 @@ export const useWeekViewData = (
       getBlockForTimeSlot,
       getAppointmentForTimeSlot
     };
-  }, [timeBlocks, appointmentBlocks]);
+  }, [timeBlocks, appointmentBlocks, userTimeZone]);
 
   // Helper to get availability block by ID
   const getAvailabilityForBlock = (blockId: string) => {
     return availabilityBlocks.find(block => block.id === blockId);
   };
 
+  // Convert DateTime objects to JS Dates for external use
+  const jsTimeBlocks = useMemo(() => {
+    return timeBlocks.map(block => ({
+      day: block.day.toJSDate(),
+      start: block.start.toJSDate(),
+      end: block.end.toJSDate(),
+      availabilityIds: block.availabilityIds,
+      isException: block.isException,
+      isStandalone: block.isStandalone
+    })) as JSTimeBlock[];
+  }, [timeBlocks]);
+
+  const jsAppointmentBlocks = useMemo(() => {
+    return appointmentBlocks.map(block => ({
+      id: block.id,
+      day: block.day.toJSDate(),
+      start: block.start.toJSDate(),
+      end: block.end.toJSDate(),
+      clientId: block.clientId,
+      type: block.type,
+      clientName: block.clientName
+    })) as JSAppointmentBlock[];
+  }, [appointmentBlocks]);
+
   return {
     loading,
-    timeBlocks,
-    appointmentBlocks,
+    timeBlocks: jsTimeBlocks,
+    appointmentBlocks: jsAppointmentBlocks,
     exceptions,
     availabilityBlocks,
     getAvailabilityForBlock,
@@ -447,4 +550,4 @@ export const useWeekViewData = (
   };
 };
 
-export type { Appointment, AvailabilityBlock, AvailabilityException, TimeBlock, AppointmentBlock };
+export type { Appointment, AvailabilityBlock, AvailabilityException, JSTimeBlock as TimeBlock, JSAppointmentBlock as AppointmentBlock };

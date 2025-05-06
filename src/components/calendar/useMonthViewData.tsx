@@ -1,15 +1,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
-import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
-  startOfWeek,
-  endOfWeek,
-} from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
+import { DateTime } from 'luxon';
 
 interface Appointment {
   id: string;
@@ -41,16 +34,25 @@ export const useMonthViewData = (
   const [loading, setLoading] = useState(true);
   const [availabilityData, setAvailabilityData] = useState<AvailabilityBlock[]>([]);
 
+  // Convert currentDate to DateTime
+  const currentDateTime = TimeZoneService.fromJSDate(currentDate, userTimeZone);
+
   // Memoize date calculations to improve performance
   const { monthStart, days, startDate, endDate } = useMemo(() => {
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
-    const startDate = startOfWeek(monthStart, { weekStartsOn: 0 });
-    const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
-    const days = eachDayOfInterval({ start: startDate, end: endDate });
+    // Use TimeZoneService for date calculations
+    const monthStart = TimeZoneService.startOfMonth(currentDateTime);
+    const monthEnd = TimeZoneService.endOfMonth(currentDateTime);
+    const startDate = TimeZoneService.startOfWeek(monthStart);
+    const endDate = TimeZoneService.endOfWeek(monthEnd);
+    const days = TimeZoneService.eachDayOfInterval(startDate, endDate);
     
-    return { monthStart, days, startDate, endDate };
-  }, [currentDate]);
+    return {
+      monthStart,
+      days,
+      startDate,
+      endDate
+    };
+  }, [currentDateTime]);
 
   // Fetch availability data
   useEffect(() => {
@@ -129,14 +131,14 @@ export const useMonthViewData = (
 
   // Build day availability map with standardized display hours
   const dayAvailabilityMap = useMemo(() => {
-    const result = new Map<string, { 
-      hasAvailability: boolean, 
-      displayHours: string 
+    const result = new Map<string, {
+      hasAvailability: boolean,
+      displayHours: string
     }>();
     
     days.forEach(day => {
-      const dayOfWeek = format(day, 'EEEE');
-      const dateStr = format(day, 'yyyy-MM-dd');
+      const dayOfWeek = day.toFormat('EEEE');
+      const dateStr = TimeZoneService.formatDate(day);
       
       const regularAvailability = availabilityData.filter(
         slot => slot.day_of_week === dayOfWeek
@@ -160,8 +162,8 @@ export const useMonthViewData = (
           const startTimeInUserZone = TimeZoneService.convertDateTime(startDateTime, 'UTC', userTimeZone);
           const endTimeInUserZone = TimeZoneService.convertDateTime(endDateTime, 'UTC', userTimeZone);
           
-          const startHourFormatted = startTimeInUserZone.toFormat('h:mm a');
-          const endHourFormatted = endTimeInUserZone.toFormat('h:mm a');
+          const startHourFormatted = TimeZoneService.formatTime(startTimeInUserZone);
+          const endHourFormatted = TimeZoneService.formatTime(endTimeInUserZone);
           
           displayHours = `${startHourFormatted}-${endHourFormatted}`;
         } catch (error) {
@@ -181,8 +183,8 @@ export const useMonthViewData = (
     const result = new Map<string, AvailabilityBlock>();
     
     days.forEach(day => {
-      const dayOfWeek = format(day, 'EEEE');
-      const dateStr = format(day, 'yyyy-MM-dd');
+      const dayOfWeek = day.toFormat('EEEE');
+      const dateStr = TimeZoneService.formatDate(day);
       
       const firstAvailability = availabilityData.find(
         slot => slot.day_of_week === dayOfWeek
@@ -212,22 +214,27 @@ export const useMonthViewData = (
         format: typeof sampleAppointment.date
       });
       
-      // Log normalized date for comparison
-      const normalizedDate = new Date(sampleAppointment.date).toISOString().split('T')[0];
+      // Log normalized date for comparison using TimeZoneService
+      const normalizedDate = TimeZoneService.formatDate(
+        TimeZoneService.fromDateString(sampleAppointment.date)
+      );
+      
       console.log('[useMonthViewData] Normalized sample appointment date:', {
         original: sampleAppointment.date,
-        normalized: normalizedDate,
-        matches: normalizedDate === format(new Date(sampleAppointment.date), 'yyyy-MM-dd')
+        normalized: normalizedDate
       });
     }
     
     days.forEach(day => {
-      const dayStr = format(day, 'yyyy-MM-dd');
+      const dayStr = TimeZoneService.formatDate(day);
       
       // Add explicit filtering with logging and date normalization
       const dayAppointments = appointments.filter(appointment => {
-        // Normalize both dates to yyyy-MM-dd format before comparison
-        const appointmentDateNormalized = new Date(appointment.date).toISOString().split('T')[0];
+        // Normalize both dates to yyyy-MM-dd format before comparison using TimeZoneService
+        const appointmentDateNormalized = TimeZoneService.formatDate(
+          TimeZoneService.fromDateString(appointment.date)
+        );
+        
         const match = appointmentDateNormalized === dayStr;
         
         // Log date comparison details for the first few appointments
@@ -258,7 +265,7 @@ export const useMonthViewData = (
   return {
     loading,
     monthStart,
-    days,
+    days: days.map(d => d.toJSDate()), // Convert DateTime objects back to JS Dates for compatibility
     dayAvailabilityMap,
     dayAppointmentsMap,
     availabilityByDay

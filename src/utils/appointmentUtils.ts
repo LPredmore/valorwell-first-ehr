@@ -1,6 +1,6 @@
 
-import { format } from 'date-fns';
 import { TimeZoneService } from './timeZoneService';
+import { DateTime } from 'luxon';
 
 // Default values
 export const DEFAULT_START_TIME = "09:00";
@@ -25,21 +25,35 @@ export const generateTimeOptions = () => {
  * Calculate end time based on a start time and duration
  */
 export const calculateEndTime = (startTimeStr: string, durationMinutes: number = DEFAULT_APPOINTMENT_DURATION_MINUTES): string => {
-  const [hours, minutes] = startTimeStr.split(':').map(Number);
-  const date = new Date();
-  date.setHours(hours, minutes, 0, 0);
-  date.setMinutes(date.getMinutes() + durationMinutes);
-  
-  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+  try {
+    // Create a DateTime object from the start time
+    const startTime = TimeZoneService.fromTimeString(startTimeStr);
+    
+    // Add the duration
+    const endTime = startTime.plus({ minutes: durationMinutes });
+    
+    // Format as HH:mm
+    return TimeZoneService.formatTime24(endTime);
+  } catch (error) {
+    console.error('Error calculating end time:', error);
+    
+    // Fallback to manual calculation if TimeZoneService fails
+    const [hours, minutes] = startTimeStr.split(':').map(Number);
+    let totalMinutes = hours * 60 + minutes + durationMinutes;
+    const newHours = Math.floor(totalMinutes / 60) % 24;
+    const newMinutes = totalMinutes % 60;
+    
+    return `${newHours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}`;
+  }
 };
 
 /**
  * Format client name for display
  */
-export const formatClientName = (client: { 
-  client_first_name?: string, 
-  client_preferred_name?: string, 
-  client_last_name?: string 
+export const formatClientName = (client: {
+  client_first_name?: string,
+  client_preferred_name?: string,
+  client_last_name?: string
 } | null): string => {
   if (!client) return 'Unnamed Client';
   
@@ -64,30 +78,30 @@ export const generateRecurringDates = (
   recurrenceType: string,
   count = 26 // Default to 6 months (26 weeks) of appointments
 ): Date[] => {
-  const dates: Date[] = [new Date(startDate)];
-  let currentDate = new Date(startDate);
+  // Convert the start date to a DateTime object
+  let dt = TimeZoneService.fromJSDate(startDate);
+  const dates: Date[] = [startDate];
+  
+  // Calculate the end date (6 months from start)
+  const sixMonthsFromStart = TimeZoneService.addMonths(dt, 6);
   
   for (let i = 1; i < count; i++) {
+    // Calculate the next date based on recurrence type
     if (recurrenceType === 'weekly') {
-      currentDate = new Date(currentDate);
-      currentDate.setDate(currentDate.getDate() + 7);
+      dt = TimeZoneService.addDays(dt, 7);
     } else if (recurrenceType === 'biweekly') {
-      currentDate = new Date(currentDate);
-      currentDate.setDate(currentDate.getDate() + 14);
+      dt = TimeZoneService.addDays(dt, 14);
     } else if (recurrenceType === 'monthly') {
-      currentDate = new Date(currentDate);
-      currentDate.setMonth(currentDate.getMonth() + 1);
+      dt = TimeZoneService.addMonths(dt, 1);
     }
     
-    // Limit to 6 months from start
-    const sixMonthsFromStart = new Date(startDate);
-    sixMonthsFromStart.setMonth(sixMonthsFromStart.getMonth() + 6);
-    
-    if (currentDate > sixMonthsFromStart) {
+    // Stop if we've gone beyond 6 months
+    if (dt > sixMonthsFromStart) {
       break;
     }
     
-    dates.push(new Date(currentDate));
+    // Convert back to JS Date and add to the array
+    dates.push(dt.toJSDate());
   }
   
   return dates;
@@ -98,11 +112,11 @@ export const generateRecurringDates = (
  */
 export const formatTimeDisplay = (timeString: string, userTimeZone: string): string => {
   try {
-    return TimeZoneService.formatDateTime(
-      TimeZoneService.createDateTime('2023-01-01', timeString, userTimeZone),
-      'h:mm a',
-      userTimeZone
-    );
+    // Create a DateTime object from the time string
+    const dt = TimeZoneService.fromTimeString(timeString, userTimeZone);
+    
+    // Format with AM/PM
+    return TimeZoneService.formatTime(dt);
   } catch (error) {
     console.error('Error formatting time display:', error);
     return timeString;

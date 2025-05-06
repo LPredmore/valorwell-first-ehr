@@ -3,18 +3,34 @@ import { DateTime } from 'luxon';
 import { toast } from '@/hooks/use-toast';
 
 /**
- * TimeZoneService provides timezone handling functionality for the entire application
- * following the Timezone Handling Standards.
+ * TimeZoneService provides standardized timezone and date handling functionality
+ * for the entire application following the Timezone Handling Standards.
+ *
+ * All dates should be stored in UTC in the database and converted to the user's
+ * timezone for display. All UI date/time displays should use AM/PM formatting.
  */
 export class TimeZoneService {
+  // Default timezone to use when none is provided
+  static DEFAULT_TIMEZONE = 'America/Chicago';
+  
+  // Common date/time formats
+  static DATE_FORMAT = 'yyyy-MM-dd';
+  static TIME_FORMAT = 'HH:mm';
+  static TIME_FORMAT_AMPM = 'h:mm a';
+  static DATETIME_FORMAT = 'yyyy-MM-dd HH:mm';
+  static DATETIME_FORMAT_AMPM = 'yyyy-MM-dd h:mm a';
+  static DISPLAY_DATE_FORMAT = 'MMM d, yyyy';
+  static DISPLAY_DATETIME_FORMAT = 'MMM d, yyyy h:mm a';
+  static FULL_DATE_FORMAT = 'EEEE, MMMM d, yyyy';
+  
   /**
    * Ensures that a timezone string is a valid IANA timezone.
    * If invalid, falls back to a default timezone and logs the error.
    */
   static ensureIANATimeZone(timezone: string | null | undefined): string {
     if (!timezone) {
-      console.warn('Empty timezone provided, falling back to America/Chicago');
-      return 'America/Chicago';
+      console.warn(`Empty timezone provided, falling back to ${this.DEFAULT_TIMEZONE}`);
+      return this.DEFAULT_TIMEZONE;
     }
 
     try {
@@ -24,11 +40,11 @@ export class TimeZoneService {
         return timezone;
       }
       
-      console.warn(`Invalid timezone: ${timezone}, falling back to America/Chicago`);
-      return 'America/Chicago';
+      console.warn(`Invalid timezone: ${timezone}, falling back to ${this.DEFAULT_TIMEZONE}`);
+      return this.DEFAULT_TIMEZONE;
     } catch (error) {
       console.error(`Error validating timezone: ${timezone}`, error);
-      return 'America/Chicago';
+      return this.DEFAULT_TIMEZONE;
     }
   }
 
@@ -53,6 +69,76 @@ export class TimeZoneService {
   }
 
   /**
+   * Creates a DateTime object from a JavaScript Date object
+   */
+  static fromJSDate(date: Date, timezone?: string): DateTime {
+    const safeTimezone = timezone ? this.ensureIANATimeZone(timezone) : 'local';
+    
+    try {
+      return DateTime.fromJSDate(date, { zone: safeTimezone });
+    } catch (error) {
+      console.error(`Error converting JS Date to DateTime: ${error}`);
+      return DateTime.now().setZone(safeTimezone);
+    }
+  }
+
+  /**
+   * Creates a DateTime object from an ISO string
+   */
+  static fromISO(isoString: string, timezone?: string): DateTime {
+    const safeTimezone = timezone ? this.ensureIANATimeZone(timezone) : 'utc';
+    
+    try {
+      return DateTime.fromISO(isoString, { zone: safeTimezone });
+    } catch (error) {
+      console.error(`Error creating DateTime from ISO string: ${isoString}`, error);
+      return DateTime.now().setZone(safeTimezone);
+    }
+  }
+
+  /**
+   * Creates a DateTime object from a date string in yyyy-MM-dd format
+   */
+  static fromDateString(dateString: string, timezone?: string): DateTime {
+    const safeTimezone = timezone ? this.ensureIANATimeZone(timezone) : 'utc';
+    
+    try {
+      // Ensure the date string is in yyyy-MM-dd format
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        // Try to parse and normalize the date
+        const jsDate = new Date(dateString);
+        if (isNaN(jsDate.getTime())) {
+          throw new Error(`Invalid date string: ${dateString}`);
+        }
+        dateString = jsDate.toISOString().split('T')[0];
+      }
+      
+      return DateTime.fromISO(`${dateString}T00:00:00`, { zone: safeTimezone });
+    } catch (error) {
+      console.error(`Error creating DateTime from date string: ${dateString}`, error);
+      return DateTime.now().setZone(safeTimezone).startOf('day');
+    }
+  }
+
+  /**
+   * Creates a DateTime object from a time string in HH:mm format
+   */
+  static fromTimeString(timeString: string, timezone?: string): DateTime {
+    const safeTimezone = timezone ? this.ensureIANATimeZone(timezone) : 'utc';
+    
+    try {
+      // Use today's date with the specified time
+      const today = DateTime.now().setZone(safeTimezone).startOf('day');
+      const [hours, minutes] = timeString.split(':').map(Number);
+      
+      return today.set({ hour: hours, minute: minutes });
+    } catch (error) {
+      console.error(`Error creating DateTime from time string: ${timeString}`, error);
+      return DateTime.now().setZone(safeTimezone);
+    }
+  }
+
+  /**
    * Converts a DateTime object from one timezone to another
    */
   static convertDateTime(dt: DateTime, fromTimezone: string, toTimezone: string): DateTime {
@@ -70,8 +156,8 @@ export class TimeZoneService {
   /**
    * Formats a DateTime object according to the specified format and timezone
    */
-  static formatDateTime(dt: DateTime, format: string, timezone: string): string {
-    const safeTimezone = this.ensureIANATimeZone(timezone);
+  static formatDateTime(dt: DateTime, format: string, timezone?: string): string {
+    const safeTimezone = timezone ? this.ensureIANATimeZone(timezone) : dt.zoneName;
     
     try {
       return dt.setZone(safeTimezone).toFormat(format);
@@ -79,6 +165,63 @@ export class TimeZoneService {
       console.error(`Error formatting DateTime in timezone ${safeTimezone}`, error);
       return dt.toFormat(format);
     }
+  }
+
+  /**
+   * Formats a DateTime object as a date string (yyyy-MM-dd)
+   */
+  static formatDate(dt: DateTime, timezone?: string): string {
+    return this.formatDateTime(dt, this.DATE_FORMAT, timezone);
+  }
+
+  /**
+   * Formats a DateTime object as a time string with AM/PM (h:mm a)
+   */
+  static formatTime(dt: DateTime, timezone?: string): string {
+    return this.formatDateTime(dt, this.TIME_FORMAT_AMPM, timezone);
+  }
+
+  /**
+   * Formats a DateTime object as a time string in 24-hour format (HH:mm)
+   */
+  static formatTime24(dt: DateTime, timezone?: string): string {
+    return this.formatDateTime(dt, this.TIME_FORMAT, timezone);
+  }
+
+  /**
+   * Formats a DateTime object as a display date (MMM d, yyyy)
+   */
+  static formatDisplayDate(dt: DateTime, timezone?: string): string {
+    return this.formatDateTime(dt, this.DISPLAY_DATE_FORMAT, timezone);
+  }
+
+  /**
+   * Formats a DateTime object as a full date (EEEE, MMMM d, yyyy)
+   */
+  static formatFullDate(dt: DateTime, timezone?: string): string {
+    return this.formatDateTime(dt, this.FULL_DATE_FORMAT, timezone);
+  }
+
+  /**
+   * Formats a DateTime object as a display date and time (MMM d, yyyy h:mm a)
+   */
+  static formatDisplayDateTime(dt: DateTime, timezone?: string): string {
+    return this.formatDateTime(dt, this.DISPLAY_DATETIME_FORMAT, timezone);
+  }
+
+  /**
+   * Gets the current date and time in the specified timezone
+   */
+  static now(timezone?: string): DateTime {
+    const safeTimezone = timezone ? this.ensureIANATimeZone(timezone) : 'local';
+    return DateTime.now().setZone(safeTimezone);
+  }
+
+  /**
+   * Gets the current date (start of day) in the specified timezone
+   */
+  static today(timezone?: string): DateTime {
+    return this.now(timezone).startOf('day');
   }
 
   /**
@@ -132,6 +275,137 @@ export class TimeZoneService {
   }
 
   /**
+   * Adds a specified number of days to a DateTime
+   */
+  static addDays(dt: DateTime, days: number): DateTime {
+    return dt.plus({ days });
+  }
+
+  /**
+   * Adds a specified number of weeks to a DateTime
+   */
+  static addWeeks(dt: DateTime, weeks: number): DateTime {
+    return dt.plus({ weeks });
+  }
+
+  /**
+   * Adds a specified number of months to a DateTime
+   */
+  static addMonths(dt: DateTime, months: number): DateTime {
+    return dt.plus({ months });
+  }
+
+  /**
+   * Subtracts a specified number of days from a DateTime
+   */
+  static subtractDays(dt: DateTime, days: number): DateTime {
+    return dt.minus({ days });
+  }
+
+  /**
+   * Subtracts a specified number of weeks from a DateTime
+   */
+  static subtractWeeks(dt: DateTime, weeks: number): DateTime {
+    return dt.minus({ weeks });
+  }
+
+  /**
+   * Subtracts a specified number of months from a DateTime
+   */
+  static subtractMonths(dt: DateTime, months: number): DateTime {
+    return dt.minus({ months });
+  }
+
+  /**
+   * Checks if a DateTime is before another DateTime
+   */
+  static isBefore(dt1: DateTime, dt2: DateTime): boolean {
+    return dt1 < dt2;
+  }
+
+  /**
+   * Checks if a DateTime is after another DateTime
+   */
+  static isAfter(dt1: DateTime, dt2: DateTime): boolean {
+    return dt1 > dt2;
+  }
+
+  /**
+   * Checks if a DateTime is the same day as another DateTime
+   */
+  static isSameDay(dt1: DateTime, dt2: DateTime): boolean {
+    return dt1.hasSame(dt2, 'day');
+  }
+
+  /**
+   * Checks if a DateTime is today
+   */
+  static isToday(dt: DateTime): boolean {
+    return dt.hasSame(DateTime.now(), 'day');
+  }
+
+  /**
+   * Checks if a DateTime is in the future
+   */
+  static isFuture(dt: DateTime): boolean {
+    return dt > DateTime.now();
+  }
+
+  /**
+   * Checks if a DateTime is in the past
+   */
+  static isPast(dt: DateTime): boolean {
+    return dt < DateTime.now();
+  }
+
+  /**
+   * Gets the start of the week containing the specified DateTime
+   */
+  static startOfWeek(dt: DateTime, weekStartsOn: number = 0): DateTime {
+    // Adjust for week start (0 = Sunday, 1 = Monday, etc.)
+    const dayOfWeek = dt.weekday % 7; // Convert to 0-6 range where 0 is Sunday
+    const diff = (dayOfWeek - weekStartsOn + 7) % 7;
+    return dt.minus({ days: diff }).startOf('day');
+  }
+
+  /**
+   * Gets the end of the week containing the specified DateTime
+   */
+  static endOfWeek(dt: DateTime, weekStartsOn: number = 0): DateTime {
+    return this.startOfWeek(dt, weekStartsOn).plus({ days: 6 }).endOf('day');
+  }
+
+  /**
+   * Gets the start of the month containing the specified DateTime
+   */
+  static startOfMonth(dt: DateTime): DateTime {
+    return dt.startOf('month');
+  }
+
+  /**
+   * Gets the end of the month containing the specified DateTime
+   */
+  static endOfMonth(dt: DateTime): DateTime {
+    return dt.endOf('month');
+  }
+
+  /**
+   * Gets an array of DateTimes for each day in the specified interval
+   */
+  static eachDayOfInterval(start: DateTime, end: DateTime): DateTime[] {
+    const days: DateTime[] = [];
+    let current = start.startOf('day');
+    const endDay = end.startOf('day');
+    
+    while (current <= endDay) {
+      days.push(current);
+      current = current.plus({ days: 1 });
+    }
+    
+    return days;
+  }
+
+  /**
    * Converts a calendar event to the user's timezone
    */
   static convertEventToUserTimeZone(event: any, userTimezone: string): any {
@@ -158,37 +432,33 @@ export class TimeZoneService {
       if (event.start_time && event.date) {
         // Assuming start_time is in HH:MM format
         const [hours, minutes] = event.start_time.split(':').map(Number);
-        const dt = DateTime.fromObject({
-          year: new Date(event.date).getFullYear(),
-          month: new Date(event.date).getMonth() + 1,
-          day: new Date(event.date).getDate(),
-          hour: hours,
-          minute: minutes
-        }, { zone: 'utc' }).setZone(safeTimezone);
+        
+        // Create a DateTime object directly instead of using JS Date
+        const dateTime = this.fromDateString(event.date, 'utc')
+          .set({ hour: hours, minute: minutes })
+          .setZone(safeTimezone);
         
         // Normalize the date format to yyyy-MM-dd
-        const normalizedDate = dt.toFormat('yyyy-MM-dd');
+        const normalizedDate = dateTime.toFormat(this.DATE_FORMAT);
         console.log(`[TimeZoneService] Normalizing date: ${event.date} -> ${normalizedDate}`);
         localEvent.date = normalizedDate;
-        localEvent.start_time = dt.toFormat('HH:mm');
+        localEvent.start_time = dateTime.toFormat(this.TIME_FORMAT);
       }
       
       if (event.end_time && event.date) {
         // Assuming end_time is in HH:MM format
         const [hours, minutes] = event.end_time.split(':').map(Number);
-        const dt = DateTime.fromObject({
-          year: new Date(event.date).getFullYear(),
-          month: new Date(event.date).getMonth() + 1,
-          day: new Date(event.date).getDate(),
-          hour: hours,
-          minute: minutes
-        }, { zone: 'utc' }).setZone(safeTimezone);
+        
+        // Create a DateTime object directly instead of using JS Date
+        const dateTime = this.fromDateString(event.date, 'utc')
+          .set({ hour: hours, minute: minutes })
+          .setZone(safeTimezone);
         
         // We already set the date in the start_time block, but set it here too as a fallback
         if (!localEvent.date) {
-          localEvent.date = dt.toFormat('yyyy-MM-dd');
+          localEvent.date = dateTime.toFormat(this.DATE_FORMAT);
         }
-        localEvent.end_time = dt.toFormat('HH:mm');
+        localEvent.end_time = dateTime.toFormat(this.TIME_FORMAT);
       }
       
       return localEvent;
