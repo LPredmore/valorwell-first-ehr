@@ -10,7 +10,7 @@ import CalendarHeader from '../components/calendar/CalendarHeader';
 import CalendarViewControls from '../components/calendar/CalendarViewControls';
 import AppointmentDialog from '../components/calendar/AppointmentDialog';
 import { useUser } from '@/context/UserContext';
-import useAppointments from '@/hooks/useAppointments';
+import { useAppointments } from '@/hooks/useAppointments';
 
 const CalendarPage = () => {
   // Get the logged-in user's ID
