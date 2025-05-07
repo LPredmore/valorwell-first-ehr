@@ -1,4 +1,5 @@
-import { DateTime, DateTimeZone, IANAZone } from 'luxon';
+
+import { DateTime, IANAZone } from 'luxon';
 
 export class TimeZoneService {
   public static readonly DEFAULT_TIMEZONE = 'America/Chicago';
@@ -119,11 +120,20 @@ export class TimeZoneService {
   }
 
   /**
-   * Formats a DateTime object to a time string in 'HH:mm' format.
+   * Formats a DateTime object to a time string in 'h:mm a' format.
+   * @param dateTime The DateTime object to format.
+   * @returns A string representing the time in 'h:mm a' format.
+   */
+  public static formatTime(dateTime: DateTime, format: string = this.TIME_FORMAT_AMPM): string {
+    return dateTime.toFormat(format);
+  }
+
+  /**
+   * Formats a DateTime object to a time string in 'HH:mm' (24-hour) format.
    * @param dateTime The DateTime object to format.
    * @returns A string representing the time in 'HH:mm' format.
    */
-  public static formatTime(dateTime: DateTime, format: string = this.TIME_FORMAT_AMPM): string {
+  public static formatTime24(dateTime: DateTime, format: string = this.TIME_FORMAT_24): string {
     return dateTime.toFormat(format);
   }
 
@@ -221,4 +231,80 @@ export class TimeZoneService {
 
   // Alias for convertUTCToLocal to maintain backward compatibility
   public static convertUTCToLocal = TimeZoneService.fromUTC;
+
+  /**
+   * Converts a local date and time to UTC
+   * @param localDateTimeStr The local date and time string in 'yyyy-MM-ddTHH:mm' format
+   * @param timezone The timezone of the local date and time
+   * @returns A DateTime object representing the time in UTC
+   */
+  public static convertLocalToUTC(localDateTimeStr: string, timezone: string): DateTime {
+    const safeTimezone = this.ensureIANATimeZone(timezone);
+    
+    // Parse the local date time string in the specified timezone
+    const localDateTime = DateTime.fromISO(localDateTimeStr, { zone: safeTimezone });
+    
+    if (!localDateTime.isValid) {
+      console.error('Invalid DateTime from local conversion:', localDateTime.invalidReason, localDateTime.invalidExplanation);
+      throw new Error(`Failed to convert local time: ${localDateTime.invalidReason}`);
+    }
+    
+    // Convert to UTC
+    return localDateTime.toUTC();
+  }
+  
+  /**
+   * Adds a specified number of days to a DateTime object
+   * @param dateTime The DateTime object to add days to
+   * @param days The number of days to add
+   * @returns A new DateTime object with the added days
+   */
+  public static addDays(dateTime: DateTime, days: number): DateTime {
+    return dateTime.plus({ days });
+  }
+  
+  /**
+   * Adds a specified number of months to a DateTime object
+   * @param dateTime The DateTime object to add months to
+   * @param months The number of months to add
+   * @returns A new DateTime object with the added months
+   */
+  public static addMonths(dateTime: DateTime, months: number): DateTime {
+    return dateTime.plus({ months });
+  }
+  
+  /**
+   * Formats a UTC timestamp string in the specified timezone
+   * @param utcString The UTC timestamp string in ISO format
+   * @param timezone The timezone to format the timestamp in
+   * @param format The format to use for formatting
+   * @returns A formatted string representing the time in the specified timezone
+   */
+  public static formatUTCInTimezone(utcString: string, timezone: string, format: string = 'h:mm a'): string {
+    try {
+      const localDateTime = this.fromUTC(utcString, timezone);
+      return localDateTime.toFormat(format);
+    } catch (error) {
+      console.error('Error formatting UTC in timezone:', error);
+      return 'Invalid time';
+    }
+  }
+  
+  /**
+   * Gets a user-friendly display name for a timezone
+   * @param timezone The IANA timezone string
+   * @returns A user-friendly display name for the timezone
+   */
+  public static getTimeZoneDisplayName(timezone: string): string {
+    const safeTimezone = this.ensureIANATimeZone(timezone);
+    try {
+      const now = DateTime.now().setZone(safeTimezone);
+      const offsetFormatted = now.toFormat('ZZ');
+      const zoneName = safeTimezone.split('/').pop()?.replace('_', ' ') || safeTimezone;
+      return `${zoneName} (${offsetFormatted})`;
+    } catch (error) {
+      console.error('Error getting timezone display name:', error);
+      return safeTimezone;
+    }
+  }
 }

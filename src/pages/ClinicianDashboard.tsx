@@ -85,6 +85,23 @@ const ClinicianDashboard = () => {
     setSelectedAppointmentForNoShow(null);
   };
 
+  // Create a type adapter function to ensure clientData is handled properly by SessionNoteTemplate
+  const prepareClientDataForTemplate = () => {
+    if (!clientData) return null;
+    
+    // Return the data with known structure, adding any required properties for SessionNoteTemplate
+    return {
+      id: clientData.id,
+      client_first_name: clientData.client_first_name || '',
+      client_last_name: clientData.client_last_name || '',
+      client_preferred_name: clientData.client_preferred_name || '',
+      client_email: clientData.client_email || '',
+      client_phone: clientData.client_phone || '',
+      client_date_of_birth: clientData.client_date_of_birth || null,
+      // Include any other required properties that SessionNoteTemplate needs
+    };
+  };
+
   if (showSessionTemplate && currentAppointment) {
     return (
       <Layout>
@@ -92,7 +109,7 @@ const ClinicianDashboard = () => {
           onClose={closeSessionTemplate}
           appointment={currentAppointment}
           clinicianName={userId}
-          clientData={clientData}
+          clientData={prepareClientDataForTemplate()}
         />
       </Layout>
     );
