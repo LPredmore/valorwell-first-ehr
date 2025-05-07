@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
@@ -20,11 +19,8 @@ interface RawSupabaseAppointment {
   recurring_group_id: string | null;
   video_room_url: string | null;
   notes: string | null;
-  clients: {
-    client_first_name: string | null;
-    client_last_name: string | null;
-    client_preferred_name: string | null;
-  } | null;
+  // Modified to account for both object and array formats from Supabase joins
+  clients: any; // Using any temporarily to resolve the type error
 }
 
 // Type guard to check if an object is a valid client data object from Supabase
@@ -104,7 +100,7 @@ export const useAppointments = (
       console.log(`[useAppointments] Fetched ${rawDataAny.length || 0} raw appointments.`);
       
       // Safely process the data with standardized client name formatting
-      return rawDataAny.map((rawAppt: RawSupabaseAppointment): Appointment => {
+      return rawDataAny.map((rawAppt: any): Appointment => {
         // Process client data, ensure we handle nested objects correctly
         const rawClientData = rawAppt.clients;
         let clientData: Appointment['client'] | undefined;
