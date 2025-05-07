@@ -77,32 +77,42 @@ const WeekView: React.FC<WeekViewProps> = ({
     getAppointmentForTimeSlot
   } = useWeekViewData(days, clinicianId, refreshTrigger, appointments, getClientName, userTimeZone);
 
-  // Log some useful debug information
+  // Detailed logging for week view appointments
   React.useEffect(() => {
     console.log(`[WeekView] Rendered with ${appointments.length} appointments and ${appointmentBlocks.length} blocks`);
     
     // Log sample client names for verification
     if (appointments.length > 0) {
-      console.log('[WeekView] Sample client names from appointments (first 3):');
-      appointments.slice(0, Math.min(3, appointments.length)).forEach((app, idx) => {
+      console.log('[WeekView] All appointments:', appointments.map(app => ({
+        id: app.id,
+        start_at: app.start_at,
+        dateFormatted: app.start_at ? 
+          TimeZoneService.fromUTC(app.start_at, userTimeZone).toFormat('yyyy-MM-dd') : 'Invalid',
+        clientName: app.clientName || getClientName(app.client_id)
+      })));
+      
+      // Log the first few appointments for debugging
+      const samplesToLog = Math.min(appointments.length, 5);
+      for (let i = 0; i < samplesToLog; i++) {
+        const app = appointments[i];
         const startLocalDateTime = app.start_at ? 
           TimeZoneService.fromUTC(app.start_at, userTimeZone) : null;
           
-        console.log(`  ${idx+1}. ${app.clientName || getClientName(app.client_id)} (ID: ${app.client_id})`, {
+        console.log(`[WeekView] Sample appointment ${i+1}/${samplesToLog}: ${app.clientName || getClientName(app.client_id)} (ID: ${app.client_id})`, {
           date: startLocalDateTime ? startLocalDateTime.toFormat('yyyy-MM-dd') : 'Invalid date',
-          time: startLocalDateTime ? startLocalDateTime.toFormat('HH:mm') : 'Invalid time'
+          time: startLocalDateTime ? startLocalDateTime.toFormat('HH:mm') : 'Invalid time',
+          startAt: app.start_at
         });
-      });
+      }
     }
 
     if (appointmentBlocks.length > 0) {
-      console.log('[WeekView] Sample client names from appointment blocks (first 3):');
-      appointmentBlocks.slice(0, Math.min(3, appointmentBlocks.length)).forEach((block, idx) => {
-        console.log(`  ${idx+1}. ${block.clientName} (ID: ${block.clientId})`, {
-          day: block.day.toFormat('yyyy-MM-dd'),
-          time: `${block.start.toFormat('HH:mm')}-${block.end.toFormat('HH:mm')}`
-        });
-      });
+      console.log('[WeekView] Appointment blocks:', appointmentBlocks.map(block => ({
+        clientName: block.clientName,
+        clientId: block.clientId,
+        day: block.day.toFormat('yyyy-MM-dd'),
+        time: `${block.start.toFormat('HH:mm')}-${block.end.toFormat('HH:mm')}`
+      })));
     } else if (appointments.length > 0) {
       console.error('[WeekView] WARNING: There are appointments but no appointment blocks were created');
     }

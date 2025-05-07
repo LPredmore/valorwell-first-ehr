@@ -30,7 +30,7 @@ const MonthView: React.FC<MonthViewProps> = ({
   onAvailabilityClick,
   userTimeZone = 'America/Chicago'
 }) => {
-  // Helper function to format appointment times for debugging with more timezone info
+  // Helper function for logging appointments with timezone info
   const formatAppointmentForLogging = (app: Appointment) => {
     const startLocalDateTime = app.start_at ? 
       TimeZoneService.fromUTC(app.start_at, userTimeZone) : null;

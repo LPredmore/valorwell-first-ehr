@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -209,22 +208,31 @@ export const useMonthViewData = (
     return result;
   }, [days, availabilityData, userTimeZone]);
 
-  // Map appointments to days for easy lookup with improved debugging
+  // Map appointments to days for easy lookup with improved approach that aligns with week view
   const dayAppointmentsMap = useMemo<Map<string, Appointment[]>>(() => {
     const result = new Map<string, Appointment[]>();
     console.log(`[useMonthViewData] Processing ${appointments.length} appointments for month view`);
     
-    // Create a map of formatted dates to store appointments
+    // Initialize the map with empty arrays for all days
     days.forEach(day => {
       // Convert Luxon DateTime to YYYY-MM-DD format string with explicit format
       const dayStr = TimeZoneService.formatDate(day, 'yyyy-MM-dd');
       result.set(dayStr, []);
     });
     
-    // Process each appointment with UTC timestamps
+    // Skip processing if there are no appointments
+    if (appointments.length === 0) {
+      console.log('[useMonthViewData] No appointments to process');
+      return result;
+    }
+
+    console.log('[useMonthViewData] Processing appointments with calendar days:', 
+      days.map(d => d.toFormat('yyyy-MM-dd')));
+    
+    // Process each appointment using Luxon DateTime comparison instead of string formatting
     appointments.forEach(appointment => {
       try {
-        // If we don't have start_at, skip this appointment
+        // Skip if no start_at timestamp
         if (!appointment.start_at) {
           console.error(`[useMonthViewData] Appointment ${appointment.id} has no start_at:`, appointment);
           return;
@@ -237,11 +245,19 @@ export const useMonthViewData = (
           return;
         }
         
+        console.log(`[useMonthViewData] Processing appointment ${appointment.id}:`, {
+          startAt: appointment.start_at,
+          localDateTime: localStartDateTime.toISO(),
+          formattedDate: localStartDateTime.toFormat('yyyy-MM-dd'),
+          clientName: appointment.clientName
+        });
+
         // For each day in the calendar, check if the appointment falls on that day
         // using Luxon's hasSame method for reliable day-level comparison
         let matched = false;
         
         days.forEach(day => {
+          // Use Luxon's hasSame method for day-level comparison - same approach as week view
           if (localStartDateTime.hasSame(day, 'day')) {
             // Format day for map key
             const dayStr = TimeZoneService.formatDate(day, 'yyyy-MM-dd');
@@ -271,23 +287,6 @@ export const useMonthViewData = (
           
           const isInRange = appointmentDate >= rangeStart && appointmentDate <= rangeEnd;
           console.log(`[useMonthViewData] Appointment date ${appointmentDate.toFormat('yyyy-MM-dd')} is ${isInRange ? 'within' : 'outside'} the calendar range`);
-          
-          if (isInRange) {
-            // Appointment should be in range but wasn't matched - check each day individually
-            console.log(`[useMonthViewData] Day-by-day comparison for appointment on ${appointmentDate.toFormat('yyyy-MM-dd')}:`);
-            days.forEach((day, i) => {
-              const dayStart = day.startOf('day');
-              const isSameDay = appointmentDate.hasSame(dayStart, 'day');
-              console.log(`  Day ${i+1}: ${dayStart.toFormat('yyyy-MM-dd')} - Match: ${isSameDay}`);
-            });
-            
-            // Try the fallback map insertion using string formatting as a last resort
-            const fallbackDayStr = localStartDateTime.toFormat('yyyy-MM-dd');
-            if (result.has(fallbackDayStr)) {
-              result.get(fallbackDayStr)!.push(appointment);
-              console.log(`[useMonthViewData] Added appointment ${appointment.id} to ${fallbackDayStr} using fallback method`);
-            }
-          }
         }
       } catch (error) {
         console.error(`[useMonthViewData] Error processing appointment ${appointment.id}:`, error);
