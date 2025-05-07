@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
@@ -107,19 +108,19 @@ export const useAppointments = (
         const rawClientData = rawAppt.clients; // Extract potential client data
 
         if (isValidClientData(rawClientData)) { // Use type guard
-           processedClientData = {
+          processedClientData = {
             client_first_name: rawClientData.client_first_name || '',
             client_last_name: rawClientData.client_last_name || '',
             client_preferred_name: rawClientData.client_preferred_name || '',
           };
           computedClientName = `${processedClientData.client_preferred_name || processedClientData.client_first_name || ''} ${processedClientData.client_last_name || ''}`.trim() || 'Unknown Client';
         } else {
-            // Handle cases where rawClientData is null or not the expected object shape
-            if (rawClientData !== null) {
-                 console.warn(`[useAppointments] Unexpected 'clients' structure for appt ${rawAppt.id}:`, rawClientData);
-            }
-            processedClientData = undefined;
-            computedClientName = 'Unknown Client';
+          // Handle cases where rawClientData is null or not the expected object shape
+          if (rawClientData !== null) {
+            console.warn(`[useAppointments] Unexpected 'clients' structure for appt ${rawAppt.id}:`, rawClientData);
+          }
+          processedClientData = undefined;
+          computedClientName = 'Unknown Client';
         }
 
         // Construct the final Appointment object according to the interface
@@ -147,28 +148,116 @@ export const useAppointments = (
     return { ...appointment, formattedDate, formattedStartTime, formattedEndTime };
   };
   
-  // isAppointmentToday logic remains the same
-  const isAppointmentToday = (appointment: Appointment): boolean => { /* ... same as before ... */ };
+  // isAppointmentToday logic
+  const isAppointmentToday = (appointment: Appointment): boolean => {
+    if (!appointment.start_at) return false;
+    
+    try {
+      const now = DateTime.now().setZone(safeUserTimeZone);
+      const apptDateTime = DateTime.fromISO(appointment.start_at).setZone(safeUserTimeZone);
+      
+      return now.hasSame(apptDateTime, 'day');
+    } catch (e) {
+      console.error('[useAppointments] Error in isAppointmentToday:', e);
+      return false;
+    }
+  };
 
   // Memoized formatted appointments
   const appointmentsWithDisplayFormatting = useMemo(() => {
     return fetchedAppointments.map(appt => addDisplayFormattingToAppointment(appt, safeUserTimeZone));
   }, [fetchedAppointments, safeUserTimeZone]);
 
-  // Other memoized filters (today, upcoming, past) remain the same, using appointmentsWithDisplayFormatting
+  // Memoized filtered appointments
+  const todayAppointments = useMemo(() => {
+    return appointmentsWithDisplayFormatting.filter(isAppointmentToday);
+  }, [appointmentsWithDisplayFormatting]);
+  
+  const upcomingAppointments = useMemo(() => {
+    const now = DateTime.now().setZone(safeUserTimeZone);
+    
+    return appointmentsWithDisplayFormatting.filter(appt => {
+      if (!appt.start_at) return false;
+      
+      try {
+        const apptDateTime = DateTime.fromISO(appt.start_at).setZone(safeUserTimeZone);
+        // Upcoming means: not today and in the future
+        return apptDateTime > now && !now.hasSame(apptDateTime, 'day');
+      } catch (e) {
+        console.error('[useAppointments] Error filtering upcoming:', e);
+        return false;
+      }
+    });
+  }, [appointmentsWithDisplayFormatting, safeUserTimeZone]);
+  
+  const pastAppointments = useMemo(() => {
+    const now = DateTime.now().setZone(safeUserTimeZone);
+    
+    return appointmentsWithDisplayFormatting.filter(appt => {
+      if (!appt.start_at) return false;
+      
+      try {
+        const apptDateTime = DateTime.fromISO(appt.start_at).setZone(safeUserTimeZone);
+        // Past means: before now
+        return apptDateTime < now;
+      } catch (e) {
+        console.error('[useAppointments] Error filtering past:', e);
+        return false;
+      }
+    });
+  }, [appointmentsWithDisplayFormatting, safeUserTimeZone]);
 
-  const todayAppointments = useMemo(() => { /* ... same as before ... */ }, [appointmentsWithDisplayFormatting]);
-  const upcomingAppointments = useMemo(() => { /* ... same as before ... */ }, [appointmentsWithDisplayFormatting, safeUserTimeZone]);
-  const pastAppointments = useMemo(() => { /* ... same as before ... */ }, [appointmentsWithDisplayFormatting, safeUserTimeZone]);
-
-  // Session handling functions remain the same
-  const startSession = async (appointment: Appointment) => { /* ... same as before ... */ };
-  const documentSession = (appointment: Appointment) => { /* ... same as before ... */ };
+  // Session handling functions
+  const startSession = async (appointment: Appointment) => {
+    setCurrentAppointment(appointment);
+    setIsLoadingClientDataForSession(true);
+    
+    try {
+      // Check if appointment has a video room URL, create one if not
+      let videoRoomUrl = appointment.video_room_url;
+      
+      if (!videoRoomUrl) {
+        const { url, error } = await getOrCreateVideoRoom(appointment.id);
+        
+        if (error) {
+          console.error('[useAppointments] Error creating video room:', error);
+          toast({
+            title: 'Error creating video session',
+            description: error.message || 'Could not create video session',
+            variant: 'destructive'
+          });
+          setIsLoadingClientDataForSession(false);
+          return;
+        }
+        
+        videoRoomUrl = url;
+      }
+      
+      setCurrentVideoUrl(videoRoomUrl);
+      setClientDataForSession(appointment.client || null);
+      setIsVideoOpen(true);
+    } catch (error) {
+      console.error('[useAppointments] Error starting session:', error);
+      toast({
+        title: 'Error starting session',
+        description: 'Could not start the video session',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoadingClientDataForSession(false);
+    }
+  };
+  
+  const documentSession = (appointment: Appointment) => {
+    setCurrentAppointment(appointment);
+    setClientDataForSession(appointment.client || null);
+    setShowSessionTemplate(true);
+  };
+  
   const closeVideoSession = () => setIsVideoOpen(false);
   const closeSessionTemplate = () => setShowSessionTemplate(false);
 
   return {
-    // Return values remain largely the same
     appointments: appointmentsWithDisplayFormatting,
     todayAppointments,
     upcomingAppointments,

@@ -21,17 +21,22 @@ export interface AppointmentBlock {
   day?: DateTime;
 }
 
+// Updated to match the availability_blocks table schema
 export interface AvailabilityBlock {
   id: string;
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
-  clinician_id?: string;
-  is_active?: boolean;
+  clinician_id: string;
+  start_at: string;
+  end_at: string;
+  is_active: boolean;
+  recurring_pattern?: any;
+  day_of_week?: string; // For compatibility with previous code
+  start_time?: string;  // For compatibility with previous code
+  end_time?: string;    // For compatibility with previous code
   isException?: boolean;
   isStandalone?: boolean;
 }
 
+// Maintaining for compatibility until full refactoring
 export interface AvailabilityException {
   id: string;
   specific_date: string;

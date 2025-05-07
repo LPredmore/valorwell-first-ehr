@@ -34,15 +34,24 @@ export const useMonthViewData = (
     const endDate = TimeZoneService.endOfWeek(monthEnd);
     const days = TimeZoneService.eachDayOfInterval(startDate, endDate);
     
+    console.log('[useMonthViewData] Date range:', {
+      monthStart: monthStart.toFormat('yyyy-MM-dd'),
+      monthEnd: monthEnd.toFormat('yyyy-MM-dd'),
+      startDate: startDate.toFormat('yyyy-MM-dd'),
+      endDate: endDate.toFormat('yyyy-MM-dd'),
+      days: days.length,
+      timeZone: userTimeZone
+    });
+    
     return {
       monthStart,
       days,
       startDate,
       endDate
     };
-  }, [currentDateTime]);
+  }, [currentDateTime, userTimeZone]);
 
-  // Fetch availability data
+  // Fetch availability data from availability_blocks table
   useEffect(() => {
     const fetchAvailabilityBlocks = async () => {
       setLoading(true);
@@ -89,7 +98,7 @@ export const useMonthViewData = (
     };
 
     fetchAvailabilityBlocks();
-  }, [clinicianId, refreshTrigger, startDate, endDate]);
+  }, [clinicianId, refreshTrigger, startDate, endDate, userTimeZone]);
 
   // Build day availability map with actual availability hours
   const dayAvailabilityMap = useMemo<Map<string, DayAvailabilityData>>(() => {
@@ -233,7 +242,7 @@ export const useMonthViewData = (
           localStartDateTime: localStartDateTime.toISO(),
           formattedDate: appointmentLocalDateStr,
           timeZone: userTimeZone,
-          availableDays: Array.from(result.keys()).slice(0, 5), // Show first 5 days
+          hasMatchingDay: result.has(appointmentLocalDateStr)
         });
         
         // Direct map lookup by formatted date string
@@ -242,6 +251,14 @@ export const useMonthViewData = (
           console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched to ${appointmentLocalDateStr}`);
         } else {
           console.log(`[useMonthViewData] ❌ No matching day found for appointment ${appointment.id} with date ${appointmentLocalDateStr}`);
+          
+          // Additional debug information to help diagnose the issue
+          const closestDays = Array.from(result.keys())
+            .sort((a, b) => Math.abs(new Date(a).getTime() - new Date(appointmentLocalDateStr).getTime()) - 
+                            Math.abs(new Date(b).getTime() - new Date(appointmentLocalDateStr).getTime()))
+            .slice(0, 3);
+            
+          console.log(`[useMonthViewData] Closest days in calendar: ${closestDays.join(', ')}`);
         }
       } catch (error) {
         console.error(`[useMonthViewData] Error processing appointment ${appointment.id}:`, error);

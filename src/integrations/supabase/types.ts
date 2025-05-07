@@ -68,11 +68,9 @@ export type Database = {
           clinician_id: string
           cpt_code: string | null
           created_at: string
-          date: string
           denial_details_json: Json | null
           diagnosis_code_pointers: string | null
           end_at: string
-          end_time: string
           era_check_eft_number: string | null
           era_claimmd_id: string | null
           era_payment_date: string | null
@@ -91,7 +89,6 @@ export type Database = {
           recurring_group_id: string | null
           requires_billing_review: boolean | null
           start_at: string
-          start_time: string
           status: string
           stripe_charge_ids: string[] | null
           type: string
@@ -112,11 +109,9 @@ export type Database = {
           clinician_id: string
           cpt_code?: string | null
           created_at?: string
-          date: string
           denial_details_json?: Json | null
           diagnosis_code_pointers?: string | null
           end_at: string
-          end_time: string
           era_check_eft_number?: string | null
           era_claimmd_id?: string | null
           era_payment_date?: string | null
@@ -135,7 +130,6 @@ export type Database = {
           recurring_group_id?: string | null
           requires_billing_review?: boolean | null
           start_at: string
-          start_time: string
           status?: string
           stripe_charge_ids?: string[] | null
           type: string
@@ -156,11 +150,9 @@ export type Database = {
           clinician_id?: string
           cpt_code?: string | null
           created_at?: string
-          date?: string
           denial_details_json?: Json | null
           diagnosis_code_pointers?: string | null
           end_at?: string
-          end_time?: string
           era_check_eft_number?: string | null
           era_claimmd_id?: string | null
           era_payment_date?: string | null
@@ -179,7 +171,6 @@ export type Database = {
           recurring_group_id?: string | null
           requires_billing_review?: boolean | null
           start_at?: string
-          start_time?: string
           status?: string
           stripe_charge_ids?: string[] | null
           type?: string
