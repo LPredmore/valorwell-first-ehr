@@ -24,7 +24,7 @@ interface CalendarGridProps {
   monthStart: DateTime;
   dayAvailabilityMap: Map<string, DayAvailabilityData>;
   dayAppointmentsMap: Map<string, Appointment[]>;
-  availabilityByDay: Map<string, AvailabilityBlock>;
+  availabilityByDay: Map<string, AvailabilityBlock[]>;
   getClientName: (clientId: string) => string;
   onAppointmentClick?: (appointment: Appointment) => void;
   onAvailabilityClick?: (day: DateTime, availabilityBlock: AvailabilityBlock) => void;
@@ -59,7 +59,9 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
           hasAvailability: false,
           displayHours: ''
         };
-        const firstAvailability = availabilityByDay.get(dateStr);
+        // Get the first availability block from the array, if any exist
+        const availabilityBlocks = availabilityByDay.get(dateStr) || [];
+        const firstAvailability = availabilityBlocks.length > 0 ? availabilityBlocks[0] : undefined;
         
         return (
           <DayCell

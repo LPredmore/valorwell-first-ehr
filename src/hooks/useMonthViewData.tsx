@@ -92,6 +92,7 @@ export const useMonthViewData = (
       
       // Find availability blocks for this day by converting UTC times to user timezone
       const dayAvailability = availabilityData.filter(block => {
+        // Convert UTC timestamps to local time in user's timezone
         const blockStartLocal = TimeZoneService.fromUTC(block.start_at, userTimeZone);
         const blockEndLocal = TimeZoneService.fromUTC(block.end_at, userTimeZone);
         
@@ -114,10 +115,11 @@ export const useMonthViewData = (
         let latestEnd: DateTime | null = null;
         
         dayAvailability.forEach(block => {
+          // Convert UTC timestamps to local time
           const blockStartLocal = TimeZoneService.fromUTC(block.start_at, userTimeZone);
           const blockEndLocal = TimeZoneService.fromUTC(block.end_at, userTimeZone);
           
-          // Clamp to day boundaries
+          // Clamp to day boundaries for display purposes
           const startTime = blockStartLocal < dayStart ? dayStart : blockStartLocal;
           const endTime = blockEndLocal > dayEnd ? dayEnd : blockEndLocal;
           
@@ -131,6 +133,7 @@ export const useMonthViewData = (
         });
         
         if (earliestStart && latestEnd) {
+          // Format times for display using TimeZoneService
           const startHourFormatted = TimeZoneService.formatTime(earliestStart);
           const endHourFormatted = TimeZoneService.formatTime(latestEnd);
           displayHours = `${startHourFormatted}-${endHourFormatted}`;
@@ -143,30 +146,39 @@ export const useMonthViewData = (
     return result;
   }, [days, availabilityData, userTimeZone]);
 
-  // Map availability blocks to days for lookup
+  // Map availability blocks to days for lookup - returns multiple blocks per day
   const availabilityByDay = useMemo(() => {
-    const result = new Map<string, AvailabilityBlock>();
+    const result = new Map<string, AvailabilityBlock[]>();
     
+    // Initialize the map with empty arrays for all days
     days.forEach(day => {
       const dateStr = TimeZoneService.formatDate(day, 'yyyy-MM-dd');
-      const dayStart = day.startOf('day');
-      const dayEnd = day.endOf('day');
+      result.set(dateStr, []);
+    });
+    
+    // Process each availability block
+    availabilityData.forEach(block => {
+      // Convert UTC timestamps to local time
+      const blockStartLocal = TimeZoneService.fromUTC(block.start_at, userTimeZone);
+      const blockEndLocal = TimeZoneService.fromUTC(block.end_at, userTimeZone);
       
-      // Find first availability block for this day
-      const firstAvailability = availabilityData.find(block => {
-        const blockStartLocal = TimeZoneService.fromUTC(block.start_at, userTimeZone);
-        const blockEndLocal = TimeZoneService.fromUTC(block.end_at, userTimeZone);
+      // Find all days this block applies to
+      days.forEach(day => {
+        const dateStr = TimeZoneService.formatDate(day, 'yyyy-MM-dd');
+        const dayStart = day.startOf('day');
+        const dayEnd = day.endOf('day');
         
-        return (
+        // Check if block overlaps with this day
+        const overlapsDay = (
           (blockStartLocal >= dayStart && blockStartLocal < dayEnd) || // Block starts on this day
           (blockEndLocal > dayStart && blockEndLocal <= dayEnd) || // Block ends on this day
           (blockStartLocal < dayStart && blockEndLocal > dayEnd) // Block spans this day
         );
+        
+        if (overlapsDay && result.has(dateStr)) {
+          result.get(dateStr)!.push(block);
+        }
       });
-      
-      if (firstAvailability) {
-        result.set(dateStr, firstAvailability);
-      }
     });
     
     return result;
