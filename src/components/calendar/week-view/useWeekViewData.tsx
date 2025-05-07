@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -158,15 +157,23 @@ export const useWeekViewData = (
     setTimeBlocks(mergedBlocks);
   };
   
-  // Process appointments into blocks
+  // Process appointments into blocks - UPDATED to use Luxon's hasSame for date comparison
   const processAppointments = () => {
     // Convert days array to DateTime objects for easier comparison
     const daysAsDateTime = days.map(day => 
       TimeZoneService.fromJSDate(day, userTimeZone)
     );
     
-    console.log(`[useWeekViewData] Processing ${appointments.length} appointments with ${days.length} days`);
-    console.log('[useWeekViewData] Days:', days.map(d => format(d, 'yyyy-MM-dd')));
+    console.log(`[useWeekViewData] Processing ${appointments.length} appointments for ${daysAsDateTime.length} days`);
+    console.log('[useWeekViewData] Days in view:', daysAsDateTime.map(d => d.toFormat('yyyy-MM-dd')));
+    
+    // Debug days separately for clarity
+    if (daysAsDateTime.length > 0) {
+      console.log('[useWeekViewData] Days in calendar (detail):');
+      daysAsDateTime.forEach((day, i) => {
+        console.log(`  Day ${i+1}: ${day.toFormat('yyyy-MM-dd')} (${day.toFormat('EEEE')})`);
+      });
+    }
     
     const blocks: AppointmentBlock[] = appointments
       .map(appointment => {
@@ -176,52 +183,71 @@ export const useWeekViewData = (
           return null;
         }
         
-        // Get the day in the user's timezone from the UTC timestamp
-        const startDateTime = TimeZoneService.fromUTC(appointment.start_at, userTimeZone);
-        const endDateTime = TimeZoneService.fromUTC(appointment.end_at, userTimeZone);
-        
-        // Format the appointment date to yyyy-MM-dd for consistent comparison
-        const appointmentDateStr = TimeZoneService.formatDate(startDateTime, 'yyyy-MM-dd');
-        
-        // Log the appointment time for debugging
-        console.log(`[useWeekViewData] Appointment ${appointment.id}:`, {
-          startUTC: appointment.start_at,
-          endUTC: appointment.end_at,
-          startLocal: startDateTime.toISO(),
-          formattedDate: appointmentDateStr,
-          daysInView: daysAsDateTime.map(day => TimeZoneService.formatDate(day, 'yyyy-MM-dd'))
-        });
-        
-        // Find which day of the week this appointment falls on by comparing formatted date strings
-        let matchingDay: DateTime | undefined;
-        
-        for (const day of daysAsDateTime) {
-          const formattedDay = TimeZoneService.formatDate(day, 'yyyy-MM-dd');
-          if (formattedDay === appointmentDateStr) {
-            matchingDay = day;
-            console.log(`[useWeekViewData] ✓ Match found! Appointment ${appointment.id} on ${formattedDay}`);
-            break;
+        try {
+          // Get the DateTime objects in the user's timezone from the UTC timestamp
+          const startDateTime = TimeZoneService.fromUTC(appointment.start_at, userTimeZone);
+          const endDateTime = TimeZoneService.fromUTC(appointment.end_at, userTimeZone);
+          
+          if (!startDateTime.isValid || !endDateTime.isValid) {
+            console.error("[useWeekViewData] Invalid DateTime conversion for appointment", appointment.id);
+            return null;
           }
-        }
-        
-        if (!matchingDay) {
-          console.log(`[useWeekViewData] ✗ No matching day found for appointment ${appointment.id} with date ${appointmentDateStr}`);
+          
+          // Log the appointment time for debugging
+          console.log(`[useWeekViewData] Appointment ${appointment.id}:`, {
+            startUTC: appointment.start_at,
+            endUTC: appointment.end_at,
+            startLocalDT: startDateTime.toISO(),
+            startLocalFormatted: startDateTime.toFormat('yyyy-MM-dd HH:mm'),
+            clientName: appointment.clientName || getClientName(appointment.client_id)
+          });
+          
+          // Find which day of the week this appointment falls on
+          // Using Luxon's hasSame method for reliable day-level comparison
+          let matchingDay: DateTime | undefined;
+          let matchingDayIndex: number = -1;
+          
+          for (let i = 0; i < daysAsDateTime.length; i++) {
+            const day = daysAsDateTime[i];
+            if (startDateTime.hasSame(day, 'day')) {
+              matchingDay = day;
+              matchingDayIndex = i;
+              console.log(`[useWeekViewData] ✓ Day match found! Appointment ${appointment.id} matches day ${i+1}: ${day.toFormat('yyyy-MM-dd')}`);
+              break;
+            }
+          }
+          
+          if (!matchingDay) {
+            console.log(`[useWeekViewData] ✗ No matching day found for appointment ${appointment.id} with date ${startDateTime.toFormat('yyyy-MM-dd')}`);
+            return null;
+          }
+          
+          return {
+            id: appointment.id,
+            day: matchingDay,
+            start: startDateTime,
+            end: endDateTime,
+            clientId: appointment.client_id,
+            type: appointment.type,
+            clientName: appointment.clientName || getClientName(appointment.client_id)
+          };
+        } catch (error) {
+          console.error(`[useWeekViewData] Error processing appointment ${appointment.id}:`, error);
           return null;
         }
-        
-        return {
-          id: appointment.id,
-          day: matchingDay,
-          start: startDateTime,
-          end: endDateTime,
-          clientId: appointment.client_id,
-          type: appointment.type,
-          clientName: appointment.clientName || getClientName(appointment.client_id)
-        };
       })
       .filter(block => block !== null) as AppointmentBlock[];
     
     console.log(`[useWeekViewData] Created ${blocks.length} appointment blocks`);
+    
+    // Additional logging to verify blocks
+    if (blocks.length > 0) {
+      console.log('[useWeekViewData] Created appointment blocks:');
+      blocks.forEach((block, i) => {
+        console.log(`  Block ${i+1}: ${block.id} - Day: ${block.day.toFormat('yyyy-MM-dd')} - Time: ${block.start.toFormat('HH:mm')}-${block.end.toFormat('HH:mm')} - Client: ${block.clientName}`);
+      });
+    }
+    
     return blocks;
   };
 
@@ -246,20 +272,20 @@ export const useWeekViewData = (
     });
   };
 
-  // Fixed function to properly check day match first using consistent date formatting
+  // Updated function to properly check day match using Luxon's hasSame
   const getAppointmentForTimeSlot = (day: Date, timeSlot: Date) => {
-    // First convert the input day to a formatted date string for reliable comparison
+    // First convert the input JS Date objects to Luxon DateTime objects in user's timezone
     const slotDay = TimeZoneService.fromJSDate(day, userTimeZone);
-    const slotDayFormatted = TimeZoneService.formatDate(slotDay, 'yyyy-MM-dd');
     const slotTime = TimeZoneService.fromJSDate(timeSlot, userTimeZone);
     
-    // Find appointment block by first matching the day, then checking time range
-    return appointmentBlocks.find(block => {
-      // Format the block day consistently for comparison
-      const blockDayFormatted = TimeZoneService.formatDate(block.day, 'yyyy-MM-dd');
-      
-      // First check if the formatted days match
-      const isDaySame = slotDayFormatted === blockDayFormatted;
+    // Debug logging for difficult cases
+    const slotDayFormatted = slotDay.toFormat('yyyy-MM-dd');
+    const slotTimeFormatted = slotTime.toFormat('HH:mm');
+    
+    // Find appointment block by using hasSame day comparison, then checking time range
+    const matchingAppointment = appointmentBlocks.find(block => {
+      // First check if the days match using Luxon's hasSame method
+      const isDaySame = block.day.hasSame(slotDay, 'day');
       
       if (!isDaySame) {
         return false; // Skip time check entirely if day doesn't match
@@ -268,6 +294,17 @@ export const useWeekViewData = (
       // Only then check if the time slot falls within the appointment time range
       return slotTime >= block.start && slotTime < block.end;
     });
+    
+    if (matchingAppointment) {
+      console.log(`[useWeekViewData] Found appointment for ${slotDayFormatted} at ${slotTimeFormatted}:`, {
+        appointmentId: matchingAppointment.id,
+        clientName: matchingAppointment.clientName,
+        appointmentDay: matchingAppointment.day.toFormat('yyyy-MM-dd'),
+        time: `${matchingAppointment.start.toFormat('HH:mm')}-${matchingAppointment.end.toFormat('HH:mm')}`
+      });
+    }
+    
+    return matchingAppointment;
   };
 
   const getAvailabilityForBlock = (blockId: string) => {

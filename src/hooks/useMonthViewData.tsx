@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -229,37 +230,64 @@ export const useMonthViewData = (
           return;
         }
         
-        // Get the local date from the UTC timestamp
+        // Get the local DateTime from the UTC timestamp
         const localStartDateTime = TimeZoneService.fromUTC(appointment.start_at, userTimeZone);
-        // Format with explicit format to ensure consistency
-        const appointmentLocalDateStr = TimeZoneService.formatDate(localStartDateTime, 'yyyy-MM-dd');
+        if (!localStartDateTime.isValid) {
+          console.error(`[useMonthViewData] Invalid DateTime for appointment ${appointment.id}`);
+          return;
+        }
         
-        // Log the matching process for debugging
-        console.log(`[useMonthViewData] Matching appointment ${appointment.id}:`, {
-          startAt: appointment.start_at,
-          endAt: appointment.end_at,
-          localStartDateTime: localStartDateTime.toISO(),
-          formattedDate: appointmentLocalDateStr,
-          timeZone: userTimeZone,
-          clientName: appointment.clientName, 
-          hasMatchingDay: result.has(appointmentLocalDateStr)
+        // For each day in the calendar, check if the appointment falls on that day
+        // using Luxon's hasSame method for reliable day-level comparison
+        let matched = false;
+        
+        days.forEach(day => {
+          if (localStartDateTime.hasSame(day, 'day')) {
+            // Format day for map key
+            const dayStr = TimeZoneService.formatDate(day, 'yyyy-MM-dd');
+            
+            // Add to the map
+            if (result.has(dayStr)) {
+              result.get(dayStr)!.push(appointment);
+              matched = true;
+              console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched to ${dayStr} (${day.toFormat('EEEE')})`);
+            }
+          }
         });
         
-        // Direct map lookup by formatted date string
-        if (result.has(appointmentLocalDateStr)) {
-          result.get(appointmentLocalDateStr)!.push(appointment);
-          console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched to ${appointmentLocalDateStr}`);
-        } else {
-          console.log(`[useMonthViewData] ❌ No matching day found for appointment ${appointment.id} with date ${appointmentLocalDateStr}`);
+        if (!matched) {
+          console.log(`[useMonthViewData] ❌ No matching day found for appointment ${appointment.id}:`, {
+            startAt: appointment.start_at,
+            localDateTime: localStartDateTime.toISO(),
+            formattedDate: localStartDateTime.toFormat('yyyy-MM-dd'),
+            clientName: appointment.clientName,
+            dayRange: `${days[0].toFormat('yyyy-MM-dd')} to ${days[days.length-1].toFormat('yyyy-MM-dd')}`
+          });
           
-          // Additional debug information to help diagnose the issue
-          const closestDays = Array.from(result.keys())
-            .sort((a, b) => Math.abs(new Date(a).getTime() - new Date(appointmentLocalDateStr).getTime()) - 
-                            Math.abs(new Date(b).getTime() - new Date(appointmentLocalDateStr).getTime()))
-            .slice(0, 3);
+          // Additional debug - check if the date falls within the overall range
+          const appointmentDate = localStartDateTime.startOf('day');
+          const rangeStart = days[0].startOf('day');
+          const rangeEnd = days[days.length-1].endOf('day');
+          
+          const isInRange = appointmentDate >= rangeStart && appointmentDate <= rangeEnd;
+          console.log(`[useMonthViewData] Appointment date ${appointmentDate.toFormat('yyyy-MM-dd')} is ${isInRange ? 'within' : 'outside'} the calendar range`);
+          
+          if (isInRange) {
+            // Appointment should be in range but wasn't matched - check each day individually
+            console.log(`[useMonthViewData] Day-by-day comparison for appointment on ${appointmentDate.toFormat('yyyy-MM-dd')}:`);
+            days.forEach((day, i) => {
+              const dayStart = day.startOf('day');
+              const isSameDay = appointmentDate.hasSame(dayStart, 'day');
+              console.log(`  Day ${i+1}: ${dayStart.toFormat('yyyy-MM-dd')} - Match: ${isSameDay}`);
+            });
             
-          console.log(`[useMonthViewData] Closest days in calendar: ${closestDays.join(', ')}`);
-          console.log(`[useMonthViewData] Available days in calendar:`, Array.from(result.keys()));
+            // Try the fallback map insertion using string formatting as a last resort
+            const fallbackDayStr = localStartDateTime.toFormat('yyyy-MM-dd');
+            if (result.has(fallbackDayStr)) {
+              result.get(fallbackDayStr)!.push(appointment);
+              console.log(`[useMonthViewData] Added appointment ${appointment.id} to ${fallbackDayStr} using fallback method`);
+            }
+          }
         }
       } catch (error) {
         console.error(`[useMonthViewData] Error processing appointment ${appointment.id}:`, error);
