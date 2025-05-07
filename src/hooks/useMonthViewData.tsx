@@ -226,7 +226,7 @@ export const useMonthViewData = (
       return result;
     }
 
-    console.log('[useMonthViewData] Processing appointments with calendar days:', 
+    console.log('[useMonthViewData] Processing appointments with calendar days:',
       days.map(d => d.toFormat('yyyy-MM-dd')));
     
     // Process each appointment using Luxon DateTime comparison instead of string formatting
@@ -257,16 +257,19 @@ export const useMonthViewData = (
         let matched = false;
         
         days.forEach(day => {
+          // Convert JS Date to Luxon DateTime for proper comparison
+          const dayDateTime = TimeZoneService.fromJSDate(day, userTimeZone);
+          
           // Use Luxon's hasSame method for day-level comparison - same approach as week view
-          if (localStartDateTime.hasSame(day, 'day')) {
+          if (localStartDateTime.hasSame(dayDateTime, 'day')) {
             // Format day for map key
-            const dayStr = TimeZoneService.formatDate(day, 'yyyy-MM-dd');
+            const dayStr = TimeZoneService.formatDate(dayDateTime, 'yyyy-MM-dd');
             
             // Add to the map
             if (result.has(dayStr)) {
               result.get(dayStr)!.push(appointment);
               matched = true;
-              console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched to ${dayStr} (${day.toFormat('EEEE')})`);
+              console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched to ${dayStr} (${dayDateTime.toFormat('EEEE')})`);
             }
           }
         });
