@@ -1,32 +1,25 @@
-
-/**
- * Unified Appointment interface for all components
- * UTC timestamps (start_at, end_at) are the sole source of truth for appointment timing
- */
 export interface Appointment {
   id: string;
   client_id: string;
   clinician_id: string;
-  start_at: string;  // UTC ISO timestamp
-  end_at: string;    // UTC ISO timestamp
+  start_at: string; // UTC ISO timestamp string
+  end_at: string;   // UTC ISO timestamp string
   type: string;
   status: string;
   video_room_url?: string | null;
   notes?: string | null;
   appointment_recurring?: string | null;
   recurring_group_id?: string | null;
-  
-  // Client information if available
-  client?: {
-    client_first_name: string;
-    client_last_name: string;
-    client_preferred_name: string;
+
+  client?: { // Optional object
+    client_first_name: string | null; // Allow nulls from DB
+    client_last_name: string | null;
+    client_preferred_name: string | null;
   };
-  
-  // Display fields - populated when needed for presentation
+
+  // Optional: for convenience after processing, not part of core DB model
+  clientName?: string; 
   formattedDate?: string;
   formattedStartTime?: string;
   formattedEndTime?: string;
-  formattedStartDate?: string;
-  clientName?: string;
 }
