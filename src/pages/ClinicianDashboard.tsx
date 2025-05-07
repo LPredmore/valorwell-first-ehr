@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, AlertCircle } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
@@ -12,6 +11,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 import { SessionDidNotOccurDialog } from '@/components/dashboard/SessionDidNotOccurDialog';
 import { Appointment } from '@/types/appointment';
+import { ClientDetails } from '@/types/client';
 
 const ClinicianDashboard = () => {
   const { userRole, userId } = useUser();
@@ -86,20 +86,103 @@ const ClinicianDashboard = () => {
   };
 
   // Create a type adapter function to ensure clientData is handled properly by SessionNoteTemplate
-  const prepareClientDataForTemplate = () => {
+  const prepareClientDataForTemplate = (): ClientDetails | null => {
     if (!clientData) return null;
     
-    // Return the data with known structure, adding any required properties for SessionNoteTemplate
-    return {
-      id: clientData.id,
+    // Create a partial ClientDetails object with the available data
+    // and set default values for required properties that might be missing
+    const preparedData: ClientDetails = {
+      id: currentAppointment?.client_id || '', // Use the appointment's client_id
       client_first_name: clientData.client_first_name || '',
       client_last_name: clientData.client_last_name || '',
       client_preferred_name: clientData.client_preferred_name || '',
-      client_email: clientData.client_email || '',
-      client_phone: clientData.client_phone || '',
-      client_date_of_birth: clientData.client_date_of_birth || null,
-      // Include any other required properties that SessionNoteTemplate needs
+      client_email: '', // We don't have this from the appointment client data
+      client_phone: '', // We don't have this from the appointment client data
+      client_date_of_birth: null, // We don't have this from the appointment client data
+      
+      // Provide null/default values for other required properties
+      client_age: null,
+      client_gender: null,
+      client_gender_identity: null,
+      client_state: null,
+      client_time_zone: null,
+      client_minor: null,
+      client_status: null,
+      client_assigned_therapist: null,
+      client_referral_source: null,
+      client_self_goal: null,
+      client_diagnosis: null,
+      client_insurance_company_primary: null,
+      client_policy_number_primary: null,
+      client_group_number_primary: null,
+      client_subscriber_name_primary: null,
+      client_insurance_type_primary: null,
+      client_subscriber_dob_primary: null,
+      client_subscriber_relationship_primary: null,
+      client_insurance_company_secondary: null,
+      client_policy_number_secondary: null,
+      client_group_number_secondary: null,
+      client_subscriber_name_secondary: null,
+      client_insurance_type_secondary: null,
+      client_subscriber_dob_secondary: null,
+      client_subscriber_relationship_secondary: null,
+      client_insurance_company_tertiary: null,
+      client_policy_number_tertiary: null,
+      client_group_number_tertiary: null,
+      client_subscriber_name_tertiary: null,
+      client_insurance_type_tertiary: null,
+      client_subscriber_dob_tertiary: null,
+      client_subscriber_relationship_tertiary: null,
+      client_planlength: null,
+      client_treatmentfrequency: null,
+      client_problem: null,
+      client_treatmentgoal: null,
+      client_primaryobjective: null,
+      client_secondaryobjective: null,
+      client_tertiaryobjective: null,
+      client_intervention1: null,
+      client_intervention2: null,
+      client_intervention3: null,
+      client_intervention4: null,
+      client_intervention5: null,
+      client_intervention6: null,
+      client_nexttreatmentplanupdate: null,
+      client_privatenote: null,
+      client_appearance: null,
+      client_attitude: null,
+      client_behavior: null,
+      client_speech: null,
+      client_affect: null,
+      client_thoughtprocess: null,
+      client_perception: null,
+      client_orientation: null,
+      client_memoryconcentration: null,
+      client_insightjudgement: null,
+      client_mood: null,
+      client_substanceabuserisk: null,
+      client_suicidalideation: null,
+      client_homicidalideation: null,
+      client_functioning: null,
+      client_prognosis: null,
+      client_progress: null,
+      client_sessionnarrative: null,
+      client_medications: null,
+      client_personsinattendance: null,
+      client_currentsymptoms: null,
+      client_vacoverage: null,
+      client_champva: null,
+      client_tricare_beneficiary_category: null,
+      client_tricare_sponsor_name: null,
+      client_tricare_sponsor_branch: null,
+      client_tricare_sponsor_id: null,
+      client_tricare_plan: null,
+      client_tricare_region: null,
+      client_tricare_policy_id: null,
+      client_tricare_has_referral: null,
+      client_tricare_referral_number: null
     };
+    
+    return preparedData;
   };
 
   if (showSessionTemplate && currentAppointment) {
