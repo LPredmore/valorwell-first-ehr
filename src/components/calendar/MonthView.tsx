@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
@@ -6,6 +7,7 @@ import CalendarGrid from './CalendarGrid';
 import { Appointment } from '@/types/appointment';
 import { AvailabilityBlock } from '@/types/availability';
 import { DateTime } from 'luxon';
+import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface MonthViewProps {
   currentDate: Date;
@@ -28,6 +30,28 @@ const MonthView: React.FC<MonthViewProps> = ({
   onAvailabilityClick,
   userTimeZone = 'America/Chicago'
 }) => {
+  // Helper function to format appointment times for debugging
+  const formatAppointmentForLogging = (app: Appointment) => {
+    const startLocalDateTime = app.start_at ? 
+      TimeZoneService.fromUTC(app.start_at, userTimeZone) : null;
+    const endLocalDateTime = app.end_at ? 
+      TimeZoneService.fromUTC(app.end_at, userTimeZone) : null;
+      
+    return {
+      id: app.id,
+      startAt: app.start_at,
+      endAt: app.end_at,
+      formattedDate: startLocalDateTime ? 
+        TimeZoneService.formatDate(startLocalDateTime) : 'Invalid date',
+      formattedStartTime: startLocalDateTime ? 
+        TimeZoneService.formatTime(startLocalDateTime) : 'Invalid time',
+      formattedEndTime: endLocalDateTime ? 
+        TimeZoneService.formatTime(endLocalDateTime) : 'Invalid time',
+      clientName: app.clientName,
+      timeZone: userTimeZone
+    };
+  };
+
   // Enhanced debugging for appointments
   useEffect(() => {
     console.log(`[MonthView] Rendering with ${appointments.length} appointments for clinician ${clinicianId}`, {
@@ -40,16 +64,7 @@ const MonthView: React.FC<MonthViewProps> = ({
       const samplesToLog = Math.min(appointments.length, 3);
       for (let i = 0; i < samplesToLog; i++) {
         const app = appointments[i];
-        console.log(`[MonthView] Sample appointment ${i+1}/${samplesToLog}:`, {
-          id: app.id,
-          startAt: app.start_at,
-          endAt: app.end_at,
-          formattedDate: app.formattedDate,
-          formattedStartTime: app.formattedStartTime,
-          formattedEndTime: app.formattedEndTime,
-          clientName: app.clientName,
-          timeZone: userTimeZone
-        });
+        console.log(`[MonthView] Sample appointment ${i+1}/${samplesToLog}:`, formatAppointmentForLogging(app));
       }
     }
   }, [appointments, clinicianId, userTimeZone, currentDate]);
@@ -78,7 +93,7 @@ const MonthView: React.FC<MonthViewProps> = ({
     if (appointments.length > 0 && appointmentCount === 0) {
       console.error('[MonthView] CRITICAL: Appointments exist but none are displayed in calendar');
       console.log('[MonthView] This could be due to date format mismatches. Check:');
-      console.log('1. Format of appointments.date vs. the keys in dayAppointmentsMap');
+      console.log('1. Format of dates vs. the keys in dayAppointmentsMap');
       console.log('2. Timezone conversions affecting date comparisons');
       
       // Print sample of dayAppointmentsMap keys
@@ -87,9 +102,9 @@ const MonthView: React.FC<MonthViewProps> = ({
       
       // Print sample of appointment dates
       const appDates = appointments.slice(0, 5).map(a => ({
-        formattedDate: a.formattedDate,
         startAt: a.start_at,
-        localStartInTimeZone: a.start_at ? new Date(a.start_at).toLocaleString('en-US', {timeZone: userTimeZone}) : 'N/A'
+        localStartInTimeZone: a.start_at ? 
+          TimeZoneService.fromUTC(a.start_at, userTimeZone).toFormat('yyyy-MM-dd') : 'N/A'
       }));
       console.log('[MonthView] Sample appointment dates:', appDates);
       
@@ -97,11 +112,11 @@ const MonthView: React.FC<MonthViewProps> = ({
       console.log('[MonthView] Checking for appointments spanning midnight in UTC vs local time');
       const midnightEdgeCases = appointments.filter(a => {
         if (!a.start_at || !a.end_at) return false;
-        const startDate = new Date(a.start_at);
-        const endDate = new Date(a.end_at);
-        const startDay = new Date(startDate).setHours(0,0,0,0);
-        const endDay = new Date(endDate).setHours(0,0,0,0);
-        return startDay !== endDay;
+        
+        const startDateTime = TimeZoneService.fromUTC(a.start_at, userTimeZone);
+        const endDateTime = TimeZoneService.fromUTC(a.end_at, userTimeZone);
+        
+        return !startDateTime.hasSame(endDateTime, 'day');
       });
       console.log(`[MonthView] Found ${midnightEdgeCases.length} appointments spanning midnight`);
     }

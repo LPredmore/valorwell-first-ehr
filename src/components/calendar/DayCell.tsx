@@ -37,6 +37,18 @@ const DayCell: React.FC<DayCellProps> = ({
   const today = DateTime.now().setZone(userTimeZone);
   const isToday = day.hasSame(today, 'day');
 
+  // Format time function for appointment display
+  const formatAppointmentTime = (appointment: Appointment): string => {
+    if (!appointment.start_at) return 'N/A';
+    try {
+      const startDateTime = TimeZoneService.fromUTC(appointment.start_at, userTimeZone);
+      return TimeZoneService.formatTime(startDateTime);
+    } catch (error) {
+      console.error('[DayCell] Error formatting appointment time:', error);
+      return 'N/A';
+    }
+  };
+
   const handleAvailabilityClick = () => {
     if (availabilityInfo.hasAvailability && firstAvailability && onAvailabilityClick) {
       // Log availability block details for debugging
@@ -95,7 +107,7 @@ const DayCell: React.FC<DayCellProps> = ({
                 <div className="font-medium truncate">
                   {appointment.clientName || getClientName(appointment.client_id)}
                 </div>
-                <div>{appointment.formattedStartTime || 'N/A'}</div>
+                <div>{formatAppointmentTime(appointment)}</div>
               </div>
             ))}
           </div>

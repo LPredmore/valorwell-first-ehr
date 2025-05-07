@@ -5,7 +5,7 @@ import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { DateTime } from 'luxon';
-import { Appointment } from '@/types/appointment'; // Verify path is correct
+import { Appointment } from '@/types/appointment';
 
 // Interface for the raw Supabase response (as defined before)
 interface RawSupabaseAppointment {
@@ -39,6 +39,13 @@ function isValidClientData(obj: any): obj is { client_first_name: string | null;
   return obj && typeof obj === 'object' && ('client_first_name' in obj || 'client_last_name' in obj || 'client_preferred_name' in obj);
 }
 
+// Extended appointment type for the display formatting
+interface FormattedAppointment extends Appointment {
+  formattedDate?: string;
+  formattedStartTime?: string;
+  formattedEndTime?: string;
+}
+
 export const useAppointments = (
   clinicianId: string | null,
   fromDate?: Date,
@@ -50,8 +57,8 @@ export const useAppointments = (
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
   const [showSessionTemplate, setShowSessionTemplate] = useState(false);
-  const [clientDataForSession, setClientDataForSession] = useState<Appointment['client'] | null>(null);
-  const [isLoadingClientDataForSession, setIsLoadingClientDataForSession] = useState(false);
+  const [sessionClientData, setSessionClientData] = useState<Appointment['client'] | null>(null);
+  const [isLoadingSessionClientData, setIsLoadingSessionClientData] = useState(false);
 
   const formattedClinicianId = clinicianId ? clinicianId.trim() : null;
   const safeUserTimeZone = TimeZoneService.ensureIANATimeZone(timeZone || TimeZoneService.DEFAULT_TIMEZONE);
@@ -70,7 +77,7 @@ export const useAppointments = (
     data: fetchedAppointments = [],
     isLoading,
     error,
-    refetch,
+    refetch: refetchAppointments,
   } = useQuery<Appointment[], Error>({
     queryKey: ['appointments', formattedClinicianId, fromUTCISO, toUTCISO],
     queryFn: async (): Promise<Appointment[]> => {
@@ -95,57 +102,81 @@ export const useAppointments = (
         throw new Error(queryError.message);
       }
       
-      // Explicitly cast the raw data ONLY AFTER confirming its structure if necessary
-      const rawData = rawDataAny as RawSupabaseAppointment[] | null;
-
-      console.log(`[useAppointments] Fetched ${rawData?.length || 0} raw appointments.`);
-
-      // Transform raw data with robust checks
-      const formattedResult = (rawData || []).map((rawAppt): Appointment => {
-        // Validate and process client data explicitly
-        let processedClientData: Appointment['client'] | undefined;
-        let computedClientName: string | undefined;
-        const rawClientData = rawAppt.clients; // Extract potential client data
-
-        if (isValidClientData(rawClientData)) { // Use type guard
-          processedClientData = {
-            client_first_name: rawClientData.client_first_name || '',
-            client_last_name: rawClientData.client_last_name || '',
-            client_preferred_name: rawClientData.client_preferred_name || '',
-          };
-          computedClientName = `${processedClientData.client_preferred_name || processedClientData.client_first_name || ''} ${processedClientData.client_last_name || ''}`.trim() || 'Unknown Client';
-        } else {
-          // Handle cases where rawClientData is null or not the expected object shape
-          if (rawClientData !== null) {
-            console.warn(`[useAppointments] Unexpected 'clients' structure for appt ${rawAppt.id}:`, rawClientData);
+      // Cast the raw data while ensuring proper validation
+      if (!rawDataAny) {
+        console.warn('[useAppointments] No data returned from Supabase');
+        return [];
+      }
+      
+      console.log(`[useAppointments] Fetched ${rawDataAny.length || 0} raw appointments.`);
+      
+      // Safely process the data
+      return rawDataAny.map((rawAppt: any): Appointment => {
+        // Process client data, ensure we handle nested objects correctly
+        const rawClientData = rawAppt.clients;
+        let clientData: Appointment['client'] | undefined;
+        let clientName = 'Unknown Client';
+        
+        if (rawClientData) {
+          // Handle both object and array structures (depending on Supabase's response format)
+          const clientInfo = Array.isArray(rawClientData) ? rawClientData[0] : rawClientData;
+          
+          if (clientInfo && typeof clientInfo === 'object') {
+            clientData = {
+              client_first_name: clientInfo.client_first_name || '',
+              client_last_name: clientInfo.client_last_name || '',
+              client_preferred_name: clientInfo.client_preferred_name || '',
+            };
+            
+            clientName = `${clientData.client_preferred_name || clientData.client_first_name || ''} ${clientData.client_last_name || ''}`.trim() || 'Unknown Client';
           }
-          processedClientData = undefined;
-          computedClientName = 'Unknown Client';
         }
-
-        // Construct the final Appointment object according to the interface
-        const { clients, ...coreAppointmentFields } = rawAppt; // Exclude raw 'clients'
+        
         return {
-          ...coreAppointmentFields, // Spread validated core fields
-          start_at: rawAppt.start_at, // Ensure these are correct UTC strings
+          id: rawAppt.id,
+          client_id: rawAppt.client_id,
+          clinician_id: rawAppt.clinician_id,
+          start_at: rawAppt.start_at,
           end_at: rawAppt.end_at,
-          client: processedClientData, // Assign the validated/processed client object
-          clientName: computedClientName, // Assign the computed name
+          type: rawAppt.type,
+          status: rawAppt.status,
+          appointment_recurring: rawAppt.appointment_recurring,
+          recurring_group_id: rawAppt.recurring_group_id,
+          video_room_url: rawAppt.video_room_url,
+          notes: rawAppt.notes,
+          client: clientData,
+          clientName: clientName
         };
       });
-
-      return formattedResult;
     },
     enabled: !!formattedClinicianId,
   });
 
-  // Helper function to add display formatting (moved outside queryFn)
-  const addDisplayFormattingToAppointment = (appointment: Appointment, displayTimeZone: string): Appointment & { formattedDate?: string; formattedStartTime?: string; formattedEndTime?: string; } => {
+  // Helper function to add display formatting
+  const addDisplayFormattingToAppointment = (appointment: Appointment, displayTimeZone: string): FormattedAppointment => {
     const safeDisplayZone = TimeZoneService.ensureIANATimeZone(displayTimeZone);
-    let formattedDate, formattedStartTime, formattedEndTime;
-    if (appointment.start_at) { try { const d = TimeZoneService.convertUTCToLocal(appointment.start_at, safeDisplayZone); formattedStartTime = TimeZoneService.formatTime(d); formattedDate = TimeZoneService.formatDate(d, 'yyyy-MM-dd'); } catch (e) { console.error("Err format start_at", e); }}
-    if (appointment.end_at) { try { const d = TimeZoneService.convertUTCToLocal(appointment.end_at, safeDisplayZone); formattedEndTime = TimeZoneService.formatTime(d); } catch (e) { console.error("Err format end_at", e); }}
-    return { ...appointment, formattedDate, formattedStartTime, formattedEndTime };
+    const result: FormattedAppointment = { ...appointment };
+    
+    if (appointment.start_at) { 
+      try { 
+        const startDateTime = TimeZoneService.fromUTC(appointment.start_at, safeDisplayZone); 
+        result.formattedStartTime = TimeZoneService.formatTime(startDateTime); 
+        result.formattedDate = TimeZoneService.formatDate(startDateTime, 'yyyy-MM-dd'); 
+      } catch (e) { 
+        console.error("Error formatting start_at", e); 
+      }
+    }
+    
+    if (appointment.end_at) { 
+      try { 
+        const endDateTime = TimeZoneService.fromUTC(appointment.end_at, safeDisplayZone); 
+        result.formattedEndTime = TimeZoneService.formatTime(endDateTime); 
+      } catch (e) { 
+        console.error("Error formatting end_at", e); 
+      }
+    }
+    
+    return result;
   };
   
   // isAppointmentToday logic
@@ -210,7 +241,7 @@ export const useAppointments = (
   // Session handling functions
   const startSession = async (appointment: Appointment) => {
     setCurrentAppointment(appointment);
-    setIsLoadingClientDataForSession(true);
+    setIsLoadingSessionClientData(true);
     
     try {
       // Check if appointment has a video room URL, create one if not
@@ -226,7 +257,7 @@ export const useAppointments = (
             description: error.message || 'Could not create video session',
             variant: 'destructive'
           });
-          setIsLoadingClientDataForSession(false);
+          setIsLoadingSessionClientData(false);
           return;
         }
         
@@ -234,7 +265,7 @@ export const useAppointments = (
       }
       
       setCurrentVideoUrl(videoRoomUrl);
-      setClientDataForSession(appointment.client || null);
+      setSessionClientData(appointment.client || null);
       setIsVideoOpen(true);
     } catch (error) {
       console.error('[useAppointments] Error starting session:', error);
@@ -244,13 +275,13 @@ export const useAppointments = (
         variant: 'destructive'
       });
     } finally {
-      setIsLoadingClientDataForSession(false);
+      setIsLoadingSessionClientData(false);
     }
   };
   
   const documentSession = (appointment: Appointment) => {
     setCurrentAppointment(appointment);
-    setClientDataForSession(appointment.client || null);
+    setSessionClientData(appointment.client || null);
     setShowSessionTemplate(true);
   };
   
@@ -264,9 +295,9 @@ export const useAppointments = (
     pastAppointments,
     isLoading,
     error,
-    refetchAppointments: refetch,
-    startSession,
-    documentSession,
+    refetch: refetchAppointments,
+    startVideoSession: startSession,
+    openSessionTemplate: documentSession,
     isVideoOpen,
     closeVideoSession,
     closeSessionTemplate,
@@ -274,8 +305,8 @@ export const useAppointments = (
     currentAppointment,
     showSessionTemplate,
     setShowSessionTemplate,
-    sessionClientData: clientDataForSession,
-    isLoadingSessionClientData: isLoadingClientDataForSession,
+    clientData: sessionClientData,
+    isLoadingClientData: isLoadingSessionClientData,
     addDisplayFormattingToAppointment,
   };
 };
