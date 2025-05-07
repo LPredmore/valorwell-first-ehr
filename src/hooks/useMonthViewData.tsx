@@ -53,7 +53,13 @@ export const useMonthViewData = (
           return;
         }
 
-        console.log(`[useMonthViewData] Fetching availability blocks for clinician: ${clinicianId}`);
+        console.log(`[useMonthViewData] Fetching availability blocks for clinician: ${clinicianId}`, {
+          dateRange: {
+            startDate: startDate.toUTC().toISO(),
+            endDate: endDate.toUTC().toISO(),
+            userTimeZone
+          }
+        });
         
         // Query the availability_blocks table directly
         const { data: fetchedBlocks, error } = await supabase
@@ -68,7 +74,10 @@ export const useMonthViewData = (
           console.error('[useMonthViewData] Error fetching availability_blocks:', error);
           setAvailabilityData([]);
         } else {
-          console.log(`[useMonthViewData] Fetched ${fetchedBlocks?.length || 0} availability blocks`);
+          console.log(`[useMonthViewData] Fetched ${fetchedBlocks?.length || 0} availability blocks`, {
+            sampleBlock: fetchedBlocks?.length > 0 ? fetchedBlocks[0] : null,
+            timeZone: userTimeZone
+          });
           setAvailabilityData(fetchedBlocks || []);
         }
       } catch (error) {
@@ -92,6 +101,12 @@ export const useMonthViewData = (
       const dayEnd = day.endOf('day');
       
       // Find availability blocks for this day by converting UTC times to user timezone
+      console.log(`[useMonthViewData] Processing day: ${dateStr}`, {
+        dayStart: dayStart.toISO(),
+        dayEnd: dayEnd.toISO(),
+        timeZone: userTimeZone
+      });
+      
       const dayAvailability = availabilityData.filter(block => {
         // Convert UTC timestamps to local time in user's timezone
         const blockStartLocal = TimeZoneService.fromUTC(block.start_at, userTimeZone);
@@ -214,7 +229,10 @@ export const useMonthViewData = (
         // Log the matching process for debugging
         console.log(`[useMonthViewData] Matching appointment ${appointment.id}:`, {
           startAt: appointment.start_at,
+          endAt: appointment.end_at,
+          localStartDateTime: localStartDateTime.toISO(),
           formattedDate: appointmentLocalDateStr,
+          timeZone: userTimeZone,
           availableDays: Array.from(result.keys()).slice(0, 5), // Show first 5 days
         });
         

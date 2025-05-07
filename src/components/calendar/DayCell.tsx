@@ -39,6 +39,15 @@ const DayCell: React.FC<DayCellProps> = ({
 
   const handleAvailabilityClick = () => {
     if (availabilityInfo.hasAvailability && firstAvailability && onAvailabilityClick) {
+      // Log availability block details for debugging
+      console.log('[DayCell] Clicking availability block:', {
+        id: firstAvailability.id,
+        start_at: firstAvailability.start_at,
+        end_at: firstAvailability.end_at,
+        day: day.toISO(),
+        timeZone: userTimeZone
+      });
+      
       onAvailabilityClick(day, firstAvailability);
     }
   };

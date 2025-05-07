@@ -51,6 +51,18 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
         const availabilityBlocks = availabilityByDay.get(dateStr) || [];
         const firstAvailability = availabilityBlocks.length > 0 ? availabilityBlocks[0] : undefined;
         
+        // Enhanced logging for debugging
+        if (availabilityBlocks.length > 0) {
+          console.log(`[CalendarGrid] Day ${dateStr} has ${availabilityBlocks.length} availability blocks`, {
+            firstBlock: {
+              id: firstAvailability?.id,
+              start_at: firstAvailability?.start_at,
+              end_at: firstAvailability?.end_at
+            },
+            timeZone: userTimeZone
+          });
+        }
+        
         return (
           <DayCell
             key={day.toString()}

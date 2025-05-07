@@ -30,7 +30,10 @@ const MonthView: React.FC<MonthViewProps> = ({
 }) => {
   // Enhanced debugging for appointments
   useEffect(() => {
-    console.log(`[MonthView] Rendering with ${appointments.length} appointments for clinician ${clinicianId}`);
+    console.log(`[MonthView] Rendering with ${appointments.length} appointments for clinician ${clinicianId}`, {
+      timeZone: userTimeZone,
+      currentDate: currentDate.toISOString()
+    });
     
     if (appointments && appointments.length > 0) {
       // Log the first few appointments for debugging
@@ -44,11 +47,12 @@ const MonthView: React.FC<MonthViewProps> = ({
           formattedDate: app.formattedDate,
           formattedStartTime: app.formattedStartTime,
           formattedEndTime: app.formattedEndTime,
-          clientName: app.clientName
+          clientName: app.clientName,
+          timeZone: userTimeZone
         });
       }
     }
-  }, [appointments, clinicianId]);
+  }, [appointments, clinicianId, userTimeZone, currentDate]);
 
   const {
     loading,
@@ -64,7 +68,11 @@ const MonthView: React.FC<MonthViewProps> = ({
     const appointmentCount = Array.from(dayAppointmentsMap.values())
       .reduce((sum, dayApps) => sum + dayApps.length, 0);
     
-    console.log(`[MonthView] Total appointments displayed in calendar: ${appointmentCount}`);
+    console.log(`[MonthView] Total appointments displayed in calendar: ${appointmentCount}`, {
+      totalAppointments: appointments.length,
+      mappedAppointments: appointmentCount,
+      timeZone: userTimeZone
+    });
     
     // If there are appointments but none are being displayed, this is an issue
     if (appointments.length > 0 && appointmentCount === 0) {
@@ -78,10 +86,26 @@ const MonthView: React.FC<MonthViewProps> = ({
       console.log('[MonthView] Sample days in calendar:', mapKeys);
       
       // Print sample of appointment dates
-      const appDates = appointments.slice(0, 5).map(a => a.formattedDate);
+      const appDates = appointments.slice(0, 5).map(a => ({
+        formattedDate: a.formattedDate,
+        startAt: a.start_at,
+        localStartInTimeZone: a.start_at ? new Date(a.start_at).toLocaleString('en-US', {timeZone: userTimeZone}) : 'N/A'
+      }));
       console.log('[MonthView] Sample appointment dates:', appDates);
+      
+      // Check for timezone-related edge cases
+      console.log('[MonthView] Checking for appointments spanning midnight in UTC vs local time');
+      const midnightEdgeCases = appointments.filter(a => {
+        if (!a.start_at || !a.end_at) return false;
+        const startDate = new Date(a.start_at);
+        const endDate = new Date(a.end_at);
+        const startDay = new Date(startDate).setHours(0,0,0,0);
+        const endDay = new Date(endDate).setHours(0,0,0,0);
+        return startDay !== endDay;
+      });
+      console.log(`[MonthView] Found ${midnightEdgeCases.length} appointments spanning midnight`);
     }
-  }, [dayAppointmentsMap, appointments]);
+  }, [dayAppointmentsMap, appointments, userTimeZone]);
 
   if (loading) {
     return (
