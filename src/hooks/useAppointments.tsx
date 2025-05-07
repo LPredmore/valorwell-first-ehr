@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -8,7 +8,7 @@ import { DateTime } from 'luxon';
 import { Appointment } from '@/types/appointment';
 
 // Define the structure of the raw appointment data from Supabase
-interface SupabaseAppointmentResponse {
+interface RawSupabaseAppointment {
   id: string;
   client_id: string;
   clinician_id: string;
@@ -22,9 +22,9 @@ interface SupabaseAppointmentResponse {
   notes: string | null;
   // Supabase returns joined clients as a direct object, not an array
   clients: {
-    client_first_name: string;
-    client_last_name: string;
-    client_preferred_name: string;
+    client_first_name: string | null;
+    client_last_name: string | null;
+    client_preferred_name: string | null;
   } | null;
 }
 
@@ -120,29 +120,37 @@ export const useAppointments = (
         console.log(`[useAppointments] Fetched ${data?.length || 0} appointments`);
         
         // Process appointments to format client data correctly
-        const formattedAppointments = (data || []).map((appointment: SupabaseAppointmentResponse) => {
+        const formattedAppointments = (data || []).map((rawAppt: RawSupabaseAppointment): Appointment => {
           // Extract client data from the joined table
-          const clientData = appointment.clients;
+          const clientDataFromQuery = rawAppt.clients;
+          
+          // Log the first appointment's client data structure for debugging
+          if (data && data.length > 0 && rawAppt.id === data[0].id) {
+            console.log('[useAppointments] First appointment client data structure:', {
+              clientsField: rawAppt.clients,
+              clientsType: rawAppt.clients ? typeof rawAppt.clients : 'null'
+            });
+          }
           
           // Create a new object without the clients field
-          const { clients, ...restOfAppointment } = appointment;
+          const { clients, ...coreAppointmentFields } = rawAppt;
           
           // Create properly formatted appointment object
-          const formattedAppointment: Appointment = {
-            ...restOfAppointment,
+          return {
+            ...coreAppointmentFields,
+            start_at: rawAppt.start_at, // Ensure these are present and correctly typed as string
+            end_at: rawAppt.end_at,     // Ensure these are present and correctly typed as string
             // Add formatted client object with required properties
-            client: clientData ? {
-              client_first_name: clientData.client_first_name || '',
-              client_last_name: clientData.client_last_name || '',
-              client_preferred_name: clientData.client_preferred_name || ''
+            client: clientDataFromQuery ? {
+              client_first_name: clientDataFromQuery.client_first_name || '',
+              client_last_name: clientDataFromQuery.client_last_name || '',
+              client_preferred_name: clientDataFromQuery.client_preferred_name || ''
             } : undefined,
             // Add computed client name for convenience
-            clientName: clientData ?
-              `${clientData.client_preferred_name || clientData.client_first_name || ''} ${clientData.client_last_name || ''}`.trim() :
+            clientName: clientDataFromQuery ?
+              `${clientDataFromQuery.client_preferred_name || clientDataFromQuery.client_first_name || ''} ${clientDataFromQuery.client_last_name || ''}`.trim() :
               'Unknown Client'
           };
-
-          return formattedAppointment;
         });
 
         return formattedAppointments;
