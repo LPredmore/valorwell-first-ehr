@@ -5,6 +5,7 @@ import MonthView from './MonthView';
 import ClinicianAvailabilityPanel from './ClinicianAvailabilityPanel';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { Appointment } from '@/types/appointment';
+import { DateTime } from 'luxon';
 
 interface CalendarProps {
   view: 'week' | 'month';
@@ -80,8 +81,8 @@ const Calendar = ({
   };
 
   // Handler for availability block clicked in calendar
-  const handleAvailabilityClick = (date: Date, availabilityBlock: any) => {
-    console.log(`[Calendar] Availability clicked for ${date} - Block:`, availabilityBlock);
+  const handleAvailabilityClick = (date: DateTime, availabilityBlock: any) => {
+    console.log(`[Calendar] Availability clicked for ${date.toFormat('yyyy-MM-dd')} - Block:`, availabilityBlock);
   };
 
   // Handler for when availability is updated

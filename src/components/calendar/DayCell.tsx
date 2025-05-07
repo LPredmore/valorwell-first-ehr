@@ -1,8 +1,9 @@
 
 import React from 'react';
-import { format, isSameMonth } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Appointment } from '@/types/appointment';
+import { TimeZoneService } from '@/utils/timeZoneService';
+import { DateTime } from 'luxon';
 
 interface AvailabilityBlock {
   id: string;
@@ -19,14 +20,15 @@ interface DayAvailabilityInfo {
 }
 
 interface DayCellProps {
-  day: Date;
-  monthStart: Date;
+  day: DateTime;
+  monthStart: DateTime;
   availabilityInfo: DayAvailabilityInfo;
   appointments: Appointment[];
   firstAvailability?: AvailabilityBlock;
   getClientName: (clientId: string) => string;
   onAppointmentClick?: (appointment: Appointment) => void;
-  onAvailabilityClick?: (day: Date, availabilityBlock: AvailabilityBlock) => void;
+  onAvailabilityClick?: (day: DateTime, availabilityBlock: AvailabilityBlock) => void;
+  userTimeZone?: string;
 }
 
 const DayCell: React.FC<DayCellProps> = ({
@@ -37,11 +39,15 @@ const DayCell: React.FC<DayCellProps> = ({
   firstAvailability,
   getClientName,
   onAppointmentClick,
-  onAvailabilityClick
+  onAvailabilityClick,
+  userTimeZone = 'America/Chicago'
 }) => {
-  const isCurrentMonth = isSameMonth(day, monthStart);
-  const dayNum = format(day, 'd');
-  const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+  const isCurrentMonth = day.hasSame(monthStart, 'month');
+  const dayNum = day.day.toString();
+  
+  // Get today's date in the user's timezone
+  const today = DateTime.now().setZone(userTimeZone);
+  const isToday = day.hasSame(today, 'day');
 
   const handleAvailabilityClick = () => {
     if (availabilityInfo.hasAvailability && firstAvailability && onAvailabilityClick) {

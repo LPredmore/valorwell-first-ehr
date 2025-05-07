@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { useMonthViewData } from '@/hooks/useMonthViewData';
 import CalendarGrid from './CalendarGrid';
 import { Appointment } from '@/types/appointment';
+import { DateTime } from 'luxon';
 
 interface AvailabilityBlock {
   id: string;
@@ -26,7 +27,7 @@ interface MonthViewProps {
   appointments?: Appointment[];
   getClientName?: (clientId: string) => string;
   onAppointmentClick?: (appointment: Appointment) => void;
-  onAvailabilityClick?: (date: Date, availabilityBlock: AvailabilityBlock) => void;
+  onAvailabilityClick?: (date: DateTime, availabilityBlock: AvailabilityBlock) => void;
   userTimeZone?: string;
 }
 
@@ -104,27 +105,18 @@ const MonthView: React.FC<MonthViewProps> = ({
     );
   }
 
-  // Make sure days is an array of JavaScript Date objects, not Luxon DateTime objects
-  const jsDateDays = days.map(day => {
-    // Check if the day is already a JavaScript Date object
-    if (day instanceof Date) {
-      return day;
-    }
-    // Otherwise, convert it from Luxon DateTime to JavaScript Date
-    return new Date(day.toMillis());
-  });
-
   return (
     <Card className="p-4">
       <CalendarGrid
-        days={jsDateDays}
-        monthStart={monthStart instanceof Date ? monthStart : new Date(monthStart.toMillis())}
+        days={days}
+        monthStart={monthStart}
         dayAvailabilityMap={dayAvailabilityMap as Map<string, DayAvailabilityData>}
         dayAppointmentsMap={dayAppointmentsMap}
         availabilityByDay={availabilityByDay as Map<string, AvailabilityBlock>}
         getClientName={getClientName}
         onAppointmentClick={onAppointmentClick}
         onAvailabilityClick={onAvailabilityClick}
+        userTimeZone={userTimeZone}
       />
     </Card>
   );

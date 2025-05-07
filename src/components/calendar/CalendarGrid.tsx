@@ -2,6 +2,8 @@
 import React from 'react';
 import DayCell from './DayCell';
 import { Appointment } from '@/types/appointment';
+import { TimeZoneService } from '@/utils/timeZoneService';
+import { DateTime } from 'luxon';
 
 interface AvailabilityBlock {
   id: string;
@@ -18,14 +20,15 @@ interface DayAvailabilityData {
 }
 
 interface CalendarGridProps {
-  days: Date[];
-  monthStart: Date;
+  days: DateTime[];
+  monthStart: DateTime;
   dayAvailabilityMap: Map<string, DayAvailabilityData>;
   dayAppointmentsMap: Map<string, Appointment[]>;
   availabilityByDay: Map<string, AvailabilityBlock>;
   getClientName: (clientId: string) => string;
   onAppointmentClick?: (appointment: Appointment) => void;
-  onAvailabilityClick?: (day: Date, availabilityBlock: AvailabilityBlock) => void;
+  onAvailabilityClick?: (day: DateTime, availabilityBlock: AvailabilityBlock) => void;
+  userTimeZone?: string;
 }
 
 const CalendarGrid: React.FC<CalendarGridProps> = ({
@@ -36,7 +39,8 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
   availabilityByDay,
   getClientName,
   onAppointmentClick,
-  onAvailabilityClick
+  onAvailabilityClick,
+  userTimeZone = 'America/Chicago'
 }) => {
   const weekDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -49,10 +53,10 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
       ))}
 
       {days.map((day) => {
-        const dateStr = day.toISOString().split('T')[0];
+        const dateStr = TimeZoneService.formatDate(day, 'yyyy-MM-dd');
         const dayAppointments = dayAppointmentsMap.get(dateStr) || [];
-        const dayAvailability = dayAvailabilityMap.get(dateStr) || { 
-          hasAvailability: false, 
+        const dayAvailability = dayAvailabilityMap.get(dateStr) || {
+          hasAvailability: false,
           displayHours: ''
         };
         const firstAvailability = availabilityByDay.get(dateStr);

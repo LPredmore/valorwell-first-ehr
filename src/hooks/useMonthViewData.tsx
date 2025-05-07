@@ -130,7 +130,7 @@ export const useMonthViewData = (
     
     days.forEach(day => {
       const dayOfWeek = day.toFormat('EEEE');
-      const dateStr = TimeZoneService.formatDate(day);
+      const dateStr = TimeZoneService.formatDate(day, 'yyyy-MM-dd');
       
       const regularAvailability = availabilityData.filter(
         slot => slot.day_of_week === dayOfWeek
@@ -176,7 +176,7 @@ export const useMonthViewData = (
     
     days.forEach(day => {
       const dayOfWeek = day.toFormat('EEEE');
-      const dateStr = TimeZoneService.formatDate(day);
+      const dateStr = TimeZoneService.formatDate(day, 'yyyy-MM-dd');
       
       const firstAvailability = availabilityData.find(
         slot => slot.day_of_week === dayOfWeek
@@ -197,8 +197,8 @@ export const useMonthViewData = (
     
     // Create a map of formatted dates to store appointments
     days.forEach(day => {
-      // Convert Luxon DateTime to YYYY-MM-DD format string
-      const dayStr = TimeZoneService.formatDate(day);
+      // Convert Luxon DateTime to YYYY-MM-DD format string with explicit format
+      const dayStr = TimeZoneService.formatDate(day, 'yyyy-MM-dd');
       result.set(dayStr, []);
     });
     
@@ -212,22 +212,23 @@ export const useMonthViewData = (
         }
         
         // Get the local date from the UTC timestamp
-        const startDateTime = TimeZoneService.fromUTC(appointment.start_at, userTimeZone);
-        const formattedDate = TimeZoneService.formatDate(startDateTime);
+        const localStartDateTime = TimeZoneService.fromUTC(appointment.start_at, userTimeZone);
+        // Format with explicit format to ensure consistency
+        const appointmentLocalDateStr = TimeZoneService.formatDate(localStartDateTime, 'yyyy-MM-dd');
         
         // Log the matching process for debugging
         console.log(`[useMonthViewData] Matching appointment ${appointment.id}:`, {
           startAt: appointment.start_at,
-          formattedDate: formattedDate,
+          formattedDate: appointmentLocalDateStr,
           availableDays: Array.from(result.keys()).slice(0, 5), // Show first 5 days
         });
         
         // Direct map lookup by formatted date string
-        if (result.has(formattedDate)) {
-          result.get(formattedDate)!.push(appointment);
-          console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched to ${formattedDate}`);
+        if (result.has(appointmentLocalDateStr)) {
+          result.get(appointmentLocalDateStr)!.push(appointment);
+          console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched to ${appointmentLocalDateStr}`);
         } else {
-          console.log(`[useMonthViewData] ❌ No matching day found for appointment ${appointment.id} with date ${formattedDate}`);
+          console.log(`[useMonthViewData] ❌ No matching day found for appointment ${appointment.id} with date ${appointmentLocalDateStr}`);
         }
       } catch (error) {
         console.error(`[useMonthViewData] Error processing appointment ${appointment.id}:`, error);
