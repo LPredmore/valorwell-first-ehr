@@ -242,6 +242,7 @@ export const useMonthViewData = (
           localStartDateTime: localStartDateTime.toISO(),
           formattedDate: appointmentLocalDateStr,
           timeZone: userTimeZone,
+          clientName: appointment.clientName, // Access the standardized client name
           hasMatchingDay: result.has(appointmentLocalDateStr)
         });
         

@@ -51,15 +51,6 @@ const DayCell: React.FC<DayCellProps> = ({
 
   const handleAvailabilityClick = () => {
     if (availabilityInfo.hasAvailability && firstAvailability && onAvailabilityClick) {
-      // Log availability block details for debugging
-      console.log('[DayCell] Clicking availability block:', {
-        id: firstAvailability.id,
-        start_at: firstAvailability.start_at,
-        end_at: firstAvailability.end_at,
-        day: day.toISO(),
-        timeZone: userTimeZone
-      });
-      
       onAvailabilityClick(day, firstAvailability);
     }
   };
@@ -67,51 +58,46 @@ const DayCell: React.FC<DayCellProps> = ({
   return (
     <div
       className={cn(
-        "min-h-[80px] border border-gray-200 p-1",
-        !isCurrentMonth ? "bg-gray-50" : "bg-white",
-        isToday ? "border-blue-500 border-2" : ""
+        'bg-white border border-gray-200 p-1 min-h-[100px] transition-colors',
+        {
+          'bg-gray-50': !isCurrentMonth,
+          'bg-blue-50': isToday,
+        }
       )}
     >
-      <div className="flex justify-between items-center">
-        <span
-          className={cn(
-            "text-sm font-medium",
-            !isCurrentMonth ? "text-gray-400" : "text-gray-900"
-          )}
-        >
+      <div className="flex justify-between items-start">
+        <div className={cn(
+          'text-sm font-medium p-1 h-6 w-6 flex items-center justify-center rounded-full',
+          {
+            'text-gray-400': !isCurrentMonth,
+            'bg-blue-500 text-white': isToday,
+          }
+        )}>
           {dayNum}
-        </span>
-      </div>
-
-      <div className="mt-1 space-y-1 text-xs">
+        </div>
+        
         {availabilityInfo.hasAvailability && (
-          <div
-            className="bg-green-100 text-green-800 p-1 rounded cursor-pointer hover:bg-green-200"
+          <div 
+            className="text-xs bg-green-100 text-green-800 px-1 rounded cursor-pointer hover:bg-green-200"
             onClick={handleAvailabilityClick}
           >
-            <p className="font-medium">Available</p>
-            {availabilityInfo.displayHours && (
-              <p>{availabilityInfo.displayHours}</p>
-            )}
+            {availabilityInfo.displayHours || 'Available'}
           </div>
         )}
-
-        {appointments.length > 0 && (
-          <div className="space-y-1 mt-1">
-            {appointments.map((appointment) => (
-              <div
-                key={appointment.id}
-                className="bg-blue-100 text-blue-800 p-1 rounded cursor-pointer hover:bg-blue-200"
-                onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
-              >
-                <div className="font-medium truncate">
-                  {appointment.clientName || 'Unknown Client'}
-                </div>
-                <div>{formatAppointmentTime(appointment)}</div>
-              </div>
-            ))}
+      </div>
+      
+      <div className="mt-1 space-y-1">
+        {appointments.map((appointment) => (
+          <div
+            key={appointment.id}
+            className="text-[10px] bg-blue-100 text-blue-800 p-1 rounded truncate cursor-pointer hover:bg-blue-200"
+            onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
+          >
+            <div className="font-medium">{formatAppointmentTime(appointment)}</div>
+            {/* Use the standardized clientName from the appointment */}
+            <div className="truncate">{appointment.clientName}</div>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

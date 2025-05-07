@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -242,13 +241,23 @@ export const useWeekViewData = (
     });
   };
 
+  // FIX: Update this function to properly check day match first
   const getAppointmentForTimeSlot = (day: Date, timeSlot: Date) => {
+    // First convert the input day and timeSlot to DateTime objects for reliable comparison
+    const slotDay = TimeZoneService.fromJSDate(day, userTimeZone);
+    const slotTime = TimeZoneService.fromJSDate(timeSlot, userTimeZone);
+    
+    // Find appointment block that matches both the day AND time range
     return appointmentBlocks.find(block => {
-      const slotTime = TimeZoneService.fromJSDate(timeSlot, userTimeZone);
-      const blockStart = block.start;
-      const blockEnd = block.end;
-      return slotTime >= blockStart && slotTime < blockEnd && 
-             TimeZoneService.isSameDay(slotTime, block.day!);
+      // CRITICAL FIX: First check if the days match - this prevents appointments showing on all days
+      const isDaySame = TimeZoneService.isSameDay(slotDay, block.day);
+      
+      if (!isDaySame) {
+        return false; // Skip time check entirely if day doesn't match
+      }
+      
+      // Only then check if the time slot falls within the appointment time range
+      return slotTime >= block.start && slotTime < block.end;
     });
   };
 
