@@ -8,6 +8,7 @@ import { DateTime } from 'luxon';
 import { Appointment } from '@/types/appointment'; // Ensure this path is correct
 
 // Define the structure of the raw appointment data from Supabase
+// Using a more explicit type for the clients field to prevent TypeScript from inferring it as an array
 interface RawSupabaseAppointment {
   id: string;
   client_id: string;
@@ -20,8 +21,8 @@ interface RawSupabaseAppointment {
   recurring_group_id: string | null;
   video_room_url: string | null;
   notes: string | null;
-  // Supabase returns joined clients as a direct object, not an array
-  clients: {
+  // Explicitly type clients as a Record/object to prevent TypeScript from inferring it as an array
+  clients: Record<string, any> & {
     client_first_name: string | null;
     client_last_name: string | null;
     client_preferred_name: string | null;
@@ -136,101 +137,42 @@ export const useAppointments = (
 
       // Transform raw Supabase data to our frontend Appointment type
       const formattedResult = (rawData || []).map((rawAppt: RawSupabaseAppointment): Appointment => {
-        // 'rawAppt.clients' is the OBJECT (or null) from Supabase join
-        const clientDataFromQuery = rawAppt.clients; 
+        // Explicitly cast clients to the correct type to prevent TypeScript inference issues
+        // This ensures TypeScript knows it's an object with specific properties, not an array
+        const clientDataFromQuery = rawAppt.clients as (Record<string, any> & {
+          client_first_name: string | null;
+          client_last_name: string | null;
+          client_preferred_name: string | null;
+        }) | null;
+        
+        // Log the first appointment's client data structure for debugging
+        if (rawData && rawData.length > 0 && rawAppt.id === rawData[0].id) {
+          console.log('[useAppointments] First appointment client data structure:', {
+            clientsField: rawAppt.clients,
+            clientsType: rawAppt.clients ? typeof rawAppt.clients : 'null'
+          });
+        }
         
         // Destructure to separate raw 'clients' object from other fields
         // This prevents the raw 'clients' (plural) from Supabase being spread into formattedAppointment
-        // if our Appointment type uses 'client' (singular).
         const { clients, ...coreAppointmentFields } = rawAppt;
 
         return {
           ...coreAppointmentFields, // Contains id, clinician_id, client_id, start_at, end_at, type, status etc.
-                                   // start_at and end_at are already UTC ISO strings, pass them directly.
+          // Add formatted client object with required properties
           client: clientDataFromQuery ? {
             client_first_name: clientDataFromQuery.client_first_name || '',
             client_last_name: clientDataFromQuery.client_last_name || '',
-            client_preferred_name: clientDataFromQuery.client_preferred_name || '',
+            client_preferred_name: clientDataFromQuery.client_preferred_name || ''
           } : undefined,
+          // Add computed client name for convenience
           clientName: clientDataFromQuery ?
-            // **PREVIOUS POTENTIAL ERROR WAS HERE:** Ensured all references are to clientDataFromQuery
             `${clientDataFromQuery.client_preferred_name || clientDataFromQuery.client_first_name || ''} ${clientDataFromQuery.client_last_name || ''}`.trim() :
-            'Unknown Client',
-          // formattedDate, formattedStartTime, formattedEndTime are display properties.
-          // It's generally better to compute them in the component or a view-specific hook
-          // when the target timezone for display is known, rather than pre-populating them here
-          // without that context or making this hook timezone-dependent for display.
+            'Unknown Client'
         };
       });
 
       return formattedResult;
-        };
-      });
-
-        // Apply date range filters if provided
-        if (fromUTC) {
-          query = query.gte('start_at', fromUTC);
-        }
-        
-        if (toUTC) {
-          query = query.lte('start_at', toUTC);
-        }
-        
-        query = query.order('start_at', { ascending: true });
-
-        const { data, error } = await query;
-
-        if (error) {
-          console.error('[useAppointments] Error fetching appointments:', error);
-          throw new Error(error.message);
-        }
-        
-        console.log(`[useAppointments] Fetched ${data?.length || 0} appointments`);
-        
-        // Process appointments to format client data correctly
-        const formattedAppointments = (data || []).map((rawAppt: RawSupabaseAppointment): Appointment => {
-          // Extract client data from the joined table
-          const clientDataFromQuery = rawAppt.clients;
-          
-          // Log the first appointment's client data structure for debugging
-          if (data && data.length > 0 && rawAppt.id === data[0].id) {
-            console.log('[useAppointments] First appointment client data structure:', {
-              clientsField: rawAppt.clients,
-              clientsType: rawAppt.clients ? typeof rawAppt.clients : 'null'
-            });
-          }
-          
-          // Create a new object without the clients field
-          const { clients, ...coreAppointmentFields } = rawAppt;
-          
-          // Create properly formatted appointment object
-          return {
-            ...coreAppointmentFields,
-            start_at: rawAppt.start_at, // Ensure these are present and correctly typed as string
-            end_at: rawAppt.end_at,     // Ensure these are present and correctly typed as string
-            // Add formatted client object with required properties
-            client: clientDataFromQuery ? {
-              client_first_name: clientDataFromQuery.client_first_name || '',
-              client_last_name: clientDataFromQuery.client_last_name || '',
-              client_preferred_name: clientDataFromQuery.client_preferred_name || ''
-            } : undefined,
-            // Add computed client name for convenience
-            clientName: clientDataFromQuery ?
-              `${clientDataFromQuery.client_preferred_name || clientDataFromQuery.client_first_name || ''} ${clientDataFromQuery.client_last_name || ''}`.trim() :
-              'Unknown Client'
-          };
-        });
-
-        return formattedAppointments;
-      } catch (error) {
-        console.error('[useAppointments] Error:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load appointments. Please try again later.",
-          variant: "destructive"
-        });
-        return [];
-      }
     },
     enabled: !!formattedClinicianId, // Query will only run if clinicianId is available
     // React Query options:
@@ -240,13 +182,17 @@ export const useAppointments = (
 
   // Helper to add formatted display times to an appointment for a specific timezone
   // This can be called by components before rendering.
-  const addDisplayFormattingToAppointment = (appointment: Appointment, displayTimeZone: string): Appointment => {
+  const addDisplayFormattingToAppointment = (appointment: Appointment, displayTimeZone: string): Appointment & {
+    formattedDate?: string;
+    formattedStartTime?: string;
+    formattedEndTime?: string;
+  } => {
     const safeDisplayZone = TimeZoneService.ensureIANATimeZone(displayTimeZone);
     let formattedDate, formattedStartTime, formattedEndTime;
 
     if (appointment.start_at) {
       try {
-        const startLocal = TimeZoneService.convertUTCToLocal(appointment.start_at, safeDisplayZone);
+        const startLocal = TimeZoneService.fromUTC(appointment.start_at, safeDisplayZone);
         formattedStartTime = TimeZoneService.formatTime(startLocal); // e.g., "h:mm a"
         formattedDate = TimeZoneService.formatDate(startLocal, 'yyyy-MM-dd'); // Or your preferred date format
       } catch (e) {
@@ -257,13 +203,14 @@ export const useAppointments = (
     }
     if (appointment.end_at) {
       try {
-        const endLocal = TimeZoneService.convertUTCToLocal(appointment.end_at, safeDisplayZone);
+        const endLocal = TimeZoneService.fromUTC(appointment.end_at, safeDisplayZone);
         formattedEndTime = TimeZoneService.formatTime(endLocal);
       } catch (e) {
         console.error("Error formatting end_at:", e, appointment.end_at);
         formattedEndTime = "Error";
       }
     }
+    // Return with explicit type that includes the formatted fields
     return {
       ...appointment,
       formattedDate,
@@ -277,7 +224,7 @@ export const useAppointments = (
     try {
       // 'safeUserTimeZone' is the timezone used for interpreting 'fromDate' and 'toDate'
       // and for general display context if not overridden.
-      const startDateTimeLocal = TimeZoneService.convertUTCToLocal(appointment.start_at, safeUserTimeZone);
+      const startDateTimeLocal = TimeZoneService.fromUTC(appointment.start_at, safeUserTimeZone);
       const todayLocal = TimeZoneService.today(safeUserTimeZone);
       return TimeZoneService.isSameDay(startDateTimeLocal, todayLocal);
     } catch (e) {
@@ -339,7 +286,9 @@ export const useAppointments = (
   // Processed appointments with display formatting for the hook's primary timezone
   // Components can re-format if they need a different timezone
   const appointmentsWithDisplayFormatting = useMemo(() => {
-    return fetchedAppointments.map(appt => addDisplayFormattingToAppointment(appt, safeUserTimeZone));
+    return fetchedAppointments.map(appt =>
+      addDisplayFormattingToAppointment(appt, safeUserTimeZone)
+    );
   }, [fetchedAppointments, safeUserTimeZone]);
 
   const todayAppointments = useMemo(() => {
@@ -351,7 +300,7 @@ export const useAppointments = (
     return appointmentsWithDisplayFormatting.filter(app => {
       if (!app.start_at) return false;
       try {
-        const startTimeLocal = TimeZoneService.convertUTCToLocal(app.start_at, safeUserTimeZone);
+        const startTimeLocal = TimeZoneService.fromUTC(app.start_at, safeUserTimeZone);
         return startTimeLocal > now && !isAppointmentToday(app); // Make sure isAppointmentToday is also considering safeUserTimeZone
       } catch { return false; }
     });
@@ -362,7 +311,7 @@ export const useAppointments = (
     return appointmentsWithDisplayFormatting.filter(app => {
       if (!app.end_at) return false;
       try {
-        const endTimeLocal = TimeZoneService.convertUTCToLocal(app.end_at, safeUserTimeZone);
+        const endTimeLocal = TimeZoneService.fromUTC(app.end_at, safeUserTimeZone);
         return endTimeLocal < now && app.status === 'scheduled'; // Example: Needs documentation
       } catch { return false; }
     });
