@@ -2,22 +2,10 @@
 import React from 'react';
 import DayCell from './DayCell';
 import { Appointment } from '@/types/appointment';
+import { AvailabilityBlock } from '@/types/availability';
+import { DayAvailabilityData } from '@/hooks/useMonthViewData';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { DateTime } from 'luxon';
-
-interface AvailabilityBlock {
-  id: string;
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
-  clinician_id?: string;
-  is_active?: boolean;
-}
-
-interface DayAvailabilityData {
-  hasAvailability: boolean;
-  displayHours: string;
-}
 
 interface CalendarGridProps {
   days: DateTime[];

@@ -1,24 +1,11 @@
 import React, { useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import { useMonthViewData } from '@/hooks/useMonthViewData';
+import { useMonthViewData, DayAvailabilityData } from '@/hooks/useMonthViewData';
 import CalendarGrid from './CalendarGrid';
 import { Appointment } from '@/types/appointment';
+import { AvailabilityBlock } from '@/types/availability';
 import { DateTime } from 'luxon';
-
-interface AvailabilityBlock {
-  id: string;
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
-  clinician_id?: string;
-  is_active?: boolean;
-}
-
-interface DayAvailabilityData {
-  hasAvailability: boolean;
-  displayHours: string;
-}
 
 interface MonthViewProps {
   currentDate: Date;
@@ -110,9 +97,9 @@ const MonthView: React.FC<MonthViewProps> = ({
       <CalendarGrid
         days={days}
         monthStart={monthStart}
-        dayAvailabilityMap={dayAvailabilityMap as Map<string, DayAvailabilityData>}
+        dayAvailabilityMap={dayAvailabilityMap}
         dayAppointmentsMap={dayAppointmentsMap}
-        availabilityByDay={availabilityByDay as Map<string, AvailabilityBlock[]>}
+        availabilityByDay={availabilityByDay}
         getClientName={getClientName}
         onAppointmentClick={onAppointmentClick}
         onAvailabilityClick={onAvailabilityClick}

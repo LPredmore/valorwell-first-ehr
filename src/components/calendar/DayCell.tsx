@@ -2,27 +2,15 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Appointment } from '@/types/appointment';
+import { AvailabilityBlock } from '@/types/availability';
+import { DayAvailabilityData } from '@/hooks/useMonthViewData';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { DateTime } from 'luxon';
-
-interface AvailabilityBlock {
-  id: string;
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
-  clinician_id?: string;
-  is_active?: boolean;
-}
-
-interface DayAvailabilityInfo {
-  hasAvailability: boolean;
-  displayHours: string;
-}
 
 interface DayCellProps {
   day: DateTime;
   monthStart: DateTime;
-  availabilityInfo: DayAvailabilityInfo;
+  availabilityInfo: DayAvailabilityData;
   appointments: Appointment[];
   firstAvailability?: AvailabilityBlock;
   getClientName: (clientId: string) => string;

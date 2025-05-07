@@ -6,7 +6,8 @@ import { DateTime } from 'luxon';
 import { Appointment } from '@/types/appointment';
 import { AvailabilityBlock } from '@/types/availability';
 
-interface DayAvailabilityData {
+// Export this interface so it can be imported by other components
+export interface DayAvailabilityData {
   hasAvailability: boolean;
   displayHours: string;
 }
@@ -82,7 +83,7 @@ export const useMonthViewData = (
   }, [clinicianId, refreshTrigger, startDate, endDate]);
 
   // Build day availability map with actual availability hours
-  const dayAvailabilityMap = useMemo(() => {
+  const dayAvailabilityMap = useMemo<Map<string, DayAvailabilityData>>(() => {
     const result = new Map<string, DayAvailabilityData>();
     
     days.forEach(day => {
@@ -147,7 +148,7 @@ export const useMonthViewData = (
   }, [days, availabilityData, userTimeZone]);
 
   // Map availability blocks to days for lookup - returns multiple blocks per day
-  const availabilityByDay = useMemo(() => {
+  const availabilityByDay = useMemo<Map<string, AvailabilityBlock[]>>(() => {
     const result = new Map<string, AvailabilityBlock[]>();
     
     // Initialize the map with empty arrays for all days
@@ -185,7 +186,7 @@ export const useMonthViewData = (
   }, [days, availabilityData, userTimeZone]);
 
   // Map appointments to days for easy lookup with improved debugging
-  const dayAppointmentsMap = useMemo(() => {
+  const dayAppointmentsMap = useMemo<Map<string, Appointment[]>>(() => {
     const result = new Map<string, Appointment[]>();
     console.log(`[useMonthViewData] Processing ${appointments.length} appointments for month view`);
     
