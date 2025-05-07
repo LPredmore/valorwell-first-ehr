@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -179,30 +180,34 @@ export const useWeekViewData = (
         const startDateTime = TimeZoneService.fromUTC(appointment.start_at, userTimeZone);
         const endDateTime = TimeZoneService.fromUTC(appointment.end_at, userTimeZone);
         
+        // Format the appointment date to yyyy-MM-dd for consistent comparison
+        const appointmentDateStr = TimeZoneService.formatDate(startDateTime, 'yyyy-MM-dd');
+        
         // Log the appointment time for debugging
         console.log(`[useWeekViewData] Appointment ${appointment.id}:`, {
           startUTC: appointment.start_at,
           endUTC: appointment.end_at,
           startLocal: startDateTime.toISO(),
-          endLocal: endDateTime.toISO(),
-          startDate: startDateTime.toFormat('yyyy-MM-dd'),
-          dayMatches: daysAsDateTime.map(day => ({
-            day: day.toFormat('yyyy-MM-dd'),
-            isSameDay: TimeZoneService.isSameDay(startDateTime, day)
-          }))
+          formattedDate: appointmentDateStr,
+          daysInView: daysAsDateTime.map(day => TimeZoneService.formatDate(day, 'yyyy-MM-dd'))
         });
         
-        // Find which day of the week this appointment falls on
-        const matchingDay = daysAsDateTime.find(day => 
-          TimeZoneService.isSameDay(startDateTime, day)
-        );
+        // Find which day of the week this appointment falls on by comparing formatted date strings
+        let matchingDay: DateTime | undefined;
         
-        if (!matchingDay) {
-          console.log(`[useWeekViewData] No matching day found for appointment ${appointment.id}`);
-          return null;
+        for (const day of daysAsDateTime) {
+          const formattedDay = TimeZoneService.formatDate(day, 'yyyy-MM-dd');
+          if (formattedDay === appointmentDateStr) {
+            matchingDay = day;
+            console.log(`[useWeekViewData] ✓ Match found! Appointment ${appointment.id} on ${formattedDay}`);
+            break;
+          }
         }
         
-        console.log(`[useWeekViewData] Appointment ${appointment.id} matched to ${matchingDay.toFormat('yyyy-MM-dd')}`);
+        if (!matchingDay) {
+          console.log(`[useWeekViewData] ✗ No matching day found for appointment ${appointment.id} with date ${appointmentDateStr}`);
+          return null;
+        }
         
         return {
           id: appointment.id,
@@ -241,16 +246,20 @@ export const useWeekViewData = (
     });
   };
 
-  // FIX: Update this function to properly check day match first
+  // Fixed function to properly check day match first using consistent date formatting
   const getAppointmentForTimeSlot = (day: Date, timeSlot: Date) => {
-    // First convert the input day and timeSlot to DateTime objects for reliable comparison
+    // First convert the input day to a formatted date string for reliable comparison
     const slotDay = TimeZoneService.fromJSDate(day, userTimeZone);
+    const slotDayFormatted = TimeZoneService.formatDate(slotDay, 'yyyy-MM-dd');
     const slotTime = TimeZoneService.fromJSDate(timeSlot, userTimeZone);
     
-    // Find appointment block that matches both the day AND time range
+    // Find appointment block by first matching the day, then checking time range
     return appointmentBlocks.find(block => {
-      // CRITICAL FIX: First check if the days match - this prevents appointments showing on all days
-      const isDaySame = TimeZoneService.isSameDay(slotDay, block.day);
+      // Format the block day consistently for comparison
+      const blockDayFormatted = TimeZoneService.formatDate(block.day, 'yyyy-MM-dd');
+      
+      // First check if the formatted days match
+      const isDaySame = slotDayFormatted === blockDayFormatted;
       
       if (!isDaySame) {
         return false; // Skip time check entirely if day doesn't match

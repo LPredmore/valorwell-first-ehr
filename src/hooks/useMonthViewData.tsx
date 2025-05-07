@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -242,7 +241,7 @@ export const useMonthViewData = (
           localStartDateTime: localStartDateTime.toISO(),
           formattedDate: appointmentLocalDateStr,
           timeZone: userTimeZone,
-          clientName: appointment.clientName, // Access the standardized client name
+          clientName: appointment.clientName, 
           hasMatchingDay: result.has(appointmentLocalDateStr)
         });
         
@@ -260,6 +259,7 @@ export const useMonthViewData = (
             .slice(0, 3);
             
           console.log(`[useMonthViewData] Closest days in calendar: ${closestDays.join(', ')}`);
+          console.log(`[useMonthViewData] Available days in calendar:`, Array.from(result.keys()));
         }
       } catch (error) {
         console.error(`[useMonthViewData] Error processing appointment ${appointment.id}:`, error);

@@ -65,6 +65,14 @@ const MonthView: React.FC<MonthViewProps> = ({
     });
     
     if (appointments && appointments.length > 0) {
+      console.log('[MonthView] All appointments:', appointments.map(app => ({
+        id: app.id,
+        start_at: app.start_at,
+        dateFormatted: app.start_at ? 
+          TimeZoneService.fromUTC(app.start_at, userTimeZone).toFormat('yyyy-MM-dd') : 'Invalid',
+        clientName: app.clientName
+      })));
+      
       // Log the first few appointments for debugging
       const samplesToLog = Math.min(appointments.length, 3);
       for (let i = 0; i < samplesToLog; i++) {
@@ -112,18 +120,6 @@ const MonthView: React.FC<MonthViewProps> = ({
           TimeZoneService.fromUTC(a.start_at, userTimeZone).toFormat('yyyy-MM-dd') : 'N/A'
       }));
       console.log('[MonthView] Sample appointment dates:', appDates);
-      
-      // Check for timezone-related edge cases
-      console.log('[MonthView] Checking for appointments spanning midnight in UTC vs local time');
-      const midnightEdgeCases = appointments.filter(a => {
-        if (!a.start_at || !a.end_at) return false;
-        
-        const startDateTime = TimeZoneService.fromUTC(a.start_at, userTimeZone);
-        const endDateTime = TimeZoneService.fromUTC(a.end_at, userTimeZone);
-        
-        return !startDateTime.hasSame(endDateTime, 'day');
-      });
-      console.log(`[MonthView] Found ${midnightEdgeCases.length} appointments spanning midnight`);
     }
   }, [dayAppointmentsMap, appointments, userTimeZone]);
 
