@@ -1,7 +1,6 @@
 
-// This file is being replaced by the modular version in the week-view folder
-// It's kept here temporarily as a reference and will be deleted when the new version
-// is confirmed to be working correctly.
-
+// Import the modular week view implementation
 import WeekView from './week-view';
+
+// Export it directly
 export default WeekView;

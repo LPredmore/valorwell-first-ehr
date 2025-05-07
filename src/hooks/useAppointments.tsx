@@ -7,7 +7,7 @@ import { TimeZoneService } from '@/utils/timeZoneService';
 import { DateTime } from 'luxon';
 import { Appointment } from '@/types/appointment';
 
-// Interface for the raw Supabase response (as defined before)
+// Interface for the raw Supabase response
 interface RawSupabaseAppointment {
   id: string;
   client_id: string;
@@ -25,13 +25,6 @@ interface RawSupabaseAppointment {
     client_last_name: string | null;
     client_preferred_name: string | null;
   } | null;
-}
-
-// Interface for the structured client data within our Appointment type
-interface AppointmentClientData {
-  client_first_name: string;
-  client_last_name: string;
-  client_preferred_name: string;
 }
 
 // Type guard to check if an object is a valid client data object from Supabase
@@ -110,8 +103,8 @@ export const useAppointments = (
       
       console.log(`[useAppointments] Fetched ${rawDataAny.length || 0} raw appointments.`);
       
-      // Safely process the data
-      return rawDataAny.map((rawAppt: any): Appointment => {
+      // Safely process the data with standardized client name formatting
+      return rawDataAny.map((rawAppt: RawSupabaseAppointment): Appointment => {
         // Process client data, ensure we handle nested objects correctly
         const rawClientData = rawAppt.clients;
         let clientData: Appointment['client'] | undefined;
@@ -128,7 +121,20 @@ export const useAppointments = (
               client_preferred_name: clientInfo.client_preferred_name || '',
             };
             
-            clientName = `${clientData.client_preferred_name || clientData.client_first_name || ''} ${clientData.client_last_name || ''}`.trim() || 'Unknown Client';
+            // STANDARDIZED CLIENT NAME FORMATTING:
+            // First check if both preferred_name AND last_name exist (AND condition)
+            // Only use preferred_name + last_name when both exist, otherwise fall back
+            if (clientData.client_preferred_name && clientData.client_last_name) {
+              clientName = `${clientData.client_preferred_name} ${clientData.client_last_name}`;
+            } else if (clientData.client_first_name && clientData.client_last_name) {
+              clientName = `${clientData.client_first_name} ${clientData.client_last_name}`;
+            } else {
+              // Handle edge cases
+              clientName = [
+                clientData.client_preferred_name || clientData.client_first_name || '',
+                clientData.client_last_name || ''
+              ].filter(Boolean).join(' ').trim() || 'Unknown Client';
+            }
           }
         }
         

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
 import { TimeBlock, AppointmentBlock } from './types';
@@ -93,7 +94,8 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
           className={`${baseAppointmentClass} ${positionClass} text-xs font-medium truncate hover:bg-blue-200`}
           onClick={handleAppointmentClick}
         >
-          {appointment.clientName}
+          {/* Use the standardized clientName that follows our formatting rule */}
+          {appointment.clientName || 'Unknown Client'}
         </div>
       );
     } 

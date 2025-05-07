@@ -25,7 +25,7 @@ const MonthView: React.FC<MonthViewProps> = ({
   clinicianId, 
   refreshTrigger = 0,
   appointments = [],
-  getClientName = () => 'Client',
+  getClientName = () => 'Unknown Client',
   onAppointmentClick,
   onAvailabilityClick,
   userTimeZone = 'America/Chicago'
@@ -48,6 +48,11 @@ const MonthView: React.FC<MonthViewProps> = ({
       formattedEndTime: endLocalDateTime ? 
         TimeZoneService.formatTime(endLocalDateTime) : 'Invalid time',
       clientName: app.clientName,
+      clientInfo: app.client ? {
+        preferredName: app.client.client_preferred_name,
+        firstName: app.client.client_first_name,
+        lastName: app.client.client_last_name
+      } : null,
       timeZone: userTimeZone
     };
   };

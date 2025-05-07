@@ -20,7 +20,7 @@ interface CalendarProps {
   error: any;
 }
 
-const Calendar = ({ 
+const CalendarView = ({ 
   view, 
   showAvailability, 
   clinicianId, 
@@ -41,45 +41,54 @@ const Calendar = ({
     console.error('No clinician ID provided to Calendar component');
   }
   
-  // Enhanced logging for appointments
+  // Enhanced logging for appointments with comprehensive client name information
   useEffect(() => {
-    console.log(`[Calendar] Rendering with ${appointments.length} appointments for clinician ${clinicianId}`);
-    console.log(`[Calendar] Calendar view: ${view}, timezone: ${validTimeZone}`);
+    console.log(`[CalendarView] Rendering with ${appointments.length} appointments for clinician ${clinicianId}`);
+    console.log(`[CalendarView] Calendar view: ${view}, timezone: ${validTimeZone}`);
     
     if (appointments.length > 0) {
       // Sample appointments for inspection
       const sampleSize = Math.min(3, appointments.length);
-      console.log(`[Calendar] Sample of ${sampleSize} appointments:`);
+      console.log(`[CalendarView] Sample of ${sampleSize} appointments:`);
       appointments.slice(0, sampleSize).forEach((app, idx) => {
-        console.log(`[Calendar] Sample appointment ${idx+1}:`, {
+        console.log(`[CalendarView] Sample appointment ${idx+1}:`, {
           id: app.id,
           startAt: app.start_at,
           endAt: app.end_at,
           clientId: app.client_id,
-          clinicianId: app.clinician_id
+          clinicianId: app.clinician_id,
+          clientName: app.clientName,
+          clientInfo: app.client ? {
+            preferredName: app.client.client_preferred_name,
+            firstName: app.client.client_first_name,
+            lastName: app.client.client_last_name
+          } : 'No client data'
         });
       });
     }
     
     if (error) {
-      console.error('[Calendar] Error detected:', error);
+      console.error('[CalendarView] Error detected:', error);
     }
   }, [appointments, clinicianId, error, view, validTimeZone]);
 
-  // Function to get client name from an appointment
+  // Function to get client name from an appointment - standardized to match useAppointments
   const getClientName = (clientId: string): string => {
     const appointment = appointments.find(app => app.client_id === clientId);
-    if (!appointment || !appointment.client) return 'Client';
     
-    return appointment.client.client_preferred_name && appointment.client.client_last_name
-      ? `${appointment.client.client_preferred_name} ${appointment.client.client_last_name}`
-      : 'Client';
+    // Just return the clientName property which is already formatted correctly in useAppointments
+    return appointment?.clientName || 'Unknown Client';
   };
 
   // Handler for appointment clicked in calendar
   const handleAppointmentClick = (appointment: Appointment) => {
     setSelectedAppointmentId(appointment.id);
-    console.log(`[Calendar] Appointment clicked: ${appointment.id}`);
+    console.log(`[CalendarView] Appointment clicked:`, {
+      id: appointment.id,
+      clientName: appointment.clientName,
+      clientId: appointment.client_id,
+      startAt: appointment.start_at
+    });
   };
 
   // Handler for availability block clicked in calendar
@@ -88,12 +97,12 @@ const Calendar = ({
     const dateTime = date instanceof Date ? 
       TimeZoneService.fromJSDate(date, validTimeZone) : date;
       
-    console.log(`[Calendar] Availability clicked for ${dateTime.toFormat('yyyy-MM-dd')} - Block:`, availabilityBlock);
+    console.log(`[CalendarView] Availability clicked for ${dateTime.toFormat('yyyy-MM-dd')} - Block:`, availabilityBlock);
   };
 
   // Handler for when availability is updated
   const handleAvailabilityUpdated = () => {
-    console.log('[Calendar] Availability updated, refreshing calendar...');
+    console.log('[CalendarView] Availability updated, refreshing calendar...');
   };
 
   return (
@@ -137,4 +146,4 @@ const Calendar = ({
   );
 };
 
-export default Calendar;
+export default CalendarView;

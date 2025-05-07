@@ -1,3 +1,4 @@
+
 /**
  * Unified Appointment interface for all components.
  * UTC timestamps (start_at, end_at) are the sole source of truth for appointment timing.
@@ -13,7 +14,7 @@ export interface Appointment {
   status: string;
   video_room_url?: string | null;
   notes?: string | null;
-  appointment_recurring?: string | null; // Consider a more structured type if you have complex recurrence
+  appointment_recurring?: string | null;
   recurring_group_id?: string | null;
   
   // Client information, structured as an object.
@@ -25,10 +26,7 @@ export interface Appointment {
   };
   
   // Convenience field, populated by useAppointments.tsx
+  // CONSISTENT FORMAT: Always uses "client_preferred_name client_last_name" when both exist
+  // Falls back to "client_first_name client_last_name"
   clientName?: string;
-
-  // NO legacy fields like 'date', 'start_time', 'end_time'.
-  // NO pre-formatted display fields like 'formattedDate', 'formattedStartTime', 'formattedEndTime'.
-  // Display formatting should be handled by components or view-specific utilities
-  // using TimeZoneService and the user's current timezone, based on start_at/end_at.
 }

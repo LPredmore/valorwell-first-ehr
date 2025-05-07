@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, AlertCircle } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
 import Layout from '@/components/layout/Layout';
 import VideoChat from '@/components/video/VideoChat';
-import { getUserTimeZone, formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { AppointmentsList } from '@/components/dashboard/AppointmentsList';
 import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -16,9 +17,9 @@ import { ClientDetails } from '@/types/client';
 const ClinicianDashboard = () => {
   const { userRole, userId } = useUser();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>(getUserTimeZone());
+  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>(TimeZoneService.DEFAULT_TIMEZONE);
   const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
-  const timeZoneDisplay = formatTimeZoneDisplay(clinicianTimeZone);
+  const timeZoneDisplay = TimeZoneService.getTimeZoneDisplayName(clinicianTimeZone);
   const [showSessionDidNotOccurDialog, setShowSessionDidNotOccurDialog] = useState(false);
   const [selectedAppointmentForNoShow, setSelectedAppointmentForNoShow] = useState<Appointment | null>(null);
 
@@ -45,7 +46,7 @@ const ClinicianDashboard = () => {
         } catch (error) {
           console.error("Error fetching clinician timezone:", error);
           // Fallback to system timezone
-          setClinicianTimeZone(getUserTimeZone());
+          setClinicianTimeZone(TimeZoneService.DEFAULT_TIMEZONE);
         } finally {
           setIsLoadingTimeZone(false);
         }

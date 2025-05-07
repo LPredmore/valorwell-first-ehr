@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import {
   format,
@@ -32,7 +33,7 @@ const WeekView: React.FC<WeekViewProps> = ({
   clinicianId, 
   refreshTrigger = 0,
   appointments = [],
-  getClientName = () => 'Client',
+  getClientName = () => 'Unknown Client',
   onAppointmentClick,
   onAvailabilityClick,
   userTimeZone = 'America/Chicago'
@@ -64,6 +65,27 @@ const WeekView: React.FC<WeekViewProps> = ({
     getBlockForTimeSlot,
     getAppointmentForTimeSlot
   } = useWeekViewData(days, clinicianId, refreshTrigger, appointments, getClientName, userTimeZone);
+
+  // Log some useful debug information
+  React.useEffect(() => {
+    console.log(`[WeekView] Rendered with ${appointments.length} appointments`);
+    console.log(`[WeekView] Generated ${appointmentBlocks.length} appointment blocks`);
+    
+    // Log sample client names for verification
+    if (appointments.length > 0) {
+      console.log('[WeekView] Sample client names from appointments:');
+      appointments.slice(0, Math.min(3, appointments.length)).forEach((app, idx) => {
+        console.log(`  ${idx+1}. ${app.clientName || getClientName(app.client_id)} (ID: ${app.client_id})`);
+      });
+    }
+
+    if (appointmentBlocks.length > 0) {
+      console.log('[WeekView] Sample client names from appointment blocks:');
+      appointmentBlocks.slice(0, Math.min(3, appointmentBlocks.length)).forEach((block, idx) => {
+        console.log(`  ${idx+1}. ${block.clientName} (ID: ${block.clientId})`);
+      });
+    }
+  }, [appointments, appointmentBlocks, getClientName]);
 
   // Handle click on availability block
   const handleAvailabilityBlockClick = (day: Date, block: any) => {
