@@ -1,14 +1,13 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client'; // Assuming getOrCreateVideoRoom is still needed
+import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client'; // Assuming getOrCreateVideoRoom is needed
 import { useToast } from '@/hooks/use-toast';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { DateTime } from 'luxon';
-import { Appointment } from '@/types/appointment'; // Ensure this path is correct
+import { Appointment } from '@/types/appointment'; // Ensure this path is correct and Appointment type is clean
 
-// Define the structure of the raw appointment data from Supabase
-// Using a more explicit type for the clients field to prevent TypeScript from inferring it as an array
+// Define the structure of the raw data Supabase returns for an appointment.
+// Use a clean, direct definition for the nested 'clients' object.
 interface RawSupabaseAppointment {
   id: string;
   client_id: string;
@@ -21,13 +20,20 @@ interface RawSupabaseAppointment {
   recurring_group_id: string | null;
   video_room_url: string | null;
   notes: string | null;
-  // Explicitly type clients as a Record/object to prevent TypeScript from inferring it as an array
-  clients: Record<string, any> & {
+  clients: { // Directly define the expected object structure or null
     client_first_name: string | null;
     client_last_name: string | null;
     client_preferred_name: string | null;
-  } | null;
+  } | null; // Supabase join returns the object directly or null if no match
 }
+
+// Define a type for the processed appointment that includes display fields
+// This keeps the base Appointment type clean.
+type DisplayAppointment = Appointment & {
+  formattedDate?: string;
+  formattedStartTime?: string;
+  formattedEndTime?: string;
+};
 
 export const useAppointments = (
   clinicianId: string | null,
@@ -40,47 +46,37 @@ export const useAppointments = (
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
   const [showSessionTemplate, setShowSessionTemplate] = useState(false);
-  // clientData and isLoadingClientData were for a separate client fetch;
-  // if client data is now reliably part of the Appointment type from the main query,
-  // these might be simplified or removed depending on detailed interaction needs for 'startSession'.
   const [clientDataForSession, setClientDataForSession] = useState<Appointment['client'] | null>(null);
   const [isLoadingClientDataForSession, setIsLoadingClientDataForSession] = useState(false);
 
   const formattedClinicianId = clinicianId ? clinicianId.trim() : null;
   const safeUserTimeZone = TimeZoneService.ensureIANATimeZone(timeZone || TimeZoneService.DEFAULT_TIMEZONE);
 
-  // Convert fromDate and toDate (which are local JS Dates in component's context) to UTC ISO strings
-  // for the database query, considering the user's current timezone.
-  const fromUTCISO = useMemo(() => {
-    if (!fromDate) return undefined;
+  // Memoize UTC date range calculation
+  const { fromUTCISO, toUTCISO } = useMemo(() => {
+    let fromISO: string | undefined;
+    let toISO: string | undefined;
     try {
-      // Assume fromDate is the start of the day in user's local timezone
-      return DateTime.fromJSDate(fromDate).setZone(safeUserTimeZone).startOf('day').toUTC().toISO();
+      if (fromDate) {
+        fromISO = DateTime.fromJSDate(fromDate).setZone(safeUserTimeZone).startOf('day').toUTC().toISO() ?? undefined;
+      }
+      if (toDate) {
+        toISO = DateTime.fromJSDate(toDate).setZone(safeUserTimeZone).endOf('day').toUTC().toISO() ?? undefined;
+      }
     } catch (e) {
-      console.error("Error converting fromDate to UTC:", e);
-      return undefined;
+      console.error("Error converting date range to UTC:", e);
     }
-  }, [fromDate, safeUserTimeZone]);
-
-  const toUTCISO = useMemo(() => {
-    if (!toDate) return undefined;
-    try {
-      // Assume toDate is the end of the day in user's local timezone
-      return DateTime.fromJSDate(toDate).setZone(safeUserTimeZone).endOf('day').toUTC().toISO();
-    } catch (e) {
-      console.error("Error converting toDate to UTC:", e);
-      return undefined;
-    }
-  }, [toDate, safeUserTimeZone]);
+    return { fromUTCISO: fromISO, toUTCISO: toISO };
+  }, [fromDate, toDate, safeUserTimeZone]);
 
   const {
-    data: fetchedAppointments = [], // Default to empty array
+    data: fetchedAppointments = [], // Default to empty array, type is inferred from queryFn or specified below
     isLoading,
     error,
     refetch,
-  } = useQuery<Appointment[], Error>({ // Explicitly type the data as Appointment[]
+  } = useQuery<Appointment[], Error>({ // Explicitly type the query data as our clean Appointment[]
     queryKey: ['appointments', formattedClinicianId, fromUTCISO, toUTCISO],
-    queryFn: async (): Promise<Appointment[]> => {
+    queryFn: async (): Promise<Appointment[]> => { // queryFn MUST return Promise<Appointment[]>
       if (!formattedClinicianId) {
         console.log('[useAppointments] Skipping fetch: no clinicianId provided.');
         return [];
@@ -89,39 +85,21 @@ export const useAppointments = (
       console.log('[useAppointments] Fetching for clinician:', formattedClinicianId, { from: fromUTCISO, to: toUTCISO });
 
       let query = supabase
-        .from('appointments') // Assuming your table is named 'appointments' and has UTC start_at/end_at
+        .from('appointments') // Use correct table name
         .select(`
-          id,
-          client_id,
-          clinician_id,
-          start_at,
-          end_at,
-          type,
-          status,
-          appointment_recurring,
-          recurring_group_id,
-          video_room_url,
-          notes,
-          clients (
-            client_first_name,
-            client_last_name,
-            client_preferred_name
-          )
+          id, client_id, clinician_id, start_at, end_at, type, status,
+          appointment_recurring, recurring_group_id, video_room_url, notes,
+          clients ( client_first_name, client_last_name, client_preferred_name )
         `)
         .eq('clinician_id', formattedClinicianId)
-        .eq('status', 'scheduled'); // Adjust status filter as needed
+        .eq('status', 'scheduled');
 
-      if (fromUTCISO) {
-        query = query.gte('start_at', fromUTCISO);
-      }
-      if (toUTCISO) {
-        // For 'to' date, we usually want to include appointments that start *before or on* this day's end.
-        // If toUTCISO represents the end of the target day, lte('start_at', toUTCISO) is appropriate.
-        query = query.lte('start_at', toUTCISO);
-      }
+      if (fromUTCISO) query = query.gte('start_at', fromUTCISO);
+      if (toUTCISO) query = query.lte('start_at', toUTCISO); // Ensure logic is correct for end date
 
       query = query.order('start_at', { ascending: true });
 
+      // Use .returns<T>() to strongly type the expected response from Supabase
       const { data: rawData, error: queryError } = await query.returns<RawSupabaseAppointment[]>();
 
       if (queryError) {
@@ -131,101 +109,77 @@ export const useAppointments = (
 
       console.log(`[useAppointments] Fetched ${rawData?.length || 0} raw appointments.`);
       if (rawData && rawData.length > 0) {
-        console.log('[useAppointments] Sample raw appointment from Supabase:', JSON.stringify(rawData[0], null, 2));
-        console.log('[useAppointments] Sample raw appointment.clients:', JSON.stringify(rawData[0].clients, null, 2));
+        // Debug log to confirm structure ONLY if needed
+        // console.log('[useAppointments] Sample raw appointment.clients:', JSON.stringify(rawData[0].clients, null, 2));
       }
 
       // Transform raw Supabase data to our frontend Appointment type
       const formattedResult = (rawData || []).map((rawAppt: RawSupabaseAppointment): Appointment => {
-        // Explicitly cast clients to the correct type to prevent TypeScript inference issues
-        // This ensures TypeScript knows it's an object with specific properties, not an array
-        const clientDataFromQuery = rawAppt.clients as (Record<string, any> & {
-          client_first_name: string | null;
-          client_last_name: string | null;
-          client_preferred_name: string | null;
-        }) | null;
+        // 'rawAppt.clients' should be correctly typed here because rawAppt is RawSupabaseAppointment
+        const clientDataFromQuery = rawAppt.clients; 
         
-        // Log the first appointment's client data structure for debugging
-        if (rawData && rawData.length > 0 && rawAppt.id === rawData[0].id) {
-          console.log('[useAppointments] First appointment client data structure:', {
-            clientsField: rawAppt.clients,
-            clientsType: rawAppt.clients ? typeof rawAppt.clients : 'null'
-          });
-        }
-        
-        // Destructure to separate raw 'clients' object from other fields
-        // This prevents the raw 'clients' (plural) from Supabase being spread into formattedAppointment
+        // Destructure safely
         const { clients, ...coreAppointmentFields } = rawAppt;
 
+        // Explicitly return an object matching the 'Appointment' interface
         return {
-          ...coreAppointmentFields, // Contains id, clinician_id, client_id, start_at, end_at, type, status etc.
-          // Add formatted client object with required properties
-          client: clientDataFromQuery ? {
-            client_first_name: clientDataFromQuery.client_first_name || '',
+          ...coreAppointmentFields,
+          start_at: rawAppt.start_at, // Pass UTC string
+          end_at: rawAppt.end_at,     // Pass UTC string
+          client: clientDataFromQuery ? { // Check if object exists
+            client_first_name: clientDataFromQuery.client_first_name || '', // Provide default empty string for nulls
             client_last_name: clientDataFromQuery.client_last_name || '',
-            client_preferred_name: clientDataFromQuery.client_preferred_name || ''
-          } : undefined,
-          // Add computed client name for convenience
+            client_preferred_name: clientDataFromQuery.client_preferred_name || '',
+          } : undefined, // Client is optional
           clientName: clientDataFromQuery ?
             `${clientDataFromQuery.client_preferred_name || clientDataFromQuery.client_first_name || ''} ${clientDataFromQuery.client_last_name || ''}`.trim() :
-            'Unknown Client'
+            'Unknown Client',
         };
       });
 
-      return formattedResult;
+      return formattedResult; // This MUST be Appointment[]
     },
-    enabled: !!formattedClinicianId, // Query will only run if clinicianId is available
-    // React Query options:
-    // staleTime: 5 * 60 * 1000, // 5 minutes
-    // cacheTime: 10 * 60 * 1000, // 10 minutes
+    enabled: !!formattedClinicianId,
   });
 
-  // Helper to add formatted display times to an appointment for a specific timezone
-  // This can be called by components before rendering.
-  const addDisplayFormattingToAppointment = (appointment: Appointment, displayTimeZone: string): Appointment & {
-    formattedDate?: string;
-    formattedStartTime?: string;
-    formattedEndTime?: string;
-  } => {
+  // Helper function to add display formatting properties
+  const addDisplayFormattingToAppointment = (appointment: Appointment, displayTimeZone: string): DisplayAppointment => {
     const safeDisplayZone = TimeZoneService.ensureIANATimeZone(displayTimeZone);
     let formattedDate, formattedStartTime, formattedEndTime;
 
     if (appointment.start_at) {
       try {
-        const startLocal = TimeZoneService.fromUTC(appointment.start_at, safeDisplayZone);
-        formattedStartTime = TimeZoneService.formatTime(startLocal); // e.g., "h:mm a"
-        formattedDate = TimeZoneService.formatDate(startLocal, 'yyyy-MM-dd'); // Or your preferred date format
+        const startLocal = TimeZoneService.convertUTCToLocal(appointment.start_at, safeDisplayZone);
+        formattedStartTime = TimeZoneService.formatTime(startLocal);
+        formattedDate = TimeZoneService.formatDate(startLocal, 'yyyy-MM-dd');
       } catch (e) {
         console.error("Error formatting start_at:", e, appointment.start_at);
-        formattedStartTime = "Error";
-        formattedDate = "Error";
       }
     }
     if (appointment.end_at) {
       try {
-        const endLocal = TimeZoneService.fromUTC(appointment.end_at, safeDisplayZone);
+        const endLocal = TimeZoneService.convertUTCToLocal(appointment.end_at, safeDisplayZone);
         formattedEndTime = TimeZoneService.formatTime(endLocal);
       } catch (e) {
         console.error("Error formatting end_at:", e, appointment.end_at);
-        formattedEndTime = "Error";
       }
     }
-    // Return with explicit type that includes the formatted fields
+    // Return type includes optional formatted fields
     return {
       ...appointment,
-      formattedDate,
-      formattedStartTime,
-      formattedEndTime,
+      formattedDate: formattedDate || "Error", // Provide fallback
+      formattedStartTime: formattedStartTime || "Error",
+      formattedEndTime: formattedEndTime || "Error",
     };
   };
 
+  // Function to check if appointment is today based on UTC timestamp
   const isAppointmentToday = (appointment: Appointment): boolean => {
     if (!appointment?.start_at) return false;
     try {
-      // 'safeUserTimeZone' is the timezone used for interpreting 'fromDate' and 'toDate'
-      // and for general display context if not overridden.
-      const startDateTimeLocal = TimeZoneService.fromUTC(appointment.start_at, safeUserTimeZone);
+      const startDateTimeLocal = TimeZoneService.convertUTCToLocal(appointment.start_at, safeUserTimeZone);
       const todayLocal = TimeZoneService.today(safeUserTimeZone);
+      // Ensure isSameDay method exists and works correctly in TimeZoneService
       return TimeZoneService.isSameDay(startDateTimeLocal, todayLocal);
     } catch (e) {
       console.error("Error in isAppointmentToday:", e);
@@ -233,24 +187,56 @@ export const useAppointments = (
     }
   };
 
+  // Memoized list of appointments with display formatting added for the hook's default timezone
+  const appointmentsWithDisplayFormatting = useMemo<DisplayAppointment[]>(() => {
+    // Use the clean fetchedAppointments (which are Appointment[])
+    return fetchedAppointments.map(appt => addDisplayFormattingToAppointment(appt, safeUserTimeZone));
+  }, [fetchedAppointments, safeUserTimeZone]);
+
+  // Memoized lists for today, upcoming, past
+  const todayAppointments = useMemo<DisplayAppointment[]>(() => {
+    return appointmentsWithDisplayFormatting.filter(isAppointmentToday);
+  }, [appointmentsWithDisplayFormatting]); // Removed isAppointmentToday from deps as it should be stable
+
+  const upcomingAppointments = useMemo<DisplayAppointment[]>(() => {
+    const now = DateTime.now().setZone(safeUserTimeZone);
+    return appointmentsWithDisplayFormatting.filter(app => {
+      if (!app.start_at) return false;
+      try {
+        const startTimeLocal = TimeZoneService.convertUTCToLocal(app.start_at, safeUserTimeZone);
+        return startTimeLocal > now && !isAppointmentToday(app);
+      } catch { return false; }
+    });
+  }, [appointmentsWithDisplayFormatting, safeUserTimeZone]); // Removed isAppointmentToday
+
+  const pastAppointments = useMemo<DisplayAppointment[]>(() => {
+    const now = DateTime.now().setZone(safeUserTimeZone);
+    return appointmentsWithDisplayFormatting.filter(app => {
+      if (!app.end_at) return false;
+      try {
+        const endTimeLocal = TimeZoneService.convertUTCToLocal(app.end_at, safeUserTimeZone);
+        // Consider status carefully if needed
+        return endTimeLocal < now && app.status === 'scheduled'; 
+      } catch { return false; }
+    });
+  }, [appointmentsWithDisplayFormatting, safeUserTimeZone]);
+
+  // Session handling functions remain largely the same, ensure they use the 'Appointment' type
   const startSession = async (appointment: Appointment) => {
     try {
-      setCurrentAppointment(appointment); // This should be the full Appointment object
+      setCurrentAppointment(appointment);
       setIsLoadingClientDataForSession(true);
-
-      // The main appointment object should already have client data if fetched correctly
       if (appointment.client) {
         setClientDataForSession(appointment.client);
       } else if (appointment.client_id) {
-        // Fallback: Fetch client data if not already joined (should be rare if select is correct)
         console.warn(`[useAppointments] Client data not pre-joined for appointment ${appointment.id}. Fetching separately.`);
         const { data: clientInfo, error: clientError } = await supabase
           .from('clients')
-          .select('client_first_name, client_last_name, client_preferred_name') // Select only needed fields
+          .select('client_first_name, client_last_name, client_preferred_name')
           .eq('id', appointment.client_id)
           .single();
         if (clientError) console.error('[useAppointments] Error fetching client data for session:', clientError);
-        else setClientDataForSession(clientInfo);
+        else setClientDataForSession(clientInfo); // Assuming clientInfo matches Appointment['client'] structure
       }
 
       if (appointment.video_room_url) {
@@ -261,8 +247,6 @@ export const useAppointments = (
         if (result.success && result.url) {
           setCurrentVideoUrl(result.url);
           setIsVideoOpen(true);
-          // Optionally update the appointment in DB with this new video_room_url
-          // await supabase.from('appointments').update({ video_room_url: result.url }).eq('id', appointment.id);
         } else {
           toast({ title: "Error", description: result.error || "Failed to create video room.", variant: "destructive" });
         }
@@ -283,65 +267,26 @@ export const useAppointments = (
   const closeVideoSession = () => setIsVideoOpen(false);
   const closeSessionTemplate = () => setShowSessionTemplate(false);
 
-  // Processed appointments with display formatting for the hook's primary timezone
-  // Components can re-format if they need a different timezone
-  const appointmentsWithDisplayFormatting = useMemo(() => {
-    return fetchedAppointments.map(appt =>
-      addDisplayFormattingToAppointment(appt, safeUserTimeZone)
-    );
-  }, [fetchedAppointments, safeUserTimeZone]);
-
-  const todayAppointments = useMemo(() => {
-    return appointmentsWithDisplayFormatting.filter(isAppointmentToday);
-  }, [appointmentsWithDisplayFormatting, isAppointmentToday]); // isAppointmentToday dependency might need memoization if complex
-
-  const upcomingAppointments = useMemo(() => {
-    const now = DateTime.now().setZone(safeUserTimeZone);
-    return appointmentsWithDisplayFormatting.filter(app => {
-      if (!app.start_at) return false;
-      try {
-        const startTimeLocal = TimeZoneService.fromUTC(app.start_at, safeUserTimeZone);
-        return startTimeLocal > now && !isAppointmentToday(app); // Make sure isAppointmentToday is also considering safeUserTimeZone
-      } catch { return false; }
-    });
-  }, [appointmentsWithDisplayFormatting, safeUserTimeZone, isAppointmentToday]);
-
-  const pastAppointments = useMemo(() => {
-    const now = DateTime.now().setZone(safeUserTimeZone);
-    return appointmentsWithDisplayFormatting.filter(app => {
-      if (!app.end_at) return false;
-      try {
-        const endTimeLocal = TimeZoneService.fromUTC(app.end_at, safeUserTimeZone);
-        return endTimeLocal < now && app.status === 'scheduled'; // Example: Needs documentation
-      } catch { return false; }
-    });
-  }, [appointmentsWithDisplayFormatting, safeUserTimeZone]);
-
-
   return {
-    appointments: appointmentsWithDisplayFormatting, // These have formatting for safeUserTimeZone
+    appointments: appointmentsWithDisplayFormatting, // Provide the formatted list
     todayAppointments,
     upcomingAppointments,
     pastAppointments,
     isLoading,
     error,
-    refetchAppointments: refetch, // Renamed for clarity
+    refetchAppointments: refetch,
     startSession,
     documentSession,
     isVideoOpen,
     closeVideoSession,
     closeSessionTemplate,
     currentVideoUrl,
-    currentAppointment, // This is the full Appointment object
+    currentAppointment,
     showSessionTemplate,
-    setShowSessionTemplate, // If needed by consuming components
-    // clientDataForSession and isLoadingClientDataForSession are more specific to the modal/session context
-    sessionClientData: clientDataForSession, 
+    setShowSessionTemplate,
+    sessionClientData: clientDataForSession,
     isLoadingSessionClientData: isLoadingClientDataForSession,
-    // If components need to re-format for a *different* timezone, they can use this function:
+    // Provide the helper for components needing different timezone formatting:
     addDisplayFormattingToAppointment,
   };
 };
-
-// Default export is not conventional for hooks, but if your project uses it:
-// export default useAppointments;
