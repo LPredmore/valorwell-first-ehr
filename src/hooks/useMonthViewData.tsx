@@ -4,15 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { DateTime } from 'luxon';
 import { Appointment } from '@/types/appointment';
-
-interface AvailabilityBlock {
-  id: string;
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
-  clinician_id?: string;
-  is_active?: boolean;
-}
+import { AvailabilityBlock } from '@/types/availability';
 
 interface DayAvailabilityData {
   hasAvailability: boolean;
@@ -51,7 +43,7 @@ export const useMonthViewData = (
 
   // Fetch availability data
   useEffect(() => {
-    const fetchAvailabilityFromClinician = async () => {
+    const fetchAvailabilityBlocks = async () => {
       setLoading(true);
       try {
         if (!clinicianId) {
@@ -60,24 +52,23 @@ export const useMonthViewData = (
           return;
         }
 
-        console.log(`[useMonthViewData] Fetching availability for clinician: ${clinicianId}`);
+        console.log(`[useMonthViewData] Fetching availability blocks for clinician: ${clinicianId}`);
         
-        // Fetch the clinician data directly
-        const { data: clinician, error } = await supabase
-          .from('clinicians')
-          .select('*')
-          .eq('id', clinicianId)
-          .single();
+        // Query the availability_blocks table directly
+        const { data: fetchedBlocks, error } = await supabase
+          .from('availability_blocks')
+          .select('id, clinician_id, start_at, end_at, is_active, recurring_pattern')
+          .eq('clinician_id', clinicianId)
+          .eq('is_active', true)
+          .gte('start_at', startDate.toUTC().toISO())
+          .lt('end_at', endDate.toUTC().toISO());
 
         if (error) {
-          console.error('[useMonthViewData] Error fetching clinician data:', error);
+          console.error('[useMonthViewData] Error fetching availability_blocks:', error);
           setAvailabilityData([]);
         } else {
-          console.log('[useMonthViewData] Fetched clinician data:', clinician?.id);
-          
-          // Extract availability blocks from clinician record
-          const extractedBlocks = extractAvailabilityBlocksFromClinician(clinician);
-          setAvailabilityData(extractedBlocks);
+          console.log(`[useMonthViewData] Fetched ${fetchedBlocks?.length || 0} availability blocks`);
+          setAvailabilityData(fetchedBlocks || []);
         }
       } catch (error) {
         console.error('[useMonthViewData] Error fetching availability:', error);
@@ -87,80 +78,62 @@ export const useMonthViewData = (
       }
     };
 
-    fetchAvailabilityFromClinician();
+    fetchAvailabilityBlocks();
   }, [clinicianId, refreshTrigger, startDate, endDate]);
 
-  // Extract availability blocks from clinician record
-  const extractAvailabilityBlocksFromClinician = (clinician: any): AvailabilityBlock[] => {
-    if (!clinician) return [];
-    
-    const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    const blocks: AvailabilityBlock[] = [];
-    
-    // For each day of the week
-    weekdays.forEach(day => {
-      const dayCapitalized = day.charAt(0).toUpperCase() + day.slice(1);
-      
-      // For each slot (1, 2, 3)
-      for (let slot = 1; slot <= 3; slot++) {
-        const startTimeKey = `clinician_availability_start_${day}_${slot}`;
-        const endTimeKey = `clinician_availability_end_${day}_${slot}`;
-        
-        // If both start and end times exist for this slot, create a block
-        if (clinician[startTimeKey] && clinician[endTimeKey]) {
-          blocks.push({
-            id: `${clinician.id}-${day}-${slot}`,
-            day_of_week: dayCapitalized,
-            start_time: clinician[startTimeKey],
-            end_time: clinician[endTimeKey],
-            clinician_id: clinician.id,
-            is_active: true
-          });
-        }
-      }
-    });
-    
-    console.log(`[useMonthViewData] Extracted ${blocks.length} availability blocks`);
-    return blocks;
-  };
-
-  // Build day availability map with standardized display hours
+  // Build day availability map with actual availability hours
   const dayAvailabilityMap = useMemo(() => {
     const result = new Map<string, DayAvailabilityData>();
     
     days.forEach(day => {
-      const dayOfWeek = day.toFormat('EEEE');
       const dateStr = TimeZoneService.formatDate(day, 'yyyy-MM-dd');
+      const dayStart = day.startOf('day');
+      const dayEnd = day.endOf('day');
       
-      const regularAvailability = availabilityData.filter(
-        slot => slot.day_of_week === dayOfWeek
-      );
+      // Find availability blocks for this day by converting UTC times to user timezone
+      const dayAvailability = availabilityData.filter(block => {
+        const blockStartLocal = TimeZoneService.fromUTC(block.start_at, userTimeZone);
+        const blockEndLocal = TimeZoneService.fromUTC(block.end_at, userTimeZone);
+        
+        // Check if block overlaps with this day
+        return (
+          (blockStartLocal >= dayStart && blockStartLocal < dayEnd) || // Block starts on this day
+          (blockEndLocal > dayStart && blockEndLocal <= dayEnd) || // Block ends on this day
+          (blockStartLocal < dayStart && blockEndLocal > dayEnd) // Block spans this day
+        );
+      });
       
       let hasAvailability = false;
       let displayHours = '';
       
-      if (regularAvailability.length > 0) {
+      if (dayAvailability.length > 0) {
         hasAvailability = true;
         
-        // Always display fixed hours range - 6:00 AM to 10:00 PM
-        const startTime = "06:00";
-        const endTime = "22:00";
+        // Find earliest start and latest end time for the day
+        let earliestStart: DateTime | null = null;
+        let latestEnd: DateTime | null = null;
         
-        try {
-          // Create DateTime objects with the time strings and convert to the user's timezone
-          const startDateTime = TimeZoneService.createDateTime('2000-01-01', startTime, 'UTC');
-          const endDateTime = TimeZoneService.createDateTime('2000-01-01', endTime, 'UTC');
+        dayAvailability.forEach(block => {
+          const blockStartLocal = TimeZoneService.fromUTC(block.start_at, userTimeZone);
+          const blockEndLocal = TimeZoneService.fromUTC(block.end_at, userTimeZone);
           
-          const startTimeInUserZone = TimeZoneService.convertDateTime(startDateTime, 'UTC', userTimeZone);
-          const endTimeInUserZone = TimeZoneService.convertDateTime(endDateTime, 'UTC', userTimeZone);
+          // Clamp to day boundaries
+          const startTime = blockStartLocal < dayStart ? dayStart : blockStartLocal;
+          const endTime = blockEndLocal > dayEnd ? dayEnd : blockEndLocal;
           
-          const startHourFormatted = TimeZoneService.formatTime(startTimeInUserZone);
-          const endHourFormatted = TimeZoneService.formatTime(endTimeInUserZone);
+          if (!earliestStart || startTime < earliestStart) {
+            earliestStart = startTime;
+          }
           
+          if (!latestEnd || endTime > latestEnd) {
+            latestEnd = endTime;
+          }
+        });
+        
+        if (earliestStart && latestEnd) {
+          const startHourFormatted = TimeZoneService.formatTime(earliestStart);
+          const endHourFormatted = TimeZoneService.formatTime(latestEnd);
           displayHours = `${startHourFormatted}-${endHourFormatted}`;
-        } catch (error) {
-          console.error('[useMonthViewData] Error formatting time for availability:', error);
-          displayHours = '6:00 AM-10:00 PM'; // Fallback display format
         }
       }
       
@@ -175,12 +148,21 @@ export const useMonthViewData = (
     const result = new Map<string, AvailabilityBlock>();
     
     days.forEach(day => {
-      const dayOfWeek = day.toFormat('EEEE');
       const dateStr = TimeZoneService.formatDate(day, 'yyyy-MM-dd');
+      const dayStart = day.startOf('day');
+      const dayEnd = day.endOf('day');
       
-      const firstAvailability = availabilityData.find(
-        slot => slot.day_of_week === dayOfWeek
-      );
+      // Find first availability block for this day
+      const firstAvailability = availabilityData.find(block => {
+        const blockStartLocal = TimeZoneService.fromUTC(block.start_at, userTimeZone);
+        const blockEndLocal = TimeZoneService.fromUTC(block.end_at, userTimeZone);
+        
+        return (
+          (blockStartLocal >= dayStart && blockStartLocal < dayEnd) || // Block starts on this day
+          (blockEndLocal > dayStart && blockEndLocal <= dayEnd) || // Block ends on this day
+          (blockStartLocal < dayStart && blockEndLocal > dayEnd) // Block spans this day
+        );
+      });
       
       if (firstAvailability) {
         result.set(dateStr, firstAvailability);
@@ -188,7 +170,7 @@ export const useMonthViewData = (
     });
     
     return result;
-  }, [days, availabilityData]);
+  }, [days, availabilityData, userTimeZone]);
 
   // Map appointments to days for easy lookup with improved debugging
   const dayAppointmentsMap = useMemo(() => {
