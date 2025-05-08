@@ -13,15 +13,18 @@ const Index = () => {
     if (!isLoading) {
       console.log("[Index] User context loaded, determining redirect");
       
-      if (userRole === 'clinician') {
+      if (userRole === 'admin') {
+        console.log("[Index] Redirecting admin to Calendar page");
+        navigate('/calendar');
+      } else if (userRole === 'clinician') {
         console.log("[Index] Redirecting clinician to Dashboard page");
         navigate('/clinician-dashboard');
       } else if (userRole === 'client') {
         console.log("[Index] Redirecting client to Patient Dashboard");
         navigate('/patient-dashboard');
       } else {
-        console.log("[Index] Redirecting other role to Calendar page (default)");
-        navigate('/calendar');
+        console.log("[Index] No recognized role, redirecting to login");
+        navigate('/login');
       }
     } else {
       console.log("[Index] Still loading user data, waiting before redirect");
