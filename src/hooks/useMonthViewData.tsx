@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -257,19 +258,16 @@ export const useMonthViewData = (
         let matched = false;
         
         days.forEach(day => {
-          // Convert JS Date to Luxon DateTime for proper comparison
-          const dayDateTime = TimeZoneService.fromJSDate(day, userTimeZone);
-          
-          // Use Luxon's hasSame method for day-level comparison - same approach as week view
-          if (localStartDateTime.hasSame(dayDateTime, 'day')) {
+          // We need to make a direct DateTime comparison, not trying to use DateTime as a Date
+          if (localStartDateTime.hasSame(day, 'day')) {
             // Format day for map key
-            const dayStr = TimeZoneService.formatDate(dayDateTime, 'yyyy-MM-dd');
+            const dayStr = TimeZoneService.formatDate(day, 'yyyy-MM-dd');
             
             // Add to the map
             if (result.has(dayStr)) {
               result.get(dayStr)!.push(appointment);
               matched = true;
-              console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched to ${dayStr} (${dayDateTime.toFormat('EEEE')})`);
+              console.log(`[useMonthViewData] ✅ Appointment ${appointment.id} matched to ${dayStr} (${day.toFormat('EEEE')})`);
             }
           }
         });
