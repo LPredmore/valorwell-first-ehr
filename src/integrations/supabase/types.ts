@@ -1668,54 +1668,6 @@ export type Database = {
         }
         Relationships: []
       }
-      profiles: {
-        Row: {
-          created_at: string
-          email: string
-          first_name: string | null
-          google_calendar_last_sync: string | null
-          google_calendar_linked: boolean | null
-          id: string
-          last_name: string | null
-          phone: string | null
-          profile_type: string | null
-          role: Database["public"]["Enums"]["app_role"]
-          temp_password: string | null
-          time_zone: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          first_name?: string | null
-          google_calendar_last_sync?: string | null
-          google_calendar_linked?: boolean | null
-          id: string
-          last_name?: string | null
-          phone?: string | null
-          profile_type?: string | null
-          role?: Database["public"]["Enums"]["app_role"]
-          temp_password?: string | null
-          time_zone?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          first_name?: string | null
-          google_calendar_last_sync?: string | null
-          google_calendar_linked?: boolean | null
-          id?: string
-          last_name?: string | null
-          phone?: string | null
-          profile_type?: string | null
-          role?: Database["public"]["Enums"]["app_role"]
-          temp_password?: string | null
-          time_zone?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       session_notes: {
         Row: {
           affect: string | null

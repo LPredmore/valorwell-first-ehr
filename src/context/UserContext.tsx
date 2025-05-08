@@ -40,40 +40,66 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("[UserContext] User role from metadata:", metadataRole);
           
           if (metadataRole) {
-            // If role exists in metadata, use it as the primary source of truth
-            setUserRole(metadataRole);
-            console.log("[UserContext] Using role from metadata:", metadataRole);
-            
-            // Get status from the corresponding table based on metadata role
-            if (metadataRole === 'admin') {
-              const { data: adminData } = await supabase
-                .from('admins')
-                .select('admin_status')
-                .eq('id', user.id)
-                .single();
-                
-              setClientStatus(adminData?.admin_status || 'Active');
-              console.log("[UserContext] Admin status:", adminData?.admin_status);
-            } 
-            else if (metadataRole === 'clinician') {
-              const { data: clinicianData } = await supabase
-                .from('clinicians')
-                .select('clinician_status')
-                .eq('id', user.id)
-                .single();
-                
-              setClientStatus(clinicianData?.clinician_status || 'Active');
-              console.log("[UserContext] Clinician status:", clinicianData?.clinician_status);
-            } 
-            else if (metadataRole === 'client') {
-              const { data: clientData } = await supabase
-                .from('clients')
-                .select('client_status')
-                .eq('id', user.id)
-                .single();
-                
-              setClientStatus(clientData?.client_status || 'Active');
-              console.log("[UserContext] Client status:", clientData?.client_status);
+            // Validate that metadataRole is one of the expected values
+            if (metadataRole === 'admin' || metadataRole === 'clinician' || metadataRole === 'client') {
+              // If role exists in metadata, use it as the primary source of truth
+              setUserRole(metadataRole);
+              console.log("[UserContext] Using role from metadata:", metadataRole);
+              
+              // Get status from the corresponding table based on metadata role
+              if (metadataRole === 'admin') {
+                const { data: adminData, error: adminError } = await supabase
+                  .from('admins')
+                  .select('admin_status')
+                  .eq('id', user.id)
+                  .single();
+                  
+                if (adminError || !adminData) {
+                  console.error(`[UserContext] Data inconsistency: User ${user.id} has metadataRole 'admin' but not found in 'admins' table.`, adminError);
+                  setUserRole(null);
+                  setClientStatus(null);
+                } else {
+                  setClientStatus(adminData?.admin_status);
+                  console.log("[UserContext] Admin status:", adminData?.admin_status);
+                }
+              } 
+              else if (metadataRole === 'clinician') {
+                const { data: clinicianData, error: clinicianError } = await supabase
+                  .from('clinicians')
+                  .select('clinician_status')
+                  .eq('id', user.id)
+                  .single();
+                  
+                if (clinicianError || !clinicianData) {
+                  console.error(`[UserContext] Data inconsistency: User ${user.id} has metadataRole 'clinician' but not found in 'clinicians' table.`, clinicianError);
+                  setUserRole(null);
+                  setClientStatus(null);
+                } else {
+                  setClientStatus(clinicianData?.clinician_status);
+                  console.log("[UserContext] Clinician status:", clinicianData?.clinician_status);
+                }
+              } 
+              else if (metadataRole === 'client') {
+                const { data: clientData, error: clientError } = await supabase
+                  .from('clients')
+                  .select('client_status')
+                  .eq('id', user.id)
+                  .single();
+                  
+                if (clientError || !clientData) {
+                  console.error(`[UserContext] Data inconsistency: User ${user.id} has metadataRole 'client' but not found in 'clients' table.`, clientError);
+                  setUserRole(null);
+                  setClientStatus(null);
+                } else {
+                  setClientStatus(clientData?.client_status);
+                  console.log("[UserContext] Client status:", clientData?.client_status);
+                }
+              }
+            } else {
+              // Invalid role in metadata
+              console.error(`[UserContext] Invalid role '${metadataRole}' found in user metadata for user ${user.id}.`);
+              setUserRole(null);
+              setClientStatus(null);
             }
           } 
           else {
@@ -93,23 +119,22 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
               console.log("[UserContext] User found in admins table, setting role to 'admin'");
               setUserRole('admin');
               setClientStatus(adminData.admin_status);
+              // Early return via the function flow
             } else {
               // If not in admins table, check the clients table
               console.log("[UserContext] Checking clients table for user:", user.id);
               const { data: clientData, error: clientError } = await supabase
                 .from('clients')
-                .select('role, client_status')
+                .select('client_status')
                 .eq('id', user.id)
                 .single();
                 
               if (!clientError && clientData) {
                 // User found in clients table
-                const role = clientData.role || 'client';
-                console.log("[UserContext] User role from clients table:", role);
-                setUserRole(role);
-                
-                console.log("[UserContext] Client status:", clientData.client_status);
+                console.log("[UserContext] User found in clients table, setting role to 'client'");
+                setUserRole('client');
                 setClientStatus(clientData.client_status);
+                // Early return via the function flow
               } else {
                 // If not in clients table, check clinicians table
                 console.log("[UserContext] Checking clinicians table for user:", user.id);
@@ -124,17 +149,25 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
                   console.log("[UserContext] User found in clinicians table, setting role to 'clinician'");
                   setUserRole('clinician');
                   setClientStatus(clinicianData.clinician_status);
+                  // Early return via the function flow
                 } else {
                   console.log("[UserContext] User not found in admins, clients, or clinicians tables");
+                  setUserRole(null);
+                  setClientStatus(null);
                 }
               }
             }
           }
         } else {
           console.log("[UserContext] No authenticated user found");
+          setUserId(null);
+          setUserRole(null);
+          setClientStatus(null);
         }
       } catch (error) {
         console.error("[UserContext] Error in fetchUserData:", error);
+        setUserRole(null);
+        setClientStatus(null);
       } finally {
         console.log("[UserContext] Setting isLoading to false");
         setIsLoading(false);
@@ -145,7 +178,11 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     console.log("[UserContext] Setting up auth state listener");
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("[UserContext] Auth state changed:", event, session ? "Session exists" : "No session");
-      fetchUserData();
+      
+      // Use setTimeout to prevent potential deadlocks with Supabase auth state handling
+      setTimeout(() => {
+        fetchUserData();
+      }, 0);
     });
 
     // Then check for existing session
