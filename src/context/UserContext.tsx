@@ -35,38 +35,53 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("[UserContext] Setting userId:", user.id);
           setUserId(user.id);
           
-          // First, check the clients table
-          console.log("[UserContext] Checking clients table for user:", user.id);
-          const { data: clientData, error: clientError } = await supabase
-            .from('clients')
-            .select('role, client_status')
+          // First, check the admins table
+          console.log("[UserContext] Checking admins table for user:", user.id);
+          const { data: adminData, error: adminError } = await supabase
+            .from('admins')
+            .select('admin_status')
             .eq('id', user.id)
             .single();
             
-          if (!clientError && clientData) {
-            // User found in clients table
-            const role = clientData.role || null;
-            console.log("[UserContext] User role from clients table:", role);
-            setUserRole(role);
-            
-            console.log("[UserContext] Client status:", clientData.client_status);
-            setClientStatus(clientData.client_status);
+          if (!adminError && adminData) {
+            // User found in admins table
+            console.log("[UserContext] User found in admins table, setting role to 'admin'");
+            setUserRole('admin');
+            setClientStatus(adminData.admin_status);
           } else {
-            // If not in clients table, check clinicians table
-            console.log("[UserContext] Checking clinicians table for user:", user.id);
-            const { data: clinicianData, error: clinicianError } = await supabase
-              .from('clinicians')
-              .select('clinician_status')
+            // If not in admins table, check the clients table
+            console.log("[UserContext] Checking clients table for user:", user.id);
+            const { data: clientData, error: clientError } = await supabase
+              .from('clients')
+              .select('role, client_status')
               .eq('id', user.id)
               .single();
               
-            if (!clinicianError && clinicianData) {
-              // User is a clinician
-              console.log("[UserContext] User found in clinicians table, setting role to 'clinician'");
-              setUserRole('clinician');
-              setClientStatus(clinicianData.clinician_status);
+            if (!clientError && clientData) {
+              // User found in clients table
+              const role = clientData.role || null;
+              console.log("[UserContext] User role from clients table:", role);
+              setUserRole(role);
+              
+              console.log("[UserContext] Client status:", clientData.client_status);
+              setClientStatus(clientData.client_status);
             } else {
-              console.log("[UserContext] User not found in clients or clinicians tables");
+              // If not in clients table, check clinicians table
+              console.log("[UserContext] Checking clinicians table for user:", user.id);
+              const { data: clinicianData, error: clinicianError } = await supabase
+                .from('clinicians')
+                .select('clinician_status')
+                .eq('id', user.id)
+                .single();
+                
+              if (!clinicianError && clinicianData) {
+                // User is a clinician
+                console.log("[UserContext] User found in clinicians table, setting role to 'clinician'");
+                setUserRole('clinician');
+                setClientStatus(clinicianData.clinician_status);
+              } else {
+                console.log("[UserContext] User not found in admins, clients, or clinicians tables");
+              }
             }
           }
         } else {

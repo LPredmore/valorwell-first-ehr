@@ -9,6 +9,39 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admins: {
+        Row: {
+          admin_email: string
+          admin_first_name: string | null
+          admin_last_name: string | null
+          admin_phone: string | null
+          admin_status: string | null
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          admin_email: string
+          admin_first_name?: string | null
+          admin_last_name?: string | null
+          admin_phone?: string | null
+          admin_status?: string | null
+          created_at?: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          admin_email?: string
+          admin_first_name?: string | null
+          admin_last_name?: string | null
+          admin_phone?: string | null
+          admin_status?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       api_logs: {
         Row: {
           client_id: string | null
@@ -1975,6 +2008,30 @@ export type Database = {
           license_type?: string | null
           profile_id?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          key?: string
+          updated_at?: string | null
+          value?: string
         }
         Relationships: []
       }

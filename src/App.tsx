@@ -56,24 +56,24 @@ function App() {
                 
                 {/* Routes that block "New" clients */}
                 <Route path="/therapist-selection" element={
-                  <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
+                  <ProtectedRoute allowedRoles={['client', 'admin']} blockNewClients={true}>
                     <TherapistSelection />
                   </ProtectedRoute>
                 } />
                 
                 <Route path="/patient-dashboard" element={
-                  <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
+                  <ProtectedRoute allowedRoles={['client', 'admin']} blockNewClients={true}>
                     <PatientDashboard />
                   </ProtectedRoute>
                 } />
                 
                 <Route path="/patient-documents" element={
-                  <ProtectedRoute allowedRoles={['client']} blockNewClients={true}>
+                  <ProtectedRoute allowedRoles={['client', 'admin']} blockNewClients={true}>
                     <PatientDocuments />
                   </ProtectedRoute>
                 } />
                 
-                {/* Modified: Allow clinicians to view client details */}
+                {/* Allow clinicians and admins to view client details */}
                 <Route path="/clients/:clientId" element={
                   <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician', 'client']} blockNewClients={true}>
                     <ClientDetails />
@@ -82,59 +82,63 @@ function App() {
                 
                 {/* Protected routes - clinician, admin, moderator */}
                 <Route path="/clinician-dashboard" element={
-                  <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
+                  <ProtectedRoute allowedRoles={['admin', 'clinician']}>
                     <ClinicianDashboard />
                   </ProtectedRoute>
                 } />
                 
                 <Route path="/my-clients" element={
-                  <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
+                  <ProtectedRoute allowedRoles={['admin', 'clinician']}>
                     <MyClients />
                   </ProtectedRoute>
                 } />
                 
                 <Route path="/calendar" element={
-                  <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
+                  <ProtectedRoute allowedRoles={['admin', 'clinician']}>
                     <Calendar />
                   </ProtectedRoute>
                 } />
                 
-                {/* Modified route: Clinicians can view their own profile */}
+                {/* Clinicians can view their own profile */}
                 <Route path="/clinicians/:clinicianId" element={
-                  <ProtectedRoute allowedRoles={['admin', 'moderator', 'clinician']}>
+                  <ProtectedRoute allowedRoles={['admin', 'clinician']}>
                     <ClinicianDetails />
                   </ProtectedRoute>
                 } />
                 
-                {/* Protected routes - admin and moderator only */}
+                {/* Protected routes - admin only */}
                 <Route path="/clients" element={
-                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                  <ProtectedRoute allowedRoles={['admin']}>
                     <Clients />
                   </ProtectedRoute>
                 } />
                 
                 <Route path="/analytics" element={
-                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                  <ProtectedRoute allowedRoles={['admin']}>
                     <Analytics />
                   </ProtectedRoute>
                 } />
+
                 <Route path="/activity" element={
-                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                  <ProtectedRoute allowedRoles={['admin']}>
                     <Activity />
                   </ProtectedRoute>
                 } />
+
                 <Route path="/settings" element={
-                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                  <ProtectedRoute allowedRoles={['admin']}>
                     <Settings />
                   </ProtectedRoute>
                 } />
+
                 <Route path="/reminders" element={
-                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                  <ProtectedRoute allowedRoles={['admin']}>
                     <Reminders />
                   </ProtectedRoute>
                 } />
+
                 <Route path="/messages" element={
-                  <ProtectedRoute allowedRoles={['admin', 'moderator']}>
+                  <ProtectedRoute allowedRoles={['admin']}>
                     <Messages />
                   </ProtectedRoute>
                 } />

@@ -44,8 +44,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   
   // First check role-based access
   if (!userRole || !allowedRoles.includes(userRole)) {
+    // Admin can access all routes
+    if (userRole === 'admin') {
+      return <>{children}</>;
+    }
     // Redirect clinicians to Calendar page
-    if (userRole === 'clinician') {
+    else if (userRole === 'clinician') {
       return <Navigate to="/calendar" replace />;
     }
     // Redirect clients to patient dashboard

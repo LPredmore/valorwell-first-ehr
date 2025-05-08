@@ -24,6 +24,7 @@ const Sidebar = () => {
   const { userRole, clientStatus, isLoading, userId } = useUser();
   const isClient = userRole === 'client';
   const isClinician = userRole === 'clinician';
+  const isAdmin = userRole === 'admin';
   const isNewClient = isClient && clientStatus === 'New';
   const [clinicianId, setClinicianId] = useState<string | null>(null);
   
@@ -35,10 +36,10 @@ const Sidebar = () => {
       }
     };
     
-    if (isClinician || userRole === 'admin' || userRole === 'moderator') {
+    if (isClinician || isAdmin) {
       fetchUserId();
     }
-  }, [isClinician, userRole]);
+  }, [isClinician, isAdmin]);
   
   const isActive = (path: string) => {
     return currentPath === path;
@@ -101,8 +102,8 @@ const Sidebar = () => {
           </>
         )}
         
-        {/* Clinician only links */}
-        {isClinician && (
+        {/* Clinician and Admin links */}
+        {(isClinician || isAdmin) && (
           <>
             <Link 
               to="/clinician-dashboard" 
@@ -140,43 +141,9 @@ const Sidebar = () => {
           </>
         )}
         
-        {/* Admin/Staff only links - exclude clinicians */}
-        {userRole === 'admin' || userRole === 'moderator' ? (
+        {/* Admin/Staff only links */}
+        {isAdmin && (
           <>
-            <Link 
-              to="/clinician-dashboard" 
-              className={`sidebar-link ${isActive('/clinician-dashboard') ? 'active' : ''}`}
-            >
-              <LayoutDashboard size={18} />
-              <span>Dashboard</span>
-            </Link>
-            
-            {clinicianId && (
-              <Link 
-                to={`/clinicians/${clinicianId}`} 
-                className={`sidebar-link ${isActive(`/clinicians/${clinicianId}`) ? 'active' : ''}`}
-              >
-                <User size={18} />
-                <span>Profile</span>
-              </Link>
-            )}
-            
-            <Link 
-              to="/my-clients" 
-              className={`sidebar-link ${isActive('/my-clients') ? 'active' : ''}`}
-            >
-              <UserCheck size={18} />
-              <span>My Clients</span>
-            </Link>
-            
-            <Link 
-              to="/calendar" 
-              className={`sidebar-link ${isActive('/calendar') ? 'active' : ''}`}
-            >
-              <Calendar size={18} />
-              <span>Calendar</span>
-            </Link>
-            
             <Link 
               to="/clients" 
               className={`sidebar-link ${isActive('/clients') ? 'active' : ''}`}
@@ -209,12 +176,12 @@ const Sidebar = () => {
               <span>Settings</span>
             </Link>
           </>
-        ) : null}
+        )}
       </nav>
       
       <div className="border-t py-4 space-y-1 px-2">
-        {/* Only show these links for admin/moderator roles */}
-        {(userRole === 'admin' || userRole === 'moderator') && (
+        {/* Only show these links for admin roles */}
+        {isAdmin && (
           <>
             <Link 
               to="/reminders" 
