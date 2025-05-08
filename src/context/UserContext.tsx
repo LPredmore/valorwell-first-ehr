@@ -48,11 +48,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
             console.log("[UserContext] User found in admins table, setting role to 'admin'");
             setUserRole('admin');
             setClientStatus(adminData.admin_status);
-            setIsLoading(false);
-            return; // Important: Return here to prevent checking other tables
           } else {
-            console.log("[UserContext] Admin check result:", adminError ? `Error: ${adminError.message}` : "No admin record found");
-            
             // If not in admins table, check the clients table
             console.log("[UserContext] Checking clients table for user:", user.id);
             const { data: clientData, error: clientError } = await supabase
@@ -69,11 +65,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
               
               console.log("[UserContext] Client status:", clientData.client_status);
               setClientStatus(clientData.client_status);
-              setIsLoading(false);
-              return; // Important: Return here to prevent checking other tables
             } else {
-              console.log("[UserContext] Client check result:", clientError ? `Error: ${clientError.message}` : "No client record found");
-              
               // If not in clients table, check clinicians table
               console.log("[UserContext] Checking clinicians table for user:", user.id);
               const { data: clinicianData, error: clinicianError } = await supabase
@@ -87,70 +79,36 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
                 console.log("[UserContext] User found in clinicians table, setting role to 'clinician'");
                 setUserRole('clinician');
                 setClientStatus(clinicianData.clinician_status);
-                setIsLoading(false);
-                return;
               } else {
-                console.log("[UserContext] Clinician check result:", clinicianError ? `Error: ${clinicianError.message}` : "No clinician record found");
-                console.log("[UserContext] User not found in any role table");
-                setIsLoading(false);
+                console.log("[UserContext] User not found in admins, clients, or clinicians tables");
               }
             }
           }
         } else {
           console.log("[UserContext] No authenticated user found");
-          setIsLoading(false);
         }
       } catch (error) {
         console.error("[UserContext] Error in fetchUserData:", error);
+      } finally {
+        console.log("[UserContext] Setting isLoading to false");
         setIsLoading(false);
       }
     };
 
-    // Initial auth state check and listener setup
-    const setupAuth = async () => {
-      setIsLoading(true);
-      
-      // First set up the auth state listener
-      console.log("[UserContext] Setting up auth state listener");
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log("[UserContext] Auth state changed:", event, session ? "Session exists" : "No session");
-        
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          // Wait a moment for Supabase to fully process the authentication
-          setTimeout(() => {
-            fetchUserData();
-          }, 300);
-        } else if (event === 'SIGNED_OUT') {
-          setUserRole(null);
-          setClientStatus(null);
-          setUserId(null);
-          setIsLoading(false);
-        }
-      });
+    // First set up the auth state listener
+    console.log("[UserContext] Setting up auth state listener");
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[UserContext] Auth state changed:", event, session ? "Session exists" : "No session");
+      fetchUserData();
+    });
 
-      // Then check for existing session
-      console.log("[UserContext] Checking for existing session");
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        console.log("[UserContext] Existing session found, fetching user data");
-        fetchUserData();
-      } else {
-        console.log("[UserContext] No existing session");
-        setIsLoading(false);
-      }
+    // Then check for existing session
+    console.log("[UserContext] Checking for existing session");
+    fetchUserData();
 
-      return subscription;
-    };
-    
-    // Setup auth and get unsubscribe function
-    const setupPromise = setupAuth();
-    
-    // Return cleanup function
     return () => {
-      setupPromise.then(subscription => {
-        console.log("[UserContext] Cleaning up auth subscription");
-        subscription.unsubscribe();
-      });
+      console.log("[UserContext] Cleaning up auth subscription");
+      subscription.unsubscribe();
     };
   }, []);
 

@@ -13,18 +13,15 @@ const Index = () => {
     if (!isLoading) {
       console.log("[Index] User context loaded, determining redirect");
       
-      if (userRole === 'admin') {
-        console.log("[Index] Redirecting admin to Calendar page");
-        navigate('/calendar');
-      } else if (userRole === 'clinician') {
+      if (userRole === 'clinician') {
         console.log("[Index] Redirecting clinician to Dashboard page");
         navigate('/clinician-dashboard');
       } else if (userRole === 'client') {
         console.log("[Index] Redirecting client to Patient Dashboard");
         navigate('/patient-dashboard');
       } else {
-        console.log("[Index] No recognized role, redirecting to login");
-        navigate('/login');
+        console.log("[Index] Redirecting other role to Calendar page (default)");
+        navigate('/calendar');
       }
     } else {
       console.log("[Index] Still loading user data, waiting before redirect");
@@ -39,11 +36,7 @@ const Index = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
             <p className="text-gray-600">Loading user data...</p>
           </div>
-        ) : (
-          <div className="flex flex-col items-center">
-            <p className="text-gray-600">Redirecting to the appropriate dashboard...</p>
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

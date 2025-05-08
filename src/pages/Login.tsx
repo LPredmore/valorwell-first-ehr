@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useUser } from "@/context/UserContext";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -34,7 +33,6 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
-  const { userRole, isLoading: userContextLoading } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -72,7 +70,7 @@ const Login = () => {
         description: "Welcome back!",
       });
       
-      console.log("[Login] Redirecting to index page for role-based routing");
+      console.log("[Login] Navigating to home page");
       navigate("/");
     } catch (error: any) {
       console.error("[Login] Login error:", error);
