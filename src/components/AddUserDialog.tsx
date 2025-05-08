@@ -4,7 +4,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "@/hooks/use-toast";
-import { supabase, createUser } from "@/integrations/supabase/client";
+import { createUser } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -73,20 +73,21 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
         first_name: data.firstName,
         last_name: data.lastName,
         phone: data.phone || "",
-        role: data.role
+        role: data.role,
+        temp_password: "temppass1234" // Default temp password
       };
       
       console.log("User metadata to be saved:", userData);
       
-      // Create user using our helper function
-      const { data: authData, error: authError } = await createUser(data.email, userData);
+      // Create user using our helper function that now uses the edge function
+      const { data: createUserResponse, error: createUserError } = await createUser(data.email, userData);
 
-      if (authError) {
-        console.error("Auth error:", authError);
-        throw authError;
+      if (createUserError) {
+        console.error("Error creating user:", createUserError);
+        throw createUserError;
       }
 
-      console.log("User created successfully:", authData);
+      console.log("User created successfully:", createUserResponse);
       
       toast({
         title: "Success",
@@ -98,9 +99,20 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       onOpenChange(false);
     } catch (error) {
       console.error("Error adding user:", error);
+      
+      // More user-friendly error message
+      let errorMessage = "Failed to add user";
+      if (error.message) {
+        errorMessage += `: ${error.message}`;
+      } else if (error.error_description) {
+        errorMessage += `: ${error.error_description}`;
+      } else {
+        errorMessage += ". Please try again.";
+      }
+      
       toast({
         title: "Error",
-        description: `Failed to add user: ${error.message || "Please try again."}`,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

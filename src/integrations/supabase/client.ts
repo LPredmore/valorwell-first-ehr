@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 
 // Check for required environment variables
@@ -209,21 +210,23 @@ export interface PracticeInfo {
 // User management functions
 export const createUser = async (email: string, userData: any) => {
   try {
-    // Ensure userData contains temp_password
-    if (!userData.temp_password) {
-      // Generate a random temporary password if not provided
-      userData.temp_password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
-      console.log(`Generated temporary password for ${email}: ${userData.temp_password}`);
-    }
+    // Use the functions API instead of direct admin calls
+    console.log("Creating user via Edge Function:", email);
     
-    const { data, error } = await supabase.auth.admin.createUser({
-      email,
-      password: userData.temp_password, // Use the same password for auth and metadata
-      email_confirm: true,
-      user_metadata: userData
+    // Call Supabase Edge Function to create user
+    const { data, error } = await supabase.functions.invoke('create-user', {
+      body: {
+        email,
+        userData
+      }
     });
     
-    return { data, error };
+    if (error) {
+      console.error('Error calling create-user function:', error);
+      return { data: null, error };
+    }
+    
+    return { data, error: null };
   } catch (error) {
     console.error('Error creating user:', error);
     return { data: null, error };
