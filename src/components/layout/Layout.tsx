@@ -15,7 +15,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [session, setSession] = useState(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { isLoading: userContextLoading } = useUser();
+  const { isLoading: userContextLoading, userRole } = useUser();
 
   useEffect(() => {
     console.log("[Layout] Initializing layout, userContextLoading:", userContextLoading);
@@ -32,6 +32,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         
         console.log("[Layout] Session check result:", data.session ? "Session exists" : "No session");
         setSession(data.session);
+        
+        if (!data.session) {
+          console.log("[Layout] No session found, redirecting to login");
+          navigate('/login');
+          return;
+        }
         
         // Set up auth state listener
         console.log("[Layout] Setting up layout auth state listener");
