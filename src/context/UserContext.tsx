@@ -43,7 +43,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
             // Validate that metadataRole is one of the expected values
             if (metadataRole === 'admin' || metadataRole === 'clinician' || metadataRole === 'client') {
               // If role exists in metadata, use it as the primary source of truth
-              setUserRole(metadataRole);
               console.log("[UserContext] Using role from metadata:", metadataRole);
               
               // Get status from the corresponding table based on metadata role
@@ -59,9 +58,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
                   setUserRole(null);
                   setClientStatus(null);
                 } else {
-                  setClientStatus(adminData?.admin_status);
+                  setUserRole(metadataRole);
+                  setClientStatus(adminData.admin_status);
                   console.log("[UserContext] Admin status:", adminData?.admin_status);
                 }
+                // Early return via function flow
+                return;
               } 
               else if (metadataRole === 'clinician') {
                 const { data: clinicianData, error: clinicianError } = await supabase
@@ -75,9 +77,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
                   setUserRole(null);
                   setClientStatus(null);
                 } else {
+                  setUserRole(metadataRole);
                   setClientStatus(clinicianData?.clinician_status);
                   console.log("[UserContext] Clinician status:", clinicianData?.clinician_status);
                 }
+                // Early return via function flow
+                return;
               } 
               else if (metadataRole === 'client') {
                 const { data: clientData, error: clientError } = await supabase
@@ -91,15 +96,19 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
                   setUserRole(null);
                   setClientStatus(null);
                 } else {
+                  setUserRole(metadataRole);
                   setClientStatus(clientData?.client_status);
                   console.log("[UserContext] Client status:", clientData?.client_status);
                 }
+                // Early return via function flow
+                return;
               }
             } else {
               // Invalid role in metadata
               console.error(`[UserContext] Invalid role '${metadataRole}' found in user metadata for user ${user.id}.`);
               setUserRole(null);
               setClientStatus(null);
+              return;
             }
           } 
           else {
@@ -119,46 +128,48 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
               console.log("[UserContext] User found in admins table, setting role to 'admin'");
               setUserRole('admin');
               setClientStatus(adminData.admin_status);
-              // Early return via the function flow
-            } else {
-              // If not in admins table, check the clients table
-              console.log("[UserContext] Checking clients table for user:", user.id);
-              const { data: clientData, error: clientError } = await supabase
-                .from('clients')
-                .select('client_status')
-                .eq('id', user.id)
-                .single();
-                
-              if (!clientError && clientData) {
-                // User found in clients table
-                console.log("[UserContext] User found in clients table, setting role to 'client'");
-                setUserRole('client');
-                setClientStatus(clientData.client_status);
-                // Early return via the function flow
-              } else {
-                // If not in clients table, check clinicians table
-                console.log("[UserContext] Checking clinicians table for user:", user.id);
-                const { data: clinicianData, error: clinicianError } = await supabase
-                  .from('clinicians')
-                  .select('clinician_status')
-                  .eq('id', user.id)
-                  .single();
-                  
-                if (!clinicianError && clinicianData) {
-                  // User is a clinician
-                  console.log("[UserContext] User found in clinicians table, setting role to 'clinician'");
-                  setUserRole('clinician');
-                  setClientStatus(clinicianData.clinician_status);
-                  // Early return via the function flow
-                } else {
-                  console.log("[UserContext] User not found in admins, clients, or clinicians tables");
-                  setUserRole(null);
-                  setClientStatus(null);
-                }
-              }
+              return; // Early return
+            } 
+            
+            // If not in admins table, check the clients table
+            console.log("[UserContext] Checking clients table for user:", user.id);
+            const { data: clientData, error: clientError } = await supabase
+              .from('clients')
+              .select('client_status')
+              .eq('id', user.id)
+              .single();
+              
+            if (!clientError && clientData) {
+              // User found in clients table
+              console.log("[UserContext] User found in clients table, setting role to 'client'");
+              setUserRole('client');
+              setClientStatus(clientData.client_status);
+              return; // Early return
+            } 
+            
+            // If not in clients table, check clinicians table
+            console.log("[UserContext] Checking clinicians table for user:", user.id);
+            const { data: clinicianData, error: clinicianError } = await supabase
+              .from('clinicians')
+              .select('clinician_status')
+              .eq('id', user.id)
+              .single();
+              
+            if (!clinicianError && clinicianData) {
+              // User is a clinician
+              console.log("[UserContext] User found in clinicians table, setting role to 'clinician'");
+              setUserRole('clinician');
+              setClientStatus(clinicianData.clinician_status);
+              return; // Early return
             }
+            
+            // If we reach here, user not found in any role table
+            console.log("[UserContext] User not found in admins, clients, or clinicians tables");
+            setUserRole(null);
+            setClientStatus(null);
           }
         } else {
+          // No authenticated user
           console.log("[UserContext] No authenticated user found");
           setUserId(null);
           setUserRole(null);
@@ -168,6 +179,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         console.error("[UserContext] Error in fetchUserData:", error);
         setUserRole(null);
         setClientStatus(null);
+        setUserId(null);
       } finally {
         console.log("[UserContext] Setting isLoading to false");
         setIsLoading(false);
