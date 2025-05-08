@@ -51,16 +51,72 @@ const UsersTab = () => {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email, phone, role')
-        .order('created_at', { ascending: false });
+      // Get all users from Auth
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
       
-      if (error) {
-        throw error;
+      if (authError) {
+        throw authError;
       }
       
-      setUsers(data || []);
+      // Map the auth users to our User interface
+      const mappedUsers: User[] = await Promise.all(
+        authUsers.users.map(async (user) => {
+          const role = user.user_metadata?.role || null;
+          let firstName = user.user_metadata?.first_name || '';
+          let lastName = user.user_metadata?.last_name || '';
+          let phone = user.user_metadata?.phone || null;
+          
+          // If role is specified, get additional data from the respective table
+          if (role === 'admin') {
+            const { data: adminData } = await supabase
+              .from('admins')
+              .select('admin_first_name, admin_last_name, admin_phone')
+              .eq('id', user.id)
+              .single();
+              
+            if (adminData) {
+              firstName = adminData.admin_first_name || firstName;
+              lastName = adminData.admin_last_name || lastName;
+              phone = adminData.admin_phone || phone;
+            }
+          } else if (role === 'clinician') {
+            const { data: clinicianData } = await supabase
+              .from('clinicians')
+              .select('clinician_first_name, clinician_last_name, clinician_phone')
+              .eq('id', user.id)
+              .single();
+              
+            if (clinicianData) {
+              firstName = clinicianData.clinician_first_name || firstName;
+              lastName = clinicianData.clinician_last_name || lastName;
+              phone = clinicianData.clinician_phone || phone;
+            }
+          } else if (role === 'client') {
+            const { data: clientData } = await supabase
+              .from('clients')
+              .select('client_first_name, client_last_name, client_phone')
+              .eq('id', user.id)
+              .single();
+              
+            if (clientData) {
+              firstName = clientData.client_first_name || firstName;
+              lastName = clientData.client_last_name || lastName;
+              phone = clientData.client_phone || phone;
+            }
+          }
+          
+          return {
+            id: user.id,
+            first_name: firstName,
+            last_name: lastName,
+            email: user.email || '',
+            phone: phone,
+            role: role
+          };
+        })
+      );
+      
+      setUsers(mappedUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
