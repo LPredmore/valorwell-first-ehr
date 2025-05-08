@@ -106,20 +106,51 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
-    // First set up the auth state listener
-    console.log("[UserContext] Setting up auth state listener");
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("[UserContext] Auth state changed:", event, session ? "Session exists" : "No session");
-      fetchUserData();
-    });
+    // Initial auth state check and listener setup
+    const setupAuth = async () => {
+      setIsLoading(true);
+      
+      // First set up the auth state listener
+      console.log("[UserContext] Setting up auth state listener");
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log("[UserContext] Auth state changed:", event, session ? "Session exists" : "No session");
+        
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          // Wait a moment for Supabase to fully process the authentication
+          setTimeout(() => {
+            fetchUserData();
+          }, 300);
+        } else if (event === 'SIGNED_OUT') {
+          setUserRole(null);
+          setClientStatus(null);
+          setUserId(null);
+          setIsLoading(false);
+        }
+      });
 
-    // Then check for existing session
-    console.log("[UserContext] Checking for existing session");
-    fetchUserData();
+      // Then check for existing session
+      console.log("[UserContext] Checking for existing session");
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        console.log("[UserContext] Existing session found, fetching user data");
+        fetchUserData();
+      } else {
+        console.log("[UserContext] No existing session");
+        setIsLoading(false);
+      }
 
+      return subscription;
+    };
+    
+    // Setup auth and get unsubscribe function
+    const setupPromise = setupAuth();
+    
+    // Return cleanup function
     return () => {
-      console.log("[UserContext] Cleaning up auth subscription");
-      subscription.unsubscribe();
+      setupPromise.then(subscription => {
+        console.log("[UserContext] Cleaning up auth subscription");
+        subscription.unsubscribe();
+      });
     };
   }, []);
 
