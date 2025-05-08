@@ -1531,6 +1531,30 @@ export type Database = {
         }
         Relationships: []
       }
+      migration_logs: {
+        Row: {
+          created_at: string | null
+          description: string
+          details: Json | null
+          id: number
+          migration_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          details?: Json | null
+          id?: number
+          migration_name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          details?: Json | null
+          id?: number
+          migration_name?: string
+        }
+        Relationships: []
+      }
       phq9_assessments: {
         Row: {
           additional_notes: string | null
