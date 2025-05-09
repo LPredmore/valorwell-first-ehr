@@ -51,72 +51,33 @@ const UsersTab = () => {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      // Get all users from Auth
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      // Get the authenticated user's token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (authError) {
-        throw authError;
+      if (sessionError) {
+        throw sessionError;
       }
       
-      // Map the auth users to our User interface
-      const mappedUsers: User[] = await Promise.all(
-        authUsers.users.map(async (user) => {
-          const role = user.user_metadata?.role || null;
-          let firstName = user.user_metadata?.first_name || '';
-          let lastName = user.user_metadata?.last_name || '';
-          let phone = user.user_metadata?.phone || null;
-          
-          // If role is specified, get additional data from the respective table
-          if (role === 'admin') {
-            const { data: adminData } = await supabase
-              .from('admins')
-              .select('admin_first_name, admin_last_name, admin_phone')
-              .eq('id', user.id)
-              .single();
-              
-            if (adminData) {
-              firstName = adminData.admin_first_name || firstName;
-              lastName = adminData.admin_last_name || lastName;
-              phone = adminData.admin_phone || phone;
-            }
-          } else if (role === 'clinician') {
-            const { data: clinicianData } = await supabase
-              .from('clinicians')
-              .select('clinician_first_name, clinician_last_name, clinician_phone')
-              .eq('id', user.id)
-              .single();
-              
-            if (clinicianData) {
-              firstName = clinicianData.clinician_first_name || firstName;
-              lastName = clinicianData.clinician_last_name || lastName;
-              phone = clinicianData.clinician_phone || phone;
-            }
-          } else if (role === 'client') {
-            const { data: clientData } = await supabase
-              .from('clients')
-              .select('client_first_name, client_last_name, client_phone')
-              .eq('id', user.id)
-              .single();
-              
-            if (clientData) {
-              firstName = clientData.client_first_name || firstName;
-              lastName = clientData.client_last_name || lastName;
-              phone = clientData.client_phone || phone;
-            }
-          }
-          
-          return {
-            id: user.id,
-            first_name: firstName,
-            last_name: lastName,
-            email: user.email || '',
-            phone: phone,
-            role: role
-          };
-        })
-      );
+      if (!session || !session.access_token) {
+        throw new Error("Not authenticated");
+      }
       
-      setUsers(mappedUsers);
+      // Call our edge function with the user's token
+      const { data, error } = await supabase.functions.invoke('list-users', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (!data.users) {
+        throw new Error("Invalid response format");
+      }
+      
+      setUsers(data.users);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
@@ -139,12 +100,30 @@ const UsersTab = () => {
     if (!confirmed) return;
     
     try {
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      // Get the authenticated user's token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        throw sessionError;
+      }
+      
+      if (!session || !session.access_token) {
+        throw new Error("Not authenticated");
+      }
+      
+      // Call delete user through an admin edge function (you may need to create this)
+      const { error } = await supabase.functions.invoke('delete-user', {
+        body: { userId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
       
       if (error) {
         throw error;
       }
       
+      // Remove the user from local state
       setUsers(users.filter(user => user.id !== userId));
       
       toast({

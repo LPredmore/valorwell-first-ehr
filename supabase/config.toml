@@ -6,3 +6,7 @@ verify_jwt = true
 verify_jwt = true
 [functions.getavailabilitysettings]
 verify_jwt = true
+[functions.list-users]
+verify_jwt = true
+[functions.delete-user]
+verify_jwt = true
