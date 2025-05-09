@@ -22,11 +22,14 @@ export const isEndOfBlock = (time: Date, block?: TimeBlock): boolean => {
   // Convert JavaScript Date to milliseconds for comparison
   const timeMs = time.getTime();
   
+  // Add 30 minutes to timeMs for accurate end comparison (since our slots are 30min)
+  const timeEndMs = timeMs + 30 * 60 * 1000;
+  
   // DateTime from Luxon has toMillis() method to convert to milliseconds
   const blockEndMs = block.end.toMillis();
   
   // Check if the times are within a minute of each other
-  return Math.abs(timeMs - blockEndMs) < 60000;
+  return Math.abs(timeEndMs - blockEndMs) < 60000;
 };
 
 // Check if a time is the start of an appointment

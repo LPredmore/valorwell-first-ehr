@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -157,7 +158,7 @@ export const useWeekViewData = (
     setTimeBlocks(mergedBlocks);
   };
   
-  // Process appointments into blocks - UPDATED to use Luxon's hasSame for date comparison
+  // Process appointments into blocks with strict day-specific logic
   const processAppointments = () => {
     // Convert days array to DateTime objects for easier comparison
     const daysAsDateTime = days.map(day => 
@@ -272,9 +273,9 @@ export const useWeekViewData = (
     });
   };
 
-  // Updated function to properly check day match using Luxon's hasSame
+  // Fixed function with strict day matching for appointments
   const getAppointmentForTimeSlot = (day: Date, timeSlot: Date) => {
-    // First convert the input JS Date objects to Luxon DateTime objects in user's timezone
+    // Convert the input JS Date objects to Luxon DateTime objects in user's timezone
     const slotDay = TimeZoneService.fromJSDate(day, userTimeZone);
     const slotTime = TimeZoneService.fromJSDate(timeSlot, userTimeZone);
     
@@ -282,7 +283,7 @@ export const useWeekViewData = (
     const slotDayFormatted = slotDay.toFormat('yyyy-MM-dd');
     const slotTimeFormatted = slotTime.toFormat('HH:mm');
     
-    // Find appointment block by using hasSame day comparison, then checking time range
+    // Find appointment block by using strict day and time range comparison
     const matchingAppointment = appointmentBlocks.find(block => {
       // First check if the days match using Luxon's hasSame method
       const isDaySame = block.day.hasSame(slotDay, 'day');
@@ -291,8 +292,18 @@ export const useWeekViewData = (
         return false; // Skip time check entirely if day doesn't match
       }
       
-      // Only then check if the time slot falls within the appointment time range
-      return slotTime >= block.start && slotTime < block.end;
+      // Only check time range if day matches
+      const isTimeInRange = slotTime >= block.start && slotTime < block.end;
+      
+      // Debug log for appointments that match the day but not the time
+      if (isDaySame && !isTimeInRange) {
+        console.log(`[useWeekViewData] Appointment ${block.id} matches day ${slotDayFormatted} but not time ${slotTimeFormatted}`, {
+          appointmentStart: block.start.toFormat('HH:mm'),
+          appointmentEnd: block.end.toFormat('HH:mm')
+        });
+      }
+      
+      return isDaySame && isTimeInRange;
     });
     
     if (matchingAppointment) {

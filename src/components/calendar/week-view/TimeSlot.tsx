@@ -93,6 +93,7 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
         <div 
           className={`${baseAppointmentClass} ${positionClass} text-xs font-medium truncate hover:bg-blue-200`}
           onClick={handleAppointmentClick}
+          title={`${appointment.clientName || 'Unknown Client'} - ${appointment.start.toFormat('h:mm a')} to ${appointment.end.toFormat('h:mm a')}`}
         >
           {/* Use the standardized clientName that follows our formatting rule */}
           {appointment.clientName || 'Unknown Client'}
@@ -105,6 +106,7 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
       <div 
         className={`${baseAppointmentClass} ${positionClass} text-xs opacity-75 hover:bg-blue-200`}
         onClick={handleAppointmentClick}
+        title={`${appointment.clientName || 'Unknown Client'} - ${appointment.start.toFormat('h:mm a')} to ${appointment.end.toFormat('h:mm a')}`}
       >
         {/* Continuation of appointment */}
       </div>
