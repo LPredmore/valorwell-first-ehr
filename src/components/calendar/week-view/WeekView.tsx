@@ -1,5 +1,4 @@
-
-import React, { useMemo } from 'react';
+import React, { useMemo } from "react";
 import {
   format,
   startOfWeek,
@@ -8,15 +7,15 @@ import {
   addMinutes,
   startOfDay,
   setHours,
-  setMinutes
-} from 'date-fns';
-import { Card } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
-import { useWeekViewData } from './useWeekViewData';
-import TimeSlot from './TimeSlot';
-import { isStartOfBlock, isEndOfBlock, isStartOfAppointment } from './utils';
-import { Appointment } from '@/types/appointment';
-import { TimeZoneService } from '@/utils/timeZoneService';
+  setMinutes,
+} from "date-fns";
+import { Card } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
+import { useWeekViewData } from "./useWeekViewData";
+import TimeSlot from "./TimeSlot";
+import { isStartOfBlock, isEndOfBlock, isStartOfAppointment } from "./utils";
+import { Appointment } from "@/types/appointment";
+import { TimeZoneService } from "@/utils/timeZoneService";
 
 export interface WeekViewProps {
   currentDate: Date;
@@ -29,37 +28,44 @@ export interface WeekViewProps {
   userTimeZone?: string;
 }
 
-const WeekView: React.FC<WeekViewProps> = ({ 
-  currentDate, 
-  clinicianId, 
+const WeekView: React.FC<WeekViewProps> = ({
+  currentDate,
+  clinicianId,
   refreshTrigger = 0,
   appointments = [],
-  getClientName = () => 'Unknown Client',
+  getClientName = () => "Unknown Client",
   onAppointmentClick,
   onAvailabilityClick,
-  userTimeZone = 'America/Chicago'
+  userTimeZone = "America/Chicago",
 }) => {
   // Create array of days for the week and time slots for each day
   const { days, timeSlots } = useMemo(() => {
     // Log the input currentDate in multiple formats for debugging
-    console.log('[WeekView] Generating days with currentDate:', {
+    console.log("[WeekView] Generating days with currentDate:", {
       jsDate: currentDate.toISOString(),
-      luxonDate: TimeZoneService.fromJSDate(currentDate, userTimeZone).toISO()
+      luxonDate: TimeZoneService.fromJSDate(currentDate, userTimeZone).toISO(),
     });
-    
+
     // Use the TimeZoneService to generate days in the user's timezone
     const today = TimeZoneService.fromJSDate(currentDate, userTimeZone);
     const weekStart = TimeZoneService.startOfWeek(today);
     const weekEnd = TimeZoneService.endOfWeek(today);
-    const daysInWeek = TimeZoneService.eachDayOfInterval(weekStart, weekEnd).map(dt => dt.toJSDate());
-    
-    console.log('[WeekView] Generated days for week:', daysInWeek.map(d => format(d, 'yyyy-MM-dd')));
-    
+    const daysInWeek = TimeZoneService.eachDayOfInterval(
+      weekStart,
+      weekEnd
+    ).map((dt) => dt.toJSDate());
+
+    console.log(
+      "[WeekView] Generated days for week:",
+      daysInWeek.map((d) => format(d, "yyyy-MM-dd"))
+    );
+
     // Generate time slots from 8 AM to 6 PM in 30-minute increments
     const slots = Array.from({ length: 21 }, (_, i) => {
       const minutes = i * 30;
       return addMinutes(setHours(startOfDay(new Date()), 8), minutes);
     });
+    console.log(slots, "iamag3amer");
 
     return { days: daysInWeek, timeSlots: slots };
   }, [currentDate, userTimeZone]);
@@ -74,79 +80,114 @@ const WeekView: React.FC<WeekViewProps> = ({
     getAvailabilityForBlock,
     isTimeSlotAvailable,
     getBlockForTimeSlot,
-    getAppointmentForTimeSlot
-  } = useWeekViewData(days, clinicianId, refreshTrigger, appointments, getClientName, userTimeZone);
+    getAppointmentForTimeSlot,
+  } = useWeekViewData(
+    days,
+    clinicianId,
+    refreshTrigger,
+    appointments,
+    getClientName,
+    userTimeZone
+  );
 
   // Detailed logging for week view appointments
   React.useEffect(() => {
-    console.log(`[WeekView] Rendered with ${appointments.length} appointments and ${appointmentBlocks.length} blocks`);
-    
+    console.log(
+      `[WeekView] Rendered with ${appointments.length} appointments and ${appointmentBlocks.length} blocks`
+    );
+
     // Log sample client names for verification
     if (appointments.length > 0) {
-      console.log('[WeekView] All appointments:', appointments.map(app => ({
-        id: app.id,
-        start_at: app.start_at,
-        dateFormatted: app.start_at ? 
-          TimeZoneService.fromUTC(app.start_at, userTimeZone).toFormat('yyyy-MM-dd') : 'Invalid',
-        clientName: app.clientName || getClientName(app.client_id)
-      })));
-      
+      console.log(
+        "[WeekView] All appointments:",
+        appointments.map((app) => ({
+          id: app.id,
+          start_at: app.start_at,
+          dateFormatted: app.start_at
+            ? TimeZoneService.fromUTC(app.start_at, userTimeZone).toFormat(
+                "yyyy-MM-dd"
+              )
+            : "Invalid",
+          clientName: app.clientName || getClientName(app.client_id),
+        }))
+      );
+
       // Log the first few appointments for debugging
       const samplesToLog = Math.min(appointments.length, 5);
       for (let i = 0; i < samplesToLog; i++) {
         const app = appointments[i];
-        const startLocalDateTime = app.start_at ? 
-          TimeZoneService.fromUTC(app.start_at, userTimeZone) : null;
-          
-        console.log(`[WeekView] Sample appointment ${i+1}/${samplesToLog}: ${app.clientName || getClientName(app.client_id)} (ID: ${app.client_id})`, {
-          date: startLocalDateTime ? startLocalDateTime.toFormat('yyyy-MM-dd') : 'Invalid date',
-          time: startLocalDateTime ? startLocalDateTime.toFormat('HH:mm') : 'Invalid time',
-          startAt: app.start_at
-        });
+        const startLocalDateTime = app.start_at
+          ? TimeZoneService.fromUTC(app.start_at, userTimeZone)
+          : null;
+
+        console.log(
+          `[WeekView] Sample appointment ${i + 1}/${samplesToLog}: ${
+            app.clientName || getClientName(app.client_id)
+          } (ID: ${app.client_id})`,
+          {
+            date: startLocalDateTime
+              ? startLocalDateTime.toFormat("yyyy-MM-dd")
+              : "Invalid date",
+            time: startLocalDateTime
+              ? startLocalDateTime.toFormat("HH:mm")
+              : "Invalid time",
+            startAt: app.start_at,
+          }
+        );
       }
     }
 
     if (appointmentBlocks.length > 0) {
-      console.log('[WeekView] Appointment blocks:', appointmentBlocks.map(block => ({
-        clientName: block.clientName,
-        clientId: block.clientId,
-        day: block.day.toFormat('yyyy-MM-dd'),
-        time: `${block.start.toFormat('HH:mm')}-${block.end.toFormat('HH:mm')}`
-      })));
+      console.log(
+        "[WeekView] Appointment blocks:",
+        appointmentBlocks.map((block) => ({
+          clientName: block.clientName,
+          clientId: block.clientId,
+          day: block.day.toFormat("yyyy-MM-dd"),
+          time: `${block.start.toFormat("HH:mm")}-${block.end.toFormat(
+            "HH:mm"
+          )}`,
+        }))
+      );
     } else if (appointments.length > 0) {
-      console.error('[WeekView] WARNING: There are appointments but no appointment blocks were created');
+      console.error(
+        "[WeekView] WARNING: There are appointments but no appointment blocks were created"
+      );
     }
-    
+
     // Log all days in the view for debugging
-    console.log('[WeekView] Days in view:', days.map(d => format(d, 'yyyy-MM-dd')));
+    console.log(
+      "[WeekView] Days in view:",
+      days.map((d) => format(d, "yyyy-MM-dd"))
+    );
   }, [appointments, appointmentBlocks, getClientName, days, userTimeZone]);
 
   // Handle click on availability block
   const handleAvailabilityBlockClick = (day: Date, block: any) => {
     if (!onAvailabilityClick || !block.availabilityIds.length) return;
-    
+
     const availabilityId = block.availabilityIds[0];
-    
+
     if (block.isStandalone) {
-      const exception = exceptions.find(exc => exc.id === availabilityId);
+      const exception = exceptions.find((exc) => exc.id === availabilityId);
       if (exception) {
         const availabilityBlock = {
           id: exception.id,
-          day_of_week: format(day, 'EEEE'),
-          start_time: exception.start_time || '',
-          end_time: exception.end_time || '',
+          day_of_week: format(day, "EEEE"),
+          start_time: exception.start_time || "",
+          end_time: exception.end_time || "",
           clinician_id: exception.clinician_id,
           is_active: true,
           isException: true,
-          isStandalone: true
+          isStandalone: true,
         };
         onAvailabilityClick(day, availabilityBlock);
       }
       return;
     }
-    
+
     const availabilityBlock = getAvailabilityForBlock(availabilityId);
-    
+
     if (availabilityBlock) {
       onAvailabilityClick(day, availabilityBlock);
     }
@@ -164,70 +205,88 @@ const WeekView: React.FC<WeekViewProps> = ({
     <Card className="p-4">
       {/* Grid container with reduced gap to minimize visual breaks */}
       <div className="grid grid-cols-8 gap-0">
+        {/* Header row */}
         <div className="col-span-1"></div>
-        {days.map(day => (
+        {days.map((day) => (
           <div
             key={day.toString()}
             className="col-span-1 p-2 text-center font-medium border-b-2 border-gray-200"
           >
-            <div className="text-sm text-gray-400">{format(day, 'EEE')}</div>
-            <div className={`text-lg ${format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') ? 'bg-valorwell-500 text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto' : ''}`}>
-              {format(day, 'd')}
+            <div className="text-sm text-gray-400">{format(day, "EEE")}</div>
+            <div
+              className={`text-lg ${
+                format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
+                  ? "bg-valorwell-500 text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto"
+                  : ""
+              }`}
+            >
+              {format(day, "d")}
             </div>
           </div>
         ))}
 
-        {timeSlots.map((timeSlot) => (
-          <React.Fragment key={timeSlot.toString()}>
-            {/* Time label column */}
-            <div className="col-span-1 p-2 text-xs text-gray-500 text-right pr-4 border-t border-gray-100">
-              {format(timeSlot, 'h:mm a')}
-            </div>
+        {/* Time slots and day cells */}
+        {timeSlots.map((timeSlot) => {
+          const timeLabel = format(timeSlot, "h:mm a");
 
-            {/* Day columns */}
-            {days.map(day => {
-              const isAvailable = isTimeSlotAvailable(day, timeSlot);
-              const currentBlock = getBlockForTimeSlot(day, timeSlot);
-              const appointment = getAppointmentForTimeSlot(day, timeSlot);
+          return (
+            <React.Fragment key={timeSlot.toString()}>
+              {/* Time label column */}
+              <div className="col-span-1 p-2 text-xs text-gray-500 text-right pr-4 border-t border-gray-100">
+                {timeLabel}
+              </div>
 
-              const slotStartTime = setMinutes(
-                setHours(startOfDay(day), timeSlot.getHours()),
-                timeSlot.getMinutes()
-              );
-              
-              const slotEndTime = addMinutes(slotStartTime, 30);
+              {/* Day columns for this time slot */}
+              {days.map((day) => {
+                const isAvailable = isTimeSlotAvailable(day, timeSlot);
+                const currentBlock = getBlockForTimeSlot(day, timeSlot);
+                const appointment = getAppointmentForTimeSlot(day, timeSlot);
 
-              const blockStartCheck = isStartOfBlock(slotStartTime, currentBlock);
-              const blockEndCheck = isEndOfBlock(slotStartTime, currentBlock);
-              const appointmentStartCheck = isStartOfAppointment(slotStartTime, appointment);
+                const slotStartTime = setMinutes(
+                  setHours(startOfDay(day), timeSlot.getHours()),
+                  timeSlot.getMinutes()
+                );
 
-              const cellKey = `${day.toString()}-${timeSlot.toString()}`;
+                const slotEndTime = addMinutes(slotStartTime, 30);
 
-              // Modified cell styling - removed left border and minimized padding
-              // This helps reduce visible gaps between cells
-              return (
-                <div
-                  key={cellKey}
-                  className="col-span-1 min-h-[40px] border-t border-gray-50 p-0 group hover:bg-gray-50"
-                >
-                  <TimeSlot
-                    day={day}
-                    timeSlot={timeSlot}
-                    isAvailable={isAvailable}
-                    currentBlock={currentBlock}
-                    appointment={appointment}
-                    isStartOfBlock={blockStartCheck}
-                    isEndOfBlock={blockEndCheck}
-                    isStartOfAppointment={appointmentStartCheck}
-                    handleAvailabilityBlockClick={handleAvailabilityBlockClick}
-                    onAppointmentClick={onAppointmentClick}
-                    originalAppointments={appointments}
-                  />
-                </div>
-              );
-            })}
-          </React.Fragment>
-        ))}
+                const blockStartCheck = isStartOfBlock(
+                  slotStartTime,
+                  currentBlock
+                );
+                const blockEndCheck = isEndOfBlock(slotStartTime, currentBlock);
+                const appointmentStartCheck = isStartOfAppointment(
+                  slotStartTime,
+                  appointment
+                );
+
+                const cellKey = `${day.toString()}-${timeSlot.toString()}`;
+
+                return (
+                  <div
+                    key={cellKey}
+                    className="col-span-1 min-h-[40px] border-t border-gray-50 p-0 group hover:bg-gray-50"
+                  >
+                    <TimeSlot
+                      day={day}
+                      timeSlot={timeSlot}
+                      isAvailable={isAvailable}
+                      currentBlock={currentBlock}
+                      appointment={appointment}
+                      isStartOfBlock={blockStartCheck}
+                      isEndOfBlock={blockEndCheck}
+                      isStartOfAppointment={appointmentStartCheck}
+                      handleAvailabilityBlockClick={
+                        handleAvailabilityBlockClick
+                      }
+                      onAppointmentClick={onAppointmentClick}
+                      originalAppointments={appointments}
+                    />
+                  </div>
+                );
+              })}
+            </React.Fragment>
+          );
+        })}
       </div>
     </Card>
   );

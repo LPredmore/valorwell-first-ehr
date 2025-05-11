@@ -1,21 +1,26 @@
-
-import React from 'react';
-import Layout from '../components/layout/Layout';
-import CalendarView from '../components/calendar/CalendarView';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
-import { addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
-import { useCalendarState } from '../hooks/useCalendarState';
-import CalendarHeader from '../components/calendar/CalendarHeader';
-import CalendarViewControls from '../components/calendar/CalendarViewControls';
-import AppointmentDialog from '../components/calendar/AppointmentDialog';
-import { useUser } from '@/context/UserContext';
-import { useAppointments } from '@/hooks/useAppointments';
+import React, { useEffect } from "react";
+import Layout from "../components/layout/Layout";
+import CalendarView from "../components/calendar/CalendarView";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Loader2 } from "lucide-react";
+import { addMonths, subMonths, addWeeks, subWeeks } from "date-fns";
+import { useCalendarState } from "../hooks/useCalendarState";
+import CalendarHeader from "../components/calendar/CalendarHeader";
+import CalendarViewControls from "../components/calendar/CalendarViewControls";
+import AppointmentDialog from "../components/calendar/AppointmentDialog";
+import { useUser } from "@/context/UserContext";
+import { useAppointments } from "@/hooks/useAppointments";
 
 const CalendarPage = () => {
   // Get the logged-in user's ID
   const { userId } = useUser();
-  
+
   const {
     view,
     setView,
@@ -36,12 +41,12 @@ const CalendarPage = () => {
     userTimeZone,
     isLoadingTimeZone,
   } = useCalendarState(userId); // Pass userId to useCalendarState
-
+  console.log("userTimeZone", userTimeZone, new Date());
   // Fetch appointments for the selected clinician
   const {
     appointments,
     isLoading: isLoadingAppointments,
-    error: appointmentsError
+    error: appointmentsError,
   } = useAppointments(
     selectedClinicianId,
     // Start date for fetch range - 1 month before current date
@@ -51,18 +56,22 @@ const CalendarPage = () => {
     userTimeZone
   );
 
+  useEffect(() => {
+    console.log(appointments, "gamerproappointments");
+  }, [appointments]);
+
   const navigatePrevious = () => {
-    if (view === 'week') {
+    if (view === "week") {
       setCurrentDate(subWeeks(currentDate, 1));
-    } else if (view === 'month') {
+    } else if (view === "month") {
       setCurrentDate(subMonths(currentDate, 1));
     }
   };
 
   const navigateNext = () => {
-    if (view === 'week') {
+    if (view === "week") {
       setCurrentDate(addWeeks(currentDate, 1));
-    } else if (view === 'month') {
+    } else if (view === "month") {
       setCurrentDate(addMonths(currentDate, 1));
     }
   };
@@ -71,7 +80,7 @@ const CalendarPage = () => {
     setCurrentDate(new Date());
   };
 
-  const handleViewChange = (newView: 'week' | 'month') => {
+  const handleViewChange = (newView: "week" | "month") => {
     setView(newView);
   };
 
@@ -80,7 +89,7 @@ const CalendarPage = () => {
   };
 
   const handleAppointmentCreated = () => {
-    setAppointmentRefreshTrigger(prev => prev + 1);
+    setAppointmentRefreshTrigger((prev) => prev + 1);
   };
 
   console.log("Calendar Page - selectedClinicianId:", selectedClinicianId);
@@ -95,7 +104,7 @@ const CalendarPage = () => {
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-800">Calendar</h1>
             <div className="flex items-center gap-4">
-              <CalendarViewControls 
+              <CalendarViewControls
                 view={view}
                 showAvailability={showAvailability}
                 onViewChange={handleViewChange}

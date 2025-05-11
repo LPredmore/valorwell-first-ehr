@@ -96,6 +96,7 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
           title={`${appointment.clientName || 'Unknown Client'} - ${appointment.start.toFormat('h:mm a')} to ${appointment.end.toFormat('h:mm a')}`}
         >
           {/* Use the standardized clientName that follows our formatting rule */}
+  
           {appointment.clientName || 'Unknown Client'}
         </div>
       );
@@ -108,7 +109,7 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
         onClick={handleAppointmentClick}
         title={`${appointment.clientName || 'Unknown Client'} - ${appointment.start.toFormat('h:mm a')} to ${appointment.end.toFormat('h:mm a')}`}
       >
-        {/* Continuation of appointment */}
+        {appointment.clientName || 'Unknown Client'}
       </div>
     );
   } 

@@ -60,7 +60,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
         } catch (error) {
           console.error("[useCalendarState] Error fetching clinician timezone:", error);
         } finally {
-          setIsLoadingTimeZone(false);
+          // setIsLoadingTimeZone(false);
         }
       }
     };
@@ -71,9 +71,12 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   // Set user timezone
   useEffect(() => {
     if (clinicianTimeZone && !isLoadingTimeZone) {
+
+      console.log("thisisnotokay",TimeZoneService.ensureIANATimeZone(clinicianTimeZone));
       // For clinician views, use clinician's timezone
       setUserTimeZone(TimeZoneService.ensureIANATimeZone(clinicianTimeZone));
     } else {
+      console.log('thisisokay',TimeZoneService.ensureIANATimeZone(getUserTimeZone()));
       // Fallback to browser timezone
       setUserTimeZone(TimeZoneService.ensureIANATimeZone(getUserTimeZone()));
     }
