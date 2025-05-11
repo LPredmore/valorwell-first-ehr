@@ -120,6 +120,13 @@ export const useAppointments = (
       query = query.order("start_at", { ascending: true });
 
       // Fetch data without .returns<T>() initially to inspect raw data if needed
+{/* Debugging: Log raw Supabase response structure */}
+console.log('[useAppointments] Raw Supabase response structure:', {
+  hasClientsField: 'clients' in rawDataAny?.[0] ?? false,
+  clientsFieldType: typeof (rawDataAny?.[0]?.clients),
+  clientFieldKeys: Object.keys(rawDataAny?.[0]?.clients ?? {}),
+  rawStartAtFormat: rawDataAny?.[0]?.start_at
+});
       const { data: rawDataAny, error: queryError } = await query;
 
       if (queryError) {

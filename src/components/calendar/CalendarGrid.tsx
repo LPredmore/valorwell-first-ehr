@@ -52,12 +52,17 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
         const firstAvailability = availabilityBlocks.length > 0 ? availabilityBlocks[0] : undefined;
         
         // Enhanced logging for debugging
+        console.log(`[CalendarGrid] Processing day ${dateStr} in time zone ${userTimeZone}`);
+        console.log(`[CalendarGrid] UTC day: ${day.toUTC().toString()}, Local day: ${day.toString()}`);
+        console.log(`[CalendarGrid] Month start (UTC): ${monthStart.toUTC().toString()}`);
+        
         if (dayAppointments.length > 0) {
-          console.log(`[CalendarGrid] Day ${dateStr} has ${dayAppointments.length} appointments:`, 
-            dayAppointments.map(app => ({ 
-              id: app.id, 
+          console.log(`[CalendarGrid] Day ${dateStr} has ${dayAppointments.length} appointments:`,
+            dayAppointments.map(app => ({
+              id: app.id,
               client: app.clientName,
-              start_at: app.start_at 
+              start_at_utc: app.start_at,
+              start_at_local: TimeZoneService.convertUTCToLocal(app.start_at, userTimeZone)
             }))
           );
         }
