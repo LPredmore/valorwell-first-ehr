@@ -233,7 +233,7 @@ export class TimeZoneService {
   public static convertUTCToLocal = TimeZoneService.fromUTC;
 
   /**
-   * Converts a local date and time to UTC
+   * Converts a local date and time to UTC with DST transition validation
    * @param localDateTimeStr The local date and time string in 'yyyy-MM-ddTHH:mm' format
    * @param timezone The timezone of the local date and time
    * @returns A DateTime object representing the time in UTC
@@ -241,16 +241,49 @@ export class TimeZoneService {
   public static convertLocalToUTC(localDateTimeStr: string, timezone: string): DateTime {
     const safeTimezone = this.ensureIANATimeZone(timezone);
     
+    // Validate input format (YYYY-MM-DDTHH:MM format)
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(localDateTimeStr)) {
+      console.error('Invalid date-time format:', localDateTimeStr);
+      throw new Error(`Invalid date-time format: ${localDateTimeStr}. Expected format: "YYYY-MM-DDTHH:MM"`);
+    }
+    
     // Parse the local date time string in the specified timezone
     const localDateTime = DateTime.fromISO(localDateTimeStr, { zone: safeTimezone });
     
+    // DST transition validation
     if (!localDateTime.isValid) {
-      console.error('Invalid DateTime from local conversion:', localDateTime.invalidReason, localDateTime.invalidExplanation);
-      throw new Error(`Failed to convert local time: ${localDateTime.invalidReason}`);
+      console.error('Invalid DateTime during DST transition:', localDateTimeStr, safeTimezone);
+      throw new Error(`Invalid date-time during DST transition: ${localDateTime.invalidReason}`);
+    }
+    
+    // Check for ambiguous or invalid times during DST transitions
+    if (localDateTime.isInDSTTransition) {
+      console.warn('DateTime falls in DST transition period:', localDateTime.toISO(), safeTimezone);
+      // Handle ambiguous times (e.g., fall back)
+      if (localDateTime.isInDSTGap) {
+        throw new Error(`DateTime falls in DST gap period for ${safeTimezone}`);
+      }
+      // Handle overlapping times (e.g., spring forward)
+      if (localDateTime.isInDSTOverlap) {
+        throw new Error(`DateTime falls in DST overlap period for ${safeTimezone}`);
+      }
+    }
+    
+    // Ensure the parsed date is in the expected timezone
+    if (localDateTime.zoneName !== safeTimezone) {
+      console.warn('Parsed DateTime zone mismatch:', localDateTime.zoneName, '≠', safeTimezone);
     }
     
     // Convert to UTC
-    return localDateTime.toUTC();
+    const utcDateTime = localDateTime.toUTC();
+    
+    // Add additional validation for the conversion result
+    if (!utcDateTime.isValid) {
+      console.error('UTC conversion failed:', localDateTime.toISO(), '→', utcDateTime.invalidReason);
+      throw new Error(`UTC conversion failed: ${utcDateTime.invalidReason}`);
+    }
+    
+    return utcDateTime;
   }
   
   /**
