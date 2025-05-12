@@ -94,25 +94,33 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
 
         if (error) {
           console.error('[useCalendarState] Error fetching clinicians:', error);
-        } else {
-          console.log('[useCalendarState] Fetched clinicians:', data?.length);
-          setClinicians(data || []);
-          
-          // Only set default clinician if none was provided and we don't already have one
-          if (data && data.length > 0 && !initialClinicianId && !selectedClinicianId) {
-            console.log('[useCalendarState] Setting default clinician:', data[0].id);
-            setSelectedClinicianId(data[0].id);
-          }
+          setClinicians([]);
+          return;
+        }
+
+        setClinicians(data);
+        
+        // Set default clinician if none is selected
+        if (!selectedClinicianId && data?.length > 0) {
+          const primaryId = data[0]?.id;
+          console.log('[useCalendarState] Setting default clinician:', {
+            clinicianId: primaryId,
+            name: data[0]?.clinician_professional_name
+          });
+          setSelectedClinicianId(primaryId);
+        } else if (initialClinicianId) {
+          console.log('[useCalendarState] Using provided initial clinician ID:', initialClinicianId);
+          setSelectedClinicianId(initialClinicianId);
         }
       } catch (error) {
-        console.error('[useCalendarState] Error:', error);
+        console.error("[useCalendarState] Critical error in fetchClinicians:", error);
       } finally {
         setLoadingClinicians(false);
       }
     };
 
     fetchClinicians();
-  }, [initialClinicianId]);
+  }, [initialClinicianId, selectedClinicianId]);
 
   // Load clients for selected clinician
   useEffect(() => {

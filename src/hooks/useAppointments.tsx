@@ -63,10 +63,18 @@ export const useAppointments = (
   const [isLoadingSessionClientData, setIsLoadingSessionClientData] =
     useState(false);
 
-  const formattedClinicianId = clinicianId ? clinicianId.trim() : null;
+  const formattedClinicianId = clinicianId ? clinicianId : null;
   const safeUserTimeZone = TimeZoneService.ensureIANATimeZone(
     timeZone || TimeZoneService.DEFAULT_TIMEZONE
   );
+  
+  // Log clinician ID handling for debugging
+  console.log("[useAppointments] Clinician ID handling:", {
+    rawClinicianId: clinicianId,
+    formattedClinicianId,
+    isUUIDFormat: /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(clinicianId || ""),
+    fromTimeZone: safeUserTimeZone
+  });
 
   const { fromUTCISO, toUTCISO } = useMemo(() => {
     let fromISO: string | undefined;
@@ -115,18 +123,30 @@ export const useAppointments = (
         .eq("clinician_id", formattedClinicianId)
         .eq("status", "scheduled");
 
+      // Add explicit date filtering with timezone-aware values
+      console.log("[useAppointments] Applying date range filter:", {
+        fromUTCISO,
+        toUTCISO,
+        localFromDate: fromDate ? DateTime.fromJSDate(fromDate).setZone(safeUserTimeZone).toISO() : null,
+        localToDate: toDate ? DateTime.fromJSDate(toDate).setZone(safeUserTimeZone).toISO() : null
+      });
+      
       if (fromUTCISO) query = query.gte("start_at", fromUTCISO);
       if (toUTCISO) query = query.lte("start_at", toUTCISO);
       query = query.order("start_at", { ascending: true });
 
       // Fetch data without .returns<T>() initially to inspect raw data if needed
-{/* Debugging: Log raw Supabase response structure */}
-console.log('[useAppointments] Raw Supabase response structure:', {
-  hasClientsField: 'clients' in rawDataAny?.[0] ?? false,
-  clientsFieldType: typeof (rawDataAny?.[0]?.clients),
-  clientFieldKeys: Object.keys(rawDataAny?.[0]?.clients ?? {}),
-  rawStartAtFormat: rawDataAny?.[0]?.start_at
-});
+      // Debugging: Log raw Supabase response structure with more context
+      console.log('[useAppointments] Raw Supabase response structure:', {
+        hasData: !!rawDataAny,
+        recordCount: rawDataAny?.length || 0,
+        sampleRecord: rawDataAny?.[0] || null,
+        hasClientsField: rawDataAny?.[0] ? 'clients' in rawDataAny[0] : false,
+        clientsFieldType: rawDataAny?.[0]?.clients ? typeof rawDataAny[0].clients : "undefined",
+        clientFieldKeys: rawDataAny?.[0]?.clients ? Object.keys(rawDataAny[0].clients) : [],
+        rawStartAtFormat: rawDataAny?.[0]?.start_at || "N/A",
+        clinicianIdUsed: formattedClinicianId
+      });
       const { data: rawDataAny, error: queryError } = await query;
 
       if (queryError) {

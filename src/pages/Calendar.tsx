@@ -42,7 +42,18 @@ const CalendarPage = () => {
     isLoadingTimeZone,
   } = useCalendarState(userId); // Pass userId to useCalendarState
   console.log("userTimeZone", userTimeZone, new Date());
-  // Fetch appointments for the selected clinician
+  // Log timezone info before fetching appointments
+  useEffect(() => {
+    console.log("[CalendarPage] Timezone context:", {
+      userTimeZone,
+      isLoadingTimeZone,
+      rawDate: currentDate.toISOString(),
+      localDateString: currentDate.toString(),
+      clinicianId: selectedClinicianId
+    });
+  }, [userTimeZone, isLoadingTimeZone, currentDate, selectedClinicianId]);
+
+  // Fetch appointments for the selected clinician with detailed logging
   const {
     appointments,
     isLoading: isLoadingAppointments,
@@ -56,9 +67,16 @@ const CalendarPage = () => {
     userTimeZone
   );
 
+  // Log appointments with enhanced context
   useEffect(() => {
-    console.log(appointments, "gamerproappointments");
-  }, [appointments]);
+    console.log("[CalendarPage] Appointments updated:", {
+      count: appointments?.length || 0,
+      sample: appointments?.[0] || null,
+      clinicianId: selectedClinicianId,
+      timeZoneUsed: userTimeZone,
+      fetchTime: new Date().toISOString()
+    });
+  }, [appointments, selectedClinicianId, userTimeZone]);
 
   const navigatePrevious = () => {
     if (view === "week") {
