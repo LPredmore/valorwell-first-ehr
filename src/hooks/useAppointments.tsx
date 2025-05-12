@@ -395,3 +395,4 @@ console.log('[useAppointments] Raw Supabase response structure:', {
     addDisplayFormattingToAppointment,
   };
 };
+ 
