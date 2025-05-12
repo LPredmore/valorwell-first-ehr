@@ -29,9 +29,8 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   const [loadingClients, setLoadingClients] = useState(false);
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>(TimeZoneService.DEFAULT_TIMEZONE);
-  const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
   const [userTimeZone, setUserTimeZone] = useState<string>(TimeZoneService.DEFAULT_TIMEZONE);
+  const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
 
   const formattedClinicianId = ensureStringId(selectedClinicianId);
   
@@ -42,45 +41,39 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
       clinicianId: formattedClinicianId,
       originalClinicianId: selectedClinicianId,
       timeZone: userTimeZone,
-      clinicianTimeZone,
       isLoadingTimeZone,
       refreshTrigger: appointmentRefreshTrigger
     });
-  }, [view, selectedClinicianId, formattedClinicianId, userTimeZone, clinicianTimeZone, isLoadingTimeZone, appointmentRefreshTrigger]);
-  
-  // Fetch clinician timezone
+  }, [view, selectedClinicianId, formattedClinicianId, userTimeZone, isLoadingTimeZone, appointmentRefreshTrigger]);
+
+  // Set user timezone from clinician or browser
   useEffect(() => {
     const fetchClinicianTimeZone = async () => {
       if (formattedClinicianId) {
-        setIsLoadingTimeZone(true);
         try {
           const timeZone = await getClinicianTimeZone(formattedClinicianId);
-          console.log("[useCalendarState] Fetched clinician timezone:", timeZone);
-          setClinicianTimeZone(TimeZoneService.ensureIANATimeZone(timeZone));
+          if (timeZone) {
+            setUserTimeZone(TimeZoneService.ensureIANATimeZone(timeZone));
+          } else {
+            // Fallback to browser timezone if clinician timezone is not set
+            setUserTimeZone(TimeZoneService.ensureIANATimeZone(getUserTimeZone()));
+          }
         } catch (error) {
           console.error("[useCalendarState] Error fetching clinician timezone:", error);
+          // Fallback to browser timezone on error
+          setUserTimeZone(TimeZoneService.ensureIANATimeZone(getUserTimeZone()));
         } finally {
-          // setIsLoadingTimeZone(false);
+          setIsLoadingTimeZone(false);
         }
+      } else {
+        // No clinician ID provided, use browser timezone
+        setUserTimeZone(TimeZoneService.ensureIANATimeZone(getUserTimeZone()));
+        setIsLoadingTimeZone(false);
       }
     };
     
     fetchClinicianTimeZone();
   }, [formattedClinicianId]);
-
-  // Set user timezone
-  useEffect(() => {
-    if (clinicianTimeZone && !isLoadingTimeZone) {
-
-      console.log("thisisnotokay",TimeZoneService.ensureIANATimeZone(clinicianTimeZone));
-      // For clinician views, use clinician's timezone
-      setUserTimeZone(TimeZoneService.ensureIANATimeZone(clinicianTimeZone));
-    } else {
-      console.log('thisisokay',TimeZoneService.ensureIANATimeZone(getUserTimeZone()));
-      // Fallback to browser timezone
-      setUserTimeZone(TimeZoneService.ensureIANATimeZone(getUserTimeZone()));
-    }
-  }, [clinicianTimeZone, isLoadingTimeZone]);
 
   // Load clinicians
   useEffect(() => {
@@ -198,7 +191,6 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     isDialogOpen,
     setIsDialogOpen,
     userTimeZone,
-    clinicianTimeZone,
     isLoadingTimeZone,
   };
 };

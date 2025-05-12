@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import Layout from "../components/layout/Layout";
 import CalendarView from "../components/calendar/CalendarView";
@@ -40,20 +41,9 @@ const CalendarPage = () => {
     setIsDialogOpen,
     userTimeZone,
     isLoadingTimeZone,
-  } = useCalendarState(userId); // Pass userId to useCalendarState
-  console.log("userTimeZone", userTimeZone, new Date());
-  // Log timezone info before fetching appointments
-  useEffect(() => {
-    console.log("[CalendarPage] Timezone context:", {
-      userTimeZone,
-      isLoadingTimeZone,
-      rawDate: currentDate.toISOString(),
-      localDateString: currentDate.toString(),
-      clinicianId: selectedClinicianId
-    });
-  }, [userTimeZone, isLoadingTimeZone, currentDate, selectedClinicianId]);
-
-  // Fetch appointments for the selected clinician with detailed logging
+  } = useCalendarState(userId);
+  
+  // Fetch appointments with better date range
   const {
     appointments,
     isLoading: isLoadingAppointments,
@@ -67,16 +57,28 @@ const CalendarPage = () => {
     userTimeZone
   );
 
-  // Log appointments with enhanced context
+  // Log key information for debugging
   useEffect(() => {
-    console.log("[CalendarPage] Appointments updated:", {
-      count: appointments?.length || 0,
-      sample: appointments?.[0] || null,
-      clinicianId: selectedClinicianId,
-      timeZoneUsed: userTimeZone,
-      fetchTime: new Date().toISOString()
+    console.log("[CalendarPage] Calendar initialized:", {
+      userTimeZone,
+      currentDate: currentDate.toISOString(),
+      selectedClinicianId,
+      appointmentsCount: appointments?.length || 0,
+      viewMode: view
     });
-  }, [appointments, selectedClinicianId, userTimeZone]);
+    
+    // Log first few appointments for verification
+    if (appointments && appointments.length > 0) {
+      console.log("[CalendarPage] Sample appointments:", 
+        appointments.slice(0, 3).map(a => ({
+          id: a.id,
+          clientName: a.clientName,
+          start_at: a.start_at,
+          end_at: a.end_at
+        }))
+      );
+    }
+  }, [appointments, userTimeZone, currentDate, selectedClinicianId, view]);
 
   const navigatePrevious = () => {
     if (view === "week") {
@@ -110,11 +112,6 @@ const CalendarPage = () => {
     setAppointmentRefreshTrigger((prev) => prev + 1);
   };
 
-  console.log("Calendar Page - selectedClinicianId:", selectedClinicianId);
-  console.log("Calendar Page - userId:", userId);
-  console.log("Calendar Page - clients:", clients);
-  console.log("Calendar Page - loadingClients:", loadingClients);
-
   return (
     <Layout>
       <div className="bg-white rounded-lg shadow-sm p-6 animate-fade-in">
@@ -131,12 +128,12 @@ const CalendarPage = () => {
                 selectedClinicianId={selectedClinicianId}
               />
 
-              <div className="hidden">
+              <div className="hidden md:block">
                 <Select
                   value={selectedClinicianId || undefined}
                   onValueChange={(value) => setSelectedClinicianId(value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-[200px]">
                     <SelectValue placeholder="Select a clinician" />
                   </SelectTrigger>
                   <SelectContent>
@@ -195,4 +192,3 @@ const CalendarPage = () => {
 };
 
 export default CalendarPage;
- 

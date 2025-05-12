@@ -1,10 +1,8 @@
 
 import React from 'react';
-import { formatDateToTime12Hour } from '@/utils/timeZoneUtils';
 import { TimeBlock, AppointmentBlock } from './types';
 import { Appointment } from '@/types/appointment';
 import { isStartOfBlock, isEndOfBlock, isStartOfAppointment } from './utils';
-import { addMinutes } from 'date-fns';
 
 interface TimeSlotProps {
   day: Date;
@@ -33,21 +31,6 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
   onAppointmentClick,
   originalAppointments
 }) => {
-  // Create a class for continuous blocks with consistent border styling
-  let continuousBlockClass = "";
-
-  if (isAvailable && !appointment) {
-    if (isStartOfBlock && isEndOfBlock) {
-      continuousBlockClass = "rounded";
-    } else if (isStartOfBlock) {
-      continuousBlockClass = "rounded-t border-b-0";
-    } else if (isEndOfBlock) {
-      continuousBlockClass = "rounded-b";
-    } else {
-      continuousBlockClass = "border-t-0 border-b-0";
-    }
-  }
-
   // For appointments, handle styling to ensure visual continuity
   if (appointment) {
     // Find the corresponding original appointment
@@ -95,8 +78,6 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
           onClick={handleAppointmentClick}
           title={`${appointment.clientName || 'Unknown Client'} - ${appointment.start.toFormat('h:mm a')} to ${appointment.end.toFormat('h:mm a')}`}
         >
-          {/* Use the standardized clientName that follows our formatting rule */}
-  
           {appointment.clientName || 'Unknown Client'}
         </div>
       );
@@ -109,7 +90,7 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
         onClick={handleAppointmentClick}
         title={`${appointment.clientName || 'Unknown Client'} - ${appointment.start.toFormat('h:mm a')} to ${appointment.end.toFormat('h:mm a')}`}
       >
-        {appointment.clientName || 'Unknown Client'}
+        &nbsp;
       </div>
     );
   } 
@@ -162,4 +143,3 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
 };
 
 export default TimeSlot;
- 
