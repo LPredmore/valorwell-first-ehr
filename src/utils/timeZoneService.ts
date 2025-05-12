@@ -1,4 +1,3 @@
-
 import { DateTime, IANAZone } from 'luxon';
 
 export class TimeZoneService {
@@ -250,23 +249,21 @@ export class TimeZoneService {
     // Parse the local date time string in the specified timezone
     const localDateTime = DateTime.fromISO(localDateTimeStr, { zone: safeTimezone });
     
-    // DST transition validation
+    // Basic validation
     if (!localDateTime.isValid) {
-      console.error('Invalid DateTime during DST transition:', localDateTimeStr, safeTimezone);
-      throw new Error(`Invalid date-time during DST transition: ${localDateTime.invalidReason}`);
+      console.error('Invalid DateTime during conversion:', localDateTimeStr, safeTimezone);
+      throw new Error(`Invalid date-time during conversion: ${localDateTime.invalidReason}`);
     }
     
-    // Check for ambiguous or invalid times during DST transitions
-    if (localDateTime.isInDSTTransition) {
-      console.warn('DateTime falls in DST transition period:', localDateTime.toISO(), safeTimezone);
-      // Handle ambiguous times (e.g., fall back)
-      if (localDateTime.isInDSTGap) {
-        throw new Error(`DateTime falls in DST gap period for ${safeTimezone}`);
-      }
-      // Handle overlapping times (e.g., spring forward)
-      if (localDateTime.isInDSTOverlap) {
-        throw new Error(`DateTime falls in DST overlap period for ${safeTimezone}`);
-      }
+    // Check for DST transitions in a safer way that's compatible with Luxon
+    const offset = localDateTime.offset;
+    const oneHourBefore = localDateTime.minus({ hours: 1 });
+    const oneHourAfter = localDateTime.plus({ hours: 1 });
+    
+    // If the offset changes within this time window, we're near a DST transition
+    if (offset !== oneHourBefore.offset || offset !== oneHourAfter.offset) {
+      console.warn('DateTime may be in DST transition period:', localDateTime.toISO(), safeTimezone);
+      // We can log but still proceed with the conversion
     }
     
     // Ensure the parsed date is in the expected timezone

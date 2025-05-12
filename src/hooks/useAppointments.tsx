@@ -136,6 +136,8 @@ export const useAppointments = (
       query = query.order("start_at", { ascending: true });
 
       // Fetch data without .returns<T>() initially to inspect raw data if needed
+      const { data: rawDataAny, error: queryError } = await query;
+
       // Debugging: Log raw Supabase response structure with more context
       console.log('[useAppointments] Raw Supabase response structure:', {
         hasData: !!rawDataAny,
@@ -147,7 +149,6 @@ export const useAppointments = (
         rawStartAtFormat: rawDataAny?.[0]?.start_at || "N/A",
         clinicianIdUsed: formattedClinicianId
       });
-      const { data: rawDataAny, error: queryError } = await query;
 
       if (queryError) {
         console.error(
@@ -415,4 +416,3 @@ export const useAppointments = (
     addDisplayFormattingToAppointment,
   };
 };
- 
