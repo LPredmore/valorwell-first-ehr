@@ -172,6 +172,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       
       setIsEditOptionDialogOpen(false);
       onClose();
+      
       // Explicitly call onAppointmentUpdated to refresh the calendar
       onAppointmentUpdated();
     } catch (error) {

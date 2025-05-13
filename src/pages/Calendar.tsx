@@ -42,7 +42,8 @@ const CalendarPage = () => {
     subWeeks(currentDate, 4),
     // End date for fetch range - 2 months after current date
     addWeeks(currentDate, 8),
-    userTimeZone
+    userTimeZone,
+    appointmentRefreshTrigger // Pass the refresh trigger to the hook
   );
 
   // Log key information for debugging
