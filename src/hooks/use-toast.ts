@@ -2,6 +2,12 @@
 import { ReactNode } from "react";
 import { toast as sonnerToast } from "sonner";
 
+/**
+ * This hook provides toast functionality by delegating to Sonner's toast API.
+ * All toast notifications will be displayed by Sonner's <Toaster /> component in App.tsx.
+ * The legacy Radix UI toast components are no longer used.
+ */
+
 // Define our own Toast type that includes variant
 export interface Toast {
   id?: string;

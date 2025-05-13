@@ -1,34 +1,14 @@
 
-import { useToast } from "@/hooks/use-toast"
-import {
-  Toast,
-  ToastClose,
-  ToastDescription,
-  ToastProvider,
-  ToastTitle,
-  ToastViewport,
-} from "@/components/ui/toast"
+/**
+ * This component has been superseded by Sonner's <Toaster /> component.
+ * The useToast() hook from @/hooks/use-toast.ts now utilizes Sonner for toast functionality.
+ * All toast notifications should be displayed using Sonner's Toaster component in App.tsx.
+ * 
+ * This component is kept as a placeholder for compatibility but doesn't render anything.
+ */
 
 export function Toaster() {
-  const { toasts } = useToast()
-
-  return (
-    <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, variant, ...props }) {
-        return (
-          <Toast key={id} {...props} variant={variant}>
-            <div className="grid gap-1">
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && (
-                <ToastDescription>{description}</ToastDescription>
-              )}
-            </div>
-            {action}
-            <ToastClose />
-          </Toast>
-        )
-      })}
-      <ToastViewport />
-    </ToastProvider>
-  )
+  // The previous implementation used the toasts array from useToast()
+  // which no longer exists as we've migrated to Sonner for toast notifications
+  return null;
 }
