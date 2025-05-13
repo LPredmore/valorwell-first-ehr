@@ -80,14 +80,6 @@ const CalendarView = ({
     }
   }, [appointments, clinicianId, error, view, validTimeZone]);
 
-  // Function to get client name from an appointment - standardized to match useAppointments
-  const getClientName = (clientId: string): string => {
-    const appointment = appointments.find(app => app.client_id === clientId);
-    
-    // Just return the clientName property which is already formatted correctly in useAppointments
-    return appointment?.clientName || 'Unknown Client';
-  };
-
   // Handler for appointment clicked in calendar
   const handleAppointmentClick = (appointment: Appointment) => {
     setSelectedAppointmentId(appointment.id);
@@ -122,10 +114,11 @@ const CalendarView = ({
             clinicianId={clinicianId}
             refreshTrigger={refreshTrigger}
             appointments={appointments}
-            getClientName={getClientName}
             onAppointmentClick={handleAppointmentClick}
             onAvailabilityClick={handleAvailabilityClick}
             userTimeZone={validTimeZone}
+            isLoading={isLoading}
+            error={error}
           />
         ) : (
           <MonthView 
@@ -133,7 +126,10 @@ const CalendarView = ({
             clinicianId={clinicianId}
             refreshTrigger={refreshTrigger}
             appointments={appointments}
-            getClientName={getClientName}
+            getClientName={(clientId: string): string => {
+              const appointment = appointments.find(app => app.client_id === clientId);
+              return appointment?.clientName || 'Unknown Client';
+            }}
             onAppointmentClick={handleAppointmentClick}
             onAvailabilityClick={handleAvailabilityClick}
             userTimeZone={validTimeZone}

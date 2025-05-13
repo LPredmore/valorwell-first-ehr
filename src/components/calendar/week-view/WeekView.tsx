@@ -7,6 +7,7 @@ import { TimeBlock, AppointmentBlock } from './types';
 import { cn } from '@/lib/utils';
 import { TimeZoneService } from '@/utils/timeZoneService'; 
 import { toast } from '@/components/ui/use-toast';
+import { Appointment } from '@/types/appointment';
 
 interface WeekViewProps {
   clinicianId: string | null;
@@ -14,9 +15,11 @@ interface WeekViewProps {
   showAvailability?: boolean;
   refreshTrigger?: number;
   userTimeZone: string;
-  appointments?: any[];
+  appointments?: Appointment[];
   isLoading?: boolean;
   error?: any;
+  onAppointmentClick?: (appointment: Appointment) => void;
+  onAvailabilityClick?: (date: Date, availabilityBlock: any) => void;
 }
 
 const WEEKDAY_FORMAT = 'EEE';
@@ -35,7 +38,9 @@ const WeekView: React.FC<WeekViewProps> = ({
   userTimeZone,
   appointments = [],
   isLoading = false,
-  error = null
+  error = null,
+  onAppointmentClick,
+  onAvailabilityClick
 }) => {
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   
@@ -51,7 +56,7 @@ const WeekView: React.FC<WeekViewProps> = ({
     loading: dataLoading,
     timeBlocks,
     appointmentBlocks,
-    weeklyPattern, // New property providing the weekly pattern for debug
+    weeklyPattern,
     isTimeSlotAvailable,
     getBlockForTimeSlot,
     getAppointmentForTimeSlot,
@@ -76,20 +81,33 @@ const WeekView: React.FC<WeekViewProps> = ({
       title: "Availability Block",
       description: `${block.start.toFormat('h:mm a')} - ${block.end.toFormat('h:mm a')}`,
     });
+
+    // Call the parent handler if provided
+    if (onAvailabilityClick) {
+      onAvailabilityClick(day, block);
+    }
   };
 
-  const handleAppointmentClick = (appointment: AppointmentBlock) => {
+  const handleAppointmentClick = (appointmentBlock: AppointmentBlock) => {
     // Functionality for when an appointment is clicked
     console.log('Appointment clicked:', {
-      id: appointment.id,
-      client: appointment.clientName,
-      start: appointment.start.toFormat('HH:mm')
+      id: appointmentBlock.id,
+      client: appointmentBlock.clientName,
+      start: appointmentBlock.start.toFormat('HH:mm')
     });
     
     toast({
       title: "Appointment",
-      description: `${appointment.clientName} - ${appointment.start.toFormat('h:mm a')} - ${appointment.end.toFormat('h:mm a')}`,
+      description: `${appointmentBlock.clientName} - ${appointmentBlock.start.toFormat('h:mm a')} - ${appointmentBlock.end.toFormat('h:mm a')}`,
     });
+    
+    // Find the original appointment object to pass to parent handler
+    if (onAppointmentClick) {
+      const originalAppointment = appointments.find(a => a.id === appointmentBlock.id);
+      if (originalAppointment) {
+        onAppointmentClick(originalAppointment);
+      }
+    }
   };
 
   if (isLoading || dataLoading) {
