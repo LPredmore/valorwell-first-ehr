@@ -13,16 +13,26 @@ const Index = () => {
     if (!isLoading) {
       console.log("[Index] User context loaded, determining redirect");
       
+      // Track whether we've redirected to prevent multiple redirects
+      let redirected = false;
+      
       if (userRole === 'admin') {
         console.log("[Index] Redirecting admin to Settings page");
         navigate('/settings');
+        redirected = true;
       } else if (userRole === 'clinician') {
         console.log("[Index] Redirecting clinician to Dashboard page");
         navigate('/clinician-dashboard');
+        redirected = true;
       } else if (userRole === 'client') {
         console.log("[Index] Redirecting client to Patient Dashboard");
         navigate('/patient-dashboard');
-      } else {
+        redirected = true;
+      } 
+      
+      // Only redirect to login if not loading AND no valid role was found
+      // This fixes the race condition where we redirect to login too quickly
+      if (!redirected && !userRole) {
         console.log("[Index] No valid role found, redirecting to Login page");
         navigate('/login');
       }

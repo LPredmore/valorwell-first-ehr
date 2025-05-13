@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DateTime } from 'luxon';
@@ -88,11 +89,11 @@ const extractWeeklyPatternFromClinicianData = (clinicianData: any): ClinicianWee
         // Log the timezone being used for this slot
         console.log(`[extractWeeklyPatternFromClinicianData] Timezone for ${day}_${slotNum}: ${timezoneValue} (type: ${typeof timezoneValue})`);
         
-        // Add this time slot
+        // Add this time slot - ensure timezone is stored as a primitive string
         defaultAvailability[day as keyof ClinicianWeeklyAvailability].timeSlots.push({
           startTime: clinicianData[startTimeKey].substring(0, 5),  // Ensure "HH:MM" format
           endTime: clinicianData[endTimeKey].substring(0, 5),      // Ensure "HH:MM" format
-          timezone: timezoneValue  
+          timezone: String(timezoneValue)  // Explicitly convert to string to prevent object references
         });
       }
     }
@@ -133,6 +134,125 @@ export const useWeekViewData = (
     weekDays.map(day => day.toFormat('yyyy-MM-dd')),
     [weekDays]
   );
+
+  // Generate time blocks from weekly recurring pattern
+  const generateTimeBlocksFromWeeklyPattern = (
+    pattern: ClinicianWeeklyAvailability, 
+    days: DateTime[]
+  ): TimeBlock[] => {
+    if (!pattern) return [];
+    
+    // DEBUG: Log the pattern we received to check timezone values
+    console.log('[generateTimeBlocksFromWeeklyPattern DEBUG] Received pattern structure:', 
+      JSON.stringify({
+        monday: { 
+          isAvailable: pattern.monday.isAvailable,
+          slotsCount: pattern.monday.timeSlots.length,
+          sampleSlot: pattern.monday.timeSlots.length > 0 ? {
+            startTime: pattern.monday.timeSlots[0]?.startTime,
+            endTime: pattern.monday.timeSlots[0]?.endTime,
+            timezone: pattern.monday.timeSlots[0]?.timezone,
+            timezoneType: typeof pattern.monday.timeSlots[0]?.timezone
+          } : null
+        }
+      }, null, 2));
+    
+    const generatedBlocks: TimeBlock[] = [];
+    const defaultTimezone = 'America/Chicago';
+    
+    // For each day in our view
+    days.forEach(day => {
+      // Get day of week (0 = Sunday, 1 = Monday, etc.)
+      const dayOfWeek = day.weekday % 7; // Convert Luxon's 1-7 (Mon-Sun) to 0-6 (Sun-Sat)
+      
+      // Map day index to day name
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dayName = dayNames[dayOfWeek];
+      
+      // Get availability for this day of week
+      const dayAvailability = pattern[dayName as keyof ClinicianWeeklyAvailability];
+      
+      if (dayAvailability && dayAvailability.isAvailable) {
+        // Process each time slot for this day
+        dayAvailability.timeSlots.forEach((slot, index) => {
+          try {
+            // Ensure slot.timezone is a string - this is crucial
+            // First, ensure the value exists
+            if (!slot.timezone) {
+              console.error(`[generateTimeBlocksFromWeeklyPattern] Missing timezone for ${dayName} slot ${index}`);
+            }
+            
+            // Explicitly convert any timezone value to string and validate it
+            const slotTimezone = typeof slot.timezone === 'string' ? 
+              TimeZoneService.ensureIANATimeZone(slot.timezone) : 
+              (slot.timezone ? String(slot.timezone) : defaultTimezone);
+            
+            // Log timezone details
+            console.log('[generateTimeBlocksFromWeeklyPattern] Processing slot timezone:', {
+              rawTimezone: slot.timezone,
+              timezoneType: typeof slot.timezone,
+              normalizedTimezone: slotTimezone,
+              day: dayName,
+              slot: index
+            });
+            
+            // Create DateTime objects for start and end times in the slot's timezone
+            const [startHour, startMinute] = slot.startTime.split(':').map(Number);
+            const [endHour, endMinute] = slot.endTime.split(':').map(Number);
+            
+            // Create start and end DateTimes in slot timezone
+            const slotStart = day.setZone(slotTimezone).set({
+              hour: startHour,
+              minute: startMinute,
+              second: 0,
+              millisecond: 0
+            });
+            
+            const slotEnd = day.setZone(slotTimezone).set({
+              hour: endHour,
+              minute: endMinute,
+              second: 0,
+              millisecond: 0
+            });
+            
+            // Convert to user's timezone for display
+            const displayStart = slotStart.setZone(userTimeZone);
+            const displayEnd = slotEnd.setZone(userTimeZone);
+            
+            // Create the time block object
+            const timeBlock: TimeBlock = {
+              start: displayStart,
+              end: displayEnd,
+              day: day.startOf('day').setZone(userTimeZone),
+              availabilityIds: [`recurring-${dayName}-${index}`],
+              isException: false,
+              isStandalone: false
+            };
+            
+            generatedBlocks.push(timeBlock);
+            
+            console.log('[useWeekViewData] Generated recurring time block:', {
+              day: day.toFormat('yyyy-MM-dd'),
+              dayOfWeek: dayName,
+              start: displayStart.toFormat('HH:mm'),
+              end: displayEnd.toFormat('HH:mm'),
+              timezone: {
+                slot: slotTimezone,
+                display: userTimeZone
+              }
+            });
+          } catch (error) {
+            console.error('[useWeekViewData] Error creating recurring time block:', error, {
+              day: day.toISO(),
+              slot
+            });
+          }
+        });
+      }
+    });
+    
+    return generatedBlocks;
+  };
 
   // Fetch clinician data to get recurring availability pattern
   const fetchClinicianData = async (clinicianId: string) => {
@@ -231,104 +351,6 @@ export const useWeekViewData = (
       console.error('[useWeekViewData] Unexpected error fetching clinician data:', error);
       return null;
     }
-  };
-
-  // Generate time blocks from weekly recurring pattern
-  const generateTimeBlocksFromWeeklyPattern = (
-    pattern: ClinicianWeeklyAvailability, 
-    days: DateTime[]
-  ): TimeBlock[] => {
-    if (!pattern) return [];
-    
-    const generatedBlocks: TimeBlock[] = [];
-    const defaultTimezone = 'America/Chicago';
-    
-    // For each day in our view
-    days.forEach(day => {
-      // Get day of week (0 = Sunday, 1 = Monday, etc.)
-      const dayOfWeek = day.weekday % 7; // Convert Luxon's 1-7 (Mon-Sun) to 0-6 (Sun-Sat)
-      
-      // Map day index to day name
-      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-      const dayName = dayNames[dayOfWeek];
-      
-      // Get availability for this day of week
-      const dayAvailability = pattern[dayName as keyof ClinicianWeeklyAvailability];
-      
-      if (dayAvailability && dayAvailability.isAvailable) {
-        // Process each time slot for this day
-        dayAvailability.timeSlots.forEach((slot, index) => {
-          try {
-            // Ensure slot.timezone is a string
-            const slotTimezone = typeof slot.timezone === 'string' && slot.timezone
-              ? TimeZoneService.ensureIANATimeZone(slot.timezone)
-              : defaultTimezone;
-            
-            // Log timezone details
-            console.log('[generateTimeBlocksFromWeeklyPattern] Processing slot timezone:', {
-              rawTimezone: slot.timezone,
-              timezoneType: typeof slot.timezone,
-              normalizedTimezone: slotTimezone,
-              day: dayName,
-              slot: index
-            });
-            
-            // Create DateTime objects for start and end times in the slot's timezone
-            const [startHour, startMinute] = slot.startTime.split(':').map(Number);
-            const [endHour, endMinute] = slot.endTime.split(':').map(Number);
-            
-            // Create start and end DateTimes in slot timezone
-            const slotStart = day.setZone(slotTimezone).set({
-              hour: startHour,
-              minute: startMinute,
-              second: 0,
-              millisecond: 0
-            });
-            
-            const slotEnd = day.setZone(slotTimezone).set({
-              hour: endHour,
-              minute: endMinute,
-              second: 0,
-              millisecond: 0
-            });
-            
-            // Convert to user's timezone for display
-            const displayStart = slotStart.setZone(userTimeZone);
-            const displayEnd = slotEnd.setZone(userTimeZone);
-            
-            // Create the time block object
-            const timeBlock: TimeBlock = {
-              start: displayStart,
-              end: displayEnd,
-              day: day.startOf('day').setZone(userTimeZone),
-              availabilityIds: [`recurring-${dayName}-${index}`],
-              isException: false,
-              isStandalone: false
-            };
-            
-            generatedBlocks.push(timeBlock);
-            
-            console.log('[useWeekViewData] Generated recurring time block:', {
-              day: day.toFormat('yyyy-MM-dd'),
-              dayOfWeek: dayName,
-              start: displayStart.toFormat('HH:mm'),
-              end: displayEnd.toFormat('HH:mm'),
-              timezone: {
-                slot: slotTimezone,
-                display: userTimeZone
-              }
-            });
-          } catch (error) {
-            console.error('[useWeekViewData] Error creating recurring time block:', error, {
-              day: day.toISO(),
-              slot
-            });
-          }
-        });
-      }
-    });
-    
-    return generatedBlocks;
   };
 
   // Fetch clinician appointments and availability
@@ -443,21 +465,42 @@ export const useWeekViewData = (
           });
         });
 
-        // *** NEW: Extract weekly pattern from clinician data ***
+        // *** Extract weekly pattern from clinician data ***
         let extractedPattern = null;
         if (fetchedClinicianData) {
           setClinicianData(fetchedClinicianData);
           extractedPattern = extractWeeklyPatternFromClinicianData(fetchedClinicianData);
-          setWeeklyPattern(extractedPattern);
+          
+          // DEBUG: Log the extracted pattern to check timezone values
+          console.log('[useWeekViewData DEBUG] Initial extracted weeklyPattern:', 
+            JSON.stringify({
+              monday: { 
+                isAvailable: extractedPattern.monday.isAvailable,
+                slotsCount: extractedPattern.monday.timeSlots.length,
+                sampleSlot: extractedPattern.monday.timeSlots.length > 0 ? {
+                  startTime: extractedPattern.monday.timeSlots[0]?.startTime,
+                  endTime: extractedPattern.monday.timeSlots[0]?.endTime,
+                  timezone: extractedPattern.monday.timeSlots[0]?.timezone,
+                  timezoneType: typeof extractedPattern.monday.timeSlots[0]?.timezone
+                } : null
+              }
+            }, null, 2));
+          
+          // Create a deep clone of the pattern to prevent reference issues
+          // This prevents object mutations from affecting the pattern
+          const safePattern: ClinicianWeeklyAvailability = JSON.parse(JSON.stringify(extractedPattern));
+          
+          // Set the weekly pattern state with the cloned pattern
+          setWeeklyPattern(safePattern);
           
           console.log('[useWeekViewData] Extracted weekly pattern:', {
-            monday: extractedPattern.monday.timeSlots.length > 0,
-            tuesday: extractedPattern.tuesday.timeSlots.length > 0,
-            wednesday: extractedPattern.wednesday.timeSlots.length > 0,
-            thursday: extractedPattern.thursday.timeSlots.length > 0,
-            friday: extractedPattern.friday.timeSlots.length > 0,
-            saturday: extractedPattern.saturday.timeSlots.length > 0,
-            sunday: extractedPattern.sunday.timeSlots.length > 0,
+            monday: safePattern.monday.timeSlots.length > 0,
+            tuesday: safePattern.tuesday.timeSlots.length > 0,
+            wednesday: safePattern.wednesday.timeSlots.length > 0,
+            thursday: safePattern.thursday.timeSlots.length > 0,
+            friday: safePattern.friday.timeSlots.length > 0,
+            saturday: safePattern.saturday.timeSlots.length > 0,
+            sunday: safePattern.sunday.timeSlots.length > 0,
           });
         }
 
@@ -466,7 +509,8 @@ export const useWeekViewData = (
         setClients(clientMap);
         setExceptions(fetchedExceptions);
         
-        // Process time blocks and appointment blocks
+        // Process time blocks and appointment blocks using the extracted pattern directly
+        // This avoids any potential issues with the state not being updated yet
         processTimeBlocks(fetchedBlocks, fetchedExceptions, extractedPattern, weekDays);
         processAppointmentBlocks(fetchedAppts, clientMap);
         
