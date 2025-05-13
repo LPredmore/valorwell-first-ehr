@@ -1,5 +1,5 @@
 
-import { useState, useEffect, ReactNode } from "react";
+import { ReactNode } from "react";
 import { toast as sonnerToast } from "sonner";
 
 // Define our own Toast type that includes variant
@@ -12,19 +12,14 @@ export interface Toast {
   duration?: number;
 }
 
-// Convert our toast options to Sonner options
-const useToastImplementation = () => {
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  
+// Create a function that returns the toast functionality
+// This avoids calling hooks outside of component context
+export const useToast = () => {
   const toast = (props: Toast) => {
     const { title, description, variant, action, duration, ...rest } = props;
     
     // Create a unique ID for this toast if none provided
     const id = props.id || Date.now().toString();
-    const newToast = { id, title, description, variant, action, duration, ...rest };
-    
-    // Add to our internal toasts state
-    setToasts((current) => [...current, newToast]);
     
     // Use appropriate Sonner toast method based on variant
     if (variant === "destructive") {
@@ -55,9 +50,6 @@ const useToastImplementation = () => {
   
   const dismiss = (toastId?: string) => {
     if (toastId) {
-      setToasts((current) =>
-        current.filter((toast) => toast.id !== toastId)
-      );
       sonnerToast.dismiss(toastId);
     }
   };
@@ -65,16 +57,13 @@ const useToastImplementation = () => {
   return {
     toast,
     dismiss,
-    toasts,
   };
 };
 
-// Create a single instance to be shared across the app
-const useToast = () => useToastImplementation();
-
 // For direct imports without the hook
-const toastSingleton = useToastImplementation();
-const toast = toastSingleton.toast;
+const toast = (props: Toast) => {
+  const { toast: innerToast } = useToast();
+  return innerToast(props);
+};
 
-// Only export the type and functions once, removing the duplicate export
-export { useToast, toast };
+export { toast };
