@@ -2,7 +2,8 @@
 import { DateTime } from 'luxon';
 import { AvailabilityBlock } from '@/types/availability';
 
-export { AvailabilityBlock };
+// Re-export using the proper syntax for types with isolatedModules
+export type { AvailabilityBlock };
 
 export interface TimeBlock {
   start: DateTime;
