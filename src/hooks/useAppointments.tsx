@@ -49,7 +49,8 @@ export const useAppointments = (
   clinicianId: string | null,
   fromDate?: Date,
   toDate?: Date,
-  timeZone?: string
+  timeZone?: string,
+  refreshTrigger: number = 0 // Add the refreshTrigger parameter with default value
 ) => {
   const { toast } = useToast();
   const [currentAppointment, setCurrentAppointment] =
@@ -136,13 +137,14 @@ export const useAppointments = (
     error,
     refetch: refetchAppointments,
   } = useQuery<Appointment[], Error>({
-    queryKey: ["appointments", formattedClinicianId, fromUTCISO, toUTCISO],
+    // Include refreshTrigger in the queryKey to force refresh when it changes
+    queryKey: ["appointments", formattedClinicianId, fromUTCISO, toUTCISO, refreshTrigger],
     queryFn: async (): Promise<Appointment[]> => {
       if (!formattedClinicianId) return [];
       console.log(
         "[useAppointments] Fetching for clinician:",
         formattedClinicianId,
-        { from: fromUTCISO, to: toUTCISO }
+        { from: fromUTCISO, to: toUTCISO, refreshTrigger }
       );
 
       let query = supabase
