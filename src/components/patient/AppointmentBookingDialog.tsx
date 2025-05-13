@@ -83,10 +83,10 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
     availabilitySettings?: string;
     availabilityBlocks?: string;
     appointments?: string;
-    auth?: string; // Added auth property to fix type error
+    auth?: string;
   }>({});
   const { toast } = useToast();
-  const navigate = useNavigate(); // Added navigate hook
+  const navigate = useNavigate();
   
   // Get auth state from UserContext
   const { userId, isLoading: userIsLoading, authInitialized } = useUser();
@@ -97,6 +97,21 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
       getUserTimeZone() || TimeZoneService.DEFAULT_TIMEZONE
     );
   }, []);
+
+  // Calculate days difference between selected date and today
+  const daysDiff = useMemo(() => {
+    if (!selectedDate || !userTimeZone) {
+      console.log('[BookingDialog] daysDiff calculation: selectedDate or userTimeZone not available, returning 0.');
+      return 0;
+    }
+
+    const todayAtStartOfDay = DateTime.now().setZone(userTimeZone).startOf('day');
+    const selectedDateAtStartOfDay = DateTime.fromJSDate(selectedDate).setZone(userTimeZone).startOf('day');
+    
+    const diff = selectedDateAtStartOfDay.diff(todayAtStartOfDay, 'days').days;
+    console.log(`[BookingDialog] Calculated daysDiff: ${diff} (Selected: ${selectedDateAtStartOfDay.toISODate()}, Today: ${todayAtStartOfDay.toISODate()})`);
+    return diff;
+  }, [selectedDate, userTimeZone]);
 
   // Fetch availability settings from Supabase Edge Function, memoized to prevent recreation
   const fetchAvailabilitySettings = useCallback(async () => {
@@ -206,9 +221,6 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
   const generateTimeSlots = useCallback(() => {
     if (!selectedDate || !availabilityBlocks) return;
     
-    const today = new Date();
-    const daysDiff = Math.floor((selectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    
     console.log('[BookingDialog] Generating slots for date:', format(selectedDate, 'yyyy-MM-dd'));
     console.log('[BookingDialog] Days from today:', daysDiff, 'minDaysAhead:', availabilitySettings.min_days_ahead);
     
@@ -282,7 +294,7 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
     });
     
     setTimeSlots(slots);
-  }, [selectedDate, availabilityBlocks, existingAppointments, availabilitySettings, userTimeZone]);
+  }, [selectedDate, availabilityBlocks, existingAppointments, availabilitySettings, userTimeZone, daysDiff]);
 
   // Fetch settings once when dialog opens
   useEffect(() => {
@@ -556,3 +568,6 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
     </Dialog>
   );
 };
+
+// Add default export
+export default AppointmentBookingDialog;
