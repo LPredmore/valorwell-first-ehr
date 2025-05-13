@@ -80,24 +80,54 @@ export const useAppointments = (
     let fromISO: string | undefined;
     let toISO: string | undefined;
     try {
-      if (fromDate)
-        fromISO =
+      if (fromDate) {
+        fromISO = 
           DateTime.fromJSDate(fromDate)
             .setZone(safeUserTimeZone)
-            .startOf("day")
+            .startOf('day') 
             .toUTC()
-            .toISO() ?? undefined;
-      if (toDate)
-        toISO =
+            .toISO();
+        
+        // Add 6 days to create a proper week window (since our view has 7 days)
+        const weekEnd = DateTime.fromJSDate(fromDate)
+          .setZone(safeUserTimeZone)
+          .startOf('day')
+          .plus({ days: 6 })
+          .endOf('day')
+          .toUTC()
+          .toISO();
+          
+        toISO = weekEnd;
+      } else if (toDate) {
+        // If only toDate exists, calculate a week window ending on toDate
+        toISO = 
           DateTime.fromJSDate(toDate)
             .setZone(safeUserTimeZone)
-            .endOf("day")
+            .endOf('day')
             .toUTC()
-            .toISO() ?? undefined;
+            .toISO();
+            
+        const weekStart = DateTime.fromJSDate(toDate)
+          .setZone(safeUserTimeZone)
+          .endOf('day')
+          .minus({ days: 6 })
+          .startOf('day')
+          .toUTC()
+          .toISO();
+          
+        fromISO = weekStart;
+      } else {
+        // If neither from/to dates exist, fetch current UTC week
+        const now = DateTime.utc();
+        fromISO = now.startOf('week').toISO();
+        toISO = now.endOf('week').toISO();
+      }
+      
+      return { fromUTCISO: fromISO, toUTCISO: toISO };
     } catch (e) {
-      console.error("Error converting date range to UTC:", e);
+      console.error("Error converting date range:", e);
+      return {};
     }
-    return { fromUTCISO: fromISO, toUTCISO: toISO };
   }, [fromDate, toDate, safeUserTimeZone]);
 
   const {
@@ -123,19 +153,27 @@ export const useAppointments = (
         .eq("clinician_id", formattedClinicianId)
         .eq("status", "scheduled");
 
-      // Add explicit date filtering with timezone-aware values
-      console.log("[useAppointments] Applying date range filter:", {
+      // Use more robust timezone-aware filtering
+      console.log("[useAppointments] Applying robust UTC filter:", {
         fromUTCISO,
         toUTCISO,
-        localFromDate: fromDate ? DateTime.fromJSDate(fromDate).setZone(safeUserTimeZone).toISO() : null,
-        localToDate: toDate ? DateTime.fromJSDate(toDate).setZone(safeUserTimeZone).toISO() : null
+        clinicianTZ: safeUserTimeZone
       });
       
       if (fromUTCISO) query = query.gte("start_at", fromUTCISO);
-      if (toUTCISO) query = query.lte("start_at", toUTCISO);
-      query = query.order("start_at", { ascending: true });
-
-      // Fetch data without .returns<T>() initially to inspect raw data if needed
+      if (toUTCISO) query = query.lte("end_at", toUTCISO);
+      
+      // Add explicit time zone debugging
+      query = query
+        .order("start_at", { ascending: true });
+        
+      // Log debug info
+      console.log("[useAppointments] Final query details:", {
+        clinician_id: formattedClinicianId,
+        start_at: fromUTCISO ? `>= ${fromUTCISO}` : 'any',
+        end_at: toUTCISO ? `<= ${toUTCISO}` : 'any'
+      });
+      
       const { data: rawDataAny, error: queryError } = await query;
 
       // Debugging: Log raw Supabase response structure with more context

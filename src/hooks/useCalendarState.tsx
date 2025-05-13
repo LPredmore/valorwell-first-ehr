@@ -143,11 +143,12 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
         const databaseClinicianId = clinicianRecord.id;
         console.log('[useCalendarState] Database-retrieved clinician ID:', databaseClinicianId);
         
-        // Query for clients assigned to this clinician
+        // Query clients assigned by current clinician_id relationship
         const { data: clientData, error } = await supabase
           .from('clients')
           .select('id, client_first_name, client_preferred_name, client_last_name')
-          .eq('client_assigned_therapist', databaseClinicianId)
+          // Only clients whose clinician_id matches selectedClinician
+          .eq('clinician_id', databaseClinicianId) 
           .order('client_last_name');
           
         if (error) {

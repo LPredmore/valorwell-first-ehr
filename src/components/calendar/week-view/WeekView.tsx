@@ -63,7 +63,16 @@ const WeekView: React.FC<WeekViewProps> = ({
     // Generate time slots from 8 AM to 6 PM in 30-minute increments
     const slots = Array.from({ length: 21 }, (_, i) => {
       const minutes = i * 30;
-      return addMinutes(setHours(startOfDay(new Date()), 8), minutes);
+      // Create a base date in user's timezone at 8:00 AM using dummy date
+      const dummyDate = new Date(1970, 0, 1);
+      const baseDate = TimeZoneService.fromJSDate(dummyDate, userTimeZone);
+      const baseTime = baseDate.set({
+        hour: 8,
+        minute: 0,
+        second: 0,
+        millisecond: 0
+      }).toJSDate();
+      return addMinutes(baseTime, minutes);
     });
     console.log(slots, "iamag3amer");
 
@@ -87,6 +96,7 @@ const WeekView: React.FC<WeekViewProps> = ({
     refreshTrigger,
     appointments,
     getClientName,
+    userTimeZone
     userTimeZone
   );
 

@@ -1,49 +1,49 @@
 
 import { TimeBlock, AppointmentBlock } from './types';
+import { DateTime } from 'luxon';
 
-// Check if a time is the start of an availability block
+// Check if a slot is the start of an availability block
 export const isStartOfBlock = (time: Date, block?: TimeBlock): boolean => {
   if (!block) return false;
-  
-  // Convert JavaScript Date to milliseconds for comparison
-  const timeMs = time.getTime();
-  
-  // DateTime from Luxon has toMillis() method to convert to milliseconds
-  const blockStartMs = block.start.toMillis();
-  
-  // Check if the times are within a minute of each other
-  return Math.abs(timeMs - blockStartMs) < 60000;
+
+  // Parse block start_at as a UTC DateTime
+  const appointmentStart = block.start_at ? DateTime.fromISO(block.start_at, { zone: 'utc' }) : block.start;
+  // Convert JavaScript Date to clinician's local time
+  const slotTime = DateTime.fromJSDate(time);
+
+  // Check minute/hour/day for accurate block matching
+  return appointmentStart.hasSame(slotTime, 'hour') &&
+         appointmentStart.hasSame(slotTime, 'minute') &&
+         appointmentStart.hasSame(slotTime, 'day');
 };
 
-// Check if a time is the end of an availability block
+// Check if a slot is the end of an availability block (with 45-minute buffer)
 export const isEndOfBlock = (time: Date, block?: TimeBlock): boolean => {
   if (!block) return false;
-  
-  // Convert JavaScript Date to milliseconds for comparison
-  const timeMs = time.getTime();
-  
-  // Add 30 minutes to timeMs for accurate end comparison (since our slots are 30min)
-  const timeEndMs = timeMs + 30 * 60 * 1000;
-  
-  // DateTime from Luxon has toMillis() method to convert to milliseconds
-  const blockEndMs = block.end.toMillis();
-  
-  // Check if the times are within a minute of each other
-  return Math.abs(timeEndMs - blockEndMs) < 60000;
+
+  // Parse block end_at as a UTC DateTime
+  const appointmentEnd = block.end_at ? DateTime.fromISO(block.end_at, { zone: 'utc' }) : block.end;
+  // Convert JavaScript Date to clinician's time
+  const slotTime = DateTime.fromJSDate(time).plus({ minutes: 45 });
+
+  // Compare in clinician's local timezone
+  return appointmentEnd.hasSame(slotTime, 'hour') &&
+         appointmentEnd.hasSame(slotTime, 'minute') &&
+         appointmentEnd.hasSame(slotTime, 'day');
 };
 
-// Check if a time is the start of an appointment
+// Check if a slot is the start of an appointment (proper UTC conversion)
 export const isStartOfAppointment = (time: Date, appointment?: AppointmentBlock): boolean => {
-  if (!appointment) return false;
+  if (!appointment?.start_at) return false;
   
-  // Convert JavaScript Date to milliseconds for comparison
-  const timeMs = time.getTime();
-  
-  // DateTime from Luxon has toMillis() method to convert to milliseconds
-  const appointmentStartMs = appointment.start.toMillis();
-  
-  // Check if the times are within a minute of each other
-  return Math.abs(timeMs - appointmentStartMs) < 60000;
+  // Convert appointment start_at (UTC) to clinician's local time
+  const appointmentStart = appointment.start_at ? DateTime.fromISO(appointment.start_at, { zone: 'utc' }) : appointment.start;
+  const slotTime = DateTime.fromJSDate(time);
+
+  // Check hour/minute/day (instead of 'minuteOfDay' which doesn't exist)
+  return appointmentStart.hasSame(slotTime, 'minute') && 
+         appointmentStart.hasSame(slotTime, 'hour') && 
+         appointmentStart.hasSame(slotTime, 'day');
 };
 
 // Check if a time is within an appointment block
