@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { useWeekViewData } from './useWeekViewData';
@@ -193,8 +194,8 @@ const WeekView: React.FC<WeekViewProps> = ({
           <div key={day.toISOString()} className="border-r last:border-r-0">
             {TIME_SLOTS.map((timeSlot, i) => {
               // Convert JS Date to DateTime objects for consistent checking
-              const dayDt = TimeZoneService.fromJSDate(day, { zone: userTimeZone });
-              const timeSlotDt = TimeZoneService.fromJSDate(timeSlot, { zone: userTimeZone });
+              const dayDt = TimeZoneService.fromJSDate(day, userTimeZone);
+              const timeSlotDt = TimeZoneService.fromJSDate(timeSlot, userTimeZone);
               
               // Get formatted day and hour for debugging logs
               const formattedDay = dayDt.toFormat('yyyy-MM-dd');
@@ -232,15 +233,15 @@ const WeekView: React.FC<WeekViewProps> = ({
               
               // Determine if this is the start or end of a block
               const isStartOfBlock = currentBlock && 
-                TimeZoneService.fromJSDate(timeSlot).toFormat('HH:mm') === 
+                TimeZoneService.fromJSDate(timeSlot, userTimeZone).toFormat('HH:mm') === 
                 currentBlock.start.toFormat('HH:mm');
               
               const isEndOfBlock = currentBlock && 
-                TimeZoneService.fromJSDate(timeSlot).plus({ minutes: 30 }).toFormat('HH:mm') === 
+                TimeZoneService.fromJSDate(timeSlot, userTimeZone).plus({ minutes: 30 }).toFormat('HH:mm') === 
                 currentBlock.end.toFormat('HH:mm');
               
               const isStartOfAppointment = appointment && 
-                TimeZoneService.fromJSDate(timeSlot).toFormat('HH:mm') === 
+                TimeZoneService.fromJSDate(timeSlot, userTimeZone).toFormat('HH:mm') === 
                 appointment.start.toFormat('HH:mm');
               
               return (
