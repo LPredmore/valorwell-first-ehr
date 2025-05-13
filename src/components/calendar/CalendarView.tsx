@@ -42,14 +42,18 @@ const CalendarView = ({
   // Combine both refresh triggers
   const combinedRefreshTrigger = refreshTrigger + localRefreshTrigger;
   
-  // Log appointments data for debugging
-  console.log('[CalendarView] Raw appointments received:', appointments.map(appt => ({
-    id: appt.id,
-    startAt: appt.start_at,
-    clientName: appt.clientName,
-    hasClient: !!appt.client,
-    clientDetails: appt.client || 'No client data'
-  })));
+  // Log appointments data for debugging - CRITICAL FIX: Guard the map call
+  if (Array.isArray(appointments)) {
+    console.log('[CalendarView] Raw appointments received:', appointments.map(appt => ({
+      id: appt.id,
+      startAt: appt.start_at,
+      clientName: appt.clientName,
+      hasClient: !!appt.client,
+      clientDetails: appt.client || 'No client data'
+    })));
+  } else {
+    console.log('[CalendarView] Raw appointments received: (appointments is not an array or is undefined)', appointments);
+  }
   
   if (!clinicianId) {
     console.error('No clinician ID provided to Calendar component');
@@ -57,10 +61,10 @@ const CalendarView = ({
   
   // Enhanced logging for appointments with comprehensive client name information
   useEffect(() => {
-    console.log(`[CalendarView] Rendering with ${appointments.length} appointments for clinician ${clinicianId}`);
+    console.log(`[CalendarView] Rendering with ${Array.isArray(appointments) ? appointments.length : 0} appointments for clinician ${clinicianId}`);
     console.log(`[CalendarView] Calendar view: ${view}, timezone: ${validTimeZone}, refreshTrigger: ${combinedRefreshTrigger}`);
     
-    if (appointments.length > 0) {
+    if (Array.isArray(appointments) && appointments.length > 0) {
       // Sample appointments for inspection
       const sampleSize = Math.min(3, appointments.length);
       console.log(`[CalendarView] Sample of ${sampleSize} appointments:`);
