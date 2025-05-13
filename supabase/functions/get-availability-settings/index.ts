@@ -14,6 +14,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log('[get-availability-settings] Function called')
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -24,51 +26,101 @@ serve(async (req) => {
       }
     )
     
-    const { clinicianId } = await req.json()
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log('[get-availability-settings] Request body:', JSON.stringify(requestBody));
+    } catch (parseError) {
+      console.error('[get-availability-settings] Error parsing request body:', parseError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid request body', 
+          // Return default values even on error
+          time_granularity: 'hour',
+          min_days_ahead: 1,
+          max_days_ahead: 30
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    const { clinicianId } = requestBody;
     
     if (!clinicianId) {
-      throw new Error('Clinician ID is required')
+      console.error('[get-availability-settings] No clinicianId provided');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Clinician ID is required',
+          // Return default values even when parameter is missing
+          time_granularity: 'hour',
+          min_days_ahead: 1,
+          max_days_ahead: 30
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
+    
+    console.log(`[get-availability-settings] Fetching availability settings for clinician ID: ${clinicianId}`);
     
     // Fetch the clinician's availability settings directly from clinicians table
     const { data, error } = await supabaseClient
       .from('clinicians')
       .select('clinician_time_granularity, clinician_min_notice_days, clinician_max_advance_days')
       .eq('id', clinicianId.toString()) // Convert to string explicitly
-      .single()
+      .single();
     
     if (error) {
-      console.error('Error fetching clinician settings:', error)
-      // Return default settings if not found
+      console.error('[get-availability-settings] Database error:', error);
+      console.error(`[get-availability-settings] Clinician ID used in query: ${clinicianId}`);
+      // Return default settings if not found or error
       return new Response(
         JSON.stringify({ 
           time_granularity: 'hour',
           min_days_ahead: 1,
-          max_days_ahead: 30 
+          max_days_ahead: 30,
+          _fallback: true, // Flag to indicate default values were used
+          _error: error.message
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      );
     }
     
     // Map clinician table columns to the expected response format
+    // With explicit type handling and defaults for all values
     const settings = {
-      time_granularity: data.clinician_time_granularity || 'hour',
-      min_days_ahead: data.clinician_min_notice_days || 1,
-      max_days_ahead: data.clinician_max_advance_days || 30
-    }
+      time_granularity: typeof data.clinician_time_granularity === 'string' ? data.clinician_time_granularity : 'hour',
+      min_days_ahead: Number(data.clinician_min_notice_days) || 1,
+      max_days_ahead: Number(data.clinician_max_advance_days) || 30
+    };
+    
+    console.log(`[get-availability-settings] Successfully retrieved settings: ${JSON.stringify(settings, null, 2)}`);
     
     return new Response(
       JSON.stringify(settings),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    );
   } catch (error) {
-    console.error('Error:', error)
+    console.error('[get-availability-settings] Uncaught error:', error);
+    // Always return a valid response with default values even on unexpected errors
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        time_granularity: 'hour',
+        min_days_ahead: 1,
+        max_days_ahead: 30,
+        _fallback: true
+      }),
       { 
-        status: 400,
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
-    )
+    );
   }
 })

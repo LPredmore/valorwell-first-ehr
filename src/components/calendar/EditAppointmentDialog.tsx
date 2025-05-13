@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -111,7 +112,17 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
 
     setIsLoading(true);
     try {
-      // Convert local date and time to UTC timestamps
+      console.log('[EditAppointmentDialog] Updating appointment with values:', {
+        selectedDate: format(selectedDate, 'yyyy-MM-dd'),
+        startTime,
+        mode,
+        appointmentId: appointment.id,
+        isRecurring,
+        recurringId: appointment.recurring_group_id
+      });
+      
+      // Convert local date and time to UTC timestamps using Luxon
+      // Create a DateTime object in user's timezone
       const localDateTime = DateTime.fromJSDate(selectedDate)
         .set({ 
           hour: parseInt(startTime.split(':')[0]), 
@@ -127,6 +138,14 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       // Convert to UTC for storage
       const utcStart = localDateTime.toUTC().toISO();
       const utcEnd = endDateTime.toUTC().toISO();
+      
+      console.log('[EditAppointmentDialog] Calculated timestamps:', {
+        localStart: localDateTime.toISO(),
+        localEnd: endDateTime.toISO(),
+        utcStart,
+        utcEnd,
+        timezone: safeTimeZone
+      });
 
       if (mode === 'single') {
         const updateData: any = {
@@ -138,19 +157,36 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
           updateData.recurring_group_id = null;
         }
         
-        const { error } = await supabase
+        console.log('[EditAppointmentDialog] Updating single appointment:', {
+          appointmentId: appointment.id,
+          updateData
+        });
+        
+        const { data, error } = await supabase
           .from('appointments')
           .update(updateData)
           .eq('id', appointment.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('[EditAppointmentDialog] Error updating appointment:', error);
+          throw error;
+        }
         
         toast({
           title: "Success",
           description: "The appointment has been updated.",
         });
       } else if (mode === 'series' && appointment.recurring_group_id) {
-        const { error } = await supabase
+        console.log('[EditAppointmentDialog] Updating recurring appointment series:', {
+          recurringGroupId: appointment.recurring_group_id,
+          fromDate: appointment.start_at,
+          updateData: {
+            startAt: utcStart,
+            endAt: utcEnd
+          }
+        });
+        
+        const { data, error } = await supabase
           .from('appointments')
           .update({
             start_at: utcStart,
@@ -159,7 +195,10 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
           .eq('recurring_group_id', appointment.recurring_group_id)
           .gte('start_at', appointment.start_at);
 
-        if (error) throw error;
+        if (error) {
+          console.error('[EditAppointmentDialog] Error updating recurring appointments:', error);
+          throw error;
+        }
         
         toast({
           title: "Success",
@@ -176,7 +215,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       // Explicitly call onAppointmentUpdated to refresh the calendar
       onAppointmentUpdated();
     } catch (error) {
-      console.error('Error updating appointment:', error);
+      console.error('[EditAppointmentDialog] Error updating appointment:', error);
       toast({
         title: "Error",
         description: "Failed to update the appointment.",
