@@ -1,7 +1,5 @@
-
 import React from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -42,8 +40,8 @@ function App() {
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <UserProvider>
-              <Toaster />
-              <Sonner />
+              {/* Sonner Toaster - the only toast component we need */}
+              <Toaster richColors position="top-right" />
               <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<Index />} />
