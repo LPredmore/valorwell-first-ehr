@@ -1,3 +1,4 @@
+
 import React, { useMemo, useEffect } from "react";
 import {
   format,
@@ -15,6 +16,7 @@ import { Appointment } from "@/types/appointment";
 import { TimeZoneService } from "@/utils/timeZoneService";
 import { DebugUtils } from "@/utils/debugUtils";
 import { CalendarDebugUtils } from "@/utils/calendarDebugUtils";
+import { AppointmentBlock } from "./types";
 
 // Debug context name for this component
 const DEBUG_CONTEXT = 'WeekViewDebug';
@@ -211,6 +213,40 @@ const WeekViewDebug: React.FC<WeekViewDebugProps> = ({
     );
   }, [appointments, appointmentBlocks, getClientName, days, userTimeZone, timeBlocks]);
 
+  // Adapter function to convert AppointmentBlock to Appointment
+  const handleAppointmentBlockClick = (appointmentBlock: AppointmentBlock) => {
+    if (onAppointmentClick) {
+      DebugUtils.log(DEBUG_CONTEXT, 'Appointment block clicked', {
+        id: appointmentBlock.id,
+        clientName: appointmentBlock.clientName
+      });
+      
+      let appointmentToSend: Appointment | undefined = appointments?.find(a => a.id === appointmentBlock.id);
+
+      if (!appointmentToSend) {
+        // Fallback: Construct a valid Appointment from the AppointmentBlock
+        console.warn(`Original Appointment not found for ID: ${appointmentBlock.id}. Constructing from AppointmentBlock.`);
+        appointmentToSend = {
+          id: appointmentBlock.id,
+          client_id: appointmentBlock.clientId,
+          clinician_id: clinicianId || '',
+          start_at: appointmentBlock.start.toISO(),
+          end_at: appointmentBlock.end.toISO(),
+          status: 'unknown',
+          type: appointmentBlock.type || 'unknown',
+          clientName: appointmentBlock.clientName
+        };
+      }
+      
+      DebugUtils.log(DEBUG_CONTEXT, 'Calling onAppointmentClick with appointment', {
+        id: appointmentToSend.id,
+        clientName: appointmentToSend.clientName || appointmentToSend.client_id
+      });
+      
+      onAppointmentClick(appointmentToSend);
+    }
+  };
+
   // Handle click on availability block
   const handleAvailabilityBlockClick = (day: Date, block: any) => {
     DebugUtils.log(DEBUG_CONTEXT, 'Availability block clicked', {
@@ -363,7 +399,7 @@ const WeekViewDebug: React.FC<WeekViewDebugProps> = ({
                       handleAvailabilityBlockClick={
                         handleAvailabilityBlockClick
                       }
-                      onAppointmentClick={onAppointmentClick}
+                      onAppointmentClick={handleAppointmentBlockClick}
                       originalAppointments={appointments}
                     />
                   </div>
