@@ -4,59 +4,50 @@ import { DateTime } from 'luxon';
 
 // Check if a slot is the start of an availability block
 export const isStartOfBlock = (time: Date, block?: TimeBlock): boolean => {
-  if (!block) return false;
+  if (!block || !block.start) return false;
 
-  // Parse block start_at as a UTC DateTime
-  const appointmentStart = block.start_at ? DateTime.fromISO(block.start_at, { zone: 'utc' }) : block.start;
-  // Convert JavaScript Date to clinician's local time
+  // Convert JavaScript Date to Luxon DateTime
   const slotTime = DateTime.fromJSDate(time);
-
-  // Check minute/hour/day for accurate block matching
-  return appointmentStart.hasSame(slotTime, 'hour') &&
-         appointmentStart.hasSame(slotTime, 'minute') &&
-         appointmentStart.hasSame(slotTime, 'day');
-};
-
-// Check if a slot is the end of an availability block (with 45-minute buffer)
-export const isEndOfBlock = (time: Date, block?: TimeBlock): boolean => {
-  if (!block) return false;
-
-  // Parse block end_at as a UTC DateTime
-  const appointmentEnd = block.end_at ? DateTime.fromISO(block.end_at, { zone: 'utc' }) : block.end;
-  // Convert JavaScript Date to clinician's time
-  const slotTime = DateTime.fromJSDate(time).plus({ minutes: 45 });
-
-  // Compare in clinician's local timezone
-  return appointmentEnd.hasSame(slotTime, 'hour') &&
-         appointmentEnd.hasSame(slotTime, 'minute') &&
-         appointmentEnd.hasSame(slotTime, 'day');
-};
-
-// Check if a slot is the start of an appointment (proper UTC conversion)
-export const isStartOfAppointment = (time: Date, appointment?: AppointmentBlock): boolean => {
-  if (!appointment?.start_at) return false;
   
-  // Convert appointment start_at (UTC) to clinician's local time
-  const appointmentStart = appointment.start_at ? DateTime.fromISO(appointment.start_at, { zone: 'utc' }) : appointment.start;
-  const slotTime = DateTime.fromJSDate(time);
+  // Use Luxon's hasSame method for more reliable comparison
+  return block.start.hasSame(slotTime, 'hour') &&
+         block.start.hasSame(slotTime, 'minute') &&
+         block.start.hasSame(slotTime, 'day');
+};
 
-  // Check hour/minute/day (instead of 'minuteOfDay' which doesn't exist)
-  return appointmentStart.hasSame(slotTime, 'minute') && 
-         appointmentStart.hasSame(slotTime, 'hour') && 
-         appointmentStart.hasSame(slotTime, 'day');
+// Check if a slot is the end of an availability block
+export const isEndOfBlock = (time: Date, block?: TimeBlock): boolean => {
+  if (!block || !block.end) return false;
+
+  // Convert JavaScript Date to Luxon DateTime and add 30 minutes (standard slot duration)
+  const slotTime = DateTime.fromJSDate(time).plus({ minutes: 30 });
+  
+  // Compare using Luxon's hasSame
+  return block.end.hasSame(slotTime, 'hour') &&
+         block.end.hasSame(slotTime, 'minute') &&
+         block.end.hasSame(slotTime, 'day');
+};
+
+// Check if a slot is the start of an appointment
+export const isStartOfAppointment = (time: Date, appointment?: AppointmentBlock): boolean => {
+  if (!appointment || !appointment.start) return false;
+  
+  // Convert JavaScript Date to Luxon DateTime
+  const slotTime = DateTime.fromJSDate(time);
+  
+  // Compare using hasSame for more reliable comparison
+  return appointment.start.hasSame(slotTime, 'minute') && 
+         appointment.start.hasSame(slotTime, 'hour') && 
+         appointment.start.hasSame(slotTime, 'day');
 };
 
 // Check if a time is within an appointment block
 export const isWithinAppointment = (time: Date, appointment?: AppointmentBlock): boolean => {
-  if (!appointment) return false;
+  if (!appointment || !appointment.start || !appointment.end) return false;
   
-  // Convert JavaScript Date to milliseconds for comparison
-  const timeMs = time.getTime();
+  // Convert JavaScript Date to Luxon DateTime for consistent comparison
+  const slotTime = DateTime.fromJSDate(time);
   
-  // DateTime from Luxon has toMillis() method to convert to milliseconds
-  const appointmentStartMs = appointment.start.toMillis();
-  const appointmentEndMs = appointment.end.toMillis();
-  
-  // Check if the time is within the appointment
-  return timeMs >= appointmentStartMs && timeMs < appointmentEndMs;
+  // Use Luxon's comparison operators
+  return slotTime >= appointment.start && slotTime < appointment.end;
 };

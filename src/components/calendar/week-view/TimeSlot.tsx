@@ -2,7 +2,7 @@
 import React from 'react';
 import { TimeBlock, AppointmentBlock } from './types';
 import { Appointment } from '@/types/appointment';
-import { isStartOfBlock, isEndOfBlock, isStartOfAppointment } from './utils';
+import { isStartOfBlock, isEndOfBlock, isStartOfAppointment, isWithinAppointment } from './utils';
 
 interface TimeSlotProps {
   day: Date;
@@ -96,7 +96,7 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
   } 
   
   // For availability blocks, ensure visual continuity
-  if (isAvailable) {
+  if (isAvailable && currentBlock) {
     const availabilityBaseClass = currentBlock?.isException 
       ? 'bg-teal-100 border-teal-500' 
       : 'bg-green-100 border-green-500';

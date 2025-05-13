@@ -1,3 +1,4 @@
+
 import React, { useMemo } from "react";
 import {
   format,
@@ -46,14 +47,10 @@ const WeekView: React.FC<WeekViewProps> = ({
       luxonDate: TimeZoneService.fromJSDate(currentDate, userTimeZone).toISO(),
     });
 
-    // Use the TimeZoneService to generate days in the user's timezone
-    const today = TimeZoneService.fromJSDate(currentDate, userTimeZone);
-    const weekStart = TimeZoneService.startOfWeek(today);
-    const weekEnd = TimeZoneService.endOfWeek(today);
-    const daysInWeek = TimeZoneService.eachDayOfInterval(
-      weekStart,
-      weekEnd
-    ).map((dt) => dt.toJSDate());
+    // Generate days for the week using date-fns (will be converted to Luxon in the hook)
+    const start = startOfWeek(currentDate, { weekStartsOn: 0 }); // 0 = Sunday
+    const end = endOfWeek(currentDate, { weekStartsOn: 0 });
+    const daysInWeek = eachDayOfInterval({ start, end });
 
     console.log(
       "[WeekView] Generated days for week:",
@@ -63,18 +60,9 @@ const WeekView: React.FC<WeekViewProps> = ({
     // Generate time slots from 8 AM to 6 PM in 30-minute increments
     const slots = Array.from({ length: 21 }, (_, i) => {
       const minutes = i * 30;
-      // Create a base date in user's timezone at 8:00 AM using dummy date
-      const dummyDate = new Date(1970, 0, 1);
-      const baseDate = TimeZoneService.fromJSDate(dummyDate, userTimeZone);
-      const baseTime = baseDate.set({
-        hour: 8,
-        minute: 0,
-        second: 0,
-        millisecond: 0
-      }).toJSDate();
+      const baseTime = setHours(setMinutes(startOfDay(new Date()), 0), 8); // 8:00 AM
       return addMinutes(baseTime, minutes);
     });
-    console.log(slots, "iamag3amer");
 
     return { days: daysInWeek, timeSlots: slots };
   }, [currentDate, userTimeZone]);
@@ -120,30 +108,6 @@ const WeekView: React.FC<WeekViewProps> = ({
           clientName: app.clientName || getClientName(app.client_id),
         }))
       );
-
-      // Log the first few appointments for debugging
-      const samplesToLog = Math.min(appointments.length, 5);
-      for (let i = 0; i < samplesToLog; i++) {
-        const app = appointments[i];
-        const startLocalDateTime = app.start_at
-          ? TimeZoneService.fromUTC(app.start_at, userTimeZone)
-          : null;
-
-        console.log(
-          `[WeekView] Sample appointment ${i + 1}/${samplesToLog}: ${
-            app.clientName || getClientName(app.client_id)
-          } (ID: ${app.client_id})`,
-          {
-            date: startLocalDateTime
-              ? startLocalDateTime.toFormat("yyyy-MM-dd")
-              : "Invalid date",
-            time: startLocalDateTime
-              ? startLocalDateTime.toFormat("HH:mm")
-              : "Invalid time",
-            startAt: app.start_at,
-          }
-        );
-      }
     }
 
     if (appointmentBlocks.length > 0) {
@@ -159,7 +123,7 @@ const WeekView: React.FC<WeekViewProps> = ({
         }))
       );
     } else if (appointments.length > 0) {
-      console.error(
+      console.warn(
         "[WeekView] WARNING: There are appointments but no appointment blocks were created"
       );
     }
@@ -256,8 +220,6 @@ const WeekView: React.FC<WeekViewProps> = ({
                   timeSlot.getMinutes()
                 );
 
-                const slotEndTime = addMinutes(slotStartTime, 30);
-
                 const blockStartCheck = isStartOfBlock(
                   slotStartTime,
                   currentBlock
@@ -302,4 +264,3 @@ const WeekView: React.FC<WeekViewProps> = ({
 };
 
 export default WeekView;
- 

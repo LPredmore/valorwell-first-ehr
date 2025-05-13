@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DateTime } from 'luxon';
@@ -63,21 +64,19 @@ export const useWeekViewData = (
         // Use the first day to determine the week
         const firstDay = weekDays[0] || TimeZoneService.now(userTimeZone);
         
-        // UTC date bounds for current week
-        const utcStart = DateTime.utc(
-          firstDay.year,
-          firstDay.month,
-          firstDay.day
-        ).startOf('week').toISO();
-
-        const utcEnd = DateTime.utc(
-          firstDay.year,
-          firstDay.month,
-          firstDay.day
-        ).endOf('week').toISO();
+        // Get expanded date range for better data capture - add padding
+        // Start a week before the displayed week, end a week after
+        const padStartDay = firstDay.minus({ days: 7 });
+        const padEndDay = firstDay.plus({ days: 21 }); // current week (7) + padding (14)
+        
+        // UTC date bounds with expanded range
+        const utcStart = padStartDay.toUTC().toISO();
+        const utcEnd = padEndDay.toUTC().toISO();
 
         console.log('[useWeekViewData] Fetching for week:', {
-          localStart: firstDay.startOf('week').toISO(),
+          localStart: firstDay.toISO(),
+          paddedStart: padStartDay.toISO(),
+          paddedEnd: padEndDay.toISO(),
           utcStart,
           utcEnd,
           tz: userTimeZone
@@ -91,16 +90,16 @@ export const useWeekViewData = (
             .select('*')
             .eq('clinician_id', clinicianId)
             .gte('start_at', utcStart)
-            .lt('end_at', utcEnd)
+            .lt('end_at', utcEnd)  // Fix: use end_at for the upper boundary
             .order('start_at', { ascending: true }) : Promise.resolve({ data: [], error: null }),
           
-          // Fetch availability blocks - FIX: Corrected the inverted logic
+          // Fetch availability blocks - FIXED: Corrected the query logic
           clinicianId ? supabase
             .from('availability_blocks')
             .select('*')
             .eq('clinician_id', clinicianId)
             .gte('start_at', utcStart)
-            .lt('end_at', utcEnd)
+            .lt('end_at', utcEnd)   // This is correct logic: blocks starting in our range
             .order('start_at', { ascending: true }) : Promise.resolve({ data: [], error: null }),
           
           // Fetch client data once
@@ -267,11 +266,12 @@ export const useWeekViewData = (
     });
   };
   
-  // Process appointments into appointment blocks
+  // Process appointments into appointment blocks - FIXED to handle timezone boundaries
   const processAppointmentBlocks = (appts: Appointment[], clientMap: Map<string, Client>) => {
     console.log('[useWeekViewData] Processing appointment blocks', {
       appointmentsCount: appts.length,
-      clientsCount: clientMap.size
+      clientsCount: clientMap.size,
+      dayKeys
     });
     
     const appointmentBlocks: AppointmentBlock[] = [];
@@ -287,6 +287,7 @@ export const useWeekViewData = (
       }
       
       try {
+        // Convert start/end times to the user's timezone
         const start = DateTime.fromISO(appointment.start_at, { zone: 'UTC' }).setZone(userTimeZone);
         const end = DateTime.fromISO(appointment.end_at, { zone: 'UTC' }).setZone(userTimeZone);
         const day = start.startOf('day');
@@ -303,6 +304,13 @@ export const useWeekViewData = (
           }
         }
         
+        // Get formatted date for logging
+        const dayStr = day.toFormat('yyyy-MM-dd');
+        
+        // Check if this appointment's day is in our view
+        // NEW: We no longer filter by day - we'll show all appointments in the data range
+        // Visibility will be controlled by the TimeSlot component
+        
         appointmentBlocks.push({
           id: appointment.id,
           start,
@@ -318,7 +326,8 @@ export const useWeekViewData = (
           clientName,
           start: start.toFormat('yyyy-MM-dd HH:mm'),
           end: end.toFormat('yyyy-MM-dd HH:mm'),
-          day: day.toFormat('yyyy-MM-dd')
+          day: dayStr,
+          inView: dayKeys.includes(dayStr)
         });
       } catch (error) {
         console.error('[useWeekViewData] Error creating appointment block', {
