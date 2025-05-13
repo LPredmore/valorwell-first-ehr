@@ -1,9 +1,6 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import {
   format,
-  startOfWeek,
-  endOfWeek,
-  eachDayOfInterval,
   addMinutes,
   startOfDay,
   setHours,
@@ -11,13 +8,18 @@ import {
 } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { useWeekViewData } from "./useWeekViewData";
+import { useWeekViewDataDebug } from "./useWeekViewDataDebug";
 import TimeSlot from "./TimeSlot";
 import { isStartOfBlock, isEndOfBlock, isStartOfAppointment } from "./utils";
 import { Appointment } from "@/types/appointment";
 import { TimeZoneService } from "@/utils/timeZoneService";
+import { DebugUtils } from "@/utils/debugUtils";
+import { CalendarDebugUtils } from "@/utils/calendarDebugUtils";
 
-export interface WeekViewProps {
+// Debug context name for this component
+const DEBUG_CONTEXT = 'WeekViewDebug';
+
+export interface WeekViewDebugProps {
   currentDate: Date;
   clinicianId: string | null;
   refreshTrigger?: number;
@@ -28,7 +30,7 @@ export interface WeekViewProps {
   userTimeZone?: string;
 }
 
-const WeekView: React.FC<WeekViewProps> = ({
+const WeekViewDebug: React.FC<WeekViewDebugProps> = ({
   currentDate,
   clinicianId,
   refreshTrigger = 0,
@@ -38,10 +40,26 @@ const WeekView: React.FC<WeekViewProps> = ({
   onAvailabilityClick,
   userTimeZone = "America/Chicago",
 }) => {
+  // Log component initialization
+  DebugUtils.log(DEBUG_CONTEXT, 'Component initialized with props', {
+    currentDate: currentDate?.toISOString(),
+    clinicianId,
+    refreshTrigger,
+    appointmentsCount: appointments.length,
+    userTimeZone
+  });
+
+  // Validate props
+  CalendarDebugUtils.validateHookParameters(DEBUG_CONTEXT, {
+    currentDate,
+    clinicianId,
+    userTimeZone
+  });
+
   // Create array of days for the week and time slots for each day
   const { days, timeSlots } = useMemo(() => {
     // Log the input currentDate in multiple formats for debugging
-    console.log("[WeekView] Generating days with currentDate:", {
+    DebugUtils.log(DEBUG_CONTEXT, "Generating days with currentDate", {
       jsDate: currentDate.toISOString(),
       luxonDate: TimeZoneService.fromJSDate(currentDate, userTimeZone).toISO(),
     });
@@ -55,8 +73,9 @@ const WeekView: React.FC<WeekViewProps> = ({
       weekEnd
     ).map((dt) => dt.toJSDate());
 
-    console.log(
-      "[WeekView] Generated days for week:",
+    DebugUtils.log(
+      DEBUG_CONTEXT,
+      "Generated days for week",
       daysInWeek.map((d) => format(d, "yyyy-MM-dd"))
     );
 
@@ -74,12 +93,29 @@ const WeekView: React.FC<WeekViewProps> = ({
       }).toJSDate();
       return addMinutes(baseTime, minutes);
     });
-    console.log(slots, "iamag3amer");
+
+    DebugUtils.log(DEBUG_CONTEXT, "Generated time slots", {
+      count: slots.length,
+      first: format(slots[0], "HH:mm"),
+      last: format(slots[slots.length - 1], "HH:mm")
+    });
 
     return { days: daysInWeek, timeSlots: slots };
   }, [currentDate, userTimeZone]);
 
   // Use the custom hook to get all the data and utility functions
+  const hookProps = {
+    currentDate,
+    clinicianId,
+    userTimeZone,
+    refreshTrigger,
+    appointments,
+    getClientName
+  };
+  
+  // Log the hook props to debug parameter mismatch
+  DebugUtils.log(DEBUG_CONTEXT, 'Calling useWeekViewDataDebug with props', hookProps);
+  
   const {
     loading,
     timeBlocks,
@@ -90,25 +126,25 @@ const WeekView: React.FC<WeekViewProps> = ({
     isTimeSlotAvailable,
     getBlockForTimeSlot,
     getAppointmentForTimeSlot,
-  } = useWeekViewData(
-    days,
-    clinicianId,
-    refreshTrigger,
-    appointments,
-    getClientName,
-    userTimeZone
-  );
+  } = useWeekViewDataDebug(hookProps);
 
   // Detailed logging for week view appointments
-  React.useEffect(() => {
-    console.log(
-      `[WeekView] Rendered with ${appointments.length} appointments and ${appointmentBlocks.length} blocks`
+  useEffect(() => {
+    DebugUtils.log(
+      DEBUG_CONTEXT,
+      `Rendered with appointments and blocks`,
+      {
+        appointmentsCount: appointments.length,
+        appointmentBlocksCount: appointmentBlocks.length,
+        timeBlocksCount: timeBlocks?.length || 0
+      }
     );
 
     // Log sample client names for verification
     if (appointments.length > 0) {
-      console.log(
-        "[WeekView] All appointments:",
+      DebugUtils.log(
+        DEBUG_CONTEXT,
+        "All appointments",
         appointments.map((app) => ({
           id: app.id,
           start_at: app.start_at,
@@ -129,11 +165,12 @@ const WeekView: React.FC<WeekViewProps> = ({
           ? TimeZoneService.fromUTC(app.start_at, userTimeZone)
           : null;
 
-        console.log(
-          `[WeekView] Sample appointment ${i + 1}/${samplesToLog}: ${
-            app.clientName || getClientName(app.client_id)
-          } (ID: ${app.client_id})`,
+        DebugUtils.log(
+          DEBUG_CONTEXT,
+          `Sample appointment ${i + 1}/${samplesToLog}`,
           {
+            clientName: app.clientName || getClientName(app.client_id),
+            clientId: app.client_id,
             date: startLocalDateTime
               ? startLocalDateTime.toFormat("yyyy-MM-dd")
               : "Invalid date",
@@ -146,40 +183,62 @@ const WeekView: React.FC<WeekViewProps> = ({
       }
     }
 
-    if (appointmentBlocks.length > 0) {
-      console.log(
-        "[WeekView] Appointment blocks:",
+    if (appointmentBlocks?.length > 0) {
+      DebugUtils.log(
+        DEBUG_CONTEXT,
+        "Appointment blocks",
         appointmentBlocks.map((block) => ({
           clientName: block.clientName,
           clientId: block.clientId,
-          day: block.day.toFormat("yyyy-MM-dd"),
-          time: `${block.start.toFormat("HH:mm")}-${block.end.toFormat(
-            "HH:mm"
-          )}`,
+          day: block.day?.toFormat("yyyy-MM-dd"),
+          time: block.start && block.end ? 
+            `${block.start.toFormat("HH:mm")}-${block.end.toFormat("HH:mm")}` : 
+            "Invalid time range",
         }))
       );
     } else if (appointments.length > 0) {
-      console.error(
-        "[WeekView] WARNING: There are appointments but no appointment blocks were created"
+      DebugUtils.error(
+        DEBUG_CONTEXT,
+        "WARNING: There are appointments but no appointment blocks were created"
       );
     }
 
     // Log all days in the view for debugging
-    console.log(
-      "[WeekView] Days in view:",
+    DebugUtils.log(
+      DEBUG_CONTEXT,
+      "Days in view",
       days.map((d) => format(d, "yyyy-MM-dd"))
     );
-  }, [appointments, appointmentBlocks, getClientName, days, userTimeZone]);
+  }, [appointments, appointmentBlocks, getClientName, days, userTimeZone, timeBlocks]);
 
   // Handle click on availability block
   const handleAvailabilityBlockClick = (day: Date, block: any) => {
-    if (!onAvailabilityClick || !block.availabilityIds.length) return;
+    DebugUtils.log(DEBUG_CONTEXT, 'Availability block clicked', {
+      day: format(day, 'yyyy-MM-dd'),
+      block
+    });
+    
+    if (!onAvailabilityClick || !block.availabilityIds?.length) {
+      DebugUtils.warn(DEBUG_CONTEXT, 'Cannot handle availability click', {
+        hasClickHandler: !!onAvailabilityClick,
+        hasAvailabilityIds: !!block.availabilityIds?.length
+      });
+      return;
+    }
 
     const availabilityId = block.availabilityIds[0];
+    DebugUtils.log(DEBUG_CONTEXT, 'Processing availability click', {
+      availabilityId,
+      isStandalone: block.isStandalone
+    });
 
     if (block.isStandalone) {
-      const exception = exceptions.find((exc) => exc.id === availabilityId);
+      const exception = exceptions?.find((exc) => exc.id === availabilityId);
       if (exception) {
+        DebugUtils.log(DEBUG_CONTEXT, 'Found exception for availability', {
+          exceptionId: exception.id
+        });
+        
         const availabilityBlock = {
           id: exception.id,
           day_of_week: format(day, "EEEE"),
@@ -191,24 +250,41 @@ const WeekView: React.FC<WeekViewProps> = ({
           isStandalone: true,
         };
         onAvailabilityClick(day, availabilityBlock);
+      } else {
+        DebugUtils.warn(DEBUG_CONTEXT, 'Exception not found for availability', {
+          availabilityId
+        });
       }
       return;
     }
 
     const availabilityBlock = getAvailabilityForBlock(availabilityId);
+    DebugUtils.log(DEBUG_CONTEXT, 'Found availability block', {
+      availabilityBlock
+    });
 
     if (availabilityBlock) {
       onAvailabilityClick(day, availabilityBlock);
+    } else {
+      DebugUtils.warn(DEBUG_CONTEXT, 'Availability block not found', {
+        availabilityId
+      });
     }
   };
 
   if (loading) {
+    DebugUtils.log(DEBUG_CONTEXT, 'Rendering loading state');
     return (
       <Card className="p-4 flex justify-center items-center h-[300px]">
         <Loader2 className="h-6 w-6 animate-spin text-valorwell-500" />
       </Card>
     );
   }
+
+  DebugUtils.log(DEBUG_CONTEXT, 'Rendering calendar grid', {
+    daysCount: days.length,
+    timeSlotsCount: timeSlots.length
+  });
 
   return (
     <Card className="p-4">
@@ -301,5 +377,4 @@ const WeekView: React.FC<WeekViewProps> = ({
   );
 };
 
-export default WeekView;
- 
+export default WeekViewDebug;

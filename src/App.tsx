@@ -30,6 +30,7 @@ import TherapistSelection from "./pages/TherapistSelection";
 import ClinicianDashboard from "./pages/ClinicianDashboard";
 import ResetPassword from "./pages/ResetPassword";
 import UpdatePassword from "./pages/UpdatePassword";
+import CalendarDebugPage from "./pages/CalendarDebugPage";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -140,6 +141,13 @@ function App() {
                 <Route path="/messages" element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <Messages />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Debug routes */}
+                <Route path="/debug/calendar" element={
+                  <ProtectedRoute allowedRoles={['admin', 'clinician']}>
+                    <CalendarDebugPage />
                   </ProtectedRoute>
                 } />
                 
