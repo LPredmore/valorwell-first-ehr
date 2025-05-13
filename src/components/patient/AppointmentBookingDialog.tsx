@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, parse, addDays, isSameDay, isAfter, differenceInCalendarDays } from 'date-fns';
 import { Calendar as CalendarIcon, Clock, Check, AlertCircle } from 'lucide-react';
@@ -95,6 +94,8 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     const fetchClinicianData = async () => {
       try {
         setApiErrors({});
+        console.log(`[BookingDialog] Dialog opened for clinician ID: ${clinicianId}`);
+        
         // Get clinician's timezone
         const { data: clinicianData, error: clinicianError } = await supabase
           .from('clinicians')
@@ -106,68 +107,116 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           const safeTimezone = TimeZoneService.ensureIANATimeZone(
             clinicianData.clinician_time_zone
           );
+          console.log(`[BookingDialog] Retrieved clinician timezone from database: ${clinicianData.clinician_time_zone}, safe version: ${safeTimezone}`);
           setClinicianTimeZone(safeTimezone);
-          console.log(`[BookingDialog] Using clinician timezone: ${safeTimezone}`);
         } else {
+          console.error('[BookingDialog] Error fetching clinician timezone:', clinicianError);
           console.log(`[BookingDialog] No clinician timezone found, using default: ${TimeZoneService.DEFAULT_TIMEZONE}`);
-          if (clinicianError) {
-            console.error('[BookingDialog] Error fetching clinician timezone:', clinicianError);
-          }
+          setClinicianTimeZone(TimeZoneService.DEFAULT_TIMEZONE);
         }
         
-        // Get availability settings
-        console.log('[BookingDialog] Calling getavailabilitysettings for clinician ID:', clinicianId);
+        // Get availability settings from Edge Function
+        console.log('[BookingDialog] Starting call to getavailabilitysettings Edge Function for clinician ID:', clinicianId);
+        const fullClinicianId = clinicianId.toString(); // Ensure string format
+        console.log('[BookingDialog] Using full clinician ID for Edge Function call:', fullClinicianId);
+        
         try {
+          console.log('[BookingDialog] Attempting to call "getavailabilitysettings" Edge Function...');
+          const startTime = performance.now();
+          
+          // Call the Edge Function
           const { data: settingsData, error: settingsError } = await supabase.functions.invoke('getavailabilitysettings', {
-            body: { clinicianId }
+            body: { clinicianId: fullClinicianId }
           });
           
-          console.log('[BookingDialog] getavailabilitysettings response:', { data: settingsData, error: settingsError });
+          const endTime = performance.now();
+          console.log(`[BookingDialog] Edge Function call completed in ${(endTime - startTime).toFixed(2)}ms`);
           
           if (settingsError) {
-            console.error('[BookingDialog] Error invoking availability settings edge function:', settingsError);
-            setApiErrors(prev => ({ ...prev, availabilitySettings: 'Failed to fetch availability settings' }));
-            // Use default values
-            setMinDaysAhead(1);
-          } else if (settingsData) {
-            // Safely parse the min_days_ahead value
-            const parsedMinDays = typeof settingsData.min_days_ahead === 'number' 
-              ? settingsData.min_days_ahead 
-              : Number(settingsData.min_days_ahead);
-              
-            if (isNaN(parsedMinDays)) {
-              console.warn('[BookingDialog] min_days_ahead is not a valid number, using default: 1');
-              setMinDaysAhead(1);
-            } else {
-              console.log('[BookingDialog] Using min_days_ahead:', parsedMinDays);
-              setMinDaysAhead(parsedMinDays || 1);
-            }
+            console.error('[BookingDialog] Error invoking getavailabilitysettings Edge Function:', settingsError);
+            console.error('[BookingDialog] Full error object:', JSON.stringify(settingsError, null, 2));
             
-            // Flag if we're using fallback data
-            if (settingsData._fallback) {
-              console.warn('[BookingDialog] Using fallback availability settings');
-              if (settingsData._error) {
-                console.error('[BookingDialog] Original error:', settingsData._error);
-              }
+            // Try alternate edge function name as fallback
+            console.log('[BookingDialog] Attempting fallback call to "get-availability-settings" Edge Function...');
+            const fallbackStartTime = performance.now();
+            
+            const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('get-availability-settings', {
+              body: { clinicianId: fullClinicianId }
+            });
+            
+            const fallbackEndTime = performance.now();
+            console.log(`[BookingDialog] Fallback Edge Function call completed in ${(fallbackEndTime - fallbackStartTime).toFixed(2)}ms`);
+            
+            if (fallbackError) {
+              console.error('[BookingDialog] Error invoking fallback get-availability-settings Edge Function:', fallbackError);
+              console.error('[BookingDialog] Full fallback error object:', JSON.stringify(fallbackError, null, 2));
+              setApiErrors(prev => ({ ...prev, availabilitySettings: 'Failed to fetch availability settings from either Edge Function' }));
+              // Use default values
+              setMinDaysAhead(1);
+            } else if (fallbackData) {
+              console.log('[BookingDialog] Successfully received data from fallback Edge Function:', JSON.stringify(fallbackData, null, 2));
+              handleAvailabilitySettingsResponse(fallbackData);
+            } else {
+              console.warn('[BookingDialog] No data received from fallback Edge Function call');
+              setMinDaysAhead(1);
             }
+          } else if (settingsData) {
+            console.log('[BookingDialog] Successfully received data from getavailabilitysettings:', JSON.stringify(settingsData, null, 2));
+            handleAvailabilitySettingsResponse(settingsData);
           } else {
-            console.log('[BookingDialog] No settings data received, using default value of 1 for minDaysAhead');
+            console.warn('[BookingDialog] No data received from getavailabilitysettings Edge Function call');
             setMinDaysAhead(1);
           }
         } catch (edgeFunctionError) {
-          console.error('[BookingDialog] Exception calling getavailabilitysettings:', edgeFunctionError);
-          setApiErrors(prev => ({ ...prev, availabilitySettings: 'Could not connect to availability settings service' }));
+          console.error('[BookingDialog] Exception calling availability settings Edge Functions:', edgeFunctionError);
+          console.error('[BookingDialog] Exception details:', JSON.stringify(edgeFunctionError, null, 2));
+          
+          // Check if the error is related to network/auth
+          const errorMessage = edgeFunctionError instanceof Error ? edgeFunctionError.message : String(edgeFunctionError);
+          if (errorMessage.includes('NetworkError') || errorMessage.includes('Failed to fetch')) {
+            setApiErrors(prev => ({ ...prev, availabilitySettings: 'Network error connecting to availability settings service' }));
+          } else if (errorMessage.includes('auth') || errorMessage.includes('Authentication')) {
+            setApiErrors(prev => ({ ...prev, availabilitySettings: 'Authentication error accessing availability settings' }));
+          } else {
+            setApiErrors(prev => ({ ...prev, availabilitySettings: 'Could not connect to availability settings service' }));
+          }
+          
           // Use default value
           setMinDaysAhead(1);
         }
       } catch (error) {
         console.error('[BookingDialog] Caught error fetching clinician data:', error);
         setApiErrors(prev => ({ ...prev, availabilitySettings: 'Failed to load clinician configuration' }));
+        setMinDaysAhead(1);
       }
     };
     
     fetchClinicianData();
   }, [clinicianId, open]);
+
+  // Helper function to process availability settings response
+  const handleAvailabilitySettingsResponse = (settingsData: any) => {
+    // Safely parse the min_days_ahead value
+    const parsedMinDays = typeof settingsData.min_days_ahead === 'number' 
+      ? settingsData.min_days_ahead 
+      : Number(settingsData.min_days_ahead);
+      
+    if (isNaN(parsedMinDays)) {
+      console.warn('[BookingDialog] min_days_ahead is not a valid number, using default: 1');
+      setMinDaysAhead(1);
+    } else {
+      console.log('[BookingDialog] Using min_days_ahead:', parsedMinDays);
+      setMinDaysAhead(parsedMinDays || 1);
+    }
+    
+    // Flag if we're using fallback data
+    if (settingsData._fallback) {
+      console.warn('[BookingDialog] Using fallback availability settings');
+      if (settingsData._error) {
+        console.error('[BookingDialog] Original error:', settingsData._error);
+      }
+    }
+  };
 
   // Fetch availability blocks from the database
   useEffect(() => {
@@ -368,6 +417,12 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
         return;
       }
       
+      console.log('[BookingDialog] Successfully retrieved clinician data with available days:', 
+        Object.keys(clinicianData)
+          .filter(key => key.startsWith('clinician_availability_start_') && clinicianData[key])
+          .map(key => key.replace('clinician_availability_start_', ''))
+      );
+      
       // Get the day of week for the selected date (0-6, where 0 is Sunday)
       const selectedDayNum = selectedDateLuxon.weekday % 7; // Convert from Luxon's 1-7 (Mon-Sun) to 0-6 (Sun-Sat)
       const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -383,15 +438,24 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
         const endTimeKey = `clinician_availability_end_${selectedDayName}_${slotNum}`;
         const tzKey = `clinician_availability_timezone_${selectedDayName}_${slotNum}`;
         
+        console.log(`[BookingDialog] Checking slot ${slotNum} for ${selectedDayName}:`);
+        console.log(`  - Start time key: ${startTimeKey} = ${clinicianData[startTimeKey]}`);
+        console.log(`  - End time key: ${endTimeKey} = ${clinicianData[endTimeKey]}`);
+        console.log(`  - Timezone key: ${tzKey} = ${clinicianData[tzKey]}`);
+        
         if (clinicianData[startTimeKey] && clinicianData[endTimeKey]) {
           // Get the slot's timezone or default to clinician's timezone
-          const slotTimezone = TimeZoneService.ensureIANATimeZone(
-            clinicianData[tzKey] || clinicianData.clinician_time_zone || TimeZoneService.DEFAULT_TIMEZONE
-          );
+          const rawSlotTimezone = clinicianData[tzKey] || clinicianData.clinician_time_zone || TimeZoneService.DEFAULT_TIMEZONE;
+          console.log(`[BookingDialog] Raw slot timezone: ${rawSlotTimezone}, type: ${typeof rawSlotTimezone}`);
+          
+          const slotTimezone = TimeZoneService.ensureIANATimeZone(rawSlotTimezone);
+          console.log(`[BookingDialog] Using validated slot timezone: ${slotTimezone}`);
           
           // Parse the time strings
           const startParts = clinicianData[startTimeKey].split(':').map(Number);
           const endParts = clinicianData[endTimeKey].split(':').map(Number);
+          
+          console.log(`[BookingDialog] Start parts: ${startParts}, End parts: ${endParts}`);
           
           // Create start and end times in the slot's timezone
           const slotStart = selectedDateLuxon.setZone(slotTimezone).set({
@@ -408,6 +472,9 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
             millisecond: 0
           });
           
+          console.log(`[BookingDialog] Slot start in ${slotTimezone}: ${slotStart.toFormat('yyyy-MM-dd HH:mm:ss')}`);
+          console.log(`[BookingDialog] Slot end in ${slotTimezone}: ${slotEnd.toFormat('yyyy-MM-dd HH:mm:ss')}`);
+          
           // Generate 30-minute time slots
           let timeSlotStart = slotStart;
           while (timeSlotStart < slotEnd) {
@@ -420,6 +487,8 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
             // Convert back to UTC for storage
             const utcStart = timeSlotStart.toUTC().toISO();
             const utcEnd = timeSlotEnd.toUTC().toISO();
+            
+            console.log(`[BookingDialog] Created 30-min slot: ${slotInUserTZ.toFormat('h:mm a')} (${userTimeZone})`);
             
             slots.push({
               utcStart,
