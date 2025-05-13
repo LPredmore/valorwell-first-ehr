@@ -36,7 +36,13 @@ const CalendarView = ({
   // Ensure we have a valid IANA timezone
   const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
   
-  // If clinicianId is empty, display a message
+  // Use a local refresh trigger that combines the external one plus local changes
+  const [localRefreshTrigger, setLocalRefreshTrigger] = useState(0);
+  
+  // Combine both refresh triggers
+  const combinedRefreshTrigger = refreshTrigger + localRefreshTrigger;
+  
+  // Log appointments data for debugging
   console.log('[CalendarView] Raw appointments received:', appointments.map(appt => ({
     id: appt.id,
     startAt: appt.start_at,
@@ -52,7 +58,7 @@ const CalendarView = ({
   // Enhanced logging for appointments with comprehensive client name information
   useEffect(() => {
     console.log(`[CalendarView] Rendering with ${appointments.length} appointments for clinician ${clinicianId}`);
-    console.log(`[CalendarView] Calendar view: ${view}, timezone: ${validTimeZone}`);
+    console.log(`[CalendarView] Calendar view: ${view}, timezone: ${validTimeZone}, refreshTrigger: ${combinedRefreshTrigger}`);
     
     if (appointments.length > 0) {
       // Sample appointments for inspection
@@ -78,7 +84,7 @@ const CalendarView = ({
     if (error) {
       console.error('[CalendarView] Error detected:', error);
     }
-  }, [appointments, clinicianId, error, view, validTimeZone]);
+  }, [appointments, clinicianId, error, view, validTimeZone, combinedRefreshTrigger]);
 
   // Handler for appointment clicked in calendar
   const handleAppointmentClick = (appointment: Appointment) => {
@@ -100,9 +106,10 @@ const CalendarView = ({
     console.log(`[CalendarView] Availability clicked for ${dateTime.toFormat('yyyy-MM-dd')} - Block:`, availabilityBlock);
   };
 
-  // Handler for when availability is updated
+  // Handler for when availability is updated - triggers refresh of data
   const handleAvailabilityUpdated = () => {
-    console.log('[CalendarView] Availability updated, refreshing calendar...');
+    console.log('[CalendarView] Availability updated, triggering calendar refresh...');
+    setLocalRefreshTrigger(prev => prev + 1);
   };
 
   return (
@@ -112,7 +119,7 @@ const CalendarView = ({
           <WeekView 
             currentDate={currentDate}
             clinicianId={clinicianId}
-            refreshTrigger={refreshTrigger}
+            refreshTrigger={combinedRefreshTrigger} // Use combined refresh trigger
             appointments={appointments}
             onAppointmentClick={handleAppointmentClick}
             onAvailabilityClick={handleAvailabilityClick}
@@ -124,7 +131,7 @@ const CalendarView = ({
           <MonthView 
             currentDate={currentDate}
             clinicianId={clinicianId}
-            refreshTrigger={refreshTrigger}
+            refreshTrigger={combinedRefreshTrigger} // Use combined refresh trigger
             appointments={appointments}
             getClientName={(clientId: string): string => {
               const appointment = appointments.find(app => app.client_id === clientId);
@@ -141,7 +148,7 @@ const CalendarView = ({
         <div className="md:col-span-1">
           <ClinicianAvailabilityPanel 
             clinicianId={clinicianId} 
-            onAvailabilityUpdated={handleAvailabilityUpdated}
+            onAvailabilityUpdated={handleAvailabilityUpdated} // Pass the refresh handler
             userTimeZone={validTimeZone}
           />
         </div>

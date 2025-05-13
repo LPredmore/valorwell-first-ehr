@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -168,8 +167,12 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
         });
       }
 
+      // Enhanced logging for debugging calendar refresh
+      console.log('[EditAppointmentDialog] Appointment updated successfully, triggering calendar refresh');
+      
       setIsEditOptionDialogOpen(false);
       onClose();
+      // Explicitly call onAppointmentUpdated to refresh the calendar
       onAppointmentUpdated();
     } catch (error) {
       console.error('Error updating appointment:', error);

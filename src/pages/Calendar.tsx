@@ -51,7 +51,8 @@ const CalendarPage = () => {
       userTimeZone,
       currentDate: currentDate.toISOString(),
       selectedClinicianId,
-      appointmentsCount: appointments?.length || 0
+      appointmentsCount: appointments?.length || 0,
+      refreshTrigger: appointmentRefreshTrigger
     });
     
     // Log first few appointments for verification
@@ -65,7 +66,7 @@ const CalendarPage = () => {
         }))
       );
     }
-  }, [appointments, userTimeZone, currentDate, selectedClinicianId]);
+  }, [appointments, userTimeZone, currentDate, selectedClinicianId, appointmentRefreshTrigger]);
 
   const navigatePrevious = () => {
     setCurrentDate(subWeeks(currentDate, 1));
@@ -83,8 +84,10 @@ const CalendarPage = () => {
     setShowAvailability(!showAvailability);
   };
 
-  const handleAppointmentCreated = () => {
-    setAppointmentRefreshTrigger((prev) => prev + 1);
+  // Central function to handle any data changes that should trigger a refresh
+  const handleDataChanged = () => {
+    console.log("[CalendarPage] Data changed, refreshing calendar...");
+    setAppointmentRefreshTrigger(prev => prev + 1);
   };
 
   return (
@@ -132,7 +135,7 @@ const CalendarPage = () => {
         clients={clients}
         loadingClients={loadingClients}
         selectedClinicianId={selectedClinicianId}
-        onAppointmentCreated={handleAppointmentCreated}
+        onAppointmentCreated={handleDataChanged} // Use the central data changed handler
       />
     </Layout>
   );

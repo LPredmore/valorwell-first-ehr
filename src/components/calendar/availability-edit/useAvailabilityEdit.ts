@@ -151,6 +151,7 @@ export const useAvailabilityEdit = (
         description: `Availability for ${format(specificDate, 'PPP')} has been updated.`,
       });
       
+      console.log('[useAvailabilityEdit] Calling onAvailabilityUpdated to refresh calendar');
       // Explicitly call onAvailabilityUpdated to refresh the calendar view
       onAvailabilityUpdated();
       onClose();
@@ -275,6 +276,7 @@ export const useAvailabilityEdit = (
         description: `Availability for ${format(specificDate, 'PPP')} has been cancelled.`,
       });
       
+      console.log('[useAvailabilityEdit] Calling onAvailabilityUpdated after delete to refresh calendar');
       // Explicitly refresh the parent component
       setIsDeleteDialogOpen(false);
       onAvailabilityUpdated();
