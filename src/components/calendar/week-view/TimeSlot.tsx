@@ -2,7 +2,6 @@
 import React from 'react';
 import { TimeBlock, AppointmentBlock } from './types';
 import { Appointment } from '@/types/appointment';
-import { isStartOfBlock, isEndOfBlock, isStartOfAppointment, isWithinAppointment } from './utils';
 
 interface TimeSlotProps {
   day: Date;
@@ -14,7 +13,7 @@ interface TimeSlotProps {
   isEndOfBlock: boolean;
   isStartOfAppointment: boolean;
   handleAvailabilityBlockClick: (day: Date, block: TimeBlock) => void;
-  onAppointmentClick?: (appointment: Appointment) => void;
+  onAppointmentClick?: (appointmentBlock: AppointmentBlock) => void; // Modified to accept AppointmentBlock
   originalAppointments: Appointment[];
 }
 
@@ -33,15 +32,10 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
 }) => {
   // For appointments, handle styling to ensure visual continuity
   if (appointment) {
-    // Find the corresponding original appointment
-    const originalAppointment = originalAppointments.find(app => 
-      app.id === appointment.id
-    );
-    
     // Handle appointment click event
     const handleAppointmentClick = () => {
-      if (onAppointmentClick && originalAppointment) {
-        onAppointmentClick(originalAppointment);
+      if (onAppointmentClick) {
+        onAppointmentClick(appointment);
       }
     };
     

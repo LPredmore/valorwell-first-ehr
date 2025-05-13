@@ -88,6 +88,7 @@ const WeekView: React.FC<WeekViewProps> = ({
     }
   };
 
+  // Updated to implement adapter pattern for appointment clicks
   const handleAppointmentClick = (appointmentBlock: AppointmentBlock) => {
     // Functionality for when an appointment is clicked
     console.log('Appointment clicked:', {

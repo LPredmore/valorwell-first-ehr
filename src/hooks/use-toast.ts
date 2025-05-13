@@ -1,7 +1,6 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { toast as sonnerToast } from "sonner";
-import type { ToastProps } from "sonner";
+import type { ToasterProps } from "sonner";
 
 export type ToastActionElement = React.ReactElement;
 
