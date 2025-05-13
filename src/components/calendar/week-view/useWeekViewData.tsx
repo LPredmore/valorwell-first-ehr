@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DateTime } from 'luxon';
@@ -38,6 +37,39 @@ interface ClinicianWeeklyAvailability {
 // Use ClientDetails as Client for backward compatibility
 type Client = ClientDetails;
 
+// Helper function to safely clone objects without losing string types
+function safeClone<T>(obj: T): T {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  
+  // Handle Date objects
+  if (obj instanceof Date) {
+    return new Date(obj.getTime()) as unknown as T;
+  }
+  
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map(safeClone) as unknown as T;
+  }
+  
+  // Handle objects
+  const cloned: Record<string, any> = {};
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const value = (obj as Record<string, any>)[key];
+      // Special handling for timezone strings to prevent object conversion
+      if (key === 'timezone' && typeof value === 'string') {
+        cloned[key] = String(value); // Ensure it's a primitive string
+      } else {
+        cloned[key] = safeClone(value);
+      }
+    }
+  }
+  
+  return cloned as T;
+}
+
 // Helper function to extract weekly pattern from clinician data
 const extractWeeklyPatternFromClinicianData = (clinicianData: any): ClinicianWeeklyAvailability => {
   // Create a default structure with all days set to unavailable
@@ -62,7 +94,7 @@ const extractWeeklyPatternFromClinicianData = (clinicianData: any): ClinicianWee
   // Get clinician's default timezone (ensuring it's a string)
   const clinicianDefaultTimezone = 
     typeof clinicianData.clinician_time_zone === 'string' 
-      ? clinicianData.clinician_time_zone 
+      ? TimeZoneService.ensureIANATimeZone(clinicianData.clinician_time_zone) 
       : defaultTimezone;
   
   // Process each day
@@ -77,23 +109,33 @@ const extractWeeklyPatternFromClinicianData = (clinicianData: any): ClinicianWee
         // We found a valid slot - ensure the day is marked as available
         defaultAvailability[day as keyof ClinicianWeeklyAvailability].isAvailable = true;
         
-        // Extract timezone value, ensuring it's a string
-        let timezoneValue: string;
-        if (typeof clinicianData[timezoneKey] === 'string' && clinicianData[timezoneKey]) {
-          timezoneValue = clinicianData[timezoneKey];
-        } else {
-          // Fall back to clinician's default timezone or America/Chicago
-          timezoneValue = clinicianDefaultTimezone;
+        // Extract timezone value with improved validation
+        const rawTimezoneFromDbSlot = clinicianData[timezoneKey];
+        let determinedTimezoneString = defaultTimezone; // Start with fallback
+        
+        // Try to use the slot-specific timezone if it's a valid string
+        if (typeof rawTimezoneFromDbSlot === 'string' && rawTimezoneFromDbSlot.trim()) {
+          determinedTimezoneString = TimeZoneService.ensureIANATimeZone(rawTimezoneFromDbSlot.trim());
+        } 
+        // Otherwise fall back to clinician's default timezone
+        else if (typeof clinicianDefaultTimezone === 'string' && clinicianDefaultTimezone.trim()) {
+          determinedTimezoneString = TimeZoneService.ensureIANATimeZone(clinicianDefaultTimezone.trim());
         }
         
         // Log the timezone being used for this slot
-        console.log(`[extractWeeklyPatternFromClinicianData] Timezone for ${day}_${slotNum}: ${timezoneValue} (type: ${typeof timezoneValue})`);
+        console.log(`[extractWeeklyPatternFromClinicianData] Timezone for ${day}_${slotNum}:`, {
+          rawTimezone: rawTimezoneFromDbSlot,
+          timezoneType: typeof rawTimezoneFromDbSlot,
+          defaultTz: clinicianDefaultTimezone,
+          determinedTz: determinedTimezoneString,
+          finalType: typeof determinedTimezoneString
+        });
         
-        // Add this time slot - ensure timezone is stored as a primitive string
+        // Add this time slot with explicit string timezone
         defaultAvailability[day as keyof ClinicianWeeklyAvailability].timeSlots.push({
           startTime: clinicianData[startTimeKey].substring(0, 5),  // Ensure "HH:MM" format
           endTime: clinicianData[endTimeKey].substring(0, 5),      // Ensure "HH:MM" format
-          timezone: String(timezoneValue)  // Explicitly convert to string to prevent object references
+          timezone: String(determinedTimezoneString)  // Explicitly convert to string to prevent object references
         });
       }
     }
@@ -143,19 +185,18 @@ export const useWeekViewData = (
     if (!pattern) return [];
     
     // DEBUG: Log the pattern we received to check timezone values
-    console.log('[generateTimeBlocksFromWeeklyPattern DEBUG] Received pattern structure:', 
-      JSON.stringify({
-        monday: { 
-          isAvailable: pattern.monday.isAvailable,
-          slotsCount: pattern.monday.timeSlots.length,
-          sampleSlot: pattern.monday.timeSlots.length > 0 ? {
-            startTime: pattern.monday.timeSlots[0]?.startTime,
-            endTime: pattern.monday.timeSlots[0]?.endTime,
-            timezone: pattern.monday.timeSlots[0]?.timezone,
-            timezoneType: typeof pattern.monday.timeSlots[0]?.timezone
-          } : null
-        }
-      }, null, 2));
+    console.log('[generateTimeBlocksFromWeeklyPattern DEBUG] Received pattern structure:', JSON.stringify({
+      monday: { 
+        isAvailable: pattern.monday.isAvailable,
+        slotsCount: pattern.monday.timeSlots.length,
+        sampleSlot: pattern.monday.timeSlots.length > 0 ? {
+          startTime: pattern.monday.timeSlots[0]?.startTime,
+          endTime: pattern.monday.timeSlots[0]?.endTime,
+          timezone: pattern.monday.timeSlots[0]?.timezone,
+          timezoneType: typeof pattern.monday.timeSlots[0]?.timezone
+        } : null
+      }
+    }, null, 2));
     
     const generatedBlocks: TimeBlock[] = [];
     const defaultTimezone = 'America/Chicago';
@@ -176,16 +217,29 @@ export const useWeekViewData = (
         // Process each time slot for this day
         dayAvailability.timeSlots.forEach((slot, index) => {
           try {
-            // Ensure slot.timezone is a string - this is crucial
-            // First, ensure the value exists
-            if (!slot.timezone) {
-              console.error(`[generateTimeBlocksFromWeeklyPattern] Missing timezone for ${dayName} slot ${index}`);
-            }
+            // Enhanced timezone validation - always ensure we have a valid string
+            let slotTimezone = defaultTimezone; // Default fallback
             
-            // Explicitly convert any timezone value to string and validate it
-            const slotTimezone = typeof slot.timezone === 'string' ? 
-              TimeZoneService.ensureIANATimeZone(slot.timezone) : 
-              (slot.timezone ? String(slot.timezone) : defaultTimezone);
+            // First, ensure the value exists and is a string
+            if (slot.timezone) {
+              // Check if it's a string (it should be)
+              if (typeof slot.timezone === 'string') {
+                slotTimezone = TimeZoneService.ensureIANATimeZone(slot.timezone);
+              } 
+              // If somehow it's an object (which should never happen after our fixes), convert to string
+              else if (typeof slot.timezone === 'object') {
+                console.error(`[generateTimeBlocksFromWeeklyPattern] Found object timezone for ${dayName} slot ${index}:`, 
+                  slot.timezone);
+                // Try to extract a useful string, or use default
+                slotTimezone = defaultTimezone;
+              } 
+              // Handle any other unexpected type
+              else {
+                console.error(`[generateTimeBlocksFromWeeklyPattern] Unexpected timezone type for ${dayName} slot ${index}:`,
+                  typeof slot.timezone);
+                slotTimezone = defaultTimezone;
+              }
+            }
             
             // Log timezone details
             console.log('[generateTimeBlocksFromWeeklyPattern] Processing slot timezone:', {
@@ -483,14 +537,36 @@ export const useWeekViewData = (
                   timezone: extractedPattern.monday.timeSlots[0]?.timezone,
                   timezoneType: typeof extractedPattern.monday.timeSlots[0]?.timezone
                 } : null
+              },
+              thursday: { 
+                isAvailable: extractedPattern.thursday.isAvailable,
+                slotsCount: extractedPattern.thursday.timeSlots.length,
+                sampleSlot: extractedPattern.thursday.timeSlots.length > 0 ? {
+                  startTime: extractedPattern.thursday.timeSlots[0]?.startTime,
+                  endTime: extractedPattern.thursday.timeSlots[0]?.endTime,
+                  timezone: extractedPattern.thursday.timeSlots[0]?.timezone,
+                  timezoneType: typeof extractedPattern.thursday.timeSlots[0]?.timezone
+                } : null
               }
             }, null, 2));
           
-          // Create a deep clone of the pattern to prevent reference issues
-          // This prevents object mutations from affecting the pattern
-          const safePattern: ClinicianWeeklyAvailability = JSON.parse(JSON.stringify(extractedPattern));
+          // Create a deep clone of the pattern using our safe cloning function
+          // This replaces the problematic JSON.parse(JSON.stringify()) approach
+          const safePattern = safeClone(extractedPattern);
           
-          // Set the weekly pattern state with the cloned pattern
+          // Log pattern before and after cloning to verify timezone types are preserved
+          if (extractedPattern.monday.timeSlots.length > 0) {
+            console.log('[useWeekViewData] Pattern timezone BEFORE cloning:', {
+              value: extractedPattern.monday.timeSlots[0].timezone,
+              type: typeof extractedPattern.monday.timeSlots[0].timezone
+            });
+            console.log('[useWeekViewData] Pattern timezone AFTER cloning:', {
+              value: safePattern.monday.timeSlots[0].timezone,
+              type: typeof safePattern.monday.timeSlots[0].timezone
+            });
+          }
+          
+          // Set the weekly pattern state with the safely cloned pattern
           setWeeklyPattern(safePattern);
           
           console.log('[useWeekViewData] Extracted weekly pattern:', {
@@ -766,7 +842,7 @@ export const useWeekViewData = (
     return resultMap;
   }, [availability, dayKeys, userTimeZone]);
 
-  // Utility function to check if a time slot is available - ENHANCED WITH DEBUGGING
+  // Utility function to check if a time slot is available
   const isTimeSlotAvailable = (day: Date, timeSlot: Date): boolean => {
     // Convert JS Date to DateTime
     const dayDt = DateTime.fromJSDate(day, { zone: userTimeZone });
@@ -815,7 +891,7 @@ export const useWeekViewData = (
     return isAvailable;
   };
 
-  // Utility function to get the block for a time slot - ENHANCED WITH DETAILED DEBUGGING
+  // Utility function to get the block for a time slot
   const getBlockForTimeSlot = (day: Date, timeSlot: Date): TimeBlock | undefined => {
     // Convert JS Date to DateTime
     const dayDt = DateTime.fromJSDate(day, { zone: userTimeZone });
