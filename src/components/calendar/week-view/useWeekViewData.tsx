@@ -12,8 +12,74 @@ import { TimeBlock, AppointmentBlock, AvailabilityException } from './types';
 // Debug context name for this component
 const DEBUG_CONTEXT = 'useWeekViewData';
 
+// Types for recurring weekly availability pattern
+interface TimeSlot {
+  startTime: string;  // Format: "HH:MM"
+  endTime: string;    // Format: "HH:MM"
+  timezone: string;   // IANA timezone string
+}
+
+interface DayAvailability {
+  dayOfWeek: string;  // e.g., "Monday", "Tuesday", etc.
+  isAvailable: boolean;
+  timeSlots: TimeSlot[];
+}
+
+interface ClinicianWeeklyAvailability {
+  monday: DayAvailability;
+  tuesday: DayAvailability;
+  wednesday: DayAvailability;
+  thursday: DayAvailability;
+  friday: DayAvailability;
+  saturday: DayAvailability;
+  sunday: DayAvailability;
+}
+
 // Use ClientDetails as Client for backward compatibility
 type Client = ClientDetails;
+
+// Helper function to extract weekly pattern from clinician data
+const extractWeeklyPatternFromClinicianData = (clinicianData: any): ClinicianWeeklyAvailability => {
+  // Create a default structure with all days set to unavailable
+  const defaultAvailability: ClinicianWeeklyAvailability = {
+    monday: { dayOfWeek: 'Monday', isAvailable: false, timeSlots: [] },
+    tuesday: { dayOfWeek: 'Tuesday', isAvailable: false, timeSlots: [] },
+    wednesday: { dayOfWeek: 'Wednesday', isAvailable: false, timeSlots: [] },
+    thursday: { dayOfWeek: 'Thursday', isAvailable: false, timeSlots: [] },
+    friday: { dayOfWeek: 'Friday', isAvailable: false, timeSlots: [] },
+    saturday: { dayOfWeek: 'Saturday', isAvailable: false, timeSlots: [] },
+    sunday: { dayOfWeek: 'Sunday', isAvailable: false, timeSlots: [] },
+  };
+  
+  if (!clinicianData) return defaultAvailability;
+  
+  // Days of week for iteration
+  const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  
+  // Process each day
+  daysOfWeek.forEach(day => {
+    // For each potential slot (1, 2, 3)
+    for (let slotNum = 1; slotNum <= 3; slotNum++) {
+      const startTimeKey = `clinician_availability_start_${day}_${slotNum}`;
+      const endTimeKey = `clinician_availability_end_${day}_${slotNum}`;
+      const timezoneKey = `clinician_availability_timezone_${day}_${slotNum}`;
+      
+      if (clinicianData[startTimeKey] && clinicianData[endTimeKey]) {
+        // We found a valid slot - ensure the day is marked as available
+        defaultAvailability[day as keyof ClinicianWeeklyAvailability].isAvailable = true;
+        
+        // Add this time slot
+        defaultAvailability[day as keyof ClinicianWeeklyAvailability].timeSlots.push({
+          startTime: clinicianData[startTimeKey].substring(0, 5),  // Ensure "HH:MM" format
+          endTime: clinicianData[endTimeKey].substring(0, 5),      // Ensure "HH:MM" format
+          timezone: clinicianData[timezoneKey] || clinicianData.clinician_time_zone || 'America/Chicago'  
+        });
+      }
+    }
+  });
+  
+  return defaultAvailability;
+};
 
 // Main hook for week view data processing
 export const useWeekViewData = (
@@ -31,6 +97,10 @@ export const useWeekViewData = (
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
   const [appointmentBlocks, setAppointmentBlocks] = useState<AppointmentBlock[]>([]);
+  
+  // New state for clinician data and weekly pattern
+  const [clinicianData, setClinicianData] = useState<any>(null);
+  const [weeklyPattern, setWeeklyPattern] = useState<ClinicianWeeklyAvailability | null>(null);
 
   // Convert JS Date array to DateTime array in user timezone
   const weekDays = useMemo(() => 
@@ -44,6 +114,118 @@ export const useWeekViewData = (
     [weekDays]
   );
 
+  // Fetch clinician data to get recurring availability pattern
+  const fetchClinicianData = async (clinicianId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('clinicians')
+        .select('*, clinician_time_zone, clinician_availability_*')
+        .eq('id', clinicianId)
+        .single();
+        
+      if (error) {
+        console.error('[useWeekViewData] Error fetching clinician data:', error);
+        return null;
+      }
+      
+      console.log('[useWeekViewData] Fetched clinician data for recurring availability', {
+        clinicianId,
+        hasData: !!data,
+      });
+      
+      return data;
+    } catch (error) {
+      console.error('[useWeekViewData] Unexpected error fetching clinician data:', error);
+      return null;
+    }
+  };
+
+  // Generate time blocks from weekly recurring pattern
+  const generateTimeBlocksFromWeeklyPattern = (
+    pattern: ClinicianWeeklyAvailability, 
+    days: DateTime[]
+  ): TimeBlock[] => {
+    if (!pattern) return [];
+    
+    const generatedBlocks: TimeBlock[] = [];
+    
+    // For each day in our view
+    days.forEach(day => {
+      // Get day of week (0 = Sunday, 1 = Monday, etc.)
+      const dayOfWeek = day.weekday % 7; // Convert Luxon's 1-7 (Mon-Sun) to 0-6 (Sun-Sat)
+      
+      // Map day index to day name
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dayName = dayNames[dayOfWeek];
+      
+      // Get availability for this day of week
+      const dayAvailability = pattern[dayName as keyof ClinicianWeeklyAvailability];
+      
+      if (dayAvailability && dayAvailability.isAvailable) {
+        // Process each time slot for this day
+        dayAvailability.timeSlots.forEach((slot, index) => {
+          try {
+            // Get the slot's timezone or default to user timezone
+            const slotTimezone = TimeZoneService.ensureIANATimeZone(slot.timezone);
+            
+            // Create DateTime objects for start and end times in the slot's timezone
+            const [startHour, startMinute] = slot.startTime.split(':').map(Number);
+            const [endHour, endMinute] = slot.endTime.split(':').map(Number);
+            
+            // Create start and end DateTimes in slot timezone
+            const slotStart = day.setZone(slotTimezone).set({
+              hour: startHour,
+              minute: startMinute,
+              second: 0,
+              millisecond: 0
+            });
+            
+            const slotEnd = day.setZone(slotTimezone).set({
+              hour: endHour,
+              minute: endMinute,
+              second: 0,
+              millisecond: 0
+            });
+            
+            // Convert to user's timezone for display
+            const displayStart = slotStart.setZone(userTimeZone);
+            const displayEnd = slotEnd.setZone(userTimeZone);
+            
+            // Create the time block object
+            const timeBlock: TimeBlock = {
+              start: displayStart,
+              end: displayEnd,
+              day: day.startOf('day').setZone(userTimeZone),
+              availabilityIds: [`recurring-${dayName}-${index}`],
+              isException: false,
+              isStandalone: false
+            };
+            
+            generatedBlocks.push(timeBlock);
+            
+            console.log('[useWeekViewData] Generated recurring time block:', {
+              day: day.toFormat('yyyy-MM-dd'),
+              dayOfWeek: dayName,
+              start: displayStart.toFormat('HH:mm'),
+              end: displayEnd.toFormat('HH:mm'),
+              timezone: {
+                slot: slotTimezone,
+                display: userTimeZone
+              }
+            });
+          } catch (error) {
+            console.error('[useWeekViewData] Error creating recurring time block:', error, {
+              day: day.toISO(),
+              slot
+            });
+          }
+        });
+      }
+    });
+    
+    return generatedBlocks;
+  };
+
   // Fetch clinician appointments and availability
   useEffect(() => {
     const initializeData = async () => {
@@ -56,6 +238,8 @@ export const useWeekViewData = (
         setExceptions([]);
         setTimeBlocks([]);
         setAppointmentBlocks([]);
+        setClinicianData(null);
+        setWeeklyPattern(null);
         setLoading(false);
         return;
       }
@@ -82,6 +266,9 @@ export const useWeekViewData = (
           tz: userTimeZone
         });
 
+        // *** NEW: Fetch clinician data for recurring pattern ***
+        const fetchedClinicianData = await fetchClinicianData(clinicianId);
+        
         // Fetch all required data in parallel
         const [appointmentData, availabilityData, clientData, exceptionData] = await Promise.all([
           // Fetch appointments if no external appointments provided
@@ -151,13 +338,31 @@ export const useWeekViewData = (
           });
         });
 
+        // *** NEW: Extract weekly pattern from clinician data ***
+        let extractedPattern = null;
+        if (fetchedClinicianData) {
+          setClinicianData(fetchedClinicianData);
+          extractedPattern = extractWeeklyPatternFromClinicianData(fetchedClinicianData);
+          setWeeklyPattern(extractedPattern);
+          
+          console.log('[useWeekViewData] Extracted weekly pattern:', {
+            monday: extractedPattern.monday.timeSlots.length > 0,
+            tuesday: extractedPattern.tuesday.timeSlots.length > 0,
+            wednesday: extractedPattern.wednesday.timeSlots.length > 0,
+            thursday: extractedPattern.thursday.timeSlots.length > 0,
+            friday: extractedPattern.friday.timeSlots.length > 0,
+            saturday: extractedPattern.saturday.timeSlots.length > 0,
+            sunday: extractedPattern.sunday.timeSlots.length > 0,
+          });
+        }
+
         setAppointments(fetchedAppts);
         setAvailability(fetchedBlocks);
         setClients(clientMap);
         setExceptions(fetchedExceptions);
         
         // Process time blocks and appointment blocks
-        processTimeBlocks(fetchedBlocks, fetchedExceptions);
+        processTimeBlocks(fetchedBlocks, fetchedExceptions, extractedPattern, weekDays);
         processAppointmentBlocks(fetchedAppts, clientMap);
         
       } catch (error) {
@@ -172,10 +377,16 @@ export const useWeekViewData = (
   }, [clinicianId, refreshTrigger, userTimeZone, externalAppointments]);
 
   // Process availability blocks into time blocks
-  const processTimeBlocks = (blocks: AvailabilityBlock[], exceptions: AvailabilityException[]) => {
+  const processTimeBlocks = (
+    blocks: AvailabilityBlock[], 
+    exceptions: AvailabilityException[],
+    weeklyPattern: ClinicianWeeklyAvailability | null,
+    days: DateTime[]
+  ) => {
     console.log('[useWeekViewData] Processing time blocks', {
       blocksCount: blocks.length,
-      exceptionsCount: exceptions.length
+      exceptionsCount: exceptions.length,
+      hasWeeklyPattern: !!weeklyPattern
     });
     
     const timeBlocks: TimeBlock[] = [];
@@ -260,6 +471,15 @@ export const useWeekViewData = (
         });
       }
     });
+    
+    // *** NEW: Generate and add recurring time blocks from weekly pattern ***
+    if (weeklyPattern) {
+      const recurringBlocks = generateTimeBlocksFromWeeklyPattern(weeklyPattern, days);
+      if (recurringBlocks.length > 0) {
+        console.log('[useWeekViewData] Adding recurring time blocks:', recurringBlocks.length);
+        timeBlocks.push(...recurringBlocks);
+      }
+    }
     
     setTimeBlocks(timeBlocks);
     console.log('[useWeekViewData] Finished processing time blocks', {
@@ -482,6 +702,7 @@ export const useWeekViewData = (
     exceptions,
     availabilityBlocks: availability,
     appointmentBlocks,
+    weeklyPattern,
     getAvailabilityForBlock,
     isTimeSlotAvailable,
     getBlockForTimeSlot,
