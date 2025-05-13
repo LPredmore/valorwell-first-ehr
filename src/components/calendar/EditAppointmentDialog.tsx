@@ -58,6 +58,24 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
 }) => {
   const safeTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
   
+  // Debug helper function
+  const logDebug = (message: string, data: any = {}) => {
+    console.log(`🔍 EDIT APPOINTMENT - ${message}`, data);
+  };
+  
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      logDebug('Auth status checked', { 
+        isAuthenticated: !!session,
+        userId: session?.user?.id || null
+      });
+    };
+    
+    checkAuth();
+  }, []);
+  
   // Convert UTC timestamp to local date and time for initial values
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     appointment?.start_at ? 
@@ -89,6 +107,14 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
         setStartTime(localDateTime.toFormat('HH:mm'));
       }
       setIsRecurring(!!appointment.recurring_group_id);
+      
+      // Log appointment data for debugging
+      logDebug('Appointment data loaded', {
+        appointmentId: appointment.id,
+        startTime: appointment.start_at,
+        isRecurring: !!appointment.recurring_group_id,
+        timezone: safeTimeZone
+      });
     }
   }, [appointment, safeTimeZone]);
 
@@ -112,7 +138,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
 
     setIsLoading(true);
     try {
-      console.log('[EditAppointmentDialog] Updating appointment with values:', {
+      logDebug('Updating appointment with values:', {
         selectedDate: format(selectedDate, 'yyyy-MM-dd'),
         startTime,
         mode,
@@ -139,7 +165,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       const utcStart = localDateTime.toUTC().toISO();
       const utcEnd = endDateTime.toUTC().toISO();
       
-      console.log('[EditAppointmentDialog] Calculated timestamps:', {
+      logDebug('Calculated timestamps:', {
         localStart: localDateTime.toISO(),
         localEnd: endDateTime.toISO(),
         utcStart,
@@ -157,7 +183,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
           updateData.recurring_group_id = null;
         }
         
-        console.log('[EditAppointmentDialog] Updating single appointment:', {
+        logDebug('Updating single appointment:', {
           appointmentId: appointment.id,
           updateData
         });
@@ -168,7 +194,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
           .eq('id', appointment.id);
 
         if (error) {
-          console.error('[EditAppointmentDialog] Error updating appointment:', error);
+          logDebug('Error updating appointment:', error);
           throw error;
         }
         
@@ -177,7 +203,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
           description: "The appointment has been updated.",
         });
       } else if (mode === 'series' && appointment.recurring_group_id) {
-        console.log('[EditAppointmentDialog] Updating recurring appointment series:', {
+        logDebug('Updating recurring appointment series:', {
           recurringGroupId: appointment.recurring_group_id,
           fromDate: appointment.start_at,
           updateData: {
@@ -196,7 +222,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
           .gte('start_at', appointment.start_at);
 
         if (error) {
-          console.error('[EditAppointmentDialog] Error updating recurring appointments:', error);
+          logDebug('Error updating recurring appointments:', error);
           throw error;
         }
         
@@ -207,7 +233,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       }
 
       // Enhanced logging for debugging calendar refresh
-      console.log('[EditAppointmentDialog] Appointment updated successfully, triggering calendar refresh');
+      logDebug('Appointment updated successfully, triggering calendar refresh');
       
       setIsEditOptionDialogOpen(false);
       onClose();
@@ -215,7 +241,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
       // Explicitly call onAppointmentUpdated to refresh the calendar
       onAppointmentUpdated();
     } catch (error) {
-      console.error('[EditAppointmentDialog] Error updating appointment:', error);
+      logDebug('Error updating appointment:', error);
       toast({
         title: "Error",
         description: "Failed to update the appointment.",

@@ -62,6 +62,7 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   const [fetchingClinicianId, setFetchingClinicianId] = useState(false);
   const [appointmentCreationAttempts, setAppointmentCreationAttempts] = useState(0);
   const [lastError, setLastError] = useState<any>(null);
+  const [authStatus, setAuthStatus] = useState<string>("unknown");
   
   // Helper function for consistent logging
   const logAppointmentDebug = (message: string, data: any = {}) => {
@@ -73,6 +74,20 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   
   // Generate time options once
   const timeOptions = generateTimeOptions();
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setAuthStatus(session ? "authenticated" : "unauthenticated");
+      logAppointmentDebug('Auth status checked', { 
+        isAuthenticated: !!session,
+        userId: session?.user?.id || null
+      });
+    };
+    
+    checkAuth();
+  }, []);
   
   // Fetch the database-formatted clinician ID when the dialog opens or clinician changes
   // Debug effect to track state changes
@@ -86,13 +101,14 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
       databaseClinicianId,
       formattedClinicianId,
       appointmentCreationAttempts,
+      authStatus,
       lastError: lastError ? {
         message: lastError.message,
         code: lastError.code
       } : null
     });
   }, [selectedClientId, selectedDate, startTime, isRecurring, recurrenceType,
-      databaseClinicianId, formattedClinicianId, appointmentCreationAttempts, lastError]);
+      databaseClinicianId, formattedClinicianId, appointmentCreationAttempts, lastError, authStatus]);
   
   useEffect(() => {
     const fetchDatabaseClinicianId = async () => {

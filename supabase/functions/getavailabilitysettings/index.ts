@@ -16,23 +16,35 @@ serve(async (req) => {
 
   try {
     console.log('[getavailabilitysettings] Function called with method:', req.method);
-    console.log('[getavailabilitysettings] Authorization header present:', !!req.headers.get('Authorization'));
     
-    // Create a Supabase client with proper authorization
+    // Log authentication details - important for debugging auth issues
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('[getavailabilitysettings] No Authorization header provided');
+    console.log('[getavailabilitysettings] Authorization header present:', !!authHeader);
+    if (authHeader) {
+      // Log a truncated version of the auth header for debugging (don't log the full token for security)
+      const truncatedAuth = authHeader.substring(0, 20) + '...' + authHeader.substring(authHeader.length - 10);
+      console.log('[getavailabilitysettings] Auth header (truncated):', truncatedAuth);
+    } else {
+      console.error('[getavailabilitysettings] No Authorization header provided - this will cause authentication failures');
     }
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
     
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('[getavailabilitysettings] Missing Supabase configuration:', {
+        hasUrl: !!supabaseUrl,
+        hasAnonKey: !!supabaseAnonKey
+      });
+      throw new Error('Missing Supabase configuration');
+    }
+    
     console.log('[getavailabilitysettings] Supabase URL available:', !!supabaseUrl);
     console.log('[getavailabilitysettings] Supabase Anon Key available:', !!supabaseAnonKey);
     
     const supabaseClient = createClient(
-      supabaseUrl ?? '',
-      supabaseAnonKey ?? '',
+      supabaseUrl,
+      supabaseAnonKey,
       {
         global: {
           headers: { Authorization: authHeader || '' },
@@ -53,7 +65,8 @@ serve(async (req) => {
           // Return default values even on error
           time_granularity: 'hour',
           min_days_ahead: 1,
-          max_days_ahead: 30
+          max_days_ahead: 30,
+          _error_type: 'parse_error'
         }),
         { 
           status: 400, 
@@ -72,7 +85,8 @@ serve(async (req) => {
           // Return default values even when parameter is missing
           time_granularity: 'hour',
           min_days_ahead: 1,
-          max_days_ahead: 30
+          max_days_ahead: 30,
+          _error_type: 'missing_clinician_id'
         }),
         { 
           status: 400,
@@ -85,6 +99,32 @@ serve(async (req) => {
     console.log(`[getavailabilitysettings] Type of clinicianId: ${typeof clinicianId}`);
     
     try {
+      // Verify authentication first
+      try {
+        const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+        if (authError) {
+          console.error('[getavailabilitysettings] Authentication error:', authError);
+          return new Response(
+            JSON.stringify({ 
+              time_granularity: 'hour', 
+              min_days_ahead: 1,
+              max_days_ahead: 30,
+              _fallback: true,
+              _error_type: 'auth_error',
+              _error: authError.message
+            }),
+            { 
+              status: 200, // Still return 200 with defaults for backwards compatibility
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+        console.log('[getavailabilitysettings] Authenticated user:', user?.id);
+      } catch (authCheckError) {
+        console.error('[getavailabilitysettings] Error checking authentication:', authCheckError);
+        // Continue with the request even if auth check fails
+      }
+      
       // Fetch the clinician's availability settings directly from clinicians table
       const { data, error } = await supabaseClient
         .from('clinicians')
@@ -103,7 +143,8 @@ serve(async (req) => {
             time_granularity: 'hour', 
             min_days_ahead: 1,
             max_days_ahead: 30,
-            _fallback: true, // Flag to indicate default values were used
+            _fallback: true,
+            _error_type: 'database_error',
             _error: error.message
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -134,7 +175,8 @@ serve(async (req) => {
           time_granularity: 'hour', 
           min_days_ahead: 1,
           max_days_ahead: 30,
-          _fallback: true, // Flag to indicate default values were used
+          _fallback: true,
+          _error_type: 'operation_error',
           _error: dbError instanceof Error ? dbError.message : String(dbError)
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -149,7 +191,8 @@ serve(async (req) => {
         time_granularity: 'hour',
         min_days_ahead: 1,
         max_days_ahead: 30,
-        _fallback: true
+        _fallback: true,
+        _error_type: 'uncaught_error'
       }),
       { 
         status: 500,
