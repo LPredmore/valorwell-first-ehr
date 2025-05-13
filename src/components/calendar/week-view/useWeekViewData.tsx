@@ -106,7 +106,8 @@ export const useWeekViewData = (
           clinicianId ? supabase
             .from('clients')
             .select('id, client_first_name, client_last_name, client_preferred_name')
-            .eq('clinician_id', clinicianId) : Promise.resolve({ data: [], error: null }),
+            // FIXED: Use client_assigned_therapist instead of clinician_id
+            .eq('client_assigned_therapist', clinicianId.toString()) : Promise.resolve({ data: [], error: null }),
             
           // Fetch availability exceptions
           clinicianId ? supabase

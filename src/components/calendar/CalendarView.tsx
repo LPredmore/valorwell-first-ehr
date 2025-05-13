@@ -37,14 +37,14 @@ const CalendarView = ({
   const validTimeZone = TimeZoneService.ensureIANATimeZone(userTimeZone);
   
   // If clinicianId is empty, display a message
-{/* Debugging: Log raw appointment data received from useAppointments */}
-console.log('[CalendarView] Raw appointments received:', appointments.map(appt => ({
-  id: appt.id,
-  startAt: appt.start_at,
-  clientName: appt.clientName,
-  hasClient: !!appt.client,
-  clientDetails: appt.client || 'No client data'
-})));
+  console.log('[CalendarView] Raw appointments received:', appointments.map(appt => ({
+    id: appt.id,
+    startAt: appt.start_at,
+    clientName: appt.clientName,
+    hasClient: !!appt.client,
+    clientDetails: appt.client || 'No client data'
+  })));
+  
   if (!clinicianId) {
     console.error('No clinician ID provided to Calendar component');
   }

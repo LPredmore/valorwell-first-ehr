@@ -144,11 +144,12 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
         console.log('[useCalendarState] Database-retrieved clinician ID:', databaseClinicianId);
         
         // Query clients assigned by current clinician_id relationship
+        // FIXED: Use client_assigned_therapist column instead of clinician_id
         const { data: clientData, error } = await supabase
           .from('clients')
           .select('id, client_first_name, client_preferred_name, client_last_name')
-          // Only clients whose clinician_id matches selectedClinician
-          .eq('clinician_id', databaseClinicianId) 
+          // Use client_assigned_therapist column which is TEXT type not UUID
+          .eq('client_assigned_therapist', databaseClinicianId.toString())
           .order('client_last_name');
           
         if (error) {
