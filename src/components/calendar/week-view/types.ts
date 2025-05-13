@@ -1,5 +1,8 @@
 
 import { DateTime } from 'luxon';
+import { AvailabilityBlock } from '@/types/availability';
+
+export { AvailabilityBlock };
 
 export interface TimeBlock {
   start: DateTime;
