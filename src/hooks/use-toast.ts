@@ -1,6 +1,6 @@
 
 import { useState, useEffect, ReactNode } from "react";
-import { toast as sonnerToast, type Toast as SonnerToast } from "sonner";
+import { toast as sonnerToast } from "sonner";
 
 // Define our own Toast type that includes variant
 export interface Toast {
@@ -26,24 +26,29 @@ const useToastImplementation = () => {
     // Add to our internal toasts state
     setToasts((current) => [...current, newToast]);
     
-    // Use Sonner toast directly - transform our variant to Sonner options
-    let sonnerType: "default" | "success" | "error" | "warning" | "info" | undefined = undefined;
-    
-    // Map our variants to Sonner types
-    if (variant === "destructive") sonnerType = "error";
-    else if (variant === "success") sonnerType = "success";
-    
-    // Call Sonner toast
-    sonnerToast(title || "", {
-      id,
-      description,
-      duration,
-      type: sonnerType,
-      // Let buttons/actions render correctly
-      // Note: Sonner may handle action differently, this is a basic implementation
-      action: action ? { label: "Action", onClick: () => {} } : undefined,
-      ...rest
-    });
+    // Use appropriate Sonner toast method based on variant
+    if (variant === "destructive") {
+      sonnerToast.error(title || "", {
+        id,
+        description,
+        duration,
+        ...rest
+      });
+    } else if (variant === "success") {
+      sonnerToast.success(title || "", {
+        id,
+        description,
+        duration,
+        ...rest
+      });
+    } else {
+      sonnerToast(title || "", {
+        id,
+        description,
+        duration,
+        ...rest
+      });
+    }
     
     return id;
   };
