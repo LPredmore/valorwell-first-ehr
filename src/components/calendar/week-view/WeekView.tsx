@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { useWeekViewData } from './useWeekViewData';
@@ -8,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { TimeZoneService } from '@/utils/timeZoneService'; 
 import { toast } from '@/components/ui/use-toast';
 import { Appointment } from '@/types/appointment';
+import { DateTime } from 'luxon';
 
 interface WeekViewProps {
   clinicianId: string | null;
@@ -192,27 +192,40 @@ const WeekView: React.FC<WeekViewProps> = ({
         {days.map((day) => (
           <div key={day.toISOString()} className="border-r last:border-r-0">
             {TIME_SLOTS.map((timeSlot, i) => {
-              // DEBUG: Log current iteration info for specific time slots
-              const formattedDay = format(day, 'yyyy-MM-dd');
-              const slotHour = timeSlot.getHours();
-              if (formattedDay === '2025-05-15' && (slotHour >= 8 && slotHour <= 18)) {
-                console.log('[WeekView] Current Day Loop:', day.toISOString(), 'Time Slot Loop:', timeSlot.toISOString(), 'showAvailability Prop:', showAvailability);
-              }
+              // Convert JS Date to DateTime objects for consistent checking
+              const dayDt = TimeZoneService.fromJSDate(day, { zone: userTimeZone });
+              const timeSlotDt = TimeZoneService.fromJSDate(timeSlot, { zone: userTimeZone });
+              
+              // Get formatted day and hour for debugging logs
+              const formattedDay = dayDt.toFormat('yyyy-MM-dd');
+              const slotHour = timeSlotDt.hour;
+              const slotMinute = timeSlotDt.minute;
+              const formattedTime = `${slotHour}:${slotMinute.toString().padStart(2, '0')}`;
               
               // Check if this slot is within an availability block
               const isAvailable = showAvailability && isTimeSlotAvailable(day, timeSlot);
               
-              // Get the full block if available
-              const currentBlock = isAvailable ? getBlockForTimeSlot(day, timeSlot) : undefined;
-              
-              // DEBUG: Log when we find an available time slot
-              if (isAvailable) { 
-                console.log('[WeekView] For Slot:', timeSlot.toISOString(), 'isAvailable is TRUE. currentBlock:', 
-                  currentBlock ? JSON.stringify({
-                    start: currentBlock.start.toISO(), 
-                    end: currentBlock.end.toISO()
-                  }) : 'undefined'); 
+              // ENHANCED DEBUGGING: Compare isTimeSlotAvailable and getBlockForTimeSlot directly
+              if (formattedDay === '2025-05-15' && (slotHour >= 8 && slotHour <= 18)) {
+                const availableCheck = isTimeSlotAvailable(day, timeSlot);
+                const blockForSlot = getBlockForTimeSlot(day, timeSlot);
+                
+                console.log(`[WeekView DEBUG COMPARISON] For ${formattedDay} ${formattedTime}:`);
+                console.log(`  isTimeSlotAvailable result: ${availableCheck}`);
+                console.log(`  getBlockForTimeSlot result (currentBlock defined): ${!!blockForSlot}`);
+                if (blockForSlot) {
+                  console.log(`  getBlockForTimeSlot block details:`, JSON.stringify({
+                    start: blockForSlot.start.toISO(),
+                    end: blockForSlot.end.toISO()
+                  }));
+                }
+                
+                // This is what's actually being passed to the TimeSlot component
+                console.log(`  FINAL PROPS for TimeSlot: isAvailable=${isAvailable}, currentBlock defined=${!!(isAvailable ? getBlockForTimeSlot(day, timeSlot) : undefined)}`);
               }
+              
+              // Get the full block if available - call getBlockForTimeSlot only when needed
+              const currentBlock = isAvailable ? getBlockForTimeSlot(day, timeSlot) : undefined;
               
               // Get appointment if any
               const appointment = getAppointmentForTimeSlot(day, timeSlot);

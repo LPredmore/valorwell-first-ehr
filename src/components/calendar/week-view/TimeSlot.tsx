@@ -34,24 +34,31 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
   const specificDate = '2025-05-15';
   const formattedDay = new Date(day).toISOString().split('T')[0];
   const slotHour = timeSlot.getHours();
+  const slotMinutes = timeSlot.getMinutes();
+  const formattedTime = `${slotHour}:${slotMinutes.toString().padStart(2, '0')}`;
+  const debugMode = formattedDay === specificDate && (slotHour >= 8 && slotHour <= 18);
   
-  if (formattedDay === specificDate && (slotHour >= 8 && slotHour <= 18) && isAvailable) {
-    console.log('[TimeSlot] Rendering AVAILABLE slot:', {
+  if (debugMode) {
+    console.log('[TimeSlot] RENDER START:', {
       day: formattedDay,
-      time: `${slotHour}:${timeSlot.getMinutes()}`,
-      isStartOfBlock,
-      isEndOfBlock,
+      time: formattedTime,
+      isAvailable,
       hasCurrentBlock: !!currentBlock,
-      blockDetails: currentBlock ? {
-        start: currentBlock.start.toFormat('HH:mm'),
-        end: currentBlock.end.toFormat('HH:mm'),
-        isException: currentBlock.isException
-      } : null
+      hasAppointment: !!appointment,
+      props: {
+        isStartOfBlock,
+        isEndOfBlock,
+        isStartOfAppointment
+      }
     });
   }
 
   // For appointments, handle styling to ensure visual continuity
   if (appointment) {
+    if (debugMode) {
+      console.log('[TimeSlot] RENDERING APPOINTMENT PATH');
+    }
+    
     // Handle appointment click event
     const handleAppointmentClick = () => {
       if (onAppointmentClick) {
@@ -86,6 +93,10 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
 
     // For the start of an appointment, show client name
     if (isStartOfAppointment) {
+      if (debugMode) {
+        console.log('[TimeSlot] RENDERING APPOINTMENT START with class:', `${baseAppointmentClass} ${positionClass}`);
+      }
+      
       return (
         <div 
           className={`${baseAppointmentClass} ${positionClass} text-xs font-medium truncate hover:bg-blue-200`}
@@ -98,6 +109,10 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
     } 
     
     // For continuation cells
+    if (debugMode) {
+      console.log('[TimeSlot] RENDERING APPOINTMENT CONTINUATION with class:', `${baseAppointmentClass} ${positionClass}`);
+    }
+    
     return (
       <div 
         className={`${baseAppointmentClass} ${positionClass} text-xs opacity-75 hover:bg-blue-200`}
@@ -111,6 +126,10 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
   
   // For availability blocks, ensure visual continuity
   if (isAvailable && currentBlock) {
+    if (debugMode) {
+      console.log('[TimeSlot] RENDERING AVAILABLE PATH - isAvailable && currentBlock are both true');
+    }
+    
     const availabilityBaseClass = currentBlock?.isException 
       ? 'bg-teal-100 border-teal-500' 
       : 'bg-green-100 border-green-500';
@@ -132,8 +151,8 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
     }
     
     // Debug for specific date we're looking for
-    if (formattedDay === specificDate && (slotHour >= 8 && slotHour <= 18)) {
-      console.log('[TimeSlot] Rendering available slot with class:', availabilityClass);
+    if (debugMode) {
+      console.log('[TimeSlot] RENDERING AVAILABLE SLOT with class:', availabilityClass);
     }
     
     return (
@@ -154,10 +173,12 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
   }
   
   // Debug log when we expected availability but it's not showing
-  if (formattedDay === specificDate && (slotHour >= 8 && slotHour <= 18)) {
-    console.log('[TimeSlot] Slot NOT available:', {
-      day: formattedDay,
-      time: `${slotHour}:${timeSlot.getMinutes()}`,
+  if (debugMode) {
+    if (isAvailable && !currentBlock) {
+      console.log('[TimeSlot] WARNING: isAvailable is TRUE but currentBlock is UNDEFINED');
+    }
+    
+    console.log('[TimeSlot] RENDERING UNAVAILABLE PATH - final fallback', {
       isAvailableProp: isAvailable,
       hasCurrentBlock: !!currentBlock
     });

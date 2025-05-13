@@ -738,26 +738,67 @@ export const useWeekViewData = (
     return isAvailable;
   };
 
-  // Utility function to get the block for a time slot
+  // Utility function to get the block for a time slot - ENHANCED WITH DETAILED DEBUGGING
   const getBlockForTimeSlot = (day: Date, timeSlot: Date): TimeBlock | undefined => {
     // Convert JS Date to DateTime
     const dayDt = DateTime.fromJSDate(day, { zone: userTimeZone });
     const timeSlotDt = DateTime.fromJSDate(timeSlot, { zone: userTimeZone });
     
-    // Find the block that contains this time slot
-    return timeBlocks.find(block => {
-      const isSameDay = block.day?.hasSame(dayDt, 'day') || false;
-      if (!isSameDay) return false;
-      
-      const slotTime = dayDt.set({
-        hour: timeSlotDt.hour,
-        minute: timeSlotDt.minute,
-        second: 0,
-        millisecond: 0
-      });
-      
-      return slotTime >= block.start && slotTime < block.end;
+    // Create the specific moment for this slot
+    const slotTime = dayDt.set({
+      hour: timeSlotDt.hour,
+      minute: timeSlotDt.minute,
+      second: 0,
+      millisecond: 0
     });
+    
+    const dayStrForLog = dayDt.toFormat('yyyy-MM-dd');
+    const slotTimeStrForLog = slotTime.toFormat('HH:mm:ss ZZZZ');
+    
+    // Only log for our target date
+    const shouldLog = dayStrForLog === '2025-05-15' && slotTime.hour >= 8 && slotTime.hour <= 18;
+    
+    if (shouldLog) {
+      console.log(`[getBlockForTimeSlot DEBUG] Searching for block at ${slotTimeStrForLog} on ${dayStrForLog}`);
+      console.log(`[getBlockForTimeSlot DEBUG] Total blocks to search: ${timeBlocks.length}`);
+    }
+    
+    // Find the block that contains this time slot
+    let foundBlock: TimeBlock | undefined = undefined;
+    
+    for (const block of timeBlocks) {
+      const isSameDay = block.day?.hasSame(dayDt, 'day') || false;
+      
+      if (shouldLog) {
+        console.log(`[getBlockForTimeSlot DEBUG] Checking block: ${JSON.stringify({
+          start: block.start.toFormat('HH:mm'),
+          end: block.end.toFormat('HH:mm'),
+          isSameDay,
+          slotTime: slotTime.toFormat('HH:mm'),
+          isWithinTimeRange: slotTime >= block.start && slotTime < block.end
+        })}`);
+      }
+      
+      if (!isSameDay) continue;
+      
+      if (slotTime >= block.start && slotTime < block.end) {
+        foundBlock = block;
+        if (shouldLog) {
+          console.log(`[getBlockForTimeSlot DEBUG] FOUND BLOCK: ${JSON.stringify({
+            start: block.start.toFormat('HH:mm'),
+            end: block.end.toFormat('HH:mm'),
+            isException: block.isException
+          })}`);
+        }
+        break;
+      }
+    }
+    
+    if (shouldLog && !foundBlock) {
+      console.log(`[getBlockForTimeSlot DEBUG] NO BLOCK FOUND for ${slotTimeStrForLog}`);
+    }
+    
+    return foundBlock;
   };
 
   // Utility function to get the appointment for a time slot
