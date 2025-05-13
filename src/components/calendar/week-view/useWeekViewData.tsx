@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DateTime } from 'luxon';
@@ -117,9 +116,82 @@ export const useWeekViewData = (
   // Fetch clinician data to get recurring availability pattern
   const fetchClinicianData = async (clinicianId: string) => {
     try {
+      // Explicitly list all required columns instead of using wildcard
       const { data, error } = await supabase
         .from('clinicians')
-        .select('*, clinician_time_zone, clinician_availability_*')
+        .select(`
+          id,
+          clinician_first_name,
+          clinician_last_name,
+          clinician_professional_name,
+          clinician_email,
+          clinician_time_zone,
+          clinician_bio,
+          clinician_image_url,
+          clinician_availability_start_monday_1,
+          clinician_availability_end_monday_1,
+          clinician_availability_timezone_monday_1,
+          clinician_availability_start_monday_2,
+          clinician_availability_end_monday_2,
+          clinician_availability_timezone_monday_2,
+          clinician_availability_start_monday_3,
+          clinician_availability_end_monday_3,
+          clinician_availability_timezone_monday_3,
+          clinician_availability_start_tuesday_1,
+          clinician_availability_end_tuesday_1,
+          clinician_availability_timezone_tuesday_1,
+          clinician_availability_start_tuesday_2,
+          clinician_availability_end_tuesday_2,
+          clinician_availability_timezone_tuesday_2,
+          clinician_availability_start_tuesday_3,
+          clinician_availability_end_tuesday_3,
+          clinician_availability_timezone_tuesday_3,
+          clinician_availability_start_wednesday_1,
+          clinician_availability_end_wednesday_1,
+          clinician_availability_timezone_wednesday_1,
+          clinician_availability_start_wednesday_2,
+          clinician_availability_end_wednesday_2,
+          clinician_availability_timezone_wednesday_2,
+          clinician_availability_start_wednesday_3,
+          clinician_availability_end_wednesday_3,
+          clinician_availability_timezone_wednesday_3,
+          clinician_availability_start_thursday_1,
+          clinician_availability_end_thursday_1,
+          clinician_availability_timezone_thursday_1,
+          clinician_availability_start_thursday_2,
+          clinician_availability_end_thursday_2,
+          clinician_availability_timezone_thursday_2,
+          clinician_availability_start_thursday_3,
+          clinician_availability_end_thursday_3,
+          clinician_availability_timezone_thursday_3,
+          clinician_availability_start_friday_1,
+          clinician_availability_end_friday_1,
+          clinician_availability_timezone_friday_1,
+          clinician_availability_start_friday_2,
+          clinician_availability_end_friday_2,
+          clinician_availability_timezone_friday_2,
+          clinician_availability_start_friday_3,
+          clinician_availability_end_friday_3,
+          clinician_availability_timezone_friday_3,
+          clinician_availability_start_saturday_1,
+          clinician_availability_end_saturday_1,
+          clinician_availability_timezone_saturday_1,
+          clinician_availability_start_saturday_2,
+          clinician_availability_end_saturday_2,
+          clinician_availability_timezone_saturday_2,
+          clinician_availability_start_saturday_3,
+          clinician_availability_end_saturday_3,
+          clinician_availability_timezone_saturday_3,
+          clinician_availability_start_sunday_1,
+          clinician_availability_end_sunday_1,
+          clinician_availability_timezone_sunday_1,
+          clinician_availability_start_sunday_2,
+          clinician_availability_end_sunday_2,
+          clinician_availability_timezone_sunday_2,
+          clinician_availability_start_sunday_3,
+          clinician_availability_end_sunday_3,
+          clinician_availability_timezone_sunday_3
+        `)
         .eq('id', clinicianId)
         .single();
         
