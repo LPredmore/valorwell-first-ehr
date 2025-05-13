@@ -49,6 +49,7 @@ const WeekView: React.FC<WeekViewProps> = ({
       refreshTrigger={refreshTrigger}
       appointments={appointments}
       onAppointmentClick={onAppointmentClick}
+      onAvailabilityClick={onAvailabilityClick}
     />
   );
 };

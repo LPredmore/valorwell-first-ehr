@@ -7,6 +7,7 @@ import { TimeZoneService } from '@/utils/timeZoneService';
 import { DateTime } from 'luxon';
 import TimeSlot from './TimeSlot';
 import { Button } from '@/components/ui/button';
+import { AvailabilityBlock } from '@/types/availability';
 
 interface WeekViewProps {
   days: Date[];
@@ -16,6 +17,7 @@ interface WeekViewProps {
   refreshTrigger?: number;
   appointments?: any[];
   onAppointmentClick?: (appointment: any) => void;
+  onAvailabilityClick?: (date: DateTime | Date, availabilityBlock: AvailabilityBlock) => void;
 }
 
 // Generate time slots for the day (30-minute intervals)
@@ -44,6 +46,7 @@ const WeekView: React.FC<WeekViewProps> = ({
   refreshTrigger = 0,
   appointments = [],
   onAppointmentClick,
+  onAvailabilityClick,
 }) => {
   const [selectedBlock, setSelectedBlock] = useState<TimeBlock | null>(null);
   
@@ -72,6 +75,21 @@ const WeekView: React.FC<WeekViewProps> = ({
       end: block.end.toFormat('HH:mm'),
     });
     setSelectedBlock(block);
+    
+    // Call the parent's onAvailabilityClick if provided
+    if (onAvailabilityClick) {
+      // Convert the TimeBlock to AvailabilityBlock format before passing to the parent handler
+      const availabilityBlock: AvailabilityBlock = {
+        id: block.availabilityIds[0] || 'unknown',
+        clinician_id: selectedClinicianId || '',
+        start_at: block.start.toUTC().toISO(),
+        end_at: block.end.toUTC().toISO(),
+        is_active: true,
+        day_of_week: block.day?.toFormat('EEEE').toLowerCase() || ''
+      };
+      
+      onAvailabilityClick(day, availabilityBlock);
+    }
   };
 
   // Handle click on an appointment block
