@@ -1,3 +1,4 @@
+
 /**
  * Represents an availability block for a clinician in the UTC-only data model.
  * This type matches the schema of the availability_blocks table.

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { useWeekViewData } from './useWeekViewData';
@@ -84,8 +83,7 @@ const WeekView: React.FC<WeekViewProps> = ({
         clinician_id: selectedClinicianId || '',
         start_at: block.start.toUTC().toISO(),
         end_at: block.end.toUTC().toISO(),
-        is_active: true,
-        day_of_week: block.day?.toFormat('EEEE').toLowerCase() || ''
+        is_active: true
       };
       
       onAvailabilityClick(day, availabilityBlock);
