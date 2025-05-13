@@ -76,4 +76,5 @@ const useToast = () => useToastImplementation();
 const toastSingleton = useToastImplementation();
 const toast = toastSingleton.toast;
 
-export { useToast, toast, type Toast };
+// Only export the type and functions once, removing the duplicate export
+export { useToast, toast };
