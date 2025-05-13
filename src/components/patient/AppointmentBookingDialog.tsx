@@ -6,6 +6,8 @@ import { useToast } from '@/hooks/use-toast';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
 import { TimeZoneService } from '@/utils/timeZoneService';
 import { DateTime } from 'luxon';
+import { useNavigate } from 'react-router-dom';
+import { useUser } from '@/context/UserContext';
 
 import { 
   Dialog, 
@@ -79,8 +81,10 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     availabilitySettings?: string;
     availabilityBlocks?: string;
     appointments?: string;
+    auth?: string; // Added auth property to fix type error
   }>({});
   const { toast } = useToast();
+  const navigate = useNavigate(); // Added navigate hook
   
   // Get auth state from UserContext
   const { userId, isLoading: userIsLoading, authInitialized } = useUser();
