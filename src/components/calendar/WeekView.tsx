@@ -50,6 +50,7 @@ const WeekView: React.FC<WeekViewProps> = ({
       appointments={appointments}
       onAppointmentClick={onAppointmentClick}
       onAvailabilityClick={onAvailabilityClick}
+      currentDate={currentDate} // Pass currentDate to the implementation component
     />
   );
 };

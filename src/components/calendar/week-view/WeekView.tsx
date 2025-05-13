@@ -17,6 +17,7 @@ interface WeekViewProps {
   appointments?: any[];
   onAppointmentClick?: (appointment: any) => void;
   onAvailabilityClick?: (date: DateTime | Date, availabilityBlock: AvailabilityBlock) => void;
+  currentDate?: Date; // Added currentDate property
 }
 
 // Generate time slots for the day (30-minute intervals)
@@ -46,6 +47,7 @@ const WeekView: React.FC<WeekViewProps> = ({
   appointments = [],
   onAppointmentClick,
   onAvailabilityClick,
+  currentDate, // Add currentDate to the props destructuring
 }) => {
   const [selectedBlock, setSelectedBlock] = useState<TimeBlock | null>(null);
   
