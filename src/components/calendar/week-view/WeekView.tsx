@@ -164,10 +164,10 @@ const WeekView: React.FC<WeekViewProps> = ({
 
         {/* Days columns */}
         {weekDays.map(day => (
-          <div key={day.toISOString()} className="border-r last:border-r-0">
+          <div key={day.toISO() || ''} className="border-r last:border-r-0">
             {TIME_SLOTS.map((timeSlot, i) => {
               // Convert JS Date to DateTime objects for consistent checking
-              const dayDt = TimeZoneService.fromJSDate(day, userTimeZone);
+              const dayDt = TimeZoneService.fromJSDate(day.toJSDate(), userTimeZone);
               const timeSlotDt = TimeZoneService.fromJSDate(timeSlot, userTimeZone);
               
               // Get formatted day and hour for debugging logs
@@ -175,7 +175,7 @@ const WeekView: React.FC<WeekViewProps> = ({
               const formattedTime = timeSlotDt.toFormat('HH:mm');
               const debugMode = formattedDay === '2025-05-15' && (timeSlotDt.hour >= 8 && timeSlotDt.hour <= 18);
               
-              // Check if the time slot is available
+              // Perform availability checks and get relevant blocks
               const isAvailable = showAvailability && isTimeSlotAvailable(
                 dayDt.toJSDate(), 
                 timeSlotDt.toJSDate()
@@ -193,6 +193,7 @@ const WeekView: React.FC<WeekViewProps> = ({
                 timeSlotDt.toJSDate()
               );
               
+              // Debug comparison logging
               if (debugMode) {
                 // Direct comparison between isTimeSlotAvailable and getBlockForTimeSlot results
                 console.log(`[WeekView DEBUG COMPARISON] For ${formattedDay} ${formattedTime}:`);
