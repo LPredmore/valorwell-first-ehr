@@ -689,26 +689,51 @@ export const useWeekViewData = (
     return resultMap;
   }, [availability, dayKeys, userTimeZone]);
 
-  // Utility function to check if a time slot is available
+  // Utility function to check if a time slot is available - ENHANCED WITH DEBUGGING
   const isTimeSlotAvailable = (day: Date, timeSlot: Date): boolean => {
     // Convert JS Date to DateTime
     const dayDt = DateTime.fromJSDate(day, { zone: userTimeZone });
     const timeSlotDt = DateTime.fromJSDate(timeSlot, { zone: userTimeZone });
     
+    // Create the specific moment for this slot
+    const slotTime = dayDt.set({
+      hour: timeSlotDt.hour,
+      minute: timeSlotDt.minute,
+      second: 0,
+      millisecond: 0
+    });
+    
+    const dayStrForLog = dayDt.toFormat('yyyy-MM-dd');
+    const slotTimeStrForLog = slotTime.toFormat('HH:mm:ss ZZZZ'); // Log with timezone
+    
+    // Log all timeBlocks being checked for this specific slotTime
+    // This will show us if the timeBlocks array is what we expect at this point
+    if (dayStrForLog === '2025-05-15' && slotTime.hour >= 8 && slotTime.hour <= 18) {
+      console.log(`[isTimeSlotAvailable DEBUG] For Slot: ${slotTimeStrForLog} on ${dayStrForLog}. Checking against ${timeBlocks.length} blocks:`, 
+        JSON.stringify(timeBlocks.map(b => ({
+          start: b.start.toISO(), 
+          end: b.end.toISO(), 
+          day: b.day?.toISO()
+        }))));
+    }
+    
     // Check if the time slot falls within any time block
     const isAvailable = timeBlocks.some(block => {
       const isSameDay = block.day?.hasSame(dayDt, 'day') || false;
-      if (!isSameDay) return false;
       
-      const slotTime = dayDt.set({
-        hour: timeSlotDt.hour,
-        minute: timeSlotDt.minute,
-        second: 0,
-        millisecond: 0
-      });
+      // More detailed logging for the actual comparison
+      if (dayStrForLog === '2025-05-15' && slotTime.hour >= 8 && slotTime.hour <= 18) {
+        console.log(`[isTimeSlotAvailable DEBUG] Comparing Slot: ${slotTime.toISO()} WITH Block Start: ${block.start.toISO()}, Block End: ${block.end.toISO()}, Block Day: ${block.day?.toISO()}, isSameDay: ${isSameDay}, ConditionMet: ${isSameDay && slotTime >= block.start && slotTime < block.end}`);
+      }
+      
+      if (!isSameDay) return false;
       
       return slotTime >= block.start && slotTime < block.end;
     });
+    
+    if (dayStrForLog === '2025-05-15' && slotTime.hour >= 8 && slotTime.hour <= 18) {
+      console.log(`[isTimeSlotAvailable] Final Check for ${dayStrForLog} ${slotTime.toFormat('HH:mm')}, found: ${isAvailable}`);
+    }
     
     return isAvailable;
   };

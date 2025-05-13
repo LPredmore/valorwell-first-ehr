@@ -51,6 +51,15 @@ const WeekView: React.FC<WeekViewProps> = ({
     return date;
   });
 
+  // Log weekView initialization with key parameters
+  console.log('[WeekView] Initializing with:', {
+    currentDate: currentDate.toISOString(),
+    showAvailability,
+    clinicianId,
+    userTimeZone,
+    daysRange: `${days[0].toISOString()} to ${days[6].toISOString()}`
+  });
+
   // Get all the availability and appointment data for these days
   const {
     loading: dataLoading,
@@ -68,6 +77,17 @@ const WeekView: React.FC<WeekViewProps> = ({
     (id) => `Client ${id}`,
     userTimeZone
   );
+
+  // Log the number of time blocks received
+  console.log('[WeekView] Received timeBlocks:', {
+    count: timeBlocks.length,
+    sampleBlock: timeBlocks.length > 0 ? 
+      {
+        start: timeBlocks[0].start.toISO(),
+        end: timeBlocks[0].end.toISO(),
+        day: timeBlocks[0].day?.toISO()
+      } : null
+  });
 
   const handleAvailabilityBlockClick = (day: Date, block: TimeBlock) => {
     // Functionality for when an availability block is clicked
@@ -172,10 +192,28 @@ const WeekView: React.FC<WeekViewProps> = ({
         {days.map((day) => (
           <div key={day.toISOString()} className="border-r last:border-r-0">
             {TIME_SLOTS.map((timeSlot, i) => {
+              // DEBUG: Log current iteration info for specific time slots
+              const formattedDay = format(day, 'yyyy-MM-dd');
+              const slotHour = timeSlot.getHours();
+              if (formattedDay === '2025-05-15' && (slotHour >= 8 && slotHour <= 18)) {
+                console.log('[WeekView] Current Day Loop:', day.toISOString(), 'Time Slot Loop:', timeSlot.toISOString(), 'showAvailability Prop:', showAvailability);
+              }
+              
               // Check if this slot is within an availability block
               const isAvailable = showAvailability && isTimeSlotAvailable(day, timeSlot);
+              
               // Get the full block if available
               const currentBlock = isAvailable ? getBlockForTimeSlot(day, timeSlot) : undefined;
+              
+              // DEBUG: Log when we find an available time slot
+              if (isAvailable) { 
+                console.log('[WeekView] For Slot:', timeSlot.toISOString(), 'isAvailable is TRUE. currentBlock:', 
+                  currentBlock ? JSON.stringify({
+                    start: currentBlock.start.toISO(), 
+                    end: currentBlock.end.toISO()
+                  }) : 'undefined'); 
+              }
+              
               // Get appointment if any
               const appointment = getAppointmentForTimeSlot(day, timeSlot);
               

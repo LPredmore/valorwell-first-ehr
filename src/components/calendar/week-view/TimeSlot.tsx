@@ -13,7 +13,7 @@ interface TimeSlotProps {
   isEndOfBlock: boolean;
   isStartOfAppointment: boolean;
   handleAvailabilityBlockClick: (day: Date, block: TimeBlock) => void;
-  onAppointmentClick?: (appointmentBlock: AppointmentBlock) => void; // Modified to accept AppointmentBlock
+  onAppointmentClick?: (appointmentBlock: AppointmentBlock) => void;
   originalAppointments: Appointment[];
 }
 
@@ -30,6 +30,26 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
   onAppointmentClick,
   originalAppointments
 }) => {
+  // Debug logging for specific date/time we're looking for
+  const specificDate = '2025-05-15';
+  const formattedDay = new Date(day).toISOString().split('T')[0];
+  const slotHour = timeSlot.getHours();
+  
+  if (formattedDay === specificDate && (slotHour >= 8 && slotHour <= 18) && isAvailable) {
+    console.log('[TimeSlot] Rendering AVAILABLE slot:', {
+      day: formattedDay,
+      time: `${slotHour}:${timeSlot.getMinutes()}`,
+      isStartOfBlock,
+      isEndOfBlock,
+      hasCurrentBlock: !!currentBlock,
+      blockDetails: currentBlock ? {
+        start: currentBlock.start.toFormat('HH:mm'),
+        end: currentBlock.end.toFormat('HH:mm'),
+        isException: currentBlock.isException
+      } : null
+    });
+  }
+
   // For appointments, handle styling to ensure visual continuity
   if (appointment) {
     // Handle appointment click event
@@ -111,6 +131,11 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
       availabilityClass += " border-b-0";
     }
     
+    // Debug for specific date we're looking for
+    if (formattedDay === specificDate && (slotHour >= 8 && slotHour <= 18)) {
+      console.log('[TimeSlot] Rendering available slot with class:', availabilityClass);
+    }
+    
     return (
       <div
         className={`${availabilityClass} h-full text-xs cursor-pointer hover:bg-opacity-80 transition-colors`}
@@ -126,6 +151,16 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
         )}
       </div>
     );
+  }
+  
+  // Debug log when we expected availability but it's not showing
+  if (formattedDay === specificDate && (slotHour >= 8 && slotHour <= 18)) {
+    console.log('[TimeSlot] Slot NOT available:', {
+      day: formattedDay,
+      time: `${slotHour}:${timeSlot.getMinutes()}`,
+      isAvailableProp: isAvailable,
+      hasCurrentBlock: !!currentBlock
+    });
   }
   
   // Default empty cell with faded "Unavailable" text on hover
