@@ -2,195 +2,168 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { useWeekViewData } from './useWeekViewData';
-import TimeSlot from './TimeSlot';
 import { TimeBlock, AppointmentBlock } from './types';
-import { cn } from '@/lib/utils';
-import { TimeZoneService } from '@/utils/timeZoneService'; 
-import { toast } from '@/components/ui/use-toast';
-import { Appointment } from '@/types/appointment';
+import { TimeZoneService } from '@/utils/timeZoneService';
 import { DateTime } from 'luxon';
+import TimeSlot from './TimeSlot';
+import { Button } from '@/components/ui/button';
 
 interface WeekViewProps {
-  clinicianId: string | null;
-  currentDate: Date;
+  days: Date[];
+  selectedClinicianId: string | null;
+  userTimeZone: string;
   showAvailability?: boolean;
   refreshTrigger?: number;
-  userTimeZone: string;
-  appointments?: Appointment[];
-  isLoading?: boolean;
-  error?: any;
-  onAppointmentClick?: (appointment: Appointment) => void;
-  onAvailabilityClick?: (date: Date, availabilityBlock: any) => void;
+  appointments?: any[];
+  onAppointmentClick?: (appointment: any) => void;
 }
 
-const WEEKDAY_FORMAT = 'EEE';
-const DAY_FORMAT = 'dd';
-const TIME_SLOTS = Array.from({ length: 24 * 2 }, (_, i) => {
-  const hour = Math.floor(i / 2);
-  const minute = (i % 2) * 30;
-  return new Date(0, 0, 0, hour, minute);
-});
+// Generate time slots for the day (30-minute intervals)
+// These will remain constant across renders
+const START_HOUR = 7; // 7 AM
+const END_HOUR = 19; // 7 PM
+const INTERVAL_MINUTES = 30;
+
+const TIME_SLOTS: Date[] = [];
+const baseDate = new Date();
+baseDate.setHours(0, 0, 0, 0); // Reset to midnight
+
+for (let hour = START_HOUR; hour < END_HOUR; hour++) {
+  for (let minute = 0; minute < 60; minute += INTERVAL_MINUTES) {
+    const timeSlot = new Date(baseDate);
+    timeSlot.setHours(hour, minute, 0, 0);
+    TIME_SLOTS.push(timeSlot);
+  }
+}
 
 const WeekView: React.FC<WeekViewProps> = ({
-  clinicianId,
-  currentDate,
+  days,
+  selectedClinicianId,
+  userTimeZone,
   showAvailability = true,
   refreshTrigger = 0,
-  userTimeZone,
   appointments = [],
-  isLoading = false,
-  error = null,
   onAppointmentClick,
-  onAvailabilityClick
 }) => {
-  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [selectedBlock, setSelectedBlock] = useState<TimeBlock | null>(null);
   
-  // Generate days of the week from the current date
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(currentDate);
-    date.setDate(date.getDate() - date.getDay() + i); // Start from Sunday
-    return date;
-  });
-
-  // Log weekView initialization with key parameters
-  console.log('[WeekView] Initializing with:', {
-    currentDate: currentDate.toISOString(),
-    showAvailability,
-    clinicianId,
-    userTimeZone,
-    daysRange: `${days[0].toISOString()} to ${days[6].toISOString()}`
-  });
-
-  // Get all the availability and appointment data for these days
   const {
-    loading: dataLoading,
-    timeBlocks,
+    loading,
+    weekDays,
     appointmentBlocks,
-    weeklyPattern,
+    timeBlocks,
     isTimeSlotAvailable,
     getBlockForTimeSlot,
     getAppointmentForTimeSlot,
   } = useWeekViewData(
     days,
-    clinicianId,
+    selectedClinicianId,
     refreshTrigger,
     appointments,
-    (id) => `Client ${id}`,
+    (id: string) => `Client ${id}`,
     userTimeZone
   );
 
-  // Log the number of time blocks received
-  console.log('[WeekView] Received timeBlocks:', {
-    count: timeBlocks.length,
-    sampleBlock: timeBlocks.length > 0 ? 
-      {
-        start: timeBlocks[0].start.toISO(),
-        end: timeBlocks[0].end.toISO(),
-        day: timeBlocks[0].day?.toISO()
-      } : null
-  });
-
+  // Handle click on an availability block
   const handleAvailabilityBlockClick = (day: Date, block: TimeBlock) => {
-    // Functionality for when an availability block is clicked
-    console.log('Block clicked:', {
+    console.log('Availability block clicked:', {
       day: format(day, 'yyyy-MM-dd'),
       start: block.start.toFormat('HH:mm'),
-      end: block.end.toFormat('HH:mm')
+      end: block.end.toFormat('HH:mm'),
     });
-    
-    toast({
-      title: "Availability Block",
-      description: `${block.start.toFormat('h:mm a')} - ${block.end.toFormat('h:mm a')}`,
-    });
-
-    // Call the parent handler if provided
-    if (onAvailabilityClick) {
-      onAvailabilityClick(day, block);
-    }
+    setSelectedBlock(block);
   };
 
-  // Updated to implement adapter pattern for appointment clicks
+  // Handle click on an appointment block
   const handleAppointmentClick = (appointmentBlock: AppointmentBlock) => {
-    // Functionality for when an appointment is clicked
-    console.log('Appointment clicked:', {
-      id: appointmentBlock.id,
-      client: appointmentBlock.clientName,
-      start: appointmentBlock.start.toFormat('HH:mm')
-    });
-    
-    toast({
-      title: "Appointment",
-      description: `${appointmentBlock.clientName} - ${appointmentBlock.start.toFormat('h:mm a')} - ${appointmentBlock.end.toFormat('h:mm a')}`,
-    });
-    
-    // Find the original appointment object to pass to parent handler
     if (onAppointmentClick) {
-      const originalAppointment = appointments.find(a => a.id === appointmentBlock.id);
-      if (originalAppointment) {
-        onAppointmentClick(originalAppointment);
-      }
+      console.log('Appointment clicked:', appointmentBlock);
+      onAppointmentClick(appointmentBlock);
     }
   };
 
-  if (isLoading || dataLoading) {
-    return <div className="flex items-center justify-center h-full py-12">Loading calendar data...</div>;
+  // Find which blocks correspond to which time slots to determine visual continuity
+  const findBlocksForTimeSlots = (day: DateTime, currentHour: number, currentMinute: number) => {
+    const currentBlock = timeBlocks.find(block => {
+      if (!block.day || !block.start || !block.end) return false;
+      
+      // Check if the block is for the current day
+      const isCurrentDay = block.day.hasSame(day, 'day');
+      if (!isCurrentDay) return false;
+      
+      // Check if the current time slot falls within the block's time range
+      const slotDateTime = day.set({
+        hour: currentHour,
+        minute: currentMinute,
+        second: 0,
+        millisecond: 0
+      });
+      
+      return slotDateTime >= block.start && slotDateTime < block.end;
+    });
+    
+    return currentBlock;
+  };
+  
+  // Debug function to log all blocks for a specific day
+  const debugBlocksForDay = (day: DateTime) => {
+    const dayBlocks = timeBlocks.filter(block => 
+      block.day && block.day.hasSame(day, 'day')
+    );
+    
+    console.log(`[WeekView DEBUG] Blocks for ${day.toFormat('yyyy-MM-dd')}: ${dayBlocks.length}`, 
+      dayBlocks.map(block => ({
+        start: block.start.toFormat('HH:mm'),
+        end: block.end.toFormat('HH:mm'),
+        isException: block.isException
+      }))
+    );
+    
+    return dayBlocks;
+  };
+  
+  // Get a formatted time string for display
+  const formatTime = (date: Date) => {
+    return format(date, 'h:mm a');
+  };
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-32">Loading calendar...</div>;
   }
 
-  if (error) {
-    return <div className="text-red-500 p-4">Error loading calendar: {error.message}</div>;
+  // Check if we have the day we're looking for (Thursday, May 15, 2025)
+  const debugDay = weekDays.find(day => day.toFormat('yyyy-MM-dd') === '2025-05-15');
+  if (debugDay) {
+    console.log('[WeekView] Found debug day 2025-05-15, showing blocks:');
+    debugBlocksForDay(debugDay);
   }
 
   return (
-    <div className="flex flex-col w-full h-full">
-      {/* Debug info - can be removed in production */}
-      {weeklyPattern && (
-        <div className="text-xs bg-gray-100 p-2 mb-2 rounded">
-          <p>Weekly Pattern: {Object.entries(weeklyPattern).filter(([_, day]) => day.isAvailable).map(([day]) => day).join(', ')}</p>
-        </div>
-      )}
-      
-      {/* Calendar Header */}
-      <div className="grid grid-cols-8 bg-white border-b">
-        <div className="border-r py-2 px-4 text-gray-500 text-sm">Time</div>
-        {days.map((day) => (
-          <div
-            key={day.toISOString()}
-            className={cn(
-              "text-center py-2 border-r last:border-r-0",
-              {
-                "bg-blue-50": selectedDay && 
-                  selectedDay.getDate() === day.getDate() && 
-                  selectedDay.getMonth() === day.getMonth() && 
-                  selectedDay.getFullYear() === day.getFullYear()
-              }
-            )}
-            onClick={() => setSelectedDay(day)}
-          >
-            <div className="font-medium">{format(day, WEEKDAY_FORMAT)}</div>
-            <div className="text-2xl">{format(day, DAY_FORMAT)}</div>
+    <div className="flex flex-col">
+      {/* Time column headers */}
+      <div className="flex">
+        <div className="w-16 flex-shrink-0" />
+        {weekDays.map(day => (
+          <div key={day.toISO()} className="flex-1 px-2 py-1 font-semibold text-center">
+            {day.toFormat('EEE')}<br/>
+            <span className="text-xs">{day.toFormat('MMM d')}</span>
           </div>
         ))}
       </div>
 
-      {/* Calendar Time Grid */}
-      <div className="grid grid-cols-8 flex-grow overflow-y-auto">
-        {/* Time Labels Column */}
-        <div className="border-r">
+      {/* Time slots grid */}
+      <div className="flex">
+        {/* Time labels column */}
+        <div className="w-16 flex-shrink-0">
           {TIME_SLOTS.map((timeSlot, i) => (
-            <div
-              key={i}
-              className={cn(
-                "py-2 px-2 text-xs text-gray-500 h-12 border-b",
-                { "border-dashed": i % 2 !== 0 }
-              )}
-            >
-              {i % 2 === 0 && format(timeSlot, 'h:mm a')}
+            <div key={i} className="h-10 flex items-center justify-end pr-2 text-xs text-gray-500">
+              {formatTime(timeSlot)}
             </div>
           ))}
         </div>
 
-        {/* Days Columns */}
-        {days.map((day) => (
+        {/* Days columns */}
+        {weekDays.map(day => (
           <div key={day.toISOString()} className="border-r last:border-r-0">
             {TIME_SLOTS.map((timeSlot, i) => {
               // Convert JS Date to DateTime objects for consistent checking
@@ -199,37 +172,41 @@ const WeekView: React.FC<WeekViewProps> = ({
               
               // Get formatted day and hour for debugging logs
               const formattedDay = dayDt.toFormat('yyyy-MM-dd');
-              const slotHour = timeSlotDt.hour;
-              const slotMinute = timeSlotDt.minute;
-              const formattedTime = `${slotHour}:${slotMinute.toString().padStart(2, '0')}`;
+              const formattedTime = timeSlotDt.toFormat('HH:mm');
+              const debugMode = formattedDay === '2025-05-15' && (timeSlotDt.hour >= 8 && timeSlotDt.hour <= 18);
               
-              // Check if this slot is within an availability block
-              const isAvailable = showAvailability && isTimeSlotAvailable(day, timeSlot);
+              // Check if the time slot is available
+              const isAvailable = showAvailability && isTimeSlotAvailable(
+                dayDt.toJSDate(), 
+                timeSlotDt.toJSDate()
+              );
               
-              // ENHANCED DEBUGGING: Compare isTimeSlotAvailable and getBlockForTimeSlot directly
-              if (formattedDay === '2025-05-15' && (slotHour >= 8 && slotHour <= 18)) {
-                const availableCheck = isTimeSlotAvailable(day, timeSlot);
-                const blockForSlot = getBlockForTimeSlot(day, timeSlot);
-                
+              // Get the corresponding block if available - this may be undefined
+              const currentBlock = isAvailable ? getBlockForTimeSlot(
+                dayDt.toJSDate(), 
+                timeSlotDt.toJSDate()
+              ) : undefined;
+              
+              // Get any appointment for this time slot
+              const appointment = getAppointmentForTimeSlot(
+                dayDt.toJSDate(), 
+                timeSlotDt.toJSDate()
+              );
+              
+              if (debugMode) {
+                // Direct comparison between isTimeSlotAvailable and getBlockForTimeSlot results
                 console.log(`[WeekView DEBUG COMPARISON] For ${formattedDay} ${formattedTime}:`);
-                console.log(`  isTimeSlotAvailable result: ${availableCheck}`);
-                console.log(`  getBlockForTimeSlot result (currentBlock defined): ${!!blockForSlot}`);
-                if (blockForSlot) {
+                console.log(`  isTimeSlotAvailable result: ${isAvailable}`);
+                console.log(`  getBlockForTimeSlot result (currentBlock defined): ${!!currentBlock}`);
+                if (currentBlock) {
                   console.log(`  getBlockForTimeSlot block details:`, JSON.stringify({
-                    start: blockForSlot.start.toISO(),
-                    end: blockForSlot.end.toISO()
+                    start: currentBlock.start.toFormat('HH:mm'),
+                    end: currentBlock.end.toFormat('HH:mm'),
+                    day: currentBlock.day?.toFormat('yyyy-MM-dd'),
+                    isException: currentBlock.isException
                   }));
                 }
-                
-                // This is what's actually being passed to the TimeSlot component
-                console.log(`  FINAL PROPS for TimeSlot: isAvailable=${isAvailable}, currentBlock defined=${!!(isAvailable ? getBlockForTimeSlot(day, timeSlot) : undefined)}`);
               }
-              
-              // Get the full block if available - call getBlockForTimeSlot only when needed
-              const currentBlock = isAvailable ? getBlockForTimeSlot(day, timeSlot) : undefined;
-              
-              // Get appointment if any
-              const appointment = getAppointmentForTimeSlot(day, timeSlot);
               
               // Determine if this is the start or end of a block
               const isStartOfBlock = currentBlock && 
@@ -245,25 +222,41 @@ const WeekView: React.FC<WeekViewProps> = ({
                 appointment.start.toFormat('HH:mm');
               
               return (
-                <TimeSlot
+                <div
                   key={i}
-                  day={day}
-                  timeSlot={timeSlot}
-                  isAvailable={isAvailable}
-                  currentBlock={currentBlock}
-                  appointment={appointment}
-                  isStartOfBlock={isStartOfBlock}
-                  isEndOfBlock={isEndOfBlock}
-                  isStartOfAppointment={isStartOfAppointment}
-                  handleAvailabilityBlockClick={handleAvailabilityBlockClick}
-                  onAppointmentClick={handleAppointmentClick}
-                  originalAppointments={appointments}
-                />
+                  className={`w-24 h-10 border-b border-l first:border-l-0 group 
+                              ${i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
+                >
+                  <TimeSlot
+                    day={dayDt.toJSDate()}
+                    timeSlot={timeSlot}
+                    isAvailable={isAvailable}
+                    currentBlock={currentBlock}
+                    appointment={appointment}
+                    isStartOfBlock={isStartOfBlock}
+                    isEndOfBlock={isEndOfBlock}
+                    isStartOfAppointment={isStartOfAppointment}
+                    handleAvailabilityBlockClick={handleAvailabilityBlockClick}
+                    onAppointmentClick={handleAppointmentClick}
+                    originalAppointments={appointments}
+                  />
+                </div>
               );
             })}
           </div>
         ))}
       </div>
+
+      {/* Debug section */}
+      {process.env.NODE_ENV !== 'production' && (
+        <div className="mt-4 p-4 bg-gray-100 rounded">
+          <h3 className="text-lg font-semibold">Debug Info</h3>
+          <p>Clinician ID: {selectedClinicianId || 'None'}</p>
+          <p>Time Blocks: {timeBlocks.length}</p>
+          <p>Appointments: {appointmentBlocks.length}</p>
+          <p>User Timezone: {userTimeZone}</p>
+        </div>
+      )}
     </div>
   );
 };

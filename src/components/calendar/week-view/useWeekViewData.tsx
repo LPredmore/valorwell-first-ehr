@@ -55,6 +55,15 @@ const extractWeeklyPatternFromClinicianData = (clinicianData: any): ClinicianWee
   // Days of week for iteration
   const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   
+  // Default timezone
+  const defaultTimezone = 'America/Chicago';
+  
+  // Get clinician's default timezone (ensuring it's a string)
+  const clinicianDefaultTimezone = 
+    typeof clinicianData.clinician_time_zone === 'string' 
+      ? clinicianData.clinician_time_zone 
+      : defaultTimezone;
+  
   // Process each day
   daysOfWeek.forEach(day => {
     // For each potential slot (1, 2, 3)
@@ -67,11 +76,23 @@ const extractWeeklyPatternFromClinicianData = (clinicianData: any): ClinicianWee
         // We found a valid slot - ensure the day is marked as available
         defaultAvailability[day as keyof ClinicianWeeklyAvailability].isAvailable = true;
         
+        // Extract timezone value, ensuring it's a string
+        let timezoneValue: string;
+        if (typeof clinicianData[timezoneKey] === 'string' && clinicianData[timezoneKey]) {
+          timezoneValue = clinicianData[timezoneKey];
+        } else {
+          // Fall back to clinician's default timezone or America/Chicago
+          timezoneValue = clinicianDefaultTimezone;
+        }
+        
+        // Log the timezone being used for this slot
+        console.log(`[extractWeeklyPatternFromClinicianData] Timezone for ${day}_${slotNum}: ${timezoneValue} (type: ${typeof timezoneValue})`);
+        
         // Add this time slot
         defaultAvailability[day as keyof ClinicianWeeklyAvailability].timeSlots.push({
           startTime: clinicianData[startTimeKey].substring(0, 5),  // Ensure "HH:MM" format
           endTime: clinicianData[endTimeKey].substring(0, 5),      // Ensure "HH:MM" format
-          timezone: clinicianData[timezoneKey] || clinicianData.clinician_time_zone || 'America/Chicago'  
+          timezone: timezoneValue  
         });
       }
     }
@@ -220,6 +241,7 @@ export const useWeekViewData = (
     if (!pattern) return [];
     
     const generatedBlocks: TimeBlock[] = [];
+    const defaultTimezone = 'America/Chicago';
     
     // For each day in our view
     days.forEach(day => {
@@ -237,8 +259,19 @@ export const useWeekViewData = (
         // Process each time slot for this day
         dayAvailability.timeSlots.forEach((slot, index) => {
           try {
-            // Get the slot's timezone or default to user timezone
-            const slotTimezone = TimeZoneService.ensureIANATimeZone(slot.timezone);
+            // Ensure slot.timezone is a string
+            const slotTimezone = typeof slot.timezone === 'string' && slot.timezone
+              ? TimeZoneService.ensureIANATimeZone(slot.timezone)
+              : defaultTimezone;
+            
+            // Log timezone details
+            console.log('[generateTimeBlocksFromWeeklyPattern] Processing slot timezone:', {
+              rawTimezone: slot.timezone,
+              timezoneType: typeof slot.timezone,
+              normalizedTimezone: slotTimezone,
+              day: dayName,
+              slot: index
+            });
             
             // Create DateTime objects for start and end times in the slot's timezone
             const [startHour, startMinute] = slot.startTime.split(':').map(Number);
