@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useUser } from "@/context/UserContext";
+import { useEffect } from "react";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -33,6 +35,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const { userId, authInitialized } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -48,6 +51,16 @@ const Login = () => {
       email: "",
     },
   });
+
+  // Check if user is already authenticated
+  useEffect(() => {
+    console.log("[Login] Checking auth state, userId:", userId, "authInitialized:", authInitialized);
+    
+    if (authInitialized && userId) {
+      console.log("[Login] User is already authenticated, redirecting to home");
+      navigate("/");
+    }
+  }, [userId, authInitialized, navigate]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     console.log("[Login] Login attempt started for email:", values.email);
@@ -71,7 +84,10 @@ const Login = () => {
       });
       
       console.log("[Login] Navigating to home page");
-      navigate("/");
+      // Wait a short time to ensure auth state is updated before navigation
+      setTimeout(() => {
+        navigate("/");
+      }, 500);
     } catch (error: any) {
       console.error("[Login] Login error:", error);
       toast({

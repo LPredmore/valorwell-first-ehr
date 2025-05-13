@@ -82,6 +82,9 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
   }>({});
   const { toast } = useToast();
   
+  // Get auth state from UserContext
+  const { userId, isLoading: userIsLoading, authInitialized } = useUser();
+  
   // Get user's timezone safely
   const userTimeZone = TimeZoneService.ensureIANATimeZone(
     propTimeZone || getUserTimeZone()
@@ -95,6 +98,22 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
       try {
         setApiErrors({});
         console.log(`[BookingDialog] Dialog opened for clinician ID: ${clinicianId}`);
+        console.log(`[BookingDialog] Current auth status - userId: ${userId ? 'exists' : 'null'}, isLoading: ${userIsLoading}, authInitialized: ${authInitialized}`);
+        
+        // Check authentication status before proceeding
+        if (userIsLoading) {
+          console.log('[BookingDialog] User context still loading, waiting before making API calls');
+          return; // Exit early and wait for auth to be ready
+        }
+        
+        if (!userId && authInitialized) {
+          console.error('[BookingDialog] No authenticated user found, but auth is initialized');
+          setApiErrors(prev => ({ 
+            ...prev, 
+            auth: 'Authentication required. Please log in again.' 
+          }));
+          return; // Exit early due to auth error
+        }
         
         // Get clinician's timezone
         const { data: clinicianData, error: clinicianError } = await supabase
@@ -119,6 +138,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
         console.log('[BookingDialog] Starting call to getavailabilitysettings Edge Function for clinician ID:', clinicianId);
         const fullClinicianId = clinicianId.toString(); // Ensure string format
         console.log('[BookingDialog] Using full clinician ID for Edge Function call:', fullClinicianId);
+        console.log('[BookingDialog] Authentication state before Edge Function call - userId:', userId);
         
         try {
           console.log('[BookingDialog] Attempting to call "getavailabilitysettings" Edge Function...');
@@ -136,30 +156,35 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
             console.error('[BookingDialog] Error invoking getavailabilitysettings Edge Function:', settingsError);
             console.error('[BookingDialog] Full error object:', JSON.stringify(settingsError, null, 2));
             
-            // Try alternate edge function name as fallback
-            console.log('[BookingDialog] Attempting fallback call to "get-availability-settings" Edge Function...');
-            const fallbackStartTime = performance.now();
+            // Check if this is an auth error
+            const errorMessage = settingsError.message || '';
+            const isAuthError = 
+              errorMessage.includes('auth') || 
+              errorMessage.includes('Authentication') ||
+              errorMessage.includes('JWT') ||
+              errorMessage.includes('token') ||
+              errorMessage.includes('401');
             
-            const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('get-availability-settings', {
-              body: { clinicianId: fullClinicianId }
-            });
-            
-            const fallbackEndTime = performance.now();
-            console.log(`[BookingDialog] Fallback Edge Function call completed in ${(fallbackEndTime - fallbackStartTime).toFixed(2)}ms`);
-            
-            if (fallbackError) {
-              console.error('[BookingDialog] Error invoking fallback get-availability-settings Edge Function:', fallbackError);
-              console.error('[BookingDialog] Full fallback error object:', JSON.stringify(fallbackError, null, 2));
-              setApiErrors(prev => ({ ...prev, availabilitySettings: 'Failed to fetch availability settings from either Edge Function' }));
-              // Use default values
-              setMinDaysAhead(1);
-            } else if (fallbackData) {
-              console.log('[BookingDialog] Successfully received data from fallback Edge Function:', JSON.stringify(fallbackData, null, 2));
-              handleAvailabilitySettingsResponse(fallbackData);
+            if (isAuthError) {
+              setApiErrors(prev => ({ 
+                ...prev, 
+                availabilitySettings: 'Authentication error. Please log out and log in again.' 
+              }));
+              
+              toast({
+                title: "Authentication Error",
+                description: "Your session may have expired. Please try logging out and logging back in.",
+                variant: "destructive"
+              });
             } else {
-              console.warn('[BookingDialog] No data received from fallback Edge Function call');
-              setMinDaysAhead(1);
+              setApiErrors(prev => ({ 
+                ...prev, 
+                availabilitySettings: 'Failed to fetch availability settings. Please try again later.' 
+              }));
             }
+            
+            // Use default values on error
+            setMinDaysAhead(1);
           } else if (settingsData) {
             console.log('[BookingDialog] Successfully received data from getavailabilitysettings:', JSON.stringify(settingsData, null, 2));
             handleAvailabilitySettingsResponse(settingsData);
@@ -168,7 +193,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
             setMinDaysAhead(1);
           }
         } catch (edgeFunctionError) {
-          console.error('[BookingDialog] Exception calling availability settings Edge Functions:', edgeFunctionError);
+          console.error('[BookingDialog] Exception calling availability settings Edge Function:', edgeFunctionError);
           console.error('[BookingDialog] Exception details:', JSON.stringify(edgeFunctionError, null, 2));
           
           // Check if the error is related to network/auth
@@ -176,7 +201,16 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
           if (errorMessage.includes('NetworkError') || errorMessage.includes('Failed to fetch')) {
             setApiErrors(prev => ({ ...prev, availabilitySettings: 'Network error connecting to availability settings service' }));
           } else if (errorMessage.includes('auth') || errorMessage.includes('Authentication')) {
-            setApiErrors(prev => ({ ...prev, availabilitySettings: 'Authentication error accessing availability settings' }));
+            setApiErrors(prev => ({ 
+              ...prev, 
+              availabilitySettings: 'Authentication error accessing availability settings. Please log out and log in again.' 
+            }));
+            
+            toast({
+              title: "Authentication Error",
+              description: "Your session may have expired. Please try logging out and logging back in.",
+              variant: "destructive"
+            });
           } else {
             setApiErrors(prev => ({ ...prev, availabilitySettings: 'Could not connect to availability settings service' }));
           }
@@ -192,7 +226,7 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
     };
     
     fetchClinicianData();
-  }, [clinicianId, open]);
+  }, [clinicianId, open, userId, userIsLoading, authInitialized, toast]);
 
   // Helper function to process availability settings response
   const handleAvailabilitySettingsResponse = (settingsData: any) => {
@@ -719,7 +753,19 @@ const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
                 <li key={key}>{value}</li>
               ))}
             </ul>
-            <p className="mt-2 text-sm">Please try again or contact support if the issue persists.</p>
+            {apiErrors.auth ? (
+              <div className="mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate('/login')}
+                >
+                  Go to Login
+                </Button>
+              </div>
+            ) : (
+              <p className="mt-2 text-sm">Please try again or contact support if the issue persists.</p>
+            )}
           </AlertDescription>
         </Alert>
       );

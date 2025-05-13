@@ -5,13 +5,13 @@ import { useUser } from '@/context/UserContext';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { userRole, isLoading } = useUser();
+  const { userRole, isLoading, authInitialized } = useUser();
 
   useEffect(() => {
-    console.log("[Index] Index page mounted, isLoading:", isLoading, "userRole:", userRole);
+    console.log("[Index] Index page mounted, isLoading:", isLoading, "userRole:", userRole, "authInitialized:", authInitialized);
     
-    if (!isLoading) {
-      console.log("[Index] User context loaded, determining redirect");
+    if (authInitialized) {
+      console.log("[Index] User context initialized, determining redirect");
       
       // Track whether we've redirected to prevent multiple redirects
       let redirected = false;
@@ -32,14 +32,14 @@ const Index = () => {
       
       // Only redirect to login if not loading AND no valid role was found
       // This fixes the race condition where we redirect to login too quickly
-      if (!redirected && !userRole) {
+      if (!redirected && !userRole && !isLoading) {
         console.log("[Index] No valid role found, redirecting to Login page");
         navigate('/login');
       }
     } else {
-      console.log("[Index] Still loading user data, waiting before redirect");
+      console.log("[Index] Still waiting for user context initialization");
     }
-  }, [navigate, userRole, isLoading]);
+  }, [navigate, userRole, isLoading, authInitialized]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

@@ -13,19 +13,19 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { isLoading: userContextLoading, userId } = useUser();
+  const { isLoading: userContextLoading, userId, authInitialized } = useUser();
 
   // Effect to handle redirects based on authentication status
   useEffect(() => {
-    console.log("[Layout] Initializing layout, userContextLoading:", userContextLoading);
+    console.log("[Layout] Initializing layout, userContextLoading:", userContextLoading, "authInitialized:", authInitialized);
     
-    if (!userContextLoading) {
+    if (authInitialized) {
       if (!userId) {
         console.log("[Layout] No authenticated user found, redirecting to login");
         navigate('/login');
       }
     }
-  }, [navigate, userContextLoading, userId]);
+  }, [navigate, userContextLoading, userId, authInitialized]);
 
   // Show loading state while checking auth
   if (userContextLoading) {
