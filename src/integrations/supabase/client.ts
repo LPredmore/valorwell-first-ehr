@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { parseDateString, formatDateForDB } from '@/utils/dateUtils';
 
 // Check for required environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -18,29 +19,8 @@ export const supabase = createClient(
   supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
 );
 
-// Helper function to parse date strings from the database
-export const parseDateString = (dateString: string | null): Date | null => {
-  if (!dateString) return null;
-  
-  // Try to parse the date string
-  const date = new Date(dateString);
-  
-  // Check if the date is valid
-  if (isNaN(date.getTime())) {
-    console.error(`Invalid date string: ${dateString}`);
-    return null;
-  }
-  
-  return date;
-};
-
-// Helper function to format dates for database storage
-export const formatDateForDB = (date: Date | null): string | null => {
-  if (!date) return null;
-  
-  // Format as ISO string and take just the date part (YYYY-MM-DD)
-  return date.toISOString().split('T')[0];
-};
+// Use our centralized date parsing utility
+export { parseDateString, formatDateForDB };
 
 // New function to get or create a video room for an appointment
 export const getOrCreateVideoRoom = async (appointmentId: string) => {

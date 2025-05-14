@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Form } from '@/components/ui/form'; // Ensure this is the correct import for your <Form> component
+import { Form } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,7 +13,7 @@ import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { useToast } from '@/hooks/use-toast';
 import { timezoneOptions } from '@/utils/timezoneOptions';
 import { DateField } from '@/components/ui/DateField';
-import { format, parseISO, parse, differenceInYears, isValid as isValidDateFns } from 'date-fns';
+import { format } from 'date-fns';
 import SignupChampva from '@/components/signup/SignupChampva';
 import SignupTricare from '@/components/signup/SignupTricare';
 import SignupVaCcn from '@/components/signup/SignupVaCcn';
@@ -23,68 +23,7 @@ import AdditionalInsurance from '@/components/signup/AdditionalInsurance';
 import MoreAdditionalInsurance from '@/components/signup/MoreAdditionalInsurance';
 import SignupLast from '@/components/signup/SignupLast';
 import { useUser } from '@/context/UserContext';
-
-// --- calculateAge function embedded here ---
-const calculateAge = (dateOfBirth: Date | string | null | undefined): number | null => {
-  if (!dateOfBirth) {
-    return null;
-  }
-  let dob: Date;
-  if (typeof dateOfBirth === 'string') {
-    try {
-      const parsedIso = parseISO(dateOfBirth);
-      if (isValidDateFns(parsedIso)) {
-        dob = parsedIso;
-      } else {
-        dob = new Date(dateOfBirth);
-      }
-    } catch (e) {
-      dob = new Date(dateOfBirth);
-    }
-  } else if (dateOfBirth instanceof Date) {
-    dob = dateOfBirth;
-  } else {
-    return null;
-  }
-  if (!isValidDateFns(dob) || isNaN(dob.getTime())) {
-    return null;
-  }
-  return differenceInYears(new Date(), dob);
-};
-// --- End of embedded calculateAge function ---
-
-/**
- * Helper function to parse date strings into Date objects
- * Consistently handles all date formats throughout the component
- */
-const parseDateString = (dateString: string | null | undefined): Date | null => {
-  if (!dateString) return null;
-  
-  try {
-    // First try parsing as ISO format
-    const parsedIso = parseISO(dateString);
-    if (isValidDateFns(parsedIso)) {
-      console.log(`Successfully parsed date ${dateString} as ISO format:`, parsedIso);
-      return parsedIso;
-    }
-  } catch (e) {
-    console.error(`Error parsing ${dateString} as ISO:`, e);
-  }
-  
-  try {
-    // If ISO parsing fails, try as regular Date constructor
-    const dateObj = new Date(dateString);
-    if (!isNaN(dateObj.getTime())) {
-      console.log(`Successfully parsed date ${dateString} as Date constructor:`, dateObj);
-      return dateObj;
-    }
-  } catch (e) {
-    console.error(`Error parsing ${dateString} with Date constructor:`, e);
-  }
-  
-  console.warn(`Could not parse date string: ${dateString}`);
-  return null;
-};
+import { parseDateString, calculateAge, formatDateForDB } from '@/utils/dateUtils';
 
 type ClientFormData = {
   client_first_name?: string;
@@ -229,7 +168,7 @@ const ProfileSetup = () => {
         : z.object({}) 
     ),
     mode: "onChange",
-    defaultValues: { /* ... your extensive default values ... */
+    defaultValues: { 
         client_first_name: '', client_preferred_name: '', client_last_name: '',
         client_email: '', client_phone: '', client_relationship: '',
         client_date_of_birth: null, client_age: null, client_gender: '', client_gender_identity: '',
@@ -258,13 +197,20 @@ const ProfileSetup = () => {
       console.warn("[ProfileSetup] Cannot save immediately - no client ID available yet for field:", fieldName);
       return;
     }
+    
     let valueToSave = value;
-    if (value instanceof Date) {
-        valueToSave = format(value, 'yyyy-MM-dd');
+    
+    // Handle Date objects specifically for consistent DB formatting
+    if (fieldName.includes('date') || fieldName.includes('dob') || fieldName === 'client_recentdischarge') {
+      console.log(`[ProfileSetup] Field ${String(fieldName)} identified as date field with value:`, value);
+      valueToSave = formatDateForDB(value);
+      console.log(`[ProfileSetup] Formatted date value for DB:`, valueToSave);
     } else if (value === null || value === undefined) {
-        valueToSave = null;
+      valueToSave = null;
     }
+    
     console.log(`[ProfileSetup] Immediately saving field "${String(fieldName)}" with value:`, valueToSave);
+    
     try {
       const { error } = await supabase
         .from('clients')
@@ -350,17 +296,22 @@ const ProfileSetup = () => {
         if (clientRecord) {
           setClientId(clientRecord.id);
           
-          // Parse date strings to Date objects using our helper function
+          // Parse date strings to Date objects using our utility function
           const dob = parseDateString(clientRecord.client_date_of_birth);
-          const calculatedClientAge = calculateAge(dob);
+          console.log("[ProfileSetup] Parsed DOB:", dob, "from value:", clientRecord.client_date_of_birth);
           
-          // Fix for client_recentdischarge - parse it as a Date
+          const calculatedClientAge = calculateAge(dob);
+          console.log("[ProfileSetup] Calculated age:", calculatedClientAge);
+          
+          // Parse client_recentdischarge as a Date
           const recentDischarge = parseDateString(clientRecord.client_recentdischarge);
           console.log("[ProfileSetup] Parsed recentDischarge:", recentDischarge, "from value:", clientRecord.client_recentdischarge);
           
           // Parse subscriber DOB dates
           const subscriberDobPrimary = parseDateString(clientRecord.client_subscriber_dob_primary);
           const subscriberDobSecondary = parseDateString(clientRecord.client_subscriber_dob_secondary);
+          console.log("[ProfileSetup] Parsed subscriberDobPrimary:", subscriberDobPrimary, "from value:", clientRecord.client_subscriber_dob_primary);
+          console.log("[ProfileSetup] Parsed subscriberDobSecondary:", subscriberDobSecondary, "from value:", clientRecord.client_subscriber_dob_secondary);
 
           const formValues: ClientFormData = {
             client_first_name: clientRecord.client_first_name || '',
@@ -488,12 +439,19 @@ const ProfileSetup = () => {
         const dob = values.client_date_of_birth;
         const age = calculateAge(dob); 
         console.log(`[ProfileSetup] Step 2 Save - Calculated age: ${age} for DOB: ${dob}`);
-        const formattedDateOfBirth = dob ? format(dob, 'yyyy-MM-dd') : null;
+        
+        // Use our utility for consistent date formatting
+        const formattedDateOfBirth = formatDateForDB(dob);
+        console.log(`[ProfileSetup] Step 2 Save - Formatted DOB for DB: ${formattedDateOfBirth}`);
+        
         try {
           const { error } = await supabase.from('clients').update({
-              client_date_of_birth: formattedDateOfBirth, client_age: age, 
-              client_gender: values.client_gender, client_gender_identity: values.client_gender_identity, 
-              client_state: values.client_state, client_time_zone: values.client_time_zone, 
+              client_date_of_birth: formattedDateOfBirth, 
+              client_age: age, 
+              client_gender: values.client_gender, 
+              client_gender_identity: values.client_gender_identity, 
+              client_state: values.client_state, 
+              client_time_zone: values.client_time_zone, 
               client_vacoverage: values.client_vacoverage
             }).eq('id', clientId);
           if (error) throw error;
@@ -504,24 +462,52 @@ const ProfileSetup = () => {
       if (!saveError) { if (dataSaved && refreshUserData) await refreshUserData(); navigateToStep(3); }
     } else if (currentStep === 3) {
         if (clientId) { 
-            let step3Data: Partial<ClientFormData> = {};
-            if (vaCoverage === "CHAMPVA") step3Data.client_champva = values.client_champva;
-            if (vaCoverage === "TRICARE") {  
-              step3Data = { ...step3Data, client_tricare_beneficiary_category: values.client_tricare_beneficiary_category, client_tricare_sponsor_name: values.client_tricare_sponsor_name, client_tricare_sponsor_branch: values.client_tricare_sponsor_branch, client_tricare_sponsor_id: values.client_tricare_sponsor_id, client_tricare_plan: values.client_tricare_plan, client_tricare_region: values.client_tricare_region, client_tricare_policy_id: values.client_tricare_policy_id, client_tricare_has_referral: values.client_tricare_has_referral, client_tricare_referral_number: values.client_tricare_referral_number }; 
+            let step3Data: Record<string, any> = {};
+            
+            if (vaCoverage === "CHAMPVA") {
+              step3Data.client_champva = values.client_champva;
             }
+            
+            if (vaCoverage === "TRICARE") {  
+              step3Data = { 
+                ...step3Data, 
+                client_tricare_beneficiary_category: values.client_tricare_beneficiary_category, 
+                client_tricare_sponsor_name: values.client_tricare_sponsor_name, 
+                client_tricare_sponsor_branch: values.client_tricare_sponsor_branch, 
+                client_tricare_sponsor_id: values.client_tricare_sponsor_id, 
+                client_tricare_plan: values.client_tricare_plan, 
+                client_tricare_region: values.client_tricare_region, 
+                client_tricare_policy_id: values.client_tricare_policy_id, 
+                client_tricare_has_referral: values.client_tricare_has_referral, 
+                client_tricare_referral_number: values.client_tricare_referral_number 
+              }; 
+            }
+            
             if (vaCoverage === "None - I am a veteran") { 
-              // Format the recentDischarge date if it exists
-              const recentDischarge = values.client_recentdischarge ? 
-                format(values.client_recentdischarge, 'yyyy-MM-dd') : null;
+              // Format the discharge date properly
+              const recentDischargeDate = values.client_recentdischarge;
+              const formattedDischargeDate = formatDateForDB(recentDischargeDate);
+              
+              console.log(`[ProfileSetup] Step 3 Save - Veteran discharge date:`, {
+                original: recentDischargeDate,
+                formatted: formattedDischargeDate
+              });
               
               step3Data = { 
                 ...step3Data, 
                 client_branchOS: values.client_branchOS,
-                client_recentdischarge: recentDischarge,
+                client_recentdischarge: formattedDischargeDate, // Use the formatted string here
                 client_disabilityrating: values.client_disabilityrating 
               }; 
             }
-            if (vaCoverage === "None - I am not a veteran") { step3Data = { ...step3Data, client_veteran_relationship: values.client_veteran_relationship, client_situation_explanation: values.client_situation_explanation }; }
+            
+            if (vaCoverage === "None - I am not a veteran") { 
+              step3Data = { 
+                ...step3Data, 
+                client_veteran_relationship: values.client_veteran_relationship, 
+                client_situation_explanation: values.client_situation_explanation 
+              }; 
+            }
 
             if (Object.keys(step3Data).length > 0) {
                 try { 
@@ -542,17 +528,68 @@ const ProfileSetup = () => {
         }
     } else if (currentStep === 4) {
         if (clientId) {
-            try { const formattedSubscriberDob = values.client_subscriber_dob_primary ? format(values.client_subscriber_dob_primary, 'yyyy-MM-dd') : null; const { error } = await supabase.from('clients').update({ client_insurance_company_primary: values.client_insurance_company_primary, client_insurance_type_primary: values.client_insurance_type_primary, client_subscriber_name_primary: values.client_subscriber_name_primary, client_subscriber_relationship_primary: values.client_subscriber_relationship_primary, client_subscriber_dob_primary: formattedSubscriberDob, client_group_number_primary: values.client_group_number_primary, client_policy_number_primary: values.client_policy_number_primary }).eq('id', clientId); if (error) throw error; toast({ title: "Information Saved", description: "Primary insurance details updated."}); dataSaved = true;}
-            catch(e: any) { saveError = true; console.error("[ProfileSetup] Error saving step 4 data:", e); toast({ title: "Save Error", description: `Could not save primary insurance details. ${e.message}`, variant: "destructive"});}
+            try {
+              // Format the subscriber DOB properly
+              const formattedSubscriberDob = formatDateForDB(values.client_subscriber_dob_primary);
+              console.log("[ProfileSetup] Formatted primary subscriber DOB:", formattedSubscriberDob);
+              
+              const { error } = await supabase.from('clients').update({
+                client_insurance_company_primary: values.client_insurance_company_primary,
+                client_insurance_type_primary: values.client_insurance_type_primary,
+                client_subscriber_name_primary: values.client_subscriber_name_primary,
+                client_subscriber_relationship_primary: values.client_subscriber_relationship_primary,
+                client_subscriber_dob_primary: formattedSubscriberDob,
+                client_group_number_primary: values.client_group_number_primary,
+                client_policy_number_primary: values.client_policy_number_primary
+              }).eq('id', clientId);
+              
+              if (error) throw error;
+              toast({ title: "Information Saved", description: "Primary insurance details updated."});
+              dataSaved = true;
+            } catch(e: any) {
+              saveError = true;
+              console.error("[ProfileSetup] Error saving step 4 data:", e);
+              toast({ title: "Save Error", description: `Could not save primary insurance details. ${e.message}`, variant: "destructive"});
+            }
         }
-        if (!saveError) { if (dataSaved && refreshUserData) await refreshUserData(); if (form.getValues('hasMoreInsurance') === "Yes") navigateToStep(5); else navigateToStep(6); }
+        if (!saveError) {
+          if (dataSaved && refreshUserData) await refreshUserData();
+          if (form.getValues('hasMoreInsurance') === "Yes") navigateToStep(5);
+          else navigateToStep(6);
+        }
     } else if (currentStep === 5) {
         if (clientId) {
-            try { const formattedSubscriberDobSecondary = values.client_subscriber_dob_secondary ? format(values.client_subscriber_dob_secondary, 'yyyy-MM-dd') : null; const { error } = await supabase.from('clients').update({ client_insurance_company_secondary: values.client_insurance_company_secondary, client_insurance_type_secondary: values.client_insurance_type_secondary, client_subscriber_name_secondary: values.client_subscriber_name_secondary, client_subscriber_relationship_secondary: values.client_subscriber_relationship_secondary, client_subscriber_dob_secondary: formattedSubscriberDobSecondary, client_group_number_secondary: values.client_group_number_secondary, client_policy_number_secondary: values.client_policy_number_secondary }).eq('id', clientId); if (error) throw error; toast({ title: "Information Saved", description: "Secondary insurance details updated."}); dataSaved = true;}
-            catch(e: any) { saveError = true; console.error("[ProfileSetup] Error saving step 5 data:", e); toast({ title: "Save Error", description: `Could not save secondary insurance details. ${e.message}`, variant: "destructive"});}
+            try {
+              // Format the secondary subscriber DOB properly  
+              const formattedSubscriberDobSecondary = formatDateForDB(values.client_subscriber_dob_secondary);
+              console.log("[ProfileSetup] Formatted secondary subscriber DOB:", formattedSubscriberDobSecondary);
+              
+              const { error } = await supabase.from('clients').update({
+                client_insurance_company_secondary: values.client_insurance_company_secondary,
+                client_insurance_type_secondary: values.client_insurance_type_secondary,
+                client_subscriber_name_secondary: values.client_subscriber_name_secondary,
+                client_subscriber_relationship_secondary: values.client_subscriber_relationship_secondary,
+                client_subscriber_dob_secondary: formattedSubscriberDobSecondary,
+                client_group_number_secondary: values.client_group_number_secondary,
+                client_policy_number_secondary: values.client_policy_number_secondary
+              }).eq('id', clientId);
+              
+              if (error) throw error;
+              toast({ title: "Information Saved", description: "Secondary insurance details updated."});
+              dataSaved = true;
+            } catch(e: any) {
+              saveError = true;
+              console.error("[ProfileSetup] Error saving step 5 data:", e);
+              toast({ title: "Save Error", description: `Could not save secondary insurance details. ${e.message}`, variant: "destructive"});
+            }
         }
-        if (!saveError) { if (dataSaved && refreshUserData) await refreshUserData(); navigateToStep(6); }
-    } else if (currentStep === 6) { handleSubmit(); }
+        if (!saveError) {
+          if (dataSaved && refreshUserData) await refreshUserData();
+          navigateToStep(6);
+        }
+    } else if (currentStep === 6) {
+      handleSubmit();
+    }
   };
 
   const handleSubmit = async () => { 
@@ -584,7 +621,7 @@ const ProfileSetup = () => {
               control={form.control} name="client_relationship"
               label="What is your relationship with the patient?" type="select"
               options={["Self", "Parent/Guardian", "Spouse", "Child", "Other"]} required={true}
-              // onValueCommit={(value) => handleImmediateSave('client_relationship' as keyof ProfileFormValues, value)}
+              onValueCommit={(value) => handleImmediateSave('client_relationship' as keyof ProfileFormValues, value)}
             />
         </div><div className="flex justify-center mt-8">
             {isFormLoading ? ( <Button type="button" size="lg" disabled className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2">Loading profile...</Button>
