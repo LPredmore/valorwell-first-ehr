@@ -7,7 +7,9 @@ import { differenceInYears, parseISO, isValid as isValidDateFns } from 'date-fns
  * another date string parsable by `new Date()`, or null/undefined.
  * @returns number representing age in years, or null if input is invalid or not provided.
  */
-export const calculateAge = (dateOfBirth: any): number | null => {
+// Using a very simple signature to test parser. Type 'any' is implicit for dateOfBirth.
+// Return type will be inferred by TypeScript based on return statements.
+export const calculateAge = (dateOfBirth) => { 
   // If no dateOfBirth is provided (this will catch null, undefined, empty string etc.), 
   // return null immediately.
   if (!dateOfBirth) {
@@ -56,5 +58,5 @@ export const calculateAge = (dateOfBirth: any): number | null => {
   // It's helpful to log the ISO string of the DOB for consistent debugging format
   const dobForLog = (dob instanceof Date && isValidDateFns(dob)) ? dob.toISOString() : 'Invalid Date';
   console.log(`[calculateAge] Calculated age: ${age} for DOB: ${dobForLog}`);
-  return age;
+  return age; // TypeScript will infer 'number | null' as the return type
 };
