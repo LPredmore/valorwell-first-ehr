@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -98,6 +98,10 @@ const ProfileSetup = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [navigationHistory, setNavigationHistory] = useState<number[]>([1]);
   const [otherInsurance, setOtherInsurance] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Add refs to track initial data loading and prevent repeated fetches
+  const dataFetchedRef = useRef(false);
   
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(
@@ -162,10 +166,51 @@ const ProfileSetup = () => {
     }
   });
 
+  // Create a memoized function to handle immediate field saves
+  const handleImmediateSave = useCallback(async (fieldName: string, value: string) => {
+    if (!clientId) {
+      console.log("Cannot save immediately - no client ID available yet");
+      return;
+    }
+    
+    try {
+      console.log(`Immediately saving field ${fieldName} with value:`, value);
+      
+      const updateData: Record<string, any> = {};
+      updateData[fieldName] = value;
+      
+      const { error } = await supabase
+        .from('clients')
+        .update(updateData)
+        .eq('id', clientId);
+        
+      if (error) {
+        console.error(`Error saving ${fieldName} immediately:`, error);
+        toast({
+          title: "Save Error",
+          description: `Could not save your selection. Please try again.`,
+          variant: "destructive"
+        });
+      } else {
+        console.log(`Successfully saved ${fieldName} immediately`);
+      }
+    } catch (error) {
+      console.error(`Exception in handleImmediateSave for ${fieldName}:`, error);
+    }
+  }, [clientId, toast]);
+
   useEffect(() => {
+    // Only fetch user data once when the component mounts
+    if (dataFetchedRef.current) {
+      console.log("User data already fetched, skipping fetchUser");
+      return;
+    }
+    
     const fetchUser = async () => {
       try {
+        setIsLoading(true);
         console.log("Starting fetchUser function");
+        dataFetchedRef.current = true;
         
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         
@@ -173,6 +218,7 @@ const ProfileSetup = () => {
         
         if (authError || !user) {
           console.log("No authenticated user or auth error:", authError);
+          setIsLoading(false);
           return;
         }
         
@@ -240,6 +286,7 @@ const ProfileSetup = () => {
               description: "Failed to create your profile. Please try again.",
               variant: "destructive"
             });
+            setIsLoading(false);
             return;
           }
           
@@ -263,6 +310,16 @@ const ProfileSetup = () => {
           if (data.client_recentdischarge) {
             dischargeDate = new Date(data.client_recentdischarge);
             console.log("Parsed discharge date:", dischargeDate);
+          }
+          
+          let primarySubscriberDob = undefined;
+          if (data.client_subscriber_dob_primary) {
+            primarySubscriberDob = new Date(data.client_subscriber_dob_primary);
+          }
+          
+          let secondarySubscriberDob = undefined;
+          if (data.client_subscriber_dob_secondary) {
+            secondarySubscriberDob = new Date(data.client_subscriber_dob_secondary);
           }
           
           console.log("Setting form values with client data");
@@ -299,21 +356,35 @@ const ProfileSetup = () => {
             client_tricare_insurance_agreement: data.client_tricare_insurance_agreement || false,
             client_veteran_relationship: data.client_veteran_relationship || '',
             client_situation_explanation: data.client_situation_explanation || '',
+            client_insurance_company_primary: data.client_insurance_company_primary || '',
+            client_insurance_type_primary: data.client_insurance_type_primary || '',
+            client_subscriber_name_primary: data.client_subscriber_name_primary || '',
+            client_subscriber_relationship_primary: data.client_subscriber_relationship_primary || '',
+            client_subscriber_dob_primary: primarySubscriberDob,
+            client_group_number_primary: data.client_group_number_primary || '',
+            client_policy_number_primary: data.client_policy_number_primary || '',
+            client_insurance_company_secondary: data.client_insurance_company_secondary || '',
+            client_insurance_type_secondary: data.client_insurance_type_secondary || '',
+            client_subscriber_name_secondary: data.client_subscriber_name_secondary || '',
+            client_subscriber_relationship_secondary: data.client_subscriber_relationship_secondary || '',
+            client_subscriber_dob_secondary: secondarySubscriberDob,
+            client_group_number_secondary: data.client_group_number_secondary || '',
+            client_policy_number_secondary: data.client_policy_number_secondary || '',
+            hasMoreInsurance: data.hasMoreInsurance || '',
+            client_has_even_more_insurance: data.client_has_even_more_insurance || '',
             client_self_goal: data.client_self_goal || '',
             client_referral_source: data.client_referral_source || '',
+            tricareInsuranceAgreement: data.tricareInsuranceAgreement || false
           };
           
           console.log("Form values to be set:", formValues);
           form.reset(formValues);
           console.log("Form reset completed");
-          
-          setTimeout(() => {
-            const currentValues = form.getValues();
-            console.log("Current form values after reset:", currentValues);
-          }, 100);
         } else {
           console.log("No client data found after all attempts");
         }
+        
+        setIsLoading(false);
       } catch (error) {
         console.error("Exception in fetchUser:", error);
         toast({
@@ -321,11 +392,12 @@ const ProfileSetup = () => {
           description: "An unexpected error occurred loading your profile.",
           variant: "destructive"
         });
+        setIsLoading(false);
       }
     };
     
     fetchUser();
-  }, [form, toast]);
+  }, []); // Run only once on component mount
 
   const navigateToStep = (nextStep: number) => {
     setNavigationHistory(prev => [...prev, nextStep]);
@@ -815,20 +887,32 @@ const ProfileSetup = () => {
                 "Self", "Parent/Guardian", "Spouse", "Child", "Other"
               ]}
               required={true}
+              onValueCommit={(name, value) => handleImmediateSave(name, value)}
             />
           </div>
           
           <div className="flex justify-center mt-8">
-            <Button 
-              type="button" 
-              size="lg" 
-              onClick={handleConfirmIdentity}
-              disabled={!isStep1Valid}
-              className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Check className="h-5 w-5" />
-              I confirm that this is me
-            </Button>
+            {isLoading ? (
+              <Button 
+                type="button" 
+                size="lg" 
+                disabled
+                className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"
+              >
+                Loading profile...
+              </Button>
+            ) : (
+              <Button 
+                type="button" 
+                size="lg" 
+                onClick={handleConfirmIdentity}
+                disabled={!isStep1Valid}
+                className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Check className="h-5 w-5" />
+                I confirm that this is me
+              </Button>
+            )}
           </div>
         </div>
       </Form>
@@ -1111,12 +1195,23 @@ const ProfileSetup = () => {
               </div>
             </div>
             
-            {currentStep === 1 && renderStepOne()}
-            {currentStep === 2 && renderStepTwo()}
-            {currentStep === 3 && renderStepThree()}
-            {currentStep === 4 && renderStepFour()}
-            {currentStep === 5 && renderStepFive()}
-            {currentStep === 6 && renderStepSix()}
+            {isLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-valorwell-600 mx-auto mb-4"></div>
+                  <p className="text-valorwell-700">Loading your profile information...</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {currentStep === 1 && renderStepOne()}
+                {currentStep === 2 && renderStepTwo()}
+                {currentStep === 3 && renderStepThree()}
+                {currentStep === 4 && renderStepFour()}
+                {currentStep === 5 && renderStepFive()}
+                {currentStep === 6 && renderStepSix()}
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

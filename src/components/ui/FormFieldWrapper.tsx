@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ interface FormFieldWrapperProps {
   maxLength?: number;
   required?: boolean;
   defaultValue?: string;
+  onValueCommit?: (name: string, value: string) => void; // New callback for immediate saving
 }
 
 const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
@@ -28,7 +30,8 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
   labelMapper,
   maxLength,
   required = false,
-  defaultValue
+  defaultValue,
+  onValueCommit
 }) => {
   // Add local state to maintain selected value
   const [localSelectedValue, setLocalSelectedValue] = useState<string | undefined>(defaultValue);
@@ -46,7 +49,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
         // Initialize the field value when the component mounts or when defaultValue changes
         useEffect(() => {
           // Only apply defaultValue if field value is undefined and we have a defaultValue
-          if (defaultValue !== undefined && field.value === undefined) {
+          if (defaultValue !== undefined && field.value === undefined && !initialized.current) {
             console.log(`FormFieldWrapper ${name} initializing with defaultValue:`, defaultValue);
             field.onChange(defaultValue);
             setLocalSelectedValue(defaultValue);
@@ -61,7 +64,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
             console.log(`FormFieldWrapper ${name} external field value changed to:`, field.value);
             setLocalSelectedValue(field.value);
           }
-        }, [field.value, name]);
+        }, [field.value, name, localSelectedValue]);
         
         const handleSelectChange = (selectedValue: string) => {
           console.log(`FormFieldWrapper ${name} select changed to:`, selectedValue);
@@ -73,6 +76,11 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
           field.onChange(valueToStore);
           setLocalSelectedValue(selectedValue);
           initialized.current = true;
+          
+          // If onValueCommit is provided, call it to save the value immediately
+          if (onValueCommit) {
+            onValueCommit(name, valueToStore);
+          }
         };
 
         // If a labelMapper is provided and we have a value, map the value to a display label
@@ -110,6 +118,16 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                   className={readOnly ? "bg-gray-100" : ""}
                   maxLength={maxLength}
                   required={required}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    // If onValueCommit is provided and we want to save on input change
+                    // uncomment this code (for now we're only saving select fields immediately)
+                    /* 
+                    if (onValueCommit) {
+                      onValueCommit(name, e.target.value);
+                    }
+                    */
+                  }}
                 />
               )}
             </FormControl>
