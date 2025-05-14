@@ -1,5 +1,5 @@
 
-import { format } from 'date-fns';
+import { DateTime } from 'luxon';
 
 // Generate time options for the select dropdown
 export const generateTimeOptions = () => {
@@ -16,5 +16,6 @@ export const generateTimeOptions = () => {
 
 // Format time for display
 export const formatDisplayTime = (time: string) => {
-  return format(new Date(`2023-01-01T${time}`), 'h:mm a');
+  const dt = DateTime.fromFormat(`2023-01-01T${time}`, "yyyy-MM-dd'T'HH:mm");
+  return dt.toFormat('h:mm a');
 };
