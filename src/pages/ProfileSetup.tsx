@@ -328,6 +328,9 @@ const ProfileSetup = () => {
 
           const dob = parseDateString(clientRecord.client_date_of_birth);
           const calculatedClientAge = calculateAge(dob);
+          
+          // Fix for client_recentdischarge - parse it as a Date
+          const recentDischarge = parseDateString(clientRecord.client_recentdischarge);
 
           const formValues: ClientFormData = {
             client_first_name: clientRecord.client_first_name || '',
@@ -348,7 +351,7 @@ const ProfileSetup = () => {
             client_champva_agreement: clientRecord.client_champva_agreement || false,
             client_mental_health_referral: clientRecord.client_mental_health_referral || '',
             client_branchOS: clientRecord.client_branchOS || '',
-            client_recentdischarge: parseDateString(clientRecord.client_recentdischarge),
+            client_recentdischarge: recentDischarge, // Fix: Use parsed date object instead of string
             client_disabilityrating: clientRecord.client_disabilityrating || '',
             client_tricare_beneficiary_category: clientRecord.client_tricare_beneficiary_category || '',
             client_tricare_sponsor_name: clientRecord.client_tricare_sponsor_name || '',
@@ -474,11 +477,28 @@ const ProfileSetup = () => {
             let step3Data: Partial<ClientFormData> = {};
             if (vaCoverage === "CHAMPVA") step3Data.client_champva = values.client_champva;
             if (vaCoverage === "TRICARE") {  step3Data = { ...step3Data, client_tricare_beneficiary_category: values.client_tricare_beneficiary_category, client_tricare_sponsor_name: values.client_tricare_sponsor_name, client_tricare_sponsor_branch: values.client_tricare_sponsor_branch, client_tricare_sponsor_id: values.client_tricare_sponsor_id, client_tricare_plan: values.client_tricare_plan, client_tricare_region: values.client_tricare_region, client_tricare_policy_id: values.client_tricare_policy_id, client_tricare_has_referral: values.client_tricare_has_referral, client_tricare_referral_number: values.client_tricare_referral_number }; }
-            if (vaCoverage === "None - I am a veteran") { step3Data = { ...step3Data, client_branchOS: values.client_branchOS, client_recentdischarge: values.client_recentdischarge ? format(values.client_recentdischarge, 'yyyy-MM-dd') : null, client_disabilityrating: values.client_disabilityrating }; }
+            if (vaCoverage === "None - I am a veteran") { 
+              // Fix: Format the recentDischarge date if it exists
+              const recentDischarge = values.client_recentdischarge ? 
+                format(values.client_recentdischarge, 'yyyy-MM-dd') : null;
+                
+              step3Data = { 
+                ...step3Data, 
+                client_branchOS: values.client_branchOS,
+                client_recentdischarge: recentDischarge,
+                client_disabilityrating: values.client_disabilityrating 
+              }; 
+            }
             if (vaCoverage === "None - I am not a veteran") { step3Data = { ...step3Data, client_veteran_relationship: values.client_veteran_relationship, client_situation_explanation: values.client_situation_explanation }; }
 
             if (Object.keys(step3Data).length > 0) {
-                try { const { error } = await supabase.from('clients').update(step3Data).eq('id', clientId); if (error) throw error; toast({ title: "Information Saved", description: "Insurance details updated."}); dataSaved = true;}
+                try { 
+                  console.log("[ProfileSetup] Saving step 3 data:", step3Data);
+                  const { error } = await supabase.from('clients').update(step3Data).eq('id', clientId); 
+                  if (error) throw error; 
+                  toast({ title: "Information Saved", description: "Insurance details updated."}); 
+                  dataSaved = true;
+                }
                 catch(e: any) { saveError = true; console.error("[ProfileSetup] Error saving step 3 data:", e); toast({ title: "Save Error", description: `Could not save insurance details. ${e.message}`, variant: "destructive"});}
             } else { dataSaved = true; }
         }
