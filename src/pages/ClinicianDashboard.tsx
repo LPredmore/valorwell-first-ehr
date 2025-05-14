@@ -180,7 +180,9 @@ const ClinicianDashboard = () => {
       client_tricare_region: null,
       client_tricare_policy_id: null,
       client_tricare_has_referral: null,
-      client_tricare_referral_number: null
+      client_tricare_referral_number: null,
+      // Add the missing property to fix the error
+      client_recentdischarge: null
     };
     
     return preparedData;
