@@ -1,0 +1,53 @@
+import { differenceInYears, parseISO, isValid as isValidDateFns } from 'date-fns';
+
+/**
+ * Calculates age in years from a date of birth.
+ * Handles string (ISO or other parsable formats) or Date object inputs.
+ * @param dateOfBirth - The date of birth as a Date object, an ISO string, 
+ * another date string parsable by `new Date()`, null, or undefined.
+ * @returns number representing age in years, or null if input is invalid or not provided.
+ */
+export function calculateAge(dateOfBirth: Date | string | null | undefined): number | null {
+  // If no dateOfBirth is provided, return null immediately.
+  if (!dateOfBirth) {
+    console.warn("[calculateAge] dateOfBirth is null or undefined.");
+    return null;
+  }
+
+  let dob: Date;
+
+  // If dateOfBirth is a string, attempt to parse it.
+  // Prioritize parseISO for ISO 8601 strings, then fallback to new Date().
+  if (typeof dateOfBirth === 'string') {
+    try {
+      const parsedIso = parseISO(dateOfBirth);
+      // Check if parseISO resulted in a valid date using date-fns's isValid
+      if (isValidDateFns(parsedIso)) {
+        dob = parsedIso;
+      } else {
+        // Fallback for non-ISO strings or if parseISO fails to produce a valid date
+        console.warn(`[calculateAge] parseISO failed for string: "${dateOfBirth}". Falling back to 'new Date()'.`);
+        dob = new Date(dateOfBirth);
+      }
+    } catch (e) {
+      // Catch any errors from parseISO (though it usually doesn't throw for invalid strings, just returns Invalid Date)
+      console.warn(`[calculateAge] Error during parseISO for string: "${dateOfBirth}". Falling back to 'new Date()'.`, e);
+      dob = new Date(dateOfBirth);
+    }
+  } else {
+    // If it's already a Date object, use it directly.
+    dob = dateOfBirth;
+  }
+
+  // Final validation: Check if the resulting 'dob' is a valid Date object.
+  // isNaN(dob.getTime()) is a reliable way to check for "Invalid Date".
+  if (!isValidDateFns(dob) || isNaN(dob.getTime())) {
+    console.warn("[calculateAge] Invalid dateOfBirth provided or parsed, resulting in an invalid Date object:", dateOfBirth, "Parsed as:", dob);
+    return null;
+  }
+
+  // Calculate the difference in years from today.
+  const age = differenceInYears(new Date(), dob);
+  console.log(`[calculateAge] Calculated age: ${age} for DOB: ${dob.toISOString()}`);
+  return age;
+}
