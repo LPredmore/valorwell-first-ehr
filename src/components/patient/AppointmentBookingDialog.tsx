@@ -149,30 +149,77 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
     }
   }, [clinicianId]);
   
-  // Fetch clinician's availability blocks, memoized to prevent recreation
+  // Fetch clinician's availability blocks from the clinicians table (UPDATED FUNCTION)
   const fetchAvailabilityBlocks = useCallback(async () => {
     if (!clinicianId || !selectedDate) return;
     
     try {
       setIsLoading(true);
       
-      const { data, error } = await supabase
-        .from('availability_blocks')
-        .select('*')
-        .eq('clinician_id', clinicianId)
-        .eq('day_of_week', selectedDate.getDay());
+      // Get day of week from selected date (0 = Sunday, 1 = Monday, etc.)
+      const dayOfWeek = selectedDate.getDay();
+      const dayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dayOfWeek];
+      
+      console.log(`[BookingDialog] Fetching availability for clinician ${clinicianId} on ${dayName} (day ${dayOfWeek})`);
+      
+      // Fetch clinician record to get availability data
+      const { data: clinicianData, error } = await supabase
+        .from('clinicians')
+        .select(`
+          clinician_availability_start_${dayName}_1,
+          clinician_availability_end_${dayName}_1,
+          clinician_availability_start_${dayName}_2,
+          clinician_availability_end_${dayName}_2,
+          clinician_availability_start_${dayName}_3,
+          clinician_availability_end_${dayName}_3,
+          clinician_time_granularity
+        `)
+        .eq('id', clinicianId)
+        .single();
       
       if (error) {
+        console.error(`[BookingDialog] Error fetching clinician availability:`, error);
         setApiErrors(prev => ({ ...prev, availabilityBlocks: error.message }));
+        setAvailabilityBlocks([]);
         return;
       }
       
-      console.log('[BookingDialog] Retrieved availability blocks:', data?.length);
-      setAvailabilityBlocks(data || []);
+      console.log(`[BookingDialog] Retrieved clinician availability data:`, clinicianData);
+      
+      // Transform the clinician data into availability blocks format
+      const blocks = [];
+      
+      // Check each availability slot and add if it exists
+      for (let i = 1; i <= 3; i++) {
+        const startTime = clinicianData[`clinician_availability_start_${dayName}_${i}`];
+        const endTime = clinicianData[`clinician_availability_end_${dayName}_${i}`];
+        
+        if (startTime && endTime) {
+          blocks.push({
+            day_of_week: dayOfWeek,
+            start_time: startTime,
+            end_time: endTime,
+            is_active: true
+          });
+        }
+      }
+      
+      console.log(`[BookingDialog] Transformed availability blocks:`, blocks);
+      
+      // Update time granularity if specified by clinician
+      if (clinicianData.clinician_time_granularity) {
+        setAvailabilitySettings(prev => ({
+          ...prev,
+          time_granularity: clinicianData.clinician_time_granularity as 'hour' | 'half_hour'
+        }));
+      }
+      
+      setAvailabilityBlocks(blocks);
       
     } catch (error) {
-      console.error('Error fetching availability blocks:', error);
+      console.error('[BookingDialog] Error in fetchAvailabilityBlocks:', error);
       setApiErrors(prev => ({ ...prev, availabilityBlocks: 'Failed to fetch availability blocks' }));
+      setAvailabilityBlocks([]);
     } finally {
       setIsLoading(false);
     }
