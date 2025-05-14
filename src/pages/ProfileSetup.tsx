@@ -562,6 +562,39 @@ const ProfileSetup = () => {
             variant: "destructive"
           });
         }
+      } else if (vaCoverage === "None - I am not a veteran" && clientId) {
+        try {
+          console.log("Saving Non-Veteran Information");
+          
+          const { error } = await supabase
+            .from('clients')
+            .update({
+              client_veteran_relationship: values.client_veteran_relationship,
+              client_situation_explanation: values.client_situation_explanation
+            })
+            .eq('id', clientId);
+            
+          if (error) {
+            console.error("Error saving non-veteran data:", error);
+            toast({
+              title: "Error saving data",
+              description: error.message,
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Information saved",
+              description: "Your information has been updated.",
+            });
+          }
+        } catch (error) {
+          console.error("Exception saving non-veteran data:", error);
+          toast({
+            title: "Error saving data",
+            description: "An unexpected error occurred.",
+            variant: "destructive"
+          });
+        }
       }
       
       if (vaCoverage === "TRICARE" && otherInsurance === "No") {
