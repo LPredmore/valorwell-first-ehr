@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Form } from '@/components/ui/form';
+import { Form } from '@/components/ui/form'; // Ensure this is the correct import for your <Form> component
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -180,7 +180,6 @@ const ProfileSetup = () => {
   const [isFormLoading, setIsFormLoading] = useState(true);
   const initialDataLoadedForUser = useRef<string | null>(null);
 
-  // Log when the component mounts and unmounts
   useEffect(() => {
     console.log('[ProfileSetup] Component Mounted');
     return () => {
@@ -248,8 +247,6 @@ const ProfileSetup = () => {
         });
       } else {
         console.log(`[ProfileSetup] Successfully saved ${String(fieldName)} immediately.`);
-        // After an immediate save, especially for something like client_relationship
-        // that might affect their "New" status, refresh UserContext.
         if (refreshUserData) {
             console.log(`[ProfileSetup] Refreshing UserContext after immediate save of ${String(fieldName)}`);
             await refreshUserData();
@@ -258,7 +255,7 @@ const ProfileSetup = () => {
     } catch (error) {
       console.error(`[ProfileSetup] Exception in handleImmediateSave for ${String(fieldName)}:`, error);
     }
-  }, [clientId, toast, refreshUserData]); // Added refreshUserData to dependencies
+  }, [clientId, toast, refreshUserData]);
 
   useEffect(() => {
     const fetchAndSetInitialData = async () => {
@@ -447,7 +444,6 @@ const ProfileSetup = () => {
   const handleNext = async () => { 
     const values = form.getValues();
     const vaCoverage = values.client_vacoverage;
-    // const hasMoreInsuranceValue = form.getValues('hasMoreInsurance'); // Not used directly here
     
     let saveError = false;
     let dataSaved = false;
@@ -477,14 +473,14 @@ const ProfileSetup = () => {
         if (clientId) { 
             let step3Data: Partial<ClientFormData> = {};
             if (vaCoverage === "CHAMPVA") step3Data.client_champva = values.client_champva;
-            if (vaCoverage === "TRICARE") { step3Data = { ...step3Data, client_tricare_beneficiary_category: values.client_tricare_beneficiary_category, client_tricare_sponsor_name: values.client_tricare_sponsor_name, client_tricare_sponsor_branch: values.client_tricare_sponsor_branch, client_tricare_sponsor_id: values.client_tricare_sponsor_id, client_tricare_plan: values.client_tricare_plan, client_tricare_region: values.client_tricare_region, client_tricare_policy_id: values.client_tricare_policy_id, client_tricare_has_referral: values.client_tricare_has_referral, client_tricare_referral_number: values.client_tricare_referral_number }; }
+            if (vaCoverage === "TRICARE") {  step3Data = { ...step3Data, client_tricare_beneficiary_category: values.client_tricare_beneficiary_category, client_tricare_sponsor_name: values.client_tricare_sponsor_name, client_tricare_sponsor_branch: values.client_tricare_sponsor_branch, client_tricare_sponsor_id: values.client_tricare_sponsor_id, client_tricare_plan: values.client_tricare_plan, client_tricare_region: values.client_tricare_region, client_tricare_policy_id: values.client_tricare_policy_id, client_tricare_has_referral: values.client_tricare_has_referral, client_tricare_referral_number: values.client_tricare_referral_number }; }
             if (vaCoverage === "None - I am a veteran") { step3Data = { ...step3Data, client_branchOS: values.client_branchOS, client_recentdischarge: values.client_recentdischarge ? format(values.client_recentdischarge, 'yyyy-MM-dd') : null, client_disabilityrating: values.client_disabilityrating }; }
             if (vaCoverage === "None - I am not a veteran") { step3Data = { ...step3Data, client_veteran_relationship: values.client_veteran_relationship, client_situation_explanation: values.client_situation_explanation }; }
 
             if (Object.keys(step3Data).length > 0) {
                 try { const { error } = await supabase.from('clients').update(step3Data).eq('id', clientId); if (error) throw error; toast({ title: "Information Saved", description: "Insurance details updated."}); dataSaved = true;}
                 catch(e: any) { saveError = true; console.error("[ProfileSetup] Error saving step 3 data:", e); toast({ title: "Save Error", description: `Could not save insurance details. ${e.message}`, variant: "destructive"});}
-            } else { dataSaved = true; /* No data to save for this path, but allow navigation */ }
+            } else { dataSaved = true; }
         }
         if (!saveError) { 
             if (dataSaved && refreshUserData) await refreshUserData();
@@ -525,99 +521,54 @@ const ProfileSetup = () => {
   };
 
   const renderStepOne = () => { 
-    const { formState } = form; 
-    const isStep1Valid = formState.isValid; 
-    
-    return (
-      <Form {...form}>
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    const { formState } = form; const isStep1Valid = formState.isValid; 
+    return ( <Form {...form}><div className="space-y-6"><div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormFieldWrapper control={form.control} name="client_first_name" label="First Name" required={true} />
             <FormFieldWrapper control={form.control} name="client_last_name" label="Last Name" required={true} />
             <FormFieldWrapper control={form.control} name="client_preferred_name" label="Preferred Name (optional)" />
             <FormFieldWrapper control={form.control} name="client_email" label="Email" type="email" readOnly={true} required={true} />
             <FormFieldWrapper control={form.control} name="client_phone" label="Phone" type="tel" required={true} />
             <FormFieldWrapper
-              control={form.control}
-              name="client_relationship"
-              label="What is your relationship with the patient?"
-              type="select"
-              options={["Self", "Parent/Guardian", "Spouse", "Child", "Other"]}
-              required={true}
-              onValueCommit={(name, value) => handleImmediateSave('client_relationship' as keyof ProfileFormValues, value)}
+              control={form.control} name="client_relationship"
+              label="What is your relationship with the patient?" type="select"
+              options={["Self", "Parent/Guardian", "Spouse", "Child", "Other"]} required={true}
+              // onValueCommit={(value) => handleImmediateSave('client_relationship' as keyof ProfileFormValues, value)}
             />
-          </div>
-          <div className="flex justify-center mt-8">
-            {isFormLoading ? (
-              <Button type="button" size="lg" disabled className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2">Loading profile...</Button>
-            ) : (
-              <Button 
-                type="button" 
-                size="lg" 
-                onClick={handleConfirmIdentity} 
-                disabled={!isStep1Valid} 
-                className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Check className="h-5 w-5" /> I confirm that this is me
-              </Button>
-            )}
-          </div>
-        </div>
-      </Form>
+        </div><div className="flex justify-center mt-8">
+            {isFormLoading ? ( <Button type="button" size="lg" disabled className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2">Loading profile...</Button>
+            ) : ( <Button type="button" size="lg" onClick={handleConfirmIdentity} disabled={!isStep1Valid} className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"> <Check className="h-5 w-5" /> I confirm that this is me </Button> )}
+        </div></div></Form>
     );
   };
   const renderStepTwo = () => { 
-    const { formState } = form; 
-    const isStep2Valid = formState.isValid; 
-    
-    return (
-      <Form {...form}>
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    const { formState } = form; const isStep2Valid = formState.isValid; 
+    return ( <Form {...form}><div className="space-y-6"><div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <DateField control={form.control} name="client_date_of_birth" label="Date of Birth" required={true}/>
             <FormFieldWrapper control={form.control} name="client_gender" label="Birth Gender" type="select" options={["Male", "Female", "Prefer not to say"]} required={true}/>
             <FormFieldWrapper control={form.control} name="client_gender_identity" label="Gender Identity" type="select" options={["Male", "Female", "Non-binary", "Transgender", "Prefer not to say", "Other"]} required={true}/>
             <FormFieldWrapper control={form.control} name="client_state" label="State of Primary Residence" type="select" options={["Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"]} required={true}/>
             <FormFieldWrapper control={form.control} name="client_time_zone" label="Time Zone" type="select" options={timezoneOptions.map(tz => tz.label)} valueMapper={(label) => { const o = timezoneOptions.find(tz_1 => tz_1.label === label); return o ? o.value : ''; }} labelMapper={(value) => { const o = timezoneOptions.find(tz_1 => tz_1.value === value); return o ? o.label : ''; }} required={true}/>
             <FormFieldWrapper control={form.control} name="client_vacoverage" label="What type of VA Coverage do you have?" type="select" options={["CHAMPVA", "TRICARE", "VA Community Care", "None - I am a veteran", "None - I am not a veteran"]} required={true}/>
-          </div>
-          <div className="flex justify-between mt-8"> 
-            <Button type="button" variant="outline" onClick={handleGoBack} className="flex items-center gap-2"> <ArrowLeft className="h-4 w-4" /> Back </Button> 
-            <Button type="button" onClick={handleNext} disabled={!isStep2Valid} className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"> Next <ArrowRight className="h-4 w-4" /> </Button> 
-          </div>
-        </div>
-      </Form>
-    );
+        </div><div className="flex justify-between mt-8"> <Button type="button" variant="outline" onClick={handleGoBack} className="flex items-center gap-2"> <ArrowLeft className="h-4 w-4" /> Back </Button> <Button type="button" onClick={handleNext} disabled={!isStep2Valid} className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"> Next <ArrowRight className="h-4 w-4" /> </Button> </div></div></Form> );
   };
   const renderStepThree = () => { 
     const vaCoverage = form.watch('client_vacoverage');
-    return (
-      <Form {...form}>
-        <div className="space-y-6">
-          {vaCoverage === 'CHAMPVA' && ( <SignupChampva form={form} onOtherInsuranceChange={handleOtherInsuranceChange}/> )}
-          {vaCoverage === 'TRICARE' && ( <SignupTricare form={form} onOtherInsuranceChange={handleOtherInsuranceChange}/> )}
-          {vaCoverage === 'VA Community Care' && ( <SignupVaCcn form={form} /> )}
-          {vaCoverage === 'None - I am a veteran' && ( <SignupVeteran form={form} /> )}
-          {vaCoverage === 'None - I am not a veteran' && ( <SignupNotAVeteran form={form} /> )}
+    return ( <Form {...form}><div className="space-y-6">
+            {vaCoverage === 'CHAMPVA' && ( <SignupChampva form={form} onOtherInsuranceChange={handleOtherInsuranceChange}/> )}
+            {vaCoverage === 'TRICARE' && ( <SignupTricare form={form} onOtherInsuranceChange={handleOtherInsuranceChange}/> )}
+            {vaCoverage === 'VA Community Care' && ( <SignupVaCcn form={form} /> )}
+            {vaCoverage === 'None - I am a veteran' && ( <SignupVeteran form={form} /> )}
+            {vaCoverage === 'None - I am not a veteran' && ( <SignupNotAVeteran form={form} /> )}
         <div className="flex justify-between mt-8"> <Button type="button" variant="outline" onClick={handleGoBack} className="flex items-center gap-2"> <ArrowLeft className="h-4 w-4" /> Back </Button> <Button type="button" onClick={handleNext} className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"> Next <ArrowRight className="h-4 w-4" /> </Button> </div></div></Form> );
   };
   const renderStepFour = () => { 
-    return (
-      <Form {...form}>
-        <div className="space-y-6"> <AdditionalInsurance form={form} /> <div className="flex justify-between mt-8"> <Button type="button" variant="outline" onClick={handleGoBack} className="flex items-center gap-2"> <ArrowLeft className="h-4 w-4" /> Back </Button> <Button type="button" onClick={handleNext} className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"> Next <ArrowRight className="h-4 w-4" /> </Button> </div></div>
-    );
+    return ( <Form {...form}><div className="space-y-6"> <AdditionalInsurance form={form} /> <div className="flex justify-between mt-8"> <Button type="button" variant="outline" onClick={handleGoBack} className="flex items-center gap-2"> <ArrowLeft className="h-4 w-4" /> Back </Button> <Button type="button" onClick={handleNext} className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"> Next <ArrowRight className="h-4 w-4" /> </Button> </div></div></Form> );
   };
   const renderStepFive = () => { 
-    return (
-      <Form {...form}>
-        <div className="space-y-6"> <MoreAdditionalInsurance form={form} /> <div className="flex justify-between mt-8"> <Button type="button" variant="outline" onClick={handleGoBack} className="flex items-center gap-2"> <ArrowLeft className="h-4 w-4" /> Back </Button> <Button type="button" onClick={handleNext} className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"> Next <ArrowRight className="h-4 w-4" /> </Button> </div></div>
-    );
+    return ( <Form {...form}><div className="space-y-6"> <MoreAdditionalInsurance form={form} /> <div className="flex justify-between mt-8"> <Button type="button" variant="outline" onClick={handleGoBack} className="flex items-center gap-2"> <ArrowLeft className="h-4 w-4" /> Back </Button> <Button type="button" onClick={handleNext} className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"> Next <ArrowRight className="h-4 w-4" /> </Button> </div></div></Form> );
   };
   const renderStepSix = () => { 
-    return (
-      <Form {...form}>
-        <div className="space-y-6"> <SignupLast form={form} /> <div className="flex justify-between mt-8"> <Button type="button" variant="outline" onClick={handleGoBack} className="flex items-center gap-2"> <ArrowLeft className="h-4 w-4" /> Back </Button> <Button type="button" onClick={handleSubmit} className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"> Complete Profile </Button> </div></div>
-    );
+    return ( <Form {...form}><div className="space-y-6"> <SignupLast form={form} /> <div className="flex justify-between mt-8"> <Button type="button" variant="outline" onClick={handleGoBack} className="flex items-center gap-2"> <ArrowLeft className="h-4 w-4" /> Back </Button> <Button type="button" onClick={handleSubmit} className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"> Complete Profile </Button> </div></div></Form> );
   };
 
   return (
@@ -667,3 +618,7 @@ const ProfileSetup = () => {
 };
 
 export default ProfileSetup;
+```
+This is the code that I uploaded to the canvas, and it is the same as what you provided in the artifact `profile_setup_final_check`. I am still having problems with the "What is your relationship with the patient?" selection being lost. The console log shows that the form is still being reset multiple times, overriding the selection.
+
+I need to figure out how to stop the form from resetting after I make a selection. Can you help me adjust the ProfileSetup.tsx code to prevent these unwanted resets and ensure the dropdown selection persis
