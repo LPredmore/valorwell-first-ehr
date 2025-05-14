@@ -358,13 +358,15 @@ const ProfileSetup = () => {
             try {
               // Attempt to parse ISO string (common from Supabase)
               const parsed = parseISO(dateString);
-              // Check if Luxon thinks it's valid
-              if (new Date(parsed).toString() !== "Invalid Date") return parsed;
+              // Check if Luxon thinks it's valid (this check is not robust with new Date(parsed))
+              // A better check for Luxon DateTime objects would be .isValid
+              // For JS Date, check !isNaN(parsed.getTime())
+              if (!isNaN(parsed.getTime())) return parsed;
             } catch (e) { /* ignore parse error, try direct new Date */ }
             
             // Fallback for other date formats, though ISO is preferred from DB
             const dateObj = new Date(dateString);
-            return dateObj.toString() !== "Invalid Date" ? dateObj : null;
+            return !isNaN(dateObj.getTime()) ? dateObj : null;
           };
 
           const formValues: ClientFormData = {
@@ -425,7 +427,7 @@ const ProfileSetup = () => {
         } else {
           console.warn("[ProfileSetup] No client data could be fetched or created. Form will use defaults.");
           // If no client record, reset with at least the authenticated user's email
-          form.reset({ client_email: userEmail || '', ...form.formState.defaultValues });
+          form.reset({ client_email: userEmail || '', ...form.formState.defaultValues } as ProfileFormValues);
           initialDataLoadedForUser.current = userId; // Mark attempt for this user
         }
       } catch (error) {
@@ -445,11 +447,319 @@ const ProfileSetup = () => {
   // - userId: Re-fetch if the user changes.
   // - isUserContextLoading: Wait for context to be ready.
   // - form.reset: React Hook Form's reset function reference (usually stable).
-  }, [userId, isUserContextLoading, form.reset, toast]); // Added toast to dependencies as it's used in catch
+  }, [userId, isUserContextLoading, form.reset, toast, user?.email]); // Added user.email as it's used in fetchAndSetInitialData
 
-  // ... rest of the component (navigateToStep, handleConfirmIdentity, handleGoBack, handleNext, handleSubmit, renderStep functions)
-  // Ensure that `onValueCommit` is a valid prop for FormFieldWrapper or handle immediate save differently.
-  // For example, by watching specific fields with another useEffect and calling handleImmediateSave.
+  const navigateToStep = (nextStep: number) => {
+    setNavigationHistory(prev => [...prev, nextStep]);
+    setCurrentStep(nextStep);
+  };
+
+  // Definition for handleConfirmIdentity
+  const handleConfirmIdentity = async () => {
+    const isValid = await form.trigger(["client_first_name", "client_last_name", "client_preferred_name", "client_email", "client_phone", "client_relationship"]);
+    if (!isValid) {
+      toast({
+        title: "Validation Error",
+        description: "Please ensure all required fields in Step 1 are filled correctly.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!clientId) {
+      toast({
+        title: "Error",
+        description: "No client record found. Please contact support.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const values = form.getValues();
+    console.log("[ProfileSetup] Saving Step 1 (identity) data:", values);
+    
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          client_first_name: values.client_first_name,
+          client_last_name: values.client_last_name,
+          client_preferred_name: values.client_preferred_name,
+          client_email: values.client_email, // Should be read-only and match auth user
+          client_phone: values.client_phone,
+          client_relationship: values.client_relationship
+        })
+        .eq('id', clientId);
+        
+      if (error) {
+        console.error("[ProfileSetup] Error saving identity data:", error);
+        toast({
+          title: "Error saving data",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      toast({
+        title: "Personal information saved",
+        description: "Your identity details have been updated.",
+      });
+      
+      navigateToStep(2);
+    } catch (error) {
+      console.error("[ProfileSetup] Exception saving identity data:", error);
+      toast({
+        title: "Error saving data",
+        description: "An unexpected error occurred.",
+        variant: "destructive"
+      });
+    }
+  };
+
+
+  const handleGoBack = () => {
+    if (navigationHistory.length > 1) {
+      const newHistory = [...navigationHistory];
+      newHistory.pop();
+      const previousStep = newHistory[newHistory.length - 1];
+      setNavigationHistory(newHistory);
+      setCurrentStep(previousStep);
+    }
+  };
+
+  const handleOtherInsuranceChange = (value: string) => {
+    setOtherInsurance(value);
+    // Also update form state if 'hasMoreInsurance' is tied to this
+    form.setValue('hasMoreInsurance', value); 
+  };
+
+  const handleNext = async () => {
+    const values = form.getValues();
+    const vaCoverage = values.client_vacoverage;
+    // Use form.watch or form.getValues for hasMoreInsurance if it's a form field
+    const hasMoreInsuranceValue = form.getValues('hasMoreInsurance'); 
+    
+    if (currentStep === 2) {
+      const isStep2Valid = await form.trigger(["client_date_of_birth", "client_gender", "client_gender_identity", "client_state", "client_time_zone", "client_vacoverage"]);
+      if (!isStep2Valid) {
+        toast({ title: "Validation Error", description: "Please complete all fields in Step 2.", variant: "destructive" });
+        return;
+      }
+      if (clientId) {
+        const formattedDateOfBirth = values.client_date_of_birth 
+          ? format(values.client_date_of_birth, 'yyyy-MM-dd') 
+          : null;
+          
+        try {
+          const { error } = await supabase
+            .from('clients')
+            .update({
+              client_date_of_birth: formattedDateOfBirth,
+              client_gender: values.client_gender,
+              client_gender_identity: values.client_gender_identity,
+              client_state: values.client_state,
+              client_time_zone: values.client_time_zone,
+              client_vacoverage: values.client_vacoverage
+            })
+            .eq('id', clientId);
+            
+          if (error) {
+            console.error("[ProfileSetup] Error saving step 2 data:", error);
+            toast({
+              title: "Error saving data",
+              description: error.message,
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Information saved",
+              description: "Your demographic information has been updated.",
+            });
+             navigateToStep(3);
+          }
+        } catch (error) {
+          console.error("[ProfileSetup] Exception saving step 2 data:", error);
+          toast({
+            title: "Error saving data",
+            description: "An unexpected error occurred.",
+            variant: "destructive"
+          });
+        }
+      } else {
+         navigateToStep(3); // Navigate even if clientId not yet set, though save won't happen
+      }
+    } else if (currentStep === 3) {
+      // Save step 3 data before navigating
+      if (clientId) {
+          let step3Data: Partial<ClientFormData> = {};
+          if (vaCoverage === "CHAMPVA") step3Data.client_champva = values.client_champva;
+          if (vaCoverage === "TRICARE") {
+            step3Data = {
+              ...step3Data,
+              client_tricare_beneficiary_category: values.client_tricare_beneficiary_category,
+              client_tricare_sponsor_name: values.client_tricare_sponsor_name,
+              client_tricare_sponsor_branch: values.client_tricare_sponsor_branch,
+              client_tricare_sponsor_id: values.client_tricare_sponsor_id,
+              client_tricare_plan: values.client_tricare_plan,
+              client_tricare_region: values.client_tricare_region,
+              client_tricare_policy_id: values.client_tricare_policy_id,
+              client_tricare_has_referral: values.client_tricare_has_referral,
+              client_tricare_referral_number: values.client_tricare_referral_number,
+            };
+          }
+          if (vaCoverage === "None - I am a veteran") {
+            step3Data = {
+              ...step3Data,
+              client_branchOS: values.client_branchOS,
+              client_recentdischarge: values.client_recentdischarge ? format(values.client_recentdischarge, 'yyyy-MM-dd') : null,
+              client_disabilityrating: values.client_disabilityrating,
+            };
+          }
+          if (vaCoverage === "None - I am not a veteran") {
+             step3Data = {
+              ...step3Data,
+              client_veteran_relationship: values.client_veteran_relationship,
+              client_situation_explanation: values.client_situation_explanation,
+            };
+          }
+
+          if (Object.keys(step3Data).length > 0) {
+            try {
+                const { error } = await supabase.from('clients').update(step3Data).eq('id', clientId);
+                if (error) throw error;
+                toast({ title: "Information Saved", description: "Insurance details updated."});
+            } catch(error) {
+                console.error("[ProfileSetup] Error saving step 3 data:", error);
+                toast({ title: "Save Error", description: "Could not save insurance details.", variant: "destructive"});
+                return; // Do not navigate if save fails
+            }
+          }
+      }
+
+      if (vaCoverage === "TRICARE" && otherInsurance === "No") {
+        navigateToStep(6);
+      } else if (otherInsurance === "Yes" && (vaCoverage === "TRICARE" || vaCoverage === "CHAMPVA")) {
+        navigateToStep(4);
+      } else {
+        navigateToStep(6);
+      }
+    } else if (currentStep === 4) {
+        if (clientId) {
+            try {
+                const formattedSubscriberDob = values.client_subscriber_dob_primary 
+                    ? format(values.client_subscriber_dob_primary, 'yyyy-MM-dd') 
+                    : null;
+                const { error } = await supabase.from('clients').update({
+                    client_insurance_company_primary: values.client_insurance_company_primary,
+                    client_insurance_type_primary: values.client_insurance_type_primary,
+                    client_subscriber_name_primary: values.client_subscriber_name_primary,
+                    client_subscriber_relationship_primary: values.client_subscriber_relationship_primary,
+                    client_subscriber_dob_primary: formattedSubscriberDob,
+                    client_group_number_primary: values.client_group_number_primary,
+                    client_policy_number_primary: values.client_policy_number_primary,
+                }).eq('id', clientId);
+                if (error) throw error;
+                toast({ title: "Information Saved", description: "Primary insurance details updated."});
+            } catch(error) {
+                console.error("[ProfileSetup] Error saving step 4 data:", error);
+                toast({ title: "Save Error", description: "Could not save primary insurance details.", variant: "destructive"});
+                return; // Do not navigate if save fails
+            }
+        }
+      if (form.getValues('hasMoreInsurance') === "Yes") { // Use form.getValues for consistency
+        navigateToStep(5);
+      } else {
+        navigateToStep(6);
+      }
+    } else if (currentStep === 5) {
+        if (clientId) {
+            try {
+                const formattedSubscriberDobSecondary = values.client_subscriber_dob_secondary 
+                    ? format(values.client_subscriber_dob_secondary, 'yyyy-MM-dd') 
+                    : null;
+                const { error } = await supabase.from('clients').update({
+                    client_insurance_company_secondary: values.client_insurance_company_secondary,
+                    client_insurance_type_secondary: values.client_insurance_type_secondary,
+                    client_subscriber_name_secondary: values.client_subscriber_name_secondary,
+                    client_subscriber_relationship_secondary: values.client_subscriber_relationship_secondary,
+                    client_subscriber_dob_secondary: formattedSubscriberDobSecondary,
+                    client_group_number_secondary: values.client_group_number_secondary,
+                    client_policy_number_secondary: values.client_policy_number_secondary,
+                }).eq('id', clientId);
+                if (error) throw error;
+                toast({ title: "Information Saved", description: "Secondary insurance details updated."});
+            } catch(error) {
+                console.error("[ProfileSetup] Error saving step 5 data:", error);
+                toast({ title: "Save Error", description: "Could not save secondary insurance details.", variant: "destructive"});
+                return; // Do not navigate if save fails
+            }
+        }
+      navigateToStep(6);
+    } else if (currentStep === 6) {
+      handleSubmit(); // This is the final submission
+    }
+  };
+
+  const handleSubmit = async () => {
+    // Ensure all relevant schemas are validated before final submit if not done per step
+    // For simplicity, assuming previous steps handled their specific validations.
+    // Here, we just save the last step's data.
+    const values = form.getValues(); 
+    
+    if (!clientId) {
+      toast({
+        title: "Error",
+        description: "No client record found. Please contact support.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    console.log("[ProfileSetup] Submitting final form data (Step 6):", {
+      client_self_goal: values.client_self_goal,
+      client_referral_source: values.client_referral_source,
+      client_status: 'Profile Complete',
+      client_is_profile_complete: true // Changed to boolean
+    });
+
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          client_self_goal: values.client_self_goal || null,
+          client_referral_source: values.client_referral_source || null,
+          client_status: 'Profile Complete',
+          client_is_profile_complete: true // Assuming DB column is boolean
+        })
+        .eq('id', clientId);
+      
+      if (error) {
+        console.error("[ProfileSetup] Error updating profile (final step):", error);
+        toast({
+          title: "Error updating profile",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      console.log("[ProfileSetup] Profile completed successfully");
+      toast({
+        title: "Profile complete!",
+        description: "Your information has been saved. You can now select a therapist.",
+      });
+      
+      navigate('/therapist-selection'); // Or appropriate next page
+    } catch (error) {
+      console.error("[ProfileSetup] Exception in handleSubmit:", error);
+      toast({
+        title: "Error updating profile",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const renderStepOne = () => {
     const { formState } = form;
@@ -507,12 +817,16 @@ const ProfileSetup = () => {
                 "Self", "Parent/Guardian", "Spouse", "Child", "Other"
               ]}
               required={true}
-              // onValueCommit={(value) => handleImmediateSave('client_relationship', value)} // Corrected usage
+              // To enable immediate save for this field:
+              // 1. Add `onValueCommit?: (value: string) => void;` to FormFieldWrapperProps
+              // 2. In FormFieldWrapper's handleSelectChange, call `props.onValueCommit(valueToStoreInForm)`
+              // 3. Uncomment the line below:
+              // onValueCommit={(value) => handleImmediateSave('client_relationship', value)}
             />
           </div>
           
           <div className="flex justify-center mt-8">
-            {isFormLoading ? ( // Use isFormLoading instead of isLoading from UserContext for this button
+            {isFormLoading ? ( // Use local isFormLoading state
               <Button 
                 type="button" 
                 size="lg" 
@@ -843,4 +1157,3 @@ const ProfileSetup = () => {
 };
 
 export default ProfileSetup;
-
