@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LayoutDashboard, User, Clock3, Shield } from 'lucide-react';
+import { LayoutDashboard, User, Clock3, Shield, FileText } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById, formatDateForDB } from '@/integrations/supabase/client';
+import { getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById, formatDateForDB, fetchDocumentAssignments } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
 // Import the tab components
@@ -12,6 +12,7 @@ import MyPortal from '@/components/patient/MyPortal';
 import MyProfile from '@/components/patient/MyProfile';
 import MyAppointments from '@/components/patient/MyAppointments';
 import MyInsurance from '@/components/patient/MyInsurance';
+import MyDocuments from '@/components/patient/MyDocuments';
 // Import timezoneOptions and TimeZoneService
 import { timezoneOptions, formatTimezoneForDisplay } from '@/utils/timezoneOptions';
 import { TimeZoneService } from '@/utils/timeZoneService';
@@ -22,6 +23,8 @@ const PatientDashboard: React.FC = () => {
   const [clientData, setClientData] = useState<any>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [clinicianName, setClinicianName] = useState<string | null>(null);
+  const [pendingDocuments, setPendingDocuments] = useState<number>(0);
+  
   const {
     toast
   } = useToast();
@@ -120,6 +123,14 @@ const PatientDashboard: React.FC = () => {
         if (client.client_assigned_therapist) {
           fetchClinicianName(client.client_assigned_therapist);
         }
+        
+        // Check for pending document assignments
+        const docAssignments = await fetchDocumentAssignments(user.id);
+        const pending = docAssignments.filter(doc => 
+          doc.status === 'not_started' || doc.status === 'in_progress'
+        ).length;
+        setPendingDocuments(pending);
+        
         let age = '';
         if (client.client_date_of_birth) {
           const dob = new Date(client.client_date_of_birth);
@@ -154,7 +165,6 @@ const PatientDashboard: React.FC = () => {
           genderIdentity: client.client_gender_identity || '',
           state: client.client_state || '',
           timeZone: clientTimeZone ? formatTimezoneForDisplay(clientTimeZone) : '',
-          // ... keep existing code for insurance fields
           client_insurance_company_primary: client.client_insurance_company_primary || '',
           client_insurance_type_primary: client.client_insurance_type_primary || '',
           client_policy_number_primary: client.client_policy_number_primary || '',
@@ -242,7 +252,6 @@ const PatientDashboard: React.FC = () => {
         client_gender_identity: formValues.genderIdentity,
         client_state: formValues.state,
         client_time_zone: timeZoneValue,
-        // ... keep existing code for insurance fields
         client_insurance_company_primary: formValues.client_insurance_company_primary,
         client_insurance_type_primary: formValues.client_insurance_type_primary,
         client_policy_number_primary: formValues.client_policy_number_primary,
@@ -314,6 +323,10 @@ const PatientDashboard: React.FC = () => {
     fetchClientData();
   };
 
+  const handleNavigateToDocuments = () => {
+    navigate('/patient-documents');
+  };
+
   useEffect(() => {
     console.log("PatientDashboard component mounted");
     fetchClientData();
@@ -345,6 +358,15 @@ const PatientDashboard: React.FC = () => {
               <Clock3 className="h-4 w-4" />
               Past Appointments
             </TabsTrigger>
+            <TabsTrigger value="documents" className="gap-2 rounded-b-none rounded-t-lg data-[state=active]:border-b-2 data-[state=active]:border-valorwell-600">
+              <FileText className="h-4 w-4" />
+              Documents
+              {pendingDocuments > 0 && (
+                <span className="ml-1 rounded-full bg-valorwell-600 px-2 py-0.5 text-xs text-white">
+                  {pendingDocuments}
+                </span>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="insurance" className="gap-2 rounded-b-none rounded-t-lg data-[state=active]:border-b-2 data-[state=active]:border-valorwell-600">
               <Shield className="h-4 w-4" />
               Insurance
@@ -361,6 +383,20 @@ const PatientDashboard: React.FC = () => {
 
           <TabsContent value="pastAppointments" className="mt-0">
             <MyAppointments />
+          </TabsContent>
+          
+          <TabsContent value="documents" className="mt-0">
+            <div className="flex flex-col space-y-4">
+              <MyDocuments clientId={clientData?.id} />
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={handleNavigateToDocuments}
+                  className="px-4 py-2 bg-valorwell-600 text-white rounded-md hover:bg-valorwell-700 transition-colors"
+                >
+                  View All Documents & Forms
+                </button>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="insurance" className="mt-0">

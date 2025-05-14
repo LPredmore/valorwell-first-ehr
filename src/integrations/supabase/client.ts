@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 // Check for required environment variables
@@ -98,6 +97,198 @@ export const getOrCreateVideoRoom = async (appointmentId: string) => {
     return { url: data.url, success: true };
   } catch (error) {
     console.error('Error getting/creating video room:', error);
+    return { success: false, error };
+  }
+};
+
+// Document assignment functions
+export interface DocumentAssignment {
+  id: string;
+  document_name: string;
+  client_id: string;
+  status: string;
+  assigned_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Function to fetch document assignments for the current client
+export const fetchDocumentAssignments = async (clientId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('document_assignments')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false });
+      
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching document assignments:', error);
+    return [];
+  }
+};
+
+// Function to update document assignment status
+export const updateDocumentStatus = async (assignmentId: string, status: 'not_started' | 'in_progress' | 'completed') => {
+  try {
+    const { data, error } = await supabase
+      .from('document_assignments')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', assignmentId)
+      .select();
+      
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error updating document status:', error);
+    return { success: false, error };
+  }
+};
+
+// Function to save client history form data
+export const saveClientHistoryForm = async (formData: any) => {
+  try {
+    // First save the main client history record
+    const { data: historyData, error: historyError } = await supabase
+      .from('client_history')
+      .insert([{
+        client_id: formData.clientId,
+        submission_date: new Date(),
+        // Map all the main form fields from formData
+        personal_strengths: formData.personalStrengths,
+        hobbies: formData.hobbies,
+        education_level: formData.educationLevel,
+        occupation_details: formData.occupationDetails,
+        sleep_hours: formData.sleepHours,
+        current_issues: formData.currentIssues,
+        progression_of_issues: formData.progressionOfIssues,
+        relationship_problems: formData.relationshipProblems,
+        counseling_goals: formData.counselingGoals,
+        // Boolean fields
+        is_married: formData.isMarried,
+        has_past_spouses: formData.hasPastSpouses,
+        has_received_mental_health_treatment: formData.hasReceivedMentalHealthTreatment,
+        hospitalized_psychiatric: formData.hospitalizedPsychiatric,
+        attempted_suicide: formData.attemptedSuicide,
+        psych_hold: formData.psychHold,
+        takes_medications: formData.takesMedications,
+        // Multi-select items stored as JSON
+        selected_symptoms: formData.selectedSymptoms || [],
+        selected_medical_conditions: formData.selectedMedicalConditions || [],
+        selected_childhood_experiences: formData.selectedChildhoodExperiences || [],
+        // Emergency contact
+        emergency_name: formData.emergencyName,
+        emergency_phone: formData.emergencyPhone,
+        emergency_relationship: formData.emergencyRelationship,
+        // Substance use
+        alcohol_use: formData.alcoholUse,
+        tobacco_use: formData.tobaccoUse,
+        drug_use: formData.drugUse,
+        // Additional info
+        additional_info: formData.additionalInfo,
+        signature: formData.signature
+      }])
+      .select()
+      .single();
+    
+    if (historyError) throw historyError;
+    
+    const historyId = historyData.id;
+    
+    // Handle related data if present
+    if (formData.medications && formData.medications.length > 0) {
+      const medicationsData = formData.medications.map((med: any) => ({
+        history_id: historyId,
+        name: med.name,
+        purpose: med.purpose,
+        duration: med.duration
+      }));
+      
+      const { error: medsError } = await supabase
+        .from('client_history_medications')
+        .insert(medicationsData);
+        
+      if (medsError) throw medsError;
+    }
+    
+    // Handle household members if present
+    if (formData.householdMembers && formData.householdMembers.length > 0) {
+      const householdData = formData.householdMembers.map((member: any) => ({
+        history_id: historyId,
+        name: member.name,
+        relationship_type: member.relationship,
+        personality: member.personality,
+        relationship_now: member.relationshipNow
+      }));
+      
+      const { error: householdError } = await supabase
+        .from('client_history_household')
+        .insert(householdData);
+        
+      if (householdError) throw householdError;
+    }
+    
+    // Handle family members if present and not same as household
+    if (!formData.isFamilySameAsHousehold && formData.familyMembers && formData.familyMembers.length > 0) {
+      const familyData = formData.familyMembers.map((member: any) => ({
+        history_id: historyId,
+        name: member.name,
+        relationship_type: member.relationship,
+        personality: member.personality,
+        relationship_growing: member.relationshipGrowing,
+        relationship_now: member.relationshipNow
+      }));
+      
+      const { error: familyError } = await supabase
+        .from('client_history_family')
+        .insert(familyData);
+        
+      if (familyError) throw familyError;
+    }
+    
+    // Handle previous mental health treatments if applicable
+    if (formData.previousTreatments && formData.previousTreatments.length > 0) {
+      const treatmentsData = formData.previousTreatments.map((treatment: any) => ({
+        history_id: historyId,
+        year: treatment.year,
+        provider: treatment.provider,
+        reason: treatment.reason,
+        length: treatment.length
+      }));
+      
+      const { error: treatmentsError } = await supabase
+        .from('client_history_treatments')
+        .insert(treatmentsData);
+        
+      if (treatmentsError) throw treatmentsError;
+    }
+    
+    return { success: true, historyId };
+  } catch (error) {
+    console.error('Error saving client history form:', error);
+    return { success: false, error };
+  }
+};
+
+// Function to submit an informed consent form
+export const submitInformedConsentForm = async (clientId: string, formData: any) => {
+  try {
+    // Store the signed consent document in the clinical_documents table
+    const { error } = await supabase
+      .from('clinical_documents')
+      .insert([{
+        client_id: clientId,
+        document_title: 'Informed Consent',
+        document_type: 'consent',
+        document_date: new Date().toISOString().split('T')[0],
+        file_path: formData.signaturePath || null // This would typically be a path to a stored PDF
+      }]);
+      
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error('Error submitting informed consent:', error);
     return { success: false, error };
   }
 };
