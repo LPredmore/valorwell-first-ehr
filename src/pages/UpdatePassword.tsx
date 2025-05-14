@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { debugAuthOperation } from "@/utils/authDebugUtils";
 
 const UpdatePassword = () => {
   const navigate = useNavigate();
@@ -16,46 +17,6 @@ const UpdatePassword = () => {
   const [sessionVerified, setSessionVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>({});
-
-  // Debug helper function
-  const debugAuthOperation = async (operation: string, fn: () => Promise<any>) => {
-    console.log(`[DEBUG][${operation}] Starting operation`);
-    const startTime = performance.now();
-    
-    try {
-      const result = await fn();
-      const duration = (performance.now() - startTime).toFixed(2);
-      console.log(`[DEBUG][${operation}] Completed in ${duration}ms with result:`, result);
-      
-      // Update debug info with successful result
-      setDebugInfo(prev => ({
-        ...prev,
-        [operation]: {
-          status: 'success',
-          duration: `${duration}ms`,
-          timestamp: new Date().toISOString()
-        }
-      }));
-      
-      return result;
-    } catch (error: any) {
-      const duration = (performance.now() - startTime).toFixed(2);
-      console.error(`[DEBUG][${operation}] Failed after ${duration}ms with error:`, error);
-      
-      // Update debug info with error details
-      setDebugInfo(prev => ({
-        ...prev,
-        [operation]: {
-          status: 'error',
-          duration: `${duration}ms`,
-          error: error.message,
-          timestamp: new Date().toISOString()
-        }
-      }));
-      
-      throw error;
-    }
-  };
 
   useEffect(() => {
     const checkSession = async () => {

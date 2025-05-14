@@ -16,6 +16,7 @@ import {
   FormLabel,
   FormMessage 
 } from "@/components/ui/form";
+import { debugAuthOperation } from "@/utils/authDebugUtils";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -38,33 +39,6 @@ const LoginForm = ({ onForgotPassword }: LoginFormProps) => {
       password: "",
     },
   });
-
-  // Function to help debug auth issues
-  const debugAuthOperation = async (operation: string, fn: () => Promise<any>) => {
-    console.log(`[DEBUG][${operation}] Starting operation`);
-    const startTime = performance.now();
-    
-    try {
-      const result = await fn();
-      const duration = (performance.now() - startTime).toFixed(2);
-      console.log(`[DEBUG][${operation}] Completed in ${duration}ms with result:`, result);
-      return result;
-    } catch (error: any) {
-      const duration = (performance.now() - startTime).toFixed(2);
-      console.error(`[DEBUG][${operation}] Failed after ${duration}ms with error:`, error);
-      
-      // Log specific error details based on error type
-      if (error?.status) {
-        console.error(`[DEBUG][${operation}] HTTP Status: ${error.status}`);
-      }
-      
-      if (error?.message) {
-        console.error(`[DEBUG][${operation}] Error message: ${error.message}`);
-      }
-      
-      throw error;
-    }
-  };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     console.log(`[LoginForm] Login attempt started for email: ${values.email}`);

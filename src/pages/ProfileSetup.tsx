@@ -325,7 +325,7 @@ const ProfileSetup = () => {
             const dateObj = new Date(dateString);
             return !isNaN(dateObj.getTime()) ? dateObj : null;
           };
-
+          
           const dob = parseDateString(clientRecord.client_date_of_birth);
           const calculatedClientAge = calculateAge(dob);
           
@@ -476,9 +476,11 @@ const ProfileSetup = () => {
         if (clientId) { 
             let step3Data: Partial<ClientFormData> = {};
             if (vaCoverage === "CHAMPVA") step3Data.client_champva = values.client_champva;
-            if (vaCoverage === "TRICARE") {  step3Data = { ...step3Data, client_tricare_beneficiary_category: values.client_tricare_beneficiary_category, client_tricare_sponsor_name: values.client_tricare_sponsor_name, client_tricare_sponsor_branch: values.client_tricare_sponsor_branch, client_tricare_sponsor_id: values.client_tricare_sponsor_id, client_tricare_plan: values.client_tricare_plan, client_tricare_region: values.client_tricare_region, client_tricare_policy_id: values.client_tricare_policy_id, client_tricare_has_referral: values.client_tricare_has_referral, client_tricare_referral_number: values.client_tricare_referral_number }; }
+            if (vaCoverage === "TRICARE") {  
+              step3Data = { ...step3Data, client_tricare_beneficiary_category: values.client_tricare_beneficiary_category, client_tricare_sponsor_name: values.client_tricare_sponsor_name, client_tricare_sponsor_branch: values.client_tricare_sponsor_branch, client_tricare_sponsor_id: values.client_tricare_sponsor_id, client_tricare_plan: values.client_tricare_plan, client_tricare_region: values.client_tricare_region, client_tricare_policy_id: values.client_tricare_policy_id, client_tricare_has_referral: values.client_tricare_has_referral, client_tricare_referral_number: values.client_tricare_referral_number }; 
+            }
             if (vaCoverage === "None - I am a veteran") { 
-              // Fix: Format the recentDischarge date if it exists
+              // Format the recentDischarge date if it exists
               const recentDischarge = values.client_recentdischarge ? 
                 format(values.client_recentdischarge, 'yyyy-MM-dd') : null;
                 

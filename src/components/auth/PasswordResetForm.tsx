@@ -18,6 +18,7 @@ import {
 import {
   DialogFooter
 } from "@/components/ui/dialog";
+import { debugAuthOperation } from "@/utils/authDebugUtils";
 
 const resetPasswordSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -37,23 +38,6 @@ const PasswordResetForm = ({ onCancel }: PasswordResetFormProps) => {
       email: "",
     },
   });
-
-  // Helper function for debugging auth operations
-  const debugAuthOperation = async (operation: string, fn: () => Promise<any>) => {
-    console.log(`[DEBUG][${operation}] Starting operation`);
-    const startTime = performance.now();
-    
-    try {
-      const result = await fn();
-      const duration = (performance.now() - startTime).toFixed(2);
-      console.log(`[DEBUG][${operation}] Completed in ${duration}ms with result:`, result);
-      return result;
-    } catch (error: any) {
-      const duration = (performance.now() - startTime).toFixed(2);
-      console.error(`[DEBUG][${operation}] Failed after ${duration}ms with error:`, error);
-      throw error;
-    }
-  };
 
   const handleResetPassword = async (values: z.infer<typeof resetPasswordSchema>) => {
     setResetError(null);

@@ -1,6 +1,6 @@
 
 /**
- * Utility functions for debugging authentication issues
+ * Comprehensive utilities for debugging authentication issues
  */
 
 /**
@@ -83,8 +83,32 @@ export const debugAuthOperation = async (operationName: string, fn: () => Promis
   }
 };
 
+/**
+ * Validates that the Supabase URL and redirect URL configurations are valid
+ */
+export const validateSupabaseUrls = () => {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const origin = window.location.origin;
+  
+  const issues = [];
+  
+  if (!supabaseUrl) {
+    issues.push('VITE_SUPABASE_URL environment variable is not set');
+  }
+  
+  console.log(`[AuthDebug] URL validation: Supabase URL: ${supabaseUrl}, App origin: ${origin}`);
+  
+  return {
+    supabaseUrl,
+    origin,
+    issues,
+    isValid: issues.length === 0
+  };
+};
+
 export default {
   logSupabaseConfig,
   logAuthContext,
-  debugAuthOperation
+  debugAuthOperation,
+  validateSupabaseUrls
 };
