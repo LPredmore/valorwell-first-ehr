@@ -29,6 +29,7 @@ type LoginFormProps = {
 const LoginForm = ({ onForgotPassword }: LoginFormProps) => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -38,19 +39,76 @@ const LoginForm = ({ onForgotPassword }: LoginFormProps) => {
     },
   });
 
+  // Function to help debug auth issues
+  const debugAuthOperation = async (operation: string, fn: () => Promise<any>) => {
+    console.log(`[DEBUG][${operation}] Starting operation`);
+    const startTime = performance.now();
+    
+    try {
+      const result = await fn();
+      const duration = (performance.now() - startTime).toFixed(2);
+      console.log(`[DEBUG][${operation}] Completed in ${duration}ms with result:`, result);
+      return result;
+    } catch (error: any) {
+      const duration = (performance.now() - startTime).toFixed(2);
+      console.error(`[DEBUG][${operation}] Failed after ${duration}ms with error:`, error);
+      
+      // Log specific error details based on error type
+      if (error?.status) {
+        console.error(`[DEBUG][${operation}] HTTP Status: ${error.status}`);
+      }
+      
+      if (error?.message) {
+        console.error(`[DEBUG][${operation}] Error message: ${error.message}`);
+      }
+      
+      throw error;
+    }
+  };
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    console.log("[LoginForm] Login attempt started for email:", values.email);
+    console.log(`[LoginForm] Login attempt started for email: ${values.email}`);
+    setLoginError(null);
+    
+    // Set a timeout to clear the loading state in case the operation hangs
+    const timeoutId = setTimeout(() => {
+      console.warn("[LoginForm] Login operation timed out after 15 seconds");
+      setIsLoading(false);
+      setLoginError("The login request timed out. Please try again.");
+      toast({
+        title: "Login timed out",
+        description: "The request took too long to complete. Please try again.",
+        variant: "destructive",
+      });
+    }, 15000);
+
     try {
       setIsLoading(true);
       console.log("[LoginForm] Calling supabase.auth.signInWithPassword");
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: values.email,
-        password: values.password,
-      });
+      
+      const { data, error } = await debugAuthOperation("signInWithPassword", () => 
+        supabase.auth.signInWithPassword({
+          email: values.email,
+          password: values.password,
+        })
+      );
+
+      // Clear the timeout since the operation completed
+      clearTimeout(timeoutId);
 
       if (error) {
-        console.error("[LoginForm] Authentication error:", error.message);
-        throw error;
+        console.error("[LoginForm] Authentication error:", error.message, error);
+        
+        // Provide more specific error messages based on the error
+        let errorMessage = "There was a problem signing in";
+        if (error.message?.includes("Invalid login")) {
+          errorMessage = "Invalid email or password";
+        } else if (error.message?.includes("Email not confirmed")) {
+          errorMessage = "Please verify your email before logging in";
+        }
+        
+        setLoginError(errorMessage);
+        throw new Error(errorMessage);
       }
 
       console.log("[LoginForm] Authentication successful, user:", data.user?.id);
@@ -66,6 +124,9 @@ const LoginForm = ({ onForgotPassword }: LoginFormProps) => {
       }, 500);
     } catch (error: any) {
       console.error("[LoginForm] Login error:", error);
+      // Clear the timeout if there's an error
+      clearTimeout(timeoutId);
+      
       toast({
         title: "Login failed",
         description: error.message || "There was a problem signing in",
@@ -106,6 +167,12 @@ const LoginForm = ({ onForgotPassword }: LoginFormProps) => {
             </FormItem>
           )}
         />
+        
+        {/* Display login error if present */}
+        {loginError && (
+          <p className="text-sm text-red-500">{loginError}</p>
+        )}
+        
         <div className="text-right">
           <button 
             type="button"

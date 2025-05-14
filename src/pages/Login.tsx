@@ -5,6 +5,7 @@ import { useUser } from "@/context/UserContext";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import LoginForm from "@/components/auth/LoginForm";
 import ForgotPasswordDialog from "@/components/auth/ForgotPasswordDialog";
+import { logSupabaseConfig, logAuthContext } from "@/utils/authDebugUtils";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -14,6 +15,10 @@ const Login = () => {
   // Check if user is already authenticated
   useEffect(() => {
     console.log("[Login] Checking auth state, userId:", userId, "authInitialized:", authInitialized);
+    
+    // Log detailed auth debugging information
+    logSupabaseConfig();
+    logAuthContext({ userId, authInitialized });
     
     if (authInitialized && userId) {
       console.log("[Login] User is already authenticated, redirecting to home");
