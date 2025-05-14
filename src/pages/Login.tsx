@@ -118,6 +118,7 @@ const Login = () => {
       
       if (resetError) {
         console.error("[Login] [PASSWORD RESET] Direct reset error:", resetError.message, resetError);
+        throw resetError;
       } else {
         console.log("[Login] [PASSWORD RESET] Direct reset response:", resetData);
       }

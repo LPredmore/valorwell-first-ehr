@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -52,6 +53,8 @@ const Signup = () => {
     setIsSubmitting(true);
     
     try {
+      console.log("[Signup] Starting client registration with values:", values);
+      
       // Generate a random password (will be reset later)
       const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
       
@@ -71,11 +74,17 @@ const Signup = () => {
         }
       });
       
-      if (authError) throw authError;
+      if (authError) {
+        console.error("[Signup] Auth error:", authError);
+        throw authError;
+      }
       
       if (!authData.user) {
+        console.error("[Signup] No user returned in auth data");
         throw new Error("Failed to create user account");
       }
+      
+      console.log("[Signup] User created successfully:", authData.user.id);
       
       toast({
         title: "Account created successfully",
@@ -86,7 +95,7 @@ const Signup = () => {
       navigate("/login");
       
     } catch (error: any) {
-      console.error("Signup error:", error);
+      console.error("[Signup] Error during registration:", error);
       
       toast({
         title: "Error creating account",
