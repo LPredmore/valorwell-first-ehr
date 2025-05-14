@@ -302,7 +302,7 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
     // Logic to generate time slots based on availability blocks
     const dayOfWeek = selectedDate.getDay(); // 0 for Sunday, 1 for Monday, etc.
     const availableBlocks = availabilityBlocks.filter(block => 
-      block.day_of_week === dayOfWeek || block.day_of_week === selectedDate.getDay().toString()
+      block.day_of_week === dayOfWeek
     );
     
     if (availableBlocks.length === 0) {
