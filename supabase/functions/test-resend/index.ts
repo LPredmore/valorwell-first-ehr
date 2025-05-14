@@ -38,15 +38,33 @@ serve(async (req: Request) => {
       );
     }
 
-    // Log the raw request body for debugging
-    const bodyText = await req.text();
-    console.log(`[test-resend] Raw request body: ${bodyText}`);
-    
-    // Parse request body
+    // Parse and validate request body
     let email: string;
+    let bodyText: string;
+    
     try {
+      bodyText = await req.text();
+      console.log(`[test-resend] Raw request body: ${bodyText}`);
+      
+      // Handle empty body case
+      if (!bodyText || bodyText.trim() === '') {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: "Request body is empty, email parameter is required",
+            receivedData: "(empty)" 
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          }
+        );
+      }
+      
+      // Try to parse as JSON
       const body = JSON.parse(bodyText);
       email = body.email;
+      
       console.log(`[test-resend] Parsed email from request: ${email}`);
     } catch (parseError) {
       console.error(`[test-resend] Failed to parse JSON: ${parseError.message}`);
@@ -63,6 +81,7 @@ serve(async (req: Request) => {
       );
     }
 
+    // Validate email
     if (!email || typeof email !== 'string' || !email.includes("@")) {
       console.error(`[test-resend] Invalid email provided: ${email}`);
       return new Response(
@@ -83,6 +102,7 @@ serve(async (req: Request) => {
     const resendKey = Deno.env.get("RESEND_API_KEY");
     console.log(`[test-resend] Resend API Key prefix: ${resendKey ? resendKey.substring(0, 5) + "..." : "not set"}`);
 
+    // Send the email
     const emailResponse = await resend.emails.send({
       from: "Password Reset <onboarding@resend.dev>",
       to: [email],

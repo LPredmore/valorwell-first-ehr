@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -24,11 +23,15 @@ const ResetPassword = () => {
     try {
       console.log("[ResetPassword] Testing email delivery with test-resend function");
       
+      // Get current access token if available
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data?.session?.access_token || '';
+      
       const response = await fetch(`https://gqlkritspnhjxfejvgfg.supabase.co/functions/v1/test-resend`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`
+          'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({ email })
       });

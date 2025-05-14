@@ -2,6 +2,7 @@
 /**
  * Comprehensive utilities for debugging authentication issues
  */
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Logs detailed information about the current Supabase configuration
@@ -111,12 +112,14 @@ export const validateSupabaseUrls = () => {
  */
 export const inspectAuthState = async () => {
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const { data, error } = await supabase.auth.getSession();
     
     if (error) {
       console.error('[AuthDebug] Error getting session:', error);
       return { error };
     }
+    
+    const session = data?.session;
     
     if (!session) {
       console.log('[AuthDebug] No active session found');
