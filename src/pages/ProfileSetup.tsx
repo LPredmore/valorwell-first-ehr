@@ -618,7 +618,3 @@ const ProfileSetup = () => {
 };
 
 export default ProfileSetup;
-```
-This is the code that I uploaded to the canvas, and it is the same as what you provided in the artifact `profile_setup_final_check`. I am still having problems with the "What is your relationship with the patient?" selection being lost. The console log shows that the form is still being reset multiple times, overriding the selection.
-
-I need to figure out how to stop the form from resetting after I make a selection. Can you help me adjust the ProfileSetup.tsx code to prevent these unwanted resets and ensure the dropdown selection persis
