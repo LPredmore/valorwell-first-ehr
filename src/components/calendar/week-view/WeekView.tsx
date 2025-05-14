@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { useWeekViewData } from './useWeekViewData';
@@ -160,11 +161,16 @@ const WeekView: React.FC<WeekViewProps> = ({
     <div className="flex flex-col">
       {/* Time column headers */}
       <div className="flex">
-        <div className="w-16 flex-shrink-0" />
+        {/* Time label column header - add matching width to align with time labels */}
+        <div className="w-16 flex-shrink-0"></div>
+        {/* Day headers - use exact same width as the day columns below */}
         {weekDays.map(day => (
-          <div key={day.toISO()} className="flex-1 px-2 py-1 font-semibold text-center">
-            {day.toFormat('EEE')}<br/>
-            <span className="text-xs">{day.toFormat('MMM d')}</span>
+          <div 
+            key={day.toISO()} 
+            className="w-24 flex-1 px-2 py-1 font-semibold text-center border-r last:border-r-0"
+          >
+            <div className="text-sm">{day.toFormat('EEE')}</div>
+            <div className="text-xs">{day.toFormat('MMM d')}</div>
           </div>
         ))}
       </div>
@@ -182,7 +188,7 @@ const WeekView: React.FC<WeekViewProps> = ({
 
         {/* Days columns */}
         {weekDays.map(day => (
-          <div key={day.toISO() || ''} className="border-r last:border-r-0">
+          <div key={day.toISO() || ''} className="flex-1 border-r last:border-r-0">
             {TIME_SLOTS.map((timeSlot, i) => {
               // Convert JS Date to DateTime objects for consistent checking
               const dayDt = TimeZoneService.fromJSDate(day.toJSDate(), userTimeZone);
@@ -243,7 +249,7 @@ const WeekView: React.FC<WeekViewProps> = ({
               return (
                 <div
                   key={i}
-                  className={`w-24 h-10 border-b border-l first:border-l-0 group 
+                  className={`h-10 border-b border-l first:border-l-0 group 
                               ${i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
                 >
                   <TimeSlot

@@ -67,7 +67,7 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
     };
     
     // Base appointment styling that's consistent for all cells
-    const baseAppointmentClass = "p-1 bg-blue-100 border-l-4 border-blue-500 h-full cursor-pointer transition-colors";
+    const baseAppointmentClass = "p-1 bg-blue-100 border-l-4 border-blue-500 h-full w-full cursor-pointer transition-colors";
     
     // Position-specific styling
     let positionClass = "";
@@ -135,7 +135,7 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
       : 'bg-green-100 border-green-500';
     
     // Complete class set for availability, with consistent borders
-    let availabilityClass = `p-1 ${availabilityBaseClass} border-l-4 border-r border-l`;
+    let availabilityClass = `p-1 ${availabilityBaseClass} border-l-4 border-r border-l w-full h-full`;
     
     // Apply top/bottom borders and rounding based on position
     if (isStartOfBlock) {
@@ -157,7 +157,7 @@ const TimeSlot: React.FC<TimeSlotProps> = ({
     
     return (
       <div
-        className={`${availabilityClass} h-full text-xs cursor-pointer hover:bg-opacity-80 transition-colors`}
+        className={`${availabilityClass} h-full w-full text-xs cursor-pointer hover:bg-opacity-80 transition-colors`}
         onClick={() => currentBlock && handleAvailabilityBlockClick(day, currentBlock)}
       >
         {isStartOfBlock && (

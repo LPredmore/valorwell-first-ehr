@@ -41,17 +41,19 @@ const WeekView: React.FC<WeekViewProps> = ({
   });
 
   return (
-    <WeekViewComponent
-      days={days}
-      selectedClinicianId={clinicianId}
-      userTimeZone={userTimeZone}
-      showAvailability={true}
-      refreshTrigger={refreshTrigger}
-      appointments={appointments}
-      onAppointmentClick={onAppointmentClick}
-      onAvailabilityClick={onAvailabilityClick}
-      currentDate={currentDate} // Pass currentDate to the implementation component
-    />
+    <div className="rounded-lg overflow-hidden border border-gray-200">
+      <WeekViewComponent
+        days={days}
+        selectedClinicianId={clinicianId}
+        userTimeZone={userTimeZone}
+        showAvailability={true}
+        refreshTrigger={refreshTrigger}
+        appointments={appointments}
+        onAppointmentClick={onAppointmentClick}
+        onAvailabilityClick={onAvailabilityClick}
+        currentDate={currentDate} // Pass currentDate to the implementation component
+      />
+    </div>
   );
 };
 
