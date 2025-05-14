@@ -10,6 +10,9 @@ interface SignupNotAVeteranProps {
 }
 
 const SignupNotAVeteran: React.FC<SignupNotAVeteranProps> = ({ form }) => {
+  // For debugging purposes
+  console.log("Veteran relationship field value:", form.watch("veteranRelationship"));
+  
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-medium">Family Member Information</h3>
@@ -30,6 +33,8 @@ const SignupNotAVeteran: React.FC<SignupNotAVeteranProps> = ({ form }) => {
           label="Are you a child or spouse of a veteran?"
           type="select"
           options={["Yes", "No"]}
+          required={true}
+          defaultValue=""
         />
 
         <FormField

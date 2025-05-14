@@ -15,6 +15,7 @@ interface FormFieldWrapperProps {
   labelMapper?: (value: string) => string;
   maxLength?: number;
   required?: boolean;
+  defaultValue?: string;
 }
 
 const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
@@ -27,7 +28,8 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
   valueMapper,
   labelMapper,
   maxLength,
-  required = false
+  required = false,
+  defaultValue
 }) => {
   return (
     <FormField
@@ -38,6 +40,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
         console.log(`Field ${name} value:`, field.value);
         
         const handleSelectChange = (selectedValue: string) => {
+          console.log(`Select changed for ${name}:`, selectedValue);
           // If a valueMapper is provided, map the selected option label to its actual value
           const valueToStore = valueMapper ? valueMapper(selectedValue) : selectedValue;
           field.onChange(valueToStore);
@@ -46,6 +49,13 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
         // If a labelMapper is provided and we have a value, map the value to a display label
         const displayValue = (labelMapper && field.value) ? labelMapper(field.value) : field.value;
         
+        // Ensure the field has a value when rendered
+        useEffect(() => {
+          if (defaultValue !== undefined && field.value === undefined) {
+            field.onChange(defaultValue);
+          }
+        }, [defaultValue, field]);
+
         return (
           <FormItem>
             <FormLabel>{label}{required && <span className="text-red-500 ml-1">*</span>}</FormLabel>
@@ -60,7 +70,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                   <SelectTrigger className={readOnly ? "bg-gray-100" : ""}>
                     <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white">
                     {options.map((option) => (
                       <SelectItem key={option} value={option}>
                         {option}
