@@ -19,6 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
 
 // Define form schema with validation
 const signupSchema = z.object({
@@ -32,9 +34,13 @@ const signupSchema = z.object({
 
 type SignupFormValues = z.infer<typeof signupSchema>;
 
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 1000; // 1 second
+
 const Signup = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Initialize form
   const form = useForm<SignupFormValues>({
@@ -51,6 +57,7 @@ const Signup = () => {
 
   const onSubmit = async (values: SignupFormValues) => {
     setIsSubmitting(true);
+    setError(null);
     
     try {
       console.log("[Signup] Starting client registration with values:", values);
@@ -58,48 +65,105 @@ const Signup = () => {
       // Generate a random password (will be reset later)
       const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
       
-      // Create auth user with client role directly in the metadata
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: values.email,
-        password: tempPassword,
-        options: {
-          data: {
-            first_name: values.firstName,
-            last_name: values.lastName,
-            phone: values.phone,
-            role: "client",
-            state: values.state,
-            temp_password: tempPassword
+      let attempt = 0;
+      let success = false;
+      let lastError = null;
+      
+      // Retry logic for authentication
+      while (!success && attempt < MAX_RETRIES) {
+        try {
+          if (attempt > 0) {
+            console.log(`[Signup] Retrying signup attempt ${attempt + 1}/${MAX_RETRIES + 1}...`);
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          }
+          
+          // Create auth user with client role directly in the metadata
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: values.email,
+            password: tempPassword,
+            options: {
+              data: {
+                first_name: values.firstName,
+                last_name: values.lastName,
+                phone: values.phone,
+                role: "client",
+                state: values.state,
+                temp_password: tempPassword
+              }
+            }
+          });
+          
+          if (authError) {
+            console.error(`[Signup] Auth error on attempt ${attempt + 1}:`, authError);
+            lastError = authError;
+            attempt++;
+            continue;
+          }
+          
+          if (!authData.user) {
+            console.error(`[Signup] No user returned in auth data on attempt ${attempt + 1}`);
+            lastError = new Error("Failed to create user account - no user returned");
+            attempt++;
+            continue;
+          }
+          
+          console.log("[Signup] User created successfully:", authData.user.id);
+          success = true;
+          
+          toast({
+            title: "Account created successfully",
+            description: "You can now log in to access your patient portal.",
+          });
+          
+          // Redirect to login page
+          navigate("/login");
+          
+        } catch (attemptError: any) {
+          console.error(`[Signup] Error during registration attempt ${attempt + 1}:`, attemptError);
+          lastError = attemptError;
+          attempt++;
+        }
+      }
+      
+      // If we get here and success is false, we've exhausted our retries
+      if (!success) {
+        let errorMessage = "There was a problem creating your account. Please try again later.";
+        
+        if (lastError && typeof lastError === 'object') {
+          if ('code' in lastError && lastError.code === '23505') {
+            errorMessage = "This email address is already in use. Please log in or use a different email.";
+          } else if ('message' in lastError) {
+            // Check for specific error messages and provide user-friendly alternatives
+            const errMsg = lastError.message.toString().toLowerCase();
+            if (errMsg.includes('email')) {
+              errorMessage = "There was a problem with your email address. Please verify it and try again.";
+            } else if (errMsg.includes('database')) {
+              errorMessage = "We're experiencing temporary database issues. Please try again in a few moments.";
+            }
           }
         }
-      });
-      
-      if (authError) {
-        console.error("[Signup] Auth error:", authError);
-        throw authError;
+        
+        setError(errorMessage);
+        console.error("[Signup] Registration failed after all retries. Last error:", lastError);
       }
-      
-      if (!authData.user) {
-        console.error("[Signup] No user returned in auth data");
-        throw new Error("Failed to create user account");
-      }
-      
-      console.log("[Signup] User created successfully:", authData.user.id);
-      
-      toast({
-        title: "Account created successfully",
-        description: "You can now log in to access your patient portal.",
-      });
-      
-      // Redirect to login page
-      navigate("/login");
       
     } catch (error: any) {
       console.error("[Signup] Error during registration:", error);
       
+      let errorMessage = "There was a problem creating your account. Please try again later.";
+      if (error.message) {
+        if (error.message.includes("duplicate key")) {
+          errorMessage = "This email address is already in use. Please log in or use a different email.";
+        } else if (error.message.includes("database") || error.message.includes("saving")) {
+          errorMessage = "We're experiencing temporary database issues. Please try again in a few moments.";
+        }
+      }
+      
+      setError(errorMessage);
+      
       toast({
         title: "Error creating account",
-        description: error.message || "There was a problem creating your account. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -128,6 +192,12 @@ const Signup = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -231,7 +301,12 @@ const Signup = () => {
               />
               
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Creating Account..." : "Create Account"}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Account...
+                  </>
+                ) : "Create Account"}
               </Button>
             </form>
           </Form>
