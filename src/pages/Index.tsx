@@ -5,13 +5,15 @@ import { useUser } from '@/context/UserContext';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { userRole, isLoading, authInitialized, clientStatus } = useUser();
+  const { userRole, isLoading, authInitialized, clientStatus, userId } = useUser();
 
   useEffect(() => {
+    console.log("[Index] Checking redirect conditions - userId:", userId, "authInitialized:", authInitialized, "isLoading:", isLoading);
     console.log("[Index] Index page mounted, isLoading:", isLoading, "userRole:", userRole, "authInitialized:", authInitialized, "clientStatus:", clientStatus);
     
     // Only make redirect decisions if the UserContext is fully initialized
-    if (authInitialized && !isLoading) {
+    if (authInitialized && !isLoading && userId) {
+      console.log("[Index] Conditions met for role-based navigation");
       console.log("[Index] User context fully initialized, determining redirect");
       
       // Track whether we've redirected to prevent multiple redirects
@@ -46,7 +48,7 @@ const Index = () => {
     } else {
       console.log("[Index] Waiting for user context to fully initialize before redirecting");
     }
-  }, [navigate, userRole, isLoading, authInitialized, clientStatus]);
+  }, [navigate, userRole, isLoading, authInitialized, clientStatus, userId]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

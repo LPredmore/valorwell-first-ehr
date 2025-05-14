@@ -30,10 +30,10 @@ const ResetPassword = () => {
       const response = await fetch(`https://gqlkritspnhjxfejvgfg.supabase.co/functions/v1/test-resend`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json', // Ensure this is set correctly
           'Authorization': `Bearer ${accessToken}`
         },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email: email.trim() }) // Ensure email is trimmed and properly formatted
       });
       
       const result = await response.json();
@@ -109,13 +109,24 @@ const ResetPassword = () => {
         }
       }));
       
-      // Test email delivery to see if Resend is working
-      const testResult = await testEmailDelivery(email);
-      setDebugInfo(prev => ({
-        ...prev,
-        testEmailResult: testResult
-      }));
-      
+      // Make test email optional - don't block the password reset if it fails
+      let testEmailFailed = false;
+      try {
+        const testResult = await testEmailDelivery(email);
+        setDebugInfo(prev => ({
+          ...prev,
+          testEmailResult: testResult
+        }));
+        
+        if (!testResult.success) {
+          console.warn("[ResetPassword] Test email failed but continuing with password reset");
+          testEmailFailed = true;
+        }
+      } catch (testError) {
+        console.error("[ResetPassword] Test email error, continuing anyway:", testError);
+        testEmailFailed = true;
+      }
+
       // Call Supabase Auth API directly with explicit redirect URL
       const { data, error } = await debugAuthOperation("resetPasswordForEmail", () =>
         supabase.auth.resetPasswordForEmail(email, {
@@ -193,8 +204,8 @@ const ResetPassword = () => {
     
     try {
       const result = await testEmailDelivery(email);
-      setDebugInfo(prev => ({ 
-        ...prev, 
+      setDebugInfo(prev => ({
+        ...prev,
         directTestResult: result,
         timestamp: new Date().toISOString()
       }));
@@ -221,6 +232,52 @@ const ResetPassword = () => {
     } finally {
       setIsLoading(false);
       setDebugInfo(prev => ({ ...prev, testingEmail: false }));
+    }
+  };
+  
+  const testEdgeFunction = async () => {
+    try {
+      setIsLoading(true);
+      setDebugInfo(prev => ({ ...prev, edgeFunctionTest: { status: 'testing' } }));
+      
+      const response = await fetch(`https://gqlkritspnhjxfejvgfg.supabase.co/functions/v1/test-resend`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const result = await response.json();
+      setDebugInfo(prev => ({
+        ...prev,
+        edgeFunctionTest: {
+          status: 'completed',
+          result: result,
+          timestamp: new Date().toISOString()
+        }
+      }));
+      
+      toast({
+        title: "Edge Function Test",
+        description: result.status === 'ok' ? "Edge function is operational" : "Edge function test failed",
+        variant: result.status === 'ok' ? "default" : "destructive"
+      });
+    } catch (error) {
+      setDebugInfo(prev => ({
+        ...prev,
+        edgeFunctionTest: {
+          status: 'error',
+          error: error,
+          timestamp: new Date().toISOString()
+        }
+      }));
+      toast({
+        title: "Edge Function Test Failed",
+        description: "Could not connect to the edge function",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -276,6 +333,21 @@ const ResetPassword = () => {
                   disabled={isLoading || !email}
                 >
                   Test Email Delivery
+                </Button>
+              </div>
+            )}
+            
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={testEdgeFunction}
+                  disabled={isLoading}
+                >
+                  Test Edge Function
                 </Button>
               </div>
             )}

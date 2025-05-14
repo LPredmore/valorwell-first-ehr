@@ -92,10 +92,8 @@ const LoginForm = ({ onForgotPassword }: LoginFormProps) => {
       });
       
       console.log("[LoginForm] Navigating to home page");
-      // Wait a short time to ensure auth state is updated before navigation
-      setTimeout(() => {
-        navigate("/");
-      }, 500);
+      // Navigate immediately without delay
+      navigate("/");
     } catch (error: any) {
       console.error("[LoginForm] Login error:", error);
       // Clear the timeout if there's an error

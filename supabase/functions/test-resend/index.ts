@@ -27,6 +27,10 @@ serve(async (req: Request) => {
   }
 
   try {
+    // Add improved debugging for request headers
+    console.log(`[test-resend] Request headers:`, Object.fromEntries([...req.headers.entries()]));
+    console.log(`[test-resend] Content-Type:`, req.headers.get('content-type'));
+    
     // For GET requests, return simple status
     if (req.method === "GET") {
       const resendKey = Deno.env.get("RESEND_API_KEY");
@@ -52,13 +56,33 @@ serve(async (req: Request) => {
       bodyText = await req.text();
       console.log(`[test-resend] Raw request body: ${bodyText}`);
       
-      // Handle empty body case
-      if (!bodyText || bodyText.trim() === '') {
+      // First try to parse as JSON
+      try {
+        const body = JSON.parse(bodyText);
+        email = body.email;
+        
+        // If email is missing in JSON, log this specific issue
+        if (!email) {
+          console.warn("[test-resend] Email field missing from JSON body:", body);
+        }
+      } catch (jsonError) {
+        // If JSON parsing fails, try to extract email from URL-encoded form data
+        if (bodyText.includes('email=')) {
+          const params = new URLSearchParams(bodyText);
+          email = params.get('email');
+          console.log(`[test-resend] Extracted email from form data: ${email}`);
+        } else {
+          throw new Error(`Invalid request format: ${jsonError.message}`);
+        }
+      }
+      
+      // If still no email, this is an error
+      if (!email) {
         return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: "Request body is empty, email parameter is required",
-            receivedData: "(empty)" 
+          JSON.stringify({
+            success: false,
+            error: "Email parameter is required",
+            receivedBody: bodyText.substring(0, 100) // Truncate for safety
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -67,18 +91,14 @@ serve(async (req: Request) => {
         );
       }
       
-      // Try to parse as JSON
-      const body = JSON.parse(bodyText);
-      email = body.email;
-      
       console.log(`[test-resend] Parsed email from request: ${email}`);
     } catch (parseError) {
-      console.error(`[test-resend] Failed to parse JSON: ${parseError.message}`);
+      console.error(`[test-resend] Failed to parse request: ${parseError.message}`);
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: "Invalid JSON in request body",
-          receivedData: bodyText
+        JSON.stringify({
+          success: false,
+          error: "Invalid request format: " + parseError.message,
+          receivedData: bodyText.substring(0, 100) // Truncate for safety
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -147,10 +147,23 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
         console.log(`[UserContext] Auth state changed: ${event}`, session ? `User: ${session.user.id}` : 'No session');
+        
+        // Add more detailed logging
+        if (event === 'SIGNED_IN') {
+          console.log('[UserContext] User signed in - setting up user data');
+        } else if (event === 'SIGNED_OUT') {
+          console.log('[UserContext] User signed out - clearing user data');
+        } else if (event === 'TOKEN_REFRESHED') {
+          console.log('[UserContext] Token refreshed - updating session');
+        }
+        
+        // Existing code to fetch user data
         await fetchUserData(session?.user || null);
+        
+        // Setting auth initialized flag
         if (!authInitialized && (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "SIGNED_OUT")) {
-            setAuthInitialized(true); // Mark auth as initialized after first relevant events
-            console.log("[UserContext] Auth initialized state set to true via listener.");
+          setAuthInitialized(true);
+          console.log("[UserContext] Auth initialized state set to true via listener.");
         }
       }
     );
