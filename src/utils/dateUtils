@@ -1,8 +1,5 @@
 import { differenceInYears, parseISO, isValid as isValidDateFns } from 'date-fns';
 
-// Define a type alias for the input parameter
-type DateOfBirthType = Date | string | null;
-
 /**
  * Calculates age in years from a date of birth.
  * Handles string (ISO or other parsable formats) or Date object inputs.
@@ -10,7 +7,7 @@ type DateOfBirthType = Date | string | null;
  * another date string parsable by `new Date()`, or null.
  * @returns number representing age in years, or null if input is invalid or not provided.
  */
-export function calculateAge(dateOfBirth: DateOfBirthType): number | null {
+export function calculateAge(dateOfBirth: Date | string | null): number | null {
   // If no dateOfBirth is provided (this will catch null), 
   // return null immediately.
   if (!dateOfBirth) {
@@ -40,11 +37,9 @@ export function calculateAge(dateOfBirth: DateOfBirthType): number | null {
     }
   } else {
     // If it's already a Date object, use it directly.
-    // This also handles the 'null' case if it somehow bypasses the initial !dateOfBirth check,
-    // though TypeScript should prevent assigning null to Date directly here unless dob was Date | null.
-    // Given dateOfBirth is DateOfBirthType (Date | string | null), if it's not a string, it must be Date or null.
+    // Given dateOfBirth is Date | string | null, if it's not a string, it must be Date or null.
     // The initial !dateOfBirth check handles null. So if it reaches here and is not a string, it should be a Date.
-    dob = dateOfBirth as Date; // Asserting as Date because null is handled.
+    dob = dateOfBirth as Date; // Asserting as Date because null is handled by the check above.
   }
 
   // Final validation: Check if the resulting 'dob' is a valid Date object.
