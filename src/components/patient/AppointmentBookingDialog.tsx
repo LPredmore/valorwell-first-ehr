@@ -36,6 +36,20 @@ interface AvailabilitySettings {
   max_days_ahead: number;
 }
 
+// Define interface for clinician availability data
+interface ClinicianAvailabilityData {
+  [key: string]: string | null;
+  clinician_time_granularity?: 'hour' | 'half_hour';
+}
+
+// Define interface for availability block
+interface AvailabilityBlock {
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  is_active: boolean;
+}
+
 // Helper function to convert UTC timestamp to local timezone
 const formatDateTime = (timestamp: string, timezone: string): string => {
   return DateTime.fromISO(timestamp, { zone: 'UTC' })
@@ -62,11 +76,11 @@ export interface AppointmentBookingDialogProps {
 }
 
 export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
-  open, // Changed from isOpen to open
-  onOpenChange, // Changed from onClose to onOpenChange
+  open, 
+  onOpenChange,
   clinicianId,
-  clinicianName, // Added to match MyPortal usage
-  clientId, // Added to use instead of userId if provided
+  clinicianName,
+  clientId,
   onAppointmentBooked,
   userTimeZone
 }) => {
@@ -79,7 +93,7 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
-  const [availabilityBlocks, setAvailabilityBlocks] = useState<any[]>([]);
+  const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
   const [existingAppointments, setExistingAppointments] = useState<any[]>([]);
   const [availabilitySettings, setAvailabilitySettings] = useState<AvailabilitySettings>({
     time_granularity: 'hour',
@@ -163,17 +177,10 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
       console.log(`[BookingDialog] Fetching availability for clinician ${clinicianId} on ${dayName} (day ${dayOfWeek})`);
       
       // Fetch clinician record to get availability data
-      const { data: clinicianData, error } = await supabase
+      // Using explicit select columns instead of template string for type safety
+      const { data, error } = await supabase
         .from('clinicians')
-        .select(`
-          clinician_availability_start_${dayName}_1,
-          clinician_availability_end_${dayName}_1,
-          clinician_availability_start_${dayName}_2,
-          clinician_availability_end_${dayName}_2,
-          clinician_availability_start_${dayName}_3,
-          clinician_availability_end_${dayName}_3,
-          clinician_time_granularity
-        `)
+        .select('*')
         .eq('id', clinicianId)
         .single();
       
@@ -184,15 +191,21 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
         return;
       }
       
+      // Convert the raw data to our expected format
+      const clinicianData = data as ClinicianAvailabilityData;
+      
       console.log(`[BookingDialog] Retrieved clinician availability data:`, clinicianData);
       
       // Transform the clinician data into availability blocks format
-      const blocks = [];
+      const blocks: AvailabilityBlock[] = [];
       
       // Check each availability slot and add if it exists
       for (let i = 1; i <= 3; i++) {
-        const startTime = clinicianData[`clinician_availability_start_${dayName}_${i}`];
-        const endTime = clinicianData[`clinician_availability_end_${dayName}_${i}`];
+        const startTimeKey = `clinician_availability_start_${dayName}_${i}`;
+        const endTimeKey = `clinician_availability_end_${dayName}_${i}`;
+        
+        const startTime = clinicianData[startTimeKey];
+        const endTime = clinicianData[endTimeKey];
         
         if (startTime && endTime) {
           blocks.push({
