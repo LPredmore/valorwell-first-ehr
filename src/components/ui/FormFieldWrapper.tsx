@@ -1,5 +1,4 @@
-
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,30 +30,55 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
   required = false,
   defaultValue
 }) => {
+  // Add local state to maintain selected value
+  const [localSelectedValue, setLocalSelectedValue] = useState<string | undefined>(defaultValue);
+  const initialized = useRef<boolean>(false);
+
   return (
     <FormField
       control={control}
       name={name}
       render={({ field }) => {
         // For debugging purposes
-        console.log(`Field ${name} value:`, field.value);
+        console.log(`FormFieldWrapper ${name} rendering with field value:`, field.value);
+        console.log(`FormFieldWrapper ${name} local selected value:`, localSelectedValue);
+        
+        // Initialize the field value when the component mounts or when defaultValue changes
+        useEffect(() => {
+          // Only apply defaultValue if field value is undefined and we have a defaultValue
+          if (defaultValue !== undefined && field.value === undefined) {
+            console.log(`FormFieldWrapper ${name} initializing with defaultValue:`, defaultValue);
+            field.onChange(defaultValue);
+            setLocalSelectedValue(defaultValue);
+            initialized.current = true;
+          }
+        }, [defaultValue, field, name]);
+
+        // Keep local state in sync with field value when field.value changes externally
+        useEffect(() => {
+          // Skip initial render if already initialized
+          if (field.value !== undefined && field.value !== localSelectedValue) {
+            console.log(`FormFieldWrapper ${name} external field value changed to:`, field.value);
+            setLocalSelectedValue(field.value);
+          }
+        }, [field.value, name]);
         
         const handleSelectChange = (selectedValue: string) => {
-          console.log(`Select changed for ${name}:`, selectedValue);
+          console.log(`FormFieldWrapper ${name} select changed to:`, selectedValue);
+          
           // If a valueMapper is provided, map the selected option label to its actual value
           const valueToStore = valueMapper ? valueMapper(selectedValue) : selectedValue;
+          
+          // Update both the form field and our local state
           field.onChange(valueToStore);
+          setLocalSelectedValue(selectedValue);
+          initialized.current = true;
         };
 
         // If a labelMapper is provided and we have a value, map the value to a display label
-        const displayValue = (labelMapper && field.value) ? labelMapper(field.value) : field.value;
-        
-        // Ensure the field has a value when rendered
-        useEffect(() => {
-          if (defaultValue !== undefined && field.value === undefined) {
-            field.onChange(defaultValue);
-          }
-        }, [defaultValue, field]);
+        const displayValue = (labelMapper && field.value) 
+          ? labelMapper(field.value) 
+          : field.value || localSelectedValue;
 
         return (
           <FormItem>
@@ -70,7 +94,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                   <SelectTrigger className={readOnly ? "bg-gray-100" : ""}>
                     <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
                   </SelectTrigger>
-                  <SelectContent className="bg-white">
+                  <SelectContent className="bg-white z-50">
                     {options.map((option) => (
                       <SelectItem key={option} value={option}>
                         {option}
