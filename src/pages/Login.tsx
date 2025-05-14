@@ -1,12 +1,10 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/context/UserContext";
-import { useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import LoginForm from "@/components/auth/LoginForm";
-import PasswordResetForm from "@/components/auth/PasswordResetForm";
+import ForgotPasswordDialog from "@/components/auth/ForgotPasswordDialog";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -61,17 +59,10 @@ const Login = () => {
       </Card>
 
       {/* Password Reset Dialog */}
-      <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Reset your password</DialogTitle>
-            <DialogDescription>
-              Enter your email address and we'll help you reset your password.
-            </DialogDescription>
-          </DialogHeader>
-          <PasswordResetForm onCancel={() => setIsResetDialogOpen(false)} />
-        </DialogContent>
-      </Dialog>
+      <ForgotPasswordDialog 
+        isOpen={isResetDialogOpen} 
+        onOpenChange={setIsResetDialogOpen} 
+      />
     </div>
   );
 };
