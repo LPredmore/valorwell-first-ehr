@@ -38,14 +38,47 @@ serve(async (req: Request) => {
       );
     }
 
-    // Parse request body for POST
-    const { email }: TestEmailRequest = await req.json();
+    // Log the raw request body for debugging
+    const bodyText = await req.text();
+    console.log(`[test-resend] Raw request body: ${bodyText}`);
+    
+    // Parse request body
+    let email: string;
+    try {
+      const body = JSON.parse(bodyText);
+      email = body.email;
+      console.log(`[test-resend] Parsed email from request: ${email}`);
+    } catch (parseError) {
+      console.error(`[test-resend] Failed to parse JSON: ${parseError.message}`);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Invalid JSON in request body",
+          receivedData: bodyText
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
+
+    if (!email || typeof email !== 'string' || !email.includes("@")) {
+      console.error(`[test-resend] Invalid email provided: ${email}`);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Valid email address is required",
+          receivedValue: email 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
 
     console.log(`[test-resend] Sending test email to: ${email}`);
-
-    if (!email || !email.includes("@")) {
-      throw new Error("Valid email address is required");
-    }
 
     const resendKey = Deno.env.get("RESEND_API_KEY");
     console.log(`[test-resend] Resend API Key prefix: ${resendKey ? resendKey.substring(0, 5) + "..." : "not set"}`);

@@ -106,9 +106,64 @@ export const validateSupabaseUrls = () => {
   };
 };
 
+/**
+ * Utility to inspect the current auth state directly
+ */
+export const inspectAuthState = async () => {
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error('[AuthDebug] Error getting session:', error);
+      return { error };
+    }
+    
+    if (!session) {
+      console.log('[AuthDebug] No active session found');
+      return { session: null };
+    }
+    
+    const tokenInfo = {
+      accessToken: {
+        length: session.access_token.length,
+        prefix: session.access_token.substring(0, 10) + '...',
+        expiresAt: new Date(session.expires_at * 1000).toISOString(),
+        expires_in: session.expires_in,
+      },
+      refreshToken: session.refresh_token ? {
+        length: session.refresh_token.length,
+        prefix: session.refresh_token.substring(0, 10) + '...',
+      } : 'None'
+    };
+    
+    console.log('[AuthDebug] Active session found:', tokenInfo);
+    
+    // Don't log the full user object to avoid exposing sensitive data
+    const userInfo = session.user ? {
+      id: session.user.id,
+      email: session.user.email,
+      role: session.user.role,
+      lastSignInAt: session.user.last_sign_in_at,
+      factors: session.user.factors ? 'Has MFA factors' : 'No MFA factors'
+    } : null;
+    
+    console.log('[AuthDebug] User info:', userInfo);
+    
+    return { 
+      session: tokenInfo,
+      user: userInfo,
+      originalSession: { ...session, access_token: '[REDACTED]', refresh_token: '[REDACTED]' }
+    };
+  } catch (error) {
+    console.error('[AuthDebug] Error inspecting auth state:', error);
+    return { error };
+  }
+};
+
 export default {
   logSupabaseConfig,
   logAuthContext,
   debugAuthOperation,
-  validateSupabaseUrls
+  validateSupabaseUrls,
+  inspectAuthState
 };

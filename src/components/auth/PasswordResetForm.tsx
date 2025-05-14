@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,6 +31,8 @@ type PasswordResetFormProps = {
 const PasswordResetForm = ({ onCancel }: PasswordResetFormProps) => {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<any>({});
+  const timeoutRef = useRef<number | null>(null);
 
   const resetForm = useForm<z.infer<typeof resetPasswordSchema>>({
     resolver: zodResolver(resetPasswordSchema),
@@ -39,39 +41,110 @@ const PasswordResetForm = ({ onCancel }: PasswordResetFormProps) => {
     },
   });
 
+  const testEmailDelivery = async (email: string) => {
+    try {
+      console.log("[PasswordResetForm] Testing email delivery with test-resend function");
+      
+      const response = await fetch(`https://gqlkritspnhjxfejvgfg.supabase.co/functions/v1/test-resend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`
+        },
+        body: JSON.stringify({ email })
+      });
+      
+      const result = await response.json();
+      console.log("[PasswordResetForm] Test email delivery result:", result);
+      
+      return result;
+    } catch (error) {
+      console.error("[PasswordResetForm] Test email delivery error:", error);
+      return { success: false, error: error };
+    }
+  };
+
   const handleResetPassword = async (values: z.infer<typeof resetPasswordSchema>) => {
     setResetError(null);
+    setDebugInfo({});
+    
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     
     // Set a timeout to clear the loading state in case the operation hangs
-    const timeoutId = setTimeout(() => {
-      console.warn("[PasswordResetForm] Reset password operation timed out after 15 seconds");
+    timeoutRef.current = window.setTimeout(() => {
+      console.warn("[PasswordResetForm] Reset password operation timed out after 30 seconds");
       setIsResettingPassword(false);
       setResetError("The request timed out. Please try again.");
+      setDebugInfo(prev => ({
+        ...prev,
+        timeout: {
+          timestamp: new Date().toISOString(),
+          message: "Operation timed out after 30 seconds"
+        }
+      }));
       toast({
         title: "Request timed out",
         description: "The password reset request took too long. Please try again.",
         variant: "destructive",
       });
-    }, 15000);
+    }, 30000) as unknown as number;
     
     try {
       setIsResettingPassword(true);
       console.log("[PasswordResetForm] Starting password reset flow for email:", values.email);
+      setDebugInfo(prev => ({
+        ...prev,
+        startReset: {
+          timestamp: new Date().toISOString(),
+          email: values.email
+        }
+      }));
       
       // Use the origin to build the proper redirect URL
       const siteUrl = window.location.origin;
       const redirectTo = `${siteUrl}/update-password`;
       
       console.log("[PasswordResetForm] Using redirect URL:", redirectTo);
+      setDebugInfo(prev => ({
+        ...prev,
+        redirectUrl: redirectTo
+      }));
       
-      const { error: resetError } = await debugAuthOperation("resetPasswordForEmail", () =>
+      // Test email delivery to see if Resend is working
+      const testResult = await testEmailDelivery(values.email);
+      setDebugInfo(prev => ({
+        ...prev,
+        testEmailResult: testResult
+      }));
+
+      // Call Supabase Auth API to reset password
+      console.log("[PasswordResetForm] Calling supabase.auth.resetPasswordForEmail");
+      const { data, error: resetError } = await debugAuthOperation("resetPasswordForEmail", () =>
         supabase.auth.resetPasswordForEmail(values.email, {
           redirectTo: redirectTo,
         })
       );
       
+      setDebugInfo(prev => ({
+        ...prev,
+        supabaseResponse: {
+          data,
+          error: resetError ? {
+            message: resetError.message,
+            status: resetError.status
+          } : null
+        }
+      }));
+      
       // Clear the timeout since the operation completed
-      clearTimeout(timeoutId);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       
       if (resetError) {
         console.error("[PasswordResetForm] Reset error:", resetError.message, resetError);
@@ -91,7 +164,10 @@ const PasswordResetForm = ({ onCancel }: PasswordResetFormProps) => {
     } catch (error: any) {
       console.error("[PasswordResetForm] Unexpected error:", error);
       // Clear the timeout if there's an error
-      clearTimeout(timeoutId);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       
       toast({
         title: "Password reset failed",
@@ -123,6 +199,18 @@ const PasswordResetForm = ({ onCancel }: PasswordResetFormProps) => {
         {/* Display reset error if present */}
         {resetError && (
           <p className="text-sm text-red-500">{resetError}</p>
+        )}
+        
+        {/* Debug info in development mode */}
+        {process.env.NODE_ENV === 'development' && Object.keys(debugInfo).length > 0 && (
+          <div className="mt-2 p-2 bg-gray-100 rounded text-xs">
+            <details>
+              <summary className="cursor-pointer font-medium">Debug Info</summary>
+              <pre className="mt-1 overflow-auto max-h-40">
+                {JSON.stringify(debugInfo, null, 2)}
+              </pre>
+            </details>
+          </div>
         )}
         
         <DialogFooter className="flex justify-between">
