@@ -13,7 +13,7 @@ import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { useToast } from '@/hooks/use-toast';
 import { timezoneOptions } from '@/utils/timezoneOptions';
 import { DateField } from '@/components/ui/DateField';
-import { format, parseISO, differenceInYears, isValid as isValidDateFns } from 'date-fns';
+import { format, parseISO, parse, differenceInYears, isValid as isValidDateFns } from 'date-fns';
 import SignupChampva from '@/components/signup/SignupChampva';
 import SignupTricare from '@/components/signup/SignupTricare';
 import SignupVaCcn from '@/components/signup/SignupVaCcn';
@@ -53,6 +53,39 @@ const calculateAge = (dateOfBirth: Date | string | null | undefined): number | n
 };
 // --- End of embedded calculateAge function ---
 
+/**
+ * Helper function to parse date strings into Date objects
+ * Consistently handles all date formats throughout the component
+ */
+const parseDateString = (dateString: string | null | undefined): Date | null => {
+  if (!dateString) return null;
+  
+  try {
+    // First try parsing as ISO format
+    const parsedIso = parseISO(dateString);
+    if (isValidDateFns(parsedIso)) {
+      console.log(`Successfully parsed date ${dateString} as ISO format:`, parsedIso);
+      return parsedIso;
+    }
+  } catch (e) {
+    console.error(`Error parsing ${dateString} as ISO:`, e);
+  }
+  
+  try {
+    // If ISO parsing fails, try as regular Date constructor
+    const dateObj = new Date(dateString);
+    if (!isNaN(dateObj.getTime())) {
+      console.log(`Successfully parsed date ${dateString} as Date constructor:`, dateObj);
+      return dateObj;
+    }
+  } catch (e) {
+    console.error(`Error parsing ${dateString} with Date constructor:`, e);
+  }
+  
+  console.warn(`Could not parse date string: ${dateString}`);
+  return null;
+};
+
 type ClientFormData = {
   client_first_name?: string;
   client_last_name?: string;
@@ -72,7 +105,7 @@ type ClientFormData = {
   client_champva_agreement?: boolean;
   client_mental_health_referral?: string;
   client_branchOS?: string;
-  client_recentdischarge?: Date | null;
+  client_recentdischarge?: Date | null; // Type is Date | null for form usage
   client_disabilityrating?: string;
   client_tricare_beneficiary_category?: string;
   client_tricare_sponsor_name?: string;
@@ -316,21 +349,18 @@ const ProfileSetup = () => {
 
         if (clientRecord) {
           setClientId(clientRecord.id);
-          const parseDateString = (dateString: string | null | undefined): Date | null => {
-            if (!dateString) return null;
-            try {
-              const parsed = parseISO(dateString);
-              if (!isNaN(parsed.getTime())) return parsed;
-            } catch (e) { /* ignore */ }
-            const dateObj = new Date(dateString);
-            return !isNaN(dateObj.getTime()) ? dateObj : null;
-          };
           
+          // Parse date strings to Date objects using our helper function
           const dob = parseDateString(clientRecord.client_date_of_birth);
           const calculatedClientAge = calculateAge(dob);
           
           // Fix for client_recentdischarge - parse it as a Date
           const recentDischarge = parseDateString(clientRecord.client_recentdischarge);
+          console.log("[ProfileSetup] Parsed recentDischarge:", recentDischarge, "from value:", clientRecord.client_recentdischarge);
+          
+          // Parse subscriber DOB dates
+          const subscriberDobPrimary = parseDateString(clientRecord.client_subscriber_dob_primary);
+          const subscriberDobSecondary = parseDateString(clientRecord.client_subscriber_dob_secondary);
 
           const formValues: ClientFormData = {
             client_first_name: clientRecord.client_first_name || '',
@@ -351,7 +381,7 @@ const ProfileSetup = () => {
             client_champva_agreement: clientRecord.client_champva_agreement || false,
             client_mental_health_referral: clientRecord.client_mental_health_referral || '',
             client_branchOS: clientRecord.client_branchOS || '',
-            client_recentdischarge: recentDischarge, // Fix: Use parsed date object instead of string
+            client_recentdischarge: recentDischarge, // Using our parsed date object
             client_disabilityrating: clientRecord.client_disabilityrating || '',
             client_tricare_beneficiary_category: clientRecord.client_tricare_beneficiary_category || '',
             client_tricare_sponsor_name: clientRecord.client_tricare_sponsor_name || '',
@@ -369,14 +399,14 @@ const ProfileSetup = () => {
             client_insurance_type_primary: clientRecord.client_insurance_type_primary || '',
             client_subscriber_name_primary: clientRecord.client_subscriber_name_primary || '',
             client_subscriber_relationship_primary: clientRecord.client_subscriber_relationship_primary || '',
-            client_subscriber_dob_primary: parseDateString(clientRecord.client_subscriber_dob_primary),
+            client_subscriber_dob_primary: subscriberDobPrimary,
             client_group_number_primary: clientRecord.client_group_number_primary || '',
             client_policy_number_primary: clientRecord.client_policy_number_primary || '',
             client_insurance_company_secondary: clientRecord.client_insurance_company_secondary || '',
             client_insurance_type_secondary: clientRecord.client_insurance_type_secondary || '',
             client_subscriber_name_secondary: clientRecord.client_subscriber_name_secondary || '',
             client_subscriber_relationship_secondary: clientRecord.client_subscriber_relationship_secondary || '',
-            client_subscriber_dob_secondary: parseDateString(clientRecord.client_subscriber_dob_secondary),
+            client_subscriber_dob_secondary: subscriberDobSecondary,
             client_group_number_secondary: clientRecord.client_group_number_secondary || '',
             client_policy_number_secondary: clientRecord.client_policy_number_secondary || '',
             hasMoreInsurance: clientRecord.hasMoreInsurance || '',
@@ -483,7 +513,7 @@ const ProfileSetup = () => {
               // Format the recentDischarge date if it exists
               const recentDischarge = values.client_recentdischarge ? 
                 format(values.client_recentdischarge, 'yyyy-MM-dd') : null;
-                
+              
               step3Data = { 
                 ...step3Data, 
                 client_branchOS: values.client_branchOS,

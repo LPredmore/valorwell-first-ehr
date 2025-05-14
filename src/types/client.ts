@@ -88,6 +88,19 @@ export interface ClientDetails {
   client_tricare_policy_id: string | null;
   client_tricare_has_referral: string | null;
   client_tricare_referral_number: string | null;
+  // Added field for recent discharge date explicitly as string to clarify type expectations
+  client_recentdischarge: string | null;
+  client_branchOS?: string | null;
+  client_disabilityrating?: string | null;
+  client_relationship?: string | null;
+  client_veteran_relationship?: string | null;
+  client_situation_explanation?: string | null;
+  client_mental_health_referral?: string | null;
+  client_other_insurance?: string | null;
+  client_champva_agreement?: boolean;
+  client_tricare_insurance_agreement?: boolean;
+  hasMoreInsurance?: string | null;
+  client_has_even_more_insurance?: string | null;
 }
 
 export interface Clinician {
