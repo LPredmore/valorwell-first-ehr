@@ -47,18 +47,25 @@ const TherapistSelection = () => {
   // Effect to set clientData from UserContext once available
   useEffect(() => {
     if (!isUserContextLoading && authUserId) {
+      // Add the requested debug logging
+      console.log('[TherapistSelection DEBUG] userClientProfile from UserContext:', JSON.stringify(userClientProfile, null, 2));
+      
       if (userClientProfile) {
+        console.log(`[TherapistSelection DEBUG] userClientProfile.client_age: ${userClientProfile.client_age} (Type: ${typeof userClientProfile.client_age})`);
+        console.log(`[TherapistSelection DEBUG] userClientProfile.client_state: ${userClientProfile.client_state} (Type: ${typeof userClientProfile.client_state})`);
+        
+        setClientData({
+          client_state: userClientProfile.client_state || null,
+          client_age: userClientProfile.client_age === undefined || userClientProfile.client_age === null ? null : Number(userClientProfile.client_age), // Ensure age is number or null
+        });
+        
         console.log('[TherapistSelection] Using clientProfile from UserContext:', JSON.stringify({
           client_state: userClientProfile.client_state,
           client_age: userClientProfile.client_age
         }, null, 2));
-        setClientData({
-          client_state: userClientProfile.client_state || null,
-          client_age: userClientProfile.client_age === undefined ? null : Number(userClientProfile.client_age), // Ensure age is number or null
-        });
       } else {
         // This case might indicate profile setup isn't complete or UserContext isn't fully synced
-        console.warn('[TherapistSelection] Client profile not available in UserContext. User might need to complete profile setup.');
+        console.warn('[TherapistSelection DEBUG] userClientProfile from UserContext is null/undefined.');
         toast({
             title: "Profile Incomplete",
             description: "Please complete your profile setup to select a therapist.",
@@ -111,7 +118,7 @@ const TherapistSelection = () => {
         setAllTherapists(fetchedTherapists); // Store all for potential fallback
 
         if (clientData && (clientData.client_state || clientData.client_age !== null)) {
-          console.log('[TherapistSelection] FILTERING - Using clientData:', JSON.stringify(clientData, null, 2));
+          console.log('[TherapistSelection DEBUG] Using this clientData FOR FILTERING:', JSON.stringify(clientData, null, 2));
           setFilteringApplied(true);
 
           const filtered = fetchedTherapists.filter(therapist => {
@@ -173,7 +180,7 @@ const TherapistSelection = () => {
           }
         } else {
           // No clientData for filtering or clientData has no state/age, so show all therapists
-          console.log("[TherapistSelection] No client data for filtering or no state/age provided, showing all active therapists.");
+          console.log("[TherapistSelection DEBUG] NOT filtering. clientData:", JSON.stringify(clientData, null, 2));
           setTherapists(fetchedTherapists);
           setFilteringApplied(false);
         }

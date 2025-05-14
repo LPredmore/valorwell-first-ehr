@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client'; // Adjust path as needed
 import { AuthChangeEvent, Session, User as SupabaseUser } from '@supabase/supabase-js';
@@ -13,6 +14,8 @@ export interface ClientProfile {
   client_phone?: string;
   client_status?: 'New' | 'Profile Complete' | 'Active' | 'Inactive' | string; // Add other statuses
   client_is_profile_complete?: boolean;
+  client_age?: number | null;
+  client_state?: string | null;
   // Add any other fields from your 'clients' table that you need in the context
   [key: string]: any; // Allow other properties
 }
@@ -83,11 +86,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setClientProfile(null);
           }
         } else if (clientData) {
-          console.log('[UserContext] Client data fetched:', clientData);
+          // Add the requested debug logging
+          console.log('[UserContext DEBUG] Raw clientData from DB:', JSON.stringify(clientData, null, 2));
+          console.log(`[UserContext DEBUG] client_age from DB: ${clientData.client_age} (Type: ${typeof clientData.client_age})`);
+          console.log(`[UserContext DEBUG] client_status from DB: ${clientData.client_status} (Type: ${typeof clientData.client_status})`);
+          
           setClientProfile(clientData as ClientProfile);
           setClientStatus(clientData.client_status || 'New'); // Fallback to 'New' if status is null/undefined
+          console.log('[UserContext] Set clientProfile with age:', clientData.client_age, 'and status:', clientData.client_status);
         } else {
-            console.log('[UserContext] No client data returned, but no error. User might be new.');
+            console.log('[UserContext DEBUG] No clientData found in DB for this user.');
             setClientStatus('New');
             setClientProfile(null);
         }
