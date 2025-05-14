@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -79,6 +78,7 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
           
           // If onValueCommit is provided, call it to save the value immediately
           if (onValueCommit) {
+            console.log(`FormFieldWrapper ${name} calling onValueCommit with:`, valueToStore);
             onValueCommit(name, valueToStore);
           }
         };
@@ -120,13 +120,11 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                   required={required}
                   onChange={(e) => {
                     field.onChange(e);
-                    // If onValueCommit is provided and we want to save on input change
-                    // uncomment this code (for now we're only saving select fields immediately)
-                    /* 
+                    // If onValueCommit is provided, call it to save the value immediately
                     if (onValueCommit) {
+                      console.log(`FormFieldWrapper ${name} input calling onValueCommit with:`, e.target.value);
                       onValueCommit(name, e.target.value);
                     }
-                    */
                   }}
                 />
               )}
