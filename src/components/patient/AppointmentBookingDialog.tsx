@@ -51,17 +51,24 @@ const isPastDate = (date: Date): boolean => {
 };
 
 export interface AppointmentBookingDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  clinicianId: string;
+  // Update props to match how the component is used in MyPortal.tsx
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  clinicianId: string | null;
+  clinicianName?: string | null;
+  clientId?: string | null; 
   onAppointmentBooked?: () => void;
+  userTimeZone?: string;
 }
 
 export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> = ({
-  isOpen,
-  onClose,
+  open, // Changed from isOpen to open
+  onOpenChange, // Changed from onClose to onOpenChange
   clinicianId,
-  onAppointmentBooked
+  clinicianName, // Added to match MyPortal usage
+  clientId, // Added to use instead of userId if provided
+  onAppointmentBooked,
+  userTimeZone
 }) => {
   // Tomorrow as default
   const tomorrow = useMemo(() => addDays(new Date(), 1), []);
@@ -92,26 +99,26 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
   const { userId, isLoading: userIsLoading, authInitialized } = useUser();
   
   // Get user's timezone
-  const userTimeZone = useMemo(() => {
+  const clientTimeZone = useMemo(() => {
     return TimeZoneService.ensureIANATimeZone(
-      getUserTimeZone() || TimeZoneService.DEFAULT_TIMEZONE
+      userTimeZone || getUserTimeZone() || TimeZoneService.DEFAULT_TIMEZONE
     );
-  }, []);
+  }, [userTimeZone]);
 
   // Calculate days difference between selected date and today
   const daysDiff = useMemo(() => {
-    if (!selectedDate || !userTimeZone) {
+    if (!selectedDate || !clientTimeZone) {
       console.log('[BookingDialog] daysDiff calculation: selectedDate or userTimeZone not available, returning 0.');
       return 0;
     }
 
-    const todayAtStartOfDay = DateTime.now().setZone(userTimeZone).startOf('day');
-    const selectedDateAtStartOfDay = DateTime.fromJSDate(selectedDate).setZone(userTimeZone).startOf('day');
+    const todayAtStartOfDay = DateTime.now().setZone(clientTimeZone).startOf('day');
+    const selectedDateAtStartOfDay = DateTime.fromJSDate(selectedDate).setZone(clientTimeZone).startOf('day');
     
     const diff = selectedDateAtStartOfDay.diff(todayAtStartOfDay, 'days').days;
     console.log(`[BookingDialog] Calculated daysDiff: ${diff} (Selected: ${selectedDateAtStartOfDay.toISODate()}, Today: ${todayAtStartOfDay.toISODate()})`);
     return diff;
-  }, [selectedDate, userTimeZone]);
+  }, [selectedDate, clientTimeZone]);
 
   // Fetch availability settings from Supabase Edge Function, memoized to prevent recreation
   const fetchAvailabilitySettings = useCallback(async () => {
@@ -173,19 +180,21 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
 
   // Fetch existing appointments for the selected date, memoized to prevent recreation
   const fetchExistingAppointments = useCallback(async () => {
-    if (!clinicianId || !selectedDate || !userId) return;
+    if (!clinicianId || !selectedDate || !(clientId || userId)) return;
+    
+    const effectiveUserId = clientId || userId;
     
     try {
-      console.log('Fetching appointments for client:', userId);
-      console.log('Using time zone:', userTimeZone);
+      console.log('Fetching appointments for client:', effectiveUserId);
+      console.log('Using time zone:', clientTimeZone);
       
       // Format date for querying
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
       const nextDateStr = format(addDays(selectedDate, 1), 'yyyy-MM-dd');
       
       // Get UTC timestamps for start and end of selected date
-      const startUtc = DateTime.fromISO(`${dateStr}T00:00:00`, { zone: userTimeZone }).toUTC().toISO();
-      const endUtc = DateTime.fromISO(`${nextDateStr}T00:00:00`, { zone: userTimeZone }).toUTC().toISO();
+      const startUtc = DateTime.fromISO(`${dateStr}T00:00:00`, { zone: clientTimeZone }).toUTC().toISO();
+      const endUtc = DateTime.fromISO(`${nextDateStr}T00:00:00`, { zone: clientTimeZone }).toUTC().toISO();
       
       const { data, error } = await supabase
         .from('appointments')
@@ -204,8 +213,8 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
       // Format appointments to include local time
       const formattedAppointments = data?.map(appointment => ({
         ...appointment,
-        localStart: formatDateTime(appointment.start_at, userTimeZone),
-        localEnd: formatDateTime(appointment.end_at, userTimeZone)
+        localStart: formatDateTime(appointment.start_at, clientTimeZone),
+        localEnd: formatDateTime(appointment.end_at, clientTimeZone)
       }));
       
       console.log('Formatted appointments:', formattedAppointments);
@@ -215,7 +224,7 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
       console.error('Error fetching appointments:', error);
       setApiErrors(prev => ({ ...prev, appointments: 'Failed to fetch appointments' }));
     }
-  }, [clinicianId, selectedDate, userId, userTimeZone]);
+  }, [clinicianId, selectedDate, userId, clientId, clientTimeZone]);
 
   // Generate time slots based on availability and existing appointments
   const generateTimeSlots = useCallback(() => {
@@ -262,7 +271,7 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
           
           // Check if slot overlaps with existing appointments
           const isSlotBooked = existingAppointments.some(appointment => {
-            const appointmentStart = DateTime.fromISO(appointment.start_at).setZone(userTimeZone);
+            const appointmentStart = DateTime.fromISO(appointment.start_at).setZone(clientTimeZone);
             const appointmentHour = appointmentStart.hour;
             const appointmentMinute = appointmentStart.minute;
             
@@ -281,10 +290,10 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
                 hour, 
                 minute 
               }, { 
-                zone: userTimeZone 
+                zone: clientTimeZone 
               }).toFormat('h:mm a'),
               available: true,
-              timezone: userTimeZone
+              timezone: clientTimeZone
             });
           }
         }
@@ -294,47 +303,47 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
     });
     
     setTimeSlots(slots);
-  }, [selectedDate, availabilityBlocks, existingAppointments, availabilitySettings, userTimeZone, daysDiff]);
+  }, [selectedDate, availabilityBlocks, existingAppointments, availabilitySettings, clientTimeZone, daysDiff]);
 
   // Fetch settings once when dialog opens
   useEffect(() => {
-    if (isOpen && clinicianId && !userIsLoading) {
+    if (open && clinicianId && !userIsLoading) {
       fetchAvailabilitySettings();
     }
-  }, [isOpen, clinicianId, fetchAvailabilitySettings, userIsLoading]);
+  }, [open, clinicianId, fetchAvailabilitySettings, userIsLoading]);
 
   // Fetch availability blocks when date changes
   useEffect(() => {
-    if (isOpen && selectedDate && clinicianId && !userIsLoading) {
+    if (open && selectedDate && clinicianId && !userIsLoading) {
       fetchAvailabilityBlocks();
     }
-  }, [isOpen, selectedDate, clinicianId, fetchAvailabilityBlocks, userIsLoading]);
+  }, [open, selectedDate, clinicianId, fetchAvailabilityBlocks, userIsLoading]);
 
   // Fetch existing appointments when date changes
   useEffect(() => {
-    if (isOpen && selectedDate && clinicianId && userId && !userIsLoading) {
+    if (open && selectedDate && clinicianId && (clientId || userId) && !userIsLoading) {
       fetchExistingAppointments();
     }
-  }, [isOpen, selectedDate, clinicianId, userId, fetchExistingAppointments, userIsLoading]);
+  }, [open, selectedDate, clinicianId, userId, clientId, fetchExistingAppointments, userIsLoading]);
 
   // Generate time slots when dependencies change
   useEffect(() => {
-    if (isOpen && selectedDate && !userIsLoading) {
+    if (open && selectedDate && !userIsLoading) {
       generateTimeSlots();
     }
-  }, [isOpen, selectedDate, availabilityBlocks, existingAppointments, generateTimeSlots, userIsLoading]);
+  }, [open, selectedDate, availabilityBlocks, existingAppointments, generateTimeSlots, userIsLoading]);
 
   // Reset state when dialog closes
   useEffect(() => {
-    if (!isOpen) {
+    if (!open) {
       setSelectedTimeSlot(null);
       setApiErrors({});
     }
-  }, [isOpen]);
+  }, [open]);
 
   // Handle booking appointment
   const handleBookAppointment = async () => {
-    if (!selectedDate || !selectedTimeSlot || !clinicianId || !userId) {
+    if (!selectedDate || !selectedTimeSlot || !clinicianId || !(clientId || userId)) {
       toast({
         title: "Missing Information",
         description: "Please select a date and time for your appointment.",
@@ -342,6 +351,9 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
       });
       return;
     }
+    
+    // Use clientId if provided, otherwise fall back to userId from context
+    const effectiveUserId = clientId || userId;
     
     setIsBooking(true);
     
@@ -358,7 +370,7 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
           hour,
           minute
         },
-        { zone: userTimeZone }
+        { zone: clientTimeZone }
       );
       
       // Convert to UTC
@@ -374,7 +386,7 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
         .from('appointments')
         .insert([
           {
-            client_id: userId,
+            client_id: effectiveUserId,
             clinician_id: clinicianId,
             start_at: utcStart,
             end_at: utcEnd,
@@ -397,7 +409,7 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
       }
       
       // Close dialog
-      onClose();
+      onOpenChange(false);
       
     } catch (error) {
       console.error('Error booking appointment:', error);
@@ -409,6 +421,11 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
     } finally {
       setIsBooking(false);
     }
+  };
+  
+  // Convenience function to handle dialog close
+  const handleClose = () => {
+    onOpenChange(false);
   };
   
   // Check if a date should be disabled in the calendar
@@ -434,7 +451,7 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
   }, [availabilitySettings]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Book an Appointment</DialogTitle>
@@ -529,7 +546,7 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
                     hour: parseInt(selectedTimeSlot.split(':')[0]), 
                     minute: parseInt(selectedTimeSlot.split(':')[1]) 
                   }, 
-                  { zone: userTimeZone }
+                  { zone: clientTimeZone }
                 ).toFormat('h:mm a')
               }
             </p>
@@ -554,7 +571,7 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
         )}
         
         <DialogFooter className="mt-6">
-          <Button variant="outline" onClick={onClose} disabled={isBooking}>
+          <Button variant="outline" onClick={handleClose} disabled={isBooking}>
             Cancel
           </Button>
           <Button 
@@ -569,5 +586,4 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
   );
 };
 
-// Add default export
 export default AppointmentBookingDialog;
