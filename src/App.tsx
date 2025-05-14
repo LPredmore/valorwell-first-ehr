@@ -30,6 +30,7 @@ import ClinicianDashboard from "./pages/ClinicianDashboard";
 import ResetPassword from "./pages/ResetPassword";
 import UpdatePassword from "./pages/UpdatePassword";
 import CalendarDebugPage from "./pages/CalendarDebugPage";
+import AuthDebugPage from "./pages/AuthDebugPage";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -149,6 +150,15 @@ function App() {
                     <CalendarDebugPage />
                   </ProtectedRoute>
                 } />
+                
+                <Route path="/debug/auth" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AuthDebugPage />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Make auth debug page accessible without login for troubleshooting */}
+                <Route path="/debug/auth-public" element={<AuthDebugPage />} />
                 
                 <Route path="*" element={<NotFound />} />
               </Routes>

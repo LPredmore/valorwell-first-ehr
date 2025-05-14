@@ -94,6 +94,11 @@ const ResetPassword = () => {
       
       console.log("[ResetPassword] Using redirect URL:", redirectTo);
       
+      // Verify the URL is properly formatted
+      if (!siteUrl || !siteUrl.startsWith('http')) {
+        throw new Error(`Invalid site URL: ${siteUrl}. Password reset may not work correctly.`);
+      }
+      
       // Save URL details for debugging
       setDebugInfo(prev => ({
         ...prev,
@@ -111,10 +116,11 @@ const ResetPassword = () => {
         testEmailResult: testResult
       }));
       
-      // Call Supabase Auth API directly
+      // Call Supabase Auth API directly with explicit redirect URL
       const { data, error } = await debugAuthOperation("resetPasswordForEmail", () =>
         supabase.auth.resetPasswordForEmail(email, {
           redirectTo: redirectTo,
+          captchaToken: undefined // Explicitly set to undefined to avoid issues
         })
       );
       
@@ -145,9 +151,18 @@ const ResetPassword = () => {
       setSuccessMessage("Password reset email sent successfully!");
       console.log("[ResetPassword] Password reset email sent successfully");
       
+      // Add more detailed success information
+      setDebugInfo(prev => ({
+        ...prev,
+        resetSuccess: {
+          timestamp: new Date().toISOString(),
+          redirectUrl: redirectTo
+        }
+      }));
+      
       toast({
         title: "Password reset email sent",
-        description: "Please check your email for the password reset link.",
+        description: "Please check your email for the password reset link. Be sure to click the complete link in the email.",
       });
     } catch (error: any) {
       console.error("[ResetPassword] Error details:", error);

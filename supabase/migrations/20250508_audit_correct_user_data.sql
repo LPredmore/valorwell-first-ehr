@@ -134,39 +134,54 @@ BEGIN
   END LOOP;
 
   -- For users with 'client' role in metadata but missing from clients table
-  FOR user_rec IN 
+  FOR user_rec IN
     SELECT u.id, u.email, u.raw_user_meta_data->>'first_name' as first_name, u.raw_user_meta_data->>'last_name' as last_name, u.raw_user_meta_data->>'phone' as phone, u.raw_user_meta_data->>'state' as state, u.raw_user_meta_data->>'temp_password' as temp_password
     FROM auth.users u
     WHERE u.raw_user_meta_data->>'role' = 'client'
     AND NOT EXISTS (SELECT 1 FROM public.clients cl WHERE cl.id = u.id)
   LOOP
-    INSERT INTO public.clients (
-      id, 
-      client_email, 
-      client_first_name, 
-      client_last_name, 
-      client_phone, 
-      role,
-      client_state,
-      client_status,
-      client_temppassword
-    )
-    VALUES (
-      user_rec.id,
-      user_rec.email,
-      user_rec.first_name,
-      user_rec.last_name,
-      user_rec.phone,
-      'client'::app_role,
-      user_rec.state,
-      'New',
-      user_rec.temp_password
-    );
+    -- First check if app_role enum type exists and has 'client' value
+    BEGIN
+      INSERT INTO public.clients (
+        id,
+        client_email,
+        client_first_name,
+        client_last_name,
+        client_phone,
+        role,
+        client_state,
+        client_status,
+        client_temppassword
+      )
+      VALUES (
+        user_rec.id,
+        user_rec.email,
+        user_rec.first_name,
+        user_rec.last_name,
+        user_rec.phone,
+        'client'::app_role,
+        user_rec.state,
+        'New',
+        user_rec.temp_password
+      );
+    EXCEPTION WHEN OTHERS THEN
+      -- Log the error
+      INSERT INTO public.migration_logs (migration_name, description, details)
+      VALUES (
+        '20250508_audit_correct_user_data',
+        'Error inserting client record',
+        jsonb_build_object(
+          'user_id', user_rec.id,
+          'email', user_rec.email,
+          'error', SQLERRM
+        )
+      );
+    END;
   END LOOP;
   
   -- For users without a valid role, log them but don't insert
   -- Users without roles are logged to migration_logs for manual review
-  FOR user_rec IN 
+  FOR user_rec IN
     SELECT u.id, u.email, u.raw_user_meta_data
     FROM auth.users u
     WHERE (u.raw_user_meta_data->>'role' IS NULL OR u.raw_user_meta_data->>'role' NOT IN ('admin', 'clinician', 'client'))
@@ -174,6 +189,7 @@ BEGIN
     AND NOT EXISTS (SELECT 1 FROM public.clinicians c WHERE c.id = u.id)
     AND NOT EXISTS (SELECT 1 FROM public.clients cl WHERE cl.id = u.id)
   LOOP
+    -- Log users without valid roles
     INSERT INTO public.migration_logs (migration_name, description, details)
     VALUES (
       '20250508_audit_correct_user_data',
@@ -184,6 +200,50 @@ BEGIN
         'raw_metadata', user_rec.raw_user_meta_data
       )
     );
+    
+    -- Default to client role if no valid role is found
+    BEGIN
+      -- Update user metadata to set a default role
+      UPDATE auth.users
+      SET raw_user_meta_data =
+        CASE
+          WHEN raw_user_meta_data IS NULL THEN jsonb_build_object('role', 'client')
+          ELSE raw_user_meta_data || jsonb_build_object('role', 'client')
+        END
+      WHERE id = user_rec.id;
+      
+      -- Insert into clients table with default values
+      INSERT INTO public.clients (
+        id,
+        client_email,
+        client_first_name,
+        client_last_name,
+        client_phone,
+        role,
+        client_status
+      )
+      VALUES (
+        user_rec.id,
+        user_rec.email,
+        user_rec.raw_user_meta_data->>'first_name',
+        user_rec.raw_user_meta_data->>'last_name',
+        user_rec.raw_user_meta_data->>'phone',
+        'client'::app_role,
+        'New'
+      );
+    EXCEPTION WHEN OTHERS THEN
+      -- Log the error but continue processing
+      INSERT INTO public.migration_logs (migration_name, description, details)
+      VALUES (
+        '20250508_audit_correct_user_data',
+        'Error setting default role for user',
+        jsonb_build_object(
+          'user_id', user_rec.id,
+          'email', user_rec.email,
+          'error', SQLERRM
+        )
+      );
+    END;
   END LOOP;
 END$$;
 

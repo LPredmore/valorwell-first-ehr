@@ -24,20 +24,27 @@ const UpdatePassword = () => {
         // Check if we have a hash parameter in the URL which indicates we're coming from a password reset email
         const hash = window.location.hash;
         console.log("[UpdatePassword] Checking URL hash:", hash);
-        const hashExists = hash.length > 0;
-        setHashPresent(hashExists);
+        
+        // Check specifically for the recovery token pattern
+        const hasResetToken = hash.includes('type=recovery') && hash.includes('access_token=');
+        setHashPresent(hasResetToken);
+        
+        // Log detailed hash information for debugging
+        setDebugInfo(prev => ({
+          ...prev,
+          hashCheck: {
+            status: hasResetToken ? 'success' : 'warning',
+            message: hasResetToken ? 'Valid reset token found' : 'No valid reset token found',
+            hash: hash,
+            hasType: hash.includes('type=recovery'),
+            hasToken: hash.includes('access_token='),
+            timestamp: new Date().toISOString()
+          }
+        }));
 
-        // If there's no hash, this might not be a valid password reset flow
-        if (!hashExists) {
-          console.log("[UpdatePassword] No hash found in URL, might not be a valid reset flow");
-          setDebugInfo(prev => ({
-            ...prev,
-            hashCheck: {
-              status: 'warning',
-              message: 'No hash found in URL',
-              timestamp: new Date().toISOString()
-            }
-          }));
+        // If there's no valid hash, this might not be a valid password reset flow
+        if (!hasResetToken) {
+          console.log("[UpdatePassword] No valid reset token found in URL, might not be a valid reset flow");
           return;
         }
 
@@ -100,10 +107,10 @@ const UpdatePassword = () => {
     }
 
     if (!hashPresent) {
-      setError("Missing password reset token");
+      setError("Missing or invalid password reset token");
       toast({
-        title: "Missing reset token",
-        description: "Please use the password reset link from your email.",
+        title: "Invalid reset link",
+        description: "Please use the complete password reset link from your email or request a new one.",
         variant: "destructive",
       });
       return;
@@ -188,10 +195,13 @@ const UpdatePassword = () => {
           {!hashPresent && (
             <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-md">
               <p className="text-sm font-medium">
-                No reset token found. You need to access this page from a password reset email.
+                No valid reset token found. You need to access this page using the complete link from your password reset email.
               </p>
-              <Button 
-                variant="link" 
+              <p className="text-xs mt-1">
+                The link may have expired or been used already. Make sure you're using the most recent email and clicking the complete link.
+              </p>
+              <Button
+                variant="link"
                 className="text-sm p-0 h-auto text-yellow-800 underline"
                 onClick={() => navigate("/reset-password")}
               >

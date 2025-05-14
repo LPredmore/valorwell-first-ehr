@@ -2,7 +2,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+// Get the Resend API key with error handling
+const resendApiKey = Deno.env.get("RESEND_API_KEY");
+if (!resendApiKey) {
+  console.error("[test-resend] RESEND_API_KEY environment variable is not set");
+}
+
+const resend = new Resend(resendApiKey);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -99,21 +105,55 @@ serve(async (req: Request) => {
 
     console.log(`[test-resend] Sending test email to: ${email}`);
 
-    const resendKey = Deno.env.get("RESEND_API_KEY");
-    console.log(`[test-resend] Resend API Key prefix: ${resendKey ? resendKey.substring(0, 5) + "..." : "not set"}`);
+    // Check if Resend API key is available
+    if (!resendApiKey) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "RESEND_API_KEY environment variable is not set",
+          message: "Email delivery is not configured properly. Please set the RESEND_API_KEY environment variable."
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
 
-    // Send the email
-    const emailResponse = await resend.emails.send({
-      from: "Password Reset <onboarding@resend.dev>",
-      to: [email],
-      subject: "Test Password Reset Email",
-      html: `
-        <h1>Test Password Reset Email</h1>
-        <p>This is a test email to verify that Resend is configured correctly with Supabase.</p>
-        <p>If you're receiving this email, it means that the Resend integration is working.</p>
-        <p>Timestamp: ${new Date().toISOString()}</p>
-      `,
-    });
+    console.log(`[test-resend] Resend API Key prefix: ${resendApiKey.substring(0, 5) + "..."}`);
+
+    // Send the email with better error handling
+    let emailResponse;
+    try {
+      emailResponse = await resend.emails.send({
+        from: "Valorwell EHR <noreply@valorwell.com>",
+        to: [email],
+        subject: "Test Password Reset Email",
+        html: `
+          <h1>Test Password Reset Email</h1>
+          <p>This is a test email to verify that Resend is configured correctly with Supabase.</p>
+          <p>If you're receiving this email, it means that the Resend integration is working.</p>
+          <p>Timestamp: ${new Date().toISOString()}</p>
+        `,
+      });
+    
+      if (!emailResponse || !emailResponse.id) {
+        throw new Error("Failed to send email: No response ID received");
+      }
+    } catch (emailError) {
+      console.error(`[test-resend] Email sending error:`, emailError);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: emailError.message,
+          details: "Failed to send email through Resend API"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
 
     console.log(`[test-resend] Email response:`, emailResponse);
 
