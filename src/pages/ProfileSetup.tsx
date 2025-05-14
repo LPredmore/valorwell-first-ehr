@@ -11,9 +11,9 @@ import Layout from '@/components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { useToast } from '@/hooks/use-toast';
-import { timezoneOptions } from '@/utils/timezoneOptions'; // Assuming this path is correct and file exists
+import { timezoneOptions } from '@/utils/timezoneOptions';
 import { DateField } from '@/components/ui/DateField';
-import { format, parseISO, differenceInYears, isValid as isValidDateFns } from 'date-fns'; // Import date-fns functions
+import { format, parseISO, differenceInYears, isValid as isValidDateFns } from 'date-fns';
 import SignupChampva from '@/components/signup/SignupChampva';
 import SignupTricare from '@/components/signup/SignupTricare';
 import SignupVaCcn from '@/components/signup/SignupVaCcn';
@@ -25,50 +25,31 @@ import SignupLast from '@/components/signup/SignupLast';
 import { useUser } from '@/context/UserContext';
 
 // --- calculateAge function embedded here ---
-/**
- * Calculates age in years from a date of birth.
- * Handles string (ISO or other parsable formats) or Date object inputs.
- * @param dateOfBirth - The date of birth, can be a Date object, an ISO string, 
- * another date string parsable by `new Date()`, or null/undefined.
- * @returns number representing age in years, or null if input is invalid or not provided.
- */
 const calculateAge = (dateOfBirth: Date | string | null | undefined): number | null => {
   if (!dateOfBirth) {
-    // console.warn("[calculateAge] dateOfBirth is null or undefined."); // Optional: keep for local debugging
     return null;
   }
-
   let dob: Date;
-
   if (typeof dateOfBirth === 'string') {
     try {
       const parsedIso = parseISO(dateOfBirth);
       if (isValidDateFns(parsedIso)) {
         dob = parsedIso;
       } else {
-        // console.warn(`[calculateAge] parseISO failed for string: "${dateOfBirth}". Falling back to 'new Date()'.`);
         dob = new Date(dateOfBirth);
       }
     } catch (e) {
-      // console.warn(`[calculateAge] Error during parseISO for string: "${dateOfBirth}".`, e);
       dob = new Date(dateOfBirth);
     }
   } else if (dateOfBirth instanceof Date) {
     dob = dateOfBirth;
   } else {
-    // console.warn("[calculateAge] dateOfBirth is of an unexpected type:", typeof dateOfBirth, dateOfBirth);
     return null;
   }
-
   if (!isValidDateFns(dob) || isNaN(dob.getTime())) {
-    // console.warn("[calculateAge] Invalid dateOfBirth provided or parsed, resulting in an invalid Date object:", dateOfBirth, "Parsed as:", dob);
     return null;
   }
-
-  const age = differenceInYears(new Date(), dob);
-  // const dobForLog = (dob instanceof Date && isValidDateFns(dob)) ? dob.toISOString() : 'Invalid Date';
-  // console.log(`[calculateAge] Calculated age: ${age} for DOB: ${dobForLog}`);
-  return age;
+  return differenceInYears(new Date(), dob);
 };
 // --- End of embedded calculateAge function ---
 
@@ -124,7 +105,6 @@ type ClientFormData = {
   client_self_goal?: string;
   client_referral_source?: string;
 };
-
 
 const profileStep1Schema = z.object({
   client_first_name: z.string().min(1, "First name is required"),
@@ -188,7 +168,6 @@ type ProfileFormValues = z.infer<typeof profileStep1Schema> &
     client_referral_source?: string;
   };
 
-
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -201,6 +180,14 @@ const ProfileSetup = () => {
   const [isFormLoading, setIsFormLoading] = useState(true);
   const initialDataLoadedForUser = useRef<string | null>(null);
 
+  // Log when the component mounts and unmounts
+  useEffect(() => {
+    console.log('[ProfileSetup] Component Mounted');
+    return () => {
+      console.log('[ProfileSetup] Component Will Unmount');
+    };
+  }, []);
+
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(
       currentStep === 1
@@ -210,7 +197,7 @@ const ProfileSetup = () => {
         : z.object({}) 
     ),
     mode: "onChange",
-    defaultValues: { /* ... your extensive default values, ensure client_age: null is here ... */
+    defaultValues: { /* ... your extensive default values ... */
         client_first_name: '', client_preferred_name: '', client_last_name: '',
         client_email: '', client_phone: '', client_relationship: '',
         client_date_of_birth: null, client_age: null, client_gender: '', client_gender_identity: '',
@@ -261,11 +248,17 @@ const ProfileSetup = () => {
         });
       } else {
         console.log(`[ProfileSetup] Successfully saved ${String(fieldName)} immediately.`);
+        // After an immediate save, especially for something like client_relationship
+        // that might affect their "New" status, refresh UserContext.
+        if (refreshUserData) {
+            console.log(`[ProfileSetup] Refreshing UserContext after immediate save of ${String(fieldName)}`);
+            await refreshUserData();
+        }
       }
     } catch (error) {
       console.error(`[ProfileSetup] Exception in handleImmediateSave for ${String(fieldName)}:`, error);
     }
-  }, [clientId, toast]);
+  }, [clientId, toast, refreshUserData]); // Added refreshUserData to dependencies
 
   useEffect(() => {
     const fetchAndSetInitialData = async () => {
@@ -337,7 +330,7 @@ const ProfileSetup = () => {
           };
 
           const dob = parseDateString(clientRecord.client_date_of_birth);
-          const calculatedClientAge = calculateAge(dob); // Use embedded calculateAge
+          const calculatedClientAge = calculateAge(dob);
 
           const formValues: ClientFormData = {
             client_first_name: clientRecord.client_first_name || '',
@@ -454,63 +447,63 @@ const ProfileSetup = () => {
   const handleNext = async () => { 
     const values = form.getValues();
     const vaCoverage = values.client_vacoverage;
-    const hasMoreInsuranceValue = form.getValues('hasMoreInsurance'); 
+    // const hasMoreInsuranceValue = form.getValues('hasMoreInsurance'); // Not used directly here
     
     let saveError = false;
+    let dataSaved = false;
 
     if (currentStep === 2) {
       const isStep2Valid = await form.trigger(["client_date_of_birth", "client_gender", "client_gender_identity", "client_state", "client_time_zone", "client_vacoverage"]);
       if (!isStep2Valid) { toast({ title: "Validation Error", description: "Please complete all fields in Step 2.", variant: "destructive" }); return; }
       if (clientId) {
         const dob = values.client_date_of_birth;
-        const age = calculateAge(dob); // Use embedded calculateAge
+        const age = calculateAge(dob); 
         console.log(`[ProfileSetup] Step 2 Save - Calculated age: ${age} for DOB: ${dob}`);
         const formattedDateOfBirth = dob ? format(dob, 'yyyy-MM-dd') : null;
         try {
           const { error } = await supabase.from('clients').update({
-              client_date_of_birth: formattedDateOfBirth,
-              client_age: age, // Save calculated age
-              client_gender: values.client_gender,
-              client_gender_identity: values.client_gender_identity,
-              client_state: values.client_state,
-              client_time_zone: values.client_time_zone,
+              client_date_of_birth: formattedDateOfBirth, client_age: age, 
+              client_gender: values.client_gender, client_gender_identity: values.client_gender_identity, 
+              client_state: values.client_state, client_time_zone: values.client_time_zone, 
               client_vacoverage: values.client_vacoverage
             }).eq('id', clientId);
           if (error) throw error;
           toast({ title: "Information saved", description: "Your demographic information has been updated." });
+          dataSaved = true;
         } catch (e: any) { saveError = true; console.error("[ProfileSetup] Error saving step 2 data:", e); toast({ title: "Error saving data", description: e.message, variant: "destructive" }); }
       } else { console.warn("[ProfileSetup] Step 2: ClientId not available, data not saved."); }
-      if (!saveError) { if (refreshUserData) await refreshUserData(); navigateToStep(3); }
+      if (!saveError) { if (dataSaved && refreshUserData) await refreshUserData(); navigateToStep(3); }
     } else if (currentStep === 3) {
         if (clientId) { 
             let step3Data: Partial<ClientFormData> = {};
             if (vaCoverage === "CHAMPVA") step3Data.client_champva = values.client_champva;
-            if (vaCoverage === "TRICARE") {  step3Data = { ...step3Data, client_tricare_beneficiary_category: values.client_tricare_beneficiary_category, client_tricare_sponsor_name: values.client_tricare_sponsor_name, client_tricare_sponsor_branch: values.client_tricare_sponsor_branch, client_tricare_sponsor_id: values.client_tricare_sponsor_id, client_tricare_plan: values.client_tricare_plan, client_tricare_region: values.client_tricare_region, client_tricare_policy_id: values.client_tricare_policy_id, client_tricare_has_referral: values.client_tricare_has_referral, client_tricare_referral_number: values.client_tricare_referral_number }; }
+            if (vaCoverage === "TRICARE") { step3Data = { ...step3Data, client_tricare_beneficiary_category: values.client_tricare_beneficiary_category, client_tricare_sponsor_name: values.client_tricare_sponsor_name, client_tricare_sponsor_branch: values.client_tricare_sponsor_branch, client_tricare_sponsor_id: values.client_tricare_sponsor_id, client_tricare_plan: values.client_tricare_plan, client_tricare_region: values.client_tricare_region, client_tricare_policy_id: values.client_tricare_policy_id, client_tricare_has_referral: values.client_tricare_has_referral, client_tricare_referral_number: values.client_tricare_referral_number }; }
             if (vaCoverage === "None - I am a veteran") { step3Data = { ...step3Data, client_branchOS: values.client_branchOS, client_recentdischarge: values.client_recentdischarge ? format(values.client_recentdischarge, 'yyyy-MM-dd') : null, client_disabilityrating: values.client_disabilityrating }; }
             if (vaCoverage === "None - I am not a veteran") { step3Data = { ...step3Data, client_veteran_relationship: values.client_veteran_relationship, client_situation_explanation: values.client_situation_explanation }; }
+
             if (Object.keys(step3Data).length > 0) {
-                try { const { error } = await supabase.from('clients').update(step3Data).eq('id', clientId); if (error) throw error; toast({ title: "Information Saved", description: "Insurance details updated."}); }
+                try { const { error } = await supabase.from('clients').update(step3Data).eq('id', clientId); if (error) throw error; toast({ title: "Information Saved", description: "Insurance details updated."}); dataSaved = true;}
                 catch(e: any) { saveError = true; console.error("[ProfileSetup] Error saving step 3 data:", e); toast({ title: "Save Error", description: `Could not save insurance details. ${e.message}`, variant: "destructive"});}
-            }
+            } else { dataSaved = true; /* No data to save for this path, but allow navigation */ }
         }
         if (!saveError) { 
-            if (refreshUserData) await refreshUserData();
+            if (dataSaved && refreshUserData) await refreshUserData();
             if (vaCoverage === "TRICARE" && otherInsurance === "No") navigateToStep(6);
             else if (otherInsurance === "Yes" && (vaCoverage === "TRICARE" || vaCoverage === "CHAMPVA")) navigateToStep(4);
             else navigateToStep(6);
         }
     } else if (currentStep === 4) {
         if (clientId) {
-            try { const formattedSubscriberDob = values.client_subscriber_dob_primary ? format(values.client_subscriber_dob_primary, 'yyyy-MM-dd') : null; const { error } = await supabase.from('clients').update({ client_insurance_company_primary: values.client_insurance_company_primary, client_insurance_type_primary: values.client_insurance_type_primary, client_subscriber_name_primary: values.client_subscriber_name_primary, client_subscriber_relationship_primary: values.client_subscriber_relationship_primary, client_subscriber_dob_primary: formattedSubscriberDob, client_group_number_primary: values.client_group_number_primary, client_policy_number_primary: values.client_policy_number_primary }).eq('id', clientId); if (error) throw error; toast({ title: "Information Saved", description: "Primary insurance details updated."});}
+            try { const formattedSubscriberDob = values.client_subscriber_dob_primary ? format(values.client_subscriber_dob_primary, 'yyyy-MM-dd') : null; const { error } = await supabase.from('clients').update({ client_insurance_company_primary: values.client_insurance_company_primary, client_insurance_type_primary: values.client_insurance_type_primary, client_subscriber_name_primary: values.client_subscriber_name_primary, client_subscriber_relationship_primary: values.client_subscriber_relationship_primary, client_subscriber_dob_primary: formattedSubscriberDob, client_group_number_primary: values.client_group_number_primary, client_policy_number_primary: values.client_policy_number_primary }).eq('id', clientId); if (error) throw error; toast({ title: "Information Saved", description: "Primary insurance details updated."}); dataSaved = true;}
             catch(e: any) { saveError = true; console.error("[ProfileSetup] Error saving step 4 data:", e); toast({ title: "Save Error", description: `Could not save primary insurance details. ${e.message}`, variant: "destructive"});}
         }
-        if (!saveError) { if (refreshUserData) await refreshUserData(); if (form.getValues('hasMoreInsurance') === "Yes") navigateToStep(5); else navigateToStep(6); }
+        if (!saveError) { if (dataSaved && refreshUserData) await refreshUserData(); if (form.getValues('hasMoreInsurance') === "Yes") navigateToStep(5); else navigateToStep(6); }
     } else if (currentStep === 5) {
         if (clientId) {
-            try { const formattedSubscriberDobSecondary = values.client_subscriber_dob_secondary ? format(values.client_subscriber_dob_secondary, 'yyyy-MM-dd') : null; const { error } = await supabase.from('clients').update({ client_insurance_company_secondary: values.client_insurance_company_secondary, client_insurance_type_secondary: values.client_insurance_type_secondary, client_subscriber_name_secondary: values.client_subscriber_name_secondary, client_subscriber_relationship_secondary: values.client_subscriber_relationship_secondary, client_subscriber_dob_secondary: formattedSubscriberDobSecondary, client_group_number_secondary: values.client_group_number_secondary, client_policy_number_secondary: values.client_policy_number_secondary }).eq('id', clientId); if (error) throw error; toast({ title: "Information Saved", description: "Secondary insurance details updated."});}
+            try { const formattedSubscriberDobSecondary = values.client_subscriber_dob_secondary ? format(values.client_subscriber_dob_secondary, 'yyyy-MM-dd') : null; const { error } = await supabase.from('clients').update({ client_insurance_company_secondary: values.client_insurance_company_secondary, client_insurance_type_secondary: values.client_insurance_type_secondary, client_subscriber_name_secondary: values.client_subscriber_name_secondary, client_subscriber_relationship_secondary: values.client_subscriber_relationship_secondary, client_subscriber_dob_secondary: formattedSubscriberDobSecondary, client_group_number_secondary: values.client_group_number_secondary, client_policy_number_secondary: values.client_policy_number_secondary }).eq('id', clientId); if (error) throw error; toast({ title: "Information Saved", description: "Secondary insurance details updated."}); dataSaved = true;}
             catch(e: any) { saveError = true; console.error("[ProfileSetup] Error saving step 5 data:", e); toast({ title: "Save Error", description: `Could not save secondary insurance details. ${e.message}`, variant: "destructive"});}
         }
-        if (!saveError) { if (refreshUserData) await refreshUserData(); navigateToStep(6); }
+        if (!saveError) { if (dataSaved && refreshUserData) await refreshUserData(); navigateToStep(6); }
     } else if (currentStep === 6) { handleSubmit(); }
   };
 
@@ -523,8 +516,10 @@ const ProfileSetup = () => {
           client_status: 'Profile Complete', client_is_profile_complete: true 
         }).eq('id', clientId);
       if (error) throw error; 
+      console.log("[ProfileSetup] Profile completed successfully in DB. Refreshing UserContext...");
       await refreshUserData(); 
       toast({ title: "Profile complete!", description: "Your information has been saved. Redirecting...", });
+      console.log("[ProfileSetup] Navigating to /therapist-selection");
       navigate('/therapist-selection');
     } catch (error: any) { console.error("[ProfileSetup] Error updating profile (final step) or refreshing context:", error); toast({ title: "Error updating profile", description: error.message || "An unexpected error occurred.", variant: "destructive" }); }
   };
@@ -541,6 +536,7 @@ const ProfileSetup = () => {
               control={form.control} name="client_relationship"
               label="What is your relationship with the patient?" type="select"
               options={["Self", "Parent/Guardian", "Spouse", "Child", "Other"]} required={true}
+              // onValueCommit={(value) => handleImmediateSave('client_relationship' as keyof ProfileFormValues, value)}
             />
         </div><div className="flex justify-center mt-8">
             {isFormLoading ? ( <Button type="button" size="lg" disabled className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2">Loading profile...</Button>
