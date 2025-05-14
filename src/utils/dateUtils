@@ -3,46 +3,46 @@ import { differenceInYears, parseISO, isValid as isValidDateFns } from 'date-fns
 /**
  * Calculates age in years from a date of birth.
  * Handles string (ISO or other parsable formats) or Date object inputs.
- * @param dateOfBirth - The date of birth as a Date object, an ISO string, 
+ * @param dateOfBirth - The date of birth, can be a Date object, an ISO string, 
  * another date string parsable by `new Date()`, or null.
  * @returns number representing age in years, or null if input is invalid or not provided.
  */
-export function calculateAge(dateOfBirth: Date | string | null): number | null {
-  // If no dateOfBirth is provided (this will catch null), 
+export function calculateAge(dateOfBirth: any): number | null {
+  // If no dateOfBirth is provided (this will catch null, undefined, empty string etc.), 
   // return null immediately.
   if (!dateOfBirth) {
-    console.warn("[calculateAge] dateOfBirth is null or undefined.");
+    console.warn("[calculateAge] dateOfBirth is null, undefined, or empty.");
     return null;
   }
 
   let dob: Date;
 
-  // If dateOfBirth is a string, attempt to parse it.
-  // Prioritize parseISO for ISO 8601 strings, then fallback to new Date().
+  // Check if dateOfBirth is a string and attempt to parse it.
   if (typeof dateOfBirth === 'string') {
     try {
       const parsedIso = parseISO(dateOfBirth);
-      // Check if parseISO resulted in a valid date using date-fns's isValid
       if (isValidDateFns(parsedIso)) {
         dob = parsedIso;
       } else {
-        // Fallback for non-ISO strings or if parseISO fails to produce a valid date
         console.warn(`[calculateAge] parseISO failed for string: "${dateOfBirth}". Falling back to 'new Date()'.`);
         dob = new Date(dateOfBirth);
       }
     } catch (e) {
-      // Catch any errors from parseISO (though it usually doesn't throw for invalid strings, just returns Invalid Date)
       console.warn(`[calculateAge] Error during parseISO for string: "${dateOfBirth}". Falling back to 'new Date()'.`, e);
       dob = new Date(dateOfBirth);
     }
-  } else {
+  } else if (dateOfBirth instanceof Date) {
     // If it's already a Date object, use it directly.
-    // Given dateOfBirth is Date | string | null, if it's not a string, it must be Date or null.
-    // The initial !dateOfBirth check handles null. So if it reaches here and is not a string, it should be a Date.
-    dob = dateOfBirth as Date; // Asserting as Date because null is handled by the check above.
+    dob = dateOfBirth;
+  } else {
+    // If it's neither a string nor a Date object (and not null/undefined due to the first check),
+    // it's an unexpected type.
+    console.warn("[calculateAge] dateOfBirth is of an unexpected type:", typeof dateOfBirth, dateOfBirth);
+    return null;
   }
 
   // Final validation: Check if the resulting 'dob' is a valid Date object.
+  // isNaN(dob.getTime()) is a reliable way to check for "Invalid Date".
   if (!isValidDateFns(dob) || isNaN(dob.getTime())) {
     console.warn("[calculateAge] Invalid dateOfBirth provided or parsed, resulting in an invalid Date object:", dateOfBirth, "Parsed as:", dob);
     return null;
