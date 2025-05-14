@@ -4,11 +4,12 @@ import { differenceInYears, parseISO, isValid as isValidDateFns } from 'date-fns
  * Calculates age in years from a date of birth.
  * Handles string (ISO or other parsable formats) or Date object inputs.
  * @param dateOfBirth - The date of birth as a Date object, an ISO string, 
- * another date string parsable by `new Date()`, null, or undefined.
+ * another date string parsable by `new Date()`, or null.
  * @returns number representing age in years, or null if input is invalid or not provided.
  */
-export function calculateAge(dateOfBirth: Date | string | null | undefined): number | null {
-  // If no dateOfBirth is provided, return null immediately.
+export function calculateAge(dateOfBirth: Date | string | null): number | null {
+  // If no dateOfBirth is provided (this will catch null, and also undefined if it were still allowed by type), 
+  // return null immediately.
   if (!dateOfBirth) {
     console.warn("[calculateAge] dateOfBirth is null or undefined.");
     return null;
