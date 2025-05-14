@@ -4,10 +4,10 @@ import { differenceInYears, parseISO, isValid as isValidDateFns } from 'date-fns
  * Calculates age in years from a date of birth.
  * Handles string (ISO or other parsable formats) or Date object inputs.
  * @param dateOfBirth - The date of birth, can be a Date object, an ISO string, 
- * another date string parsable by `new Date()`, or null.
+ * another date string parsable by `new Date()`, or null/undefined.
  * @returns number representing age in years, or null if input is invalid or not provided.
  */
-export function calculateAge(dateOfBirth: any): number | null {
+export const calculateAge = (dateOfBirth: any): number | null => {
   // If no dateOfBirth is provided (this will catch null, undefined, empty string etc.), 
   // return null immediately.
   if (!dateOfBirth) {
@@ -21,13 +21,16 @@ export function calculateAge(dateOfBirth: any): number | null {
   if (typeof dateOfBirth === 'string') {
     try {
       const parsedIso = parseISO(dateOfBirth);
+      // Check if parseISO resulted in a valid date using date-fns's isValid
       if (isValidDateFns(parsedIso)) {
         dob = parsedIso;
       } else {
+        // Fallback for non-ISO strings or if parseISO fails to produce a valid date
         console.warn(`[calculateAge] parseISO failed for string: "${dateOfBirth}". Falling back to 'new Date()'.`);
         dob = new Date(dateOfBirth);
       }
     } catch (e) {
+      // Catch any errors from parseISO (though it usually doesn't throw for invalid strings, just returns Invalid Date)
       console.warn(`[calculateAge] Error during parseISO for string: "${dateOfBirth}". Falling back to 'new Date()'.`, e);
       dob = new Date(dateOfBirth);
     }
@@ -50,6 +53,8 @@ export function calculateAge(dateOfBirth: any): number | null {
 
   // Calculate the difference in years from today.
   const age = differenceInYears(new Date(), dob);
-  console.log(`[calculateAge] Calculated age: ${age} for DOB: ${dob.toISOString()}`);
+  // It's helpful to log the ISO string of the DOB for consistent debugging format
+  const dobForLog = (dob instanceof Date && isValidDateFns(dob)) ? dob.toISOString() : 'Invalid Date';
+  console.log(`[calculateAge] Calculated age: ${age} for DOB: ${dobForLog}`);
   return age;
-}
+};
