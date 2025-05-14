@@ -11,9 +11,9 @@ import Layout from '@/components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper';
 import { useToast } from '@/hooks/use-toast';
-import { timezoneOptions } from '@/utils/timezoneOptions';
+import { timezoneOptions } from '@/utils/timezoneOptions'; // Assuming this path is correct and file exists
 import { DateField } from '@/components/ui/DateField';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInYears, isValid as isValidDateFns } from 'date-fns'; // Import date-fns functions
 import SignupChampva from '@/components/signup/SignupChampva';
 import SignupTricare from '@/components/signup/SignupTricare';
 import SignupVaCcn from '@/components/signup/SignupVaCcn';
@@ -23,9 +23,55 @@ import AdditionalInsurance from '@/components/signup/AdditionalInsurance';
 import MoreAdditionalInsurance from '@/components/signup/MoreAdditionalInsurance';
 import SignupLast from '@/components/signup/SignupLast';
 import { useUser } from '@/context/UserContext';
-import { calculateAge } from '@/utils/dateUtils';
 
-// Define a more specific type for what fetchUser returns / form.reset expects
+// --- calculateAge function embedded here ---
+/**
+ * Calculates age in years from a date of birth.
+ * Handles string (ISO or other parsable formats) or Date object inputs.
+ * @param dateOfBirth - The date of birth, can be a Date object, an ISO string, 
+ * another date string parsable by `new Date()`, or null/undefined.
+ * @returns number representing age in years, or null if input is invalid or not provided.
+ */
+const calculateAge = (dateOfBirth: Date | string | null | undefined): number | null => {
+  if (!dateOfBirth) {
+    // console.warn("[calculateAge] dateOfBirth is null or undefined."); // Optional: keep for local debugging
+    return null;
+  }
+
+  let dob: Date;
+
+  if (typeof dateOfBirth === 'string') {
+    try {
+      const parsedIso = parseISO(dateOfBirth);
+      if (isValidDateFns(parsedIso)) {
+        dob = parsedIso;
+      } else {
+        // console.warn(`[calculateAge] parseISO failed for string: "${dateOfBirth}". Falling back to 'new Date()'.`);
+        dob = new Date(dateOfBirth);
+      }
+    } catch (e) {
+      // console.warn(`[calculateAge] Error during parseISO for string: "${dateOfBirth}".`, e);
+      dob = new Date(dateOfBirth);
+    }
+  } else if (dateOfBirth instanceof Date) {
+    dob = dateOfBirth;
+  } else {
+    // console.warn("[calculateAge] dateOfBirth is of an unexpected type:", typeof dateOfBirth, dateOfBirth);
+    return null;
+  }
+
+  if (!isValidDateFns(dob) || isNaN(dob.getTime())) {
+    // console.warn("[calculateAge] Invalid dateOfBirth provided or parsed, resulting in an invalid Date object:", dateOfBirth, "Parsed as:", dob);
+    return null;
+  }
+
+  const age = differenceInYears(new Date(), dob);
+  // const dobForLog = (dob instanceof Date && isValidDateFns(dob)) ? dob.toISOString() : 'Invalid Date';
+  // console.log(`[calculateAge] Calculated age: ${age} for DOB: ${dobForLog}`);
+  return age;
+};
+// --- End of embedded calculateAge function ---
+
 type ClientFormData = {
   client_first_name?: string;
   client_last_name?: string;
@@ -164,7 +210,7 @@ const ProfileSetup = () => {
         : z.object({}) 
     ),
     mode: "onChange",
-    defaultValues: { /* ... your extensive default values ... */
+    defaultValues: { /* ... your extensive default values, ensure client_age: null is here ... */
         client_first_name: '', client_preferred_name: '', client_last_name: '',
         client_email: '', client_phone: '', client_relationship: '',
         client_date_of_birth: null, client_age: null, client_gender: '', client_gender_identity: '',
@@ -222,16 +268,6 @@ const ProfileSetup = () => {
   }, [clientId, toast]);
 
   useEffect(() => {
-    // This function fetches initial data and resets the form.
-    // The `initialDataLoadedForUser.current === userId` check is crucial
-    // to prevent this from running again for the same user if the component
-    // re-renders but doesn't unmount.
-    // IF THIS LOGIC STILL RUNS MULTIPLE TIMES FOR THE SAME USER (without logout/login):
-    // IT STRONGLY INDICATES THAT THE <ProfileSetup /> COMPONENT ITSELF IS UNMOUNTING AND REMOUNTING.
-    // Check parent components for:
-    // 1. Conditional rendering that might briefly hide ProfileSetup (e.g., based on isUserContextLoading).
-    // 2. A changing `key` prop on <ProfileSetup />.
-    // 3. Routing logic that navigates away and back quickly.
     const fetchAndSetInitialData = async () => {
       if (isUserContextLoading || !userId) {
         console.log('[ProfileSetup] Initial data fetch: User context still loading or no userId. Waiting.');
@@ -254,7 +290,7 @@ const ProfileSetup = () => {
             console.error("[ProfileSetup] Error fetching client data by ID:", clientError);
             toast({ title: "Profile Error", description: `Could not load your profile data. ${clientError.message}`, variant: "destructive" });
             setIsFormLoading(false);
-            initialDataLoadedForUser.current = userId; // Mark attempt even on error to prevent loops if userId is stable
+            initialDataLoadedForUser.current = userId;
             return;
         }
         
@@ -269,18 +305,7 @@ const ProfileSetup = () => {
           } else if (emailDataArray && emailDataArray.length > 0) {
             clientRecord = emailDataArray[0];
             console.log("[ProfileSetup] Found client by email:", clientRecord);
-            if (clientRecord.id !== userId) {
-                console.warn(`[ProfileSetup] Client ID mismatch: Auth ID is ${userId}, record found by email has ID ${clientRecord.id}. Prioritizing auth ID.`);
-                // Potentially update logic here if needed, e.g., link accounts or prefer one.
-                // For now, if clientRecord.id from email search is different, it implies a potential data issue
-                // or a different client record. We should ideally use the record matching userId if it exists,
-                // or be very careful about which record to use/update.
-                // Re-fetching by userId if an email match was found but ID differs might be safer
-                // or ensuring the client creation logic correctly uses userId.
-                // For this iteration, if clientRecord.id is not userId, we might still want to create a new one linked to userId.
-                // Let's assume for now if clientRecord.id !== userId, we treat it as no direct record found for authUser.
-                if(clientRecord.id !== userId) clientRecord = undefined; 
-            }
+            if(clientRecord.id !== userId) clientRecord = undefined; 
           }
         }
 
@@ -292,7 +317,7 @@ const ProfileSetup = () => {
             console.error("[ProfileSetup] Error creating new client record:", insertError);
             toast({ title: "Profile Error", description: `Failed to create your profile. ${insertError.message}`, variant: "destructive" });
             setIsFormLoading(false);
-            initialDataLoadedForUser.current = userId; // Mark attempt
+            initialDataLoadedForUser.current = userId; 
             return;
           }
           clientRecord = newClientArray?.[0];
@@ -300,7 +325,7 @@ const ProfileSetup = () => {
         }
 
         if (clientRecord) {
-          setClientId(clientRecord.id); // Set the actual client ID from DB
+          setClientId(clientRecord.id);
           const parseDateString = (dateString: string | null | undefined): Date | null => {
             if (!dateString) return null;
             try {
@@ -312,7 +337,7 @@ const ProfileSetup = () => {
           };
 
           const dob = parseDateString(clientRecord.client_date_of_birth);
-          const calculatedClientAge = calculateAge(dob);
+          const calculatedClientAge = calculateAge(dob); // Use embedded calculateAge
 
           const formValues: ClientFormData = {
             client_first_name: clientRecord.client_first_name || '',
@@ -372,9 +397,6 @@ const ProfileSetup = () => {
           console.warn("[ProfileSetup] No client data could be fetched or created. Form will use defaults.");
           form.reset({ client_email: userEmail || '', ...form.formState.defaultValues } as ProfileFormValues);
         }
-        // Mark that data loading and form reset has been attempted for this user.
-        // This is key to prevent re-running on subsequent renders if dependencies haven't changed in a way
-        // that signifies a *new* user or a need to *re-fetch from scratch*.
         initialDataLoadedForUser.current = userId; 
       } catch (error: any) {
         console.error("[ProfileSetup] Exception in fetchAndSetInitialData:", error);
@@ -383,19 +405,20 @@ const ProfileSetup = () => {
           description: error.message || "An unexpected error occurred loading your profile.",
           variant: "destructive"
         });
-        initialDataLoadedForUser.current = userId; // Mark attempt even on error
+        initialDataLoadedForUser.current = userId; 
       } finally {
         setIsFormLoading(false);
       }
     };
     fetchAndSetInitialData();
-  }, [userId, isUserContextLoading, form.reset, toast, user?.email]); // user?.email is included as it's used for fallbacks/creation
+  }, [userId, isUserContextLoading, form.reset, toast, user?.email]);
 
-  const navigateToStep = (nextStep: number) => { /* ... as before ... */ 
+  const navigateToStep = (nextStep: number) => { 
     setNavigationHistory(prev => [...prev, nextStep]);
     setCurrentStep(nextStep);
   };
-  const handleConfirmIdentity = async () => { /* ... as before ... */ 
+
+  const handleConfirmIdentity = async () => { 
     const isValid = await form.trigger(["client_first_name", "client_last_name", "client_preferred_name", "client_email", "client_phone", "client_relationship"]);
     if (!isValid) { toast({ title: "Validation Error", description: "Please ensure all required fields in Step 1 are filled correctly.", variant: "destructive" }); return; }
     if (!clientId) { toast({ title: "Error", description: "No client record found. Please contact support.", variant: "destructive" }); return; }
@@ -408,11 +431,12 @@ const ProfileSetup = () => {
       }).eq('id', clientId);
       if (error) throw error;
       toast({ title: "Personal information saved", description: "Your identity details have been updated." });
-      if (refreshUserData) await refreshUserData(); // Refresh context
+      if (refreshUserData) await refreshUserData(); 
       navigateToStep(2);
     } catch (error: any) { console.error("[ProfileSetup] Error saving identity data:", error); toast({ title: "Error saving data", description: error.message, variant: "destructive" }); }
   };
-  const handleGoBack = () => { /* ... as before ... */ 
+
+  const handleGoBack = () => { 
      if (navigationHistory.length > 1) {
       const newHistory = [...navigationHistory];
       newHistory.pop();
@@ -421,11 +445,13 @@ const ProfileSetup = () => {
       setCurrentStep(previousStep);
     }
   };
-  const handleOtherInsuranceChange = (value: string) => { /* ... as before ... */ 
+
+  const handleOtherInsuranceChange = (value: string) => { 
     setOtherInsurance(value);
     form.setValue('hasMoreInsurance', value); 
   };
-  const handleNext = async () => { /* ... as before, with saves for each step and refreshUserData calls ... */ 
+
+  const handleNext = async () => { 
     const values = form.getValues();
     const vaCoverage = values.client_vacoverage;
     const hasMoreInsuranceValue = form.getValues('hasMoreInsurance'); 
@@ -437,13 +463,18 @@ const ProfileSetup = () => {
       if (!isStep2Valid) { toast({ title: "Validation Error", description: "Please complete all fields in Step 2.", variant: "destructive" }); return; }
       if (clientId) {
         const dob = values.client_date_of_birth;
-        const age = calculateAge(dob);
+        const age = calculateAge(dob); // Use embedded calculateAge
+        console.log(`[ProfileSetup] Step 2 Save - Calculated age: ${age} for DOB: ${dob}`);
         const formattedDateOfBirth = dob ? format(dob, 'yyyy-MM-dd') : null;
         try {
           const { error } = await supabase.from('clients').update({
-              client_date_of_birth: formattedDateOfBirth, client_age: age, client_gender: values.client_gender,
-              client_gender_identity: values.client_gender_identity, client_state: values.client_state,
-              client_time_zone: values.client_time_zone, client_vacoverage: values.client_vacoverage
+              client_date_of_birth: formattedDateOfBirth,
+              client_age: age, // Save calculated age
+              client_gender: values.client_gender,
+              client_gender_identity: values.client_gender_identity,
+              client_state: values.client_state,
+              client_time_zone: values.client_time_zone,
+              client_vacoverage: values.client_vacoverage
             }).eq('id', clientId);
           if (error) throw error;
           toast({ title: "Information saved", description: "Your demographic information has been updated." });
@@ -451,11 +482,12 @@ const ProfileSetup = () => {
       } else { console.warn("[ProfileSetup] Step 2: ClientId not available, data not saved."); }
       if (!saveError) { if (refreshUserData) await refreshUserData(); navigateToStep(3); }
     } else if (currentStep === 3) {
-        if (clientId) { /* ... save logic for step 3 ... */ 
+        if (clientId) { 
             let step3Data: Partial<ClientFormData> = {};
-            // Populate step3Data based on vaCoverage
             if (vaCoverage === "CHAMPVA") step3Data.client_champva = values.client_champva;
-            // Add other vaCoverage conditions and data population
+            if (vaCoverage === "TRICARE") {  step3Data = { ...step3Data, client_tricare_beneficiary_category: values.client_tricare_beneficiary_category, client_tricare_sponsor_name: values.client_tricare_sponsor_name, client_tricare_sponsor_branch: values.client_tricare_sponsor_branch, client_tricare_sponsor_id: values.client_tricare_sponsor_id, client_tricare_plan: values.client_tricare_plan, client_tricare_region: values.client_tricare_region, client_tricare_policy_id: values.client_tricare_policy_id, client_tricare_has_referral: values.client_tricare_has_referral, client_tricare_referral_number: values.client_tricare_referral_number }; }
+            if (vaCoverage === "None - I am a veteran") { step3Data = { ...step3Data, client_branchOS: values.client_branchOS, client_recentdischarge: values.client_recentdischarge ? format(values.client_recentdischarge, 'yyyy-MM-dd') : null, client_disabilityrating: values.client_disabilityrating }; }
+            if (vaCoverage === "None - I am not a veteran") { step3Data = { ...step3Data, client_veteran_relationship: values.client_veteran_relationship, client_situation_explanation: values.client_situation_explanation }; }
             if (Object.keys(step3Data).length > 0) {
                 try { const { error } = await supabase.from('clients').update(step3Data).eq('id', clientId); if (error) throw error; toast({ title: "Information Saved", description: "Insurance details updated."}); }
                 catch(e: any) { saveError = true; console.error("[ProfileSetup] Error saving step 3 data:", e); toast({ title: "Save Error", description: `Could not save insurance details. ${e.message}`, variant: "destructive"});}
@@ -467,21 +499,22 @@ const ProfileSetup = () => {
             else if (otherInsurance === "Yes" && (vaCoverage === "TRICARE" || vaCoverage === "CHAMPVA")) navigateToStep(4);
             else navigateToStep(6);
         }
-    } else if (currentStep === 4) { /* ... save logic for step 4 ... */ 
+    } else if (currentStep === 4) {
         if (clientId) {
-             try { const formattedSubscriberDob = values.client_subscriber_dob_primary ? format(values.client_subscriber_dob_primary, 'yyyy-MM-dd') : null; const { error } = await supabase.from('clients').update({ /* primary insurance fields */ client_subscriber_dob_primary: formattedSubscriberDob, }).eq('id', clientId); if (error) throw error; toast({ title: "Information Saved", description: "Primary insurance details updated."});}
+            try { const formattedSubscriberDob = values.client_subscriber_dob_primary ? format(values.client_subscriber_dob_primary, 'yyyy-MM-dd') : null; const { error } = await supabase.from('clients').update({ client_insurance_company_primary: values.client_insurance_company_primary, client_insurance_type_primary: values.client_insurance_type_primary, client_subscriber_name_primary: values.client_subscriber_name_primary, client_subscriber_relationship_primary: values.client_subscriber_relationship_primary, client_subscriber_dob_primary: formattedSubscriberDob, client_group_number_primary: values.client_group_number_primary, client_policy_number_primary: values.client_policy_number_primary }).eq('id', clientId); if (error) throw error; toast({ title: "Information Saved", description: "Primary insurance details updated."});}
             catch(e: any) { saveError = true; console.error("[ProfileSetup] Error saving step 4 data:", e); toast({ title: "Save Error", description: `Could not save primary insurance details. ${e.message}`, variant: "destructive"});}
         }
         if (!saveError) { if (refreshUserData) await refreshUserData(); if (form.getValues('hasMoreInsurance') === "Yes") navigateToStep(5); else navigateToStep(6); }
-    } else if (currentStep === 5) { /* ... save logic for step 5 ... */ 
+    } else if (currentStep === 5) {
         if (clientId) {
-            try { const formattedSubscriberDobSecondary = values.client_subscriber_dob_secondary ? format(values.client_subscriber_dob_secondary, 'yyyy-MM-dd') : null; const { error } = await supabase.from('clients').update({ /* secondary insurance fields */ client_subscriber_dob_secondary: formattedSubscriberDobSecondary, }).eq('id', clientId); if (error) throw error; toast({ title: "Information Saved", description: "Secondary insurance details updated."});}
+            try { const formattedSubscriberDobSecondary = values.client_subscriber_dob_secondary ? format(values.client_subscriber_dob_secondary, 'yyyy-MM-dd') : null; const { error } = await supabase.from('clients').update({ client_insurance_company_secondary: values.client_insurance_company_secondary, client_insurance_type_secondary: values.client_insurance_type_secondary, client_subscriber_name_secondary: values.client_subscriber_name_secondary, client_subscriber_relationship_secondary: values.client_subscriber_relationship_secondary, client_subscriber_dob_secondary: formattedSubscriberDobSecondary, client_group_number_secondary: values.client_group_number_secondary, client_policy_number_secondary: values.client_policy_number_secondary }).eq('id', clientId); if (error) throw error; toast({ title: "Information Saved", description: "Secondary insurance details updated."});}
             catch(e: any) { saveError = true; console.error("[ProfileSetup] Error saving step 5 data:", e); toast({ title: "Save Error", description: `Could not save secondary insurance details. ${e.message}`, variant: "destructive"});}
         }
         if (!saveError) { if (refreshUserData) await refreshUserData(); navigateToStep(6); }
     } else if (currentStep === 6) { handleSubmit(); }
   };
-  const handleSubmit = async () => { /* ... as before, with refreshUserData call ... */ 
+
+  const handleSubmit = async () => { 
     const values = form.getValues(); 
     if (!clientId) { toast({ title: "Error", description: "No client record found. Please contact support.", variant: "destructive" }); return; }
     try {
@@ -496,7 +529,7 @@ const ProfileSetup = () => {
     } catch (error: any) { console.error("[ProfileSetup] Error updating profile (final step) or refreshing context:", error); toast({ title: "Error updating profile", description: error.message || "An unexpected error occurred.", variant: "destructive" }); }
   };
 
-  const renderStepOne = () => { /* ... as before ... */ 
+  const renderStepOne = () => { 
     const { formState } = form; const isStep1Valid = formState.isValid; 
     return ( <Form {...form}><div className="space-y-6"><div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormFieldWrapper control={form.control} name="client_first_name" label="First Name" required={true} />
@@ -504,25 +537,29 @@ const ProfileSetup = () => {
             <FormFieldWrapper control={form.control} name="client_preferred_name" label="Preferred Name (optional)" />
             <FormFieldWrapper control={form.control} name="client_email" label="Email" type="email" readOnly={true} required={true} />
             <FormFieldWrapper control={form.control} name="client_phone" label="Phone" type="tel" required={true} />
-            <FormFieldWrapper control={form.control} name="client_relationship" label="What is your relationship with the patient?" type="select" options={["Self", "Parent/Guardian", "Spouse", "Child", "Other"]} required={true} />
+            <FormFieldWrapper
+              control={form.control} name="client_relationship"
+              label="What is your relationship with the patient?" type="select"
+              options={["Self", "Parent/Guardian", "Spouse", "Child", "Other"]} required={true}
+            />
         </div><div className="flex justify-center mt-8">
             {isFormLoading ? ( <Button type="button" size="lg" disabled className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2">Loading profile...</Button>
             ) : ( <Button type="button" size="lg" onClick={handleConfirmIdentity} disabled={!isStep1Valid} className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"> <Check className="h-5 w-5" /> I confirm that this is me </Button> )}
         </div></div></Form>
     );
   };
-  const renderStepTwo = () => { /* ... as before ... */ 
+  const renderStepTwo = () => { 
     const { formState } = form; const isStep2Valid = formState.isValid; 
     return ( <Form {...form}><div className="space-y-6"><div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <DateField control={form.control} name="client_date_of_birth" label="Date of Birth" required={true}/>
             <FormFieldWrapper control={form.control} name="client_gender" label="Birth Gender" type="select" options={["Male", "Female", "Prefer not to say"]} required={true}/>
             <FormFieldWrapper control={form.control} name="client_gender_identity" label="Gender Identity" type="select" options={["Male", "Female", "Non-binary", "Transgender", "Prefer not to say", "Other"]} required={true}/>
-            <FormFieldWrapper control={form.control} name="client_state" label="State of Primary Residence" type="select" options={["Alabama", "Alaska", /* ... states ... */ "Wyoming"]} required={true}/>
+            <FormFieldWrapper control={form.control} name="client_state" label="State of Primary Residence" type="select" options={["Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"]} required={true}/>
             <FormFieldWrapper control={form.control} name="client_time_zone" label="Time Zone" type="select" options={timezoneOptions.map(tz => tz.label)} valueMapper={(label) => { const o = timezoneOptions.find(tz_1 => tz_1.label === label); return o ? o.value : ''; }} labelMapper={(value) => { const o = timezoneOptions.find(tz_1 => tz_1.value === value); return o ? o.label : ''; }} required={true}/>
             <FormFieldWrapper control={form.control} name="client_vacoverage" label="What type of VA Coverage do you have?" type="select" options={["CHAMPVA", "TRICARE", "VA Community Care", "None - I am a veteran", "None - I am not a veteran"]} required={true}/>
         </div><div className="flex justify-between mt-8"> <Button type="button" variant="outline" onClick={handleGoBack} className="flex items-center gap-2"> <ArrowLeft className="h-4 w-4" /> Back </Button> <Button type="button" onClick={handleNext} disabled={!isStep2Valid} className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"> Next <ArrowRight className="h-4 w-4" /> </Button> </div></div></Form> );
   };
-  const renderStepThree = () => { /* ... as before ... */ 
+  const renderStepThree = () => { 
     const vaCoverage = form.watch('client_vacoverage');
     return ( <Form {...form}><div className="space-y-6">
             {vaCoverage === 'CHAMPVA' && ( <SignupChampva form={form} onOtherInsuranceChange={handleOtherInsuranceChange}/> )}
@@ -532,13 +569,13 @@ const ProfileSetup = () => {
             {vaCoverage === 'None - I am not a veteran' && ( <SignupNotAVeteran form={form} /> )}
         <div className="flex justify-between mt-8"> <Button type="button" variant="outline" onClick={handleGoBack} className="flex items-center gap-2"> <ArrowLeft className="h-4 w-4" /> Back </Button> <Button type="button" onClick={handleNext} className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"> Next <ArrowRight className="h-4 w-4" /> </Button> </div></div></Form> );
   };
-  const renderStepFour = () => { /* ... as before ... */ 
+  const renderStepFour = () => { 
     return ( <Form {...form}><div className="space-y-6"> <AdditionalInsurance form={form} /> <div className="flex justify-between mt-8"> <Button type="button" variant="outline" onClick={handleGoBack} className="flex items-center gap-2"> <ArrowLeft className="h-4 w-4" /> Back </Button> <Button type="button" onClick={handleNext} className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"> Next <ArrowRight className="h-4 w-4" /> </Button> </div></div></Form> );
   };
-  const renderStepFive = () => { /* ... as before ... */ 
+  const renderStepFive = () => { 
     return ( <Form {...form}><div className="space-y-6"> <MoreAdditionalInsurance form={form} /> <div className="flex justify-between mt-8"> <Button type="button" variant="outline" onClick={handleGoBack} className="flex items-center gap-2"> <ArrowLeft className="h-4 w-4" /> Back </Button> <Button type="button" onClick={handleNext} className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"> Next <ArrowRight className="h-4 w-4" /> </Button> </div></div></Form> );
   };
-  const renderStepSix = () => { /* ... as before ... */ 
+  const renderStepSix = () => { 
     return ( <Form {...form}><div className="space-y-6"> <SignupLast form={form} /> <div className="flex justify-between mt-8"> <Button type="button" variant="outline" onClick={handleGoBack} className="flex items-center gap-2"> <ArrowLeft className="h-4 w-4" /> Back </Button> <Button type="button" onClick={handleSubmit} className="bg-valorwell-600 hover:bg-valorwell-700 text-white font-medium py-2 px-8 rounded-md flex items-center gap-2"> Complete Profile </Button> </div></div></Form> );
   };
 
