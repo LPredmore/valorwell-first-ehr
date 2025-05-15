@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client'; // Adjust path as needed
 import { AuthChangeEvent, Session, User as SupabaseUser } from '@supabase/supabase-js';
@@ -22,8 +23,8 @@ interface UserContextType {
   userRole: string | null;
   clientStatus: ClientProfile['client_status'] | null;
   clientProfile: ClientProfile | null;
-  isLoading: boolean; // True if initial auth check is pending OR user-specific data is being fetched
-  authInitialized: boolean; // True once the initial attempt to get session has completed
+  isLoading: boolean;
+  authInitialized: boolean; 
   refreshUserData: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -45,8 +46,20 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true); 
   const [authInitialized, setAuthInitialized] = useState(false);
 
+  // Set a safety timeout to ensure authInitialized is eventually set to true
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!authInitialized) {
+        logInfo("[UserContext] Safety timeout reached - forcing authInitialized to true");
+        setAuthInitialized(true);
+        setIsLoading(false);
+      }
+    }, 5000); // 5 second safety net
+    
+    return () => clearTimeout(timeout);
+  }, [authInitialized]);
+
   // Fetches client-specific data if a user is authenticated.
-  // This function now expects that isLoading related to initial auth check is handled by its caller.
   const fetchClientSpecificData = useCallback(async (currentAuthUser: SupabaseUser) => {
     logInfo("[UserContext] fetchClientSpecificData called for user:", currentAuthUser.id);
     setIsLoading(true); // Indicate loading for this specific fetch operation
@@ -89,7 +102,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setClientStatus(null); setClientProfile(null);
       }
     } catch (error) {
-      // ENHANCED ERROR HANDLING: Catch any unexpected errors
       logError('[UserContext] Unexpected error in fetchClientSpecificData:', error);
       setClientStatus('ErrorFetchingStatus');
       setClientProfile(null);
@@ -108,16 +120,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true); // Overall loading starts
     
     // CRITICAL FIX: Set authInitialized to true immediately to prevent deadlocks
-    // This ensures the flag is set regardless of async operations
     setAuthInitialized(true);
 
     // 1. Initial Session Check
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!isMounted) return;
       logInfo("[UserContext] Initial getSession completed. Session user ID:", session?.user?.id || 'null');
-      
-      // CRITICAL FIX: Ensure authInitialized remains true
-      if (!authInitialized) setAuthInitialized(true);
       
       try {
         setUser(session?.user || null);
@@ -168,7 +176,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logInfo(`[UserContext] onAuthStateChange event: ${event}, User: ${session?.user?.id || 'null'}`);
         
         // CRITICAL FIX: Always ensure authInitialized is true when auth state changes
-        // This prevents deadlocks regardless of the event type
         setAuthInitialized(true);
         
         try {
@@ -176,11 +183,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUserId(session?.user?.id || null);
 
           if (session?.user) {
-            await fetchClientSpecificData(session.user); // This manages its own isLoading
-            
-            // CRITICAL FIX: Double-check authInitialized is true after fetchClientSpecificData
-            setAuthInitialized(true);
-            logInfo(`[UserContext] onAuthStateChange: User is signed in, authInitialized is true.`);
+            // Handle the session update in a separate async function to prevent deadlocks
+            setTimeout(async () => {
+              if (isMounted) {
+                await fetchClientSpecificData(session.user);
+                // Double-check authInitialized is true after fetchClientSpecificData
+                setAuthInitialized(true);
+                logInfo(`[UserContext] onAuthStateChange: User is signed in, authInitialized is true.`);
+              }
+            }, 0);
           } else {
             // SIGNED_OUT or session became null
             setUserRole(null);
@@ -212,7 +223,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logInfo("[UserContext] Cleaning up auth subscription (unmount).");
       authListener?.subscription?.unsubscribe();
     };
-  }, [fetchClientSpecificData, authInitialized]); // Include authInitialized for safety checks but prevent circular updates with early setting
+  }, [fetchClientSpecificData]); // CRITICAL FIX: Remove authInitialized from dependency array
 
   const refreshUserData = useCallback(async () => {
     logInfo("[UserContext] refreshUserData explicitly called.");
@@ -260,15 +271,25 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setClientProfile(null);
     
     try {
-      await supabase.auth.signOut();
+      // Force a logout to clean all tokens
+      await supabase.auth.signOut({ scope: 'global' });
       logInfo("[UserContext] Supabase signOut successful.");
+      
+      // Force a page reload after logout to clear any lingering state
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 100);
     } catch (error) {
       logError("[UserContext] Error during supabase.auth.signOut():", error);
+      // Even if there's an error, redirect to login
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 100);
     } finally {
-        // ENHANCED ERROR HANDLING: Always ensure these flags are set correctly
-        setAuthInitialized(true);
-        setIsLoading(false);
-        logInfo("[UserContext] Logout process finished. authInitialized: true, isLoading: false");
+      // ENHANCED ERROR HANDLING: Always ensure these flags are set correctly
+      setAuthInitialized(true);
+      setIsLoading(false);
+      logInfo("[UserContext] Logout process finished. authInitialized: true, isLoading: false");
     }
   };
 

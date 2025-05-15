@@ -1,3 +1,4 @@
+
 import { useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -41,14 +42,14 @@ const ResetPassword = () => {
     
     // Set a timeout to clear the loading state in case the operation hangs
     timeoutRef.current = window.setTimeout(() => {
-      console.warn("[ResetPassword] Reset password operation timed out after 30 seconds");
+      console.warn("[ResetPassword] Reset password operation timed out after 45 seconds");
       setIsLoading(false);
       setErrorMessage("The request timed out. Please try again.");
       setDebugInfo(prev => ({
         ...prev,
         timeout: {
           timestamp: new Date().toISOString(),
-          message: "Operation timed out after 30 seconds"
+          message: "Operation timed out after 45 seconds"
         }
       }));
       toast({
@@ -56,10 +57,27 @@ const ResetPassword = () => {
         description: "The password reset request took too long. Please try again.",
         variant: "destructive",
       });
-    }, 30000) as unknown as number;
+    }, 45000) as unknown as number;  // Increased to 45 seconds
     
     try {
       setIsLoading(true);
+      
+      // Check for existing session first and sign out if needed
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        console.log("[ResetPassword] Found existing session, signing out first");
+        setDebugInfo(prev => ({
+          ...prev,
+          existingSession: {
+            email: session.user.email,
+            id: session.user.id,
+            timestamp: new Date().toISOString()
+          }
+        }));
+        
+        await supabase.auth.signOut();
+        console.log("[ResetPassword] Successfully signed out existing user");
+      }
       
       // Use the origin to build the proper redirect URL
       const siteUrl = window.location.origin;

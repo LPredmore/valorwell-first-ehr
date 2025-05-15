@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -16,6 +17,7 @@ const UpdatePassword = () => {
   const [sessionVerified, setSessionVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>({});
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -45,6 +47,22 @@ const UpdatePassword = () => {
         if (!hasResetToken) {
           console.log("[UpdatePassword] No valid reset token found in URL, might not be a valid reset flow");
           return;
+        }
+
+        // Check if there's an existing user session that might conflict with the reset
+        const existingSession = await supabase.auth.getSession();
+        if (existingSession.data.session) {
+          setCurrentUser(existingSession.data.session.user);
+          console.log("[UpdatePassword] Found existing session for user:", existingSession.data.session.user.email);
+          
+          setDebugInfo(prev => ({
+            ...prev,
+            existingSession: {
+              email: existingSession.data.session.user.email,
+              id: existingSession.data.session.user.id,
+              timestamp: new Date().toISOString()
+            }
+          }));
         }
 
         // Verify the session is active for password reset
@@ -79,6 +97,18 @@ const UpdatePassword = () => {
 
     checkSession();
   }, []);
+
+  const signOutBeforeReset = async () => {
+    try {
+      console.log("[UpdatePassword] Signing out current user before password reset");
+      await supabase.auth.signOut();
+      window.location.reload(); // Reload to process the recovery token
+      return true;
+    } catch (error) {
+      console.error("[UpdatePassword] Error signing out:", error);
+      return false;
+    }
+  };
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,7 +150,7 @@ const UpdatePassword = () => {
 
     // Set a timeout to clear the loading state in case the operation hangs
     const timeoutId = setTimeout(() => {
-      console.warn("[UpdatePassword] Update password operation timed out after 15 seconds");
+      console.warn("[UpdatePassword] Update password operation timed out after 30 seconds");
       setIsLoading(false);
       setError("The request timed out. Please try again or request a new reset link.");
       toast({
@@ -128,7 +158,7 @@ const UpdatePassword = () => {
         description: "The password update took too long. Please try again.",
         variant: "destructive",
       });
-    }, 15000);
+    }, 30000); // Increased to 30 seconds
 
     try {
       // Update the user's password
@@ -191,6 +221,25 @@ const UpdatePassword = () => {
             </div>
           )}
           
+          {currentUser && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-md">
+              <p className="text-sm font-medium">
+                You're currently logged in as {currentUser.email}
+              </p>
+              <p className="text-xs mt-1">
+                To reset a different account's password, you need to sign out first.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 w-full"
+                onClick={signOutBeforeReset}
+              >
+                Sign out and continue with password reset
+              </Button>
+            </div>
+          )}
+          
           {!hashPresent && (
             <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-md">
               <p className="text-sm font-medium">
@@ -219,8 +268,8 @@ const UpdatePassword = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your new password"
                 required
-                disabled={isLoading || !hashPresent}
-                className={!hashPresent ? "bg-gray-100" : ""}
+                disabled={isLoading || !hashPresent || currentUser !== null}
+                className={!hashPresent || currentUser !== null ? "bg-gray-100" : ""}
               />
             </div>
             <div className="space-y-2">
@@ -232,14 +281,14 @@ const UpdatePassword = () => {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm your new password"
                 required
-                disabled={isLoading || !hashPresent}
-                className={!hashPresent ? "bg-gray-100" : ""}
+                disabled={isLoading || !hashPresent || currentUser !== null}
+                className={!hashPresent || currentUser !== null ? "bg-gray-100" : ""}
               />
             </div>
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={isLoading || !hashPresent}
+              disabled={isLoading || !hashPresent || currentUser !== null}
             >
               {isLoading ? "Updating..." : "Update Password"}
             </Button>

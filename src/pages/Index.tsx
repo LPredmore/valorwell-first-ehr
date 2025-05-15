@@ -12,6 +12,7 @@ const Index = () => {
   const { userRole, isLoading, authInitialized, clientStatus, userId } = useUser();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [forceRedirectTimer, setForceRedirectTimer] = useState(0);
   
   // Add timeout mechanism to prevent indefinite loading
   useEffect(() => {
@@ -51,6 +52,45 @@ const Index = () => {
     };
   }, [isLoading, authInitialized, authError, toast]);
 
+  // NEW: Force a redirect after 15 seconds if we have a userId but still not fully initialized
+  useEffect(() => {
+    let forcedRedirectTimer: NodeJS.Timeout;
+    
+    // If we have a userId but auth isn't fully initialized, start a timer
+    if (userId && (!authInitialized || isLoading)) {
+      console.log("[Index] Starting forced redirect timer - we have userId but auth isn't fully initialized");
+      let secondsLeft = 15;
+      
+      const intervalTimer = setInterval(() => {
+        secondsLeft--;
+        setForceRedirectTimer(secondsLeft);
+        
+        if (secondsLeft <= 0) {
+          clearInterval(intervalTimer);
+        }
+      }, 1000);
+      
+      forcedRedirectTimer = setTimeout(() => {
+        console.log("[Index] Forcing redirect despite auth not being fully initialized");
+        if (userRole === 'admin') {
+          navigate('/settings');
+        } else if (userRole === 'clinician') {
+          navigate('/clinician-dashboard');
+        } else {
+          // Default to patient dashboard for clients or unknown roles
+          navigate('/patient-dashboard');
+        }
+      }, 15000); // 15 seconds
+      
+      return () => {
+        clearTimeout(forcedRedirectTimer);
+        clearInterval(intervalTimer);
+      };
+    }
+    
+    return () => {};
+  }, [userId, authInitialized, isLoading, userRole, navigate]);
+
   useEffect(() => {
     console.log("[Index] Checking redirect conditions - userId:", userId, "authInitialized:", authInitialized, "isLoading:", isLoading);
     console.log("[Index] Index page mounted, isLoading:", isLoading, "userRole:", userRole, "authInitialized:", authInitialized, "clientStatus:", clientStatus);
@@ -89,6 +129,10 @@ const Index = () => {
         console.log("[Index] No valid role found, redirecting to Login page");
         navigate('/login');
       }
+    } else if (authInitialized && !isLoading && !userId) {
+      // If auth is initialized, not loading, and no user ID - go to login
+      console.log("[Index] Auth initialized but no user, redirecting to login");
+      navigate('/login');
     } else {
       console.log("[Index] Waiting for user context to fully initialize before redirecting");
     }
@@ -96,8 +140,8 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      {/* Add AuthStateMonitor - hidden by default, set visible to true for debugging */}
-      <AuthStateMonitor visible={false} />
+      {/* Add AuthStateMonitor with visibility set to true for dev environment */}
+      <AuthStateMonitor visible={process.env.NODE_ENV === 'development'} />
       <div className="text-center">
         {isLoading || !authInitialized ? (
           <div className="flex flex-col items-center">
@@ -110,6 +154,13 @@ const Index = () => {
             {loadingTimeout && !authError && (
               <p className="text-amber-600 text-sm max-w-md px-4">
                 This is taking longer than expected. Please wait...
+              </p>
+            )}
+            
+            {/* NEW: Show forced redirect countdown if applicable */}
+            {userId && forceRedirectTimer > 0 && (
+              <p className="text-blue-600 text-sm max-w-md px-4 mt-2">
+                Redirecting in {forceRedirectTimer} seconds...
               </p>
             )}
           </div>
