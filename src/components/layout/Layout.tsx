@@ -5,6 +5,7 @@ import Header from './Header';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/context/UserContext';
+import AuthStateMonitor from '@/components/auth/AuthStateMonitor';
 
 interface LayoutProps {
   children: ReactNode;
@@ -61,6 +62,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
+      {/* Add AuthStateMonitor for development environment */}
+      {process.env.NODE_ENV === 'development' && <AuthStateMonitor visible={true} />}
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />

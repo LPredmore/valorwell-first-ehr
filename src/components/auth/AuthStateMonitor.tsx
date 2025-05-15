@@ -34,6 +34,13 @@ const AuthStateMonitor = ({ visible = false }: AuthStateMonitorProps) => {
     // Log when auth is fully initialized and not loading
     if (authInitialized && !isLoading) {
       console.log('[AuthStateMonitor] 🚀 Authentication fully initialized and not loading');
+      
+      // Log full authentication state for debugging
+      if (userId) {
+        console.log(`[AuthStateMonitor] 👤 Authenticated user: ${userId} with role: ${userRole}`);
+      } else {
+        console.log('[AuthStateMonitor] 🔒 No authenticated user');
+      }
     }
   }, [authInitialized, isLoading, userId, userRole, clientStatus, user]);
   

@@ -1,6 +1,6 @@
 
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client'; // Adjust path as needed
+import { supabase } from '@/integrations/supabase/client';
 import { AuthChangeEvent, Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 export interface ClientProfile {
@@ -44,27 +44,37 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
   
   const [isLoading, setIsLoading] = useState(true); 
+  // CRITICAL FIX: Start with authInitialized set to false, but set it to true in multiple paths
   const [authInitialized, setAuthInitialized] = useState(false);
 
-  // Set a safety timeout to ensure authInitialized is eventually set to true
+  // Set multiple safety timeouts to ensure authInitialized is eventually set to true
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (!authInitialized) {
-        logInfo("[UserContext] Safety timeout reached - forcing authInitialized to true");
-        setAuthInitialized(true);
-        setIsLoading(false);
-      }
-    }, 5000); // 5 second safety net
+    // Independent safety timeout that doesn't depend on authInitialized state
+    const safetyTimeoutId = setTimeout(() => {
+      logInfo("[UserContext] Safety timeout reached (3s) - forcing authInitialized to true");
+      setAuthInitialized(true);
+      setIsLoading(false);
+    }, 3000); 
     
-    return () => clearTimeout(timeout);
-  }, [authInitialized]);
+    // Secondary extended timeout for extra protection
+    const extendedTimeoutId = setTimeout(() => {
+      logInfo("[UserContext] Extended safety timeout reached (5s) - double-checking authInitialized is true");
+      setAuthInitialized(true);
+      setIsLoading(false);
+    }, 5000);
+    
+    return () => {
+      clearTimeout(safetyTimeoutId);
+      clearTimeout(extendedTimeoutId);
+    };
+  }, []); // No dependencies - this runs once on mount
 
   // Fetches client-specific data if a user is authenticated.
   const fetchClientSpecificData = useCallback(async (currentAuthUser: SupabaseUser) => {
     logInfo("[UserContext] fetchClientSpecificData called for user:", currentAuthUser.id);
     setIsLoading(true); // Indicate loading for this specific fetch operation
     
-    // CRITICAL FIX: Ensure authInitialized is true during data fetching
+    // CRITICAL FIX: Set authInitialized true as early as possible
     setAuthInitialized(true);
 
     try {
@@ -119,7 +129,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let isMounted = true;
     setIsLoading(true); // Overall loading starts
     
-    // CRITICAL FIX: Set authInitialized to true immediately to prevent deadlocks
+    // CRITICAL FIX: Set authInitialized to true immediately in the main effect
+    // to prevent deadlocks, then check if we need to revert it based on actual state
     setAuthInitialized(true);
 
     // 1. Initial Session Check
@@ -143,7 +154,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         if (isMounted) {
-          // Ensure authInitialized is still true and isLoading is false
+          // Ensure authInitialized is set to true and isLoading is false
           setAuthInitialized(true);
           setIsLoading(false);
           logInfo("[UserContext] Initial auth process finished. authInitialized: true, isLoading: false");
@@ -161,12 +172,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Even on error, we need to set authInitialized to true to prevent deadlocks
       setAuthInitialized(true);
+      setIsLoading(false);
       
       setUser(null); setUserId(null); setUserRole(null); setClientStatus(null); setClientProfile(null);
-      if (isMounted) {
-        setIsLoading(false);
-        logInfo("[UserContext] Initial auth process finished (with error). authInitialized: true, isLoading: false");
-      }
+      logInfo("[UserContext] Initial auth process finished (with error). authInitialized: true, isLoading: false");
     });
 
     // 2. Auth State Change Listener
@@ -179,6 +188,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setAuthInitialized(true);
         
         try {
+          // Log detailed before/after state transitions for debugging
+          const prevUserId = userId;
+          logInfo(`[UserContext] Auth transition: userId ${prevUserId} → ${session?.user?.id || 'null'}`);
+          
           setUser(session?.user || null);
           setUserId(session?.user?.id || null);
 
@@ -223,7 +236,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logInfo("[UserContext] Cleaning up auth subscription (unmount).");
       authListener?.subscription?.unsubscribe();
     };
-  }, [fetchClientSpecificData]); // CRITICAL FIX: Remove authInitialized from dependency array
+  }, [fetchClientSpecificData]); // CRITICAL FIX: Removed authInitialized from dependency array
 
   const refreshUserData = useCallback(async () => {
     logInfo("[UserContext] refreshUserData explicitly called.");

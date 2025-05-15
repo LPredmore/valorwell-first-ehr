@@ -63,6 +63,12 @@ const UpdatePassword = () => {
               timestamp: new Date().toISOString()
             }
           }));
+
+          // Auto sign-out if we detect a recovery token but user is already logged in
+          if (hasResetToken) {
+            console.log("[UpdatePassword] Reset token found but user is already logged in - signing out automatically");
+            await signOutBeforeReset();
+          }
         }
 
         // Verify the session is active for password reset
@@ -101,7 +107,13 @@ const UpdatePassword = () => {
   const signOutBeforeReset = async () => {
     try {
       console.log("[UpdatePassword] Signing out current user before password reset");
-      await supabase.auth.signOut();
+      
+      // Use global sign out to ensure complete token removal
+      await supabase.auth.signOut({ scope: 'global' });
+      
+      // Wait a moment for the auth system to sync
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       window.location.reload(); // Reload to process the recovery token
       return true;
     } catch (error) {
@@ -150,7 +162,7 @@ const UpdatePassword = () => {
 
     // Set a timeout to clear the loading state in case the operation hangs
     const timeoutId = setTimeout(() => {
-      console.warn("[UpdatePassword] Update password operation timed out after 30 seconds");
+      console.warn("[UpdatePassword] Update password operation timed out after 45 seconds");
       setIsLoading(false);
       setError("The request timed out. Please try again or request a new reset link.");
       toast({
@@ -158,7 +170,7 @@ const UpdatePassword = () => {
         description: "The password update took too long. Please try again.",
         variant: "destructive",
       });
-    }, 30000); // Increased to 30 seconds
+    }, 45000); // Increased to 45 seconds for more reliable operation
 
     try {
       // Update the user's password
@@ -184,7 +196,16 @@ const UpdatePassword = () => {
         description: "Your password has been updated successfully.",
       });
 
+      // After password is updated successfully, clear the session to prevent session conflicts
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+        console.log("[UpdatePassword] Signed out after successful password update");
+      } catch (signOutError) {
+        console.error("[UpdatePassword] Error signing out after password update:", signOutError);
+      }
+
       // Redirect to login page after successful password update
+      // Added delay to ensure signout completes and toast is visible
       setTimeout(() => {
         navigate("/login");
       }, 2000);

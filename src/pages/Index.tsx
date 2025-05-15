@@ -52,14 +52,14 @@ const Index = () => {
     };
   }, [isLoading, authInitialized, authError, toast]);
 
-  // NEW: Force a redirect after 15 seconds if we have a userId but still not fully initialized
+  // NEW: Reduced force redirect timer from 15 to 10 seconds for faster experience
   useEffect(() => {
     let forcedRedirectTimer: NodeJS.Timeout;
     
     // If we have a userId but auth isn't fully initialized, start a timer
     if (userId && (!authInitialized || isLoading)) {
       console.log("[Index] Starting forced redirect timer - we have userId but auth isn't fully initialized");
-      let secondsLeft = 15;
+      let secondsLeft = 10; // Reduced from 15 to 10 seconds
       
       const intervalTimer = setInterval(() => {
         secondsLeft--;
@@ -72,6 +72,10 @@ const Index = () => {
       
       forcedRedirectTimer = setTimeout(() => {
         console.log("[Index] Forcing redirect despite auth not being fully initialized");
+        // Add more detailed logging for debugging
+        console.log(`[Index] Force redirect with userRole: ${userRole}, userId: ${userId}`);
+        
+        // Handle redirection based on known information
         if (userRole === 'admin') {
           navigate('/settings');
         } else if (userRole === 'clinician') {
@@ -80,7 +84,7 @@ const Index = () => {
           // Default to patient dashboard for clients or unknown roles
           navigate('/patient-dashboard');
         }
-      }, 15000); // 15 seconds
+      }, 10000); // 10 seconds (reduced from 15)
       
       return () => {
         clearTimeout(forcedRedirectTimer);
@@ -140,7 +144,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      {/* Add AuthStateMonitor with visibility set to true for dev environment */}
+      {/* Set AuthStateMonitor to be visible in development environment for debugging */}
       <AuthStateMonitor visible={process.env.NODE_ENV === 'development'} />
       <div className="text-center">
         {isLoading || !authInitialized ? (
@@ -157,7 +161,7 @@ const Index = () => {
               </p>
             )}
             
-            {/* NEW: Show forced redirect countdown if applicable */}
+            {/* Show forced redirect countdown if applicable */}
             {userId && forceRedirectTimer > 0 && (
               <p className="text-blue-600 text-sm max-w-md px-4 mt-2">
                 Redirecting in {forceRedirectTimer} seconds...
