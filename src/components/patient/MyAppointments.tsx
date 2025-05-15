@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar } from 'lucide-react';
+import { Calendar, Clock, UserCircle } from 'lucide-react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -34,7 +34,11 @@ const ErrorBoundaryFallback = ({ error }: { error: Error }) => (
   </div>
 );
 
+/**
+ * MyAppointments component displays a list of past appointments for a client
+ */
 const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initialPastAppointments }) => {
+  // Static states
   const [loading, setLoading] = useState(false);
   const [pastAppointments, setPastAppointments] = useState<PastAppointment[]>([]);
   const [clinicianName, setClinicianName] = useState<string | null>(null);
@@ -42,38 +46,70 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
   const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
   
-  // Track if data has been fetched to prevent repeated calls
-  const [hasFetchedData, setHasFetchedData] = useState(false);
-  
-  // Use a ref to track if the component is mounted
+  // Lifecycle state variables
   const isMounted = useRef(true);
+  const fetchAttempts = useRef(0);
+  const lastFetchTime = useRef(0);
+  const FETCH_COOLDOWN = 2000; // 2 seconds between fetches
+  const MAX_FETCH_ATTEMPTS = 3; // Maximum number of fetch attempts
   
-  // Get client timezone from database or browser
+  // Tracking states to prevent infinite loops
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const [hasLoadedClientData, setHasLoadedClientData] = useState(false);
+  const [hasLoadedAppointments, setHasLoadedAppointments] = useState(false);
+  
+  // Client timezone with default
   const [clientTimeZone, setClientTimeZone] = useState<string>(TimeZoneService.DEFAULT_TIMEZONE);
 
+  // Reset component mount status on unmount
   useEffect(() => {
-    // Set up cleanup function to prevent state updates after unmount
     return () => {
       isMounted.current = false;
     };
   }, []);
 
+  // Define safe state update functions
+  const safeSetState = useCallback(<T,>(setter: React.Dispatch<React.SetStateAction<T>>, value: T) => {
+    if (isMounted.current) {
+      setter(value);
+    }
+  }, []);
+  
+  // Load client data once
   useEffect(() => {
-    // Only fetch client data once
-    if (hasFetchedData) return;
+    if (hasInitialized) return;
+    setHasInitialized(true);
     
     const fetchClientData = async () => {
+      if (loading || hasLoadedClientData) return;
+      
       try {
+        const now = Date.now();
+        if (now - lastFetchTime.current < FETCH_COOLDOWN) {
+          console.log("Throttling client data fetch - too soon since last fetch");
+          return;
+        }
+        
+        lastFetchTime.current = now;
+        fetchAttempts.current++;
+        
+        if (fetchAttempts.current > MAX_FETCH_ATTEMPTS) {
+          console.warn("Maximum fetch attempts reached for client data");
+          return;
+        }
+        
+        safeSetState(setLoading, true);
+        
+        // Get current authenticated user
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
         if (userError || !user) {
           console.error('Error getting current user:', userError);
+          safeSetState(setLoading, false);
           return;
         }
         
-        // Check if component is still mounted before updating state
-        if (!isMounted.current) return;
-        
+        // Get client data for the authenticated user
         const { data: client, error: clientError } = await supabase
           .from('clients')
           .select('*')
@@ -82,26 +118,31 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
           
         if (clientError) {
           console.error('Error getting client data:', clientError);
+          safeSetState(setLoading, false);
           return;
         }
         
-        // Check if component is still mounted before updating state
-        if (!isMounted.current) return;
+        if (!client) {
+          console.warn('No client data found for user:', user.id);
+          safeSetState(setLoading, false);
+          return;
+        }
         
         console.log('Client data retrieved:', client);
-        setClientData(client);
+        safeSetState(setClientData, client);
         
-        // Safely set the client timezone with fallback
+        // Get timezone from client data or default to browser
         if (client?.client_time_zone) {
           const safeTimezone = TimeZoneService.ensureIANATimeZone(client.client_time_zone);
           console.log(`Setting client timezone from database: ${client.client_time_zone} → ${safeTimezone}`);
-          setClientTimeZone(safeTimezone);
+          safeSetState(setClientTimeZone, safeTimezone);
         } else {
           const browserTimezone = getUserTimeZone();
           console.log(`No client timezone found, using browser timezone: ${browserTimezone}`);
-          setClientTimeZone(TimeZoneService.ensureIANATimeZone(browserTimezone));
+          safeSetState(setClientTimeZone, TimeZoneService.ensureIANATimeZone(browserTimezone));
         }
         
+        // Fetch clinician name if assigned
         if (client?.client_assigned_therapist) {
           const { data: clinician, error: clinicianError } = await supabase
             .from('clinicians')
@@ -109,38 +150,50 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
             .eq('id', client.client_assigned_therapist)
             .single();
             
-          if (clinicianError) {
-            console.error('Error getting clinician name:', clinicianError);
-            return;
+          if (!clinicianError && clinician) {
+            safeSetState(setClinicianName, clinician?.clinician_professional_name || null);
           }
-          
-          // Check if component is still mounted before updating state
-          if (!isMounted.current) return;
-          
-          setClinicianName(clinician?.clinician_professional_name || null);
         }
         
-        // Mark that we've fetched client data
-        setHasFetchedData(true);
+        // Mark client data as loaded
+        safeSetState(setHasLoadedClientData, true);
       } catch (error) {
-        // Check if component is still mounted before updating state
-        if (!isMounted.current) return;
-        
         console.error('Error fetching client data:', error);
-        setError(error instanceof Error ? error : new Error('Failed to fetch client data'));
+        safeSetState(setError, error instanceof Error ? error : new Error('Failed to fetch client data'));
+      } finally {
+        safeSetState(setLoading, false);
       }
     };
     
     fetchClientData();
-  }, [hasFetchedData]); // Only depend on hasFetchedData to prevent refetching
+  }, [hasInitialized, loading, hasLoadedClientData, safeSetState]);
 
+  // Load appointments once client data is available
   useEffect(() => {
-    // Only proceed if we have client data and haven't fetched appointments yet
-    if (!clientData?.id || loading) return;
+    // Only proceed if we have client data and haven't loaded appointments yet
+    if (!clientData?.id || !hasLoadedClientData || loading || hasLoadedAppointments) {
+      return;
+    }
     
     const fetchPastAppointments = async () => {
-      setLoading(true);
       try {
+        const now = Date.now();
+        if (now - lastFetchTime.current < FETCH_COOLDOWN) {
+          console.log("Throttling appointments fetch - too soon since last fetch");
+          return;
+        }
+        
+        lastFetchTime.current = now;
+        fetchAttempts.current++;
+        
+        if (fetchAttempts.current > MAX_FETCH_ATTEMPTS) {
+          console.warn("Maximum fetch attempts reached for appointments");
+          return;
+        }
+        
+        safeSetState(setLoading, true);
+        console.log(`Fetching past appointments for client ${clientData.id} with timezone ${clientTimeZone}`);
+        
         // Get the current time in UTC
         const nowUTC = TimeZoneService.now().toUTC().toISO();
         
@@ -150,25 +203,21 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
           .eq('client_id', clientData.id)
           .lt('end_at', nowUTC)  // Use end_at to find completed appointments
           .neq('status', 'cancelled')
-          .order('start_at', { ascending: false });
-
-        // Check if component is still mounted before updating state
-        if (!isMounted.current) return;
+          .order('start_at', { ascending: false })
+          .limit(20); // Add limit to prevent potential performance issues
 
         if (error) {
           console.error('Error fetching past appointments:', error);
-          toast({
-            title: "Error",
-            description: "Failed to load appointment history",
-            variant: "destructive"
-          });
-          setError(new Error(`Failed to fetch past appointments: ${error.message}`));
+          safeSetState(setLoading, false);
+          safeSetState(setError, new Error(`Failed to fetch past appointments: ${error.message}`));
           return;
         }
 
+        // Flag that we've loaded appointments to prevent reloading
+        safeSetState(setHasLoadedAppointments, true);
+
         if (data && data.length > 0) {
-          console.log("Past appointments data:", data);
-          console.log("Using client time zone:", clientTimeZone);
+          console.log("Past appointments data fetched successfully:", data.length, "appointments");
           
           const formattedAppointments = data.map(appointment => {
             try {
@@ -199,33 +248,21 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
             }
           });
           
-          console.log("Formatted past appointments:", formattedAppointments);
-          setPastAppointments(formattedAppointments);
+          safeSetState(setPastAppointments, formattedAppointments);
         } else {
           console.log("No past appointments found");
-          setPastAppointments([]);
+          safeSetState(setPastAppointments, []);
         }
       } catch (error) {
-        // Check if component is still mounted before updating state
-        if (!isMounted.current) return;
-        
         console.error('Error in fetchPastAppointments:', error);
-        setError(error instanceof Error ? error : new Error('Failed to fetch past appointments'));
-        toast({
-          title: "Error",
-          description: "Failed to load your appointment history",
-          variant: "destructive"
-        });
+        safeSetState(setError, error instanceof Error ? error : new Error('Failed to fetch past appointments'));
       } finally {
-        // Check if component is still mounted before updating state
-        if (isMounted.current) {
-          setLoading(false);
-        }
+        safeSetState(setLoading, false);
       }
     };
     
     fetchPastAppointments();
-  }, [clientData, clinicianName, clientTimeZone]); // Remove toast from dependencies
+  }, [clientData, hasLoadedClientData, loading, hasLoadedAppointments, clientTimeZone, clinicianName, safeSetState]);
 
   // Safely get timezone display with error handling
   const timeZoneDisplay = TimeZoneService.getTimeZoneDisplayName(clientTimeZone);
@@ -252,7 +289,7 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
         <CardDescription>View your appointment history</CardDescription>
       </CardHeader>
       <CardContent>
-        {loading ? (
+        {loading && !hasLoadedAppointments ? (
           <div className="py-6 text-center">Loading past appointments...</div>
         ) : pastAppointments.length > 0 ? (
           <div>
