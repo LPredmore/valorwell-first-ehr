@@ -41,33 +41,6 @@ const PasswordResetForm = ({ onCancel }: PasswordResetFormProps) => {
     },
   });
 
-  const testEmailDelivery = async (email: string) => {
-    try {
-      console.log("[PasswordResetForm] Testing email delivery with test-resend function");
-      
-      // Get current access token if available
-      const { data } = await supabase.auth.getSession();
-      const accessToken = data?.session?.access_token || '';
-      
-      const response = await fetch(`https://gqlkritspnhjxfejvgfg.supabase.co/functions/v1/test-resend`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json', // Ensure this is set correctly
-          'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({ email: email.trim() }) // Ensure email is trimmed and properly formatted
-      });
-      
-      const result = await response.json();
-      console.log("[PasswordResetForm] Test email delivery result:", result);
-      
-      return result;
-    } catch (error) {
-      console.error("[PasswordResetForm] Test email delivery error:", error);
-      return { success: false, error: error };
-    }
-  };
-
   const handleResetPassword = async (values: z.infer<typeof resetPasswordSchema>) => {
     setResetError(null);
     setDebugInfo({});
@@ -118,30 +91,20 @@ const PasswordResetForm = ({ onCancel }: PasswordResetFormProps) => {
         redirectUrl: redirectTo
       }));
       
-      // Remove the test email dependency or make it optional
-      let testEmailSuccess = true;
-      try {
-        const testResult = await testEmailDelivery(values.email);
-        setDebugInfo(prev => ({
-          ...prev,
-          testEmailResult: testResult
-        }));
-        
-        // Don't let test email failure block the actual password reset
-        if (!testResult.success) {
-          console.warn("[PasswordResetForm] Test email failed but continuing with password reset");
-        }
-      } catch (testError) {
-        console.error("[PasswordResetForm] Test email error, continuing anyway:", testError);
-      }
-
-      // Proceed with the actual password reset
-      console.log("[PasswordResetForm] Calling supabase.auth.resetPasswordForEmail");
+      // IMPORTANT: Removed the test email dependency completely
+      // Proceed directly with the actual password reset
+      console.log("[PasswordResetForm] Calling supabase.auth.resetPasswordForEmail with:", {
+        email: values.email,
+        redirectTo: redirectTo
+      });
+      
       const { data, error: resetError } = await debugAuthOperation("resetPasswordForEmail", () =>
         supabase.auth.resetPasswordForEmail(values.email, {
           redirectTo: redirectTo,
         })
       );
+      
+      console.log("[PasswordResetForm] Reset password response:", { data, error: resetError });
       
       setDebugInfo(prev => ({
         ...prev,

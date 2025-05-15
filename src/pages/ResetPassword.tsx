@@ -19,33 +19,6 @@ const ResetPassword = () => {
   const [debugInfo, setDebugInfo] = useState<any>({});
   const timeoutRef = useRef<number | null>(null);
 
-  const testEmailDelivery = async (email: string) => {
-    try {
-      console.log("[ResetPassword] Testing email delivery with test-resend function");
-      
-      // Get current access token if available
-      const { data } = await supabase.auth.getSession();
-      const accessToken = data?.session?.access_token || '';
-      
-      const response = await fetch(`https://gqlkritspnhjxfejvgfg.supabase.co/functions/v1/test-resend`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json', // Ensure this is set correctly
-          'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({ email: email.trim() }) // Ensure email is trimmed and properly formatted
-      });
-      
-      const result = await response.json();
-      console.log("[ResetPassword] Test email delivery result:", result);
-      
-      return result;
-    } catch (error) {
-      console.error("[ResetPassword] Test email delivery error:", error);
-      return { success: false, error: error };
-    }
-  };
-
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -109,31 +82,23 @@ const ResetPassword = () => {
         }
       }));
       
-      // Make test email optional - don't block the password reset if it fails
-      let testEmailFailed = false;
-      try {
-        const testResult = await testEmailDelivery(email);
-        setDebugInfo(prev => ({
-          ...prev,
-          testEmailResult: testResult
-        }));
-        
-        if (!testResult.success) {
-          console.warn("[ResetPassword] Test email failed but continuing with password reset");
-          testEmailFailed = true;
-        }
-      } catch (testError) {
-        console.error("[ResetPassword] Test email error, continuing anyway:", testError);
-        testEmailFailed = true;
-      }
+      // IMPORTANT: Removed the test email functionality completely
+      // Proceed directly with password reset
 
       // Call Supabase Auth API directly with explicit redirect URL
+      console.log("[ResetPassword] Calling supabase.auth.resetPasswordForEmail with:", {
+        email: email,
+        redirectTo: redirectTo
+      });
+      
       const { data, error } = await debugAuthOperation("resetPasswordForEmail", () =>
         supabase.auth.resetPasswordForEmail(email, {
           redirectTo: redirectTo,
           captchaToken: undefined // Explicitly set to undefined to avoid issues
         })
       );
+      
+      console.log("[ResetPassword] Reset password response:", { data, error });
       
       setDebugInfo(prev => ({
         ...prev,
