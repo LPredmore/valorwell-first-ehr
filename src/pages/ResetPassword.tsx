@@ -1,7 +1,8 @@
+
 import { useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, testResendEmailService } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -168,7 +169,7 @@ const ResetPassword = () => {
     setDebugInfo(prev => ({ ...prev, testingEmail: true }));
     
     try {
-      const result = await testEmailDelivery(email);
+      const result = await testResendEmailService(email);
       setDebugInfo(prev => ({
         ...prev,
         directTestResult: result,
