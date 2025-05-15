@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from 'lucide-react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
@@ -42,10 +42,26 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
   const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
   
+  // Track if data has been fetched to prevent repeated calls
+  const [hasFetchedData, setHasFetchedData] = useState(false);
+  
+  // Use a ref to track if the component is mounted
+  const isMounted = useRef(true);
+  
   // Get client timezone from database or browser
   const [clientTimeZone, setClientTimeZone] = useState<string>(TimeZoneService.DEFAULT_TIMEZONE);
 
   useEffect(() => {
+    // Set up cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    // Only fetch client data once
+    if (hasFetchedData) return;
+    
     const fetchClientData = async () => {
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -54,6 +70,9 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
           console.error('Error getting current user:', userError);
           return;
         }
+        
+        // Check if component is still mounted before updating state
+        if (!isMounted.current) return;
         
         const { data: client, error: clientError } = await supabase
           .from('clients')
@@ -65,6 +84,9 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
           console.error('Error getting client data:', clientError);
           return;
         }
+        
+        // Check if component is still mounted before updating state
+        if (!isMounted.current) return;
         
         console.log('Client data retrieved:', client);
         setClientData(client);
@@ -92,21 +114,31 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
             return;
           }
           
+          // Check if component is still mounted before updating state
+          if (!isMounted.current) return;
+          
           setClinicianName(clinician?.clinician_professional_name || null);
         }
+        
+        // Mark that we've fetched client data
+        setHasFetchedData(true);
       } catch (error) {
+        // Check if component is still mounted before updating state
+        if (!isMounted.current) return;
+        
         console.error('Error fetching client data:', error);
         setError(error instanceof Error ? error : new Error('Failed to fetch client data'));
       }
     };
     
     fetchClientData();
-  }, []);
+  }, [hasFetchedData]); // Only depend on hasFetchedData to prevent refetching
 
   useEffect(() => {
+    // Only proceed if we have client data and haven't fetched appointments yet
+    if (!clientData?.id || loading) return;
+    
     const fetchPastAppointments = async () => {
-      if (!clientData?.id) return;
-      
       setLoading(true);
       try {
         // Get the current time in UTC
@@ -119,6 +151,9 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
           .lt('end_at', nowUTC)  // Use end_at to find completed appointments
           .neq('status', 'cancelled')
           .order('start_at', { ascending: false });
+
+        // Check if component is still mounted before updating state
+        if (!isMounted.current) return;
 
         if (error) {
           console.error('Error fetching past appointments:', error);
@@ -171,6 +206,9 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
           setPastAppointments([]);
         }
       } catch (error) {
+        // Check if component is still mounted before updating state
+        if (!isMounted.current) return;
+        
         console.error('Error in fetchPastAppointments:', error);
         setError(error instanceof Error ? error : new Error('Failed to fetch past appointments'));
         toast({
@@ -179,12 +217,15 @@ const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initi
           variant: "destructive"
         });
       } finally {
-        setLoading(false);
+        // Check if component is still mounted before updating state
+        if (isMounted.current) {
+          setLoading(false);
+        }
       }
     };
     
     fetchPastAppointments();
-  }, [clientData, clinicianName, clientTimeZone, toast]);
+  }, [clientData, clinicianName, clientTimeZone]); // Remove toast from dependencies
 
   // Safely get timezone display with error handling
   const timeZoneDisplay = TimeZoneService.getTimeZoneDisplayName(clientTimeZone);
