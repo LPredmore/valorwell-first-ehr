@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, CalendarIcon, PlusCircle } from 'lucide-react';
@@ -49,12 +49,16 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const [showPHQ9, setShowPHQ9] = useState(false);
   const [pendingAppointmentId, setPendingAppointmentId] = useState<string | number | null>(null);
   const [clinicianData, setClinicianData] = useState<any>(null);
+  const [isLoadingAppointments, setIsLoadingAppointments] = useState(false);
+  const [appointmentsLoaded, setAppointmentsLoaded] = useState(false);
   const { toast } = useToast();
 
-  // Get client timezone from database or browser
-  const clientTimeZone = TimeZoneService.ensureIANATimeZone(
-    clientData?.client_time_zone || getUserTimeZone()
-  );
+  // Memoize client timezone to prevent recalculation on every render
+  const clientTimeZone = useMemo(() => {
+    return TimeZoneService.ensureIANATimeZone(
+      clientData?.client_time_zone || getUserTimeZone()
+    );
+  }, [clientData?.client_time_zone]);
 
   useEffect(() => {
     const fetchClinicianData = async () => {
@@ -85,7 +89,13 @@ const MyPortal: React.FC<MyPortalProps> = ({
 
   useEffect(() => {
     const fetchAppointments = async () => {
-      if (!clientData?.id) return;
+      // Skip if no client data or if appointments are already loading
+      if (!clientData?.id || isLoadingAppointments) return;
+      
+      // Skip if appointments are already loaded and no refresh is requested
+      if (appointmentsLoaded && refreshAppointments === 0) return;
+      
+      setIsLoadingAppointments(true);
       
       try {
         console.log("Fetching appointments for client:", clientData.id);
@@ -147,6 +157,9 @@ const MyPortal: React.FC<MyPortalProps> = ({
           console.log("No appointments found or empty data array");
           setUpcomingAppointments([]);
         }
+        
+        // Mark appointments as loaded
+        setAppointmentsLoaded(true);
       } catch (error) {
         console.error('Error in fetchAppointments:', error);
         toast({
@@ -154,11 +167,13 @@ const MyPortal: React.FC<MyPortalProps> = ({
           description: "Failed to load your appointments. Please try again later.",
           variant: "destructive"
         });
+      } finally {
+        setIsLoadingAppointments(false);
       }
     };
     
     fetchAppointments();
-  }, [clientData, clinicianName, refreshAppointments, clientTimeZone, toast]);
+  }, [clientData, clinicianName, refreshAppointments, clientTimeZone, toast, isLoadingAppointments, appointmentsLoaded]);
 
   const isAppointmentToday = (appointment: Appointment): boolean => {
     if (!appointment.start_at) return false;
@@ -174,7 +189,10 @@ const MyPortal: React.FC<MyPortalProps> = ({
   };
 
   const handleBookingComplete = () => {
+    // Increment refreshAppointments to trigger a fetch
     setRefreshAppointments(prev => prev + 1);
+    // Reset appointmentsLoaded to ensure we fetch fresh data
+    setAppointmentsLoaded(false);
     toast({
       title: "Appointment Booked",
       description: "Your appointment has been scheduled successfully!"
