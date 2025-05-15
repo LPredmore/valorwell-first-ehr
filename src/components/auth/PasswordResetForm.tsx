@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -18,7 +17,7 @@ import {
 import {
   DialogFooter
 } from "@/components/ui/dialog";
-import { debugAuthOperation } from "@/utils/authDebugUtils";
+import { debugAuthOperation } from "@/debug/authDebugUtils";
 
 const resetPasswordSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),

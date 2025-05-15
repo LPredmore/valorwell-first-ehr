@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -16,7 +15,7 @@ import {
   FormLabel,
   FormMessage 
 } from "@/components/ui/form";
-import { debugAuthOperation } from "@/utils/authDebugUtils";
+import { debugAuthOperation } from "@/debug/authDebugUtils";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),

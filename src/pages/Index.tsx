@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/context/UserContext';
 import { useToast } from '@/hooks/use-toast';
 import { AlertCircle } from 'lucide-react';
+import AuthStateMonitor from '@/components/auth/AuthStateMonitor';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -95,6 +96,8 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center">
+      {/* Add AuthStateMonitor - hidden by default, set visible to true for debugging */}
+      <AuthStateMonitor visible={false} />
       <div className="text-center">
         {isLoading || !authInitialized ? (
           <div className="flex flex-col items-center">

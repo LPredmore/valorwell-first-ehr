@@ -1,4 +1,3 @@
-
 import { TimeZoneService } from './timeZoneService';
 
 /**
@@ -7,7 +6,6 @@ import { TimeZoneService } from './timeZoneService';
 export function getUserTimeZone(): string {
   try {
     const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    console.log(`Browser detected timezone: ${browserTimezone}`);
     return TimeZoneService.ensureIANATimeZone(browserTimezone);
   } catch (error) {
     console.error('Error getting user timezone:', error);
@@ -21,7 +19,6 @@ export function getUserTimeZone(): string {
 export function formatDateToTime12Hour(date: Date): string {
   try {
     if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-      console.warn('Invalid date provided to formatDateToTime12Hour', date);
       return 'Invalid time';
     }
     return TimeZoneService.formatTime(TimeZoneService.fromJSDate(date));
@@ -37,13 +34,12 @@ export function formatDateToTime12Hour(date: Date): string {
 export function formatTimeStringTo12Hour(timeString: string): string {
   try {
     if (!timeString) {
-      console.warn('Empty time string provided to formatTimeStringTo12Hour');
       return '';
     }
     const dt = TimeZoneService.fromTimeString(timeString);
     return TimeZoneService.formatTime(dt);
   } catch (error) {
-    console.error('Error formatting time string:', error, { timeString });
+    console.error('Error formatting time string:', error);
     return timeString || 'Invalid time'; // Return the original string if parsing fails
   }
 }
@@ -63,14 +59,12 @@ export function formatTimeInUserTimeZone(
 ): string {
   try {
     if (!timeString) {
-      console.warn('formatTimeInUserTimeZone called with empty timeString');
       return 'Time unavailable';
     }
     
     // Ensure we have a valid timezone
     const safeTimezone = TimeZoneService.ensureIANATimeZone(userTimeZone);
-    console.log(`Formatting time with timezone: ${userTimeZone} (normalized to ${safeTimezone})`);
-
+    
     // If dateStr is provided, use it, otherwise get today's date
     const baseDate = dateStr 
       ? TimeZoneService.fromDateString(dateStr, safeTimezone)
@@ -81,11 +75,7 @@ export function formatTimeInUserTimeZone(
     const dateTime = TimeZoneService.createDateTime(baseDateStr, timeString, safeTimezone);
     return TimeZoneService.formatDateTime(dateTime, formatStr);
   } catch (error) {
-    console.error('Error formatting time in user timezone:', error, {
-      timeString,
-      userTimeZone,
-      dateStr
-    });
+    console.error('Error formatting time in user timezone:', error);
     // Fallback to simple formatting
     return timeString || 'Time unavailable';
   }
@@ -97,7 +87,6 @@ export function formatTimeInUserTimeZone(
 export function formatTimeZoneDisplay(timezone: string): string {
   try {
     const safeTimezone = TimeZoneService.ensureIANATimeZone(timezone);
-    console.log(`Formatting timezone display for: ${timezone} (normalized to ${safeTimezone})`);
     
     const now = TimeZoneService.now(safeTimezone);
     if (!now.isValid) {
@@ -106,7 +95,7 @@ export function formatTimeZoneDisplay(timezone: string): string {
     }
     return now.toFormat('ZZZZ'); // Returns the timezone abbreviation (e.g., EDT)
   } catch (error) {
-    console.error('Error formatting timezone display:', error, { timezone });
+    console.error('Error formatting timezone display:', error);
     return timezone || TimeZoneService.DEFAULT_TIMEZONE;
   }
 }
@@ -114,7 +103,7 @@ export function formatTimeZoneDisplay(timezone: string): string {
 /**
  * Convert a date and time string to a specific timezone
  */
-export function convertToTimezone(dateStr: string, timeStr: string, timezone: string): ReturnType<typeof TimeZoneService.createDateTime> {
+export function convertToTimezone(dateStr: string, timeStr: string, timezone: string) {
   try {
     return TimeZoneService.createDateTime(dateStr, timeStr, timezone);
   } catch (error) {
@@ -153,14 +142,7 @@ export function formatWithTimeZone(date: Date, timezone: string, formatStr: stri
  * Ensures a timezone string is a valid IANA timezone
  */
 export function ensureIANATimeZone(timezone: string | null | undefined): string {
-  try {
-    const result = TimeZoneService.ensureIANATimeZone(timezone);
-    console.log(`Ensured IANA timezone: ${timezone} → ${result}`);
-    return result;
-  } catch (error) {
-    console.error(`Error ensuring IANA timezone for '${timezone}'`, error);
-    return TimeZoneService.DEFAULT_TIMEZONE;
-  }
+  return TimeZoneService.ensureIANATimeZone(timezone);
 }
 
 /**
@@ -174,7 +156,7 @@ export function formatTime12Hour(timeString: string): string {
     const dt = TimeZoneService.fromTimeString(timeString);
     return TimeZoneService.formatTime(dt);
   } catch (error) {
-    console.error('Error formatting to 12-hour time:', error, { timeString });
+    console.error('Error formatting to 12-hour time:', error);
     return timeString || 'Time unavailable';
   }
 }
@@ -183,22 +165,5 @@ export function formatTime12Hour(timeString: string): string {
  * Get a user-friendly display name for a timezone
  */
 export function getTimeZoneDisplayName(timezone: string): string {
-  const safeTimezone = TimeZoneService.ensureIANATimeZone(timezone);
-  try {
-    // First try to get the abbreviation
-    const now = TimeZoneService.now(safeTimezone);
-    const abbr = now.toFormat('ZZZZ');
-    
-    // Format the timezone name more friendly, e.g., "America/New_York" -> "New York"
-    let friendlyName = safeTimezone.split('/').pop()?.replace('_', ' ');
-    
-    if (abbr !== safeTimezone) {
-      return `${abbr} (${friendlyName})`;
-    } else {
-      return friendlyName || safeTimezone;
-    }
-  } catch (error) {
-    console.error('Error getting timezone display name:', error, { timezone });
-    return timezone || TimeZoneService.DEFAULT_TIMEZONE;
-  }
+  return TimeZoneService.getTimeZoneDisplayName(timezone);
 }

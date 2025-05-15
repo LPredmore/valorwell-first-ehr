@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/context/UserContext";
 import AuthDiagnostics from "@/components/auth/AuthDiagnostics";
+import AuthFixesTestPanel from "@/components/auth/AuthFixesTestPanel";
 import { Button } from "@/components/ui/button";
 import { inspectAuthState } from "@/utils/authDebugUtils";
 
@@ -82,6 +83,9 @@ const AuthDebugPage = () => {
               </pre>
             </div>
           )}
+
+          {/* Add the Auth Fixes Test Panel */}
+          <AuthFixesTestPanel />
 
           <AuthDiagnostics />
 
