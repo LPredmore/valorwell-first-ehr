@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import EditAppointmentDialog from './EditAppointmentDialog';
+import { Link } from 'react-router-dom';
 
 interface AppointmentDetailsDialogProps {
   isOpen: boolean;
@@ -49,7 +51,7 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
 
   const appointmentDate = appointment.date ? new Date(appointment.date) : new Date();
   const formattedDate = format(appointmentDate, 'EEEE, MMMM d, yyyy');
-  
+
   const formatTime = (timeString: string) => {
     try {
       const [hours, minutes] = timeString.split(':').map(Number);
@@ -74,7 +76,7 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
           .gte('date', appointment.date);
 
         if (error) throw error;
-        
+
         toast({
           title: "Success",
           description: "All future recurring appointments have been deleted.",
@@ -87,17 +89,15 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
           .eq('id', appointment.id);
 
         if (error) throw error;
-        
+
         toast({
           title: "Success",
           description: "The appointment has been deleted.",
         });
       }
-      
-      console.log("[AppointmentDetailsDialog] Appointment deleted, triggering refresh");
+
       setIsDeleteDialogOpen(false);
       onClose();
-      // Explicitly call onAppointmentUpdated to refresh the calendar view
       onAppointmentUpdated();
     } catch (error) {
       console.error('Error deleting appointment:', error);
@@ -135,14 +135,27 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
           <DialogHeader>
             <DialogTitle>Appointment Details</DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-gray-500" />
-                <span className="font-medium">{appointment.clientName || 'Unknown Client'}</span>
+                {appointment.client_id ? (
+                  <Link 
+                    to={`/clients/${appointment.client_id}`}
+                    className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log(`Navigating to client profile with ID: ${appointment.client_id}`);
+                    }}
+                  >
+                    {appointment.clientName || 'Unknown Client'}
+                  </Link>
+                ) : (
+                  <span className="font-medium">{appointment.clientName || 'Unknown Client'}</span>
+                )}
               </div>
-              
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon">
@@ -154,8 +167,8 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
                     <Edit className="h-4 w-4 mr-2" />
                     Edit Appointment
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    className="text-destructive focus:text-destructive" 
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
                     onClick={() => setIsDeleteDialogOpen(true)}
                   >
                     <Trash className="h-4 w-4 mr-2" />
@@ -164,20 +177,20 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            
+
             <Separator />
-            
+
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-gray-500" />
                 <span>{formattedDate}</span>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-gray-500" />
                 <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
               </div>
-              
+
               {isRecurring && (
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="bg-blue-50">
@@ -186,7 +199,7 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
                   </Badge>
                 </div>
               )}
-              
+
               <div>
                 <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
                   {appointment.status || 'Scheduled'}
@@ -194,13 +207,13 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
               </div>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={onClose}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -209,7 +222,7 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
               {isRecurring ? (
                 <div className="space-y-4">
                   <p>This is a recurring appointment. Would you like to delete just this appointment or all future appointments in this series?</p>
-                  
+
                   <RadioGroup value={deleteOption} onValueChange={(value) => setDeleteOption(value as 'single' | 'series')}>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="single" id="single" />

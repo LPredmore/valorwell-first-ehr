@@ -9,203 +9,60 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      admins: {
-        Row: {
-          admin_email: string
-          admin_first_name: string | null
-          admin_last_name: string | null
-          admin_phone: string | null
-          admin_status: string | null
-          created_at: string
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          admin_email: string
-          admin_first_name?: string | null
-          admin_last_name?: string | null
-          admin_phone?: string | null
-          admin_status?: string | null
-          created_at?: string
-          id: string
-          updated_at?: string
-        }
-        Update: {
-          admin_email?: string
-          admin_first_name?: string | null
-          admin_last_name?: string | null
-          admin_phone?: string | null
-          admin_status?: string | null
-          created_at?: string
-          id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      api_logs: {
-        Row: {
-          client_id: string | null
-          created_at: string
-          endpoint: string
-          error_message: string | null
-          id: string
-          processing_time_ms: number | null
-          request_payload: Json | null
-          response_data: Json | null
-          status: string
-        }
-        Insert: {
-          client_id?: string | null
-          created_at?: string
-          endpoint: string
-          error_message?: string | null
-          id?: string
-          processing_time_ms?: number | null
-          request_payload?: Json | null
-          response_data?: Json | null
-          status: string
-        }
-        Update: {
-          client_id?: string | null
-          created_at?: string
-          endpoint?: string
-          error_message?: string | null
-          id?: string
-          processing_time_ms?: number | null
-          request_payload?: Json | null
-          response_data?: Json | null
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "api_logs_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       appointments: {
         Row: {
+          appointment_datetime: string | null
+          appointment_end_datetime: string | null
           appointment_recurring: string | null
-          billed_amount: number | null
-          billing_notes: string | null
-          claim_claimmd_batch_id: string | null
-          claim_claimmd_id: string | null
-          claim_last_submission_date: string | null
-          claim_response_json: Json | null
-          claim_status: string | null
-          claim_status_last_checked: string | null
           client_id: string
           clinician_id: string
-          cpt_code: string | null
           created_at: string
-          denial_details_json: Json | null
-          diagnosis_code_pointers: string | null
-          end_at: string
-          era_check_eft_number: string | null
-          era_claimmd_id: string | null
-          era_payment_date: string | null
+          date: string
+          end_time: string
           id: string
-          insurance_adjustment_amount: number | null
-          insurance_adjustment_details_json: Json | null
-          insurance_paid_amount: number | null
-          last_statement_to_patient_date: string | null
-          modifiers: string[] | null
           notes: string | null
-          patient_paid_amount: number | null
-          patient_payment_date: string | null
-          patient_payment_status: string | null
-          patient_responsibility_amount: number | null
-          place_of_service_code: string | null
           recurring_group_id: string | null
-          requires_billing_review: boolean | null
-          start_at: string
+          source_time_zone: string
+          start_time: string
           status: string
-          stripe_charge_ids: string[] | null
           type: string
           updated_at: string
           video_room_url: string | null
         }
         Insert: {
+          appointment_datetime?: string | null
+          appointment_end_datetime?: string | null
           appointment_recurring?: string | null
-          billed_amount?: number | null
-          billing_notes?: string | null
-          claim_claimmd_batch_id?: string | null
-          claim_claimmd_id?: string | null
-          claim_last_submission_date?: string | null
-          claim_response_json?: Json | null
-          claim_status?: string | null
-          claim_status_last_checked?: string | null
           client_id: string
           clinician_id: string
-          cpt_code?: string | null
           created_at?: string
-          denial_details_json?: Json | null
-          diagnosis_code_pointers?: string | null
-          end_at: string
-          era_check_eft_number?: string | null
-          era_claimmd_id?: string | null
-          era_payment_date?: string | null
+          date: string
+          end_time: string
           id?: string
-          insurance_adjustment_amount?: number | null
-          insurance_adjustment_details_json?: Json | null
-          insurance_paid_amount?: number | null
-          last_statement_to_patient_date?: string | null
-          modifiers?: string[] | null
           notes?: string | null
-          patient_paid_amount?: number | null
-          patient_payment_date?: string | null
-          patient_payment_status?: string | null
-          patient_responsibility_amount?: number | null
-          place_of_service_code?: string | null
           recurring_group_id?: string | null
-          requires_billing_review?: boolean | null
-          start_at: string
+          source_time_zone?: string
+          start_time: string
           status?: string
-          stripe_charge_ids?: string[] | null
           type: string
           updated_at?: string
           video_room_url?: string | null
         }
         Update: {
+          appointment_datetime?: string | null
+          appointment_end_datetime?: string | null
           appointment_recurring?: string | null
-          billed_amount?: number | null
-          billing_notes?: string | null
-          claim_claimmd_batch_id?: string | null
-          claim_claimmd_id?: string | null
-          claim_last_submission_date?: string | null
-          claim_response_json?: Json | null
-          claim_status?: string | null
-          claim_status_last_checked?: string | null
           client_id?: string
           clinician_id?: string
-          cpt_code?: string | null
           created_at?: string
-          denial_details_json?: Json | null
-          diagnosis_code_pointers?: string | null
-          end_at?: string
-          era_check_eft_number?: string | null
-          era_claimmd_id?: string | null
-          era_payment_date?: string | null
+          date?: string
+          end_time?: string
           id?: string
-          insurance_adjustment_amount?: number | null
-          insurance_adjustment_details_json?: Json | null
-          insurance_paid_amount?: number | null
-          last_statement_to_patient_date?: string | null
-          modifiers?: string[] | null
           notes?: string | null
-          patient_paid_amount?: number | null
-          patient_payment_date?: string | null
-          patient_payment_status?: string | null
-          patient_responsibility_amount?: number | null
-          place_of_service_code?: string | null
           recurring_group_id?: string | null
-          requires_billing_review?: boolean | null
-          start_at?: string
+          source_time_zone?: string
+          start_time?: string
           status?: string
-          stripe_charge_ids?: string[] | null
           type?: string
           updated_at?: string
           video_room_url?: string | null
@@ -218,49 +75,42 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "appointments_clinician_id_fkey"
-            columns: ["clinician_id"]
-            isOneToOne: false
-            referencedRelation: "clinicians"
-            referencedColumns: ["id"]
-          },
         ]
       }
-      availability_blocks: {
+      availability_settings: {
         Row: {
           clinician_id: string
           created_at: string
-          end_at: string
+          default_slot_duration: number
           id: string
-          is_active: boolean
-          recurring_pattern: Json | null
-          start_at: string
+          max_advance_days: number
+          min_notice_hours: number
+          timezone: string
           updated_at: string
         }
         Insert: {
           clinician_id: string
           created_at?: string
-          end_at: string
+          default_slot_duration?: number
           id?: string
-          is_active?: boolean
-          recurring_pattern?: Json | null
-          start_at: string
+          max_advance_days?: number
+          min_notice_hours?: number
+          timezone?: string
           updated_at?: string
         }
         Update: {
           clinician_id?: string
           created_at?: string
-          end_at?: string
+          default_slot_duration?: number
           id?: string
-          is_active?: boolean
-          recurring_pattern?: Json | null
-          start_at?: string
+          max_advance_days?: number
+          min_notice_hours?: number
+          timezone?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "availability_blocks_clinician_id_fkey"
+            foreignKeyName: "availability_settings_clinician_id_fkey"
             columns: ["clinician_id"]
             isOneToOne: false
             referencedRelation: "clinicians"
@@ -268,44 +118,103 @@ export type Database = {
           },
         ]
       }
-      availability_exceptions: {
+      calendar_events: {
         Row: {
+          all_day: boolean | null
           clinician_id: string
-          created_at: string | null
-          day_of_week: string | null
+          created_at: string
+          description: string | null
           end_time: string
+          event_type: string
           id: string
-          is_active: boolean | null
-          is_deleted: boolean | null
-          specific_date: string
+          is_active: boolean
+          recurrence_id: string | null
           start_time: string
-          updated_at: string | null
+          title: string
+          updated_at: string
         }
         Insert: {
+          all_day?: boolean | null
           clinician_id: string
-          created_at?: string | null
-          day_of_week?: string | null
+          created_at?: string
+          description?: string | null
           end_time: string
+          event_type: string
           id?: string
-          is_active?: boolean | null
-          is_deleted?: boolean | null
-          specific_date: string
+          is_active?: boolean
+          recurrence_id?: string | null
           start_time: string
-          updated_at?: string | null
+          title: string
+          updated_at?: string
         }
         Update: {
+          all_day?: boolean | null
           clinician_id?: string
-          created_at?: string | null
-          day_of_week?: string | null
+          created_at?: string
+          description?: string | null
           end_time?: string
+          event_type?: string
           id?: string
-          is_active?: boolean | null
-          is_deleted?: boolean | null
-          specific_date?: string
+          is_active?: boolean
+          recurrence_id?: string | null
           start_time?: string
-          updated_at?: string | null
+          title?: string
+          updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_recurrence_id_fkey"
+            columns: ["recurrence_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calendar_exceptions: {
+        Row: {
+          created_at: string
+          exception_date: string
+          id: string
+          is_cancelled: boolean | null
+          recurrence_event_id: string | null
+          replacement_event_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          exception_date: string
+          id?: string
+          is_cancelled?: boolean | null
+          recurrence_event_id?: string | null
+          replacement_event_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          exception_date?: string
+          id?: string
+          is_cancelled?: boolean | null
+          recurrence_event_id?: string | null
+          replacement_event_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_exceptions_recurrence_event_id_fkey"
+            columns: ["recurrence_event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_exceptions_replacement_event_id_fkey"
+            columns: ["replacement_event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       client_history: {
         Row: {
@@ -670,7 +579,6 @@ export type Database = {
           client_behavior: string | null
           client_branchOS: string | null
           client_champva: string | null
-          client_city: string | null
           client_currentsymptoms: string | null
           client_date_of_birth: string | null
           client_diagnosis: string[] | null
@@ -713,7 +621,6 @@ export type Database = {
           client_policy_number_secondary: string | null
           client_policy_number_tertiary: string | null
           client_preferred_name: string | null
-          client_primary_payer_id: string | null
           client_primaryobjective: string | null
           client_privatenote: string | null
           client_problem: string | null
@@ -722,7 +629,6 @@ export type Database = {
           client_recentdischarge: string | null
           client_referral_source: string | null
           client_relationship: string | null
-          client_secondary_payer_id: string | null
           client_secondaryobjective: string | null
           client_self_goal: string | null
           client_sessionnarrative: string | null
@@ -741,7 +647,6 @@ export type Database = {
           client_substanceabuserisk: string | null
           client_suicidalideation: string | null
           client_temppassword: string | null
-          client_tertiary_payer_id: string | null
           client_tertiaryobjective: string | null
           client_thoughtprocess: string | null
           client_time_zone: string | null
@@ -758,18 +663,9 @@ export type Database = {
           client_tricare_sponsor_id: string | null
           client_tricare_sponsor_name: string | null
           client_vacoverage: string | null
-          client_zipcode: string | null
           created_at: string
-          eligibility_claimmd_id_primary: string | null
-          eligibility_coinsurance_primary_percent: number | null
-          eligibility_copay_primary: number | null
-          eligibility_deductible_primary: number | null
-          eligibility_last_checked_primary: string | null
-          eligibility_response_details_primary_json: Json | null
-          eligibility_status_primary: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
-          stripe_customer_id: string | null
           updated_at: string
         }
         Insert: {
@@ -781,7 +677,6 @@ export type Database = {
           client_behavior?: string | null
           client_branchOS?: string | null
           client_champva?: string | null
-          client_city?: string | null
           client_currentsymptoms?: string | null
           client_date_of_birth?: string | null
           client_diagnosis?: string[] | null
@@ -824,7 +719,6 @@ export type Database = {
           client_policy_number_secondary?: string | null
           client_policy_number_tertiary?: string | null
           client_preferred_name?: string | null
-          client_primary_payer_id?: string | null
           client_primaryobjective?: string | null
           client_privatenote?: string | null
           client_problem?: string | null
@@ -833,7 +727,6 @@ export type Database = {
           client_recentdischarge?: string | null
           client_referral_source?: string | null
           client_relationship?: string | null
-          client_secondary_payer_id?: string | null
           client_secondaryobjective?: string | null
           client_self_goal?: string | null
           client_sessionnarrative?: string | null
@@ -852,7 +745,6 @@ export type Database = {
           client_substanceabuserisk?: string | null
           client_suicidalideation?: string | null
           client_temppassword?: string | null
-          client_tertiary_payer_id?: string | null
           client_tertiaryobjective?: string | null
           client_thoughtprocess?: string | null
           client_time_zone?: string | null
@@ -869,18 +761,9 @@ export type Database = {
           client_tricare_sponsor_id?: string | null
           client_tricare_sponsor_name?: string | null
           client_vacoverage?: string | null
-          client_zipcode?: string | null
           created_at?: string
-          eligibility_claimmd_id_primary?: string | null
-          eligibility_coinsurance_primary_percent?: number | null
-          eligibility_copay_primary?: number | null
-          eligibility_deductible_primary?: number | null
-          eligibility_last_checked_primary?: string | null
-          eligibility_response_details_primary_json?: Json | null
-          eligibility_status_primary?: string | null
           id: string
           role?: Database["public"]["Enums"]["app_role"]
-          stripe_customer_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -892,7 +775,6 @@ export type Database = {
           client_behavior?: string | null
           client_branchOS?: string | null
           client_champva?: string | null
-          client_city?: string | null
           client_currentsymptoms?: string | null
           client_date_of_birth?: string | null
           client_diagnosis?: string[] | null
@@ -935,7 +817,6 @@ export type Database = {
           client_policy_number_secondary?: string | null
           client_policy_number_tertiary?: string | null
           client_preferred_name?: string | null
-          client_primary_payer_id?: string | null
           client_primaryobjective?: string | null
           client_privatenote?: string | null
           client_problem?: string | null
@@ -944,7 +825,6 @@ export type Database = {
           client_recentdischarge?: string | null
           client_referral_source?: string | null
           client_relationship?: string | null
-          client_secondary_payer_id?: string | null
           client_secondaryobjective?: string | null
           client_self_goal?: string | null
           client_sessionnarrative?: string | null
@@ -963,7 +843,6 @@ export type Database = {
           client_substanceabuserisk?: string | null
           client_suicidalideation?: string | null
           client_temppassword?: string | null
-          client_tertiary_payer_id?: string | null
           client_tertiaryobjective?: string | null
           client_thoughtprocess?: string | null
           client_time_zone?: string | null
@@ -980,18 +859,9 @@ export type Database = {
           client_tricare_sponsor_id?: string | null
           client_tricare_sponsor_name?: string | null
           client_vacoverage?: string | null
-          client_zipcode?: string | null
           created_at?: string
-          eligibility_claimmd_id_primary?: string | null
-          eligibility_coinsurance_primary_percent?: number | null
-          eligibility_copay_primary?: number | null
-          eligibility_deductible_primary?: number | null
-          eligibility_last_checked_primary?: string | null
-          eligibility_response_details_primary_json?: Json | null
-          eligibility_status_primary?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
-          stripe_customer_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1090,69 +960,6 @@ export type Database = {
       clinicians: {
         Row: {
           clinician_accepting_new_clients: string | null
-          clinician_availability_end_friday_1: string | null
-          clinician_availability_end_friday_2: string | null
-          clinician_availability_end_friday_3: string | null
-          clinician_availability_end_monday_1: string | null
-          clinician_availability_end_monday_2: string | null
-          clinician_availability_end_monday_3: string | null
-          clinician_availability_end_saturday_1: string | null
-          clinician_availability_end_saturday_2: string | null
-          clinician_availability_end_saturday_3: string | null
-          clinician_availability_end_sunday_1: string | null
-          clinician_availability_end_sunday_2: string | null
-          clinician_availability_end_sunday_3: string | null
-          clinician_availability_end_thursday_1: string | null
-          clinician_availability_end_thursday_2: string | null
-          clinician_availability_end_thursday_3: string | null
-          clinician_availability_end_tuesday_1: string | null
-          clinician_availability_end_tuesday_2: string | null
-          clinician_availability_end_tuesday_3: string | null
-          clinician_availability_end_wednesday_1: string | null
-          clinician_availability_end_wednesday_2: string | null
-          clinician_availability_end_wednesday_3: string | null
-          clinician_availability_start_friday_1: string | null
-          clinician_availability_start_friday_2: string | null
-          clinician_availability_start_friday_3: string | null
-          clinician_availability_start_monday_1: string | null
-          clinician_availability_start_monday_2: string | null
-          clinician_availability_start_monday_3: string | null
-          clinician_availability_start_saturday_1: string | null
-          clinician_availability_start_saturday_2: string | null
-          clinician_availability_start_saturday_3: string | null
-          clinician_availability_start_sunday_1: string | null
-          clinician_availability_start_sunday_2: string | null
-          clinician_availability_start_sunday_3: string | null
-          clinician_availability_start_thursday_1: string | null
-          clinician_availability_start_thursday_2: string | null
-          clinician_availability_start_thursday_3: string | null
-          clinician_availability_start_tuesday_1: string | null
-          clinician_availability_start_tuesday_2: string | null
-          clinician_availability_start_tuesday_3: string | null
-          clinician_availability_start_wednesday_1: string | null
-          clinician_availability_start_wednesday_2: string | null
-          clinician_availability_start_wednesday_3: string | null
-          clinician_availability_timezone_friday_1: string | null
-          clinician_availability_timezone_friday_2: string | null
-          clinician_availability_timezone_friday_3: string | null
-          clinician_availability_timezone_monday_1: string | null
-          clinician_availability_timezone_monday_2: string | null
-          clinician_availability_timezone_monday_3: string | null
-          clinician_availability_timezone_saturday_1: string | null
-          clinician_availability_timezone_saturday_2: string | null
-          clinician_availability_timezone_saturday_3: string | null
-          clinician_availability_timezone_sunday_1: string | null
-          clinician_availability_timezone_sunday_2: string | null
-          clinician_availability_timezone_sunday_3: string | null
-          clinician_availability_timezone_thursday_1: string | null
-          clinician_availability_timezone_thursday_2: string | null
-          clinician_availability_timezone_thursday_3: string | null
-          clinician_availability_timezone_tuesday_1: string | null
-          clinician_availability_timezone_tuesday_2: string | null
-          clinician_availability_timezone_tuesday_3: string | null
-          clinician_availability_timezone_wednesday_1: string | null
-          clinician_availability_timezone_wednesday_2: string | null
-          clinician_availability_timezone_wednesday_3: string | null
           clinician_bio: string | null
           clinician_email: string | null
           clinician_first_name: string | null
@@ -1160,21 +967,17 @@ export type Database = {
           clinician_last_name: string | null
           clinician_license_type: string | null
           clinician_licensed_states: string[] | null
-          clinician_max_advance_days: number | null
           clinician_min_client_age: number | null
-          clinician_min_notice_days: number | null
           clinician_nameinsurance: string | null
           clinician_npi_number: string | null
           clinician_phone: string | null
           clinician_professional_name: string | null
+          clinician_state: string[] | null
           clinician_status:
             | Database["public"]["Enums"]["clinician_status_enum"]
             | null
           clinician_taxonomy_code: string | null
           clinician_temppassword: string | null
-          clinician_time_granularity: string | null
-          clinician_time_zone: string | null
-          clinician_timezone: string[] | null
           clinician_treatment_approaches: string[] | null
           clinician_type: string | null
           created_at: string
@@ -1183,69 +986,6 @@ export type Database = {
         }
         Insert: {
           clinician_accepting_new_clients?: string | null
-          clinician_availability_end_friday_1?: string | null
-          clinician_availability_end_friday_2?: string | null
-          clinician_availability_end_friday_3?: string | null
-          clinician_availability_end_monday_1?: string | null
-          clinician_availability_end_monday_2?: string | null
-          clinician_availability_end_monday_3?: string | null
-          clinician_availability_end_saturday_1?: string | null
-          clinician_availability_end_saturday_2?: string | null
-          clinician_availability_end_saturday_3?: string | null
-          clinician_availability_end_sunday_1?: string | null
-          clinician_availability_end_sunday_2?: string | null
-          clinician_availability_end_sunday_3?: string | null
-          clinician_availability_end_thursday_1?: string | null
-          clinician_availability_end_thursday_2?: string | null
-          clinician_availability_end_thursday_3?: string | null
-          clinician_availability_end_tuesday_1?: string | null
-          clinician_availability_end_tuesday_2?: string | null
-          clinician_availability_end_tuesday_3?: string | null
-          clinician_availability_end_wednesday_1?: string | null
-          clinician_availability_end_wednesday_2?: string | null
-          clinician_availability_end_wednesday_3?: string | null
-          clinician_availability_start_friday_1?: string | null
-          clinician_availability_start_friday_2?: string | null
-          clinician_availability_start_friday_3?: string | null
-          clinician_availability_start_monday_1?: string | null
-          clinician_availability_start_monday_2?: string | null
-          clinician_availability_start_monday_3?: string | null
-          clinician_availability_start_saturday_1?: string | null
-          clinician_availability_start_saturday_2?: string | null
-          clinician_availability_start_saturday_3?: string | null
-          clinician_availability_start_sunday_1?: string | null
-          clinician_availability_start_sunday_2?: string | null
-          clinician_availability_start_sunday_3?: string | null
-          clinician_availability_start_thursday_1?: string | null
-          clinician_availability_start_thursday_2?: string | null
-          clinician_availability_start_thursday_3?: string | null
-          clinician_availability_start_tuesday_1?: string | null
-          clinician_availability_start_tuesday_2?: string | null
-          clinician_availability_start_tuesday_3?: string | null
-          clinician_availability_start_wednesday_1?: string | null
-          clinician_availability_start_wednesday_2?: string | null
-          clinician_availability_start_wednesday_3?: string | null
-          clinician_availability_timezone_friday_1?: string | null
-          clinician_availability_timezone_friday_2?: string | null
-          clinician_availability_timezone_friday_3?: string | null
-          clinician_availability_timezone_monday_1?: string | null
-          clinician_availability_timezone_monday_2?: string | null
-          clinician_availability_timezone_monday_3?: string | null
-          clinician_availability_timezone_saturday_1?: string | null
-          clinician_availability_timezone_saturday_2?: string | null
-          clinician_availability_timezone_saturday_3?: string | null
-          clinician_availability_timezone_sunday_1?: string | null
-          clinician_availability_timezone_sunday_2?: string | null
-          clinician_availability_timezone_sunday_3?: string | null
-          clinician_availability_timezone_thursday_1?: string | null
-          clinician_availability_timezone_thursday_2?: string | null
-          clinician_availability_timezone_thursday_3?: string | null
-          clinician_availability_timezone_tuesday_1?: string | null
-          clinician_availability_timezone_tuesday_2?: string | null
-          clinician_availability_timezone_tuesday_3?: string | null
-          clinician_availability_timezone_wednesday_1?: string | null
-          clinician_availability_timezone_wednesday_2?: string | null
-          clinician_availability_timezone_wednesday_3?: string | null
           clinician_bio?: string | null
           clinician_email?: string | null
           clinician_first_name?: string | null
@@ -1253,21 +993,17 @@ export type Database = {
           clinician_last_name?: string | null
           clinician_license_type?: string | null
           clinician_licensed_states?: string[] | null
-          clinician_max_advance_days?: number | null
           clinician_min_client_age?: number | null
-          clinician_min_notice_days?: number | null
           clinician_nameinsurance?: string | null
           clinician_npi_number?: string | null
           clinician_phone?: string | null
           clinician_professional_name?: string | null
+          clinician_state?: string[] | null
           clinician_status?:
             | Database["public"]["Enums"]["clinician_status_enum"]
             | null
           clinician_taxonomy_code?: string | null
           clinician_temppassword?: string | null
-          clinician_time_granularity?: string | null
-          clinician_time_zone?: string | null
-          clinician_timezone?: string[] | null
           clinician_treatment_approaches?: string[] | null
           clinician_type?: string | null
           created_at?: string
@@ -1276,69 +1012,6 @@ export type Database = {
         }
         Update: {
           clinician_accepting_new_clients?: string | null
-          clinician_availability_end_friday_1?: string | null
-          clinician_availability_end_friday_2?: string | null
-          clinician_availability_end_friday_3?: string | null
-          clinician_availability_end_monday_1?: string | null
-          clinician_availability_end_monday_2?: string | null
-          clinician_availability_end_monday_3?: string | null
-          clinician_availability_end_saturday_1?: string | null
-          clinician_availability_end_saturday_2?: string | null
-          clinician_availability_end_saturday_3?: string | null
-          clinician_availability_end_sunday_1?: string | null
-          clinician_availability_end_sunday_2?: string | null
-          clinician_availability_end_sunday_3?: string | null
-          clinician_availability_end_thursday_1?: string | null
-          clinician_availability_end_thursday_2?: string | null
-          clinician_availability_end_thursday_3?: string | null
-          clinician_availability_end_tuesday_1?: string | null
-          clinician_availability_end_tuesday_2?: string | null
-          clinician_availability_end_tuesday_3?: string | null
-          clinician_availability_end_wednesday_1?: string | null
-          clinician_availability_end_wednesday_2?: string | null
-          clinician_availability_end_wednesday_3?: string | null
-          clinician_availability_start_friday_1?: string | null
-          clinician_availability_start_friday_2?: string | null
-          clinician_availability_start_friday_3?: string | null
-          clinician_availability_start_monday_1?: string | null
-          clinician_availability_start_monday_2?: string | null
-          clinician_availability_start_monday_3?: string | null
-          clinician_availability_start_saturday_1?: string | null
-          clinician_availability_start_saturday_2?: string | null
-          clinician_availability_start_saturday_3?: string | null
-          clinician_availability_start_sunday_1?: string | null
-          clinician_availability_start_sunday_2?: string | null
-          clinician_availability_start_sunday_3?: string | null
-          clinician_availability_start_thursday_1?: string | null
-          clinician_availability_start_thursday_2?: string | null
-          clinician_availability_start_thursday_3?: string | null
-          clinician_availability_start_tuesday_1?: string | null
-          clinician_availability_start_tuesday_2?: string | null
-          clinician_availability_start_tuesday_3?: string | null
-          clinician_availability_start_wednesday_1?: string | null
-          clinician_availability_start_wednesday_2?: string | null
-          clinician_availability_start_wednesday_3?: string | null
-          clinician_availability_timezone_friday_1?: string | null
-          clinician_availability_timezone_friday_2?: string | null
-          clinician_availability_timezone_friday_3?: string | null
-          clinician_availability_timezone_monday_1?: string | null
-          clinician_availability_timezone_monday_2?: string | null
-          clinician_availability_timezone_monday_3?: string | null
-          clinician_availability_timezone_saturday_1?: string | null
-          clinician_availability_timezone_saturday_2?: string | null
-          clinician_availability_timezone_saturday_3?: string | null
-          clinician_availability_timezone_sunday_1?: string | null
-          clinician_availability_timezone_sunday_2?: string | null
-          clinician_availability_timezone_sunday_3?: string | null
-          clinician_availability_timezone_thursday_1?: string | null
-          clinician_availability_timezone_thursday_2?: string | null
-          clinician_availability_timezone_thursday_3?: string | null
-          clinician_availability_timezone_tuesday_1?: string | null
-          clinician_availability_timezone_tuesday_2?: string | null
-          clinician_availability_timezone_tuesday_3?: string | null
-          clinician_availability_timezone_wednesday_1?: string | null
-          clinician_availability_timezone_wednesday_2?: string | null
-          clinician_availability_timezone_wednesday_3?: string | null
           clinician_bio?: string | null
           clinician_email?: string | null
           clinician_first_name?: string | null
@@ -1346,21 +1019,17 @@ export type Database = {
           clinician_last_name?: string | null
           clinician_license_type?: string | null
           clinician_licensed_states?: string[] | null
-          clinician_max_advance_days?: number | null
           clinician_min_client_age?: number | null
-          clinician_min_notice_days?: number | null
           clinician_nameinsurance?: string | null
           clinician_npi_number?: string | null
           clinician_phone?: string | null
           clinician_professional_name?: string | null
+          clinician_state?: string[] | null
           clinician_status?:
             | Database["public"]["Enums"]["clinician_status_enum"]
             | null
           clinician_taxonomy_code?: string | null
           clinician_temppassword?: string | null
-          clinician_time_granularity?: string | null
-          clinician_time_zone?: string | null
-          clinician_timezone?: string[] | null
           clinician_treatment_approaches?: string[] | null
           clinician_type?: string | null
           created_at?: string
@@ -1576,30 +1245,6 @@ export type Database = {
         }
         Relationships: []
       }
-      migration_logs: {
-        Row: {
-          created_at: string | null
-          description: string
-          details: Json | null
-          id: number
-          migration_name: string
-        }
-        Insert: {
-          created_at?: string | null
-          description: string
-          details?: Json | null
-          id?: number
-          migration_name: string
-        }
-        Update: {
-          created_at?: string | null
-          description?: string
-          details?: Json | null
-          id?: number
-          migration_name?: string
-        }
-        Relationships: []
-      }
       phq9_assessments: {
         Row: {
           additional_notes: string | null
@@ -1712,6 +1357,80 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          phone: string | null
+          profile_type: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          temp_password: string | null
+          time_zone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+          phone?: string | null
+          profile_type?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          temp_password?: string | null
+          time_zone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+          profile_type?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          temp_password?: string | null
+          time_zone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      recurrence_rules: {
+        Row: {
+          created_at: string
+          event_id: string | null
+          id: string
+          rrule: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          rrule: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          rrule?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurrence_rules_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       session_notes: {
         Row: {
@@ -1884,6 +1603,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "session_notes_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "session_notes_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
@@ -1927,6 +1653,13 @@ export type Database = {
           session_type?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "session_notes_history_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "session_notes_history_client_id_fkey"
             columns: ["client_id"]
@@ -2032,27 +1765,33 @@ export type Database = {
         }
         Relationships: []
       }
-      system_settings: {
+      temp_policy_backup: {
         Row: {
-          created_at: string | null
-          description: string | null
-          key: string
-          updated_at: string | null
-          value: string
+          cmd: string | null
+          policyname: unknown | null
+          qual: string | null
+          roles: unknown[] | null
+          schemaname: unknown | null
+          tablename: unknown | null
+          with_check: string | null
         }
         Insert: {
-          created_at?: string | null
-          description?: string | null
-          key: string
-          updated_at?: string | null
-          value: string
+          cmd?: string | null
+          policyname?: unknown | null
+          qual?: string | null
+          roles?: unknown[] | null
+          schemaname?: unknown | null
+          tablename?: unknown | null
+          with_check?: string | null
         }
         Update: {
-          created_at?: string | null
-          description?: string | null
-          key?: string
-          updated_at?: string | null
-          value?: string
+          cmd?: string | null
+          policyname?: unknown | null
+          qual?: string | null
+          roles?: unknown[] | null
+          schemaname?: unknown | null
+          tablename?: unknown | null
+          with_check?: string | null
         }
         Relationships: []
       }
@@ -2190,22 +1929,9 @@ export type Database = {
         Args: { check_table_name: string }
         Returns: boolean
       }
-      convert_appointment_times_to_utc: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
       create_or_replace_check_table_exists_function: {
         Args: Record<PropertyKey, never>
         Returns: undefined
-      }
-      debug_client_therapist_matching: {
-        Args: { p_therapist_id: string }
-        Returns: {
-          client_id: string
-          client_name: string
-          therapist_id: string
-          therapist_id_type: string
-        }[]
       }
       debug_rls_check: {
         Args: {
@@ -2214,26 +1940,10 @@ export type Database = {
           operation: string
           record_id: string
         }
-        Returns: boolean
+        Returns: Json
       }
       is_admin: {
         Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_client: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
-      is_clinician: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
-      standardize_uuid: {
-        Args: { input_id: string }
-        Returns: string
-      }
-      user_has_admin_role: {
-        Args: { user_id: string }
         Returns: boolean
       }
     }

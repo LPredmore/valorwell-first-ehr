@@ -1,21 +1,30 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import React from 'react';
+import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
+
+interface SelectOption {
+  value: string;
+  label: string;
+}
 
 interface FormFieldWrapperProps {
   control: any;
   name: string;
   label: string;
-  type?: 'text' | 'email' | 'tel' | 'select';
-  options?: string[];
+  type?: 'text' | 'email' | 'tel' | 'select' | 'date' | 'checkbox' | 'textarea' | 'phone';
+  options?: (string | SelectOption)[];
   readOnly?: boolean;
   valueMapper?: (label: string) => string;
   labelMapper?: (value: string) => string;
   maxLength?: number;
   required?: boolean;
-  defaultValue?: string;
-  onValueCommit?: (name: string, value: string) => void; // New callback for immediate saving
+  helperText?: string;
 }
 
 const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
@@ -29,65 +38,66 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
   labelMapper,
   maxLength,
   required = false,
-  defaultValue,
-  onValueCommit
+  helperText
 }) => {
-  // Add local state to maintain selected value
-  const [localSelectedValue, setLocalSelectedValue] = useState<string | undefined>(defaultValue);
-  const initialized = useRef<boolean>(false);
-
+  const isTimeZoneField = name === 'timeZone';
+  
   return (
     <FormField
       control={control}
       name={name}
       render={({ field }) => {
-        // For debugging purposes
-        console.log(`FormFieldWrapper ${name} rendering with field value:`, field.value);
-        console.log(`FormFieldWrapper ${name} local selected value:`, localSelectedValue);
-        
-        // Initialize the field value when the component mounts or when defaultValue changes
-        useEffect(() => {
-          // Only apply defaultValue if field value is undefined and we have a defaultValue
-          if (defaultValue !== undefined && field.value === undefined && !initialized.current) {
-            console.log(`FormFieldWrapper ${name} initializing with defaultValue:`, defaultValue);
-            field.onChange(defaultValue);
-            setLocalSelectedValue(defaultValue);
-            initialized.current = true;
-          }
-        }, [defaultValue, field, name]);
-
-        // Keep local state in sync with field value when field.value changes externally
-        useEffect(() => {
-          // Skip initial render if already initialized
-          if (field.value !== undefined && field.value !== localSelectedValue) {
-            console.log(`FormFieldWrapper ${name} external field value changed to:`, field.value);
-            setLocalSelectedValue(field.value);
-          }
-        }, [field.value, name, localSelectedValue]);
-        
         const handleSelectChange = (selectedValue: string) => {
-          console.log(`FormFieldWrapper ${name} select changed to:`, selectedValue);
+          if (isTimeZoneField) {
+            const ianaValue = ensureIANATimeZone(selectedValue);
+            field.onChange(ianaValue);
+            return;
+          }
           
-          // If a valueMapper is provided, map the selected option label to its actual value
           const valueToStore = valueMapper ? valueMapper(selectedValue) : selectedValue;
-          
-          // Update both the form field and our local state
           field.onChange(valueToStore);
-          setLocalSelectedValue(selectedValue);
-          initialized.current = true;
-          
-          // If onValueCommit is provided, call it to save the value immediately
-          if (onValueCommit) {
-            console.log(`FormFieldWrapper ${name} calling onValueCommit with:`, valueToStore);
-            onValueCommit(name, valueToStore);
+        };
+
+        const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+          if (e.target.value) {
+            const dateValue = new Date(e.target.value);
+            field.onChange(dateValue);
+          } else {
+            field.onChange(null);
           }
         };
 
-        // If a labelMapper is provided and we have a value, map the value to a display label
-        const displayValue = (labelMapper && field.value) 
-          ? labelMapper(field.value) 
-          : field.value || localSelectedValue;
+        let displayValue = field.value;
+        
+        if (isTimeZoneField && field.value && field.value.includes('/')) {
+          const matchingOption = options.find((opt) => {
+            const optValue = typeof opt === 'string' ? opt : opt.value;
+            const ianaValue = ensureIANATimeZone(optValue);
+            return ianaValue === field.value;
+          });
+          
+          if (matchingOption) {
+            displayValue = typeof matchingOption === 'string' ? matchingOption : matchingOption.value;
+          }
+        } else if (labelMapper && field.value) {
+          displayValue = labelMapper(field.value);
+        }
 
+        const renderSelectOption = (option: string | SelectOption) => {
+          if (typeof option === 'string') {
+            return (
+              <SelectItem key={option} value={option}>
+                {option}
+              </SelectItem>
+            );
+          }
+          return (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          );
+        };
+        
         return (
           <FormItem>
             <FormLabel>{label}{required && <span className="text-red-500 ml-1">*</span>}</FormLabel>
@@ -102,14 +112,44 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                   <SelectTrigger className={readOnly ? "bg-gray-100" : ""}>
                     <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
                   </SelectTrigger>
-                  <SelectContent className="bg-white z-50">
-                    {options.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {option}
-                      </SelectItem>
-                    ))}
+                  <SelectContent>
+                    {options.map(renderSelectOption)}
                   </SelectContent>
                 </Select>
+              ) : type === 'date' ? (
+                <Input
+                  {...field}
+                  value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value || ''}
+                  onChange={handleDateChange}
+                  type="date"
+                  readOnly={readOnly}
+                  className={readOnly ? "bg-gray-100" : ""}
+                  required={required}
+                />
+              ) : type === 'checkbox' ? (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    disabled={readOnly}
+                  />
+                  {helperText && <span className="text-sm text-gray-500">{helperText}</span>}
+                </div>
+              ) : type === 'textarea' ? (
+                <Textarea
+                  {...field}
+                  readOnly={readOnly}
+                  className={readOnly ? "bg-gray-100" : ""}
+                  maxLength={maxLength}
+                  required={required}
+                />
+              ) : type === 'phone' ? (
+                <PhoneInput
+                  {...field}
+                  disabled={readOnly}
+                  defaultCountry="US"
+                  className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${readOnly ? "bg-gray-100" : ""}`}
+                />
               ) : (
                 <Input
                   {...field}
@@ -118,17 +158,12 @@ const FormFieldWrapper: React.FC<FormFieldWrapperProps> = ({
                   className={readOnly ? "bg-gray-100" : ""}
                   maxLength={maxLength}
                   required={required}
-                  onChange={(e) => {
-                    field.onChange(e);
-                    // If onValueCommit is provided, call it to save the value immediately
-                    if (onValueCommit) {
-                      console.log(`FormFieldWrapper ${name} input calling onValueCommit with:`, e.target.value);
-                      onValueCommit(name, e.target.value);
-                    }
-                  }}
                 />
               )}
             </FormControl>
+            {helperText && type !== 'checkbox' && (
+              <FormDescription>{helperText}</FormDescription>
+            )}
             <FormMessage />
           </FormItem>
         );

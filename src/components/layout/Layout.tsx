@@ -2,68 +2,79 @@
 import { ReactNode, useEffect, useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/context/UserContext';
-import AuthStateMonitor from '@/components/auth/AuthStateMonitor';
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const [session, setSession] = useState(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { isLoading: userContextLoading, userId, authInitialized } = useUser();
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const { isLoading: userContextLoading } = useUser();
 
-  // Effect to handle redirects based on authentication status
   useEffect(() => {
-    console.log("[Layout] Initializing layout, userContextLoading:", userContextLoading, "authInitialized:", authInitialized);
+    console.log("[Layout] Initializing layout, userContextLoading:", userContextLoading);
     
-    if (authInitialized) {
-      if (!userId) {
-        console.log("[Layout] No authenticated user found, redirecting to login");
-        navigate('/login');
-      }
-    }
-  }, [navigate, userContextLoading, userId, authInitialized]);
-
-  // Add timeout mechanism to prevent indefinite loading
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
-    if (userContextLoading && !authInitialized) {
-      console.log("[Layout] Starting loading timeout check");
-      timeoutId = setTimeout(() => {
-        console.log("[Layout] Loading timeout reached after 10 seconds");
-        setLoadingTimeout(true);
-      }, 10000); // 10 seconds timeout
-    }
-    
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+    const checkSession = async () => {
+      try {
+        console.log("[Layout] Checking session");
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("[Layout] Error checking session:", error);
+          return;
+        }
+        
+        console.log("[Layout] Session check result:", data.session ? "Session exists" : "No session");
+        setSession(data.session);
+        
+        // If no session is found, redirect to login immediately
+        if (!data.session) {
+          console.log("[Layout] No session found, redirecting to login");
+          window.location.href = '/login';
+          return;
+        }
+        
+        // Set up auth state listener
+        console.log("[Layout] Setting up layout auth state listener");
+        const { data: authListener } = supabase.auth.onAuthStateChange(
+          (event, newSession) => {
+            console.log("[Layout] Auth state change in layout:", event);
+            
+            if (event === 'SIGNED_OUT') {
+              console.log("[Layout] User signed out, redirecting to login");
+              setSession(null);
+              // Use window.location for immediate redirect and full page reload
+              window.location.href = '/login';
+            } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+              console.log("[Layout] User signed in or token refreshed");
+              setSession(newSession);
+            }
+          }
+        );
+        
+        // Cleanup subscription on unmount
+        return () => {
+          console.log("[Layout] Cleaning up layout auth listener");
+          if (authListener && authListener.subscription) {
+            authListener.subscription.unsubscribe();
+          }
+        };
+      } catch (error) {
+        console.error("[Layout] Exception in checkSession:", error);
       }
     };
-  }, [userContextLoading, authInitialized]);
-
-  // Show loading state while checking auth - updated to consider both states
-  if (userContextLoading && !authInitialized) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center flex-col">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-valorwell-600 mb-4"></div>
-        <p className="text-valorwell-600">
-          {loadingTimeout ? "Taking longer than expected..." : "Loading user data..."}
-        </p>
-      </div>
-    );
-  }
+    
+    checkSession();
+  }, [navigate, userContextLoading]);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Add AuthStateMonitor for development environment */}
-      {process.env.NODE_ENV === 'development' && <AuthStateMonitor visible={true} />}
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />

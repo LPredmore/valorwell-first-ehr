@@ -18,16 +18,16 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { X } from "lucide-react";
-import { savePHQ9Assessment } from "@/integrations/supabase/client";
+import { savePHQ9Assessment, supabase } from "@/integrations/supabase/client";
 
 interface PHQ9TemplateProps {
   onClose: () => void;
   clinicianName: string;
   clientData?: ClientDetails | null;
-  onComplete?: () => void; // Callback for when assessment is completed
+  onComplete?: () => void;
+  appointmentId?: string | number | null;
 }
 
-// PHQ-9 questions
 const phq9Questions = [
   "Little interest or pleasure in doing things",
   "Feeling down, depressed, or hopeless",
@@ -40,7 +40,6 @@ const phq9Questions = [
   "Thoughts that you would be better off dead, or of hurting yourself in some way"
 ];
 
-// Answer options
 const answerOptions = [
   { value: 0, label: "Not at all" },
   { value: 1, label: "Several days" },
@@ -48,7 +47,7 @@ const answerOptions = [
   { value: 3, label: "Nearly every day" }
 ];
 
-const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, clientData, onComplete }) => {
+const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, clientData, onComplete, appointmentId }) => {
   const { toast } = useToast();
   const [scores, setScores] = useState<number[]>(new Array(9).fill(0));
   const [additionalNotes, setAdditionalNotes] = useState("");
@@ -63,10 +62,8 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
     }
   });
 
-  // Calculate total score
   const totalScore = scores.reduce((sum, score) => sum + score, 0);
   
-  // Get severity based on total score
   const getSeverity = (score: number) => {
     if (score >= 0 && score <= 4) return "None-minimal";
     if (score >= 5 && score <= 9) return "Mild";
@@ -85,9 +82,7 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
     try {
       setIsSaving(true);
       
-      // Only proceed with saving if we have clientData with an ID
       if (clientData && clientData.id) {
-        // Prepare the assessment data
         const assessmentData = {
           client_id: clientData.id,
           assessment_date: form.getValues().date,
@@ -101,10 +96,10 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
           question_8: scores[7],
           question_9: scores[8],
           total_score: totalScore,
-          additional_notes: additionalNotes
+          additional_notes: additionalNotes,
+          appointment_id: appointmentId ? appointmentId.toString() : null
         };
         
-        // Save the assessment to the database
         const result = await savePHQ9Assessment(assessmentData);
         
         if (!result.success) {
@@ -114,15 +109,36 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
             description: "The assessment was completed but there was an issue saving the data.",
             variant: "destructive"
           });
-          // Still continue with the flow even if saving fails
         } else {
           console.log('PHQ-9 assessment saved successfully:', result.data);
+          
+          const severity = getSeverity(totalScore);
+          const phq9_narrative = `Patient completed PHQ-9 assessment with a total score of ${totalScore} (${severity} depression severity). ${additionalNotes ? `Additional notes: ${additionalNotes}` : ''}`;
+          
+          if (result.data && result.data.id) {
+            try {
+              const { error: updateError } = await supabase
+                .from('phq9_assessments')
+                .update({ phq9_narrative })
+                .eq('id', result.data.id);
+                
+              if (updateError) {
+                console.error('Error updating PHQ-9 narrative:', updateError);
+              }
+            } catch (narrativeError) {
+              console.error('Error saving PHQ-9 narrative:', narrativeError);
+            }
+          }
         }
       } else {
         console.warn('Cannot save PHQ-9 assessment: Missing client data or ID');
+        toast({
+          title: "Warning",
+          description: "Could not save assessment: missing client information.",
+          variant: "destructive"
+        });
       }
       
-      // Keep existing notification code
       toast({
         title: "Assessment Saved",
         description: "PHQ-9 assessment has been saved successfully.",
@@ -139,7 +155,6 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
       setIsSaving(false);
       handleClose();
       
-      // Call onComplete if provided, otherwise just close
       if (onComplete) {
         onComplete();
       }
@@ -271,7 +286,7 @@ const PHQ9Template: React.FC<PHQ9TemplateProps> = ({ onClose, clinicianName, cli
           Cancel
         </Button>
         <Button onClick={handleSubmit} disabled={isSaving}>
-          {isSaving ? "Saving..." : "Save Assessment"}
+          {isSaving ? "Saving..." : "Start Session"}
         </Button>
       </div>
     </Form>

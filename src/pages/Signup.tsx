@@ -1,11 +1,10 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 
 import {
   Form,
@@ -19,10 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2 } from "lucide-react";
 
-// Define form schema with validation
 const signupSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
@@ -34,15 +30,10 @@ const signupSchema = z.object({
 
 type SignupFormValues = z.infer<typeof signupSchema>;
 
-const MAX_RETRIES = 2;
-const RETRY_DELAY = 1000; // 1 second
-
 const Signup = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Initialize form
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -57,113 +48,54 @@ const Signup = () => {
 
   const onSubmit = async (values: SignupFormValues) => {
     setIsSubmitting(true);
-    setError(null);
     
     try {
-      console.log("[Signup] Starting client registration with values:", values);
-      
-      // Generate a random password (will be reset later)
       const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
       
-      let attempt = 0;
-      let success = false;
-      let lastError = null;
-      
-      // Retry logic for authentication
-      while (!success && attempt < MAX_RETRIES) {
-        try {
-          if (attempt > 0) {
-            console.log(`[Signup] Retrying signup attempt ${attempt + 1}/${MAX_RETRIES + 1}...`);
-            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-          }
-          
-          // Create auth user with client role directly in the metadata
-          const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: values.email,
-            password: tempPassword,
-            options: {
-              data: {
-                first_name: values.firstName,
-                last_name: values.lastName,
-                phone: values.phone,
-                role: "client",
-                state: values.state,
-                temp_password: tempPassword
-              }
-            }
-          });
-          
-          if (authError) {
-            console.error(`[Signup] Auth error on attempt ${attempt + 1}:`, authError);
-            lastError = authError;
-            attempt++;
-            continue;
-          }
-          
-          if (!authData.user) {
-            console.error(`[Signup] No user returned in auth data on attempt ${attempt + 1}`);
-            lastError = new Error("Failed to create user account - no user returned");
-            attempt++;
-            continue;
-          }
-          
-          console.log("[Signup] User created successfully:", authData.user.id);
-          success = true;
-          
-          toast({
-            title: "Account created successfully",
-            description: "You can now log in to access your patient portal.",
-          });
-          
-          // Redirect to login page
-          navigate("/login");
-          
-        } catch (attemptError: any) {
-          console.error(`[Signup] Error during registration attempt ${attempt + 1}:`, attemptError);
-          lastError = attemptError;
-          attempt++;
-        }
-      }
-      
-      // If we get here and success is false, we've exhausted our retries
-      if (!success) {
-        let errorMessage = "There was a problem creating your account. Please try again later.";
-        
-        if (lastError && typeof lastError === 'object') {
-          if ('code' in lastError && lastError.code === '23505') {
-            errorMessage = "This email address is already in use. Please log in or use a different email.";
-          } else if ('message' in lastError) {
-            // Check for specific error messages and provide user-friendly alternatives
-            const errMsg = lastError.message.toString().toLowerCase();
-            if (errMsg.includes('email')) {
-              errorMessage = "There was a problem with your email address. Please verify it and try again.";
-            } else if (errMsg.includes('database')) {
-              errorMessage = "We're experiencing temporary database issues. Please try again in a few moments.";
-            }
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: values.email,
+        password: tempPassword,
+        options: {
+          data: {
+            first_name: values.firstName,
+            last_name: values.lastName,
+            phone: values.phone,
+            role: "client",
+            temp_password: tempPassword
           }
         }
-        
-        setError(errorMessage);
-        console.error("[Signup] Registration failed after all retries. Last error:", lastError);
+      });
+      
+      if (authError) throw authError;
+      
+      if (!authData.user) {
+        throw new Error("Failed to create user account");
       }
+      
+      const { error: clientError } = await supabase
+        .from('clients')
+        .update({ 
+          client_preferred_name: values.preferredName || values.firstName,
+          client_state: values.state,
+          client_temppassword: tempPassword
+        })
+        .eq('id', authData.user.id);
+      
+      if (clientError) throw clientError;
+      
+      toast({
+        title: "Account created successfully",
+        description: "Please check your email for your temporary password to log in.",
+      });
+      
+      navigate("/login");
       
     } catch (error: any) {
-      console.error("[Signup] Error during registration:", error);
-      
-      let errorMessage = "There was a problem creating your account. Please try again later.";
-      if (error.message) {
-        if (error.message.includes("duplicate key")) {
-          errorMessage = "This email address is already in use. Please log in or use a different email.";
-        } else if (error.message.includes("database") || error.message.includes("saving")) {
-          errorMessage = "We're experiencing temporary database issues. Please try again in a few moments.";
-        }
-      }
-      
-      setError(errorMessage);
+      console.error("Signup error:", error);
       
       toast({
         title: "Error creating account",
-        description: errorMessage,
+        description: error.message || "There was a problem creating your account. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -171,7 +103,6 @@ const Signup = () => {
     }
   };
 
-  // US states for dropdown
   const states = [
     "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", 
     "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", 
@@ -192,12 +123,6 @@ const Signup = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -301,12 +226,7 @@ const Signup = () => {
               />
               
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating Account...
-                  </>
-                ) : "Create Account"}
+                {isSubmitting ? "Creating Account..." : "Create Account"}
               </Button>
             </form>
           </Form>

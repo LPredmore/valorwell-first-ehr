@@ -1,11 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { format, addWeeks, addMonths, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { getClinicianById } from '@/hooks/useClinicianData';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, 
   DialogFooter, DialogClose 
@@ -17,16 +15,15 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
-import {
-  DEFAULT_START_TIME,
-  generateTimeOptions,
-  calculateEndTime,
-  ensureStringId,
-  generateRecurringDates,
-  formatTimeDisplay
-} from '@/utils/appointmentUtils';
-import { useEffect as useEffectDebug } from 'react';
-import { TimeZoneService } from '@/utils/timeZoneService';
+import { 
+  toUTCTimestamp,
+  ensureIANATimeZone, 
+  formatUTCTimeForUser,
+  formatTime12Hour,
+  formatTimeZoneDisplay,
+  createISODateTimeString
+} from '@/utils/timeZoneUtils';
+import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 
 interface Client {
   id: string;
@@ -40,7 +37,6 @@ interface AppointmentDialogProps {
   loadingClients: boolean;
   selectedClinicianId: string | null;
   onAppointmentCreated: () => void;
-  userTimeZone?: string;
 }
 
 const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
@@ -49,410 +45,220 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
   clients,
   loadingClients,
   selectedClinicianId,
-  onAppointmentCreated,
-  userTimeZone = TimeZoneService.ensureIANATimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+  onAppointmentCreated
 }) => {
-  // Form state
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  const [startTime, setStartTime] = useState<string>(DEFAULT_START_TIME);
+  const [startTime, setStartTime] = useState<string>("09:00");
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState<string>('weekly');
-  const [databaseClinicianId, setDatabaseClinicianId] = useState<string | null>(null);
-  const [fetchingClinicianId, setFetchingClinicianId] = useState(false);
-  const [appointmentCreationAttempts, setAppointmentCreationAttempts] = useState(0);
-  const [lastError, setLastError] = useState<any>(null);
-  const [authStatus, setAuthStatus] = useState<string>("unknown");
-  
-  // Helper function for consistent logging
-  const logAppointmentDebug = (message: string, data: any = {}) => {
-    console.log(`🔍 APPOINTMENT DIALOG - ${message}`, data);
+  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago');
+  const [isLoadingTimeZone, setIsLoadingTimeZone] = useState<boolean>(true);
+
+  useEffect(() => {
+    const fetchClinicianTimeZone = async () => {
+      if (selectedClinicianId) {
+        setIsLoadingTimeZone(true);
+        try {
+          const timeZone = await getClinicianTimeZone(selectedClinicianId);
+          console.log("[AppointmentDialog] Fetched clinician timezone:", timeZone);
+          const validTimeZone = ensureIANATimeZone(timeZone);
+          setClinicianTimeZone(validTimeZone);
+        } catch (error) {
+          console.error("[AppointmentDialog] Error fetching clinician timezone:", error);
+          setClinicianTimeZone('America/Chicago');
+        } finally {
+          setIsLoadingTimeZone(false);
+        }
+      }
+    };
+    
+    fetchClinicianTimeZone();
+  }, [selectedClinicianId]);
+
+  const generateTimeOptions = () => {
+    const options = [];
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const formattedHour = hour.toString().padStart(2, '0');
+        const formattedMinute = minute.toString().padStart(2, '0');
+        options.push(`${formattedHour}:${formattedMinute}`);
+      }
+    }
+    return options;
   };
-  
-  // Format the clinician ID once
-  const formattedClinicianId = ensureStringId(selectedClinicianId);
-  
-  // Generate time options once
+
   const timeOptions = generateTimeOptions();
 
-  // Check authentication status
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setAuthStatus(session ? "authenticated" : "unauthenticated");
-      logAppointmentDebug('Auth status checked', { 
-        isAuthenticated: !!session,
-        userId: session?.user?.id || null
-      });
-    };
+  const generateRecurringDates = (
+    startDate: Date,
+    recurrenceType: string,
+    count = 26 // 6 months (26 weeks) of appointments
+  ): Date[] => {
+    const dates: Date[] = [new Date(startDate)];
+    let currentDate = new Date(startDate);
     
-    checkAuth();
-  }, []);
-  
-  // Fetch the database-formatted clinician ID when the dialog opens or clinician changes
-  // Debug effect to track state changes
-  useEffectDebug(() => {
-    logAppointmentDebug('State updated', {
-      selectedClientId,
-      selectedDate,
-      startTime,
-      isRecurring,
-      recurrenceType,
-      databaseClinicianId,
-      formattedClinicianId,
-      appointmentCreationAttempts,
-      authStatus,
-      lastError: lastError ? {
-        message: lastError.message,
-        code: lastError.code
-      } : null
-    });
-  }, [selectedClientId, selectedDate, startTime, isRecurring, recurrenceType,
-      databaseClinicianId, formattedClinicianId, appointmentCreationAttempts, lastError, authStatus]);
-  
-  useEffect(() => {
-    const fetchDatabaseClinicianId = async () => {
-      if (!formattedClinicianId) {
-        logAppointmentDebug('No clinician ID provided');
-        return;
+    for (let i = 1; i < count; i++) {
+      if (recurrenceType === 'weekly') {
+        currentDate = addWeeks(currentDate, 1);
+      } else if (recurrenceType === 'biweekly') {
+        currentDate = addWeeks(currentDate, 2);
+      } else if (recurrenceType === 'monthly') {
+        currentDate = addWeeks(currentDate, 4); // Every 4 weeks
       }
       
-      logAppointmentDebug('Fetching database clinician ID', {
-        formattedClinicianId,
-        idType: typeof formattedClinicianId
-      });
-      
-      setFetchingClinicianId(true);
-      try {
-        const clinicianRecord = await getClinicianById(formattedClinicianId);
-        logAppointmentDebug('Clinician record returned', {
-          found: !!clinicianRecord,
-          record: clinicianRecord
-        });
-        
-        if (clinicianRecord) {
-          logAppointmentDebug('Database-retrieved clinician details', {
-            id: clinicianRecord.id,
-            idType: typeof clinicianRecord.id,
-            email: clinicianRecord.clinician_email,
-            name: clinicianRecord.clinician_professional_name
-          });
-          setDatabaseClinicianId(clinicianRecord.id);
-        } else {
-          logAppointmentDebug('Could not find clinician with ID - falling back to formatted ID', {
-            attemptedId: formattedClinicianId
-          });
-          setDatabaseClinicianId(formattedClinicianId); // Fallback to formatted ID
-        }
-      } catch (error) {
-        logAppointmentDebug('Error fetching clinician record - falling back to formatted ID', {
-          error: error instanceof Error ? error.message : String(error),
-          attemptedId: formattedClinicianId
-        });
-        setDatabaseClinicianId(formattedClinicianId); // Fallback to formatted ID
-      } finally {
-        setFetchingClinicianId(false);
+      if (currentDate > addMonths(startDate, 6)) {
+        break;
       }
-    };
-    
-    fetchDatabaseClinicianId();
-  }, [formattedClinicianId]);
-
-  // Reset form when dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      logAppointmentDebug('Dialog opened, resetting form', {
-        clientCount: clients.length,
-        loadingClients,
-        selectedClinicianId,
-        formattedClinicianId,
-        databaseClinicianId
-      });
       
-      // Reset error tracking
-      setAppointmentCreationAttempts(0);
-      setLastError(null);
-      resetForm();
+      dates.push(new Date(currentDate));
     }
-  }, [isOpen]);
-
-  // Reset form values
-  const resetForm = () => {
-    setSelectedDate(new Date());
-    setSelectedClientId(null);
-    setStartTime(DEFAULT_START_TIME);
-    setIsRecurring(false);
-    setRecurrenceType('weekly');
+    
+    return dates;
   };
 
-  // Create appointment handler
+  const calculateEndTime = (startTimeStr: string): string => {
+    try {
+      const startTimeParts = startTimeStr.split(':').map(Number);
+      const startDateTime = new Date();
+      startDateTime.setHours(startTimeParts[0], startTimeParts[1], 0, 0);
+      
+      const endDateTime = new Date(startDateTime);
+      endDateTime.setMinutes(endDateTime.getMinutes() + 60); // Always 60 minutes
+      
+      return `${endDateTime.getHours().toString().padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}`;
+    } catch (error) {
+      console.error('[AppointmentDialog] Error calculating end time:', error);
+      const startHour = parseInt(startTimeStr.split(':')[0], 10);
+      return `${(startHour + 1) % 24}:${startTimeStr.split(':')[1]}`;
+    }
+  };
+
   const handleCreateAppointment = async () => {
-    // Increment attempt counter
-    setAppointmentCreationAttempts(prev => prev + 1);
-    
-    if (!selectedClientId || !selectedDate || !startTime) {
-      const missingFields = [];
-      if (!selectedClientId) missingFields.push('client');
-      if (!selectedDate) missingFields.push('date');
-      if (!startTime) missingFields.push('start time');
-      
-      logAppointmentDebug('Missing required fields', { missingFields });
-      
+    if (!selectedClientId || !selectedDate || !startTime || !selectedClinicianId) {
       toast({
         title: "Missing Information",
-        description: `Please fill in all required fields: ${missingFields.join(', ')}.`,
+        description: "Please fill in all required fields.",
         variant: "destructive"
       });
       return;
     }
-    
-    // Use the database-retrieved clinician ID or fall back to the formatted ID
-    const clinicianIdToUse = databaseClinicianId || formattedClinicianId;
-    
-    if (!clinicianIdToUse) {
-      logAppointmentDebug('Missing clinician ID', {
-        databaseClinicianId,
-        formattedClinicianId,
-        selectedClinicianId
-      });
-      
-      toast({
-        title: "Missing Clinician",
-        description: "No clinician selected. Please try again.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    logAppointmentDebug('Creating appointment', {
-      attempt: appointmentCreationAttempts + 1,
-      clinicianIdToUse,
-      clinicianIdType: typeof clinicianIdToUse,
-      selectedClientId,
-      clientIdType: typeof selectedClientId,
-      date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null,
-      startTime,
-      isRecurring,
-      recurrenceType: isRecurring ? recurrenceType : null
-    });
 
     try {
-      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+      const validTimeZone = ensureIANATimeZone(clinicianTimeZone);
+      console.log(`[AppointmentDialog] Using clinician timezone: ${validTimeZone} (${formatTimeZoneDisplay(validTimeZone)})`);
+      
       const endTime = calculateEndTime(startTime);
-
+      
       if (isRecurring) {
         const recurringGroupId = uuidv4();
         const recurringDates = generateRecurringDates(selectedDate, recurrenceType);
         
-        logAppointmentDebug('Creating recurring appointments', {
-          recurringGroupId,
-          dateCount: recurringDates.length,
-          firstDate: format(recurringDates[0], 'yyyy-MM-dd'),
-          lastDate: format(recurringDates[recurringDates.length - 1], 'yyyy-MM-dd')
-        });
+        const appointmentsToInsert = [];
         
-        const appointmentsToInsert = recurringDates.map(date => {
-          // For each recurring date, create local date+time strings
-          const localDateStr = format(date, 'yyyy-MM-dd');
-          const localStartDateTimeStr = `${localDateStr}T${startTime}`;
-          const localEndDateTimeStr = `${localDateStr}T${endTime}`;
-          
-          // Convert local date+time to UTC ISO strings
-          const utcStartDateTime = TimeZoneService.convertLocalToUTC(localStartDateTimeStr, userTimeZone);
-          const utcEndDateTime = TimeZoneService.convertLocalToUTC(localEndDateTimeStr, userTimeZone);
-          
-          // Validate that UTC conversion was successful
-          if (!utcStartDateTime.isValid || !utcEndDateTime.isValid) {
-            console.error("Failed to convert local time to UTC for recurring appointment", {
-              localStartDateTimeStr,
-              localEndDateTimeStr,
-              userTimeZone,
-              startInvalid: !utcStartDateTime.isValid,
-              endInvalid: !utcEndDateTime.isValid
+        for (const date of recurringDates) {
+          try {
+            const formattedDate = format(date, 'yyyy-MM-dd');
+            
+            const startTimestamp = toUTCTimestamp(date, startTime, validTimeZone);
+            const endTimestamp = toUTCTimestamp(date, endTime, validTimeZone);
+            
+            console.log(`[AppointmentDialog] Creating appointment for ${formattedDate} at ${startTime}-${endTime}`);
+            console.log(`[AppointmentDialog] UTC timestamps: ${startTimestamp} to ${endTimestamp}`);
+            
+            appointmentsToInsert.push({
+              client_id: selectedClientId,
+              clinician_id: selectedClinicianId,
+              date: formattedDate,
+              start_time: startTime,
+              end_time: endTime,
+              appointment_datetime: startTimestamp,
+              appointment_end_datetime: endTimestamp,
+              type: "Therapy Session",
+              status: 'scheduled',
+              appointment_recurring: recurrenceType,
+              recurring_group_id: recurringGroupId
             });
-            throw new Error("Failed to convert appointment times to UTC");
+          } catch (error) {
+            console.error('[AppointmentDialog] Error processing appointment date:', error, date);
           }
-          
-          const utcStartAtISO = utcStartDateTime.toISO();
-          const utcEndAtISO = utcEndDateTime.toISO();
-          
-          // Final validation to ensure ISO strings are not null
-          if (!utcStartAtISO || !utcEndAtISO) {
-            console.error("Generated null ISO string for UTC datetime", {
-              utcStartDateTime,
-              utcEndDateTime
-            });
-            throw new Error("Generated invalid UTC timestamp");
-          }
-          
-          return {
-            client_id: selectedClientId,
-            clinician_id: clinicianIdToUse,
-            start_at: utcStartAtISO,
-            end_at: utcEndAtISO,
-            type: "Therapy Session",
-            status: 'scheduled',
-            appointment_recurring: recurrenceType,
-            recurring_group_id: recurringGroupId
-          };
-        });
+        }
 
+        console.log('[AppointmentDialog] Inserting recurring appointments:', appointmentsToInsert);
+        
         const { data, error } = await supabase
           .from('appointments')
           .insert(appointmentsToInsert)
           .select();
 
         if (error) {
-          logAppointmentDebug('Error creating recurring appointments', {
-            error: {
-              message: error.message,
-              code: error.code,
-              details: error.details
-            }
-          });
-          setLastError(error);
+          console.error('[AppointmentDialog] Error details:', error.message, error);
           throw error;
         }
-
-        logAppointmentDebug('Successfully created recurring appointments', {
-          count: data?.length || 0,
-          firstAppointmentId: data?.[0]?.id
-        });
 
         toast({
           title: "Recurring Appointments Created",
           description: `Created ${recurringDates.length} recurring appointments.`,
         });
       } else {
-        // Convert local date+time to UTC ISO strings
-        const localStartDateTimeStr = `${formattedDate}T${startTime}`;
-        const localEndDateTimeStr = `${formattedDate}T${endTime}`;
-        
-        logAppointmentDebug('Converting local times to UTC', {
-          localStartDateTimeStr,
-          localEndDateTimeStr,
-          userTimeZone
-        });
-        
-        // Convert to UTC using TimeZoneService
-        const utcStartDateTime = TimeZoneService.convertLocalToUTC(localStartDateTimeStr, userTimeZone);
-        const utcEndDateTime = TimeZoneService.convertLocalToUTC(localEndDateTimeStr, userTimeZone);
-        
-        // Validate that UTC conversion was successful
-        if (!utcStartDateTime.isValid || !utcEndDateTime.isValid) {
-          logAppointmentDebug('UTC conversion failed - DateTime objects invalid', {
-            startValid: utcStartDateTime.isValid,
-            startInvalidReason: utcStartDateTime.invalidReason,
-            startInvalidExplanation: utcStartDateTime.invalidExplanation,
-            endValid: utcEndDateTime.isValid,
-            endInvalidReason: utcEndDateTime.invalidReason,
-            endInvalidExplanation: utcEndDateTime.invalidExplanation
-          });
-          throw new Error("Failed to convert appointment times to UTC");
-        }
-        
-        // Convert DateTime objects to ISO strings
-        const utcStartAtISO = utcStartDateTime.toISO();
-        const utcEndAtISO = utcEndDateTime.toISO();
-        
-        // Final validation to ensure ISO strings are not null
-        if (!utcStartAtISO || !utcEndAtISO) {
-          logAppointmentDebug('Generated null ISO string for UTC datetime', {
-            utcStartDateTime,
-            utcEndDateTime
-          });
-          throw new Error("Generated invalid UTC timestamp");
-        }
-        
-        logAppointmentDebug('Successfully converted to UTC', {
-          utcStartAtISO,
-          utcEndAtISO
-        });
-        
-        const appointmentData = {
-          client_id: selectedClientId,
-          clinician_id: clinicianIdToUse,
-          start_at: utcStartAtISO,
-          end_at: utcEndAtISO,
-          type: "Therapy Session",
-          status: 'scheduled'
-        };
+        try {
+          const formattedDate = format(selectedDate, 'yyyy-MM-dd');
 
-        logAppointmentDebug('Creating single appointment', {
-          appointmentData,
-          localDateTime: localStartDateTimeStr,
-          utcDateTime: utcStartAtISO,
-          timezone: userTimeZone
-        });
+          const startTimestamp = toUTCTimestamp(selectedDate, startTime, validTimeZone);
+          const endTimestamp = toUTCTimestamp(selectedDate, endTime, validTimeZone);
+          
+          console.log(`[AppointmentDialog] Creating appointment for ${formattedDate}:`);
+          console.log(`- Local time (${validTimeZone}): ${startTime}-${endTime}`);
+          console.log(`- UTC timestamps: ${startTimestamp} to ${endTimestamp}`);
 
-        const { data, error } = await supabase
-          .from('appointments')
-          .insert([appointmentData])
-          .select();
+          const { data, error } = await supabase
+            .from('appointments')
+            .insert([{
+              client_id: selectedClientId,
+              clinician_id: selectedClinicianId,
+              date: formattedDate,
+              start_time: startTime,
+              end_time: endTime,
+              appointment_datetime: startTimestamp,
+              appointment_end_datetime: endTimestamp,
+              type: "Therapy Session",
+              status: 'scheduled'
+            }])
+            .select();
 
-        if (error) {
-          logAppointmentDebug('Error creating appointment', {
-            error: {
-              message: error.message,
-              code: error.code,
-              details: error.details
-            },
-            appointmentData
+          if (error) {
+            console.error('[AppointmentDialog] Error details:', error.message, error);
+            throw error;
+          }
+
+          toast({
+            title: "Appointment Created",
+            description: "The appointment has been successfully scheduled.",
           });
-          setLastError(error);
+        } catch (error) {
+          console.error('[AppointmentDialog] Error creating single appointment:', error);
           throw error;
         }
-
-        logAppointmentDebug('Successfully created appointment', {
-          appointmentId: data?.[0]?.id,
-          data: data?.[0]
-        });
-
-        toast({
-          title: "Appointment Created",
-          description: "The appointment has been successfully scheduled.",
-        });
       }
 
-      resetForm();
+      setSelectedClientId(null);
+      setStartTime("09:00");
+      setIsRecurring(false);
       onClose();
       onAppointmentCreated();
 
     } catch (error) {
-      console.error('Error creating appointment:', error);
-      
-      // Provide more detailed error information
-      let errorMessage = "Failed to create appointment. Please try again.";
-      
-      if (error instanceof Error) {
-        errorMessage = `Error: ${error.message}`;
-      }
-      
-      // If it's a database constraint error, provide more helpful message
-      if (error && typeof error === 'object' && 'code' in error) {
-        const errorObj = error as any;
-        if (errorObj.code === '23503') {
-          errorMessage = "Foreign key constraint error. The client or clinician ID may be invalid.";
-        } else if (errorObj.code === '23505') {
-          errorMessage = "This appointment conflicts with an existing appointment.";
-        }
-      }
-      
-      logAppointmentDebug('Appointment creation failed', {
-        error: error instanceof Error ? error.message : String(error),
-        attempt: appointmentCreationAttempts,
-        clientId: selectedClientId,
-        clinicianId: clinicianIdToUse
-      });
-      
+      console.error('[AppointmentDialog] Error creating appointment:', error);
       toast({
         title: "Error",
-        description: errorMessage,
+        description: "Failed to create appointment. Please try again.",
         variant: "destructive"
       });
     }
   };
-  
+
+  const timeZoneDisplay = formatTimeZoneDisplay(clinicianTimeZone);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
@@ -462,12 +268,9 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="client">Client Name</Label>
-            <Select
+            <Select 
               value={selectedClientId || undefined}
-              onValueChange={(value) => {
-                console.log('🔍 DIALOG - Client selected:', value);
-                setSelectedClientId(value);
-              }}
+              onValueChange={(value) => setSelectedClientId(value)}
             >
               <SelectTrigger id="client">
                 <SelectValue placeholder="Select a client" />
@@ -479,14 +282,11 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
                     Loading...
                   </div>
                 ) : clients.length > 0 ? (
-                  clients.map((client) => {
-                    console.log('🔍 DIALOG - Rendering client option:', client);
-                    return (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.displayName}
-                      </SelectItem>
-                    );
-                  })
+                  clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.displayName}
+                    </SelectItem>
+                  ))
                 ) : (
                   <SelectItem value="no-clients" disabled>
                     No clients assigned to this clinician
@@ -494,19 +294,6 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
                 )}
               </SelectContent>
             </Select>
-            <div className="text-xs text-muted-foreground mt-1">
-              {clients.length === 0 && !loadingClients ?
-                "Debug info: No clients found for this clinician" :
-                `Debug info: Found ${clients.length} clients`}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Clinician ID: {databaseClinicianId || formattedClinicianId || 'None'}
-            </div>
-            {lastError && (
-              <div className="text-xs text-red-500 mt-1">
-                Last error: {lastError.message || JSON.stringify(lastError)}
-              </div>
-            )}
           </div>
 
           <div className="grid gap-2">
@@ -540,17 +327,30 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="time">Start Time</Label>
+            <Label htmlFor="time">Start Time <span className="text-xs text-muted-foreground">({isLoadingTimeZone ? 'Loading timezone...' : timeZoneDisplay})</span></Label>
             <Select value={startTime} onValueChange={setStartTime}>
               <SelectTrigger id="time">
                 <SelectValue placeholder="Select start time" />
               </SelectTrigger>
               <SelectContent>
-                {timeOptions.map((time) => (
-                  <SelectItem key={time} value={time}>
-                    {formatTimeDisplay(time, userTimeZone)}
-                  </SelectItem>
-                ))}
+                {timeOptions.map((time) => {
+                  let displayTime;
+                  try {
+                    const timeDate = new Date();
+                    const [hours, minutes] = time.split(':').map(Number);
+                    timeDate.setHours(hours, minutes, 0, 0);
+                    displayTime = format(timeDate, 'h:mm a');
+                  } catch (error) {
+                    console.error('Error formatting time for display:', error, time);
+                    displayTime = formatTime12Hour(time);
+                  }
+                  
+                  return (
+                    <SelectItem key={time} value={time}>
+                      {displayTime}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>

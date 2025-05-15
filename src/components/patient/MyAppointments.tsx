@@ -1,330 +1,205 @@
-
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Clock, UserCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar } from 'lucide-react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
+import { format, parseISO, startOfToday } from 'date-fns';
+import { getUserTimeZone, formatTime12Hour, formatTimeZoneDisplay, formatWithTimeZone, formatTimeInUserTimeZone, ensureIANATimeZone } from '@/utils/timeZoneUtils';
 import { useToast } from '@/hooks/use-toast';
-import { getUserTimeZone } from '@/utils/timeZoneUtils';
-import { TimeZoneService } from '@/utils/timeZoneService';
 
 interface PastAppointment {
   id: string | number;
-  formattedDate: string;
-  formattedTime: string;
+  date: string;
+  time: string;
   type: string;
   therapist: string;
+  rawDate?: string;
   status?: string;
-  start_at: string;
-  end_at: string;
 }
 
 interface MyAppointmentsProps {
   pastAppointments?: PastAppointment[];
 }
 
-const ErrorBoundaryFallback = ({ error }: { error: Error }) => (
-  <div className="p-4 border border-red-200 rounded bg-red-50 text-red-700">
-    <h3 className="font-medium">Something went wrong loading appointments</h3>
-    <p className="text-sm mt-2">Please try again later or contact support if the issue persists.</p>
-    <details className="mt-2 text-xs">
-      <summary>Technical Details</summary>
-      <pre className="mt-1 p-2 bg-white rounded overflow-x-auto">{error.message}</pre>
-    </details>
-  </div>
-);
-
-/**
- * MyAppointments component displays a list of past appointments for a client
- */
-const MyAppointments: React.FC<MyAppointmentsProps> = ({ pastAppointments: initialPastAppointments }) => {
-  // Static states
+const MyAppointments: React.FC<MyAppointmentsProps> = ({
+  pastAppointments: initialPastAppointments
+}) => {
   const [loading, setLoading] = useState(false);
   const [pastAppointments, setPastAppointments] = useState<PastAppointment[]>([]);
   const [clinicianName, setClinicianName] = useState<string | null>(null);
   const [clientData, setClientData] = useState<any>(null);
-  const [error, setError] = useState<Error | null>(null);
-  const { toast } = useToast();
-  
-  // Lifecycle state variables
-  const isMounted = useRef(true);
-  const fetchAttempts = useRef(0);
-  const lastFetchTime = useRef(0);
-  const FETCH_COOLDOWN = 2000; // 2 seconds between fetches
-  const MAX_FETCH_ATTEMPTS = 3; // Maximum number of fetch attempts
-  
-  // Tracking states to prevent infinite loops
-  const [hasInitialized, setHasInitialized] = useState(false);
-  const [hasLoadedClientData, setHasLoadedClientData] = useState(false);
-  const [hasLoadedAppointments, setHasLoadedAppointments] = useState(false);
-  
-  // Client timezone with default
-  const [clientTimeZone, setClientTimeZone] = useState<string>(TimeZoneService.DEFAULT_TIMEZONE);
+  const {
+    toast
+  } = useToast();
 
-  // Reset component mount status on unmount
-  useEffect(() => {
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
+  const clientTimeZone = ensureIANATimeZone(clientData?.client_time_zone || getUserTimeZone());
 
-  // Define safe state update functions
-  const safeSetState = useCallback(<T,>(setter: React.Dispatch<React.SetStateAction<T>>, value: T) => {
-    if (isMounted.current) {
-      setter(value);
-    }
-  }, []);
-  
-  // Load client data once
   useEffect(() => {
-    if (hasInitialized) return;
-    setHasInitialized(true);
-    
     const fetchClientData = async () => {
-      if (loading || hasLoadedClientData) return;
-      
       try {
-        const now = Date.now();
-        if (now - lastFetchTime.current < FETCH_COOLDOWN) {
-          console.log("Throttling client data fetch - too soon since last fetch");
-          return;
-        }
-        
-        lastFetchTime.current = now;
-        fetchAttempts.current++;
-        
-        if (fetchAttempts.current > MAX_FETCH_ATTEMPTS) {
-          console.warn("Maximum fetch attempts reached for client data");
-          return;
-        }
-        
-        safeSetState(setLoading, true);
-        
-        // Get current authenticated user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
+        const {
+          data: {
+            user
+          },
+          error: userError
+        } = await supabase.auth.getUser();
         if (userError || !user) {
           console.error('Error getting current user:', userError);
-          safeSetState(setLoading, false);
           return;
         }
-        
-        // Get client data for the authenticated user
-        const { data: client, error: clientError } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-          
+        const {
+          data: client,
+          error: clientError
+        } = await supabase.from('clients').select('*').eq('id', user.id).single();
         if (clientError) {
           console.error('Error getting client data:', clientError);
-          safeSetState(setLoading, false);
           return;
         }
-        
-        if (!client) {
-          console.warn('No client data found for user:', user.id);
-          safeSetState(setLoading, false);
-          return;
-        }
-        
-        console.log('Client data retrieved:', client);
-        safeSetState(setClientData, client);
-        
-        // Get timezone from client data or default to browser
-        if (client?.client_time_zone) {
-          const safeTimezone = TimeZoneService.ensureIANATimeZone(client.client_time_zone);
-          console.log(`Setting client timezone from database: ${client.client_time_zone} → ${safeTimezone}`);
-          safeSetState(setClientTimeZone, safeTimezone);
-        } else {
-          const browserTimezone = getUserTimeZone();
-          console.log(`No client timezone found, using browser timezone: ${browserTimezone}`);
-          safeSetState(setClientTimeZone, TimeZoneService.ensureIANATimeZone(browserTimezone));
-        }
-        
-        // Fetch clinician name if assigned
+        setClientData(client);
         if (client?.client_assigned_therapist) {
-          const { data: clinician, error: clinicianError } = await supabase
-            .from('clinicians')
-            .select('clinician_professional_name')
-            .eq('id', client.client_assigned_therapist)
-            .single();
-            
-          if (!clinicianError && clinician) {
-            safeSetState(setClinicianName, clinician?.clinician_professional_name || null);
+          const {
+            data: clinician,
+            error: clinicianError
+          } = await supabase.from('clinicians').select('clinician_professional_name').eq('id', client.client_assigned_therapist).single();
+          if (clinicianError) {
+            console.error('Error getting clinician name:', clinicianError);
+            return;
           }
+          setClinicianName(clinician?.clinician_professional_name || null);
         }
-        
-        // Mark client data as loaded
-        safeSetState(setHasLoadedClientData, true);
       } catch (error) {
         console.error('Error fetching client data:', error);
-        safeSetState(setError, error instanceof Error ? error : new Error('Failed to fetch client data'));
-      } finally {
-        safeSetState(setLoading, false);
       }
     };
-    
     fetchClientData();
-  }, [hasInitialized, loading, hasLoadedClientData, safeSetState]);
+  }, []);
 
-  // Load appointments once client data is available
   useEffect(() => {
-    // Only proceed if we have client data and haven't loaded appointments yet
-    if (!clientData?.id || !hasLoadedClientData || loading || hasLoadedAppointments) {
-      return;
-    }
-    
     const fetchPastAppointments = async () => {
+      if (!clientData?.id) return;
+      setLoading(true);
       try {
-        const now = Date.now();
-        if (now - lastFetchTime.current < FETCH_COOLDOWN) {
-          console.log("Throttling appointments fetch - too soon since last fetch");
-          return;
-        }
+        const today = startOfToday();
+        const todayStr = format(today, 'yyyy-MM-dd');
+        const {
+          data,
+          error
+        } = await supabase.from('appointments').select('*').eq('client_id', clientData.id).lt('date', todayStr).neq('status', 'scheduled').neq('status', 'cancelled').order('date', {
+          ascending: false
+        }).order('start_time', {
+          ascending: false
+        });
         
-        lastFetchTime.current = now;
-        fetchAttempts.current++;
-        
-        if (fetchAttempts.current > MAX_FETCH_ATTEMPTS) {
-          console.warn("Maximum fetch attempts reached for appointments");
-          return;
-        }
-        
-        safeSetState(setLoading, true);
-        console.log(`Fetching past appointments for client ${clientData.id} with timezone ${clientTimeZone}`);
-        
-        // Get the current time in UTC
-        const nowUTC = TimeZoneService.now().toUTC().toISO();
-        
-        const { data, error } = await supabase
-          .from('appointments')
-          .select('*')
-          .eq('client_id', clientData.id)
-          .lt('end_at', nowUTC)  // Use end_at to find completed appointments
-          .neq('status', 'cancelled')
-          .order('start_at', { ascending: false })
-          .limit(20); // Add limit to prevent potential performance issues
-
         if (error) {
           console.error('Error fetching past appointments:', error);
-          safeSetState(setLoading, false);
-          safeSetState(setError, new Error(`Failed to fetch past appointments: ${error.message}`));
+          toast({
+            title: "Error",
+            description: "Failed to load appointment history",
+            variant: "destructive"
+          });
           return;
         }
-
-        // Flag that we've loaded appointments to prevent reloading
-        safeSetState(setHasLoadedAppointments, true);
-
+        
         if (data && data.length > 0) {
-          console.log("Past appointments data fetched successfully:", data.length, "appointments");
+          console.log("Past appointments data:", data);
+          console.log("Using client time zone:", clientTimeZone);
           
           const formattedAppointments = data.map(appointment => {
             try {
-              // Format using TimeZoneService for consistency
-              const startDateTime = TimeZoneService.fromUTC(appointment.start_at, clientTimeZone);
+              const formattedDate = format(parseISO(appointment.date), 'MMMM d, yyyy');
+              let formattedTime = '';
+              
+              try {
+                if (appointment.start_time) {
+                  formattedTime = formatTimeInUserTimeZone(appointment.start_time, clientTimeZone, 'h:mm a');
+                } else {
+                  formattedTime = 'Time unavailable';
+                }
+              } catch (error) {
+                console.error('Error formatting time:', error, {
+                  appointment,
+                  timezone: clientTimeZone
+                });
+                formattedTime = formatTime12Hour(appointment.start_time) || 'Time unavailable';
+              }
               
               return {
                 id: appointment.id,
-                formattedDate: startDateTime.toFormat('MMMM d, yyyy'),
-                formattedTime: startDateTime.toFormat('h:mm a'),
+                date: formattedDate,
+                time: formattedTime,
                 type: appointment.type || 'Appointment',
                 therapist: clinicianName || 'Your Therapist',
-                status: appointment.status,
-                start_at: appointment.start_at,
-                end_at: appointment.end_at
+                rawDate: appointment.date,
+                rawTime: appointment.start_time,
+                status: appointment.status
               };
             } catch (error) {
               console.error('Error processing appointment:', error, appointment);
               return {
                 id: appointment.id || 'unknown-id',
-                formattedDate: 'Date unavailable',
-                formattedTime: 'Time unavailable',
+                date: 'Date unavailable',
+                time: 'Time unavailable',
                 type: appointment.type || 'Appointment',
                 therapist: clinicianName || 'Your Therapist',
-                start_at: appointment.start_at || '',
-                end_at: appointment.end_at || ''
+                rawDate: null
               };
             }
           });
           
-          safeSetState(setPastAppointments, formattedAppointments);
+          console.log("Formatted past appointments:", formattedAppointments);
+          setPastAppointments(formattedAppointments);
         } else {
           console.log("No past appointments found");
-          safeSetState(setPastAppointments, []);
+          setPastAppointments([]);
         }
       } catch (error) {
         console.error('Error in fetchPastAppointments:', error);
-        safeSetState(setError, error instanceof Error ? error : new Error('Failed to fetch past appointments'));
+        toast({
+          title: "Error",
+          description: "Failed to load your appointment history",
+          variant: "destructive"
+        });
       } finally {
-        safeSetState(setLoading, false);
+        setLoading(false);
       }
     };
     
     fetchPastAppointments();
-  }, [clientData, hasLoadedClientData, loading, hasLoadedAppointments, clientTimeZone, clinicianName, safeSetState]);
+  }, [clientData, clinicianName, clientTimeZone, toast]);
 
-  // Safely get timezone display with error handling
-  const timeZoneDisplay = TimeZoneService.getTimeZoneDisplayName(clientTimeZone);
+  const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);
 
-  // If there's an error, show error state
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Past Appointments</CardTitle>
-          <CardDescription>View your appointment history</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ErrorBoundaryFallback error={error} />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
+  return <Card>
       <CardHeader>
         <CardTitle>Past Appointments</CardTitle>
         <CardDescription>View your appointment history</CardDescription>
       </CardHeader>
       <CardContent>
-        {loading && !hasLoadedAppointments ? (
-          <div className="py-6 text-center">Loading past appointments...</div>
-        ) : pastAppointments.length > 0 ? (
-          <div>
-            <p className="text-sm text-gray-500 mb-2">All times shown in {timeZoneDisplay}</p>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Therapist</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pastAppointments.map((appointment) => (
-                  <TableRow key={appointment.id}>
-                    <TableCell>{appointment.formattedDate}</TableCell>
-                    <TableCell>{appointment.formattedTime}</TableCell>
-                    <TableCell>{appointment.type}</TableCell>
-                    <TableCell>{appointment.therapist}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-6 text-center">
+        {loading ? <div className="py-6 text-center">Loading past appointments...</div> : pastAppointments.length > 0 ? <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Time <span className="text-xs text-gray-500">({timeZoneDisplay})</span></TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Therapist</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pastAppointments.map(appointment => <TableRow key={appointment.id}>
+                  <TableCell>{appointment.date}</TableCell>
+                  <TableCell>{appointment.time}</TableCell>
+                  <TableCell>{appointment.type}</TableCell>
+                  <TableCell>{appointment.therapist}</TableCell>
+                </TableRow>)}
+            </TableBody>
+          </Table> : <div className="flex flex-col items-center justify-center py-6 text-center">
             <Calendar className="h-12 w-12 text-gray-300 mb-3" />
             <h3 className="text-lg font-medium">No past appointments</h3>
             <p className="text-sm text-gray-500 mt-1">Your appointment history will appear here</p>
-          </div>
-        )}
+          </div>}
       </CardContent>
-    </Card>
-  );
+    </Card>;
 };
 
 export default MyAppointments;

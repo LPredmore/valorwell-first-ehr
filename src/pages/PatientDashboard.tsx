@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LayoutDashboard, User, Clock3, Shield, FileText } from 'lucide-react';
+import { LayoutDashboard, User, Clock3, Shield, ClipboardList, BadgeAlert } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById, formatDateForDB, fetchDocumentAssignments } from '@/integrations/supabase/client';
+import { getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById, formatDateForDB, supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { getUserTimeZoneById } from '@/hooks/useUserTimeZone';
+import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
 // Import the tab components
 import MyPortal from '@/components/patient/MyPortal';
@@ -13,9 +15,6 @@ import MyProfile from '@/components/patient/MyProfile';
 import MyAppointments from '@/components/patient/MyAppointments';
 import MyInsurance from '@/components/patient/MyInsurance';
 import MyDocuments from '@/components/patient/MyDocuments';
-// Import timezoneOptions and TimeZoneService
-import { timezoneOptions, formatTimezoneForDisplay } from '@/utils/timezoneOptions';
-import { TimeZoneService } from '@/utils/timeZoneService';
 
 const PatientDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
@@ -23,8 +22,7 @@ const PatientDashboard: React.FC = () => {
   const [clientData, setClientData] = useState<any>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [clinicianName, setClinicianName] = useState<string | null>(null);
-  const [pendingDocuments, setPendingDocuments] = useState<number>(0);
-  
+  const [hasAssignedDocuments, setHasAssignedDocuments] = useState<boolean>(false);
   const {
     toast
   } = useToast();
@@ -32,11 +30,7 @@ const PatientDashboard: React.FC = () => {
   const genderOptions = ['Male', 'Female', 'Non-Binary', 'Other', 'Prefer not to say'];
   const genderIdentityOptions = ['Male', 'Female', 'Trans Man', 'Trans Woman', 'Non-Binary', 'Other', 'Prefer not to say'];
   const stateOptions = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'];
-  
-  // Create timeZoneOptions with the correct type annotation for MyProfile component
-  // This creates an array of strings from the imported timezoneOptions objects
-  const timeZoneOptions: string[] = timezoneOptions.map(tz => `${tz.label} (${tz.value})`);
-  
+  const timeZoneOptions = ['Eastern Standard Time (EST)', 'Central Standard Time (CST)', 'Mountain Standard Time (MST)', 'Pacific Standard Time (PST)', 'Alaska Standard Time (AKST)', 'Hawaii-Aleutian Standard Time (HST)', 'Atlantic Standard Time (AST)'];
   const insuranceTypes = ['PPO', 'HMO', 'EPO', 'POS', 'HDHP', 'Medicare', 'Medicaid', 'Other'];
   const relationshipTypes = ['Self', 'Spouse', 'Child', 'Other'];
 
@@ -87,6 +81,26 @@ const PatientDashboard: React.FC = () => {
     }
   });
 
+  const checkForAssignedDocuments = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('document_assignments')
+        .select('id')
+        .eq('client_id', userId)
+        .eq('status', 'not_started')
+        .limit(1);
+        
+      if (error) {
+        console.error('Error checking for assigned documents:', error);
+        return;
+      }
+      
+      setHasAssignedDocuments(data && data.length > 0);
+    } catch (error) {
+      console.error('Error checking for assigned documents:', error);
+    }
+  };
+
   const fetchClinicianName = async (clinicianId: string) => {
     if (!clinicianId) return;
     try {
@@ -116,20 +130,20 @@ const PatientDashboard: React.FC = () => {
         return;
       }
       console.log("Current user:", user);
+      
       const client = await getClientByUserId(user.id);
       console.log("Retrieved client data:", client);
+      
+      const profileTimeZone = await getUserTimeZoneById(user.id);
+      console.log("Retrieved profile time zone:", profileTimeZone);
+      
       if (client) {
         setClientData(client);
         if (client.client_assigned_therapist) {
           fetchClinicianName(client.client_assigned_therapist);
         }
         
-        // Check for pending document assignments
-        const docAssignments = await fetchDocumentAssignments(user.id);
-        const pending = docAssignments.filter(doc => 
-          doc.status === 'not_started' || doc.status === 'in_progress'
-        ).length;
-        setPendingDocuments(pending);
+        checkForAssignedDocuments(user.id);
         
         let age = '';
         if (client.client_date_of_birth) {
@@ -147,11 +161,7 @@ const PatientDashboard: React.FC = () => {
           });
         }
         
-        // Make sure we have a proper IANA timezone format stored
-        let clientTimeZone = client.client_time_zone || '';
-        if (clientTimeZone) {
-          clientTimeZone = TimeZoneService.ensureIANATimeZone(clientTimeZone);
-        }
+        const timeZoneToUse = profileTimeZone || client.client_time_zone || 'America/Chicago';
         
         form.reset({
           firstName: client.client_first_name || '',
@@ -164,28 +174,34 @@ const PatientDashboard: React.FC = () => {
           gender: client.client_gender || '',
           genderIdentity: client.client_gender_identity || '',
           state: client.client_state || '',
-          timeZone: clientTimeZone ? formatTimezoneForDisplay(clientTimeZone) : '',
+          timeZone: timeZoneToUse,
           client_insurance_company_primary: client.client_insurance_company_primary || '',
           client_insurance_type_primary: client.client_insurance_type_primary || '',
           client_policy_number_primary: client.client_policy_number_primary || '',
           client_group_number_primary: client.client_group_number_primary || '',
           client_subscriber_name_primary: client.client_subscriber_name_primary || '',
           client_subscriber_relationship_primary: client.client_subscriber_relationship_primary || '',
-          client_subscriber_dob_primary: client.client_subscriber_dob_primary || '',
+          client_subscriber_dob_primary: client.client_subscriber_dob_primary ? 
+            formatDateForDB(new Date(client.client_subscriber_dob_primary)) : null,
+          
           client_insurance_company_secondary: client.client_insurance_company_secondary || '',
           client_insurance_type_secondary: client.client_insurance_type_secondary || '',
           client_policy_number_secondary: client.client_policy_number_secondary || '',
           client_group_number_secondary: client.client_group_number_secondary || '',
           client_subscriber_name_secondary: client.client_subscriber_name_secondary || '',
           client_subscriber_relationship_secondary: client.client_subscriber_relationship_secondary || '',
-          client_subscriber_dob_secondary: client.client_subscriber_dob_secondary || '',
+          client_subscriber_dob_secondary: client.client_subscriber_dob_secondary ? 
+            formatDateForDB(new Date(client.client_subscriber_dob_secondary)) : null,
+          
           client_insurance_company_tertiary: client.client_insurance_company_tertiary || '',
           client_insurance_type_tertiary: client.client_insurance_type_tertiary || '',
           client_policy_number_tertiary: client.client_policy_number_tertiary || '',
           client_group_number_tertiary: client.client_group_number_tertiary || '',
           client_subscriber_name_tertiary: client.client_subscriber_name_tertiary || '',
           client_subscriber_relationship_tertiary: client.client_subscriber_relationship_tertiary || '',
-          client_subscriber_dob_tertiary: client.client_subscriber_dob_tertiary || '',
+          client_subscriber_dob_tertiary: client.client_subscriber_dob_tertiary ? 
+            formatDateForDB(new Date(client.client_subscriber_dob_tertiary)) : null,
+          
           client_champva: client.client_champva || '',
           client_tricare_beneficiary_category: client.client_tricare_beneficiary_category || '',
           client_tricare_sponsor_name: client.client_tricare_sponsor_name || '',
@@ -226,24 +242,11 @@ const PatientDashboard: React.FC = () => {
       });
       return;
     }
-    console.log("Starting save profile process for client ID:", clientData.id);
+    console.log("Starting save process for client ID:", clientData.id);
     setIsSaving(true);
     try {
       const formValues = form.getValues();
       console.log("Form values to save:", formValues);
-      
-      // Extract the IANA timezone from the combined format
-      let timeZoneValue = formValues.timeZone;
-      if (timeZoneValue) {
-        // Extract the IANA timezone from the format "Label (IANA)"
-        const match = timeZoneValue.match(/\(([^)]+)\)$/);
-        if (match && match[1]) {
-          timeZoneValue = match[1];
-        }
-        
-        // Ensure it's a valid IANA timezone
-        timeZoneValue = TimeZoneService.ensureIANATimeZone(timeZoneValue);
-      }
       
       const updates = {
         client_preferred_name: formValues.preferredName,
@@ -251,7 +254,7 @@ const PatientDashboard: React.FC = () => {
         client_gender: formValues.gender,
         client_gender_identity: formValues.genderIdentity,
         client_state: formValues.state,
-        client_time_zone: timeZoneValue,
+        client_time_zone: formValues.timeZone,
         client_insurance_company_primary: formValues.client_insurance_company_primary,
         client_insurance_type_primary: formValues.client_insurance_type_primary,
         client_policy_number_primary: formValues.client_policy_number_primary,
@@ -323,10 +326,6 @@ const PatientDashboard: React.FC = () => {
     fetchClientData();
   };
 
-  const handleNavigateToDocuments = () => {
-    navigate('/patient-documents');
-  };
-
   useEffect(() => {
     console.log("PatientDashboard component mounted");
     fetchClientData();
@@ -358,18 +357,16 @@ const PatientDashboard: React.FC = () => {
               <Clock3 className="h-4 w-4" />
               Past Appointments
             </TabsTrigger>
-            <TabsTrigger value="documents" className="gap-2 rounded-b-none rounded-t-lg data-[state=active]:border-b-2 data-[state=active]:border-valorwell-600">
-              <FileText className="h-4 w-4" />
-              Documents
-              {pendingDocuments > 0 && (
-                <span className="ml-1 rounded-full bg-valorwell-600 px-2 py-0.5 text-xs text-white">
-                  {pendingDocuments}
-                </span>
-              )}
-            </TabsTrigger>
             <TabsTrigger value="insurance" className="gap-2 rounded-b-none rounded-t-lg data-[state=active]:border-b-2 data-[state=active]:border-valorwell-600">
               <Shield className="h-4 w-4" />
               Insurance
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="gap-2 rounded-b-none rounded-t-lg data-[state=active]:border-b-2 data-[state=active]:border-valorwell-600">
+              {hasAssignedDocuments && (
+                <BadgeAlert className="h-4 w-4 text-red-500 mr-1" aria-label="Documents requiring attention" />
+              )}
+              <ClipboardList className="h-4 w-4" />
+              Documents
             </TabsTrigger>
           </TabsList>
 
@@ -384,23 +381,13 @@ const PatientDashboard: React.FC = () => {
           <TabsContent value="pastAppointments" className="mt-0">
             <MyAppointments />
           </TabsContent>
-          
-          <TabsContent value="documents" className="mt-0">
-            <div className="flex flex-col space-y-4">
-              <MyDocuments clientId={clientData?.id} />
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={handleNavigateToDocuments}
-                  className="px-4 py-2 bg-valorwell-600 text-white rounded-md hover:bg-valorwell-700 transition-colors"
-                >
-                  View All Documents & Forms
-                </button>
-              </div>
-            </div>
-          </TabsContent>
 
           <TabsContent value="insurance" className="mt-0">
             <MyInsurance clientData={clientData} loading={loading} isEditing={isEditing} setIsEditing={setIsEditing} form={form} isSaving={isSaving} handleSaveProfile={handleSaveProfile} handleCancelEdit={handleCancelEdit} insuranceTypes={insuranceTypes} relationshipTypes={relationshipTypes} />
+          </TabsContent>
+
+          <TabsContent value="documents" className="mt-0">
+            <MyDocuments />
           </TabsContent>
         </Tabs>
       </div>

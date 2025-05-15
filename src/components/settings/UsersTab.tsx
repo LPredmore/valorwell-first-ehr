@@ -51,33 +51,16 @@ const UsersTab = () => {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      // Get the authenticated user's token
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        throw sessionError;
-      }
-      
-      if (!session || !session.access_token) {
-        throw new Error("Not authenticated");
-      }
-      
-      // Call our edge function with the user's token
-      const { data, error } = await supabase.functions.invoke('list-users', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
-      });
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email, phone, role')
+        .order('created_at', { ascending: false });
       
       if (error) {
         throw error;
       }
       
-      if (!data.users) {
-        throw new Error("Invalid response format");
-      }
-      
-      setUsers(data.users);
+      setUsers(data || []);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
@@ -100,30 +83,12 @@ const UsersTab = () => {
     if (!confirmed) return;
     
     try {
-      // Get the authenticated user's token
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        throw sessionError;
-      }
-      
-      if (!session || !session.access_token) {
-        throw new Error("Not authenticated");
-      }
-      
-      // Call delete user through an admin edge function (you may need to create this)
-      const { error } = await supabase.functions.invoke('delete-user', {
-        body: { userId },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
-      });
+      const { error } = await supabase.auth.admin.deleteUser(userId);
       
       if (error) {
         throw error;
       }
       
-      // Remove the user from local state
       setUsers(users.filter(user => user.id !== userId));
       
       toast({

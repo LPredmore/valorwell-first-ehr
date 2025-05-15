@@ -1,19 +1,20 @@
 
 import React from 'react';
+import { format, parseISO } from 'date-fns';
 import { Calendar, Clock, UserCircle, Video, FileText, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { TimeZoneService } from '@/utils/timeZoneService';
-import { Appointment } from '@/types/appointment';
+import { formatTime12Hour, formatTimeInUserTimeZone, formatUTCTimeForUser } from '@/utils/timeZoneUtils';
+import { BaseAppointment } from '@/types/appointment';
 
 export interface AppointmentCardProps {
-  appointment: Appointment;
+  appointment: BaseAppointment;
   timeZoneDisplay: string;
   userTimeZone: string;
   showStartButton?: boolean;
-  onStartSession?: (appointment: Appointment) => void;
-  onDocumentSession?: (appointment: Appointment) => void;
-  onSessionDidNotOccur?: (appointment: Appointment) => void;
+  onStartSession?: (appointment: BaseAppointment) => void;
+  onDocumentSession?: (appointment: BaseAppointment) => void;
+  onSessionDidNotOccur?: (appointment: BaseAppointment) => void;
 }
 
 export const AppointmentCard: React.FC<AppointmentCardProps> = ({
@@ -25,15 +26,15 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   onDocumentSession,
   onSessionDidNotOccur
 }) => {
-  // Format time for display in user's time zone directly from UTC timestamps
-  const formatTimeDisplay = (utcTimestamp: string) => {
-    return TimeZoneService.formatUTCInTimezone(utcTimestamp, userTimeZone, 'h:mm a');
-  };
-  
-  // Format date from UTC timestamp
-  const formatDateDisplay = (utcTimestamp: string) => {
-    const localDate = TimeZoneService.fromUTC(utcTimestamp, userTimeZone);
-    return localDate.toFormat('EEEE, MMMM d, yyyy');
+  // Format time for display in user's time zone
+  const formatTimeDisplay = (timeString: string) => {
+    try {
+      // Use formatTimeInUserTimeZone as it's designed for time strings without dates
+      return formatTimeInUserTimeZone(timeString, userTimeZone, 'h:mm a');
+    } catch (error) {
+      console.error('Error formatting time with time zone:', error);
+      return formatTime12Hour(timeString);
+    }
   };
 
   if (onDocumentSession) {
@@ -46,14 +47,14 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
           </CardTitle>
           <CardDescription className="flex items-center">
             <Calendar className="h-4 w-4 mr-2" />
-            {formatDateDisplay(appointment.start_at)}
+            {format(parseISO(appointment.date), 'EEEE, MMMM do, yyyy')}
           </CardDescription>
         </CardHeader>
         <CardContent className="pb-2">
           <div className="flex items-center">
             <Clock className="h-4 w-4 mr-2" />
             <span className="text-sm">
-              {formatTimeDisplay(appointment.start_at)} - {formatTimeDisplay(appointment.end_at)}
+              {formatTimeDisplay(appointment.start_time)} - {formatTimeDisplay(appointment.end_time)}
             </span>
           </div>
           <div className="text-sm mt-1">{appointment.type}</div>
@@ -84,18 +85,19 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
       </Card>
     );
   }
+
   
   return (
     <Card key={appointment.id} className="mb-3">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-semibold flex items-center">
           <Clock className="h-4 w-4 mr-2" />
-          {formatTimeDisplay(appointment.start_at)} - {formatTimeDisplay(appointment.end_at)} 
+          {formatTimeDisplay(appointment.start_time)} - {formatTimeDisplay(appointment.end_time)} 
           <span className="text-xs text-gray-500 ml-1">({timeZoneDisplay})</span>
         </CardTitle>
         <CardDescription className="flex items-center">
           <Calendar className="h-4 w-4 mr-2" />
-          {formatDateDisplay(appointment.start_at)}
+          {format(parseISO(appointment.date), 'EEEE, MMMM do, yyyy')}
         </CardDescription>
       </CardHeader>
       <CardContent className="pb-2">

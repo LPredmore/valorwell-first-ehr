@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'; // Added useCallback
+import React, { useEffect, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,14 +6,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info, Loader2 } from 'lucide-react'; // Added Loader2 for visual feedback
+import { Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@/context/UserContext'; // Import useUser
+import { Eye } from 'lucide-react';
+import ViewAvailabilityDialog from '@/components/patient/ViewAvailabilityDialog';
 
 interface Client {
   client_state: string | null;
   client_age: number | null;
-  // Add other client fields if needed by this component
 }
 
 interface Therapist {
@@ -26,450 +26,346 @@ interface Therapist {
   clinician_bio_short: string | null;
   clinician_licensed_states: string[] | null;
   clinician_min_client_age: number | null;
-  clinician_profile_image: string | null; // Kept for potential legacy use
-  clinician_image_url: string | null; // Preferred field for profile image
-  // Add other therapist fields if needed
+  clinician_profile_image: string | null;
+  clinician_image_url: string | null;
 }
 
 const TherapistSelection = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, userId: authUserId, isLoading: isUserContextLoading, authInitialized, clientProfile: userClientProfile, refreshUserData } = useUser(); // Use UserContext with refreshUserData
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
-
-  const [loadingTherapists, setLoadingTherapists] = useState(true); // For therapist list
-  const [clientData, setClientData] = useState<Client | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingClient, setLoadingClient] = useState(true);
   const [therapists, setTherapists] = useState<Therapist[]>([]);
-  const [allTherapists, setAllTherapists] = useState<Therapist[]>([]); // To store the full list for fallback
-  const [filteringApplied, setFilteringApplied] = useState(false); // To track if filters were active
-  const [selectingTherapistId, setSelectingTherapistId] = useState<string | null>(null);
+  const [clientData, setClientData] = useState<Client | null>(null);
+  const [filteringEnabled, setFilteringEnabled] = useState(true);
+  const [allTherapists, setAllTherapists] = useState<Therapist[]>([]);
+  const [selectingTherapist, setSelectingTherapist] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [noMatchingTherapists, setNoMatchingTherapists] = useState(false);
+  const [isViewingAvailability, setIsViewingAvailability] = useState(false);
+  const [selectedTherapistForAvailability, setSelectedTherapistForAvailability] = useState<{
+    id: string;
+    name: string | null;
+  } | null>(null);
 
-
-  // Add timeout mechanism to prevent indefinite loading
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
-    if ((isUserContextLoading || !authInitialized) && !authError) {
-      console.log("[TherapistSelection] Starting loading timeout check");
-      timeoutId = setTimeout(() => {
-        console.log("[TherapistSelection] Loading timeout reached after 10 seconds");
-        setLoadingTimeout(true);
-        toast({
-          title: "Loading Delay",
-          description: "User data is taking longer than expected to load.",
-          variant: "default"
-        });
-      }, 10000); // 10 seconds timeout
-      
-      // Add a second timeout for critical failure
-      const criticalTimeoutId = setTimeout(() => {
-        console.log("[TherapistSelection] Critical loading timeout reached after 30 seconds");
-        setAuthError("Authentication process is taking too long. Please refresh the page.");
-        toast({
-          title: "Authentication Error",
-          description: "Failed to load user data. Please refresh the page.",
-          variant: "destructive"
-        });
-      }, 30000); // 30 seconds for critical timeout
-      
-      return () => {
-        clearTimeout(timeoutId);
-        clearTimeout(criticalTimeoutId);
-      };
-    }
-    
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [isUserContextLoading, authInitialized, authError, toast]);
-
-  // Effect to set clientData from UserContext once available
-  useEffect(() => {
-    if (!isUserContextLoading && authInitialized && authUserId) {
-      // Add the requested debug logging
-      console.log('[TherapistSelection DEBUG] userClientProfile from UserContext:', JSON.stringify(userClientProfile, null, 2));
-      
-      if (userClientProfile) {
-        console.log(`[TherapistSelection DEBUG] userClientProfile.client_age: ${userClientProfile.client_age} (Type: ${typeof userClientProfile.client_age})`);
-        console.log(`[TherapistSelection DEBUG] userClientProfile.client_state: ${userClientProfile.client_state} (Type: ${typeof userClientProfile.client_state})`);
-        
-        setClientData({
-          client_state: userClientProfile.client_state || null,
-          client_age: userClientProfile.client_age === undefined || userClientProfile.client_age === null ? null : Number(userClientProfile.client_age), // Ensure age is number or null
-        });
-        
-        console.log('[TherapistSelection] Using clientProfile from UserContext:', JSON.stringify({
-          client_state: userClientProfile.client_state,
-          client_age: userClientProfile.client_age
-        }, null, 2));
-      } else {
-        // This case might indicate profile setup isn't complete or UserContext isn't fully synced
-        console.warn('[TherapistSelection DEBUG] userClientProfile from UserContext is null/undefined.');
-        toast({
-            title: "Profile Incomplete",
-            description: "Please complete your profile setup to select a therapist.",
-            variant: "destructive",
-        });
-        // Optionally navigate to profile setup if status indicates 'New'
-        // if (userClientProfile?.client_status === 'New') navigate('/profile-setup');
-        setClientData(null); // Ensure clientData is null if no profile
-      }
-    } else if (!isUserContextLoading && !authUserId) {
-        console.log("[TherapistSelection] No authenticated user. Redirecting to login.");
-        toast({
-            title: "Authentication Required",
-            description: "Please log in to view therapists.",
-            variant: "destructive",
-        });
-        navigate('/login');
-    }
-  }, [authUserId, isUserContextLoading, userClientProfile, navigate, toast]);
-
-
-  // Effect to fetch therapists and apply filters
-  useEffect(() => {
-    // Only fetch therapists if clientData has been determined (even if null, indicating no specific filters apply)
-    // and user context is no longer loading.
-    if (isUserContextLoading) {
-        console.log("[TherapistSelection] Waiting for UserContext to load before fetching therapists.");
-        return;
-    }
-
-    const fetchAndFilterTherapists = async () => {
-      setLoadingTherapists(true);
-      setFilteringApplied(false); // Reset filtering applied flag
+    const fetchClientData = async () => {
       try {
-        const { data: activeTherapists, error } = await supabase
-          .from('clinicians')
-          .select('id, clinician_first_name, clinician_last_name, clinician_professional_name, clinician_title, clinician_bio, clinician_bio_short, clinician_licensed_states, clinician_min_client_age, clinician_profile_image, clinician_image_url')
-          .eq('clinician_status', 'Active');
-
+        setLoadingClient(true);
+        const {
+          data: {
+            user
+          },
+          error: authError
+        } = await supabase.auth.getUser();
+        if (authError || !user) {
+          console.log("Not authenticated or auth error:", authError);
+          setLoadingClient(false);
+          toast({
+            title: "Authentication required",
+            description: "Please log in to view therapists",
+            variant: "destructive"
+          });
+          navigate('/login');
+          return;
+        }
+        setUserId(user.id);
+        let {
+          data,
+          error
+        } = await supabase.from('clients').select('client_state, client_age').eq('id', user.id);
+        if ((!data || data.length === 0) && user.email) {
+          const {
+            data: emailData,
+            error: emailError
+          } = await supabase.from('clients').select('client_state, client_age').eq('client_email', user.email);
+          if (!emailError && emailData && emailData.length > 0) {
+            data = emailData;
+          }
+        }
         if (error) {
-          console.error('Error fetching therapists:', error);
+          console.error("Error fetching client data:", error);
+          setLoadingClient(false);
+          return;
+        }
+        if (data && data.length > 0) {
+          setClientData(data[0]);
+        } else {
+          console.log("No client data found");
+        }
+      } catch (error) {
+        console.error("Error in fetchClientData:", error);
+      } finally {
+        setLoadingClient(false);
+      }
+    };
+    fetchClientData();
+  }, [navigate, toast]);
+
+  useEffect(() => {
+    const fetchTherapists = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase.from('clinicians').select('*').eq('clinician_status', 'Active');
+        
+        if (error) {
           throw error;
         }
         
-        const fetchedTherapists = activeTherapists || [];
-        console.log("[TherapistSelection] Total active therapists fetched:", fetchedTherapists.length);
-        if (fetchedTherapists.length > 0) {
-            console.log("[TherapistSelection] Sample therapist data from DB:", JSON.stringify(fetchedTherapists[0], null, 2));
-        }
-        setAllTherapists(fetchedTherapists); // Store all for potential fallback
-
-        if (clientData && (clientData.client_state || clientData.client_age !== null)) {
-          console.log('[TherapistSelection DEBUG] Using this clientData FOR FILTERING:', JSON.stringify(clientData, null, 2));
-          setFilteringApplied(true);
-
-          const filtered = fetchedTherapists.filter(therapist => {
-            let matchesState = !clientData.client_state; // If client has no state, don't filter by state (or consider it a match)
-            let matchesAge = true; // Default to true, will be set by specific conditions
-
-            // State Matching Logic
+        console.log("Total active therapists:", data?.length || 0);
+        console.log("Sample therapist data:", data?.[0]);
+        
+        setAllTherapists(data || []);
+        
+        if (filteringEnabled && clientData && data) {
+          console.log("Client state:", clientData.client_state);
+          console.log("Client age:", clientData.client_age);
+          
+          const filteredTherapists = data.filter(therapist => {
+            let matchesState = true;
+            let matchesAge = true;
+            
             if (clientData.client_state && therapist.clinician_licensed_states && therapist.clinician_licensed_states.length > 0) {
               const clientStateNormalized = clientData.client_state.toLowerCase().trim();
-              matchesState = therapist.clinician_licensed_states.some(state => {
+              console.log(`Therapist: ${therapist.clinician_first_name}, Licensed states:`, therapist.clinician_licensed_states);
+              const matchingState = therapist.clinician_licensed_states.some(state => {
                 if (!state) return false;
                 const stateNormalized = state.toLowerCase().trim();
                 return stateNormalized.includes(clientStateNormalized) || clientStateNormalized.includes(stateNormalized);
               });
-            } else if (clientData.client_state && (!therapist.clinician_licensed_states || therapist.clinician_licensed_states.length === 0)) {
-                matchesState = false; // Client has a state, therapist has no licensed states listed
+              matchesState = matchingState;
             }
-            // If clientData.client_state is null/empty, matchesState remains true (or its initial value based on above)
-
-            // Age Matching Logic
-            const currentClientAge = clientData.client_age; // This is number | null
-            const therapistMinAge = therapist.clinician_min_client_age; // This is number | null
-
-            console.log(`[TherapistSelection] FILTER - Therapist ID: ${therapist.id} (${therapist.clinician_professional_name || therapist.clinician_first_name})`);
-            console.log(`  Client State: ${clientData.client_state}, Therapist States: ${therapist.clinician_licensed_states}, Matches State: ${matchesState}`);
             
-            if (currentClientAge !== null && currentClientAge !== undefined) {
-              if (therapistMinAge !== null && therapistMinAge !== undefined) {
-                matchesAge = currentClientAge >= therapistMinAge;
-                console.log(`  Client Age: ${currentClientAge}, Min Therapist Age: ${therapistMinAge}, Matches Age: ${matchesAge}`);
-              } else {
-                // Therapist has no min age requirement, so age matches by default
-                matchesAge = true;
-                console.log(`  Client Age: ${currentClientAge}, Min Therapist Age: null, Matches Age: true (therapist has no min age)`);
-              }
+            if (clientData.client_age !== null && therapist.clinician_min_client_age !== null) {
+              matchesAge = therapist.clinician_min_client_age <= clientData.client_age;
             } else {
-              // Client age is null/undefined, so age filter effectively passes (therapist is considered a match age-wise)
-              // This means if client_age is not set, we don't filter out therapists based on age.
               matchesAge = true;
-              console.log(`  Client Age: null/undefined, Matches Age: true (client age not set - not filtering by age)`);
             }
             
             return matchesState && matchesAge;
           });
-
-          console.log(`[TherapistSelection] FILTERING COMPLETE - Filtered count: ${filtered.length}, Total active therapists: ${fetchedTherapists.length}`);
           
-          if (filtered.length === 0 && fetchedTherapists.length > 0) {
-            console.log("[TherapistSelection] No matching therapists found after filtering, showing all active therapists as fallback.");
-            setTherapists(fetchedTherapists); // Fallback to all therapists
-            toast({
-              title: "Filtered Results",
-              description: "No therapists matched all your criteria. Showing all available therapists.",
-              variant: "default"
-            });
-            setFilteringApplied(false); // Indicate that the displayed list is not the filtered list
+          console.log("Filtered therapists count:", filteredTherapists.length);
+          
+          if (filteredTherapists.length === 0 && data.length > 0) {
+            console.log("No matching therapists found, showing no-match message");
+            setTherapists([]);
+            setNoMatchingTherapists(true);
           } else {
-            setTherapists(filtered);
+            setTherapists(filteredTherapists);
+            setNoMatchingTherapists(false);
           }
         } else {
-          // No clientData for filtering or clientData has no state/age, so show all therapists
-          console.log("[TherapistSelection DEBUG] NOT filtering. clientData:", JSON.stringify(clientData, null, 2));
-          setTherapists(fetchedTherapists);
-          setFilteringApplied(false);
+          setTherapists(data || []);
+          setNoMatchingTherapists(false);
         }
-      } catch (error: any) {
-        console.error('Error fetching or filtering therapists:', error);
+      } catch (error) {
+        console.error('Error fetching therapists:', error);
         toast({
-          title: 'Error Loading Therapists',
-          description: error.message || 'Failed to load therapists. Please try again later.',
+          title: 'Error',
+          description: 'Failed to load therapists. Please try again later.',
           variant: 'destructive'
         });
-        setTherapists([]); // Clear therapists on error
-        setAllTherapists([]);
       } finally {
-        setLoadingTherapists(false);
-        console.log("[TherapistSelection] fetchAndFilterTherapists finished. loadingTherapists: false");
+        setLoading(false);
       }
     };
-
-    // Only run if UserContext is initialized and we have clientData (or know it's null)
-    if (!isUserContextLoading) {
-        fetchAndFilterTherapists();
-    }
-
-  }, [isUserContextLoading, clientData, toast]); // Removed filteringEnabled as it was causing loops
+    
+    fetchTherapists();
+  }, [toast, clientData, filteringEnabled]);
 
   const handleSelectTherapist = async (therapist: Therapist) => {
-    if (!authUserId) {
-      toast({ title: "Authentication required", description: "Please log in to select a therapist", variant: "destructive" });
+    if (!userId) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to select a therapist",
+        variant: "destructive"
+      });
       navigate('/login');
       return;
     }
-    setSelectingTherapistId(therapist.id); // Show loading state for this specific therapist
     try {
-      const { error } = await supabase
-        .from('clients')
-        .update({ client_assigned_therapist: therapist.id, client_status: 'Therapist Selected' }) // Optionally update status
-        .eq('id', authUserId);
-
+      setSelectingTherapist(true);
+      const {
+        error
+      } = await supabase.from('clients').update({
+        client_assigned_therapist: therapist.id
+      }).eq('id', userId);
       if (error) {
         console.error("Error selecting therapist:", error);
-        toast({ title: "Error", description: "Failed to select therapist. Please try again.", variant: "destructive" });
+        toast({
+          title: "Error",
+          description: "Failed to select therapist. Please try again.",
+          variant: "destructive"
+        });
         return;
       }
-      
       toast({
-        title: "Therapist Selected!",
-        description: `You have selected ${therapist.clinician_professional_name || `${therapist.clinician_first_name} ${therapist.clinician_last_name}`}.`,
+        title: "Therapist Selected",
+        description: `You have selected ${therapist.clinician_first_name} ${therapist.clinician_last_name} as your therapist.`
       });
-
-      // Refresh user context to get updated client_status
-      if (refreshUserData) {
-        console.log("[TherapistSelection] Refreshing user data after therapist selection");
-        await refreshUserData();
-      } else {
-        console.warn("[TherapistSelection] refreshUserData function not available from UserContext");
-      }
-
-      navigate('/patient-dashboard'); // Or to a confirmation page
-    } catch (error: any) {
+      navigate('/patient-dashboard');
+    } catch (error) {
       console.error("Exception in handleSelectTherapist:", error);
-      toast({ title: "Error", description: error.message || "An unexpected error occurred.", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
     } finally {
-      setSelectingTherapistId(null);
+      setSelectingTherapist(false);
     }
   };
-  
-  const displayTherapistName = (therapist: Therapist) => {
-    return therapist.clinician_professional_name || `${therapist.clinician_first_name || ''} ${therapist.clinician_last_name || ''}`.trim();
-  };
 
-  if (isUserContextLoading || !authInitialized) {
-    return (
-      <Layout>
-        <div className="container max-w-6xl mx-auto py-6 flex justify-center items-center min-h-[calc(100vh-200px)]">
-          <Loader2 className="h-12 w-12 animate-spin text-valorwell-600 mb-4" />
-          <div className="text-center">
-            <p className="text-lg text-valorwell-600 mb-2">
-              {!authInitialized
-                ? "Initializing authentication..."
-                : "Loading user information..."}
-            </p>
-            {loadingTimeout && !authError && (
-              <p className="text-sm text-amber-600">
-                This is taking longer than expected. Please wait...
-              </p>
-            )}
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-  
-  // Handle auth error state
-  if (authError) {
-    return (
-      <Layout>
-        <div className="container max-w-6xl mx-auto py-6 flex justify-center items-center min-h-[calc(100vh-200px)]">
-          <div className="bg-red-50 p-8 rounded-lg border border-red-200 max-w-md text-center">
-            <div className="text-red-500 mb-4 flex justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-              </svg>
-            </div>
-            <h3 className="text-xl font-medium text-red-800 mb-2">Authentication Error</h3>
-            <p className="text-red-600 mb-6">{authError}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-valorwell-600 text-white rounded-md hover:bg-valorwell-700 transition-colors"
-            >
-              Refresh Page
-            </button>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-
-  return (
-    <Layout>
+  return <Layout>
       <div className="container max-w-6xl mx-auto py-6">
-        <Card className="shadow-lg border-valorwell-300">
-          <CardHeader className="text-center bg-gradient-to-r from-valorwell-50 to-valorwell-100 rounded-t-lg py-8">
-            <CardTitle className="text-3xl md:text-4xl font-bold text-valorwell-700">Select Your Therapist</CardTitle>
-            <CardDescription className="text-lg md:text-xl mt-2 text-valorwell-600">
+        <Card className="shadow-md">
+          <CardHeader className="text-center bg-gradient-to-r from-valorwell-50 to-valorwell-100 rounded-t-lg">
+            <CardTitle className="text-3xl text-valorwell-700">Select Your Therapist</CardTitle>
+            <CardDescription className="text-lg mt-2">
               Choose a therapist who best fits your needs and preferences.
             </CardDescription>
           </CardHeader>
           
-          <CardContent className="pt-8 px-4 md:px-6">
-            {loadingTherapists ? (
-              <div className="flex flex-col justify-center items-center py-12 text-center">
-                <Loader2 className="h-12 w-12 animate-spin text-valorwell-600" />
-                <p className="mt-4 text-lg text-gray-600">Loading available therapists...</p>
-              </div>
-            ) : (
-              <>
-                {filteringApplied && clientData && (clientData.client_state || clientData.client_age !== null) && (
-                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <CardContent className="pt-6">
+            {loadingClient || loading ? <div className="flex justify-center py-12">
+                <p>Loading available therapists...</p>
+              </div> : <>
+                {clientData && filteringEnabled && <div className="mb-6">
                     <Alert>
-                      <Info className="h-5 w-5 text-blue-600" />
-                      <AlertTitle className="font-semibold text-blue-700">Filtered Results</AlertTitle>
-                      <AlertDescription className="text-blue-600">
-                        {clientData.client_state && clientData.client_age !== null ? (
-                          <>
-                            Showing therapists licensed in <strong>{clientData.client_state}</strong> who work with clients aged <strong>{clientData.client_age}</strong> and older.
-                          </>
-                        ) : clientData.client_state ? (
-                          <>
+                      <Info className="h-4 w-4" />
+                      <AlertTitle>Filtered Results</AlertTitle>
+                      <AlertDescription>
+                        {clientData.client_state && clientData.client_age ? <>
+                            Showing therapists licensed in <strong>{clientData.client_state}</strong>{' '}
+                            who work with clients aged <strong>{clientData.client_age}</strong> and older.
+                          </> : clientData.client_state ? <>
                             Showing therapists licensed in <strong>{clientData.client_state}</strong>.
-                          </>
-                        ) : clientData.client_age !== null ? (
-                          <>
+                          </> : clientData.client_age ? <>
                             Showing therapists who work with clients aged <strong>{clientData.client_age}</strong> and older.
-                          </>
-                        ) : null }
-                         {!filteringApplied && therapists.length > 0 && therapists.length !== allTherapists.length && " (Showing all due to no exact match)"}
+                          </> : <>Showing all available therapists.</>}
                       </AlertDescription>
                     </Alert>
-                  </div>
-                )}
+                  </div>}
 
-                {therapists.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-xl text-gray-600 mb-4">
-                      {filteringApplied && (clientData?.client_state || clientData?.client_age !== null)
-                        ? `No therapists currently match your specific criteria (State: ${clientData?.client_state || 'N/A'}, Age: ${clientData?.client_age ?? 'N/A'}).`
-                        : "No therapists are currently available. Please check back later."}
+                {noMatchingTherapists ? (
+                  <div className="text-center py-12 px-4">
+                    <div className="mb-6">
+                      <svg 
+                        className="mx-auto h-20 w-20 text-valorwell-300" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24" 
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={1.5} 
+                          d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 14a2 2 0 100-4 2 2 0 000 4z" 
+                        />
+                        <circle cx="12" cy="12" r="10" strokeWidth="1.5" />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                      We're Sorry!
+                    </h3>
+                    <p className="text-gray-600 mb-6 max-w-lg mx-auto">
+                      We don't currently have therapists available that match your location and needs. 
+                      We're actively working to expand our network of qualified therapists.
                     </p>
-                    <p className="text-gray-500">If you believe this is an error, please contact support or try refreshing.</p>
+                    <p className="text-gray-600 mb-6 max-w-lg mx-auto">
+                      We'll notify you as soon as a therapist becomes available for you.
+                    </p>
                     <Button 
-                      className="mt-6 bg-valorwell-600 hover:bg-valorwell-700"
-                      onClick={() => window.location.reload()}
+                      className="bg-valorwell-600 hover:bg-valorwell-700" 
+                      onClick={() => navigate('/patient-dashboard')}
                     >
-                      Refresh Page
+                      Return to Dashboard
                     </Button>
                   </div>
-                ) : (
-                  <div className="space-y-8">
-                    {therapists.map((therapist) => (
-                      <Card key={therapist.id} className="overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300">
+                ) : therapists.length === 0 ? <div className="text-center py-8">
+                    <p>No therapists are currently available. Please check back later.</p>
+                    <div className="mt-4 space-x-2">
+                      <Button className="bg-valorwell-600 hover:bg-valorwell-700" onClick={() => window.location.reload()}>
+                        Refresh
+                      </Button>
+                    </div>
+                  </div> : <div className="space-y-10">
+                    {therapists.map(therapist => <Card key={therapist.id} className="overflow-hidden">
                         <div className="p-6">
-                          <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
-                            <div className="flex-shrink-0 flex flex-col items-center sm:w-1/4">
-                              <Avatar className="w-32 h-32 mb-4 border-2 border-valorwell-200">
-                                <AvatarImage 
-                                  src={therapist.clinician_image_url || therapist.clinician_profile_image || undefined} 
-                                  alt={displayTherapistName(therapist)}
-                                />
-                                <AvatarFallback className="text-4xl bg-valorwell-100 text-valorwell-600">
-                                  {therapist.clinician_first_name?.[0]?.toUpperCase()}
-                                  {therapist.clinician_last_name?.[0]?.toUpperCase()}
-                                </AvatarFallback>
+                          <div className="flex flex-col md:flex-row gap-6">
+                            <div className="md:w-1/4 flex flex-col items-center">
+                              <Avatar className="w-32 h-32 mb-4">
+                                {therapist.clinician_image_url || therapist.clinician_profile_image ? <AvatarImage src={therapist.clinician_image_url || therapist.clinician_profile_image} alt={`${therapist.clinician_first_name} ${therapist.clinician_last_name}`} /> : <AvatarFallback className="text-4xl bg-valorwell-100 text-valorwell-600">
+                                    {therapist.clinician_first_name?.[0]}{therapist.clinician_last_name?.[0]}
+                                  </AvatarFallback>}
                               </Avatar>
-                              <h3 className="text-xl font-semibold text-center text-valorwell-700">
-                                {displayTherapistName(therapist)}
+                              <h3 className="text-xl font-semibold text-center">
+                                {therapist.clinician_professional_name || `${therapist.clinician_first_name} ${therapist.clinician_last_name}`}
                               </h3>
-                              <p className="text-sm text-gray-500 mt-1 text-center">{therapist.clinician_title || 'Therapist'}</p>
+                              <p className="text-sm text-gray-500 mt-1">{therapist.clinician_title || 'Therapist'}</p>
                               
-                              <Button 
-                                className="mt-4 w-full bg-valorwell-600 hover:bg-valorwell-700 text-white"
-                                onClick={() => handleSelectTherapist(therapist)}
-                                disabled={selectingTherapistId === therapist.id}
-                              >
-                                {selectingTherapistId === therapist.id ? 
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                {selectingTherapistId === therapist.id ? 'Selecting...' : 'Select Therapist'}
-                              </Button>
+                              <div className="mt-4 w-full space-y-2">
+                                <Button 
+                                  className="w-full bg-valorwell-600 hover:bg-valorwell-700" 
+                                  onClick={() => handleSelectTherapist(therapist)} 
+                                  disabled={selectingTherapist}
+                                >
+                                  {selectingTherapist ? 'Selecting...' : 'Select Therapist'}
+                                </Button>
+                                
+                                <Button
+                                  variant="outline"
+                                  className="w-full"
+                                  onClick={() => {
+                                    setSelectedTherapistForAvailability({
+                                      id: therapist.id,
+                                      name: therapist.clinician_professional_name || `${therapist.clinician_first_name} ${therapist.clinician_last_name}`
+                                    });
+                                    setIsViewingAvailability(true);
+                                  }}
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Availability
+                                </Button>
+                              </div>
                             </div>
                             
-                            <div className="sm:w-3/4">
+                            <div className="md:w-3/4">
                               <div className="prose max-w-none">
-                                <h4 className="text-lg font-semibold mb-2 text-valorwell-600 border-b pb-1">Biography</h4>
-                                <p className="text-gray-700 text-sm leading-relaxed">
-                                  {therapist.clinician_bio || 
-                                   therapist.clinician_bio_short || 
-                                   'No biography available for this therapist.'}
+                                <h4 className="text-lg font-semibold mb-2">About Me</h4>
+                                <p className="text-gray-700">
+                                  {therapist.clinician_bio || therapist.clinician_bio_short || 'No biography available for this therapist.'}
                                 </p>
                                 
-                                {clientData?.client_state && therapist.clinician_licensed_states?.some(
-                                  state => {
-                                    if (!state || !clientData.client_state) return false;
-                                    const stateNorm = state.toLowerCase().trim();
-                                    const clientStateNorm = clientData.client_state.toLowerCase().trim();
-                                    return stateNorm.includes(clientStateNorm) || clientStateNorm.includes(stateNorm);
-                                  }
-                                ) && (
-                                  <div className="mt-4">
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                {clientData?.client_state && therapist.clinician_licensed_states?.some(state => {
+                                  if (!state || !clientData.client_state) return false;
+                                  const stateNorm = state.toLowerCase().trim();
+                                  const clientStateNorm = clientData.client_state.toLowerCase().trim();
+                                  return stateNorm.includes(clientStateNorm) || clientStateNorm.includes(stateNorm);
+                                }) && <div className="mt-4 text-valorwell-700">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-valorwell-100">
                                       Licensed in your state ({clientData.client_state})
                                     </span>
-                                  </div>
-                                )}
+                                  </div>}
                               </div>
                             </div>
                           </div>
                         </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+                      </Card>)}
+                  </div>}
+              </>}
           </CardContent>
         </Card>
       </div>
-    </Layout>
-  );
+      <ViewAvailabilityDialog
+        open={isViewingAvailability}
+        onOpenChange={setIsViewingAvailability}
+        clinicianId={selectedTherapistForAvailability?.id ?? null}
+        clinicianName={selectedTherapistForAvailability?.name ?? null}
+      />
+    </Layout>;
 };
 
 export default TherapistSelection;
