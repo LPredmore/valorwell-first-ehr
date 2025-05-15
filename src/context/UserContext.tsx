@@ -136,6 +136,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (session?.user) {
           await fetchClientSpecificData(session.user); // This manages its own isLoading
+          
+          // CRITICAL FIX: Always set authInitialized to true when we have a valid user session
+          // This ensures we don't get stuck in a loading state
+          console.log(`[UserContext] onAuthStateChange: User is signed in, setting authInitialized=true.`);
+          setAuthInitialized(true);
         } else {
           // SIGNED_OUT or session became null
           setUserRole(null);
@@ -165,7 +170,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log("[UserContext] Cleaning up auth subscription (unmount).");
       authListener?.subscription?.unsubscribe();
     };
-  }, [fetchClientSpecificData]); // fetchClientSpecificData is stable
+  }, [fetchClientSpecificData, authInitialized]); // Include authInitialized in dependencies to ensure the listener has the latest value
 
   const refreshUserData = useCallback(async () => {
     console.log("[UserContext] refreshUserData explicitly called.");
