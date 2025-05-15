@@ -143,14 +143,54 @@ type ProfileFormValues = z.infer<typeof profileStep1Schema> &
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, isLoading: isUserContextLoading, userId, refreshUserData } = useUser();
+  const { user, isLoading: isUserContextLoading, authInitialized, userId, refreshUserData } = useUser();
 
   const [clientId, setClientId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [navigationHistory, setNavigationHistory] = useState<number[]>([1]);
   const [otherInsurance, setOtherInsurance] = useState<string>('');
   const [isFormLoading, setIsFormLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
   const initialDataLoadedForUser = useRef<string | null>(null);
+  
+  // Add timeout mechanism to prevent indefinite loading
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if ((isUserContextLoading || !authInitialized) && !authError) {
+      console.log("[ProfileSetup] Starting loading timeout check");
+      timeoutId = setTimeout(() => {
+        console.log("[ProfileSetup] Loading timeout reached after 10 seconds");
+        setLoadingTimeout(true);
+        toast({
+          title: "Loading Delay",
+          description: "User data is taking longer than expected to load.",
+          variant: "default"
+        });
+      }, 10000); // 10 seconds timeout
+      
+      // Add a second timeout for critical failure
+      const criticalTimeoutId = setTimeout(() => {
+        console.log("[ProfileSetup] Critical loading timeout reached after 30 seconds");
+        setAuthError("Authentication process is taking too long. Please refresh the page.");
+        toast({
+          title: "Authentication Error",
+          description: "Failed to load user data. Please refresh the page.",
+          variant: "destructive"
+        });
+      }, 30000); // 30 seconds for critical timeout
+      
+      return () => {
+        clearTimeout(timeoutId);
+        clearTimeout(criticalTimeoutId);
+      };
+    }
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isUserContextLoading, authInitialized, authError, toast]);
 
   useEffect(() => {
     console.log('[ProfileSetup] Component Mounted');
@@ -238,9 +278,21 @@ const ProfileSetup = () => {
 
   useEffect(() => {
     const fetchAndSetInitialData = async () => {
-      if (isUserContextLoading || !userId) {
-        console.log('[ProfileSetup] Initial data fetch: User context still loading or no userId. Waiting.');
+      if (isUserContextLoading || !authInitialized) {
+        console.log('[ProfileSetup] Initial data fetch: User context still loading or not initialized. Waiting.');
         setIsFormLoading(true);
+        return;
+      }
+      
+      if (!userId) {
+        console.log('[ProfileSetup] Initial data fetch: No userId available after auth initialization.');
+        setIsFormLoading(false);
+        setAuthError("User ID not available. Please log in again.");
+        toast({
+          title: "Authentication Error",
+          description: "User ID not available. Please log in again.",
+          variant: "destructive"
+        });
         return;
       }
       if (initialDataLoadedForUser.current === userId) {
@@ -682,11 +734,42 @@ const ProfileSetup = () => {
               </div>
             </div>
             
-            {isFormLoading ? (
+            {authError ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="text-center bg-red-50 p-6 rounded-lg border border-red-200 max-w-md">
+                  <div className="text-red-500 mb-4 flex justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-medium text-red-800 mb-2">Authentication Error</h3>
+                  <p className="text-red-600 mb-6">{authError}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-valorwell-600 text-white rounded-md hover:bg-valorwell-700 transition-colors"
+                  >
+                    Refresh Page
+                  </button>
+                </div>
+              </div>
+            ) : isFormLoading ? (
               <div className="flex justify-center items-center py-12">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-valorwell-600 mx-auto mb-4"></div>
-                  <p className="text-valorwell-700">Loading your profile information...</p>
+                  <p className="text-valorwell-700 mb-2">
+                    {!authInitialized
+                      ? "Initializing authentication..."
+                      : isUserContextLoading
+                        ? "Loading user data..."
+                        : "Loading your profile information..."}
+                  </p>
+                  {loadingTimeout && (
+                    <p className="text-sm text-amber-600">
+                      This is taking longer than expected. Please wait...
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (

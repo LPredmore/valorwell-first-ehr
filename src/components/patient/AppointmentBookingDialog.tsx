@@ -111,6 +111,8 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
   
   // Get auth state from UserContext
   const { userId, isLoading: userIsLoading, authInitialized } = useUser();
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
   
   // Get user's timezone
   const clientTimeZone = useMemo(() => {
@@ -374,24 +376,27 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
 
   // Fetch availability blocks when date changes
   useEffect(() => {
-    if (open && selectedDate && clinicianId && !userIsLoading) {
+    if (open && selectedDate && clinicianId && !userIsLoading && authInitialized) {
+      console.log("[BookingDialog] Auth initialized and not loading, fetching availability blocks");
       fetchAvailabilityBlocks();
     }
-  }, [open, selectedDate, clinicianId, fetchAvailabilityBlocks, userIsLoading]);
+  }, [open, selectedDate, clinicianId, fetchAvailabilityBlocks, userIsLoading, authInitialized]);
 
   // Fetch existing appointments when date changes
   useEffect(() => {
-    if (open && selectedDate && clinicianId && (clientId || userId) && !userIsLoading) {
+    if (open && selectedDate && clinicianId && (clientId || userId) && !userIsLoading && authInitialized) {
+      console.log("[BookingDialog] Auth initialized and not loading, fetching existing appointments");
       fetchExistingAppointments();
     }
-  }, [open, selectedDate, clinicianId, userId, clientId, fetchExistingAppointments, userIsLoading]);
+  }, [open, selectedDate, clinicianId, userId, clientId, fetchExistingAppointments, userIsLoading, authInitialized]);
 
   // Generate time slots when dependencies change
   useEffect(() => {
-    if (open && selectedDate && !userIsLoading) {
+    if (open && selectedDate && !userIsLoading && authInitialized) {
+      console.log("[BookingDialog] Auth initialized and not loading, generating time slots");
       generateTimeSlots();
     }
-  }, [open, selectedDate, availabilityBlocks, existingAppointments, generateTimeSlots, userIsLoading]);
+  }, [open, selectedDate, availabilityBlocks, existingAppointments, generateTimeSlots, userIsLoading, authInitialized]);
 
   // Reset state when dialog closes
   useEffect(() => {
@@ -551,9 +556,40 @@ export const AppointmentBookingDialog: React.FC<AppointmentBookingDialogProps> =
             <h3 className="text-lg font-medium mb-2">Select a Time</h3>
             
             {/* Show loading spinner when loading */}
-            {isLoading && (
-              <div className="flex justify-center items-center h-40">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            {/* Show auth error if present */}
+            {authError && (
+              <div className="flex flex-col justify-center items-center h-40 p-4 bg-red-50 border border-red-200 rounded-md">
+                <div className="text-red-500 mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                </div>
+                <p className="text-red-600 text-center">{authError}</p>
+                <button
+                  onClick={handleClose}
+                  className="mt-4 px-3 py-1 bg-red-600 text-white text-sm rounded-md"
+                >
+                  Close
+                </button>
+              </div>
+            )}
+            
+            {/* Show loading spinner when loading */}
+            {isLoading && !authError && (
+              <div className="flex flex-col justify-center items-center h-40">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-2"></div>
+                <p className="text-sm text-gray-600">
+                  {userIsLoading || !authInitialized
+                    ? "Initializing authentication..."
+                    : "Loading available times..."}
+                </p>
+                {loadingTimeout && (
+                  <p className="text-xs text-amber-600 mt-2">
+                    This is taking longer than expected...
+                  </p>
+                )}
               </div>
             )}
             

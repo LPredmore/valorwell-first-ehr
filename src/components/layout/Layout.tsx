@@ -1,5 +1,5 @@
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +14,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isLoading: userContextLoading, userId, authInitialized } = useUser();
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
 
   // Effect to handle redirects based on authentication status
   useEffect(() => {
@@ -27,11 +28,33 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   }, [navigate, userContextLoading, userId, authInitialized]);
 
-  // Show loading state while checking auth
-  if (userContextLoading) {
+  // Add timeout mechanism to prevent indefinite loading
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (userContextLoading && !authInitialized) {
+      console.log("[Layout] Starting loading timeout check");
+      timeoutId = setTimeout(() => {
+        console.log("[Layout] Loading timeout reached after 10 seconds");
+        setLoadingTimeout(true);
+      }, 10000); // 10 seconds timeout
+    }
+    
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [userContextLoading, authInitialized]);
+
+  // Show loading state while checking auth - updated to consider both states
+  if (userContextLoading && !authInitialized) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-valorwell-600"></div>
+      <div className="flex h-screen w-full items-center justify-center flex-col">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-valorwell-600 mb-4"></div>
+        <p className="text-valorwell-600">
+          {loadingTimeout ? "Taking longer than expected..." : "Loading user data..."}
+        </p>
       </div>
     );
   }

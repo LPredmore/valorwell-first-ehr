@@ -1,11 +1,54 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/context/UserContext';
+import { useToast } from '@/hooks/use-toast';
+import { AlertCircle } from 'lucide-react';
 
 const Index = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { userRole, isLoading, authInitialized, clientStatus, userId } = useUser();
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  
+  // Add timeout mechanism to prevent indefinite loading
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if ((isLoading || !authInitialized) && !authError) {
+      console.log("[Index] Starting loading timeout check");
+      timeoutId = setTimeout(() => {
+        console.log("[Index] Loading timeout reached after 10 seconds");
+        setLoadingTimeout(true);
+        toast({
+          title: "Loading Delay",
+          description: "Authentication is taking longer than expected. Please wait or refresh the page.",
+          variant: "default"
+        });
+      }, 10000); // 10 seconds timeout
+      
+      // Add a second timeout for critical failure
+      const criticalTimeoutId = setTimeout(() => {
+        console.log("[Index] Critical loading timeout reached after 30 seconds");
+        setAuthError("Authentication process is taking too long. Please refresh the page or try again later.");
+        toast({
+          title: "Authentication Error",
+          description: "Failed to complete authentication. Please refresh the page.",
+          variant: "destructive"
+        });
+      }, 30000); // 30 seconds for critical timeout
+      
+      return () => {
+        clearTimeout(timeoutId);
+        clearTimeout(criticalTimeoutId);
+      };
+    }
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isLoading, authInitialized, authError, toast]);
 
   useEffect(() => {
     console.log("[Index] Checking redirect conditions - userId:", userId, "authInitialized:", authInitialized, "isLoading:", isLoading);
@@ -56,9 +99,32 @@ const Index = () => {
         {isLoading || !authInitialized ? (
           <div className="flex flex-col items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-            <p className="text-gray-600">Loading user data...</p>
+            <p className="text-gray-600 mb-2">
+              {!authInitialized
+                ? "Initializing authentication..."
+                : "Loading user data..."}
+            </p>
+            {loadingTimeout && !authError && (
+              <p className="text-amber-600 text-sm max-w-md px-4">
+                This is taking longer than expected. Please wait...
+              </p>
+            )}
           </div>
         ) : null}
+        
+        {authError && (
+          <div className="flex flex-col items-center bg-red-50 p-6 rounded-lg border border-red-200 max-w-md">
+            <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+            <h3 className="text-lg font-medium text-red-800 mb-2">Authentication Error</h3>
+            <p className="text-red-600 mb-4">{authError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Refresh Page
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

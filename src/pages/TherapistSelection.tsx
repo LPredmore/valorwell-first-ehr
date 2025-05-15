@@ -34,7 +34,9 @@ interface Therapist {
 const TherapistSelection = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, userId: authUserId, isLoading: isUserContextLoading, clientProfile: userClientProfile } = useUser(); // Use UserContext
+  const { user, userId: authUserId, isLoading: isUserContextLoading, authInitialized, clientProfile: userClientProfile, refreshUserData } = useUser(); // Use UserContext with refreshUserData
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
 
   const [loadingTherapists, setLoadingTherapists] = useState(true); // For therapist list
   const [clientData, setClientData] = useState<Client | null>(null);
@@ -44,9 +46,47 @@ const TherapistSelection = () => {
   const [selectingTherapistId, setSelectingTherapistId] = useState<string | null>(null);
 
 
+  // Add timeout mechanism to prevent indefinite loading
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if ((isUserContextLoading || !authInitialized) && !authError) {
+      console.log("[TherapistSelection] Starting loading timeout check");
+      timeoutId = setTimeout(() => {
+        console.log("[TherapistSelection] Loading timeout reached after 10 seconds");
+        setLoadingTimeout(true);
+        toast({
+          title: "Loading Delay",
+          description: "User data is taking longer than expected to load.",
+          variant: "default"
+        });
+      }, 10000); // 10 seconds timeout
+      
+      // Add a second timeout for critical failure
+      const criticalTimeoutId = setTimeout(() => {
+        console.log("[TherapistSelection] Critical loading timeout reached after 30 seconds");
+        setAuthError("Authentication process is taking too long. Please refresh the page.");
+        toast({
+          title: "Authentication Error",
+          description: "Failed to load user data. Please refresh the page.",
+          variant: "destructive"
+        });
+      }, 30000); // 30 seconds for critical timeout
+      
+      return () => {
+        clearTimeout(timeoutId);
+        clearTimeout(criticalTimeoutId);
+      };
+    }
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isUserContextLoading, authInitialized, authError, toast]);
+
   // Effect to set clientData from UserContext once available
   useEffect(() => {
-    if (!isUserContextLoading && authUserId) {
+    if (!isUserContextLoading && authInitialized && authUserId) {
       // Add the requested debug logging
       console.log('[TherapistSelection DEBUG] userClientProfile from UserContext:', JSON.stringify(userClientProfile, null, 2));
       
@@ -230,9 +270,13 @@ const TherapistSelection = () => {
         description: `You have selected ${therapist.clinician_professional_name || `${therapist.clinician_first_name} ${therapist.clinician_last_name}`}.`,
       });
 
-      // Refresh user context to get updated client_status if needed by other parts of the app
-      // Assuming refreshUserData is available from useUser()
-      // await refreshUserData(); 
+      // Refresh user context to get updated client_status
+      if (refreshUserData) {
+        console.log("[TherapistSelection] Refreshing user data after therapist selection");
+        await refreshUserData();
+      } else {
+        console.warn("[TherapistSelection] refreshUserData function not available from UserContext");
+      }
 
       navigate('/patient-dashboard'); // Or to a confirmation page
     } catch (error: any) {
@@ -247,12 +291,50 @@ const TherapistSelection = () => {
     return therapist.clinician_professional_name || `${therapist.clinician_first_name || ''} ${therapist.clinician_last_name || ''}`.trim();
   };
 
-  if (isUserContextLoading) {
+  if (isUserContextLoading || !authInitialized) {
     return (
       <Layout>
         <div className="container max-w-6xl mx-auto py-6 flex justify-center items-center min-h-[calc(100vh-200px)]">
-          <Loader2 className="h-12 w-12 animate-spin text-valorwell-600" />
-          <p className="ml-4 text-lg">Loading user information...</p>
+          <Loader2 className="h-12 w-12 animate-spin text-valorwell-600 mb-4" />
+          <div className="text-center">
+            <p className="text-lg text-valorwell-600 mb-2">
+              {!authInitialized
+                ? "Initializing authentication..."
+                : "Loading user information..."}
+            </p>
+            {loadingTimeout && !authError && (
+              <p className="text-sm text-amber-600">
+                This is taking longer than expected. Please wait...
+              </p>
+            )}
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+  
+  // Handle auth error state
+  if (authError) {
+    return (
+      <Layout>
+        <div className="container max-w-6xl mx-auto py-6 flex justify-center items-center min-h-[calc(100vh-200px)]">
+          <div className="bg-red-50 p-8 rounded-lg border border-red-200 max-w-md text-center">
+            <div className="text-red-500 mb-4 flex justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+            <h3 className="text-xl font-medium text-red-800 mb-2">Authentication Error</h3>
+            <p className="text-red-600 mb-6">{authError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-valorwell-600 text-white rounded-md hover:bg-valorwell-700 transition-colors"
+            >
+              Refresh Page
+            </button>
+          </div>
         </div>
       </Layout>
     );
