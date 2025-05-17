@@ -55,8 +55,8 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
       try {
         const settings = await AvailabilityService.getSettings(clinicianId);
         if (settings) {
-          setMinNoticeHours(settings.minNoticeHours);
-          setMaxAdvanceDays(settings.maxAdvanceDays);
+          setMinNoticeHours(settings.minNoticeHours || 24);
+          setMaxAdvanceDays(settings.maxAdvanceDays || 90);
         }
 
         // We'll try all days in the allowed window and see if any slots are returned.
@@ -70,7 +70,9 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
         // Fetch available dates in parallel (can be optimized further)
         const results = await Promise.all(
           candidateDates.map(async (date) => {
-            const isoDate = DateTime.fromJSDate(date).toISODate() ?? '';
+            const isoDate = DateTime.fromJSDate(date).toISODate();
+            if (!isoDate) return null;
+            
             const slots = await AvailabilityService.calculateAvailableSlots(clinicianId, isoDate);
             return slots.length > 0 ? date : null;
           })
@@ -124,8 +126,8 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
         return {
           start: slot.start,
           end: slot.end,
-          startFormatted: formatTime12Hour(startDt),
-          endFormatted: formatTime12Hour(endDt)
+          startFormatted: formatTime12Hour(startDt.toFormat('HH:mm')),
+          endFormatted: formatTime12Hour(endDt.toFormat('HH:mm'))
         };
       });
       setTimeSlots(formatted);

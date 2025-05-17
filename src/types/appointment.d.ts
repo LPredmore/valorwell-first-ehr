@@ -9,15 +9,15 @@ export interface AppointmentType {
   video_room_url?: string;
   recurring_group_id?: string;
   appointment_recurring?: string;
-  // Use Luxon-standard ISO timestamp fields
+  // ISO timestamp fields
   start_at: string;
   end_at: string;
   // Client information from join
-  client?: {
+  clients?: {
     client_first_name: string;
     client_last_name: string;
   };
-  // Display fields for timezone conversions
+  // Display fields for timezone conversions (not in DB, added at runtime)
   display_date?: string;
   display_start_time?: string;
   display_end_time?: string;
@@ -37,22 +37,21 @@ export type BaseAppointment = AppointmentType;
 
 export interface AvailabilitySettings {
   id: string;
-  clinicianId: string;
+  clinician_id?: string;
   timezone: string;
-  defaultSlotDuration: number;
-  minNoticeHours: number;
-  maxAdvanceDays: number;
-  createdAt: string;
-  updatedAt: string;
+  default_slot_duration?: number;
+  min_notice_hours?: number;
+  max_advance_days?: number;
+  created_at?: string;
+  updated_at?: string;
   is_active?: boolean;
 }
 
 export interface AvailabilitySlot {
   id?: string;
-  startTime: string;
-  endTime: string;
-  dayOfWeek: string;
-  isRecurring?: boolean;
+  start_at: string;
+  end_at: string;
+  is_recurring?: boolean;
   excludeDates?: string[];
 }
 

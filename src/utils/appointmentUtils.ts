@@ -1,13 +1,10 @@
 
 import { AppointmentType, AppointmentWithLuxon } from '@/types/appointment';
 import { DateTime } from 'luxon';
-import { formatInTimeZone, format as formatTz } from 'date-fns-tz';
-import { parseISO } from 'date-fns';
 
 /**
- * Convert a legacy appointment format to one that uses Luxon-friendly times
- * This function handles both the old format with separate date/time fields
- * and the new format with standard ISO timestamps
+ * Convert an appointment format to one that uses Luxon-friendly times
+ * This function handles appointments with ISO timestamps (start_at, end_at)
  */
 export function convertAppointmentToLuxonFormat(appointment: AppointmentType, userTimeZone?: string): AppointmentWithLuxon {
   if (!appointment) {

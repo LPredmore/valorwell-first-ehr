@@ -1,176 +1,161 @@
 
-import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, AlertCircle } from 'lucide-react';
-import { useUser } from '@/context/UserContext';
-import { supabase } from '@/integrations/supabase/client';
-import Layout from '@/components/layout/Layout';
-import VideoChat from '@/components/video/VideoChat';
-import { formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
-import { AppointmentsList } from '@/components/dashboard/AppointmentsList';
-import SessionNoteTemplate from '@/components/templates/SessionNoteTemplate';
+import React, { useMemo } from 'react';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import DashboardShell from '@/components/dashboard/DashboardShell';
+import { useUserContext } from '@/contexts/UserContext';
 import { useAppointments } from '@/hooks/useAppointments';
-import { SessionDidNotOccurDialog } from '@/components/dashboard/SessionDidNotOccurDialog';
-import { useTimeZone } from '@/context/TimeZoneContext';
-import { Skeleton } from '@/components/ui/skeleton';
+import LoadingSpinner from '@/components/ui/loading-spinner';
+import { format, parseISO, isToday, isFuture, isPast } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { Calendar, Clock } from 'lucide-react';
+import { formatAppointmentDate, formatAppointmentTime } from '@/utils/appointmentUtils';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useUserTimeZone } from '@/hooks/useUserTimeZone';
+import { formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
+import { DateTime } from 'luxon';
 
-const ClinicianDashboard: React.FC = () => {
-  const { userRole, userId } = useUser();
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const { userTimeZone, isLoading: isLoadingTimeZone } = useTimeZone();
-  const timeZoneDisplay = formatTimeZoneDisplay(userTimeZone);
-  const [showSessionDidNotOccurDialog, setShowSessionDidNotOccurDialog] = useState(false);
-  const [selectedAppointmentForNoShow, setSelectedAppointmentForNoShow] = useState<any>(null);
+export default function ClinicianDashboard() {
+  const { user } = useUserContext();
+  const { timeZone } = useUserTimeZone(user?.id);
+  const timeZoneDisplay = formatTimeZoneDisplay(timeZone);
 
-  useEffect(() => {
-    const fetchUserId = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (data?.user) {
-        setCurrentUserId(data.user.id);
-      }
-    };
+  const { appointments, loading, error } = useAppointments({
+    clinicianId: user?.id,
+    limit: 100,
+    timeZone,
+  });
+
+  // Filter appointments into today, upcoming, and past
+  const { todayAppointments, upcomingAppointments, pastAppointments } = useMemo(() => {
+    if (!appointments) {
+      return {
+        todayAppointments: [],
+        upcomingAppointments: [],
+        pastAppointments: []
+      };
+    }
+
+    const today: typeof appointments = [];
+    const upcoming: typeof appointments = [];
+    const past: typeof appointments = [];
     
-    fetchUserId();
-  }, []);
+    const now = DateTime.now().setZone(timeZone);
 
-  const {
-    todayAppointments,
-    upcomingAppointments,
-    pastAppointments,
-    isLoading,
-    error,
-    refetch,
-    currentAppointment,
-    isVideoOpen,
-    currentVideoUrl,
-    showSessionTemplate,
-    clientData,
-    isLoadingClientData,
-    startVideoSession,
-    openSessionTemplate,
-    closeSessionTemplate,
-    closeVideoSession
-  } = useAppointments(currentUserId);
-
-  const handleSessionDidNotOccur = (appointment: any) => {
-    setSelectedAppointmentForNoShow(appointment);
-    setShowSessionDidNotOccurDialog(true);
-  };
-
-  const closeSessionDidNotOccurDialog = () => {
-    setShowSessionDidNotOccurDialog(false);
-    setSelectedAppointmentForNoShow(null);
-  };
-
-  if (showSessionTemplate && currentAppointment) {
-    return (
-      <Layout>
-        <SessionNoteTemplate 
-          onClose={closeSessionTemplate}
-          appointment={currentAppointment}
-          clinicianName={userId}
-          clientData={clientData}
-        />
-      </Layout>
-    );
-  }
-
-  // Show loading state while time zone is loading
-  if (isLoadingTimeZone) {
-    return (
-      <Layout>
-        <div className="container mx-auto">
-          <h1 className="text-2xl font-bold mb-6">Clinician Dashboard</h1>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-lg shadow p-4">
-                <div className="flex items-center mb-4">
-                  <Skeleton className="h-5 w-5 mr-2" />
-                  <Skeleton className="h-6 w-48" />
-                </div>
-                <Skeleton className="h-[200px] w-full" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </Layout>
-    );
-  }
+    appointments.forEach(appointment => {
+      const appointmentDt = DateTime.fromISO(appointment.start_at).setZone(timeZone);
+      
+      if (appointmentDt.hasSame(now, 'day')) {
+        today.push(appointment);
+      } else if (appointmentDt > now) {
+        upcoming.push(appointment);
+      } else {
+        past.push(appointment);
+      }
+    });
+    
+    return {
+      todayAppointments: today,
+      upcomingAppointments: upcoming,
+      pastAppointments: past
+    };
+  }, [appointments, timeZone]);
 
   return (
-    <Layout>
-      <div className="container mx-auto">
-        <h1 className="text-2xl font-bold mb-6">Clinician Dashboard</h1>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Today's Appointments */}
-          <div>
-            <AppointmentsList
-              title="Today's Appointments"
-              icon={<Calendar className="h-5 w-5 mr-2" />}
-              appointments={todayAppointments}
-              isLoading={isLoading}
-              error={error}
-              emptyMessage="No appointments scheduled for today."
-              timeZoneDisplay={timeZoneDisplay}
-              userTimeZone={userTimeZone}
-              showStartButton={true}
-              onStartSession={startVideoSession}
-            />
-          </div>
-          
-          {/* Outstanding Documentation */}
-          <div>
-            <AppointmentsList
-              title="Outstanding Documentation"
-              icon={<AlertCircle className="h-5 w-5 mr-2" />}
-              appointments={pastAppointments}
-              isLoading={isLoading || isLoadingClientData}
-              error={error}
-              emptyMessage="No outstanding documentation."
-              timeZoneDisplay={timeZoneDisplay}
-              userTimeZone={userTimeZone}
-              onDocumentSession={openSessionTemplate}
-              onSessionDidNotOccur={handleSessionDidNotOccur}
-            />
-          </div>
-          
-          {/* Upcoming Appointments */}
-          <div>
-            <AppointmentsList
-              title="Upcoming Appointments"
-              icon={<Calendar className="h-5 w-5 mr-2" />}
-              appointments={upcomingAppointments}
-              isLoading={isLoading}
-              error={error}
-              emptyMessage="No upcoming appointments scheduled."
-              timeZoneDisplay={timeZoneDisplay}
-              userTimeZone={userTimeZone}
-              showViewAllButton={true}
-            />
-          </div>
-        </div>
+    <DashboardShell>
+      <DashboardHeader
+        heading="Clinician Dashboard"
+        text="Welcome back to your dashboard"
+      />
+
+      <div className="grid gap-4">
+        {/* Today's Appointments */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Today's Appointments</CardTitle>
+            <CardDescription>Your scheduled appointments for today in {timeZoneDisplay}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <LoadingSpinner />
+            ) : todayAppointments.length > 0 ? (
+              <div className="space-y-4">
+                {todayAppointments.map(appointment => (
+                  <div key={appointment.id} className="flex items-center p-3 border rounded-md bg-gray-50">
+                    <div className="mr-4 text-primary">
+                      <Clock className="h-10 w-10" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium">{appointment.clientName}</h4>
+                      <p className="text-sm text-gray-500">
+                        {formatAppointmentTime(appointment, timeZone)}
+                      </p>
+                      <p className="text-xs text-gray-400">{appointment.type}</p>
+                    </div>
+                    <Button variant="outline" size="sm">
+                      View
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-muted-foreground">
+                No appointments scheduled for today
+              </div>
+            )}
+          </CardContent>
+          <CardFooter>
+            {todayAppointments.length > 0 && (
+              <Button variant="outline" size="sm" className="w-full">
+                View All Today's Appointments
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
+
+        {/* Upcoming Appointments */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Upcoming Appointments</CardTitle>
+            <CardDescription>Your scheduled future appointments</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <LoadingSpinner />
+            ) : upcomingAppointments.length > 0 ? (
+              <div className="space-y-4">
+                {upcomingAppointments.slice(0, 5).map(appointment => (
+                  <div key={appointment.id} className="flex items-center p-3 border rounded-md bg-gray-50">
+                    <div className="mr-4 text-primary">
+                      <Calendar className="h-10 w-10" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium">{appointment.clientName}</h4>
+                      <p className="text-sm text-gray-500">
+                        {formatAppointmentDate(appointment, timeZone)}
+                      </p>
+                      <p className="text-xs text-gray-400">{formatAppointmentTime(appointment, timeZone)}</p>
+                    </div>
+                    <Button variant="outline" size="sm">
+                      View
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-muted-foreground">
+                No upcoming appointments
+              </div>
+            )}
+          </CardContent>
+          <CardFooter>
+            {upcomingAppointments.length > 5 && (
+              <Button variant="outline" size="sm" className="w-full">
+                View All Upcoming Appointments ({upcomingAppointments.length})
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
       </div>
-      
-      {/* Video Chat Component */}
-      {isVideoOpen && (
-        <VideoChat
-          roomUrl={currentVideoUrl}
-          isOpen={isVideoOpen}
-          onClose={closeVideoSession}
-        />
-      )}
-
-      {/* Session Did Not Occur Dialog */}
-      {showSessionDidNotOccurDialog && selectedAppointmentForNoShow && (
-        <SessionDidNotOccurDialog
-          isOpen={showSessionDidNotOccurDialog}
-          onClose={closeSessionDidNotOccurDialog}
-          appointmentId={selectedAppointmentForNoShow.id}
-          onStatusUpdate={refetch}
-        />
-      )}
-    </Layout>
+    </DashboardShell>
   );
-};
-
-export default ClinicianDashboard;
+}

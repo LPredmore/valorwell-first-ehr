@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZoneById } from '@/hooks/useUserTimeZone';
 import { ensureIANATimeZone, formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
-import { getAppointmentInUserTimeZone } from '@/utils/appointmentUtils';
+import { convertAppointmentToLuxonFormat } from '@/utils/appointmentUtils';
 import { AppointmentType } from '@/types/appointment';
 
 import { 
@@ -17,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DateTime } from 'luxon';
 
 interface TestCase {
   name: string;
@@ -93,13 +95,6 @@ const TimeZoneIntegrationTest: React.FC = () => {
           const now = new Date();
           const appointmentDate = format(now, 'yyyy-MM-dd');
           const appointmentTime = testCase.appointmentTime;
-          const appointmentEndTime = format(
-            new Date(now.setHours(
-              parseInt(appointmentTime.split(':')[0], 10),
-              parseInt(appointmentTime.split(':')[1], 10) + 30
-            )),
-            'HH:mm'
-          );
           
           // Determine source time zone based on test case
           // For "client books" cases, source is client time zone
@@ -108,30 +103,36 @@ const TimeZoneIntegrationTest: React.FC = () => {
             ? testCase.clientTimeZone 
             : testCase.clinicianTimeZone;
           
-          // Create test appointment data
-          const appointment: Partial<AppointmentType> = {
+          // Create DateTime in the source timezone
+          const startDt = DateTime.fromFormat(
+            `${appointmentDate} ${appointmentTime}`, 
+            'yyyy-MM-dd HH:mm', 
+            { zone: sourceTimeZone }
+          );
+          
+          // Add 30 minutes for end time
+          const endDt = startDt.plus({ minutes: 30 });
+          
+          // Create test appointment data with ISO timestamps
+          const appointment: AppointmentType = {
             id: `test-${testCase.name}`,
             client_id: 'test-client-id',
             clinician_id: 'test-clinician-id',
-            date: appointmentDate,
-            start_time: appointmentTime,
-            end_time: appointmentEndTime,
-            appointment_datetime: new Date(`${appointmentDate}T${appointmentTime}:00Z`).toISOString(),
-            appointment_end_datetime: new Date(`${appointmentDate}T${appointmentEndTime}:00Z`).toISOString(),
-            source_time_zone: sourceTimeZone,
+            start_at: startDt.toISO(),
+            end_at: endDt.toISO(),
             type: 'Test Appointment',
             status: 'scheduled'
           };
           
           // Convert appointment to client view
-          const clientAppointment = getAppointmentInUserTimeZone(
-            appointment as AppointmentType,
+          const clientAppointment = convertAppointmentToLuxonFormat(
+            appointment,
             testCase.clientTimeZone
           );
           
           // Convert appointment to clinician view
-          const clinicianAppointment = getAppointmentInUserTimeZone(
-            appointment as AppointmentType,
+          const clinicianAppointment = convertAppointmentToLuxonFormat(
+            appointment,
             testCase.clinicianTimeZone
           );
           
@@ -146,7 +147,7 @@ const TimeZoneIntegrationTest: React.FC = () => {
           
           results[testCase.name] = {
             testCase,
-            appointment: appointment as AppointmentType,
+            appointment,
             clientView: clientAppointment,
             clinicianView: clinicianAppointment,
             passed,
@@ -244,23 +245,22 @@ const TimeZoneIntegrationTest: React.FC = () => {
                         <p><span className="font-medium">Client Time Zone:</span> {formatTimeZoneDisplay(result.testCase.clientTimeZone)}</p>
                         <p><span className="font-medium">Clinician Time Zone:</span> {formatTimeZoneDisplay(result.testCase.clinicianTimeZone)}</p>
                         <p><span className="font-medium">Original Appointment Time:</span> {result.testCase.appointmentTime}</p>
-                        <p><span className="font-medium">Source Time Zone:</span> {formatTimeZoneDisplay(result.appointment?.source_time_zone || '')}</p>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="border rounded-md p-4">
                           <h3 className="font-medium mb-2">Client View</h3>
-                          <p><span className="text-muted-foreground">Date:</span> {result.clientView?.display_date || result.clientView?.date}</p>
-                          <p><span className="text-muted-foreground">Start Time:</span> {result.clientView?.display_start_time || result.clientView?.start_time}</p>
-                          <p><span className="text-muted-foreground">End Time:</span> {result.clientView?.display_end_time || result.clientView?.end_time}</p>
+                          <p><span className="text-muted-foreground">Date:</span> {result.clientView?.display_date}</p>
+                          <p><span className="text-muted-foreground">Start Time:</span> {result.clientView?.display_start_time}</p>
+                          <p><span className="text-muted-foreground">End Time:</span> {result.clientView?.display_end_time}</p>
                           <p><span className="text-muted-foreground">Expected Time:</span> {result.testCase.expectedClientTime}</p>
                         </div>
                         
                         <div className="border rounded-md p-4">
                           <h3 className="font-medium mb-2">Clinician View</h3>
-                          <p><span className="text-muted-foreground">Date:</span> {result.clinicianView?.display_date || result.clinicianView?.date}</p>
-                          <p><span className="text-muted-foreground">Start Time:</span> {result.clinicianView?.display_start_time || result.clinicianView?.start_time}</p>
-                          <p><span className="text-muted-foreground">End Time:</span> {result.clinicianView?.display_end_time || result.clinicianView?.end_time}</p>
+                          <p><span className="text-muted-foreground">Date:</span> {result.clinicianView?.display_date}</p>
+                          <p><span className="text-muted-foreground">Start Time:</span> {result.clinicianView?.display_start_time}</p>
+                          <p><span className="text-muted-foreground">End Time:</span> {result.clinicianView?.display_end_time}</p>
                           <p><span className="text-muted-foreground">Expected Time:</span> {result.testCase.expectedClinicianTime}</p>
                         </div>
                       </div>

@@ -20,12 +20,10 @@ export class CalendarService {
     
     try {
       const appointmentEvents = await this.getAppointments(clinicianId, startDate, endDate);
-      const timeOffEvents = await this.getTimeOffEvents(clinicianId, startDate, endDate);
       const availabilityEvents = await this.getAvailabilityEvents(clinicianId, startDate, endDate);
       
       return [
         ...appointmentEvents,
-        ...timeOffEvents,
         ...availabilityEvents
       ];
     } catch (error) {
@@ -77,7 +75,7 @@ export class CalendarService {
         
         return {
           id: appointmentData.id,
-          title: `${appointmentData.client?.client_first_name} ${appointmentData.client?.client_last_name} - ${appointmentData.type}`,
+          title: `${appointmentData.clients?.client_first_name || ''} ${appointmentData.clients?.client_last_name || ''} - ${appointmentData.type}`,
           start: appointmentData.start_at,
           end: appointmentData.end_at,
           extendedProps: {
@@ -91,47 +89,6 @@ export class CalendarService {
       return [];
     }
   }
-
-  private static async getTimeOffEvents(
-    clinicianId: string,
-    startDate?: Date,
-    endDate?: Date
-  ): Promise<CalendarEvent[]> {
-    try {
-      let query = supabase
-        .from('time_off')
-        .select('*')
-        .eq('clinician_id', clinicianId);
-      
-      if (startDate && endDate) {
-        const startDateString = startDate.toISOString();
-        const endDateString = endDate.toISOString();
-        query = query.gte('start_time', startDateString).lte('start_time', endDateString);
-      }
-      
-      const { data: timeOffEvents, error } = await query;
-      
-      if (error) {
-        console.error('Error fetching time off events:', error);
-        throw error;
-      }
-      
-      return timeOffEvents.map(timeOff => ({
-        id: timeOff.id,
-        title: 'Time Off',
-        start: timeOff.start_time,
-        end: timeOff.end_time,
-        allDay: timeOff.all_day,
-        extendedProps: {
-          eventType: 'time_off' as CalendarEventType,
-          description: timeOff.reason
-        }
-      }));
-    } catch (error) {
-      console.error('Error fetching time off events:', error);
-      return [];
-    }
-  }
   
   private static async getAvailabilityEvents(
     clinicianId: string,
@@ -139,10 +96,6 @@ export class CalendarService {
     endDate?: Date
   ): Promise<CalendarEvent[]> {
     try {
-      // Check if calendar_events table exists, if not, try availability_blocks
-      let tableName = 'calendar_events';
-      
-      // For new Supabase schema (availability_blocks)
       let query = supabase
         .from('availability_blocks')
         .select(`
@@ -229,37 +182,6 @@ export class CalendarService {
             eventType: 'appointment' as CalendarEventType
           }
         };
-      } else if (event.extendedProps?.eventType === 'time_off') {
-        const { data, error } = await supabase
-          .from('time_off')
-          .insert([
-            {
-              clinician_id: event.clinicianId,
-              start_time: event.start,
-              end_time: event.end,
-              all_day: event.allDay,
-              reason: event.extendedProps.description
-            }
-          ])
-          .select()
-          .single();
-        
-        if (error) {
-          console.error('Error creating time off event:', error);
-          return null;
-        }
-        
-        return {
-          id: data.id,
-          title: 'Time Off',
-          start: data.start_time,
-          end: data.end_time,
-          allDay: data.all_day,
-          extendedProps: {
-            eventType: 'time_off' as CalendarEventType,
-            description: data.reason
-          }
-        };
       } else if (event.extendedProps?.eventType === 'availability') {
         const { data, error } = await supabase
           .from('availability_blocks')
@@ -315,13 +237,8 @@ export class CalendarService {
         const { data, error } = await supabase
           .from('appointments')
           .update({
-            client_id: appointment.client_id,
-            clinician_id: appointment.clinician_id,
             start_at: event.start,
-            end_at: event.end,
-            type: appointment.type,
-            status: appointment.status,
-            notes: appointment.notes
+            end_at: event.end
           })
           .eq('id', event.id)
           .select()
@@ -342,43 +259,12 @@ export class CalendarService {
             eventType: 'appointment' as CalendarEventType
           }
         };
-      } else if (event.extendedProps?.eventType === 'time_off') {
-        const { data, error } = await supabase
-          .from('time_off')
-          .update({
-            clinician_id: event.clinicianId,
-            start_time: event.start,
-            end_time: event.end,
-            all_day: event.allDay,
-            reason: event.extendedProps.description
-          })
-          .eq('id', event.id)
-          .select()
-          .single();
-        
-        if (error) {
-          console.error('Error updating time off event:', error);
-          return null;
-        }
-        
-        return {
-          id: data.id,
-          title: 'Time Off',
-          start: data.start_time,
-          end: data.end_time,
-          allDay: data.all_day,
-          extendedProps: {
-            eventType: 'time_off' as CalendarEventType,
-            description: data.reason
-          }
-        };
       } else if (event.extendedProps?.eventType === 'availability') {
         const { data, error } = await supabase
           .from('availability_blocks')
           .update({
             start_at: event.start,
-            end_at: event.end,
-            is_active: event.extendedProps?.is_active !== false
+            end_at: event.end
           })
           .eq('id', event.id)
           .select()
@@ -411,53 +297,40 @@ export class CalendarService {
       return null;
     }
   }
-
-  static async deleteEvent(eventId: string): Promise<void> {
+  
+  static async deleteEvent(eventId: string, eventType: CalendarEventType): Promise<boolean> {
     try {
-      // Try to delete from different tables, since we don't know which one contains the event
-      try {
-        const { error: appointmentError } = await supabase
+      if (eventType === 'appointment') {
+        const { error } = await supabase
           .from('appointments')
           .delete()
           .eq('id', eventId);
         
-        if (!appointmentError) {
-          return; // Successfully deleted from appointments
+        if (error) {
+          console.error('Error deleting appointment:', error);
+          return false;
         }
-      } catch (error) {
-        console.log('Event not found in appointments table');
-      }
-      
-      try {
-        const { error: timeOffError } = await supabase
-          .from('time_off')
-          .delete()
-          .eq('id', eventId);
-          
-        if (!timeOffError) {
-          return; // Successfully deleted from time_off
-        }
-      } catch (error) {
-        console.log('Event not found in time_off table');
-      }
-      
-      try {
-        const { error: availabilityError } = await supabase
+        
+        return true;
+      } else if (eventType === 'availability') {
+        const { error } = await supabase
           .from('availability_blocks')
           .delete()
           .eq('id', eventId);
-          
-        if (!availabilityError) {
-          return; // Successfully deleted from availability_blocks
+        
+        if (error) {
+          console.error('Error deleting availability event:', error);
+          return false;
         }
-      } catch (error) {
-        console.log('Event not found in availability_blocks table');
+        
+        return true;
+      } else {
+        console.warn('Unknown event type for deletion:', eventType);
+        return false;
       }
-      
-      throw new Error('Event could not be deleted from any table');
     } catch (error) {
       console.error('Error deleting event:', error);
-      throw error;
+      return false;
     }
   }
 }

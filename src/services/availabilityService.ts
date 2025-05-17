@@ -6,63 +6,30 @@ import { DateTime } from 'luxon';
 
 export class AvailabilityService {
   static async getSettings(clinicianId: string): Promise<AvailabilitySettings | null> {
-    const { data, error } = await supabase
-      .from('availability_settings')
-      .select('*')
-      .eq('clinician_id', clinicianId)
+    // First try to get settings from the clinicians table
+    const { data: clinician, error: clinicianError } = await supabase
+      .from('clinicians')
+      .select(`
+        clinician_min_notice_days,
+        clinician_max_advance_days,
+        clinician_time_zone
+      `)
+      .eq('id', clinicianId)
       .single();
 
-    if (error) {
-      console.error('Error fetching availability settings:', error);
+    if (clinicianError) {
+      console.error('Error fetching clinician settings:', clinicianError);
       return null;
     }
 
-    return data ? {
-      id: data.id,
-      clinicianId: data.clinician_id,
-      timezone: data.timezone,
-      defaultSlotDuration: data.default_slot_duration,
-      minNoticeHours: data.min_notice_hours,
-      maxAdvanceDays: data.max_advance_days,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-      is_active: data.is_active
-    } : null;
-  }
-
-  static async updateSettings(
-    clinicianId: string, 
-    settings: Partial<AvailabilitySettings>
-  ): Promise<AvailabilitySettings | null> {
-    const { data, error } = await supabase
-      .from('availability_settings')
-      .upsert({
-        clinician_id: clinicianId,
-        timezone: settings.timezone,
-        default_slot_duration: settings.defaultSlotDuration,
-        min_notice_hours: settings.minNoticeHours,
-        max_advance_days: settings.maxAdvanceDays,
-        is_active: settings.is_active
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating availability settings:', error);
-      return null;
-    }
-
-    return data ? {
-      id: data.id,
-      clinicianId: data.clinician_id,
-      timezone: data.timezone,
-      defaultSlotDuration: data.default_slot_duration,
-      minNoticeHours: data.min_notice_hours,
-      maxAdvanceDays: data.max_advance_days,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-      is_active: data.is_active
-    } : null;
+    return {
+      id: clinicianId,
+      clinician_id: clinicianId,
+      timezone: clinician.clinician_time_zone || 'America/Chicago',
+      min_notice_hours: (clinician.clinician_min_notice_days || 1) * 24,
+      max_advance_days: clinician.clinician_max_advance_days || 30,
+      is_active: true // Default to active
+    };
   }
 
   static async getAvailabilitySlots(
@@ -85,19 +52,17 @@ export class AvailabilityService {
 
     return blocks.map(block => ({
       id: block.id,
-      startTime: block.start_at,
-      endTime: block.end_at,
-      dayOfWeek: DateTime.fromISO(block.start_at).toFormat('EEEE').toLowerCase(),
-      isRecurring: !!block.recurring_pattern
+      start_at: block.start_at,
+      end_at: block.end_at,
+      is_recurring: !!block.recurring_pattern
     }));
   }
 
   static async createAvailabilitySlot(
     clinicianId: string,
     slot: {
-      startTime: string;
-      endTime: string;
-      title?: string;
+      start_at: string;
+      end_at: string;
       recurring?: boolean;
       recurrenceRule?: string;
     }
@@ -110,8 +75,8 @@ export class AvailabilityService {
         .from('availability_blocks')
         .insert({
           clinician_id: clinicianId,
-          start_at: slot.startTime,
-          end_at: slot.endTime,
+          start_at: slot.start_at,
+          end_at: slot.end_at,
           is_active: true,
           recurring_pattern: recurringPattern
         })
@@ -133,16 +98,15 @@ export class AvailabilityService {
   static async updateAvailabilitySlot(
     slotId: string,
     updates: {
-      startTime?: string;
-      endTime?: string;
-      title?: string;
+      start_at?: string;
+      end_at?: string;
     },
     updateRecurrence: boolean = false
   ): Promise<boolean> {
     try {
       const updateData: any = {};
-      if (updates.startTime) updateData.start_at = updates.startTime;
-      if (updates.endTime) updateData.end_at = updates.endTime;
+      if (updates.start_at) updateData.start_at = updates.start_at;
+      if (updates.end_at) updateData.end_at = updates.end_at;
 
       // Set is_active to false when updateRecurrence is false and no updates are provided
       // This allows us to use this method for soft-deletes
@@ -257,10 +221,9 @@ export class AvailabilityService {
         if (dayOfWeek in weeklyAvailability) {
           weeklyAvailability[dayOfWeek].push({
             id: block.id,  // Include the id field
-            startTime: startDateTime.toFormat('HH:mm'),
-            endTime: endDateTime.toFormat('HH:mm'),
-            dayOfWeek,
-            isRecurring: !!block.recurring_pattern
+            start_at: block.start_at,
+            end_at: block.end_at,
+            is_recurring: !!block.recurring_pattern
           });
         }
       });
@@ -274,11 +237,6 @@ export class AvailabilityService {
 
   /**
    * Calculate all bookable slots for a given day, using clinician config and current appointments.
-   * This respects active availability, global toggle, and booking rules.
-   * 
-   * @param clinicianId The clinician's UUID
-   * @param date The day for which to calculate (ISO string, e.g. '2025-05-16')
-   * @returns Array of available time slots (with start/end as ISO strings, in clinician's time zone)
    */
   static async calculateAvailableSlots(clinicianId: string, date: string): Promise<Array<{
     start: string;
@@ -286,104 +244,114 @@ export class AvailabilityService {
     slotId?: string; // Ref to the availability slot (availability_blocks.id)
     isRecurring?: boolean;
   }>> {
-    // 1. Fetch availability settings for min advance/max notice, slot duration, and toggle
-    const { data: settings, error: settingsError } = await supabase
-      .from('availability_settings')
-      .select('*')
-      .eq('clinician_id', clinicianId)
-      .single();
+    try {
+      // Get clinician settings
+      const settings = await this.getSettings(clinicianId);
+      if (!settings) {
+        console.error('Could not fetch clinician settings');
+        return [];
+      }
 
-    if (settingsError || !settings) {
-      console.error('Could not fetch availability settings:', settingsError);
-      return [];
-    }
-    if (settings.is_active === false) {
-      // Availability globally off
-      return [];
-    }
-    const { timezone, default_slot_duration, min_notice_hours, max_advance_days } = settings;
+      const timezone = settings.timezone || 'America/Chicago';
+      const defaultSlotDuration = 60; // 60 minutes by default
+      const minNoticeHours = settings.min_notice_hours || 24;
+      const maxAdvanceDays = settings.max_advance_days || 30;
 
-    const startOfDay = DateTime.fromISO(date, { zone: timezone }).startOf('day');
-    const endOfDay = DateTime.fromISO(date, { zone: timezone }).endOf('day');
+      const startOfDay = DateTime.fromISO(date, { zone: timezone }).startOf('day');
+      const endOfDay = DateTime.fromISO(date, { zone: timezone }).endOf('day');
 
-    // 2. Fetch all active availability slots for that day
-    const { data: slots, error: slotsError } = await supabase
-      .from('availability_blocks')
-      .select('*')
-      .eq('clinician_id', clinicianId)
-      .eq('is_active', true)
-      .lte('start_at', endOfDay.toISO())
-      .gte('end_at', startOfDay.toISO());
+      // Fetch all active availability slots for that day
+      const { data: slots, error: slotsError } = await supabase
+        .from('availability_blocks')
+        .select('*')
+        .eq('clinician_id', clinicianId)
+        .eq('is_active', true)
+        .lte('start_at', endOfDay.toISO())
+        .gte('end_at', startOfDay.toISO());
 
-    if (slotsError || !slots) {
-      console.error('Error fetching availability slots:', slotsError);
-      return [];
-    }
+      if (slotsError || !slots) {
+        console.error('Error fetching availability slots:', slotsError);
+        return [];
+      }
 
-    // 3. Fetch appointments blocking the time
-    const { data: appointments, error: apptError } = await supabase
-      .from('appointments')
-      .select('start_at, end_at, status')
-      .eq('clinician_id', clinicianId)
-      .neq('status', 'cancelled')
-      .gte('start_at', startOfDay.toISO())
-      .lte('end_at', endOfDay.toISO());
+      // Fetch appointments blocking the time
+      const { data: appointments, error: apptError } = await supabase
+        .from('appointments')
+        .select('start_at, end_at, status')
+        .eq('clinician_id', clinicianId)
+        .neq('status', 'cancelled')
+        .gte('start_at', startOfDay.toISO())
+        .lte('end_at', endOfDay.toISO());
 
-    if (apptError || !appointments) {
-      console.error('Error fetching appointments:', apptError);
-      return [];
-    }
+      if (apptError || !appointments) {
+        console.error('Error fetching appointments:', apptError);
+        return [];
+      }
 
-    // 4. For each slot, break into bookable intervals (by default slot duration)
-    let availableSlots: Array<{ start: string; end: string; slotId?: string; isRecurring?: boolean }> = [];
-    for (const slot of slots) {
-      const slotStartDT = DateTime.fromISO(slot.start_at, { zone: timezone });
-      const slotEndDT = DateTime.fromISO(slot.end_at, { zone: timezone });
-      const durationMin = default_slot_duration || 60;
-      for (let t = slotStartDT; t.plus({ minutes: durationMin }) <= slotEndDT; t = t.plus({ minutes: durationMin })) {
-        const slotBegin = t;
-        const slotFinish = t.plus({ minutes: durationMin });
-        // Check against min_notice_hours
-        const now = DateTime.now().setZone(timezone);
-        if (slotBegin.diff(now, 'hours').hours < (min_notice_hours || 0)) continue;
-        // Check against max_advance_days
-        if (slotBegin.diff(now, 'days').days > (max_advance_days || 90)) continue;
-        // Check against appointments (conflict)
-        const overlaps = appointments.some(a => {
-          return (
-            (slotBegin < DateTime.fromISO(a.end_at, { zone: timezone })) &&
-            (slotFinish > DateTime.fromISO(a.start_at, { zone: timezone }))
-          );
-        });
-        if (!overlaps) {
-          availableSlots.push({
-            start: slotBegin.toISO(),
-            end: slotFinish.toISO(),
-            slotId: slot.id,
-            isRecurring: !!slot.recurring_pattern
+      // For each slot, break into bookable intervals (by default slot duration)
+      let availableSlots: Array<{ start: string; end: string; slotId?: string; isRecurring?: boolean }> = [];
+      
+      for (const slot of slots) {
+        const slotStartDT = DateTime.fromISO(slot.start_at, { zone: timezone });
+        const slotEndDT = DateTime.fromISO(slot.end_at, { zone: timezone });
+        const durationMin = defaultSlotDuration;
+
+        for (let t = slotStartDT; t.plus({ minutes: durationMin }) <= slotEndDT; t = t.plus({ minutes: durationMin })) {
+          const slotBegin = t;
+          const slotFinish = t.plus({ minutes: durationMin });
+          
+          // Check against min_notice_hours
+          const now = DateTime.now().setZone(timezone);
+          if (slotBegin.diff(now, 'hours').hours < minNoticeHours) continue;
+          
+          // Check against max_advance_days
+          if (slotBegin.diff(now, 'days').days > maxAdvanceDays) continue;
+          
+          // Check against appointments (conflict)
+          const overlaps = appointments.some(a => {
+            return (
+              (slotBegin < DateTime.fromISO(a.end_at, { zone: timezone })) &&
+              (slotFinish > DateTime.fromISO(a.start_at, { zone: timezone }))
+            );
           });
+          
+          if (!overlaps) {
+            availableSlots.push({
+              start: slotBegin.toISO(),
+              end: slotFinish.toISO(),
+              slotId: slot.id,
+              isRecurring: !!slot.recurring_pattern
+            });
+          }
         }
       }
-    }
 
-    return availableSlots;
+      return availableSlots;
+    } catch (error) {
+      console.error('Error calculating available slots:', error);
+      return [];
+    }
   }
 
   /**
    * Globally enable or disable clinician availability (for all slots)
-   * @param clinicianId The clinician's UUID
-   * @param isActive Boolean, true for available, false for off
-   * @returns true if success; false otherwise
    */
   static async toggleAvailabilityActive(clinicianId: string, isActive: boolean): Promise<boolean> {
-    const { error } = await supabase
-      .from('availability_settings')
-      .update({ is_active: isActive })
-      .eq('clinician_id', clinicianId);
-    if (error) {
-      console.error("Error toggling global availability:", error);
+    try {
+      // Update all slots for this clinician
+      const { error } = await supabase
+        .from('availability_blocks')
+        .update({ is_active: isActive })
+        .eq('clinician_id', clinicianId);
+        
+      if (error) {
+        console.error("Error toggling availability:", error);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error("Error toggling availability:", error);
       return false;
     }
-    return true;
   }
 }

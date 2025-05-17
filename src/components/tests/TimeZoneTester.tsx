@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZoneById } from '@/hooks/useUserTimeZone';
 import { ensureIANATimeZone, formatTimeZoneDisplay } from '@/utils/timeZoneUtils';
-import { getAppointmentInUserTimeZone } from '@/utils/appointmentUtils';
+import { convertAppointmentToLuxonFormat } from '@/utils/appointmentUtils';
 import { AppointmentType } from '@/types/appointment';
 
 import { 
@@ -16,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
+import { DateTime } from 'luxon';
 
 const PST_TIME_ZONE = 'America/Los_Angeles';
 
@@ -35,37 +37,35 @@ const TimeZoneTester: React.FC = () => {
       try {
         // Create a test appointment with both client and clinician in PST
         const now = new Date();
-        const appointmentDate = format(now, 'yyyy-MM-dd');
         const appointmentTime = '09:00'; // 9 AM
         const appointmentEndTime = '09:30'; // 9:30 AM
         
+        const startDt = DateTime.fromFormat(`${format(now, 'yyyy-MM-dd')} ${appointmentTime}`, 'yyyy-MM-dd HH:mm', { zone: PST_TIME_ZONE });
+        const endDt = DateTime.fromFormat(`${format(now, 'yyyy-MM-dd')} ${appointmentEndTime}`, 'yyyy-MM-dd HH:mm', { zone: PST_TIME_ZONE });
+        
         // Create test appointment data
-        const appointment: Partial<AppointmentType> = {
+        const appointment: AppointmentType = {
           id: 'test-appointment-id',
           client_id: 'test-client-id',
           clinician_id: 'test-clinician-id',
-          date: appointmentDate,
-          start_time: appointmentTime,
-          end_time: appointmentEndTime,
-          appointment_datetime: new Date(`${appointmentDate}T${appointmentTime}:00Z`).toISOString(),
-          appointment_end_datetime: new Date(`${appointmentDate}T${appointmentEndTime}:00Z`).toISOString(),
-          source_time_zone: PST_TIME_ZONE,
+          start_at: startDt.toISO(),
+          end_at: endDt.toISO(),
           type: 'Test Appointment',
           status: 'scheduled'
         };
         
-        setTestAppointment(appointment as AppointmentType);
+        setTestAppointment(appointment);
         
         // Convert appointment to client view (PST)
-        const clientAppointment = getAppointmentInUserTimeZone(
-          appointment as AppointmentType,
+        const clientAppointment = convertAppointmentToLuxonFormat(
+          appointment,
           clientTimeZone
         );
         setClientView(clientAppointment);
         
         // Convert appointment to clinician view (PST)
-        const clinicianAppointment = getAppointmentInUserTimeZone(
-          appointment as AppointmentType,
+        const clinicianAppointment = convertAppointmentToLuxonFormat(
+          appointment,
           clinicianTimeZone
         );
         setClinicianView(clinicianAppointment);
@@ -115,22 +115,22 @@ const TimeZoneTester: React.FC = () => {
                   <h3 className="font-medium mb-2">Test Configuration</h3>
                   <p><span className="font-medium">Client Time Zone:</span> {formatTimeZoneDisplay(clientTimeZone)}</p>
                   <p><span className="font-medium">Clinician Time Zone:</span> {formatTimeZoneDisplay(clinicianTimeZone)}</p>
-                  <p><span className="font-medium">Original Appointment Time:</span> {testAppointment?.start_time}</p>
+                  <p><span className="font-medium">Original Appointment Time:</span> {clientView?.display_start_time}</p>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="border rounded-md p-4">
                     <h3 className="font-medium mb-2">Client View</h3>
-                    <p><span className="text-muted-foreground">Date:</span> {clientView?.display_date || clientView?.date}</p>
-                    <p><span className="text-muted-foreground">Start Time:</span> {clientView?.display_start_time || clientView?.start_time}</p>
-                    <p><span className="text-muted-foreground">End Time:</span> {clientView?.display_end_time || clientView?.end_time}</p>
+                    <p><span className="text-muted-foreground">Date:</span> {clientView?.display_date}</p>
+                    <p><span className="text-muted-foreground">Start Time:</span> {clientView?.display_start_time}</p>
+                    <p><span className="text-muted-foreground">End Time:</span> {clientView?.display_end_time}</p>
                   </div>
                   
                   <div className="border rounded-md p-4">
                     <h3 className="font-medium mb-2">Clinician View</h3>
-                    <p><span className="text-muted-foreground">Date:</span> {clinicianView?.display_date || clinicianView?.date}</p>
-                    <p><span className="text-muted-foreground">Start Time:</span> {clinicianView?.display_start_time || clinicianView?.start_time}</p>
-                    <p><span className="text-muted-foreground">End Time:</span> {clinicianView?.display_end_time || clinicianView?.end_time}</p>
+                    <p><span className="text-muted-foreground">Date:</span> {clinicianView?.display_date}</p>
+                    <p><span className="text-muted-foreground">Start Time:</span> {clinicianView?.display_start_time}</p>
+                    <p><span className="text-muted-foreground">End Time:</span> {clinicianView?.display_end_time}</p>
                   </div>
                 </div>
                 

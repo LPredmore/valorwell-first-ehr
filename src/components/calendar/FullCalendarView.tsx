@@ -1,95 +1,69 @@
 
-import React, { useRef, useState, useEffect } from 'react';
-import { CalendarViewType } from '@/types/calendar';
+import React, { useRef, useEffect, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import rrulePlugin from '@fullcalendar/rrule';
 import { FullCalendarProps } from '@/types/calendar';
-import { useCalendarEvents } from '@/hooks/useCalendarEvents';
-import CalendarEventHandler from './full-calendar/CalendarEventHandler';
-import LoadingState from './full-calendar/LoadingState';
-import { useToast } from '@/hooks/use-toast';
-import './fullCalendar.css';
 
 const FullCalendarView: React.FC<FullCalendarProps> = ({
+  events = [],
   clinicianId,
   onEventClick,
   onDateSelect,
   onEventDrop,
   onEventResize,
-  userTimeZone = 'America/Chicago',
-  view = 'dayGridMonth' as CalendarViewType,
+  userTimeZone,
+  view = 'timeGridWeek',
   height = 'auto',
-  events = [],
   showAvailability = true
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
-  const { toast } = useToast();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  
-  // Use the hook to fetch events if not provided directly
-  const {
-    events: fetchedEvents,
-    isLoading,
-    error,
-    refetch
-  } = useCalendarEvents({
-    clinicianId,
-    userTimeZone
-  });
-  
-  // Handle errors with more detail
-  useEffect(() => {
-    if (error) {
-      console.error("Calendar error:", error);
-      setErrorMessage(error.message || "Failed to load calendar data");
-      toast({
-        title: "Calendar Error",
-        description: "There was a problem loading your calendar data. Please try again.",
-        variant: "destructive",
-      });
-    } else {
-      setErrorMessage(null);
-    }
-  }, [error, toast]);
-  
-  // Use provided events or fetched events
-  const allEvents = events.length > 0 ? events : fetchedEvents;
-  
-  // Filter events based on showAvailability setting
-  const displayEvents = showAvailability 
-    ? allEvents 
-    : allEvents.filter(event => event.extendedProps?.eventType !== 'availability');
+  const [initialEvents, setInitialEvents] = useState(events);
 
-  if (isLoading) {
-    return <LoadingState />;
-  }
-  
-  if (errorMessage) {
-    return (
-      <div className="p-4 text-center">
-        <p className="text-red-500">Error loading calendar events: {errorMessage}</p>
-        <button 
-          className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600" 
-          onClick={() => refetch()}
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (events) {
+      // Filter out availability events if showAvailability is false
+      let filteredEvents = events;
+      if (!showAvailability) {
+        filteredEvents = events.filter(event => {
+          return event.extendedProps?.eventType !== 'availability';
+        });
+      }
+      setInitialEvents(filteredEvents);
+    }
+  }, [events, showAvailability]);
+
+  // Get event color based on event type
+  const eventClassNames = (info: any) => {
+    const eventType = info.event.extendedProps?.eventType;
+    const status = info.event.extendedProps?.appointment?.status;
+
+    const classes = [];
+    
+    if (eventType === 'appointment') {
+      classes.push('appointment-event');
+      
+      // Add class based on status
+      if (status === 'completed') {
+        classes.push('status-completed');
+      } else if (status === 'cancelled') {
+        classes.push('status-cancelled');
+      } else if (status === 'scheduled') {
+        classes.push('status-scheduled');
+      }
+    } else if (eventType === 'availability') {
+      classes.push('availability-event');
+    } else if (eventType === 'time_off') {
+      classes.push('time-off-event');
+    }
+
+    return classes;
+  };
 
   return (
-    <div className="full-calendar-wrapper">
-      <CalendarEventHandler
-        onEventClick={onEventClick}
-        onDateSelect={onDateSelect}
-        onEventDrop={onEventDrop}
-        onEventResize={onEventResize}
-      />
-
+    <div className="calendar-container" style={{ height }}>
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, rrulePlugin]}
@@ -99,45 +73,29 @@ const FullCalendarView: React.FC<FullCalendarProps> = ({
           center: 'title',
           right: 'dayGridMonth,timeGridWeek,timeGridDay'
         }}
-        events={displayEvents}
-        timeZone={userTimeZone}
+        events={initialEvents}
         editable={true}
         selectable={true}
         selectMirror={true}
         dayMaxEvents={true}
         weekends={true}
+        nowIndicator={true}
+        slotDuration="00:15:00"
+        slotLabelInterval="01:00:00"
         slotMinTime="06:00:00"
-        slotMaxTime="20:00:00"
+        slotMaxTime="22:00:00"
         allDaySlot={false}
+        timeZone={userTimeZone}
+        eventClick={onEventClick}
+        select={onDateSelect}
+        eventDrop={onEventDrop}
+        eventResize={onEventResize}
+        eventClassNames={eventClassNames}
         height={height}
-        eventTimeFormat={{
-          hour: 'numeric',
-          minute: '2-digit',
-          meridiem: 'short'
-        }}
-        slotLabelFormat={{
-          hour: 'numeric',
-          minute: '2-digit',
-          meridiem: 'short'
-        }}
-        eventClassNames={(arg) => {
-          const classes = [];
-          const eventType = arg.event.extendedProps?.eventType;
-          
-          if (eventType === 'time_off') {
-            classes.push('time-off-event');
-          }
-          
-          if (eventType === 'availability') {
-            classes.push('availability-event');
-          }
-          
-          if (arg.event.extendedProps?.recurrenceRule) {
-            classes.push('recurring-event');
-          }
-          
-          return classes;
-        }}
+        fixedWeekCount={false}
+        stickyHeaderDates={true}
+        expandRows={true}
+        dayHeaderFormat={{ weekday: 'short', month: 'numeric', day: 'numeric' }}
       />
     </div>
   );
