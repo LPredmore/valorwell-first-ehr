@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
 import { AppointmentType } from '@/types/appointment';
@@ -298,7 +297,7 @@ export class CalendarService {
     }
   }
   
-  static async deleteEvent(eventId: string, eventType: CalendarEventType): Promise<boolean> {
+  static async deleteEvent(eventId: string, eventType: CalendarEventType = 'appointment'): Promise<boolean> {
     try {
       if (eventType === 'appointment') {
         const { error } = await supabase

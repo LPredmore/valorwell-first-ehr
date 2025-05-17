@@ -1,14 +1,17 @@
 
-import { useUserContext } from '@/context/UserContext';
+import { useContext } from 'react';
+import { UserContext } from '@/context/UserContext';
 
 export function useUser() {
-  const { user, isLoading, error, refreshUser } = useUserContext();
+  const { userRole, clientStatus, isLoading, userId } = useContext(UserContext);
   
   return {
-    user,
-    userId: user?.id || null,
+    user: { id: userId },
+    userId,
+    userRole,
+    clientStatus,
     isLoading,
-    error,
-    refreshUser
+    error: null,
+    refreshUser: async () => {}
   };
 }

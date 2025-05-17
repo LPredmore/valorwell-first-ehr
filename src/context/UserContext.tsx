@@ -2,18 +2,20 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-type UserContextType = {
+export type UserContextType = {
   userRole: string | null;
   clientStatus: string | null;
   isLoading: boolean;
   userId: string | null;
+  user?: any | null; // Adding user property for compatibility
 };
 
-const UserContext = createContext<UserContextType>({ 
+export const UserContext = createContext<UserContextType>({ 
   userRole: null, 
   clientStatus: null,
   isLoading: true,
-  userId: null
+  userId: null,
+  user: null
 });
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
@@ -21,6 +23,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [clientStatus, setClientStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [user, setUser] = useState<any | null>(null);
 
   useEffect(() => {
     console.log("[UserContext] Initializing user context");
@@ -34,6 +37,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         if (user) {
           console.log("[UserContext] Setting userId:", user.id);
           setUserId(user.id);
+          setUser(user);
           
           console.log("[UserContext] Fetching client data for user:", user.id);
           const { data: clientData, error: clientError } = await supabase
@@ -86,11 +90,13 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("[UserContext] No authenticated user found");
           setUserRole(null);
           setClientStatus(null);
+          setUser(null);
         }
       } catch (error) {
         console.error("[UserContext] Error in fetchUserData:", error);
         setUserRole(null);
         setClientStatus(null);
+        setUser(null);
       } finally {
         console.log("[UserContext] Setting isLoading to false");
         setIsLoading(false);
@@ -115,10 +121,10 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <UserContext.Provider value={{ userRole, clientStatus, isLoading, userId }}>
+    <UserContext.Provider value={{ userRole, clientStatus, isLoading, userId, user }}>
       {children}
     </UserContext.Provider>
   );
 };
 
-export const useUser = () => useContext(UserContext);
+export const useUserContext = () => useContext(UserContext);

@@ -1,9 +1,8 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { CalendarService } from '@/services/calendarService';
 import { CalendarEvent } from '@/types/calendar';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/context/UserContext';
+import { useUser } from '@/hooks/useUser';
 
 interface UseCalendarEventsProps {
   clinicianId: string | null;
@@ -23,8 +22,7 @@ export function useCalendarEvents({
   const [error, setError] = useState<Error | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const { toast } = useToast();
-  const { isLoading: isUserLoading, user } = useUser();
-  const userId = user?.id;
+  const { isLoading: isUserLoading, userId } = useUser();
   const fetchInProgress = useRef(false);
   const maxRetries = 3;
   
@@ -174,7 +172,7 @@ export function useCalendarEvents({
 
   const deleteEvent = async (eventId: string): Promise<boolean> => {
     try {
-      await CalendarService.deleteEvent(eventId);
+      await CalendarService.deleteEvent(eventId, event?.extendedProps?.eventType || 'appointment');
       fetchEvents(false); // Updated to pass the retry parameter
       return true;
     } catch (err) {

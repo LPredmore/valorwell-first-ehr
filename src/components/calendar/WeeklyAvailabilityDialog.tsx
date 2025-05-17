@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -104,15 +103,17 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
         second: 0,
         millisecond: 0
       });
+      
+      // Remove the title property since it's not part of the service interface
       const slotId = await AvailabilityService.createAvailabilitySlot(
         clinicianId,
         {
           start_at: startDateTime.toISO(),
           end_at: endDateTime.toISO(),
-          title: 'Available',
           recurring: false
         }
       );
+      
       if (slotId) {
         toast({
           title: 'Success',
