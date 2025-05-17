@@ -46,6 +46,7 @@
     "@radix-ui/react-toggle-group": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.4",
     "@react-pdf/renderer": "^3.3.4",
+    "@supabase/storage-js": "^2.5.5",
     "@supabase/supabase-js": "^2.49.2",
     "@tanstack/react-query": "^5.56.2",
     "@types/luxon": "^3.6.2",

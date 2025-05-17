@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { CalendarService } from '@/services/calendarService';
 import { CalendarEvent } from '@/types/calendar';
@@ -22,7 +23,8 @@ export function useCalendarEvents({
   const [error, setError] = useState<Error | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const { toast } = useToast();
-  const { isLoading: isUserLoading, userId } = useUser();
+  const { isLoading: isUserLoading, user } = useUser();
+  const userId = user?.id;
   const fetchInProgress = useRef(false);
   const maxRetries = 3;
   
@@ -132,7 +134,7 @@ export function useCalendarEvents({
     while (retries <= maxCreateRetries) {
       try {
         const createdEvent = await CalendarService.createEvent(event, userTimeZone);
-        fetchEvents();
+        fetchEvents(false); // Updated to pass the retry parameter
         return createdEvent;
       } catch (err) {
         console.error(`Error creating calendar event (attempt ${retries + 1}/${maxCreateRetries + 1}):`, err);
@@ -157,7 +159,7 @@ export function useCalendarEvents({
   const updateEvent = async (event: CalendarEvent): Promise<CalendarEvent | null> => {
     try {
       const updatedEvent = await CalendarService.updateEvent(event, userTimeZone);
-      fetchEvents();
+      fetchEvents(false); // Updated to pass the retry parameter
       return updatedEvent;
     } catch (err) {
       console.error("Error updating calendar event:", err);
@@ -173,7 +175,7 @@ export function useCalendarEvents({
   const deleteEvent = async (eventId: string): Promise<boolean> => {
     try {
       await CalendarService.deleteEvent(eventId);
-      fetchEvents();
+      fetchEvents(false); // Updated to pass the retry parameter
       return true;
     } catch (err) {
       console.error("Error deleting calendar event:", err);
@@ -197,7 +199,7 @@ export function useCalendarEvents({
     });
     
     if (!isUserLoading) {
-      fetchEvents();
+      fetchEvents(false); // Updated to pass the retry parameter
     }
     
     return () => {

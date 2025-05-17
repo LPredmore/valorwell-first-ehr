@@ -53,6 +53,7 @@ export interface AvailabilitySlot {
   end_at: string;
   is_recurring?: boolean;
   excludeDates?: string[];
+  title?: string; // Added title property for compatibility
 }
 
 export interface WeeklyAvailability {

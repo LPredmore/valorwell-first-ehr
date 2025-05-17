@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { AvailabilitySettings, AvailabilitySlot, WeeklyAvailability } from '@/types/appointment';
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
@@ -30,6 +29,42 @@ export class AvailabilityService {
       max_advance_days: clinician.clinician_max_advance_days || 30,
       is_active: true // Default to active
     };
+  }
+
+  static async saveSettings(
+    clinicianId: string,
+    settings: Partial<AvailabilitySettings>
+  ): Promise<AvailabilitySettings | null> {
+    try {
+      // First, check if we need to update the clinicians table
+      const { error: clinicianError } = await supabase
+        .from('clinicians')
+        .update({
+          clinician_time_zone: settings.timezone,
+          clinician_min_notice_days: settings.min_notice_hours ? Math.ceil(settings.min_notice_hours / 24) : 1,
+          clinician_max_advance_days: settings.max_advance_days || 30
+        })
+        .eq('id', clinicianId);
+
+      if (clinicianError) {
+        console.error('Error updating clinician settings:', clinicianError);
+        return null;
+      }
+
+      // Return the updated settings
+      return {
+        id: clinicianId,
+        clinician_id: clinicianId,
+        timezone: settings.timezone || 'America/Chicago',
+        default_slot_duration: settings.default_slot_duration || 60,
+        min_notice_hours: settings.min_notice_hours || 24,
+        max_advance_days: settings.max_advance_days || 30,
+        is_active: true
+      };
+    } catch (error) {
+      console.error('Error saving availability settings:', error);
+      return null;
+    }
   }
 
   static async getAvailabilitySlots(
