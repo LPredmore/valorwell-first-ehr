@@ -112,7 +112,9 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
 
     setIsLoading(true);
     try {
-      const isoDate = DateTime.fromJSDate(date).toISODate() ?? '';
+      const isoDate = DateTime.fromJSDate(date).toISODate();
+      if (!isoDate) return;
+      
       const slots = await AvailabilityService.calculateAvailableSlots(clinicianId, isoDate);
 
       // Format slots for display
