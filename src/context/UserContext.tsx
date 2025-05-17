@@ -127,4 +127,13 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export const useUserContext = () => useContext(UserContext);
+// Export the useUser hook directly from this file
+export const useUser = () => {
+  const context = useContext(UserContext);
+  
+  if (context === undefined) {
+    throw new Error('useUser must be used within a UserProvider');
+  }
+  
+  return context;
+};

@@ -104,7 +104,7 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
         millisecond: 0
       });
       
-      // Remove the title property since it's not part of the service interface
+      // Create an availability slot without the title property
       const slotId = await AvailabilityService.createAvailabilitySlot(
         clinicianId,
         {

@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { CalendarService } from '@/services/calendarService';
-import { CalendarEvent } from '@/types/calendar';
+import { CalendarEvent, CalendarEventType } from '@/types/calendar';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/hooks/useUser';
+import { useUser } from '@/context/UserContext';
 
 interface UseCalendarEventsProps {
   clinicianId: string | null;
@@ -170,9 +170,9 @@ export function useCalendarEvents({
     }
   };
 
-  const deleteEvent = async (eventId: string): Promise<boolean> => {
+  const deleteEvent = async (eventId: string, eventType: CalendarEventType = 'appointment'): Promise<boolean> => {
     try {
-      await CalendarService.deleteEvent(eventId, event?.extendedProps?.eventType || 'appointment');
+      await CalendarService.deleteEvent(eventId, eventType);
       fetchEvents(false); // Updated to pass the retry parameter
       return true;
     } catch (err) {

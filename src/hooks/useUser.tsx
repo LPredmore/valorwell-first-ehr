@@ -3,15 +3,11 @@ import { useContext } from 'react';
 import { UserContext } from '@/context/UserContext';
 
 export function useUser() {
-  const { userRole, clientStatus, isLoading, userId } = useContext(UserContext);
+  const context = useContext(UserContext);
   
-  return {
-    user: { id: userId },
-    userId,
-    userRole,
-    clientStatus,
-    isLoading,
-    error: null,
-    refreshUser: async () => {}
-  };
+  if (context === undefined) {
+    throw new Error('useUser must be used within a UserProvider');
+  }
+  
+  return context;
 }
