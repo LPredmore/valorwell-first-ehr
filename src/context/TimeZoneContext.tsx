@@ -47,29 +47,47 @@ export const TimeZoneProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (authData?.user) {
           setIsAuthenticated(true);
           console.log(`[TimeZoneContext] User authenticated: ${authData.user.id}`);
-          // Fetch user's time zone from profiles
-          const { data, error: profileError } = await supabase
-            .from("profiles")
-            .select("time_zone")
+          
+          // Check for client time zone first
+          const { data: clientData, error: clientError } = await supabase
+            .from("clients")
+            .select("client_time_zone")
             .eq("id", authData.user.id)
             .single();
             
-          if (profileError) {
-            console.error("[TimeZoneContext] Error fetching user time zone:", profileError);
-            // Don't throw here, just use the browser's time zone as fallback
+          if (clientData?.client_time_zone) {
+            // Ensure time zone is in IANA format
+            const validTimeZone = ensureIANATimeZone(clientData.client_time_zone);
+            console.log(`[TimeZoneContext] User time zone set from client data: ${validTimeZone}`);
+            setUserTimeZone(validTimeZone);
+            setIsLoading(false);
+            return;
+          } else if (clientError) {
+            console.log("[TimeZoneContext] Not found in clients table or error:", clientError.message);
           }
           
-          if (data?.time_zone) {
+          // Check for clinician time zone
+          const { data: clinicianData, error: clinicianError } = await supabase
+            .from("clinicians")
+            .select("clinician_time_zone")
+            .eq("id", authData.user.id)
+            .single();
+            
+          if (clinicianData?.clinician_time_zone) {
             // Ensure time zone is in IANA format
-            const validTimeZone = ensureIANATimeZone(data.time_zone);
-            console.log(`[TimeZoneContext] User time zone set from DB: ${validTimeZone}`);
+            const validTimeZone = ensureIANATimeZone(clinicianData.clinician_time_zone);
+            console.log(`[TimeZoneContext] User time zone set from clinician data: ${validTimeZone}`);
             setUserTimeZone(validTimeZone);
-          } else {
-            // If no time zone in profile, use browser's time zone
-            const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            console.log(`[TimeZoneContext] No time zone in profile. Using browser time zone: ${browserTimeZone}`);
-            setUserTimeZone(browserTimeZone);
+            setIsLoading(false);
+            return;
+          } else if (clinicianError) {
+            console.log("[TimeZoneContext] Not found in clinicians table or error:", clinicianError.message);
           }
+          
+          // If no time zone in any tables, use browser's time zone
+          const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          console.log(`[TimeZoneContext] No time zone found in database. Using browser time zone: ${browserTimeZone}`);
+          setUserTimeZone(browserTimeZone);
         } else {
           // No authenticated user, use browser's time zone
           setIsAuthenticated(false);

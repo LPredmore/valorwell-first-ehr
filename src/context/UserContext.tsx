@@ -52,9 +52,35 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
             setUserRole(clientData.role);
             setClientStatus(clientData.client_status);
           } else {
-            console.log("[UserContext] No client data found");
-            setUserRole(null);
-            setClientStatus(null);
+            // Check if user is a clinician
+            const { data: clinicianData, error: clinicianError } = await supabase
+              .from('clinicians')
+              .select('id')
+              .eq('id', user.id)
+              .maybeSingle();
+              
+            if (!clinicianError && clinicianData) {
+              console.log("[UserContext] User is a clinician");
+              setUserRole('clinician');
+              setClientStatus('Active');
+            } else {
+              // Check if user is an admin
+              const { data: adminData, error: adminError } = await supabase
+                .from('admins')
+                .select('id')
+                .eq('id', user.id)
+                .maybeSingle();
+                
+              if (!adminError && adminData) {
+                console.log("[UserContext] User is an admin");
+                setUserRole('admin');
+                setClientStatus('Active');
+              } else {
+                console.log("[UserContext] No role found for user");
+                setUserRole(null);
+                setClientStatus(null);
+              }
+            }
           }
         } else {
           console.log("[UserContext] No authenticated user found");

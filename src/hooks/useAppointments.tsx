@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { format, isToday, isFuture, parseISO, isBefore } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
@@ -5,7 +6,7 @@ import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTimeZone } from '@/context/TimeZoneContext';
 import { AppointmentType } from '@/types/appointment';
-import { getAppointmentsInUserTimeZone } from '@/utils/appointmentUtils';
+import { DateTime } from 'luxon';
 
 export type { AppointmentType };
 
@@ -36,23 +37,19 @@ export const useAppointments = (userId: string | null) => {
             id,
             client_id,
             clinician_id,
-            date,
-            start_time,
-            end_time,
+            start_at,
+            end_at,
             type,
             status,
+            notes,
             video_room_url,
-            appointment_datetime,
-            appointment_end_datetime,
-            source_time_zone,
-            clients (
+            clients:client_id (
               client_first_name,
               client_last_name
             )
           `)
           .eq('clinician_id', userId)
-          .order('date')
-          .order('start_time');
+          .order('start_at');
 
         if (error) {
           console.error('[useAppointments] Error fetching appointments:', error);
@@ -61,17 +58,27 @@ export const useAppointments = (userId: string | null) => {
 
         console.log(`[useAppointments] Retrieved ${data?.length || 0} appointments for clinician ID: "${userId}"`);
         
-        // Convert appointments to user's time zone
-        const appointmentsWithClient = data.map((appointment: any) => ({
-          ...appointment,
-          client: appointment.clients
-        })) as AppointmentType[];
+        // Process appointments with time zones
+        const appointmentsWithClient = data.map((appointment: any) => {
+          // Convert UTC times to the user's timezone
+          const startDT = DateTime.fromISO(appointment.start_at).setZone(userTimeZone);
+          const endDT = DateTime.fromISO(appointment.end_at).setZone(userTimeZone);
+          
+          return {
+            ...appointment,
+            client: appointment.clients,
+            display_date: startDT.toFormat('yyyy-MM-dd'),
+            display_start_time: startDT.toFormat('HH:mm:ss'),
+            display_end_time: endDT.toFormat('HH:mm:ss'),
+            clientName: appointment.clients ? 
+              `${appointment.clients.client_first_name || ''} ${appointment.clients.client_last_name || ''}`.trim() : 
+              'Unknown Client'
+          };
+        });
         
-        // Apply time zone conversion to all appointments
-        const convertedAppointments = getAppointmentsInUserTimeZone(appointmentsWithClient, userTimeZone);
-        console.log(`[useAppointments] Converted ${convertedAppointments.length} appointments to timezone: ${userTimeZone}`);
+        console.log(`[useAppointments] Processed ${appointmentsWithClient.length} appointments with timezone: ${userTimeZone}`);
         
-        return convertedAppointments;
+        return appointmentsWithClient;
       } catch (error) {
         console.error('[useAppointments] Exception in appointment fetching:', error);
         throw error;
@@ -85,25 +92,25 @@ export const useAppointments = (userId: string | null) => {
   }, [appointments]);
 
   const todayAppointments = appointments?.filter(appointment => {
-    // Use display_date if available (time zone converted), otherwise fall back to date
-    const dateToUse = appointment.display_date || appointment.date;
-    const appointmentDate = parseISO(dateToUse);
-    return isToday(appointmentDate);
+    // Use display_date if available (time zone converted), otherwise fall back to start_at
+    const dateToCheck = appointment.display_date || 
+      DateTime.fromISO(appointment.start_at).setZone(userTimeZone).toFormat('yyyy-MM-dd');
+    return isToday(parseISO(dateToCheck));
   }) || [];
 
   const upcomingAppointments = appointments?.filter(appointment => {
-    // Use display_date if available (time zone converted), otherwise fall back to date
-    const dateToUse = appointment.display_date || appointment.date;
-    const appointmentDate = parseISO(dateToUse);
-    return isFuture(appointmentDate) && !isToday(appointmentDate);
+    // Use display_date if available (time zone converted), otherwise fall back to start_at
+    const dateToCheck = appointment.display_date || 
+      DateTime.fromISO(appointment.start_at).setZone(userTimeZone).toFormat('yyyy-MM-dd');
+    return isFuture(parseISO(dateToCheck)) && !isToday(parseISO(dateToCheck));
   }) || [];
 
   const pastAppointments = appointments?.filter(appointment => {
-    // Use display_date if available (time zone converted), otherwise fall back to date
-    const dateToUse = appointment.display_date || appointment.date;
-    const appointmentDate = parseISO(dateToUse);
-    return isBefore(appointmentDate, new Date()) && 
-           !isToday(appointmentDate) && 
+    // Use display_date if available (time zone converted), otherwise fall back to start_at
+    const dateToCheck = appointment.display_date || 
+      DateTime.fromISO(appointment.start_at).setZone(userTimeZone).toFormat('yyyy-MM-dd');
+    return isBefore(parseISO(dateToCheck), new Date()) && 
+           !isToday(parseISO(dateToCheck)) && 
            appointment.status === "scheduled";
   }) || [];
 

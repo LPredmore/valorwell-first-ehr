@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureIANATimeZone } from "@/utils/timeZoneUtils";
 
 /**
- * Hook to fetch a user's time zone from the profiles table
+ * Hook to fetch a user's time zone from the database
  * @param userId The user ID to fetch the time zone for
  * @returns An object containing the time zone, loading state, and error
  */
@@ -42,7 +43,7 @@ export const useUserTimeZone = (userId: string | null) => {
 
 /**
  * Utility function to get a user's time zone directly (not as a hook)
- * Checks multiple sources (profiles, clients, clinicians) for better consistency
+ * Checks multiple sources (clients, clinicians) for better consistency
  * @param userId The user ID to fetch the time zone for
  * @returns The user's time zone or a default
  */
@@ -50,19 +51,7 @@ export const getUserTimeZoneById = async (userId: string): Promise<string> => {
   if (!userId) return 'America/Chicago';
   
   try {
-    // First try to get from profiles table (preferred source)
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('time_zone')
-      .eq('id', userId)
-      .single();
-      
-    if (!profileError && profileData?.time_zone) {
-      console.log(`[getUserTimeZoneById] Found time zone in profiles table for ${userId}: ${profileData.time_zone}`);
-      return ensureIANATimeZone(profileData.time_zone);
-    }
-    
-    // If not in profiles, check if it's a client and get from clients table
+    // First try to get from clients table
     const { data: clientData, error: clientError } = await supabase
       .from('clients')
       .select('client_time_zone')
@@ -77,13 +66,13 @@ export const getUserTimeZoneById = async (userId: string): Promise<string> => {
     // If not in clients, check if it's a clinician and get from clinicians table
     const { data: clinicianData, error: clinicianError } = await supabase
       .from('clinicians')
-      .select('clinician_timezone')
+      .select('clinician_time_zone')
       .eq('id', userId)
       .single();
       
-    if (!clinicianError && clinicianData?.clinician_timezone) {
-      console.log(`[getUserTimeZoneById] Found time zone in clinicians table for ${userId}: ${clinicianData.clinician_timezone}`);
-      return ensureIANATimeZone(clinicianData.clinician_timezone);
+    if (!clinicianError && clinicianData?.clinician_time_zone) {
+      console.log(`[getUserTimeZoneById] Found time zone in clinicians table for ${userId}: ${clinicianData.clinician_time_zone}`);
+      return ensureIANATimeZone(clinicianData.clinician_time_zone);
     }
     
     // Return default if not found anywhere

@@ -1,8 +1,8 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
 import { AppointmentType } from '@/types/appointment';
 import { DateTime } from 'luxon';
-import { parseISO } from 'date-fns';
 
 export class CalendarService {
   static async getEvents(
@@ -45,16 +45,13 @@ export class CalendarService {
         .select(`
           id,
           client_id,
-          date,
-          start_time,
-          end_time,
+          start_at,
+          end_at,
           type,
           status,
           notes,
-          appointment_datetime,
-          appointment_end_datetime,
-          source_time_zone,
-          client:client_id (
+          video_room_url,
+          clients:client_id (
             client_first_name,
             client_last_name
           )
@@ -62,9 +59,7 @@ export class CalendarService {
         .eq('clinician_id', clinicianId);
       
       if (startDate && endDate) {
-        const startDateString = startDate.toISOString().split('T')[0];
-        const endDateString = endDate.toISOString().split('T')[0];
-        query = query.gte('date', startDateString).lte('date', endDateString);
+        query = query.gte('start_at', startDate.toISOString()).lte('start_at', endDate.toISOString());
       }
       
       const { data: appointments, error } = await query;
@@ -83,8 +78,8 @@ export class CalendarService {
         return {
           id: appointmentData.id,
           title: `${appointmentData.client?.client_first_name} ${appointmentData.client?.client_last_name} - ${appointmentData.type}`,
-          start: appointmentData.appointment_datetime || `${appointmentData.date}T${appointmentData.start_time}`,
-          end: appointmentData.appointment_end_datetime || `${appointmentData.date}T${appointmentData.end_time}`,
+          start: appointmentData.start_at,
+          end: appointmentData.end_at,
           extendedProps: {
             appointment: appointmentData,
             eventType: 'appointment' as CalendarEventType
@@ -109,9 +104,9 @@ export class CalendarService {
         .eq('clinician_id', clinicianId);
       
       if (startDate && endDate) {
-        const startDateString = startDate.toISOString().split('T')[0];
-        const endDateString = endDate.toISOString().split('T')[0];
-        query = query.gte('date', startDateString).lte('date', endDateString);
+        const startDateString = startDate.toISOString();
+        const endDateString = endDate.toISOString();
+        query = query.gte('start_time', startDateString).lte('start_time', endDateString);
       }
       
       const { data: timeOffEvents, error } = await query;
@@ -124,8 +119,8 @@ export class CalendarService {
       return timeOffEvents.map(timeOff => ({
         id: timeOff.id,
         title: 'Time Off',
-        start: `${timeOff.date}T${timeOff.start_time}`,
-        end: `${timeOff.date}T${timeOff.end_time}`,
+        start: timeOff.start_time,
+        end: timeOff.end_time,
         allDay: timeOff.all_day,
         extendedProps: {
           eventType: 'time_off' as CalendarEventType,
@@ -144,24 +139,25 @@ export class CalendarService {
     endDate?: Date
   ): Promise<CalendarEvent[]> {
     try {
+      // Check if calendar_events table exists, if not, try availability_blocks
+      let tableName = 'calendar_events';
+      
+      // For new Supabase schema (availability_blocks)
       let query = supabase
-        .from('calendar_events')
+        .from('availability_blocks')
         .select(`
           id,
-          title,
-          start_time,
-          end_time,
-          description,
-          recurrence_id,
-          recurrence_rules:recurrence_id(rrule)
+          clinician_id,
+          start_at,
+          end_at,
+          is_active
         `)
-        .eq('clinician_id', clinicianId)
-        .eq('event_type', 'availability');
+        .eq('clinician_id', clinicianId);
       
       if (startDate && endDate) {
         const startDateString = startDate.toISOString();
         const endDateString = endDate.toISOString();
-        query = query.gte('start_time', startDateString).lte('start_time', endDateString);
+        query = query.gte('start_at', startDateString).lte('start_at', endDateString);
       }
       
       const { data: events, error } = await query;
@@ -172,26 +168,17 @@ export class CalendarService {
       }
       
       return events.map(event => {
-        const recurrenceRule = event.recurrence_rules?.length > 0 
-          ? {
-              id: event.recurrence_id,
-              eventId: event.id,
-              rrule: event.recurrence_rules[0].rrule
-            } 
-          : undefined;
-        
         return {
           id: event.id,
-          title: event.title || 'Available',
-          start: event.start_time,
-          end: event.end_time,
+          title: 'Available',
+          start: event.start_at,
+          end: event.end_at,
           backgroundColor: '#4ade80',
           borderColor: '#16a34a',
           textColor: '#052e16',
           extendedProps: {
             eventType: 'availability' as CalendarEventType,
-            description: event.description || 'Available for appointments',
-            recurrenceRule
+            is_active: event.is_active,
           }
         };
       });
@@ -217,9 +204,8 @@ export class CalendarService {
             {
               client_id: appointment.client_id,
               clinician_id: appointment.clinician_id,
-              date: appointment.date,
-              start_time: event.start?.toString().split('T')[1].substring(0, 8),
-              end_time: event.end?.toString().split('T')[1].substring(0, 8),
+              start_at: event.start,
+              end_at: event.end,
               type: appointment.type,
               status: appointment.status,
               notes: appointment.notes
@@ -236,8 +222,8 @@ export class CalendarService {
         return {
           id: data.id,
           title: `${data.client_id} - ${data.type}`,
-          start: data.start_time,
-          end: data.end_time,
+          start: data.start_at,
+          end: data.end_at,
           extendedProps: {
             appointment: data,
             eventType: 'appointment' as CalendarEventType
@@ -249,7 +235,6 @@ export class CalendarService {
           .insert([
             {
               clinician_id: event.clinicianId,
-              date: event.start,
               start_time: event.start,
               end_time: event.end,
               all_day: event.allDay,
@@ -277,16 +262,13 @@ export class CalendarService {
         };
       } else if (event.extendedProps?.eventType === 'availability') {
         const { data, error } = await supabase
-          .from('calendar_events')
+          .from('availability_blocks')
           .insert([
             {
               clinician_id: event.clinicianId,
-              event_type: 'availability',
-              title: event.title || 'Available',
-              start_time: event.start,
-              end_time: event.end,
-              all_day: event.allDay || false,
-              description: event.extendedProps?.description
+              start_at: event.start,
+              end_at: event.end,
+              is_active: true
             }
           ])
           .select()
@@ -297,41 +279,17 @@ export class CalendarService {
           return null;
         }
         
-        // Handle recurrence if applicable
-        if (event.extendedProps?.recurrenceRule?.rrule && data.id) {
-          const { data: recurrenceData, error: recurrenceError } = await supabase
-            .from('recurrence_rules')
-            .insert([{
-              event_id: data.id,
-              rrule: event.extendedProps.recurrenceRule.rrule
-            }])
-            .select()
-            .single();
-            
-          if (recurrenceError) {
-            console.error('Error creating recurrence rule:', recurrenceError);
-            // Continue anyway as the event is created
-          } else if (recurrenceData) {
-            // Update the event with the recurrence ID
-            await supabase
-              .from('calendar_events')
-              .update({ recurrence_id: recurrenceData.id })
-              .eq('id', data.id);
-          }
-        }
-        
         return {
           id: data.id,
-          title: data.title,
-          start: data.start_time,
-          end: data.end_time,
-          allDay: data.all_day,
+          title: 'Available',
+          start: data.start_at,
+          end: data.end_at,
           backgroundColor: '#4ade80',
           borderColor: '#16a34a',
           textColor: '#052e16',
           extendedProps: {
             eventType: 'availability' as CalendarEventType,
-            description: data.description
+            is_active: data.is_active
           }
         };
       } else {
@@ -359,9 +317,8 @@ export class CalendarService {
           .update({
             client_id: appointment.client_id,
             clinician_id: appointment.clinician_id,
-            date: appointment.date,
-            start_time: event.start?.toString().split('T')[1].substring(0, 8),
-            end_time: event.end?.toString().split('T')[1].substring(0, 8),
+            start_at: event.start,
+            end_at: event.end,
             type: appointment.type,
             status: appointment.status,
             notes: appointment.notes
@@ -378,8 +335,8 @@ export class CalendarService {
         return {
           id: data.id,
           title: `${data.client_id} - ${data.type}`,
-          start: data.start_time,
-          end: data.end_time,
+          start: data.start_at,
+          end: data.end_at,
           extendedProps: {
             appointment: data,
             eventType: 'appointment' as CalendarEventType
@@ -390,7 +347,6 @@ export class CalendarService {
           .from('time_off')
           .update({
             clinician_id: event.clinicianId,
-            date: event.start,
             start_time: event.start,
             end_time: event.end,
             all_day: event.allDay,
@@ -418,16 +374,13 @@ export class CalendarService {
         };
       } else if (event.extendedProps?.eventType === 'availability') {
         const { data, error } = await supabase
-          .from('calendar_events')
+          .from('availability_blocks')
           .update({
-            title: event.title || 'Available',
-            start_time: event.start,
-            end_time: event.end,
-            all_day: event.allDay || false,
-            description: event.extendedProps?.description
+            start_at: event.start,
+            end_at: event.end,
+            is_active: event.extendedProps?.is_active !== false
           })
           .eq('id', event.id)
-          .eq('event_type', 'availability')
           .select()
           .single();
         
@@ -436,34 +389,17 @@ export class CalendarService {
           return null;
         }
         
-        // Update recurrence rule if applicable
-        if (event.extendedProps?.recurrenceRule?.rrule) {
-          const { data: eventData, error: eventError } = await supabase
-            .from('calendar_events')
-            .select('recurrence_id')
-            .eq('id', event.id)
-            .single();
-            
-          if (!eventError && eventData?.recurrence_id) {
-            await supabase
-              .from('recurrence_rules')
-              .update({ rrule: event.extendedProps.recurrenceRule.rrule })
-              .eq('id', eventData.recurrence_id);
-          }
-        }
-        
         return {
           id: data.id,
-          title: data.title,
-          start: data.start_time,
-          end: data.end_time,
-          allDay: data.all_day,
+          title: 'Available',
+          start: data.start_at,
+          end: data.end_at,
           backgroundColor: '#4ade80',
           borderColor: '#16a34a',
           textColor: '#052e16',
           extendedProps: {
             eventType: 'availability' as CalendarEventType,
-            description: data.description
+            is_active: data.is_active
           }
         };
       } else {
@@ -478,38 +414,47 @@ export class CalendarService {
 
   static async deleteEvent(eventId: string): Promise<void> {
     try {
-      // First check if this is a recurrence parent
-      const { data: recurrenceData, error: recurrenceError } = await supabase
-        .from('recurrence_rules')
-        .select('id')
-        .eq('event_id', eventId)
-        .maybeSingle();
+      // Try to delete from different tables, since we don't know which one contains the event
+      try {
+        const { error: appointmentError } = await supabase
+          .from('appointments')
+          .delete()
+          .eq('id', eventId);
         
-      if (!recurrenceError && recurrenceData?.id) {
-        // Delete all events in the series
-        await supabase
-          .from('calendar_events')
+        if (!appointmentError) {
+          return; // Successfully deleted from appointments
+        }
+      } catch (error) {
+        console.log('Event not found in appointments table');
+      }
+      
+      try {
+        const { error: timeOffError } = await supabase
+          .from('time_off')
           .delete()
-          .eq('recurrence_id', recurrenceData.id);
+          .eq('id', eventId);
           
-        // Delete the recurrence rule
-        await supabase
-          .from('recurrence_rules')
+        if (!timeOffError) {
+          return; // Successfully deleted from time_off
+        }
+      } catch (error) {
+        console.log('Event not found in time_off table');
+      }
+      
+      try {
+        const { error: availabilityError } = await supabase
+          .from('availability_blocks')
           .delete()
-          .eq('id', recurrenceData.id);
+          .eq('id', eventId);
+          
+        if (!availabilityError) {
+          return; // Successfully deleted from availability_blocks
+        }
+      } catch (error) {
+        console.log('Event not found in availability_blocks table');
       }
       
-      // Delete the specific event
-      const { data: appointmentData, error: appointmentError } = await supabase
-        .from('calendar_events')
-        .delete()
-        .eq('id', eventId)
-        .select();
-      
-      if (appointmentError) {
-        console.error('Error deleting calendar event:', appointmentError);
-        throw appointmentError;
-      }
+      throw new Error('Event could not be deleted from any table');
     } catch (error) {
       console.error('Error deleting event:', error);
       throw error;

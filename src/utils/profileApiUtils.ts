@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ProfileFormValues } from '@/validations/profileSchemas';
@@ -273,22 +274,11 @@ export const updateClientSecondaryInsurance = async (clientId: string, data: Par
  * @returns True if successful
  */
 export const completeClientProfile = async (clientId: string, data: Partial<ProfileFormValues>) => {
-  // Update profile time zone
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .update({
-      time_zone: data.client_time_zone
-    })
-    .eq('id', clientId);
-
-  if (profileError) {
-    throw new Error('Error updating profile time zone: ' + profileError.message);
-  }
-
-  // Update client status
+  // Update client table with time zone and complete status
   const { error } = await supabase
     .from('clients')
     .update({
+      client_time_zone: data.client_time_zone,
       client_self_goal: data.client_self_goal || null,
       client_referral_source: data.client_referral_source || null,
       client_status: 'Profile Complete',

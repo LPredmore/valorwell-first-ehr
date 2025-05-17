@@ -1,8 +1,19 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Clinician } from "@/types/client";
 import { getUserTimeZoneById } from "./useUserTimeZone";
+
+// Update the Clinician type to match the database schema
+export interface Clinician {
+  id: string;
+  clinician_first_name?: string;
+  clinician_last_name?: string;
+  clinician_email?: string;
+  clinician_phone?: string;
+  clinician_professional_name?: string;
+  clinician_time_zone?: string;
+  clinician_status?: string;
+}
 
 export const useClinicianData = () => {
   const [clinicianData, setClinicianData] = useState<Clinician | null>(null);
@@ -58,7 +69,7 @@ export const getClinicianById = async (clinicianId: string) => {
 
 export const getClinicianTimeZone = async (clinicianId: string): Promise<string> => {
   try {
-    // Get the time zone from the profiles table using getUserTimeZoneById
+    // Get the time zone directly from the clinicians table
     const timeZone = await getUserTimeZoneById(clinicianId);
     console.log(`Retrieved timezone for clinician ${clinicianId}: ${timeZone}`);
     return timeZone;
