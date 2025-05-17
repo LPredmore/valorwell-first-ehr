@@ -29,9 +29,9 @@ export default function AvailabilitySettingsDialog({
   const { userId } = useUser();
   const [settings, setSettings] = useState<Partial<AvailabilitySettings>>({
     timezone: 'America/Chicago',
-    defaultSlotDuration: 60,
-    minNoticeHours: 24,
-    maxAdvanceDays: 90
+    default_slot_duration: 60,
+    min_notice_hours: 24,
+    max_advance_days: 90
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -82,7 +82,7 @@ export default function AvailabilitySettingsDialog({
 
     setIsSaving(true);
     try {
-      const updatedSettings = await AvailabilityService.updateSettings(
+      const updatedSettings = await AvailabilityService.saveSettings(
         clinicianId,
         settings
       );
@@ -150,15 +150,15 @@ export default function AvailabilitySettingsDialog({
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="defaultSlotDuration" className="text-right">
+              <Label htmlFor="default_slot_duration" className="text-right">
                 Default Duration (min)
               </Label>
               <div className="col-span-3">
                 <Select 
-                  value={String(settings.defaultSlotDuration)}
-                  onValueChange={(value) => handleInputChange('defaultSlotDuration', parseInt(value))}
+                  value={String(settings.default_slot_duration)}
+                  onValueChange={(value) => handleInputChange('default_slot_duration', parseInt(value))}
                 >
-                  <SelectTrigger id="defaultSlotDuration">
+                  <SelectTrigger id="default_slot_duration">
                     <SelectValue placeholder="Select duration" />
                   </SelectTrigger>
                   <SelectContent>
@@ -174,32 +174,32 @@ export default function AvailabilitySettingsDialog({
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="minNoticeHours" className="text-right">
+              <Label htmlFor="min_notice_hours" className="text-right">
                 Minimum Notice (hours)
               </Label>
               <Input
-                id="minNoticeHours"
+                id="min_notice_hours"
                 type="number"
                 min="0"
                 max="168"
                 className="col-span-3"
-                value={settings.minNoticeHours}
-                onChange={(e) => handleInputChange('minNoticeHours', parseInt(e.target.value))}
+                value={settings.min_notice_hours}
+                onChange={(e) => handleInputChange('min_notice_hours', parseInt(e.target.value))}
               />
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="maxAdvanceDays" className="text-right">
+              <Label htmlFor="max_advance_days" className="text-right">
                 Maximum Advance (days)
               </Label>
               <Input
-                id="maxAdvanceDays"
+                id="max_advance_days"
                 type="number"
                 min="1"
                 max="365"
                 className="col-span-3"
-                value={settings.maxAdvanceDays}
-                onChange={(e) => handleInputChange('maxAdvanceDays', parseInt(e.target.value))}
+                value={settings.max_advance_days}
+                onChange={(e) => handleInputChange('max_advance_days', parseInt(e.target.value))}
               />
             </div>
           </div>

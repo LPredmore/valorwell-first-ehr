@@ -11,11 +11,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@fullcalendar/core": "^6.1.11",
-    "@fullcalendar/daygrid": "^6.1.9",
+    "@fullcalendar/core": "^6.1.17",
+    "@fullcalendar/daygrid": "^6.1.17",
     "@fullcalendar/interaction": "^6.1.11",
     "@fullcalendar/react": "^6.1.9",
-    "@fullcalendar/rrule": "^6.1.9",
+    "@fullcalendar/rrule": "^6.1.17",
     "@fullcalendar/timegrid": "^6.1.17",
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.0",

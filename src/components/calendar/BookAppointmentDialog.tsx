@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -55,13 +54,13 @@ const BookAppointmentDialog: React.FC<BookAppointmentDialogProps> = ({
       try {
         const settings = await AvailabilityService.getSettings(clinicianId);
         if (settings) {
-          setMinNoticeHours(settings.minNoticeHours || 24);
-          setMaxAdvanceDays(settings.maxAdvanceDays || 90);
+          setMinNoticeHours(settings.min_notice_hours || 24);
+          setMaxAdvanceDays(settings.max_advance_days || 90);
         }
 
         // We'll try all days in the allowed window and see if any slots are returned.
         const today = startOfToday();
-        const maxDate = addDays(today, settings?.maxAdvanceDays ?? 90);
+        const maxDate = addDays(today, settings?.max_advance_days ?? 90);
         const candidateDates: Date[] = [];
         for (let d = today; d <= maxDate; d = addDays(d, 1)) {
           candidateDates.push(d);

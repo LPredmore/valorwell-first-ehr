@@ -107,8 +107,8 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
       const slotId = await AvailabilityService.createAvailabilitySlot(
         clinicianId,
         {
-          startTime: startDateTime.toISO(),
-          endTime: endDateTime.toISO(),
+          start_at: startDateTime.toISO(),
+          end_at: endDateTime.toISO(),
           title: 'Available',
           recurring: false
         }
@@ -244,9 +244,9 @@ const WeeklyAvailabilityDialog: React.FC<WeeklyAvailabilityDialogProps> = ({
                       >
                         <div>
                           <span className="font-medium">
-                            {formatTime12Hour(`2000-01-01T${slot.startTime}`)} - {formatTime12Hour(`2000-01-01T${slot.endTime}`)}
+                            {formatTime12Hour(`2000-01-01T${slot.start_at}`)} - {formatTime12Hour(`2000-01-01T${slot.end_at}`)}
                           </span>
-                          {slot.isRecurring && (
+                          {slot.is_recurring && (
                             <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
                               Recurring
                             </span>
