@@ -7,24 +7,18 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { 
-  formatTime12Hour, 
-  formatTimeZoneDisplay
-} from '@/utils/timeZoneUtils';
-import { useUserTimeZone } from '@/hooks/useUserTimeZone';
-import { Appointment } from '@/types/appointment';
-import { DateTime } from 'luxon';
+import { formatTime12Hour } from '@/utils/timeZoneUtils';
 
 interface EditAppointmentDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  appointment: Appointment;
+  appointment: any;
   onAppointmentUpdated: () => void;
 }
 
@@ -34,23 +28,14 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
   appointment,
   onAppointmentUpdated
 }) => {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [startTime, setStartTime] = useState<string>('09:00');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    appointment?.date ? new Date(appointment.date) : new Date()
+  );
+  const [startTime, setStartTime] = useState<string>(appointment?.start_time || '09:00');
   const [isLoading, setIsLoading] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [editOption, setEditOption] = useState<'single' | 'series'>('single');
   const [isEditOptionDialogOpen, setIsEditOptionDialogOpen] = useState(false);
-  
-  const { timeZone: clinicianTimeZone, loading: timeZoneLoading } = 
-    useUserTimeZone(appointment?.clinician_id);
-  
-  const [timeZoneDisplay, setTimeZoneDisplay] = useState<string>('Central Time');
-  
-  useEffect(() => {
-    if (clinicianTimeZone) {
-      setTimeZoneDisplay(formatTimeZoneDisplay(clinicianTimeZone));
-    }
-  }, [clinicianTimeZone]);
 
   const generateTimeOptions = () => {
     const options = [];
@@ -67,15 +52,9 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
   const timeOptions = generateTimeOptions();
 
   useEffect(() => {
-    if (appointment && appointment.start_at) {
-      // Convert ISO timestamp to Date object for the date picker
-      const startDt = DateTime.fromISO(appointment.start_at);
-      setSelectedDate(startDt.toJSDate());
-      
-      // Extract time in HH:mm format for the time selector
-      setStartTime(startDt.toFormat('HH:mm'));
-      
-      // Check if this is a recurring appointment
+    if (appointment) {
+      setSelectedDate(appointment.date ? new Date(appointment.date) : new Date());
+      setStartTime(appointment.start_time || '09:00');
       setIsRecurring(!!appointment.recurring_group_id);
     }
   }, [appointment]);
@@ -110,40 +89,13 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
     setIsLoading(true);
     try {
       const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-      
-      // Create DateTime from selected date and time
-      const appointmentDateTime = DateTime.fromFormat(
-        `${formattedDate} ${startTime}`, 
-        'yyyy-MM-dd HH:mm', 
-        { zone: clinicianTimeZone || 'UTC' }
-      );
-      
-      // Calculate end time (1 hour later)
-      const endTimeStr = calculateEndTime(startTime);
-      const appointmentEndDateTime = DateTime.fromFormat(
-        `${formattedDate} ${endTimeStr}`, 
-        'yyyy-MM-dd HH:mm', 
-        { zone: clinicianTimeZone || 'UTC' }
-      );
-      
-      // Convert to ISO strings
-      const startAtIso = appointmentDateTime.toISO();
-      const endAtIso = appointmentEndDateTime.toISO();
-      
-      console.log('Updating appointment times:', {
-        start_at: startAtIso,
-        end_at: endAtIso
-      });
+      const endTime = calculateEndTime(startTime);
 
       if (mode === 'single') {
-        const updateData: {
-          start_at: string;
-          end_at: string;
-          recurring_group_id?: null;
-          appointment_recurring?: null;
-        } = {
-          start_at: startAtIso,
-          end_at: endAtIso
+        const updateData: any = {
+          date: formattedDate,
+          start_time: startTime,
+          end_time: endTime,
         };
 
         if (isRecurring) {
@@ -166,11 +118,11 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
         const { error } = await supabase
           .from('appointments')
           .update({
-            start_at: startAtIso,
-            end_at: endAtIso
+            start_time: startTime,
+            end_time: endTime,
           })
           .eq('recurring_group_id', appointment.recurring_group_id)
-          .gte('start_at', appointment.start_at);
+          .gte('date', appointment.date);
 
         if (error) throw error;
 
@@ -195,29 +147,6 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
     }
   };
 
-  const formatTimeWithTimezone = (time: string): string => {
-    try {
-      const formatted = formatTime12Hour(time);
-      return `${formatted} (${timeZoneDisplay})`;
-    } catch (error) {
-      console.error('Error formatting time with timezone:', error);
-      return formatTime12Hour(time);
-    }
-  };
-
-  // Helper function to get client name
-  const getClientName = (): string => {
-    if (appointment?.clientName) {
-      return appointment.clientName;
-    }
-    
-    if (appointment?.clients) {
-      return `${appointment.clients.client_first_name} ${appointment.clients.client_last_name}`;
-    }
-    
-    return 'Unknown Client';
-  };
-
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -230,7 +159,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
             <div className="grid gap-2">
               <Label htmlFor="client">Client</Label>
               <div className="p-2 bg-gray-50 rounded border">
-                {getClientName()}
+                {appointment?.clientName || 'Unknown Client'}
               </div>
             </div>
 
@@ -266,9 +195,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="time">
-                Start Time <span className="text-sm text-muted-foreground">({timeZoneDisplay})</span>
-              </Label>
+              <Label htmlFor="time">Start Time</Label>
               <Select value={startTime} onValueChange={setStartTime}>
                 <SelectTrigger id="time">
                   <SelectValue placeholder="Select start time" />
@@ -276,7 +203,7 @@ const EditAppointmentDialog: React.FC<EditAppointmentDialogProps> = ({
                 <SelectContent>
                   {timeOptions.map((time) => (
                     <SelectItem key={time} value={time}>
-                      {formatTimeWithTimezone(time)}
+                      {formatTime12Hour(time)}
                     </SelectItem>
                   ))}
                 </SelectContent>

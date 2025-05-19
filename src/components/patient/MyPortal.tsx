@@ -3,27 +3,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, CalendarIcon, PlusCircle } from 'lucide-react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import WeekView from '@/components/calendar/WeekView';
 import AppointmentBookingDialog from './AppointmentBookingDialog';
-import { supabase, getOrCreateVideoRoom, checkPHQ9ForAppointment } from '@/integrations/supabase/client';
+import { supabase, getOrCreateVideoRoom } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  format, 
-  parseISO, 
-  startOfToday, 
-  isToday 
-} from 'date-fns';
-import { 
-  getUserTimeZone, 
-  formatTimeZoneDisplay, 
-  formatTimeInUserTimeZone, 
-  formatTime12Hour, 
-  ensureIANATimeZone 
-} from '@/utils/timeZoneUtils';
-import PHQ9Template from '@/components/templates/PHQ9Template';
+import { format, parseISO, startOfToday, isBefore, isToday } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import VideoChat from '@/components/video/VideoChat';
+import { getUserTimeZone, formatTimeZoneDisplay, formatTimeInUserTimeZone, formatTime12Hour, ensureIANATimeZone } from '@/utils/timeZoneUtils';
+import PHQ9Template from '@/components/templates/PHQ9Template';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface Appointment {
   id: number;
@@ -56,38 +46,11 @@ const MyPortal: React.FC<MyPortalProps> = ({
   const [showPHQ9, setShowPHQ9] = useState(false);
   const [pendingAppointmentId, setPendingAppointmentId] = useState<string | number | null>(null);
   const [clinicianData, setClinicianData] = useState<any>(null);
-  const [hasAssignedDocuments, setHasAssignedDocuments] = useState<boolean>(false);
   const {
     toast
   } = useToast();
 
   const clientTimeZone = ensureIANATimeZone(clientData?.client_time_zone || getUserTimeZone());
-  
-  useEffect(() => {
-    const fetchAssignedDocuments = async () => {
-      if (!clientData?.id) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('document_assignments')
-          .select('*')
-          .eq('client_id', clientData.id)
-          .eq('status', 'not_started');
-          
-        if (error) {
-          console.error('Error fetching document assignments:', error);
-          return;
-        }
-        
-        setHasAssignedDocuments(data && data.length > 0);
-        console.log('Assigned documents found:', data?.length || 0);
-      } catch (error) {
-        console.error('Error checking assigned documents:', error);
-      }
-    };
-    
-    fetchAssignedDocuments();
-  }, [clientData]);
 
   useEffect(() => {
     const fetchClinicianData = async () => {
@@ -209,32 +172,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
 
   const handleStartSession = async (appointmentId: string | number) => {
     setPendingAppointmentId(appointmentId);
-    
-    try {
-      console.log(`Checking for existing PHQ-9 assessment for appointment: ${appointmentId}`);
-      const { exists: phq9Exists, error } = await checkPHQ9ForAppointment(appointmentId.toString());
-      
-      if (error) {
-        console.error('Error checking for PHQ-9 assessment:', error);
-        toast({
-          title: "Note",
-          description: "We'll start with a quick PHQ-9 assessment before your session."
-        });
-        setShowPHQ9(true);
-        return;
-      }
-      
-      if (phq9Exists) {
-        console.log('PHQ-9 assessment already exists for appointment:', appointmentId);
-        handlePHQ9Complete();
-      } else {
-        console.log('No PHQ-9 assessment found, showing assessment form');
-        setShowPHQ9(true);
-      }
-    } catch (error) {
-      console.error('Error in handleStartSession:', error);
-      setShowPHQ9(true);
-    }
+    setShowPHQ9(true);
   };
 
   const handlePHQ9Complete = async () => {
@@ -259,7 +197,7 @@ const MyPortal: React.FC<MyPortalProps> = ({
         console.error('Error starting video session:', error);
         toast({
           title: "Error",
-          description: "We couldn't start the video session. Please try again or contact support.",
+          description: error?.message || "Failed to start the video session. Please try again.",
           variant: "destructive"
         });
       } finally {
@@ -271,39 +209,22 @@ const MyPortal: React.FC<MyPortalProps> = ({
 
   const handleCloseVideoSession = () => {
     setIsVideoSessionOpen(false);
-    setVideoRoomUrl(null);
   };
 
   const timeZoneDisplay = formatTimeZoneDisplay(clientTimeZone);
   const todayAppointments = upcomingAppointments.filter(appointment => isAppointmentToday(appointment.rawDate));
   const futureAppointments = upcomingAppointments.filter(appointment => !isAppointmentToday(appointment.rawDate));
 
-  const showBookingButtons = clientData?.client_status !== 'Profile Complete' || !hasAssignedDocuments;
-  
   return <div className="grid grid-cols-1 gap-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
             <CardTitle>Today's Appointments</CardTitle>
             <CardDescription>Sessions scheduled for today</CardDescription>
           </div>
-          {showBookingButtons && (
-            <Button variant="outline" size="sm" onClick={() => setIsBookingOpen(true)}>
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              Book New Appointment
-            </Button>
-          )}
+          
         </CardHeader>
         <CardContent>
-          {!showBookingButtons && hasAssignedDocuments && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                You still need to complete the Assigned Documents before you can schedule your appointment.
-              </AlertDescription>
-            </Alert>
-          )}
-          
           {todayAppointments.length > 0 ? <Table>
               <TableHeader>
                 <TableRow>
@@ -338,12 +259,10 @@ const MyPortal: React.FC<MyPortalProps> = ({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Your Therapist</CardTitle>
-          {showBookingButtons && (
-            <Button variant="outline" size="sm" onClick={() => setIsBookingOpen(true)}>
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              Book New Appointment
-            </Button>
-          )}
+          <Button variant="outline" size="sm" onClick={() => setIsBookingOpen(true)}>
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            Book New Appointment
+          </Button>
         </CardHeader>
         <CardContent>
           {clientData && clientData.client_assigned_therapist && clinicianData ? <div className="bg-gray-50 p-4 rounded-md mb-4">
@@ -403,11 +322,9 @@ const MyPortal: React.FC<MyPortalProps> = ({
               <Calendar className="h-12 w-12 text-gray-300 mb-3" />
               <h3 className="text-lg font-medium">No upcoming appointments</h3>
               <p className="text-sm text-gray-500 mt-1">Schedule a session with your therapist</p>
-              {showBookingButtons && (
-                <Button className="mt-4" onClick={() => setIsBookingOpen(true)}>
-                  Book Appointment
-                </Button>
-              )}
+              <Button className="mt-4" onClick={() => setIsBookingOpen(true)}>
+                Book Appointment
+              </Button>
             </div>}
         </CardContent>
         <CardFooter className="flex justify-between">
@@ -415,24 +332,9 @@ const MyPortal: React.FC<MyPortalProps> = ({
         </CardFooter>
       </Card>
 
-      <AppointmentBookingDialog 
-        open={isBookingOpen} 
-        onOpenChange={setIsBookingOpen} 
-        clinicianId={clientData?.client_assigned_therapist || null} 
-        clinicianName={clinicianName} 
-        clientId={clientData?.id || null} 
-        onAppointmentBooked={handleBookingComplete}
-        userTimeZone={clientTimeZone}
-        disabled={!showBookingButtons}
-      />
+      <AppointmentBookingDialog open={isBookingOpen} onOpenChange={setIsBookingOpen} clinicianId={clientData?.client_assigned_therapist || null} clinicianName={clinicianName} clientId={clientData?.id || null} onAppointmentBooked={handleBookingComplete} />
 
-      {showPHQ9 && <PHQ9Template 
-        onClose={() => setShowPHQ9(false)} 
-        clinicianName={clinicianName || "Your Therapist"} 
-        clientData={clientData}
-        appointmentId={pendingAppointmentId}
-        onComplete={handlePHQ9Complete} 
-      />}
+      {showPHQ9 && <PHQ9Template onClose={() => setShowPHQ9(false)} clinicianName={clinicianName || "Your Therapist"} clientData={clientData} onComplete={handlePHQ9Complete} />}
 
       {videoRoomUrl && <VideoChat roomUrl={videoRoomUrl} isOpen={isVideoSessionOpen} onClose={handleCloseVideoSession} />}
     </div>;

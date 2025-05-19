@@ -10,6 +10,9 @@ import { TreatmentObjectivesSection } from './sessionNote/TreatmentObjectivesSec
 import { SessionAssessmentSection } from './sessionNote/SessionAssessmentSection';
 import { Textarea } from "@/components/ui/textarea";
 
+// Add PDF-specific styles
+import './sessionNote/pdf-styles.css';
+
 const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
   onClose,
   appointment,
@@ -49,14 +52,14 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         </Button>
       </div>
 
-      <div id="session-note-content" ref={contentRef} className="bg-white p-6 border rounded-md mt-4">
-        <div className="flex items-center gap-2 mb-6 border-b pb-4">
+      <div id="session-note-content" ref={contentRef} className="bg-white p-6 border rounded-md mt-4 pdf-container">
+        <div className="flex items-center gap-2 mb-6 pdf-header">
           <FileText className="h-5 w-5 text-gray-700" />
           <h3 className="text-lg font-medium">Therapy Session Note</h3>
         </div>
 
         {/* Client Information Section */}
-        <div>
+        <div className="pdf-section">
           <ClientInfoSection 
             formState={formState} 
             handleChange={handleChange} 
@@ -64,7 +67,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         </div>
 
         {/* Mental Status Examination */}
-        <div>
+        <div className="pdf-section">
           <MentalStatusSection 
             formState={formState} 
             handleChange={handleChange} 
@@ -73,7 +76,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         
         {/* Problem Narrative and Treatment Goal - Only show if they have values */}
         {showProblemTreatmentSection && (
-          <div className="mb-6 mt-6">
+          <div className="mb-6 mt-6 pdf-section">
             <h4 className="text-md font-medium text-gray-800 mb-4">Problem & Treatment Goals</h4>
             
             {hasProblemNarrative && (
@@ -105,7 +108,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         )}
 
         {/* Treatment Objectives & Interventions */}
-        <div>
+        <div className="pdf-section">
           <TreatmentObjectivesSection 
             formState={formState} 
             handleChange={handleChange} 
@@ -113,7 +116,7 @@ const SessionNoteTemplate: React.FC<SessionNoteTemplateProps> = ({
         </div>
 
         {/* Session Assessment Section - Now includes PHQ-9 assessment before Plan & Signature */}
-        <div>
+        <div className="pdf-section">
           <SessionAssessmentSection 
             formState={formState} 
             handleChange={handleChange}

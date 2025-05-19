@@ -2,7 +2,6 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { supabase } from '@/integrations/supabase/client';
-import { StorageError } from '@supabase/storage-js';
 
 interface DocumentInfo {
   clientId: string;
@@ -12,89 +11,117 @@ interface DocumentInfo {
   createdBy?: string;
 }
 
+/**
+ * Generates PDF from an HTML element and saves it to Supabase storage
+ */
 export const generateAndSavePDF = async (
   elementId: string,
   documentInfo: DocumentInfo
 ): Promise<string | null> => {
   try {
+    // Format date for file naming
     const formattedDate = typeof documentInfo.documentDate === 'string' 
       ? documentInfo.documentDate 
       : documentInfo.documentDate.toISOString().split('T')[0];
     
+    // Step 1: Generate PDF from HTML element
     const element = document.getElementById(elementId);
     if (!element) {
       console.error('Element not found:', elementId);
       return null;
     }
     
-    // Create an optimized clone for PDF generation
-    const preparedElement = element.cloneNode(true) as HTMLElement;
-    document.body.appendChild(preparedElement);
-    preparedElement.style.position = 'absolute';
-    preparedElement.style.left = '-9999px';
+    // Add a class to control styling for PDF generation
+    element.classList.add('generating-pdf');
     
-    // Define PDF dimensions (A4)
+    // Get the computed style to determine the appropriate scaling
+    const computedStyle = window.getComputedStyle(element);
+    const width = parseFloat(computedStyle.width);
+    
+    // Define PDF dimensions and scaling
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
-    const margin = 10;
+    const margin = 10; // margin in mm
+    const contentWidth = pdfWidth - (margin * 2);
     
-    const canvas = await html2canvas(preparedElement, {
-      scale: 1,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff'
+    // Calculate the total height and determine how many pages we need
+    const contentHeightEstimate = element.scrollHeight;
+    const scale = contentWidth / width;
+    const totalHeightMM = (contentHeightEstimate * scale * 0.264583); // Convert pixels to mm
+    const totalPages = Math.ceil(totalHeightMM / (pdfHeight - (margin * 2)));
+    
+    // Create a clone of the element to avoid modifying the original
+    const clone = element.cloneNode(true) as HTMLElement;
+    document.body.appendChild(clone);
+    clone.style.width = width + 'px';
+    clone.style.position = 'absolute';
+    clone.style.top = '-9999px';
+    clone.style.left = '-9999px';
+    
+    // Hide elements with the 'private-note-container' class for PDF generation
+    const privateNotes = clone.querySelectorAll('.private-note-container');
+    privateNotes.forEach(note => {
+      (note as HTMLElement).style.display = 'none';
     });
     
-    // Calculate content height
-    const contentHeightMm = canvas.height / (3.78); // Approximate conversion to mm
-    const contentHeightPerPage = pdfHeight - (margin * 2);
-    const totalPages = Math.ceil(contentHeightMm / contentHeightPerPage);
+    // Generate PDF with multiple pages if needed
+    let currentPage = 0;
+    let pdfBlob;
     
-    // Add content page by page
-    for (let page = 0; page < totalPages; page++) {
-      if (page > 0) {
-        pdf.addPage();
-      }
+    if (totalPages <= 1) {
+      // For single page documents, use the standard approach
+      const canvas = await html2canvas(clone, {
+        scale: 2, // Higher scale for better quality
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
       
-      const sourceY = page * contentHeightPerPage * 3.78;
-      const sourceHeight = Math.min(
-        contentHeightPerPage * 3.78,
-        canvas.height - sourceY
-      );
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = pdfWidth - (margin * 2);
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
+      pdfBlob = pdf.output('blob');
+    } else {
+      // For multi-page documents, slice the content into pages
+      const heightPerPage = Math.floor(contentHeightEstimate / totalPages);
       
-      if (sourceHeight <= 0) continue;
-      
-      const pageCanvas = document.createElement('canvas');
-      pageCanvas.width = canvas.width;
-      pageCanvas.height = sourceHeight;
-      const ctx = pageCanvas.getContext('2d');
-      
-      if (ctx) {
-        ctx.drawImage(
-          canvas, 
-          0, sourceY, canvas.width, sourceHeight,
-          0, 0, pageCanvas.width, pageCanvas.height
-        );
+      for (let page = 0; page < totalPages; page++) {
+        if (page > 0) {
+          pdf.addPage();
+        }
         
-        const imgData = pageCanvas.toDataURL('image/jpeg', 0.7);
+        // Set the window height to capture just this page's content
+        clone.style.height = heightPerPage + 'px';
+        clone.style.overflow = 'hidden';
+        clone.scrollTop = page * heightPerPage;
+        
+        const canvas = await html2canvas(clone, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          windowHeight: heightPerPage
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
         const imgWidth = pdfWidth - (margin * 2);
-        const imgHeight = (pageCanvas.height * imgWidth) / pageCanvas.width;
-        
-        pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight);
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
       }
+      
+      pdfBlob = pdf.output('blob');
     }
     
-    // Clean up
-    document.body.removeChild(preparedElement);
+    // Clean up the clone
+    document.body.removeChild(clone);
     
-    // Get PDF as array buffer
-    const pdfArrayBuffer = pdf.output('arraybuffer');
-    const pdfBlob = new Blob([pdfArrayBuffer], { type: 'application/pdf' });
+    // Remove PDF generation class from original element
+    element.classList.remove('generating-pdf');
     
-    // Upload to Supabase storage
+    // Step 2: Upload PDF to Supabase storage
     const filePath = `${documentInfo.clientId}/${documentInfo.documentType}/${formattedDate}.pdf`;
-    
     const { error: uploadError } = await supabase.storage
       .from('clinical_documents')
       .upload(filePath, pdfBlob, {
@@ -104,6 +131,28 @@ export const generateAndSavePDF = async (
     
     if (uploadError) {
       console.error('Error uploading PDF:', uploadError);
+      return null;
+    }
+    
+    // Step 3: Get the URL of the uploaded file
+    const { data: urlData } = supabase.storage
+      .from('clinical_documents')
+      .getPublicUrl(filePath);
+    
+    // Step 4: Save document metadata to clinical_documents table
+    const { error: dbError } = await supabase
+      .from('clinical_documents')
+      .insert({
+        client_id: documentInfo.clientId,
+        document_type: documentInfo.documentType,
+        document_date: formattedDate,
+        document_title: documentInfo.documentTitle,
+        file_path: filePath,
+        created_by: documentInfo.createdBy
+      });
+    
+    if (dbError) {
+      console.error('Error saving document metadata:', dbError);
       return null;
     }
     

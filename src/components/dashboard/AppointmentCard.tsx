@@ -1,20 +1,32 @@
 
 import React from 'react';
+import { format, parseISO } from 'date-fns';
 import { Calendar, Clock, UserCircle, Video, FileText, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatTime12Hour, formatTimeInUserTimeZone } from '@/utils/timeZoneUtils';
-import { BaseAppointment } from '@/types/appointment';
-import { DateTime } from 'luxon';
 
 export interface AppointmentCardProps {
-  appointment: BaseAppointment;
+  appointment: {
+    id: string;
+    client_id: string;
+    date: string;
+    start_time: string;
+    end_time: string;
+    type: string;
+    status: string;
+    video_room_url: string | null;
+    client?: {
+      client_first_name: string;
+      client_last_name: string;
+    };
+  };
   timeZoneDisplay: string;
   userTimeZone: string;
   showStartButton?: boolean;
-  onStartSession?: (appointment: BaseAppointment) => void;
-  onDocumentSession?: (appointment: BaseAppointment) => void;
-  onSessionDidNotOccur?: (appointment: BaseAppointment) => void;
+  onStartSession?: (appointment: AppointmentCardProps['appointment']) => void;
+  onDocumentSession?: (appointment: AppointmentCardProps['appointment']) => void;
+  onSessionDidNotOccur?: (appointment: AppointmentCardProps['appointment']) => void;
 }
 
 export const AppointmentCard: React.FC<AppointmentCardProps> = ({
@@ -27,23 +39,12 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   onSessionDidNotOccur
 }) => {
   // Format time for display in user's time zone
-  const formatTimeDisplay = (timeIsoString: string) => {
+  const formatTimeDisplay = (timeString: string) => {
     try {
-      const dt = DateTime.fromISO(timeIsoString).setZone(userTimeZone);
-      return dt.toFormat('h:mm a');
+      return formatTimeInUserTimeZone(timeString, userTimeZone, 'h:mm a');
     } catch (error) {
       console.error('Error formatting time with time zone:', error);
-      return 'Invalid time';
-    }
-  };
-  
-  const getFormattedDate = (isoDateString: string) => {
-    try {
-      const dt = DateTime.fromISO(isoDateString).setZone(userTimeZone);
-      return dt.toFormat('EEEE, MMMM d, yyyy');
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return 'Invalid date';
+      return formatTime12Hour(timeString);
     }
   };
 
@@ -53,18 +54,18 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-semibold flex items-center">
             <UserCircle className="h-4 w-4 mr-2" />
-            {appointment.clients?.client_first_name} {appointment.clients?.client_last_name}
+            {appointment.client?.client_first_name} {appointment.client?.client_last_name}
           </CardTitle>
           <CardDescription className="flex items-center">
             <Calendar className="h-4 w-4 mr-2" />
-            {getFormattedDate(appointment.start_at)}
+            {format(parseISO(appointment.date), 'EEEE, MMMM do, yyyy')}
           </CardDescription>
         </CardHeader>
         <CardContent className="pb-2">
           <div className="flex items-center">
             <Clock className="h-4 w-4 mr-2" />
             <span className="text-sm">
-              {formatTimeDisplay(appointment.start_at)} - {formatTimeDisplay(appointment.end_at)}
+              {formatTimeDisplay(appointment.start_time)} - {formatTimeDisplay(appointment.end_time)}
             </span>
           </div>
           <div className="text-sm mt-1">{appointment.type}</div>
@@ -96,24 +97,25 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
     );
   }
 
+  
   return (
     <Card key={appointment.id} className="mb-3">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-semibold flex items-center">
           <Clock className="h-4 w-4 mr-2" />
-          {formatTimeDisplay(appointment.start_at)} - {formatTimeDisplay(appointment.end_at)} 
+          {formatTimeDisplay(appointment.start_time)} - {formatTimeDisplay(appointment.end_time)} 
           <span className="text-xs text-gray-500 ml-1">({timeZoneDisplay})</span>
         </CardTitle>
         <CardDescription className="flex items-center">
           <Calendar className="h-4 w-4 mr-2" />
-          {getFormattedDate(appointment.start_at)}
+          {format(parseISO(appointment.date), 'EEEE, MMMM do, yyyy')}
         </CardDescription>
       </CardHeader>
       <CardContent className="pb-2">
         <div className="flex items-center">
           <UserCircle className="h-4 w-4 mr-2" />
           <span className="text-sm">
-            {appointment.clients?.client_first_name} {appointment.clients?.client_last_name}
+            {appointment.client?.client_first_name} {appointment.client?.client_last_name}
           </span>
         </div>
         <div className="text-sm mt-1">{appointment.type}</div>

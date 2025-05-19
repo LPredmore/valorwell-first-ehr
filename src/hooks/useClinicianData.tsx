@@ -1,19 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getUserTimeZoneById } from "./useUserTimeZone";
-
-// Update the Clinician type to match the database schema
-export interface Clinician {
-  id: string;
-  clinician_first_name?: string;
-  clinician_last_name?: string;
-  clinician_email?: string;
-  clinician_phone?: string;
-  clinician_professional_name?: string;
-  clinician_time_zone?: string;
-  clinician_status?: string;
-}
+import { Clinician } from "@/types/client";
 
 export const useClinicianData = () => {
   const [clinicianData, setClinicianData] = useState<Clinician | null>(null);
@@ -69,10 +56,19 @@ export const getClinicianById = async (clinicianId: string) => {
 
 export const getClinicianTimeZone = async (clinicianId: string): Promise<string> => {
   try {
-    // Get the time zone directly from the clinicians table
-    const timeZone = await getUserTimeZoneById(clinicianId);
-    console.log(`Retrieved timezone for clinician ${clinicianId}: ${timeZone}`);
-    return timeZone;
+    const { data, error } = await supabase
+      .from('clinicians')
+      .select('clinician_timezone')
+      .eq('id', clinicianId)
+      .single();
+      
+    if (error) {
+      console.error('Error fetching clinician timezone:', error);
+      return 'America/Chicago'; // Default to Central Time
+    }
+    
+    // Return the timezone or a default if not set
+    return data?.clinician_timezone || 'America/Chicago';
   } catch (error) {
     console.error('Error fetching clinician timezone:', error);
     return 'America/Chicago'; // Default to Central Time

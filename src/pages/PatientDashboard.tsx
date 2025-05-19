@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LayoutDashboard, User, Clock3, Shield, ClipboardList, BadgeAlert } from 'lucide-react';
+import { LayoutDashboard, User, Clock3, Shield, ClipboardList } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById, formatDateForDB, supabase } from '@/integrations/supabase/client';
+import { getCurrentUser, getClientByUserId, updateClientProfile, getClinicianNameById, formatDateForDB } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import { getUserTimeZoneById } from '@/hooks/useUserTimeZone';
-import { ensureIANATimeZone } from '@/utils/timeZoneUtils';
 
-// Import the tab components
+// Import the new tab components
 import MyPortal from '@/components/patient/MyPortal';
 import MyProfile from '@/components/patient/MyProfile';
 import MyAppointments from '@/components/patient/MyAppointments';
@@ -22,7 +20,6 @@ const PatientDashboard: React.FC = () => {
   const [clientData, setClientData] = useState<any>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [clinicianName, setClinicianName] = useState<string | null>(null);
-  const [hasAssignedDocuments, setHasAssignedDocuments] = useState<boolean>(false);
   const {
     toast
   } = useToast();
@@ -81,26 +78,6 @@ const PatientDashboard: React.FC = () => {
     }
   });
 
-  const checkForAssignedDocuments = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('document_assignments')
-        .select('id')
-        .eq('client_id', userId)
-        .eq('status', 'not_started')
-        .limit(1);
-        
-      if (error) {
-        console.error('Error checking for assigned documents:', error);
-        return;
-      }
-      
-      setHasAssignedDocuments(data && data.length > 0);
-    } catch (error) {
-      console.error('Error checking for assigned documents:', error);
-    }
-  };
-
   const fetchClinicianName = async (clinicianId: string) => {
     if (!clinicianId) return;
     try {
@@ -130,21 +107,13 @@ const PatientDashboard: React.FC = () => {
         return;
       }
       console.log("Current user:", user);
-      
       const client = await getClientByUserId(user.id);
       console.log("Retrieved client data:", client);
-      
-      const profileTimeZone = await getUserTimeZoneById(user.id);
-      console.log("Retrieved profile time zone:", profileTimeZone);
-      
       if (client) {
         setClientData(client);
         if (client.client_assigned_therapist) {
           fetchClinicianName(client.client_assigned_therapist);
         }
-        
-        checkForAssignedDocuments(user.id);
-        
         let age = '';
         if (client.client_date_of_birth) {
           const dob = new Date(client.client_date_of_birth);
@@ -160,9 +129,6 @@ const PatientDashboard: React.FC = () => {
             day: 'numeric'
           });
         }
-        
-        const timeZoneToUse = profileTimeZone || client.client_time_zone || 'America/Chicago';
-        
         form.reset({
           firstName: client.client_first_name || '',
           lastName: client.client_last_name || '',
@@ -174,34 +140,28 @@ const PatientDashboard: React.FC = () => {
           gender: client.client_gender || '',
           genderIdentity: client.client_gender_identity || '',
           state: client.client_state || '',
-          timeZone: timeZoneToUse,
+          timeZone: client.client_time_zone || '',
           client_insurance_company_primary: client.client_insurance_company_primary || '',
           client_insurance_type_primary: client.client_insurance_type_primary || '',
           client_policy_number_primary: client.client_policy_number_primary || '',
           client_group_number_primary: client.client_group_number_primary || '',
           client_subscriber_name_primary: client.client_subscriber_name_primary || '',
           client_subscriber_relationship_primary: client.client_subscriber_relationship_primary || '',
-          client_subscriber_dob_primary: client.client_subscriber_dob_primary ? 
-            formatDateForDB(new Date(client.client_subscriber_dob_primary)) : null,
-          
+          client_subscriber_dob_primary: client.client_subscriber_dob_primary || '',
           client_insurance_company_secondary: client.client_insurance_company_secondary || '',
           client_insurance_type_secondary: client.client_insurance_type_secondary || '',
           client_policy_number_secondary: client.client_policy_number_secondary || '',
           client_group_number_secondary: client.client_group_number_secondary || '',
           client_subscriber_name_secondary: client.client_subscriber_name_secondary || '',
           client_subscriber_relationship_secondary: client.client_subscriber_relationship_secondary || '',
-          client_subscriber_dob_secondary: client.client_subscriber_dob_secondary ? 
-            formatDateForDB(new Date(client.client_subscriber_dob_secondary)) : null,
-          
+          client_subscriber_dob_secondary: client.client_subscriber_dob_secondary || '',
           client_insurance_company_tertiary: client.client_insurance_company_tertiary || '',
           client_insurance_type_tertiary: client.client_insurance_type_tertiary || '',
           client_policy_number_tertiary: client.client_policy_number_tertiary || '',
           client_group_number_tertiary: client.client_group_number_tertiary || '',
           client_subscriber_name_tertiary: client.client_subscriber_name_tertiary || '',
           client_subscriber_relationship_tertiary: client.client_subscriber_relationship_tertiary || '',
-          client_subscriber_dob_tertiary: client.client_subscriber_dob_tertiary ? 
-            formatDateForDB(new Date(client.client_subscriber_dob_tertiary)) : null,
-          
+          client_subscriber_dob_tertiary: client.client_subscriber_dob_tertiary || '',
           client_champva: client.client_champva || '',
           client_tricare_beneficiary_category: client.client_tricare_beneficiary_category || '',
           client_tricare_sponsor_name: client.client_tricare_sponsor_name || '',
@@ -362,9 +322,6 @@ const PatientDashboard: React.FC = () => {
               Insurance
             </TabsTrigger>
             <TabsTrigger value="documents" className="gap-2 rounded-b-none rounded-t-lg data-[state=active]:border-b-2 data-[state=active]:border-valorwell-600">
-              {hasAssignedDocuments && (
-                <BadgeAlert className="h-4 w-4 text-red-500 mr-1" aria-label="Documents requiring attention" />
-              )}
               <ClipboardList className="h-4 w-4" />
               Documents
             </TabsTrigger>

@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserTimeZone } from '@/utils/timeZoneUtils';
+import { getClinicianTimeZone } from '@/hooks/useClinicianData';
 
 interface Client {
   id: string;
@@ -18,6 +18,38 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
   const [loadingClients, setLoadingClients] = useState(false);
   const [appointmentRefreshTrigger, setAppointmentRefreshTrigger] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [clinicianTimeZone, setClinicianTimeZone] = useState<string>('America/Chicago');
+  const [isLoadingTimeZone, setIsLoadingTimeZone] = useState(true);
+  const [userTimeZone, setUserTimeZone] = useState<string>('');
+
+  // Fetch clinician timezone
+  useEffect(() => {
+    const fetchClinicianTimeZone = async () => {
+      if (selectedClinicianId) {
+        setIsLoadingTimeZone(true);
+        try {
+          const timeZone = await getClinicianTimeZone(selectedClinicianId);
+          console.log("Fetched clinician timezone:", timeZone);
+          setClinicianTimeZone(timeZone);
+        } catch (error) {
+          console.error("Error fetching clinician timezone:", error);
+        } finally {
+          setIsLoadingTimeZone(false);
+        }
+      }
+    };
+    
+    fetchClinicianTimeZone();
+  }, [selectedClinicianId]);
+
+  // Set user timezone
+  useEffect(() => {
+    if (clinicianTimeZone && !isLoadingTimeZone) {
+      setUserTimeZone(clinicianTimeZone);
+    } else {
+      setUserTimeZone(getUserTimeZone());
+    }
+  }, [clinicianTimeZone, isLoadingTimeZone]);
 
   // Load clinicians
   useEffect(() => {
@@ -96,5 +128,7 @@ export const useCalendarState = (initialClinicianId: string | null = null) => {
     setAppointmentRefreshTrigger,
     isDialogOpen,
     setIsDialogOpen,
+    userTimeZone,
+    isLoadingTimeZone,
   };
 };

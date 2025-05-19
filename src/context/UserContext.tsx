@@ -2,20 +2,18 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-export type UserContextType = {
+type UserContextType = {
   userRole: string | null;
   clientStatus: string | null;
   isLoading: boolean;
   userId: string | null;
-  user?: any | null; // Adding user property for compatibility
 };
 
-export const UserContext = createContext<UserContextType>({ 
+const UserContext = createContext<UserContextType>({ 
   userRole: null, 
   clientStatus: null,
   isLoading: true,
-  userId: null,
-  user: null
+  userId: null
 });
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
@@ -23,7 +21,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [clientStatus, setClientStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
-  const [user, setUser] = useState<any | null>(null);
 
   useEffect(() => {
     console.log("[UserContext] Initializing user context");
@@ -37,66 +34,46 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         if (user) {
           console.log("[UserContext] Setting userId:", user.id);
           setUserId(user.id);
-          setUser(user);
           
-          console.log("[UserContext] Fetching client data for user:", user.id);
-          const { data: clientData, error: clientError } = await supabase
-            .from('clients')
-            .select('role, client_status')
+          console.log("[UserContext] Fetching profile data for user:", user.id);
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('role')
             .eq('id', user.id)
-            .maybeSingle();
+            .single();
             
-          if (clientError) {
-            console.error("[UserContext] Error fetching client:", clientError.message);
-            throw clientError;
+          if (error) {
+            console.error("[UserContext] Error fetching profile:", error.message);
+            throw error;
           }
-
-          if (clientData) {
-            console.log("[UserContext] Client data:", clientData);
-            setUserRole(clientData.role);
-            setClientStatus(clientData.client_status);
-          } else {
-            // Check if user is a clinician
-            const { data: clinicianData, error: clinicianError } = await supabase
-              .from('clinicians')
-              .select('id')
+          
+          const role = data?.role || null;
+          console.log("[UserContext] User role from profile:", role);
+          setUserRole(role);
+          
+          // If user is a client, fetch client status from clients table
+          if (role === 'client') {
+            console.log("[UserContext] User is a client, fetching client status");
+            const { data: clientData, error: clientError } = await supabase
+              .from('clients')
+              .select('client_status')
               .eq('id', user.id)
-              .maybeSingle();
+              .single();
               
-            if (!clinicianError && clinicianData) {
-              console.log("[UserContext] User is a clinician");
-              setUserRole('clinician');
-              setClientStatus('Active');
-            } else {
-              // Check if user is an admin
-              const { data: adminData, error: adminError } = await supabase
-                .from('admins')
-                .select('id')
-                .eq('id', user.id)
-                .maybeSingle();
-                
-              if (!adminError && adminData) {
-                console.log("[UserContext] User is an admin");
-                setUserRole('admin');
-                setClientStatus('Active');
-              } else {
-                console.log("[UserContext] No role found for user");
-                setUserRole(null);
-                setClientStatus(null);
-              }
+            if (clientError) {
+              console.error("[UserContext] Error fetching client status:", clientError.message);
+            }
+            
+            if (!clientError && clientData) {
+              console.log("[UserContext] Client status:", clientData.client_status);
+              setClientStatus(clientData.client_status);
             }
           }
         } else {
           console.log("[UserContext] No authenticated user found");
-          setUserRole(null);
-          setClientStatus(null);
-          setUser(null);
         }
       } catch (error) {
         console.error("[UserContext] Error in fetchUserData:", error);
-        setUserRole(null);
-        setClientStatus(null);
-        setUser(null);
       } finally {
         console.log("[UserContext] Setting isLoading to false");
         setIsLoading(false);
@@ -121,19 +98,10 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <UserContext.Provider value={{ userRole, clientStatus, isLoading, userId, user }}>
+    <UserContext.Provider value={{ userRole, clientStatus, isLoading, userId }}>
       {children}
     </UserContext.Provider>
   );
 };
 
-// Export the useUser hook directly from this file
-export const useUser = () => {
-  const context = useContext(UserContext);
-  
-  if (context === undefined) {
-    throw new Error('useUser must be used within a UserProvider');
-  }
-  
-  return context;
-};
+export const useUser = () => useContext(UserContext);

@@ -101,49 +101,34 @@ export const getOrCreateVideoRoom = async (appointmentId: string) => {
   }
 };
 
-// Function to fetch clinical documents for a client
+// New function to fetch clinical documents for a client
 export const fetchClinicalDocuments = async (clientId: string) => {
   try {
-    console.log('Fetching clinical documents for client:', clientId);
     const { data, error } = await supabase
       .from('clinical_documents')
       .select('*')
       .eq('client_id', clientId)
       .order('document_date', { ascending: false });
       
-    if (error) {
-      console.error('Error fetching clinical documents:', error);
-      throw error;
-    }
-    
-    console.log('Retrieved clinical documents:', data?.length || 0);
+    if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error in fetchClinicalDocuments:', error);
+    console.error('Error fetching clinical documents:', error);
     return [];
   }
 };
 
-// Update the getDocumentDownloadURL function to use clinical_documents bucket
-export const getDocumentDownloadURL = async (filePath: string, documentType?: string): Promise<string | null> => {
+// New function to get document download URL
+export const getDocumentDownloadURL = async (filePath: string) => {
   try {
-    // All documents are now stored in the clinical_documents bucket
-    const bucketName = "clinical_documents";
-    
-    console.log(`Getting download URL for file: ${filePath} from bucket: ${bucketName}`);
-    
     const { data, error } = await supabase.storage
-      .from(bucketName)
-      .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
-    
-    if (error) {
-      console.error('Error creating signed URL:', error);
-      return null;
-    }
-    
-    return data?.signedUrl || null;
-  } catch (err) {
-    console.error('Error in getDocumentDownloadURL:', err);
+      .from('clinical_documents')
+      .createSignedUrl(filePath, 60); // 60 seconds expiration
+      
+    if (error) throw error;
+    return data.signedUrl;
+  } catch (error) {
+    console.error('Error getting document download URL:', error);
     return null;
   }
 };
@@ -163,24 +148,18 @@ export interface PHQ9Assessment {
   question_9: number;
   total_score: number;
   additional_notes?: string;
-  appointment_id?: string | null;
-  phq9_narrative?: string;
 }
 
 // New function to save PHQ-9 assessment
 export const savePHQ9Assessment = async (assessment: PHQ9Assessment) => {
   try {
-    console.log('Saving PHQ9 assessment data:', assessment);
     const { data, error } = await supabase
       .from('phq9_assessments')
       .insert([assessment])
       .select();
       
-    if (error) {
-      console.error('Error saving PHQ9 assessment:', error);
-      throw error;
-    }
-    return { success: true, data: data?.[0] || null };
+    if (error) throw error;
+    return { success: true, data };
   } catch (error) {
     console.error('Error saving PHQ9 assessment:', error);
     return { success: false, error };
@@ -201,28 +180,6 @@ export const fetchPHQ9Assessments = async (clientId: string) => {
   } catch (error) {
     console.error('Error fetching PHQ9 assessments:', error);
     return [];
-  }
-};
-
-// New function to check if a PHQ-9 assessment exists for a specific appointment
-export const checkPHQ9ForAppointment = async (appointmentId: string) => {
-  try {
-    console.log('Checking for PHQ9 assessment for appointment:', appointmentId);
-    const { data, error } = await supabase
-      .from('phq9_assessments')
-      .select('*')
-      .eq('appointment_id', appointmentId)
-      .maybeSingle();
-      
-    if (error) {
-      console.error('Error checking PHQ9 for appointment:', error);
-      throw error;
-    }
-    console.log('PHQ9 assessment check result:', data ? 'Found' : 'Not found');
-    return { exists: !!data, data };
-  } catch (error) {
-    console.error('Error checking PHQ9 for appointment:', error);
-    return { exists: false, error };
   }
 };
 

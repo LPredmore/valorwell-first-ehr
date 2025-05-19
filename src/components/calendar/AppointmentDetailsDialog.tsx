@@ -13,7 +13,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import EditAppointmentDialog from './EditAppointmentDialog';
-import { Link } from 'react-router-dom';
 
 interface AppointmentDetailsDialogProps {
   isOpen: boolean;
@@ -140,20 +139,7 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-gray-500" />
-                {appointment.client_id ? (
-                  <Link 
-                    to={`/clients/${appointment.client_id}`}
-                    className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      console.log(`Navigating to client profile with ID: ${appointment.client_id}`);
-                    }}
-                  >
-                    {appointment.clientName || 'Unknown Client'}
-                  </Link>
-                ) : (
-                  <span className="font-medium">{appointment.clientName || 'Unknown Client'}</span>
-                )}
+                <span className="font-medium">{appointment.clientName || 'Unknown Client'}</span>
               </div>
 
               <DropdownMenu>
